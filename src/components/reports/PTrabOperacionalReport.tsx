@@ -164,7 +164,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const centerTopAlignment = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
     const leftMiddleAlignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true }; 
     
-    // NOVO: Alinhamento para dados (verticalmente centralizado)
     const dataCenterMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
     
     const cellBorder = {
@@ -178,11 +177,15 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const headerFontStyle = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF000000' } };
     const titleFontStyle = { name: 'Arial', size: 11, bold: true };
     const corHeader = 'FFD9D9D9'; // Cinza claro para o cabeçalho da tabela
-    const corSubtotalOM = 'FFD9D9D9'; // Cinza para o subtotal OM (MANTIDO)
-    const corGrandTotal = 'FFE8E8E8'; // Cinza claro para o total geral (MANTIDO)
-    const corND = 'FFB4C7E7'; // Azul para as NDs (APENAS NAS LINHAS DE DADOS)
-    const corTotalDetalhamento = 'FFFFFFFF'; // Branco para o detalhamento (Célula D)
-    const corSomaND = 'FFD9D9D9'; // Cinza para a linha de soma por ND (MANTIDO)
+    const corSubtotalOM = 'FFD9D9D9'; // Cinza para o subtotal OM
+    const corGrandTotal = 'FFE8E8E8'; // Cinza claro para o total geral
+    const corND = 'FFB4C7E7'; // Azul para as NDs
+    const corSomaND = 'FFD9D9D9'; // Cinza para a linha de soma por ND
+    
+    // NOVOS OBJETOS DE PREENCHIMENTO (FILL)
+    const headerFillGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: corHeader } }; // FFD9D9D9
+    const headerFillAzul = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; // FFB4C7E7
+    const totalOMFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corGrandTotal } }; // FFE8E8E8
     // -------------------------------------------
 
     let currentRow = 1;
@@ -249,7 +252,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     despesasRow.getCell(1).font = headerFontStyle;
     currentRow++;
     
-    // Cabeçalho da Tabela (9 colunas)
     const headerRow1 = worksheet.getRow(currentRow);
     headerRow1.getCell('A').value = 'DESPESAS';
     headerRow1.getCell('B').value = 'OM (UGE)\nCODUG';
@@ -281,32 +283,50 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         { width: 50 }, // I: DETALHAMENTO
     ];
     
-    // Apply styles to header rows
+    // 4️⃣ Ajustar altura das linhas (ESSENCIAL p/ texto aparecer)
+    headerRow1.height = 45;
+    headerRow2.height = 35;
+
+    // Apply styles to header rows (CORRIGIDO: Aplicando individualmente)
     const headerCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
     
     headerCols.forEach(col => {
+        // Linha 1 – ÂNCORA
         const cell1 = headerRow1.getCell(col);
-        cell1.style = {
-            font: headerFontStyle,
-            alignment: centerMiddleAlignment,
-            border: cellBorder,
-            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: corHeader } }
-        };
+        cell1.font = headerFontStyle;
+        cell1.alignment = centerMiddleAlignment;
+        cell1.border = cellBorder;
         
+        // Linha 2 – DETALHE
         const cell2 = headerRow2.getCell(col);
-        cell2.style = {
-            font: headerFontStyle,
-            alignment: centerMiddleAlignment,
-            border: cellBorder,
-            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } } // Azul para as NDs
-        };
-        
-        // Ajuste para as células mescladas
+        cell2.font = headerFontStyle;
+        cell2.alignment = centerMiddleAlignment;
+        cell2.border = cellBorder;
+
         if (col === 'A' || col === 'B' || col === 'I') {
+            // Células mescladas verticalmente (A, B, I)
+            cell1.fill = headerFillGray;
             cell2.value = '';
-            cell2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corHeader } };
+            cell2.fill = headerFillGray;
+        } else {
+            // Células mescladas horizontalmente (C, D, E, F, G, H)
+            cell1.fill = headerFillGray; // Cor de fundo da linha 1 (NATUREZA DE DESPESA)
+            cell2.fill = headerFillAzul; // Cor de fundo da linha 2 (NDs)
         }
     });
+    
+    // Reaplicar valores para garantir que não sejam perdidos
+    headerRow1.getCell('A').value = 'DESPESAS';
+    headerRow1.getCell('B').value = 'OM (UGE)\nCODUG';
+    headerRow1.getCell('C').value = 'NATUREZA DE DESPESA';
+    headerRow1.getCell('I').value = 'DETALHAMENTO / MEMÓRIA DE CÁLCULO\n(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO OPERACIONAL';
+    
+    headerRow2.getCell('C').value = '33.90.15';
+    headerRow2.getCell('D').value = '33.90.30';
+    headerRow2.getCell('E').value = '33.90.33';
+    headerRow2.getCell('F').value = '33.90.39';
+    headerRow2.getCell('G').value = '33.90.00';
+    headerRow2.getCell('H').value = 'GND 3';
     
     currentRow += 2; // Start data rows after the two header rows
 
@@ -464,21 +484,21 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     
     // Mescla A até F (Cinza Claro) - Colspan 6
     worksheet.mergeCells(`A${currentRow}:F${currentRow}`);
-    totalGeralFinalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corGrandTotal } };
+    totalGeralFinalRow.getCell('A').fill = totalOMFill;
     totalGeralFinalRow.getCell('A').border = cellBorder;
     
     // Célula G: VALOR TOTAL (Cinza Claro)
     totalGeralFinalRow.getCell('G').value = 'VALOR TOTAL';
     totalGeralFinalRow.getCell('G').alignment = centerMiddleAlignment;
     totalGeralFinalRow.getCell('G').font = headerFontStyle;
-    totalGeralFinalRow.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corGrandTotal } };
+    totalGeralFinalRow.getCell('G').fill = totalOMFill;
     totalGeralFinalRow.getCell('G').border = cellBorder;
     
     // Célula H: Valor Total GND 3 (Cinza Claro)
     totalGeralFinalRow.getCell('H').value = totaisND.totalGND3;
     totalGeralFinalRow.getCell('H').alignment = centerMiddleAlignment;
     totalGeralFinalRow.getCell('H').font = headerFontStyle;
-    totalGeralFinalRow.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corGrandTotal } };
+    totalGeralFinalRow.getCell('H').fill = totalOMFill;
     totalGeralFinalRow.getCell('H').border = cellBorder;
     totalGeralFinalRow.getCell('H').numFmt = 'R$ #,##0.00';
 
@@ -486,7 +506,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     totalGeralFinalRow.getCell('I').value = '';
     totalGeralFinalRow.getCell('I').alignment = centerMiddleAlignment;
     totalGeralFinalRow.getCell('I').font = headerFontStyle;
-    totalGeralFinalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corGrandTotal } };
+    totalGeralFinalRow.getCell('I').fill = totalOMFill;
     totalGeralFinalRow.getCell('I').border = cellBorder;
 
     currentRow++;
