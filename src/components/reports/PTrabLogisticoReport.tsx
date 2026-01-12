@@ -1000,7 +1000,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       gnd3Row1.getCell('E').alignment = centerMiddleAlignment;
       gnd3Row1.getCell('E').font = headerFontStyle;
       gnd3Row1.getCell('E').border = { top: cellBorder.top, left: cellBorder.left, right: cellBorder.right };
-      //worksheet.mergeCells(`E${currentRow}:I${currentRow}`); // MESCLADO E ATÉ I
+      
       currentRow++;
       
       // Segunda subdivisão: Valor Total
@@ -1010,7 +1010,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       gnd3Row2.getCell('E').font = headerFontStyle;
       gnd3Row2.getCell('E').border = { bottom: cellBorder.bottom, left: cellBorder.left, right: cellBorder.right };
       gnd3Row2.getCell('E').numFmt = 'R$ #,##0.00';
-      //worksheet.mergeCells(`E${currentRow}:I${currentRow}`); // MESCLADO E ATÉ I
+      
       currentRow++;
       
       currentRow++;
