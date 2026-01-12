@@ -963,7 +963,7 @@ const VerbaOperacionalForm = () => {
                                         {isSolicitationDataReady && (
                                             <Card className="mt-4 rounded-lg p-4 bg-background">
                                                 <h4 className="font-semibold text-base mb-4">
-                                                    Alocação de Natureza de Despesa (ND) (Valor Total: {formatCurrency(formData.valor_total_solicitado)})
+                                                    Alocação de Recursos para Verba Operacional (Valor Total: {formatCurrency(formData.valor_total_solicitado)})
                                                 </h4>
                                                 
                                                 {/* OM Destino do Recurso (Detentora) - AGORA SELECIONÁVEL AQUI */}
