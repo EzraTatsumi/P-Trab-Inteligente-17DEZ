@@ -58,12 +58,13 @@ export const generateVerbaOperacionalMemoriaCalculo = (
     const { 
         dias_operacao, 
         quantidade_equipes, 
-        valor_total_solicitado, 
         organizacao, 
         ug, 
         fase_atividade,
         valor_nd_30,
         valor_nd_39,
+        om_detentora,
+        ug_detentora,
     } = data;
     
     const omPreposition = getOmPreposition(organizacao);
@@ -90,21 +91,15 @@ export const generateVerbaOperacionalMemoriaCalculo = (
     }
     // --- Fim Lógica ND ---
     
-    // NOVO TEXTO DESCRITIVO
     const despesasDescricao = "operando fora da sede (hospedagem, alimentação, combustível, aluguel de viatura, manutenção de viatura e serviços diversos).";
     
-    // CABEÇALHO (USANDO O PREFIXO DINÂMICO E A NOVA DESCRIÇÃO)
+    // CABEÇALHO
     const header = `${ndPrefix} - Solicitação de Verba Operacional para ${quantidade_equipes} ${equipeText} ${omPreposition} ${organizacao}, durante ${dias_operacao} ${diaText} de ${faseFormatada}, ${despesasDescricao}`;
 
-    // Detalhamento
+    // Detalhamento simplificado
     const detalhamento = `
-OM Destino Recurso: ${organizacao} (UG: ${formatCodug(ug)})
-Total de Equipes: ${quantidade_equipes}
-Período de Operação: ${dias_operacao} ${diaText}
-Valor Total Solicitado (Input): ${formatCurrency(valor_total_solicitado)}
-
-Cálculo:
-Fórmula: Valor Total Alocado (R$) = ND 30 + ND 39.
+OM Favorecida: ${organizacao} (UG: ${formatCodug(ug)})
+OM Destino Recurso: ${om_detentora} (UG: ${formatCodug(ug_detentora)})
 
 Alocação:
 - ND 33.90.30 (Material/Serviço): ${formatCurrency(valor_nd_30)}
