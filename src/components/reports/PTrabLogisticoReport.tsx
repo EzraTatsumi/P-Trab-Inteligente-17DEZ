@@ -1026,7 +1026,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       currentRow += 3;
       
       const cmtRow = worksheet.getRow(currentRow);
-      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]';
+      cmtRow.getCell('A').value = ptrabData.nome_cmt_om || 'Gen Bda [NOME COMPLETO]'';
       cmtRow.getCell('A').font = { name: 'Arial', size: 10, bold: true };
       cmtRow.getCell('A').alignment = centerMiddleAlignment;
       worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
@@ -1350,7 +1350,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                                     </div>
                                 </td>
                                 <td className="col-om">
-                                    <div style={{ whiteSpace: 'pre-wrap', textAlign: 'center', vertical-align: 'middle' }}>
+                                    <div style={{ whiteSpace: 'pre-wrap', textAlign: 'center', verticalAlign: 'middle' }}>
                                         {rowData.omValue}
                                     </div>
                                 </td>
