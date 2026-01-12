@@ -1,33 +1,20 @@
-"use client";
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Input, InputProps } from "@/components/ui/input";
-import { formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
+import { formatCurrencyInput } from "@/lib/formatUtils";
 import { cn } from "@/lib/utils";
 
 interface CurrencyInputProps extends Omit<InputProps, 'value' | 'onChange' | 'onBlur'> {
-  value: number;
-  onChange: (value: number) => void;
+  rawDigits: string;
+  onChange: (digits: string) => void;
   placeholder?: string;
   className?: string;
 }
 
-export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputProps>(
-  ({ value, onChange, placeholder = "0,00", className, ...props }, ref) => {
-    // Internal state holds the raw digits string (e.g., "12345" for 123.45)
-    const [rawDigits, setRawDigits] = useState<string>(numberToRawDigits(value));
+const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputProps>(
+  ({ rawDigits, onChange, placeholder = "0,00", className, ...props }, ref) => {
     
-    // Calculate formatted value and numeric value based on rawDigits state
-    const { formatted, numericValue } = formatCurrencyInput(rawDigits);
-
-    // Sync internal state when external value prop changes (e.g., initial load or reset)
-    useEffect(() => {
-      // Only update if the current numeric value derived from rawDigits doesn't match the prop value
-      // We use a small tolerance check here to prevent infinite loops due to floating point arithmetic
-      if (Math.abs(numericValue - value) > 0.001) {
-        setRawDigits(numberToRawDigits(value));
-      }
-    }, [value, numericValue]);
+    // Calcula o valor formatado com base na prop rawDigits
+    const { formatted } = useMemo(() => formatCurrencyInput(rawDigits), [rawDigits]);
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
       const rawValue = e.target.value;
@@ -35,24 +22,16 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
       // 1. Remove tudo que não for dígito
       const newDigits = rawValue.replace(/\D/g, '');
       
-      // 2. Atualiza o estado interno de dígitos brutos
-      setRawDigits(newDigits);
-      
-      // 3. Calcula o novo valor numérico e notifica o componente pai
-      const { numericValue: newNumericValue } = formatCurrencyInput(newDigits);
-      onChange(newNumericValue);
-      
+      // 2. Notifica o componente pai com os novos dígitos brutos
+      onChange(newDigits);
     }, [onChange]);
 
     const handleInputBlur = useCallback(() => {
-      // If the input is empty (rawDigits is empty), ensure the parent state is 0
-      if (rawDigits.length === 0 && numericValue !== 0) {
-        onChange(0);
+      // Se o input estiver vazio, garante que o estado pai receba uma string vazia
+      if (rawDigits.length === 0) {
+          onChange('');
       }
-    }, [rawDigits, numericValue, onChange]);
-    
-    // Determine the display value: if rawDigits is empty, show empty string, otherwise show formatted value without R$
-    const displayValue = rawDigits.length === 0 ? '' : formatted.replace('R$ ', '');
+    }, [rawDigits, onChange]);
 
     return (
       <div className="relative">
@@ -60,7 +39,7 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
           ref={ref}
           type="text"
           inputMode="decimal"
-          value={displayValue} // Use the formatted string for display
+          value={formatted} // Usa a string formatada para exibição
           onChange={handleInputChange}
           onBlur={handleInputBlur}
           placeholder={placeholder}
@@ -74,3 +53,5 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
 );
 
 CurrencyInput.displayName = "CurrencyInput";
+
+export default CurrencyInput;

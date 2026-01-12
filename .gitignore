@@ -111,7 +111,6 @@ src/components/ScrollIndicatorButton.tsx
 src/pages/Index.tsx
 src/pages/NotFound.tsx
 src/components/FeedbackDialog.tsx
-src/components/CurrencyInput.tsx
 src/components/RefLPCFormSection.tsx
 src/components/OmUploadConfirmDialog.tsx
 src/components/ConsolidationNumberDialog.tsx
@@ -178,7 +177,6 @@ src/lib/ptrabNumberUtils.ts
 src/lib/errorUtils.ts
 src/lib/ptrabUtils.ts
 src/lib/utils.ts
-
 src/lib/omUtils.ts
 src/lib/validationSchemas.ts
 src/lib/classeIUtils.ts
