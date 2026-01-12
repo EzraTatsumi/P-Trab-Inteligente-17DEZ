@@ -1039,7 +1039,7 @@ const VerbaOperacionalForm = () => {
                                                 
                                                 {!isAllocationCorrect && (
                                                     <p className="text-xs text-destructive mt-2 text-center">
-                                                        A soma das NDs deve ser igual ao Valor Total Solicitado ({formatCurrency(formData.valor_total_solicitado)}).
+                                                        A soma das NDs (30 e 39) deve ser igual ao Valor Total Solicitado.
                                                     </p>
                                                 )}
                                             </Card>
@@ -1258,10 +1258,7 @@ const VerbaOperacionalForm = () => {
                                                                                 {registro.fase_atividade}
                                                                             </Badge>
                                                                         </div>
-                                                                        {/* Exibição simples da OM Detentora na Seção 4 */}
-                                                                        <p className="text-xs text-muted-foreground">
-                                                                            Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
-                                                                        </p>
+                                                                        {/* REMOVIDO: Exibição simples da OM Detentora na Seção 4 (p 1262) */}
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="font-bold text-lg text-primary/80">
@@ -1292,8 +1289,14 @@ const VerbaOperacionalForm = () => {
                                                                     </div>
                                                                 </div>
                                                                 
-                                                                {/* Detalhes da Alocação */}
+                                                                {/* NOVO: Detalhe da OM Destino (Detentora) */}
                                                                 <div className="pt-2 border-t mt-2">
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">OM Destino:</span>
+                                                                        <span className={cn("font-medium", isDifferentOmInView ? "text-red-600 font-bold" : "text-foreground")}>
+                                                                            {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                        </span>
+                                                                    </div>
                                                                     <div className="flex justify-between text-xs">
                                                                         <span className="text-muted-foreground">ND 33.90.30:</span>
                                                                         <span className="font-medium text-green-600">{formatCurrency(registro.valor_nd_30)}</span>
@@ -1351,7 +1354,7 @@ const VerbaOperacionalForm = () => {
                                                                 </Badge>
                                                             )}
                                                         </div>
-                                                        {/* NOVO LOCAL DO ALERTA VISUAL (Substituindo o p 1360) */}
+                                                        {/* NOVO LOCAL DO ALERTA VISUAL */}
                                                         {isDifferentOmInMemoria ? (
                                                             <div className="flex items-center gap-1 mt-1">
                                                                 <AlertCircle className="h-4 w-4 text-red-600" />
