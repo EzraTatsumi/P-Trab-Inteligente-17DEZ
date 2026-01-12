@@ -666,6 +666,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     rowData.valorE = registro.total_qr;
                     rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
                 }
+                rowData.despesasValue = line1 + (line2 ? `\n${line2}` : '');
+
             } else if (isClasseIII) { // Classe III (Combustível/Lubrificante)
                 const linhaClasseIII = linha as LinhaClasseIII;
                 const registro = linhaClasseIII.registro;
@@ -673,23 +675,31 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 
                 const omDetentoraEquipamento = registro.organizacao; // OM Detentora do Equipamento (Source)
                 
-                // OM de Destino do Recurso (Col B)
-                const omDestinoRecurso = isCombustivelLinha ? nomeOM : (registro.om_detentora || registro.organizacao);
-                const isDifferentOm = omDetentoraEquipamento !== omDestinoRecurso;
-                
+                // 1. Construir a primeira linha: CLASSE - SUPRIMENTO - CATEGORIA
                 const tipoSuprimentoLabel = isLubrificante ? 'LUBRIFICANTE' : getTipoCombustivelLabel(linhaClasseIII.tipo_suprimento);
                 const categoriaEquipamento = getTipoEquipamentoLabel(linhaClasseIII.categoria_equipamento);
                 
-                line1 = `CLASSE III - ${tipoSuprimentoLabel} - ${categoriaEquipamento}`;
+                // CORREÇÃO: Remove o hífen final da primeira linha
+                line1 = `CLASSE III - ${tipoSuprimentoLabel}\n${categoriaEquipamento}`;
+                
+                // 2. Verificar se a OM Detentora do Equipamento é diferente da OM de Destino do Recurso (Col B)
+                const omDestinoRecurso = isCombustivelLinha ? nomeOM : (registro.om_detentora || registro.organizacao);
+                const isDifferentOm = omDetentoraEquipamento !== omDestinoRecurso;
                 
                 if (isDifferentOm) {
-                    line2 = omDetentoraEquipamento; // OM Detentora do Equipamento
+                    // Se for diferente, adiciona a OM Detentora do Equipamento na terceira linha
+                    line2 = omDetentoraEquipamento;
                 }
                 
                 // OM (UGE) CODUG: OM de Destino do Recurso
                 const ugDestinoRecurso = isCombustivelLinha ? (registro.ug_detentora || '') : (registro.ug_detentora || registro.ug);
                 const ugDestinoFormatted = formatCodug(ugDestinoRecurso);
-                rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoFormatted})`;
+                
+                // CORREÇÃO: Garante OM \n UG na coluna B
+                let omValue = `${omDestinoRecurso}\n(${ugDestinoFormatted})`;
+                
+                rowData.despesasValue = line1 + (line2 ? `\n${line2}` : '');
+                rowData.omValue = omValue;
                 
                 if (isCombustivelLinha) {
                     rowData.valorC = 0;
@@ -722,7 +732,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
                     categoriaDetalhe = registro.animal_tipo;
                 }
-                                
+                                            
                 const omDetentora = registro.om_detentora || omDestinoRecurso;
                 const isDifferentOm = omDetentora !== omDestinoRecurso;
                 
@@ -741,12 +751,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     prefixoClasse = 'CLASSE II';
                 }
                 
-                line1 = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
+                // Line 1: Class - Category
+                rowData.despesasValue = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
                 
                 if (isDifferentOm) {
-                    line2 = omDetentora; // OM Detentora
+                    // Line 2: OM Detentora
+                    rowData.despesasValue += `\n${omDetentora}`;
                 }
                 
+                // CORREÇÃO: Garante OM \n UG na coluna B
                 rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
                 rowData.valorC = registro.valor_nd_30;
                 rowData.valorD = registro.valor_nd_39;
@@ -769,9 +782,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
                 }
             }
-            
-            // Final assignment:
-            rowData.despesasValue = line1 + (line2 ? `\n${line2}` : '');
             
             // --- Renderização da Linha no Excel ---
             const row = worksheet.getRow(currentRow);
@@ -1231,16 +1241,23 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             const tipoSuprimentoLabel = isLubrificante ? 'LUBRIFICANTE' : getTipoCombustivelLabel(linhaClasseIII.tipo_suprimento);
                             const categoriaEquipamento = getTipoEquipamentoLabel(linhaClasseIII.categoria_equipamento);
                             
-                            line1 = `CLASSE III - ${tipoSuprimentoLabel} - ${categoriaEquipamento}`;
+                            // CORREÇÃO: Remove o hífen final da primeira linha e usa \n para a categoria
+                            line1 = `CLASSE III - ${tipoSuprimentoLabel}\n${categoriaEquipamento}`;
                             
                             if (isDifferentOm) {
-                                line2 = omDetentoraEquipamento; // OM Detentora do Equipamento
+                                // Se for diferente, adiciona a OM Detentora do Equipamento na terceira linha
+                                line2 = omDetentoraEquipamento;
                             }
                             
                             // OM (UGE) CODUG: OM de Destino do Recurso
                             const ugDestinoRecurso = isCombustivelLinha ? (registro.ug_detentora || '') : (registro.ug_detentora || registro.ug);
                             const ugDestinoFormatted = formatCodug(ugDestinoRecurso);
-                            rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoFormatted})`;
+                            
+                            // CORREÇÃO: Garante OM \n UG na coluna B
+                            let omValue = `${omDestinoRecurso}\n(${ugDestinoFormatted})`;
+                            
+                            rowData.despesasValue = line1 + (line2 ? `\n${line2}` : '');
+                            rowData.omValue = omValue;
                             
                             if (isCombustivelLinha) {
                                 rowData.valorC = 0;
@@ -1292,12 +1309,15 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                                 prefixoClasse = 'CLASSE II';
                             }
                             
+                            // Line 1: Class - Category
                             line1 = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
                             
                             if (isDifferentOm) {
-                                line2 = omDetentora; // OM Detentora
+                                // Line 2: OM Detentora
+                                line2 = omDetentora;
                             }
                             
+                            // CORREÇÃO: Garante OM \n UG na coluna B
                             rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
                             rowData.valorC = registro.valor_nd_30;
                             rowData.valorD = registro.valor_nd_39;
@@ -1326,10 +1346,16 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         return (
                             <tr key={`${nomeOM}-${index}`} className="expense-row">
                                 <td className="col-despesas">
-                                    {rowData.despesasValue}
+                                    {/* Usando div para garantir que o white-space: pre-wrap funcione */}
+                                    <div style={{ whiteSpace: 'pre-wrap' }}>
+                                        {rowData.despesasValue}
+                                    </div>
                                 </td>
                                 <td className="col-om">
-                                    {rowData.omValue}
+                                    {/* Usando div para garantir que o white-space: pre-wrap funcione */}
+                                    <div style={{ whiteSpace: 'pre-wrap' }}>
+                                        {rowData.omValue}
+                                    </div>
                                 </td>
                                 <td className="col-nd col-valor-natureza">
                                     {rowData.valorC > 0 ? formatCurrency(rowData.valorC) : ''}
