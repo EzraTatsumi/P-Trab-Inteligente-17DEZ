@@ -90,8 +90,11 @@ export const generateVerbaOperacionalMemoriaCalculo = (
     }
     // --- Fim Lógica ND ---
     
-    // CABEÇALHO (USANDO O PREFIXO DINÂMICO)
-    const header = `${ndPrefix} - Solicitação de Verba Operacional para ${quantidade_equipes} ${equipeText} ${omPreposition} ${organizacao}, durante ${dias_operacao} ${diaText} de ${faseFormatada}.`;
+    // NOVO TEXTO DESCRITIVO
+    const despesasDescricao = "operando fora da sede (hospedagem, alimentação, combustível, aluguel de viatura, manutenção de viatura e serviços diversos).";
+    
+    // CABEÇALHO (USANDO O PREFIXO DINÂMICO E A NOVA DESCRIÇÃO)
+    const header = `${ndPrefix} - Solicitação de Verba Operacional para ${quantidade_equipes} ${equipeText} ${omPreposition} ${organizacao}, durante ${dias_operacao} ${diaText} de ${faseFormatada}, ${despesasDescricao}`;
 
     // Detalhamento
     const detalhamento = `
