@@ -1122,17 +1122,13 @@ const VerbaOperacionalForm = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
-                                                                <p className="font-medium">OM Destino Recurso:</p> {/* NOVO CAMPO */}
-                                                                <p className="font-medium">UG Destino Recurso:</p> {/* NOVO CAMPO */}
+                                                                <p className="font-medium">OM Destino (UG):</p>
                                                                 <p className="font-medium">Período / Equipes:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
                                                                 <p className={cn("font-medium", isDifferentOmInView ? "text-red-600 font-bold" : "text-foreground")}>
-                                                                    {item.om_detentora}
-                                                                </p>
-                                                                <p className={cn("font-medium", isDifferentOmInView ? "text-red-600 font-bold" : "text-foreground")}>
-                                                                    {formatCodug(item.ug_detentora)}
+                                                                    {item.om_detentora} ({formatCodug(item.ug_detentora)})
                                                                 </p>
                                                                 <p className="font-medium">{item.dias_operacao} dias / {item.quantidade_equipes} equipes</p>
                                                             </div>
