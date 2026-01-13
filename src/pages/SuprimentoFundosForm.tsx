@@ -11,6 +11,7 @@ import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, S
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
+import { OmSelector } from "@/components/OmSelector";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { formatCurrency, formatCodug, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
@@ -19,7 +20,7 @@ import {
     calculateSuprimentoFundosTotals, 
     generateSuprimentoFundosMemoriaCalculo,
     SuprimentoFundosRegistro, // Importar o tipo de registro da DB
-} from "@/lib/suprimentoFundosUtils"; // NOVO UTILITÁRIO
+} from "@/lib/suprimentoFundosUtils"; 
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -34,7 +35,6 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import * as z from "zod";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
-import { OmSelector } from "@/components/OmSelector";
 import { cn } from "@/lib/utils"; 
 import CurrencyInput from "@/components/CurrencyInput";
 
@@ -115,8 +115,8 @@ const initialFormState = {
     quantidade_equipes: 1, // Default para 1
     valor_total_solicitado: 0,
     fase_atividade: "",
-    om_detentora: DEFAULT_OM_DETENTORA, 
-    ug_detentora: DEFAULT_UG_DETENTORA, 
+    om_detentora: "", // Inicialmente vazio
+    ug_detentora: "", // Inicialmente vazio
     valor_nd_30: 0, 
     valor_nd_39: 0, 
     // NOVOS CAMPOS
@@ -186,35 +186,44 @@ const SuprimentoFundosForm = () => {
     // Efeito para preencher a OM Favorecida (OM do PTrab) e a OM Detentora (CIE) ao carregar
     useEffect(() => {
         if (ptrabData && !editingId) {
-            // 1. OM Favorecida (OM do PTrab)
-            const omFavorecida = oms?.find(om => om.nome_om === ptrabData.nome_om && om.codug_om === ptrabData.codug_om);
+            // 1. OM Favorecida (OM do PTrab) - REMOVIDO PRE-SELEÇÃO
+            // A OM Favorecida deve ser selecionada manualmente.
             
-            setFormData(prev => ({
-                ...prev,
-                om_favorecida: ptrabData.nome_om,
-                ug_favorecida: ptrabData.codug_om,
-            }));
-            setSelectedOmFavorecidaId(omFavorecida?.id);
+            // 2. OM Detentora (Padrão CIE) - REMOVIDO PRE-SELEÇÃO INICIAL
+            // A OM Detentora será sincronizada com a OM Favorecida.
             
-            // 2. OM Detentora (Padrão CIE)
-            const cieOm = oms?.find(om => om.nome_om === DEFAULT_OM_DETENTORA && om.codug_om === DEFAULT_UG_DETENTORA);
-            if (cieOm) {
-                setSelectedOmDetentoraId(cieOm.id);
-                setFormData(prev => ({
-                    ...prev,
-                    om_detentora: DEFAULT_OM_DETENTORA,
-                    ug_detentora: DEFAULT_UG_DETENTORA,
-                }));
-            } else {
-                setSelectedOmDetentoraId(undefined);
-                setFormData(prev => ({
-                    ...prev,
-                    om_detentora: DEFAULT_OM_DETENTORA,
-                    ug_detentora: DEFAULT_UG_DETENTORA,
-                }));
-            }
+            // Resetar para o estado inicial (vazio)
+            setFormData(initialFormState);
+            setSelectedOmFavorecidaId(undefined);
+            setSelectedOmDetentoraId(undefined);
         }
     }, [ptrabData, oms, editingId]);
+    
+    // NOVO EFEITO: Sincroniza OM Destino do Recurso (Detentora) com OM Favorecida
+    useEffect(() => {
+        if (editingId) return; // Não sincroniza durante a edição de um registro existente
+        
+        // Se a OM Favorecida for selecionada, use-a como padrão para a OM Detentora
+        if (formData.om_favorecida && formData.ug_favorecida) {
+            setFormData(prev => ({
+                ...prev,
+                om_detentora: formData.om_favorecida,
+                ug_detentora: formData.ug_favorecida,
+            }));
+            // Encontra o ID da OM Favorecida para usar como ID da OM Detentora
+            const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
+            setSelectedOmDetentoraId(omFavorecida?.id);
+        } else {
+            // Se a OM Favorecida for limpa, limpa a Detentora também
+            setFormData(prev => ({
+                ...prev,
+                om_detentora: "",
+                ug_detentora: "",
+            }));
+            setSelectedOmDetentoraId(undefined);
+        }
+    }, [formData.om_favorecida, formData.ug_favorecida, editingId, oms]);
+
 
     // =================================================================
     // CÁLCULOS E MEMÓRIA (MEMOIZED)
@@ -496,8 +505,12 @@ const SuprimentoFundosForm = () => {
         setEditingId(null);
         setFormData(prev => ({
             ...initialFormState,
-            om_favorecida: ptrabData?.nome_om || "",
-            ug_favorecida: ptrabData?.codug_om || "",
+            // Mantém a OM Favorecida e UG Favorecida vazias para forçar a seleção
+            om_favorecida: "",
+            ug_favorecida: "",
+            // A OM Detentora será sincronizada com a Favorecida (que está vazia)
+            om_detentora: "",
+            ug_detentora: "",
             dias_operacao: 0,
             quantidade_equipes: 1,
             valor_total_solicitado: 0,
@@ -547,6 +560,7 @@ const SuprimentoFundosForm = () => {
         let customDetails = initialFormState;
         try {
             if (registro.detalhamento_customizado) {
+                // O detalhamento_customizado armazena o JSON dos detalhes do Suprimento de Fundos
                 customDetails = JSON.parse(registro.detalhamento_customizado);
             }
         } catch (e) {
@@ -561,8 +575,8 @@ const SuprimentoFundosForm = () => {
             quantidade_equipes: registro.quantidade_equipes,
             valor_total_solicitado: Number(registro.valor_total_solicitado || 0),
             fase_atividade: registro.fase_atividade || "",
-            om_detentora: registro.om_detentora || DEFAULT_OM_DETENTORA,
-            ug_detentora: registro.ug_detentora || DEFAULT_UG_DETENTORA,
+            om_detentora: registro.om_detentora || "",
+            ug_detentora: registro.ug_detentora || "",
             valor_nd_30: Number(registro.valor_nd_30 || 0),
             valor_nd_39: Number(registro.valor_nd_39 || 0),
             // NOVOS CAMPOS
@@ -710,8 +724,9 @@ const SuprimentoFundosForm = () => {
                 om_favorecida: prev.om_favorecida,
                 ug_favorecida: prev.ug_favorecida,
                 fase_atividade: prev.fase_atividade,
-                om_detentora: DEFAULT_OM_DETENTORA,
-                ug_detentora: DEFAULT_UG_DETENTORA,
+                // A OM Detentora será sincronizada com a Favorecida (que é mantida)
+                om_detentora: prev.om_favorecida,
+                ug_detentora: prev.ug_favorecida,
                 dias_operacao: 0, 
                 quantidade_equipes: 1, 
                 valor_total_solicitado: 0,
@@ -728,7 +743,7 @@ const SuprimentoFundosForm = () => {
             setRawTotalInput(numberToRawDigits(0));
             setRawND30Input(numberToRawDigits(0));
             setRawND39Input(numberToRawDigits(0));
-            setSelectedOmDetentoraId(undefined); 
+            // Mantém o ID da OM Detentora (que é igual ao da Favorecida)
             
             toast.info("Item de Suprimento de Fundos adicionado à lista pendente.");
             
@@ -815,11 +830,42 @@ const SuprimentoFundosForm = () => {
         setEditingMemoriaId(registro.id);
         
         // 1. Gerar a memória automática
-        const totals = calculateSuprimentoFundosTotals(registro as any);
-        const memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo(registro as any);
+        // Para gerar a memória automática, precisamos dos campos de detalhamento que estão no detalhamento_customizado
+        let customDetails = initialFormState;
+        try {
+            if (registro.detalhamento_customizado) {
+                customDetails = JSON.parse(registro.detalhamento_customizado);
+            }
+        } catch (e) {
+            console.error("Erro ao parsear detalhamento customizado para memória:", e);
+        }
+        
+        const dataForMemoria = {
+            ...registro,
+            ...customDetails,
+            valor_total_solicitado: Number(registro.valor_total_solicitado || 0),
+            valor_nd_30: Number(registro.valor_nd_30 || 0),
+            valor_nd_39: Number(registro.valor_nd_39 || 0),
+        };
+        
+        const memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo(dataForMemoria as any);
         
         // 2. Usar a customizada se existir, senão usar a automática
-        setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
+        // NOTA: Para Suprimento de Fundos, o campo 'detalhamento_customizado' armazena o JSON dos detalhes
+        // e o campo 'detalhamento' armazena o marcador "Suprimento de Fundos".
+        // Se o usuário editar a memória, vamos usar o campo 'detalhamento_customizado' para armazenar o texto editado.
+        
+        // Se o detalhamento_customizado for um JSON válido (ou seja, os detalhes originais), usamos a memória automática.
+        // Se for um texto (memória editada), usamos o texto.
+        let memoriaParaEdicao = memoriaAutomatica;
+        try {
+            JSON.parse(registro.detalhamento_customizado || '');
+        } catch (e) {
+            // Se falhar ao parsear, significa que é um texto customizado (memória editada)
+            memoriaParaEdicao = registro.detalhamento_customizado || memoriaAutomatica;
+        }
+        
+        setMemoriaEdit(memoriaParaEdicao);
     };
 
     const handleCancelarEdicaoMemoria = () => {
@@ -829,15 +875,11 @@ const SuprimentoFundosForm = () => {
 
     const handleSalvarMemoriaCustomizada = async (registroId: string) => {
         try {
-            // Aqui, o campo 'detalhamento_customizado' da DB armazena o JSON dos detalhes,
-            // mas o campo 'detalhamento' armazena a memória de cálculo gerada.
-            // Para Suprimento de Fundos, vamos usar o campo 'detalhamento_customizado' para a memória editável.
-            
+            // Salva o texto editado no campo 'detalhamento_customizado'
             const { error } = await supabase
                 .from("verba_operacional_registros")
                 .update({
-                    detalhamento: "Suprimento de Fundos", // Mantém o marcador
-                    detalhamento_customizado: memoriaEdit.trim() || null,
+                    detalhamento_customizado: memoriaEdit.trim(),
                 })
                 .eq("id", registroId);
 
@@ -858,10 +900,29 @@ const SuprimentoFundosForm = () => {
         }
         
         try {
+            // Para restaurar, precisamos re-salvar o JSON dos detalhes originais no detalhamento_customizado.
+            const originalRecord = registros?.find(r => r.id === registroId);
+            if (!originalRecord) throw new Error("Registro original não encontrado.");
+            
+            // 1. Re-gerar o JSON dos detalhes (que é o que o formulário salva)
+            const dataForDetails = {
+                objeto_aquisicao: (originalRecord as any).objeto_aquisicao || "",
+                objeto_contratacao: (originalRecord as any).objeto_contratacao || "",
+                proposito: (originalRecord as any).proposito || "",
+                finalidade: (originalRecord as any).finalidade || "",
+                local: (originalRecord as any).local || "",
+                tarefa: (originalRecord as any).tarefa || "",
+            };
+            
+            // NOTA: O campo 'detalhamento_customizado' na DB armazena o JSON dos detalhes quando salvo pelo formulário.
+            // Se o usuário edita a memória, ele armazena o texto.
+            // Ao restaurar, voltamos a armazenar o JSON dos detalhes.
+            const originalDetailsJson = JSON.stringify(dataForDetails);
+            
             const { error } = await supabase
                 .from("verba_operacional_registros")
                 .update({
-                    detalhamento_customizado: null,
+                    detalhamento_customizado: originalDetailsJson,
                 })
                 .eq("id", registroId);
 
@@ -1148,7 +1209,7 @@ const SuprimentoFundosForm = () => {
                                                     <OmSelector
                                                         selectedOmId={selectedOmDetentoraId}
                                                         onChange={handleOmDetentoraChange}
-                                                        placeholder="Selecione a OM Detentora"
+                                                        placeholder="Selecione a OM Destino"
                                                         disabled={!isPTrabEditable || isSaving}
                                                         initialOmName={formData.om_detentora}
                                                         initialOmUg={formData.ug_detentora}
@@ -1492,12 +1553,43 @@ const SuprimentoFundosForm = () => {
                                     
                                     {registros.map(registro => {
                                         const isEditing = editingMemoriaId === registro.id;
-                                        const hasCustomMemoria = !!registro.detalhamento_customizado && registro.detalhamento_customizado !== "Suprimento de Fundos";
                                         
-                                        const totals = calculateSuprimentoFundosTotals(registro as any);
-                                        const memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo(registro as any);
+                                        // 1. Tenta parsear o detalhamento_customizado. Se for JSON, significa que a memória não foi editada.
+                                        let hasCustomMemoria = false;
+                                        try {
+                                            JSON.parse(registro.detalhamento_customizado || '');
+                                        } catch (e) {
+                                            // Se falhar ao parsear, é um texto customizado (memória editada)
+                                            hasCustomMemoria = !!registro.detalhamento_customizado;
+                                        }
                                         
-                                        const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
+                                        // 2. Prepara os dados para gerar a memória automática
+                                        let customDetails = initialFormState;
+                                        try {
+                                            if (registro.detalhamento_customizado && !hasCustomMemoria) {
+                                                customDetails = JSON.parse(registro.detalhamento_customizado);
+                                            }
+                                        } catch (e) {
+                                            // Se falhar, usa o initialFormState
+                                        }
+                                        
+                                        const dataForMemoria = {
+                                            ...registro,
+                                            ...customDetails,
+                                            valor_total_solicitado: Number(registro.valor_total_solicitado || 0),
+                                            valor_nd_30: Number(registro.valor_nd_30 || 0),
+                                            valor_nd_39: Number(registro.valor_nd_39 || 0),
+                                        };
+                                        
+                                        const memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo(dataForMemoria as any);
+                                        
+                                        // 3. Define a memória a ser exibida
+                                        let memoriaExibida = memoriaAutomatica;
+                                        if (isEditing) {
+                                            memoriaExibida = memoriaEdit;
+                                        } else if (hasCustomMemoria) {
+                                            memoriaExibida = registro.detalhamento_customizado!;
+                                        }
                                         
                                         const isDifferentOmInMemoria = registro.om_detentora !== registro.organizacao;
 
