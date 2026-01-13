@@ -194,6 +194,8 @@ const PTrabForm = () => {
       navigate(`/ptrab/diaria?ptrabId=${ptrabId}`);
     } else if (itemId === 'verba-operacional') {
       navigate(`/ptrab/verba-operacional?ptrabId=${ptrabId}`);
+    } else if (itemId === 'suprimento-fundos') {
+      navigate(`/ptrab/suprimento-fundos?ptrabId=${ptrabId}`);
     } else {
       // Trata itens operacionais não implementados
       toast.info(`Funcionalidade '${itemName}' (Operacional) ainda não implementada.`);
