@@ -1122,7 +1122,7 @@ const VerbaOperacionalForm = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
-                                                                <p className="font-medium">OM Destino (UG):</p>
+                                                                <p className="font-medium">OM Destino:</p>
                                                                 <p className="font-medium">Período / Equipes:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
