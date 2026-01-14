@@ -187,17 +187,15 @@ const SuprimentoFundosForm = () => {
     // Efeito de inicialização da OM Favorecida (OM do PTrab)
     useEffect(() => {
         if (ptrabData && !editingId) {
-            const omFavorecida = oms?.find(om => om.nome_om === ptrabData.nome_om && om.codug_om === ptrabData.codug_om);
+            // Se não estiver editando, resetamos para o estado inicial (vazio)
+            resetForm();
+        } else if (ptrabData && editingId) {
+            // Se estiver editando, garantimos que os seletores de OM sejam inicializados
+            const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
+            const omDetentora = oms?.find(om => om.nome_om === formData.om_detentora && om.codug_om === formData.ug_detentora);
             
-            setFormData(prev => ({
-                ...prev,
-                om_favorecida: ptrabData.nome_om,
-                ug_favorecida: ptrabData.codug_om,
-                om_detentora: ptrabData.nome_om, // Detentora = Favorecida por padrão
-                ug_detentora: ptrabData.codug_om, // Detentora = Favorecida por padrão
-            }));
             setSelectedOmFavorecidaId(omFavorecida?.id);
-            setSelectedOmDetentoraId(omFavorecida?.id);
+            setSelectedOmDetentoraId(omDetentora?.id);
         }
     }, [ptrabData, oms, editingId]);
 
@@ -476,26 +474,7 @@ const SuprimentoFundosForm = () => {
 
     const resetForm = () => {
         setEditingId(null);
-        setFormData(prev => ({
-            ...initialFormState,
-            // OM Favorecida e UG Favorecida são resetadas para vazio
-            om_favorecida: "",
-            ug_favorecida: "",
-            fase_atividade: "",
-            om_detentora: "", 
-            ug_detentora: "", 
-            dias_operacao: 0, 
-            quantidade_equipes: 1, 
-            valor_total_solicitado: 0,
-            valor_nd_30: 0,
-            valor_nd_39: 0,
-            objeto_aquisicao: "",
-            objeto_contratacao: "",
-            proposito: "",
-            finalidade: "",
-            local: "",
-            tarefa: "",
-        }));
+        setFormData(initialFormState);
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
         setSelectedOmFavorecidaId(undefined);
@@ -530,18 +509,21 @@ const SuprimentoFundosForm = () => {
         
         // 3. Parsear Detalhamento Customizado para os campos de detalhe
         let customDetails = initialFormState;
+        let memoriaCustomizadaTexto: string | null = null;
+        
         try {
             if (registro.detalhamento_customizado) {
-                // Se o detalhamento_customizado for um JSON, ele contém os detalhes
                 const parsed = JSON.parse(registro.detalhamento_customizado);
-                // Verifica se o JSON contém as chaves esperadas (indicando que é o JSON de detalhes)
                 if (parsed.objeto_aquisicao !== undefined) {
                     customDetails = parsed;
+                } else {
+                    // Não é JSON de detalhes, é a memória customizada (texto)
+                    memoriaCustomizadaTexto = registro.detalhamento_customizado;
                 }
             }
         } catch (e) {
-            // Se falhar, o detalhamento_customizado é a memória de cálculo customizada (texto)
-            console.log("Detalhamento customizado não é JSON de detalhes, tratando como memória de cálculo.");
+            // Falha no parse, é a memória customizada (texto)
+            memoriaCustomizadaTexto = registro.detalhamento_customizado || null;
         }
 
         // 4. Populate formData
@@ -591,7 +573,7 @@ const SuprimentoFundosForm = () => {
             valor_nd_39: totals.totalND39,
             
             detalhamento: "Suprimento de Fundos",
-            detalhamento_customizado: registro.detalhamento_customizado || null, 
+            detalhamento_customizado: memoriaCustomizadaTexto, // Preserva o texto customizado se houver
             
             totalGeral: totals.totalGeral,
             memoria_calculo_display: memoria, 
@@ -682,8 +664,8 @@ const SuprimentoFundosForm = () => {
             
             if (editingId) {
                 const originalRecord = registros?.find(r => r.id === editingId);
+                
                 // Se o detalhamento_customizado for um texto (memória customizada), preservamos.
-                // Se for o JSON de detalhes, ele será sobrescrito pelos campos do formulário.
                 try {
                     JSON.parse(originalRecord?.detalhamento_customizado || "");
                     // É JSON de detalhes, não faz nada (será sobrescrito pelos campos do form)
@@ -825,9 +807,11 @@ const SuprimentoFundosForm = () => {
         
         // 2. Usar a customizada se existir, senão usar a automática
         let memoriaInicial = memoriaAutomatica;
+        
+        // Tenta parsear o detalhamento_customizado. Se falhar, é um texto customizado.
         try {
-            // Se o detalhamento_customizado for um JSON, ele contém os detalhes, não a memória customizada
             JSON.parse(registro.detalhamento_customizado || "");
+            // Se o parse for bem-sucedido, o detalhamento_customizado é o JSON de detalhes, então a memória inicial é a automática
         } catch (e) {
             // Se falhar, é um texto customizado (memória)
             memoriaInicial = registro.detalhamento_customizado || memoriaAutomatica;
@@ -843,7 +827,6 @@ const SuprimentoFundosForm = () => {
 
     const handleSalvarMemoriaCustomizada = async (registroId: string) => {
         try {
-            // Para Suprimento de Fundos, o campo 'detalhamento_customizado' é usado para armazenar o JSON dos detalhes.
             // Se o usuário editar a memória, o campo 'detalhamento_customizado' será sobrescrito com o texto da memória.
             
             const { error } = await supabase
@@ -871,19 +854,25 @@ const SuprimentoFundosForm = () => {
         }
         
         try {
-            // Para restaurar a memória automática, precisamos re-salvar o JSON dos detalhes
             const originalRecord = registros?.find(r => r.id === registroId);
             if (!originalRecord) throw new Error("Registro original não encontrado.");
             
             // Recriar o JSON dos detalhes a partir dos campos do registro
-            const detalhamentoCustomizadoJSON = JSON.stringify({
-                objeto_aquisicao: originalRecord.detalhamento_customizado?.objeto_aquisicao || "",
-                objeto_contratacao: originalRecord.detalhamento_customizado?.objeto_contratacao || "",
-                proposito: originalRecord.detalhamento_customizado?.proposito || "",
-                finalidade: originalRecord.detalhamento_customizado?.finalidade || "",
-                local: originalRecord.detalhamento_customizado?.local || "",
-                tarefa: originalRecord.detalhamento_customizado?.tarefa || "",
-            });
+            // Nota: Como o registro original não tem os campos de detalhe diretamente, precisamos
+            // garantir que o JSON original seja restaurado se ele existia.
+            
+            let detalhamentoCustomizadoJSON: string | null = null;
+            
+            try {
+                const parsed = JSON.parse(originalRecord.detalhamento_customizado || "");
+                if (parsed.objeto_aquisicao !== undefined) {
+                    // Se o original era o JSON de detalhes, restauramos o JSON
+                    detalhamentoCustomizadoJSON = originalRecord.detalhamento_customizado;
+                }
+            } catch (e) {
+                // Se o original era texto customizado, restauramos para null (que fará a memória automática ser gerada)
+                detalhamentoCustomizadoJSON = null;
+            }
             
             const { error } = await supabase
                 .from("verba_operacional_registros")
@@ -1534,10 +1523,10 @@ const SuprimentoFundosForm = () => {
                                         try {
                                             // Tenta parsear o detalhamento_customizado. Se falhar, é um texto customizado.
                                             JSON.parse(registro.detalhamento_customizado || "");
-                                            // Se o parse for bem-sucedido, a memória é automática (gerada pelo utilitário)
+                                            // Se o parse for bem-sucedido, o detalhamento_customizado é o JSON de detalhes, então a memória inicial é a automática
                                             memoriaExibida = generateSuprimentoFundosMemoriaCalculo(registro as any);
                                         } catch (e) {
-                                            // Se falhar, o conteúdo é o texto customizado
+                                            // Se falhar, é um texto customizado (memória)
                                             hasCustomMemoria = !!registro.detalhamento_customizado;
                                             memoriaExibida = registro.detalhamento_customizado || generateSuprimentoFundosMemoriaCalculo(registro as any);
                                         }
