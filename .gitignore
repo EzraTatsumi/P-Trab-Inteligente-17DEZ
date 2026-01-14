@@ -50,7 +50,7 @@ src/components/EmailVerificationDialog.tsx
 src/components/SignupDialog.tsx
 src/components/EmailConfirmationDialog.tsx
 
-# REMOVID: src/components/YearManagementDialog.tsx
+src/components/YearManagementDialog.tsx
 src/pages/PTrabExportImportPage.tsx
 src/components/ExportPasswordDialog.tsx
 src/components/ImportPTrabOptionsDialog.tsx
@@ -97,9 +97,9 @@ src/pages/DiretrizesCusteioPage.tsx # Adicionado a pedido do usuário
 
 # INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
 
-# src/lib/omUtils.ts
+src/lib/omUtils.ts
 src/lib/ptrabUtils.ts
-# src/lib/validationSchemas.ts
+src/lib/validationSchemas.ts
 
 # NOVAS EXCLUSÕES ADICIONAIS (UI e Páginas Estáticas)
 src/components/Benefits.tsx
@@ -131,7 +131,7 @@ src/pages/Login.tsx
 # REMOVIDO:src/pages/PTrabManager.tsx
 # REMOVIDO:src/pages/PTrabForm.tsx
 # REMOVIDO: src/pages/PTrabReportManager.tsx
-# REMOVIDO: src/components/OmSelector.tsx
+src/components/OmSelector.tsx
 src/components/SessionContextProvider.tsx
 src/hooks/useMilitaryOrganizations.ts
 src/lib/badgeUtils.ts
