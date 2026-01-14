@@ -385,7 +385,8 @@ const VerbaOperacionalForm = () => {
             toast.success(`Sucesso! ${pendingVerbas.length} registro(s) de Verba Operacional adicionado(s).`);
             setPendingVerbas([]); 
             
-            resetForm();
+            // Não chamamos resetForm aqui para manter os dados da Seção 2
+            // resetForm(); 
             
             if (newRecords && newRecords.length > 0) {
                 handleEdit(newRecords[0] as VerbaOperacionalRegistro);
@@ -531,7 +532,7 @@ const VerbaOperacionalForm = () => {
             ug: newFormData.ug_favorecida,
         } as any);
         
-        // 5. Stage the current record data immediately for display in Section 3
+        // 5. Stage the current record data immediately for display in Seção 3
         const stagedData: CalculatedVerbaOperacional = {
             tempId: registro.id,
             p_trab_id: ptrabId!,
@@ -642,26 +643,7 @@ const VerbaOperacionalForm = () => {
             // MODO ADIÇÃO: Adicionar à lista pendente
             setPendingVerbas(prev => [...prev, calculatedData]);
             
-            // 5. Resetar o formulário para o próximo item, MANTENDO os dados da Seção 1 e OM Detentora
-            setFormData(prev => ({
-                ...initialFormState,
-                om_favorecida: prev.om_favorecida, // MANTIDO
-                ug_favorecida: prev.ug_favorecida, // MANTIDO
-                fase_atividade: prev.fase_atividade, // MANTIDO
-                om_detentora: prev.om_detentora, // MANTIDO
-                ug_detentora: prev.ug_detentora, // MANTIDO
-                // Resetar apenas os campos de cálculo
-                dias_operacao: 0, 
-                quantidade_equipes: 0, 
-                valor_total_solicitado: 0,
-                valor_nd_30: 0,
-                valor_nd_39: 0,
-            }));
-            
-            // Resetar inputs brutos
-            setRawTotalInput(numberToRawDigits(0));
-            setRawND30Input(numberToRawDigits(0));
-            setRawND39Input(numberToRawDigits(0));
+            // 5. Não resetar o formulário aqui para manter os valores na Seção 2
             
             toast.info("Item de Verba Operacional adicionado à lista pendente.");
             
@@ -1425,7 +1407,7 @@ const VerbaOperacionalForm = () => {
                                                 <Card className="p-4 bg-background rounded-lg border">
                                                     {isEditing ? (
                                                         <Textarea
-                                                            value={memoriaExibida}
+                                                            value={memoriaEdit}
                                                             onChange={(e) => setMemoriaEdit(e.target.value)}
                                                             className="min-h-[300px] font-mono text-sm"
                                                             placeholder="Digite a memória de cálculo..."
