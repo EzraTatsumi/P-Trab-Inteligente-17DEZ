@@ -183,18 +183,11 @@ const SuprimentoFundosForm = () => {
     
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
     
-    // Efeito para preencher a OM Favorecida (OM do PTrab) e a OM Detentora (CIE) ao carregar
+    // Efeito para preencher a OM Detentora (CIE) ao carregar, mas NÃO a OM Favorecida
     useEffect(() => {
         if (ptrabData && !editingId) {
-            // 1. OM Favorecida (OM do PTrab)
-            const omFavorecida = oms?.find(om => om.nome_om === ptrabData.nome_om && om.codug_om === ptrabData.codug_om);
-            
-            setFormData(prev => ({
-                ...prev,
-                om_favorecida: ptrabData.nome_om,
-                ug_favorecida: ptrabData.codug_om,
-            }));
-            setSelectedOmFavorecidaId(omFavorecida?.id);
+            // 1. OM Favorecida (OM do PTrab) - NÃO PREENCHE AUTOMATICAMENTE
+            // Apenas garante que o estado inicial do formulário seja o default (vazio)
             
             // 2. OM Detentora (Padrão CIE)
             const cieOm = oms?.find(om => om.nome_om === DEFAULT_OM_DETENTORA && om.codug_om === DEFAULT_UG_DETENTORA);
@@ -496,10 +489,13 @@ const SuprimentoFundosForm = () => {
         setEditingId(null);
         setFormData(prev => ({
             ...initialFormState,
-            om_favorecida: ptrabData?.nome_om || "",
-            ug_favorecida: ptrabData?.codug_om || "",
+            // OM Favorecida e UG Favorecida são resetadas para vazio
+            om_favorecida: "",
+            ug_favorecida: "",
+            // Dias e equipes são resetados para 0 (vazio)
             dias_operacao: 0,
             quantidade_equipes: 1,
+            // NDs e Total são resetados para 0
             valor_total_solicitado: 0,
             valor_nd_30: 0,
             valor_nd_39: 0,
@@ -547,6 +543,7 @@ const SuprimentoFundosForm = () => {
         let customDetails = initialFormState;
         try {
             if (registro.detalhamento_customizado) {
+                // O detalhamento customizado armazena o JSON dos detalhes
                 customDetails = JSON.parse(registro.detalhamento_customizado);
             }
         } catch (e) {
@@ -707,8 +704,9 @@ const SuprimentoFundosForm = () => {
             // 5. Resetar o formulário para o próximo item
             setFormData(prev => ({
                 ...initialFormState,
-                om_favorecida: prev.om_favorecida,
-                ug_favorecida: prev.ug_favorecida,
+                // OM Favorecida e UG Favorecida são resetadas para vazio
+                om_favorecida: "",
+                ug_favorecida: "",
                 fase_atividade: prev.fase_atividade,
                 om_detentora: DEFAULT_OM_DETENTORA,
                 ug_detentora: DEFAULT_UG_DETENTORA,
@@ -728,7 +726,8 @@ const SuprimentoFundosForm = () => {
             setRawTotalInput(numberToRawDigits(0));
             setRawND30Input(numberToRawDigits(0));
             setRawND39Input(numberToRawDigits(0));
-            setSelectedOmDetentoraId(undefined); 
+            setSelectedOmFavorecidaId(undefined); // Resetar o seletor da OM Favorecida
+            setSelectedOmDetentoraId(undefined); // Resetar o seletor da OM Detentora
             
             toast.info("Item de Suprimento de Fundos adicionado à lista pendente.");
             
@@ -899,21 +898,23 @@ const SuprimentoFundosForm = () => {
                             formData.ug_detentora.length > 0 &&
                             formData.fase_atividade.length > 0;
 
+    // Verifica se os campos numéricos da Solicitação estão preenchidos
     const isSolicitationDataReady = formData.dias_operacao > 0 &&
                                     formData.quantidade_equipes > 0 &&
-                                    formData.valor_total_solicitado > 0 &&
-                                    formData.objeto_aquisicao.length > 0 &&
-                                    formData.objeto_contratacao.length > 0 &&
-                                    formData.proposito.length > 0 &&
-                                    formData.finalidade.length > 0 &&
-                                    formData.local.length > 0 &&
-                                    formData.tarefa.length > 0;
+                                    formData.valor_total_solicitado > 0;
 
+    // Verifica se o total alocado (ND 30 + ND 39) é igual ao total solicitado
     const isAllocationCorrect = areNumbersEqual(formData.valor_total_solicitado, calculos.totalGeral);
 
     const isCalculationReady = isBaseFormReady &&
                               isSolicitationDataReady &&
-                              isAllocationCorrect;
+                              isAllocationCorrect &&
+                              formData.objeto_aquisicao.length > 0 &&
+                              formData.objeto_contratacao.length > 0 &&
+                              formData.proposito.length > 0 &&
+                              formData.finalidade.length > 0 &&
+                              formData.local.length > 0 &&
+                              formData.tarefa.length > 0;
     
     // Lógica para a Seção 3
     const itemsToDisplay = stagedUpdate ? [stagedUpdate] : pendingSuprimentos;
@@ -1251,6 +1252,7 @@ const SuprimentoFundosForm = () => {
                                             const totalND30 = item.valor_nd_30;
                                             const totalND39 = item.valor_nd_39;
                                             
+                                            // Verifica se a OM Detentora é diferente da OM Favorecida
                                             const isDifferentOmInView = item.om_detentora !== item.om_favorecida;
 
                                             return (
@@ -1405,7 +1407,12 @@ const SuprimentoFundosForm = () => {
                                                     {omRegistros.map((registro) => {
                                                         const totalGeral = registro.valor_nd_30 + registro.valor_nd_39;
                                                         
+                                                        // Verifica se a OM Detentora é diferente da OM Favorecida
                                                         const isDifferentOmInView = registro.om_detentora !== registro.organizacao;
+                                                        
+                                                        // Lógica de concordância de número
+                                                        const diasText = registro.dias_operacao === 1 ? "dia" : "dias";
+                                                        const equipesText = registro.quantidade_equipes === 1 ? "equipe" : "equipes";
 
                                                         return (
                                                             <Card 
@@ -1492,13 +1499,29 @@ const SuprimentoFundosForm = () => {
                                     
                                     {registros.map(registro => {
                                         const isEditing = editingMemoriaId === registro.id;
-                                        const hasCustomMemoria = !!registro.detalhamento_customizado && registro.detalhamento_customizado !== "Suprimento de Fundos";
+                                        // Para Suprimento de Fundos, o detalhamento_customizado armazena o JSON dos detalhes,
+                                        // e o campo 'detalhamento' armazena a memória gerada.
+                                        // Se o detalhamento_customizado for um JSON válido, a memória é automática.
+                                        // Se for um texto, é customizada.
+                                        let hasCustomMemoria = false;
+                                        let memoriaExibida = "";
                                         
-                                        const totals = calculateSuprimentoFundosTotals(registro as any);
-                                        const memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo(registro as any);
+                                        try {
+                                            // Tenta parsear o detalhamento_customizado. Se falhar, é um texto customizado.
+                                            JSON.parse(registro.detalhamento_customizado || "");
+                                            // Se o parse for bem-sucedido, a memória é automática (gerada pelo utilitário)
+                                            memoriaExibida = generateSuprimentoFundosMemoriaCalculo(registro as any);
+                                        } catch (e) {
+                                            // Se falhar, o conteúdo é o texto customizado
+                                            hasCustomMemoria = !!registro.detalhamento_customizado;
+                                            memoriaExibida = registro.detalhamento_customizado || generateSuprimentoFundosMemoriaCalculo(registro as any);
+                                        }
                                         
-                                        const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
+                                        if (isEditing) {
+                                            memoriaExibida = memoriaEdit;
+                                        }
                                         
+                                        // Verifica se a OM Detentora é diferente da OM Favorecida
                                         const isDifferentOmInMemoria = registro.om_detentora !== registro.organizacao;
 
                                         return (
@@ -1516,6 +1539,7 @@ const SuprimentoFundosForm = () => {
                                                                 </Badge>
                                                             )}
                                                         </div>
+                                                        {/* NOVO LOCAL DO ALERTA VISUAL */}
                                                         {isDifferentOmInMemoria ? (
                                                             <div className="flex items-center gap-1 mt-1">
                                                                 <AlertCircle className="h-4 w-4 text-red-600" />
