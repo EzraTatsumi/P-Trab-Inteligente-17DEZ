@@ -82,7 +82,7 @@ const suprimentoFundosSchema = z.object({
     ug_detentora: z.string().min(1, "A UG Destino do Recurso é obrigatória."),
     
     dias_operacao: z.number().int().min(1, "O número de dias deve ser maior que zero."),
-    quantidade_equipes: z.number().int().min(1, "A quantidade de equipes deve ser maior que zero."), // Mantido para consistência de DB, mas pode ser 1
+    efetivo: z.number().int().min(1, "O efetivo deve ser maior que zero."), // RENOMEADO: quantidade_equipes -> efetivo
     valor_total_solicitado: z.number().min(0.01, "O valor total solicitado deve ser maior que zero."),
     fase_atividade: z.string().min(1, "A fase da atividade é obrigatória."),
     
@@ -112,7 +112,7 @@ const initialFormState = {
     om_favorecida: "", 
     ug_favorecida: "", 
     dias_operacao: 0,
-    quantidade_equipes: 1, // Default para 1
+    efetivo: 1, // RENOMEADO: quantidade_equipes -> efetivo (Default para 1)
     valor_total_solicitado: 0,
     fase_atividade: "",
     om_detentora: "", // Alterado para começar vazio
@@ -253,7 +253,7 @@ const SuprimentoFundosForm = () => {
         // 1. Comparar campos principais
         if (
             formData.dias_operacao !== stagedUpdate.dias_operacao ||
-            formData.quantidade_equipes !== stagedUpdate.quantidade_equipes ||
+            formData.efetivo !== stagedUpdate.quantidade_equipes || // RENOMEADO: efetivo
             !areNumbersEqual(formData.valor_total_solicitado, stagedUpdate.valor_total_solicitado) ||
             !areNumbersEqual(formData.valor_nd_39, stagedUpdate.valor_nd_39) || // Agora ND 39 é o campo de comparação
             formData.om_detentora !== stagedUpdate.om_detentora ||
@@ -375,6 +375,7 @@ const SuprimentoFundosForm = () => {
                     ug: ug_favorecida, // UG Favorecida (do PTrab)
                     detalhamento: "Suprimento de Fundos", // Marcador para filtro
                     detalhamento_customizado: detalhamentoCustomizado, // Armazena os detalhes aqui
+                    quantidade_equipes: (rest as any).efetivo, // Mapeia 'efetivo' de volta para 'quantidade_equipes' na DB
                 } as TablesInsert<'verba_operacional_registros'>;
             });
             
@@ -427,6 +428,7 @@ const SuprimentoFundosForm = () => {
                 ug: ug_favorecida, 
                 detalhamento: "Suprimento de Fundos", // Mantém o marcador
                 detalhamento_customizado: detalhamentoCustomizado, // Atualiza os detalhes
+                quantidade_equipes: (rest as any).efetivo, // Mapeia 'efetivo' de volta para 'quantidade_equipes' na DB
             } as TablesUpdate<'verba_operacional_registros'>;
             
             const { error } = await supabase
@@ -531,7 +533,7 @@ const SuprimentoFundosForm = () => {
             om_favorecida: registro.organizacao, 
             ug_favorecida: registro.ug, 
             dias_operacao: registro.dias_operacao,
-            quantidade_equipes: registro.quantidade_equipes,
+            efetivo: registro.quantidade_equipes, // RENOMEADO: quantidade_equipes -> efetivo
             valor_total_solicitado: Number(registro.valor_total_solicitado || 0),
             fase_atividade: registro.fase_atividade || "",
             om_detentora: registro.om_detentora || "",
@@ -566,7 +568,7 @@ const SuprimentoFundosForm = () => {
             ug_detentora: newFormData.ug_detentora,
             dias_operacao: newFormData.dias_operacao,
             fase_atividade: newFormData.fase_atividade,
-            quantidade_equipes: newFormData.quantidade_equipes,
+            quantidade_equipes: newFormData.efetivo, // Mapeia 'efetivo' para 'quantidade_equipes' no tipo CalculatedSuprimentoFundos
             valor_total_solicitado: newFormData.valor_total_solicitado,
             
             valor_nd_30: totals.totalND30,
@@ -587,6 +589,7 @@ const SuprimentoFundosForm = () => {
             finalidade: newFormData.finalidade,
             local: newFormData.local,
             tarefa: newFormData.tarefa,
+            efetivo: newFormData.efetivo, // Adiciona o campo 'efetivo'
         } as CalculatedSuprimentoFundos;
         
         setStagedUpdate(stagedData); 
@@ -639,7 +642,7 @@ const SuprimentoFundosForm = () => {
                 ug_detentora: formData.ug_detentora,
                 dias_operacao: formData.dias_operacao,
                 fase_atividade: formData.fase_atividade,
-                quantidade_equipes: formData.quantidade_equipes,
+                quantidade_equipes: formData.efetivo, // Mapeia 'efetivo' para 'quantidade_equipes' no tipo CalculatedSuprimentoFundos
                 valor_total_solicitado: formData.valor_total_solicitado,
                 
                 valor_nd_30: totals.totalND30,
@@ -660,6 +663,7 @@ const SuprimentoFundosForm = () => {
                 finalidade: formData.finalidade,
                 local: formData.local,
                 tarefa: formData.tarefa,
+                efetivo: formData.efetivo, // Adiciona o campo 'efetivo'
             } as CalculatedSuprimentoFundos;
             
             if (editingId) {
@@ -693,7 +697,7 @@ const SuprimentoFundosForm = () => {
                 om_detentora: "", 
                 ug_detentora: "", 
                 dias_operacao: 0, 
-                quantidade_equipes: 1, 
+                efetivo: 1, // RENOMEADO: quantidade_equipes -> efetivo
                 valor_total_solicitado: 0,
                 valor_nd_30: 0,
                 valor_nd_39: 0,
@@ -917,7 +921,7 @@ const SuprimentoFundosForm = () => {
 
     // Verifica se os campos numéricos da Solicitação estão preenchidos
     const isSolicitationDataReady = formData.dias_operacao > 0 &&
-                                    formData.quantidade_equipes > 0 &&
+                                    formData.efetivo > 0 && // RENOMEADO: quantidade_equipes -> efetivo
                                     formData.valor_total_solicitado > 0;
 
     // Verifica se o total alocado (ND 30 + ND 39) é igual ao total solicitado
@@ -1006,7 +1010,7 @@ const SuprimentoFundosForm = () => {
                                     
                                     <Card className="mt-6 bg-muted/50 rounded-lg p-4">
                                         
-                                        {/* Dados da Solicitação (Dias e Equipes) */}
+                                        {/* Dados da Solicitação (Dias e Efetivo) */}
                                         <Card className="rounded-lg mb-4">
                                             <CardHeader className="py-3">
                                                 <CardTitle className="text-base font-semibold">Período e Valor</CardTitle>
@@ -1031,20 +1035,20 @@ const SuprimentoFundosForm = () => {
                                                             />
                                                         </div>
                                                         <div className="space-y-2 col-span-1">
-                                                            <Label htmlFor="quantidade_equipes">Quantidade de Equipes *</Label>
+                                                            <Label htmlFor="efetivo">Efetivo *</Label> {/* ALTERADO */}
                                                             <Input
-                                                                id="quantidade_equipes"
+                                                                id="efetivo"
                                                                 type="number"
                                                                 min={1}
-                                                                placeholder="Ex: 1"
-                                                                value={formData.quantidade_equipes === 0 ? "" : formData.quantidade_equipes}
-                                                                onChange={(e) => setFormData({ ...formData, quantidade_equipes: parseInt(e.target.value) || 0 })}
+                                                                placeholder="Ex: 10"
+                                                                value={formData.efetivo === 0 ? "" : formData.efetivo}
+                                                                onChange={(e) => setFormData({ ...formData, efetivo: parseInt(e.target.value) || 0 })}
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 onKeyDown={handleEnterToNextField}
                                                                 onWheel={(e) => e.currentTarget.blur()}
                                                                 className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                            />
+                                                            /> {/* ALTERADO */}
                                                         </div>
                                                         <div className="space-y-2 col-span-1">
                                                             <Label htmlFor="valor_total_solicitado">Valor Total Solicitado (R$) *</Label>
@@ -1317,14 +1321,14 @@ const SuprimentoFundosForm = () => {
                                                                 ) : (
                                                                     <p className="font-medium">OM Destino Recurso:</p>
                                                                 )}
-                                                                <p className="font-medium">Período / Equipes:</p>
+                                                                <p className="font-medium">Período / Efetivo:</p> {/* ALTERADO */}
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
                                                                 {!isDifferentOmInView && (
                                                                     <p className="font-medium">{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
                                                                 )}
-                                                                <p className="font-medium">{item.dias_operacao} dias / {item.quantidade_equipes} equipes</p>
+                                                                <p className="font-medium">{item.dias_operacao} dias / {item.quantidade_equipes} militares</p> {/* ALTERADO */}
                                                             </div>
                                                         </div>
                                                         
@@ -1429,7 +1433,7 @@ const SuprimentoFundosForm = () => {
                                                         
                                                         // Lógica de concordância de número
                                                         const diasText = registro.dias_operacao === 1 ? "dia" : "dias";
-                                                        const equipesText = registro.quantidade_equipes === 1 ? "equipe" : "equipes";
+                                                        const efetivoText = registro.quantidade_equipes === 1 ? "militar" : "militares"; // ALTERADO
 
                                                         return (
                                                             <Card 
@@ -1504,7 +1508,7 @@ const SuprimentoFundosForm = () => {
                                             </Card>
                                         );
                                     })}
-                                </section>
+                                </div>
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
