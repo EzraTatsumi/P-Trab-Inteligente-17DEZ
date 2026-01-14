@@ -67,7 +67,7 @@ const calculateND39 = (totalSolicitado: number, nd30Value: number): number => {
     return Math.max(0, nd39); // ND 39 não pode ser negativo
 };
 
-// Constantes para a OM Detentora padrão (CIE) - Mantido como padrão, mas agora é a OM Destino do Recurso
+// Constantes para a OM Detentora padrão (CIE) - Mantido para compatibilidade com registros antigos
 const DEFAULT_OM_DETENTORA = "CIE";
 const DEFAULT_UG_DETENTORA = "160062";
 
@@ -115,10 +115,8 @@ const initialFormState = {
     quantidade_equipes: 1, // Default para 1
     valor_total_solicitado: 0,
     fase_atividade: "",
-    om_detentora: DEFAULT_OM_DETENTORA, 
-    ug_detentora: DEFAULT_UG_DETENTORA, 
-    valor_nd_30: 0, 
-    valor_nd_39: 0, 
+    om_detentora: "", // Alterado para começar vazio
+    ug_detentora: "", // Alterado para começar vazio
     // NOVOS CAMPOS
     objeto_aquisicao: "",
     objeto_contratacao: "",
@@ -183,31 +181,7 @@ const SuprimentoFundosForm = () => {
     
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
     
-    // Efeito para preencher a OM Detentora (CIE) ao carregar, mas NÃO a OM Favorecida
-    useEffect(() => {
-        if (ptrabData && !editingId) {
-            // 1. OM Favorecida (OM do PTrab) - NÃO PREENCHE AUTOMATICAMENTE
-            // Apenas garante que o estado inicial do formulário seja o default (vazio)
-            
-            // 2. OM Detentora (Padrão CIE)
-            const cieOm = oms?.find(om => om.nome_om === DEFAULT_OM_DETENTORA && om.codug_om === DEFAULT_UG_DETENTORA);
-            if (cieOm) {
-                setSelectedOmDetentoraId(cieOm.id);
-                setFormData(prev => ({
-                    ...prev,
-                    om_detentora: DEFAULT_OM_DETENTORA,
-                    ug_detentora: DEFAULT_UG_DETENTORA,
-                }));
-            } else {
-                setSelectedOmDetentoraId(undefined);
-                setFormData(prev => ({
-                    ...prev,
-                    om_detentora: DEFAULT_OM_DETENTORA,
-                    ug_detentora: DEFAULT_UG_DETENTORA,
-                }));
-            }
-        }
-    }, [ptrabData, oms, editingId]);
+    // Efeito de inicialização da OM Detentora (CIE) removido. A OM Detentora agora é definida pela OM Favorecida.
 
     // =================================================================
     // CÁLCULOS E MEMÓRIA (MEMOIZED)
@@ -505,6 +479,9 @@ const SuprimentoFundosForm = () => {
             finalidade: "",
             local: "",
             tarefa: "",
+            // Detentora também é resetada para vazio
+            om_detentora: "",
+            ug_detentora: "",
         }));
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
@@ -708,8 +685,8 @@ const SuprimentoFundosForm = () => {
                 om_favorecida: "",
                 ug_favorecida: "",
                 fase_atividade: prev.fase_atividade,
-                om_detentora: DEFAULT_OM_DETENTORA,
-                ug_detentora: DEFAULT_UG_DETENTORA,
+                om_detentora: "", // Reset Detentora
+                ug_detentora: "", // Reset Detentora
                 dias_operacao: 0, 
                 quantidade_equipes: 1, 
                 valor_total_solicitado: 0,
@@ -767,17 +744,24 @@ const SuprimentoFundosForm = () => {
     const handleOmFavorecidaChange = (omData: OMData | undefined) => {
         if (omData) {
             setSelectedOmFavorecidaId(omData.id);
+            // NOVO: Define a OM Detentora igual à OM Favorecida
+            setSelectedOmDetentoraId(omData.id); 
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: omData.nome_om,
                 ug_favorecida: omData.codug_om,
+                om_detentora: omData.nome_om, // OM Detentora = OM Favorecida
+                ug_detentora: omData.codug_om, // UG Detentora = UG Favorecida
             }));
         } else {
             setSelectedOmFavorecidaId(undefined);
+            setSelectedOmDetentoraId(undefined); // Reset Detentora
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: "",
                 ug_favorecida: "",
+                om_detentora: "", // Reset Detentora
+                ug_detentora: "", // Reset Detentora
             }));
         }
     };
