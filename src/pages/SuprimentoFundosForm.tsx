@@ -220,8 +220,50 @@
                                             );
                                         })}
                                         
-                                        {/* REMOVIDO: O loop redundante para pendingSuprimentos foi removido daqui. */}
                                     </div>
                                     
                                     {/* VALOR TOTAL DA OM (PENDENTE / STAGING) */}
-// ... (restante da Seção 3)
+                                    {/* ... (restante da Seção 3) */}
+                                    
+                                    {/* Lógica de Totais e Botões de Ação (Mantida) */}
+                                    <div className="mt-6 p-4 border rounded-lg bg-card shadow-inner">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h4 className="text-lg font-bold">Total a Salvar</h4>
+                                            <p className="text-2xl font-extrabold text-primary">
+                                                {formatCurrency(totalPendingGeral)}
+                                            </p>
+                                        </div>
+                                        
+                                        <div className="flex justify-end space-x-2">
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                onClick={handleCancelEdit}
+                                                disabled={isSaving || !editingId}
+                                            >
+                                                <ArrowLeft className="mr-2 h-4 w-4" /> Voltar para Edição
+                                            </Button>
+                                            <Button 
+                                                onClick={handleSaveAll} 
+                                                disabled={isSaving || itemsToDisplay.length === 0}
+                                            >
+                                                {isSaving ? (
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <Save className="mr-2 h-4 w-4" />
+                                                )}
+                                                {editingId ? "Confirmar Atualização" : `Salvar ${itemsToDisplay.length} Registros`}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </section>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default SuprimentoFundosForm;
