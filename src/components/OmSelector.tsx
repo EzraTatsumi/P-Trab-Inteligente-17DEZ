@@ -39,7 +39,7 @@ export function OmSelector({ selectedOmId, onSelect, initialOmName, displayOM, d
     return oms.find((om) => om.id === selectedOmId);
   }, [oms, selectedOmId]);
 
-  const defaultPlaceholder = placeholder || "Selecione a OM...";
+  const defaultPlaceholder = placeholder || "Selecione a OM de Destino";
 
   const buttonText = selectedOm
     ? selectedOm.nome_om
