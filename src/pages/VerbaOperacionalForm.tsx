@@ -214,14 +214,6 @@ const VerbaOperacionalForm = () => {
         }
         
         try {
-            // Validação rápida dos campos essenciais antes de calcular
-            if (formData.dias_operacao <= 0 || formData.quantidade_equipes <= 0 || formData.valor_total_solicitado <= 0 || formData.om_detentora.length === 0) {
-                return {
-                    totalGeral: 0, totalND30: 0, totalND39: 0,
-                    memoria: "Preencha todos os campos obrigatórios para calcular.",
-                };
-            }
-            
             // Recalcular ND 39 (dependente) para garantir que o cálculo reflita o estado atual
             const totalSolicitado = formData.valor_total_solicitado;
             const nd30Value = formData.valor_nd_30; // ND 30 é o valor de input
@@ -234,6 +226,14 @@ const VerbaOperacionalForm = () => {
                 valor_nd_30: nd30Value,
                 valor_nd_39: nd39Value,
             };
+
+            // Validação rápida dos campos essenciais antes de calcular
+            if (calculatedFormData.dias_operacao <= 0 || calculatedFormData.quantidade_equipes <= 0 || calculatedFormData.valor_total_solicitado <= 0 || calculatedFormData.om_detentora.length === 0) {
+                return {
+                    totalGeral: 0, totalND30: 0, totalND39: 0,
+                    memoria: "Preencha todos os campos obrigatórios para calcular.",
+                };
+            }
 
             const totals = calculateVerbaOperacionalTotals(calculatedFormData as any);
             const memoria = generateVerbaOperacionalMemoriaCalculo(calculatedFormData as any);
@@ -255,12 +255,16 @@ const VerbaOperacionalForm = () => {
     const isVerbaDirty = useMemo(() => {
         if (!editingId || !stagedUpdate) return false;
 
-        // 1. Comparar campos principais
+        // 1. Recalcular ND 39 do formulário atual
+        const currentND39 = calculateND39(formData.valor_total_solicitado, formData.valor_nd_30);
+
+        // 2. Comparar campos principais
         if (
             formData.dias_operacao !== stagedUpdate.dias_operacao ||
             formData.quantidade_equipes !== stagedUpdate.quantidade_equipes ||
             !areNumbersEqual(formData.valor_total_solicitado, stagedUpdate.valor_total_solicitado) ||
-            !areNumbersEqual(formData.valor_nd_30, stagedUpdate.valor_nd_30) || // Agora ND 30 é o campo de comparação
+            !areNumbersEqual(formData.valor_nd_30, stagedUpdate.valor_nd_30) || 
+            !areNumbersEqual(currentND39, stagedUpdate.valor_nd_39) || // Comparar ND 39 calculada
             formData.om_detentora !== stagedUpdate.om_detentora ||
             formData.ug_detentora !== stagedUpdate.ug_detentora ||
             formData.om_favorecida !== stagedUpdate.om_favorecida ||
@@ -269,7 +273,7 @@ const VerbaOperacionalForm = () => {
             return true;
         }
 
-        // 2. Comparar fase de atividade (se for diferente, precisa re-estagiar para atualizar a memória)
+        // 3. Comparar fase de atividade
         if (formData.fase_atividade !== stagedUpdate.fase_atividade) {
             return true;
         }
@@ -385,10 +389,23 @@ const VerbaOperacionalForm = () => {
             toast.success(`Sucesso! ${pendingVerbas.length} registro(s) de Verba Operacional adicionado(s).`);
             setPendingVerbas([]); 
             
-            resetForm();
+            // Manter contexto da Seção 1 e OM Detentora, mas limpar campos de cálculo
+            setFormData(prev => ({
+                ...initialFormState,
+                om_favorecida: prev.om_favorecida,
+                ug_favorecida: prev.ug_favorecida,
+                fase_atividade: prev.fase_atividade,
+                om_detentora: prev.om_detentora,
+                ug_detentora: prev.ug_detentora,
+            }));
+            setRawTotalInput(numberToRawDigits(0));
+            setRawND30Input(numberToRawDigits(0));
+            setRawND39Input(numberToRawDigits(0));
             
             if (newRecords && newRecords.length > 0) {
-                handleEdit(newRecords[0] as VerbaOperacionalRegistro);
+                // Não chama handleEdit, apenas reseta o formulário para o modo de adição
+                setEditingId(null);
+                setStagedUpdate(null);
             }
         },
         onError: (err) => {
@@ -422,7 +439,7 @@ const VerbaOperacionalForm = () => {
             queryClient.invalidateQueries({ queryKey: ["ptrabTotals", ptrabId] });
             toast.success(`Registro de Verba Operacional atualizado com sucesso!`);
             setStagedUpdate(null); 
-            resetForm();
+            resetForm(); // Reseta para o modo de adição
         },
         onError: (err) => {
             toast.error(sanitizeError(err));
@@ -461,6 +478,9 @@ const VerbaOperacionalForm = () => {
             // Mantém a OM Favorecida (do PTrab) se já estiver definida
             om_favorecida: ptrabData?.nome_om || "",
             ug_favorecida: ptrabData?.codug_om || "",
+            // Mantém a OM Detentora (CIE) se já estiver definida
+            om_detentora: DEFAULT_OM_DETENTORA,
+            ug_detentora: DEFAULT_UG_DETENTORA,
             // Dias e equipes são resetados para 0 (vazio)
             dias_operacao: 0,
             quantidade_equipes: 0,
@@ -471,8 +491,12 @@ const VerbaOperacionalForm = () => {
         }));
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
-        setSelectedOmFavorecidaId(undefined);
-        setSelectedOmDetentoraId(undefined); 
+        // Re-seleciona as OMs padrão para o seletor
+        const omFavorecida = oms?.find(om => om.nome_om === ptrabData?.nome_om && om.codug_om === ptrabData?.codug_om);
+        setSelectedOmFavorecidaId(omFavorecida?.id);
+        const cieOm = oms?.find(om => om.nome_om === DEFAULT_OM_DETENTORA && om.codug_om === DEFAULT_UG_DETENTORA);
+        setSelectedOmDetentoraId(cieOm?.id);
+        
         setStagedUpdate(null); 
         
         // Resetar inputs brutos
@@ -644,12 +668,7 @@ const VerbaOperacionalForm = () => {
             
             // 5. Resetar o formulário para o próximo item, MANTENDO os dados da Seção 1 e OM Detentora
             setFormData(prev => ({
-                ...initialFormState,
-                om_favorecida: prev.om_favorecida, // MANTIDO
-                ug_favorecida: prev.ug_favorecida, // MANTIDO
-                fase_atividade: prev.fase_atividade, // MANTIDO
-                om_detentora: prev.om_detentora, // MANTIDO
-                ug_detentora: prev.ug_detentora, // MANTIDO
+                ...prev,
                 // Resetar apenas os campos de cálculo
                 dias_operacao: 0, 
                 quantidade_equipes: 0, 
@@ -1051,7 +1070,7 @@ const VerbaOperacionalForm = () => {
                                                 className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                             >
                                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                Salvar Item na Lista
+                                                {editingId ? "Atualizar Cálculo" : "Salvar Item na Lista"}
                                             </Button>
                                         </div>
                                         
@@ -1061,10 +1080,10 @@ const VerbaOperacionalForm = () => {
                             )}
 
                             {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
-                            {itemsToDisplay.length > 0 && (
+                            {(itemsToDisplay.length > 0 || pendingVerbas.length > 0) && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        3. Itens Adicionados ({itemsToDisplay.length})
+                                        3. Itens Adicionados ({itemsToDisplay.length + pendingVerbas.length})
                                     </h3>
                                     
                                     {/* Alerta de Validação Final (Apenas em modo de edição) */}
@@ -1072,7 +1091,7 @@ const VerbaOperacionalForm = () => {
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertDescription className="font-medium">
-                                                Atenção: Os dados do formulário (Seção 2) foram alterados e não correspondem ao registro em revisão. Clique em "Salvar Item na Lista" na Seção 2 para atualizar o cálculo.
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados e não correspondem ao registro em revisão. Clique em "Atualizar Cálculo" na Seção 2 para estagiar a atualização.
                                             </AlertDescription>
                                         </Alert>
                                     )}
@@ -1152,6 +1171,75 @@ const VerbaOperacionalForm = () => {
                                                 </Card>
                                             );
                                         })}
+                                        
+                                        {/* Adiciona itens pendentes (se houver) */}
+                                        {pendingVerbas.map((item) => {
+                                            const totalND30 = item.valor_nd_30;
+                                            const totalND39 = item.valor_nd_39;
+                                            
+                                            const isDifferentOmInView = item.om_detentora !== item.om_favorecida;
+                                            const diasText = item.dias_operacao === 1 ? "dia" : "dias";
+                                            const equipesText = item.quantidade_equipes === 1 ? "equipe" : "equipes";
+
+                                            return (
+                                                <Card 
+                                                    key={item.tempId} 
+                                                    className={cn(
+                                                        "border-2 shadow-md",
+                                                        "border-yellow-500 bg-yellow-50/50"
+                                                    )}
+                                                >
+                                                    <CardContent className="p-4">
+                                                        
+                                                        <div className={cn("flex justify-between items-center pb-2 mb-2", "border-b border-yellow-500/30")}>
+                                                            <h4 className="font-bold text-base text-foreground">
+                                                                Verba Operacional (PENDENTE)
+                                                            </h4>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="font-extrabold text-lg text-foreground text-right">
+                                                                    {formatCurrency(item.totalGeral)}
+                                                                </p>
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    onClick={() => handleRemovePending(item.tempId)}
+                                                                    disabled={isSaving}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Detalhes da Solicitação */}
+                                                        <div className="grid grid-cols-2 gap-4 text-xs pt-1">
+                                                            <div className="space-y-1">
+                                                                <p className="font-medium">OM Favorecida:</p>
+                                                                <p className="font-medium">OM Destino:</p>
+                                                                <p className="font-medium">Período / Equipes:</p>
+                                                            </div>
+                                                            <div className="text-right space-y-1">
+                                                                <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
+                                                                <p className="font-medium">{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
+                                                                <p className="font-medium">{item.dias_operacao} {diasText} / {item.quantidade_equipes} {equipesText}</p>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="w-full h-[1px] bg-yellow-500/30 my-3" />
+
+                                                        <div className="grid grid-cols-2 gap-4 text-xs pt-1">
+                                                            <div className="space-y-1">
+                                                                <p className="font-medium">ND 33.90.30:</p>
+                                                                <p className="font-medium">ND 33.90.39:</p>
+                                                            </div>
+                                                            <div className="text-right space-y-1">
+                                                                <p className="font-medium text-green-600">{formatCurrency(totalND30)}</p>
+                                                                <p className="font-medium text-blue-600">{formatCurrency(totalND39)}</p>
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
                                     </div>
                                     
                                     {/* VALOR TOTAL DA OM (PENDENTE / STAGING) */}
@@ -1171,7 +1259,7 @@ const VerbaOperacionalForm = () => {
                                             <>
                                                 <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
                                                     <XCircle className="mr-2 h-4 w-4" />
-                                                    Limpar Formulário
+                                                    Cancelar Edição
                                                 </Button>
                                                 <Button 
                                                     type="button" 

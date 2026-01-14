@@ -195,15 +195,33 @@ const SuprimentoFundosForm = () => {
     // Efeito de inicialização da OM Favorecida (OM do PTrab)
     useEffect(() => {
         if (ptrabData && !editingId) {
-            // Se não estiver editando, resetamos para o estado inicial (vazio)
-            resetForm();
-        } else if (ptrabData && editingId) {
-            // Se estiver editando, garantimos que os seletores de OM sejam inicializados
-            const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
-            const omDetentora = oms?.find(om => om.nome_om === formData.om_detentora && om.codug_om === formData.ug_detentora);
+            // 1. OM Favorecida (OM do PTrab) - Deve ser selecionável, mas o valor inicial é o do PTrab
+            const omFavorecida = oms?.find(om => om.nome_om === ptrabData.nome_om && om.codug_om === ptrabData.codug_om);
             
+            setFormData(prev => ({
+                ...prev,
+                om_favorecida: ptrabData.nome_om,
+                ug_favorecida: ptrabData.codug_om,
+            }));
             setSelectedOmFavorecidaId(omFavorecida?.id);
-            setSelectedOmDetentoraId(omDetentora?.id);
+            
+            // 2. OM Detentora (Padrão CIE)
+            const cieOm = oms?.find(om => om.nome_om === DEFAULT_OM_DETENTORA && om.codug_om === DEFAULT_UG_DETENTORA);
+            if (cieOm) {
+                setSelectedOmDetentoraId(cieOm.id);
+                setFormData(prev => ({
+                    ...prev,
+                    om_detentora: DEFAULT_OM_DETENTORA,
+                    ug_detentora: DEFAULT_UG_DETENTORA,
+                }));
+            } else {
+                setSelectedOmDetentoraId(undefined);
+                setFormData(prev => ({
+                    ...prev,
+                    om_detentora: DEFAULT_OM_DETENTORA,
+                    ug_detentora: DEFAULT_UG_DETENTORA,
+                }));
+            }
         }
     }, [ptrabData, oms, editingId]);
 
@@ -235,6 +253,14 @@ const SuprimentoFundosForm = () => {
                 valor_nd_39: nd39Value,
             };
 
+            // Validação rápida dos campos essenciais antes de calcular
+            if (calculatedFormData.dias_operacao <= 0 || calculatedFormData.quantidade_equipes <= 0 || calculatedFormData.valor_total_solicitado <= 0 || calculatedFormData.om_detentora.length === 0) {
+                return {
+                    totalGeral: 0, totalND30: 0, totalND39: 0,
+                    memoria: "Preencha todos os campos obrigatórios para calcular.",
+                };
+            }
+
             // 2. Calcular totais
             const totals = calculateSuprimentoFundosTotals(calculatedFormData as any);
             
@@ -260,12 +286,16 @@ const SuprimentoFundosForm = () => {
     const isSuprimentoDirty = useMemo(() => {
         if (!editingId || !stagedUpdate) return false;
 
-        // 1. Comparar campos principais
+        // 1. Recalcular ND 30 do formulário atual
+        const currentND30 = calculateND30(formData.valor_total_solicitado, formData.valor_nd_39);
+
+        // 2. Comparar campos principais
         if (
             formData.dias_operacao !== stagedUpdate.dias_operacao ||
-            formData.quantidade_equipes !== stagedUpdate.quantidade_equipes || // CORRIGIDO
+            formData.quantidade_equipes !== stagedUpdate.quantidade_equipes || 
             !areNumbersEqual(formData.valor_total_solicitado, stagedUpdate.valor_total_solicitado) ||
             !areNumbersEqual(formData.valor_nd_39, stagedUpdate.valor_nd_39) || 
+            !areNumbersEqual(currentND30, stagedUpdate.valor_nd_30) || // Comparar ND 30 calculada
             formData.om_detentora !== stagedUpdate.om_detentora ||
             formData.ug_detentora !== stagedUpdate.ug_detentora ||
             formData.om_favorecida !== stagedUpdate.om_favorecida ||
@@ -281,7 +311,7 @@ const SuprimentoFundosForm = () => {
             return true;
         }
 
-        // 2. Comparar fase de atividade (se for diferente, precisa re-estagiar para atualizar a memória)
+        // 3. Comparar fase de atividade
         if (formData.fase_atividade !== stagedUpdate.fase_atividade) {
             return true;
         }
@@ -404,10 +434,21 @@ const SuprimentoFundosForm = () => {
             toast.success(`Sucesso! ${pendingSuprimentos.length} registro(s) de Suprimento de Fundos adicionado(s).`);
             setPendingSuprimentos([]); 
             
-            resetForm();
+            // Manter contexto da Seção 1 e OM Detentora, mas limpar campos de cálculo e detalhamento
+            setFormData(prev => ({
+                ...initialFormState,
+                om_favorecida: prev.om_favorecida,
+                ug_favorecida: prev.ug_favorecida,
+                fase_atividade: prev.fase_atividade,
+                om_detentora: prev.om_detentora,
+                ug_detentora: prev.ug_detentora,
+            }));
+            setRawTotalInput(numberToRawDigits(0));
+            setRawND39Input(numberToRawDigits(0));
             
             if (newRecords && newRecords.length > 0) {
-                handleEdit(newRecords[0] as SuprimentoFundosRegistroDB);
+                setEditingId(null);
+                setStagedUpdate(null);
             }
         },
         onError: (err) => {
@@ -486,11 +527,36 @@ const SuprimentoFundosForm = () => {
 
     const resetForm = () => {
         setEditingId(null);
-        setFormData(initialFormState);
+        setFormData(prev => ({
+            ...initialFormState,
+            // Mantém a OM Favorecida (do PTrab) se já estiver definida
+            om_favorecida: ptrabData?.nome_om || "",
+            ug_favorecida: ptrabData?.codug_om || "",
+            // Mantém a OM Detentora (CIE) se já estiver definida
+            om_detentora: DEFAULT_OM_DETENTORA,
+            ug_detentora: DEFAULT_UG_DETENTORA,
+            // Resetar campos de cálculo e detalhamento
+            dias_operacao: 0, 
+            quantidade_equipes: 0, 
+            valor_total_solicitado: 0,
+            valor_nd_30: 0,
+            valor_nd_39: 0,
+            objeto_aquisicao: "",
+            objeto_contratacao: "",
+            proposito: "",
+            finalidade: "",
+            local: "",
+            tarefa: "",
+        }));
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
-        setSelectedOmFavorecidaId(undefined);
-        setSelectedOmDetentoraId(undefined); 
+        
+        // Re-seleciona as OMs padrão para o seletor
+        const omFavorecida = oms?.find(om => om.nome_om === ptrabData?.nome_om && om.codug_om === ptrabData?.codug_om);
+        setSelectedOmFavorecidaId(omFavorecida?.id);
+        const cieOm = oms?.find(om => om.nome_om === DEFAULT_OM_DETENTORA && om.codug_om === DEFAULT_UG_DETENTORA);
+        setSelectedOmDetentoraId(cieOm?.id);
+        
         setStagedUpdate(null); 
         
         setRawTotalInput(numberToRawDigits(0));
@@ -526,6 +592,7 @@ const SuprimentoFundosForm = () => {
         try {
             if (registro.detalhamento_customizado) {
                 const parsed = JSON.parse(registro.detalhamento_customizado);
+                // Verifica se o JSON contém os campos de detalhe (indicando que é o JSON de detalhes)
                 if (parsed.objeto_aquisicao !== undefined) {
                     customDetails = parsed;
                 } else {
@@ -697,12 +764,7 @@ const SuprimentoFundosForm = () => {
             
             // 5. Resetar o formulário para o próximo item, MANTENDO os dados da Seção 1 e OM Detentora
             setFormData(prev => ({
-                ...initialFormState,
-                om_favorecida: prev.om_favorecida, // MANTIDO
-                ug_favorecida: prev.ug_favorecida, // MANTIDO
-                fase_atividade: prev.fase_atividade, // MANTIDO
-                om_detentora: prev.om_detentora, // MANTIDO
-                ug_detentora: prev.ug_detentora, // MANTIDO
+                ...prev,
                 // Resetar apenas os campos de cálculo e detalhamento
                 dias_operacao: 0, 
                 quantidade_equipes: 0, 
@@ -823,7 +885,7 @@ const SuprimentoFundosForm = () => {
             JSON.parse(registro.detalhamento_customizado || "");
             // Se o parse for bem-sucedido, o detalhamento_customizado é o JSON de detalhes, então a memória inicial é a automática
         } catch (e) {
-            // Se falhar, é um texto customizado (memória)
+            // Se falhar, é um texto customizado (memória), preservamos
             memoriaInicial = registro.detalhamento_customizado || memoriaAutomatica;
         }
         
@@ -870,10 +932,11 @@ const SuprimentoFundosForm = () => {
             // Recriar o JSON dos detalhes a partir dos campos do registro
             let detalhamentoCustomizadoJSON: string | null = null;
             
+            // Tenta parsear o detalhamento_customizado. Se falhar, o original era texto customizado.
             try {
                 const parsed = JSON.parse(originalRecord.detalhamento_customizado || "");
                 if (parsed.objeto_aquisicao !== undefined) {
-                    // Se o original era o JSON de detalhes, restauramos o JSON
+                    // Se o parse for bem-sucedido, o detalhamento_customizado é o JSON de detalhes, restauramos o JSON
                     detalhamentoCustomizadoJSON = originalRecord.detalhamento_customizado;
                 }
             } catch (e) {
@@ -1245,7 +1308,7 @@ const SuprimentoFundosForm = () => {
                                                 className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                             >
                                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                Salvar Item na Lista
+                                                {editingId ? "Atualizar Cálculo" : "Salvar Item na Lista"}
                                             </Button>
                                         </div>
                                         
@@ -1255,10 +1318,10 @@ const SuprimentoFundosForm = () => {
                             )}
                             
                             {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
-                            {itemsToDisplay.length > 0 && (
+                            {(itemsToDisplay.length > 0 || pendingSuprimentos.length > 0) && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        3. Itens Adicionados ({itemsToDisplay.length})
+                                        3. Itens Adicionados ({itemsToDisplay.length + pendingSuprimentos.length})
                                     </h3>
                                     
                                     {/* Alerta de Validação Final (Apenas em modo de edição) */}
@@ -1266,7 +1329,7 @@ const SuprimentoFundosForm = () => {
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertDescription className="font-medium">
-                                                Atenção: Os dados do formulário (Seção 2) foram alterados e não correspondem ao registro em revisão. Clique em "Salvar Item na Lista" na Seção 2 para atualizar o cálculo.
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados e não correspondem ao registro em revisão. Clique em "Atualizar Cálculo" na Seção 2 para estagiar a atualização.
                                             </AlertDescription>
                                         </Alert>
                                     )}
@@ -1318,28 +1381,88 @@ const SuprimentoFundosForm = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
-                                                                {isDifferentOmInView ? (
-                                                                    <div className="flex items-center gap-1 mt-1">
-                                                                        <AlertCircle className="h-4 w-4 text-red-600" />
-                                                                        <span className="text-sm font-medium text-red-600">
-                                                                            Destino Recurso: {item.om_detentora} ({formatCodug(item.ug_detentora)})
-                                                                        </span>
-                                                                    </div>
-                                                                ) : (
-                                                                    <p className="font-medium">OM Destino Recurso:</p>
-                                                                )}
+                                                                <p className="font-medium">OM Destino:</p>
                                                                 <p className="font-medium">Período / Efetivo:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
-                                                                {!isDifferentOmInView && (
-                                                                    <p className="font-medium">{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
-                                                                )}
+                                                                <p className={cn("font-medium", isDifferentOmInView ? "text-red-600 font-bold" : "text-foreground")}>
+                                                                    {item.om_detentora} ({formatCodug(item.ug_detentora)})
+                                                                </p>
                                                                 <p className="font-medium">{item.dias_operacao} dias / {item.quantidade_equipes} militares</p>
                                                             </div>
                                                         </div>
                                                         
                                                         <div className="w-full h-[1px] bg-secondary/30 my-3" />
+
+                                                        <div className="grid grid-cols-2 gap-4 text-xs pt-1">
+                                                            <div className="space-y-1">
+                                                                <p className="font-medium">ND 33.90.30:</p>
+                                                                <p className="font-medium">ND 33.90.39:</p>
+                                                            </div>
+                                                            <div className="text-right space-y-1">
+                                                                <p className="font-medium text-green-600">{formatCurrency(totalND30)}</p>
+                                                                <p className="font-medium text-blue-600">{formatCurrency(totalND39)}</p>
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
+                                        
+                                        {/* Adiciona itens pendentes (se houver) */}
+                                        {pendingSuprimentos.map((item) => {
+                                            const totalND30 = item.valor_nd_30;
+                                            const totalND39 = item.valor_nd_39;
+                                            
+                                            const isDifferentOmInView = item.om_detentora !== item.om_favorecida;
+                                            const diasText = item.dias_operacao === 1 ? "dia" : "dias";
+                                            const efetivoText = item.quantidade_equipes === 1 ? "militar" : "militares";
+
+                                            return (
+                                                <Card 
+                                                    key={item.tempId} 
+                                                    className={cn(
+                                                        "border-2 shadow-md",
+                                                        "border-yellow-500 bg-yellow-50/50"
+                                                    )}
+                                                >
+                                                    <CardContent className="p-4">
+                                                        
+                                                        <div className={cn("flex justify-between items-center pb-2 mb-2", "border-b border-yellow-500/30")}>
+                                                            <h4 className="font-bold text-base text-foreground">
+                                                                Suprimento de Fundos (PENDENTE)
+                                                            </h4>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="font-extrabold text-lg text-foreground text-right">
+                                                                    {formatCurrency(item.totalGeral)}
+                                                                </p>
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    onClick={() => handleRemovePending(item.tempId)}
+                                                                    disabled={isSaving}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Detalhes da Solicitação */}
+                                                        <div className="grid grid-cols-2 gap-4 text-xs pt-1">
+                                                            <div className="space-y-1">
+                                                                <p className="font-medium">OM Favorecida:</p>
+                                                                <p className="font-medium">OM Destino:</p>
+                                                                <p className="font-medium">Período / Efetivo:</p>
+                                                            </div>
+                                                            <div className="text-right space-y-1">
+                                                                <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
+                                                                <p className="font-medium">{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
+                                                                <p className="font-medium">{item.dias_operacao} dias / {item.quantidade_equipes} militares</p>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="w-full h-[1px] bg-yellow-500/30 my-3" />
 
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
@@ -1374,7 +1497,7 @@ const SuprimentoFundosForm = () => {
                                             <>
                                                 <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
                                                     <XCircle className="mr-2 h-4 w-4" />
-                                                    Limpar Formulário
+                                                    Cancelar Edição
                                                 </Button>
                                                 <Button 
                                                     type="button" 
