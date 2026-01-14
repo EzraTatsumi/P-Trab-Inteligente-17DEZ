@@ -298,16 +298,16 @@ const SuprimentoFundosForm = () => {
             let newTotalValue = prev.valor_total_solicitado;
 
             if (field === 'valor_total_solicitado') {
-                setRawTotalInput(digits);
+                setRawTotalInput(digits); // Atualiza o input bruto para refletir a digitação
                 newTotalValue = numericValue;
                 
                 // ND 30 é mantida como está, mas recalculamos ND 39 com base nela
                 newND39Value = calculateND39(newTotalValue, newND30Value);
                 
-                setRawND39Input(numberToRawDigits(newND39Value));
+                // Não precisamos atualizar rawND39Input aqui, pois ele é calculado no useMemo
                 
             } else if (field === 'valor_nd_30') {
-                setRawND30Input(digits);
+                setRawND30Input(digits); // Atualiza o input bruto para refletir a digitação
                 newND30Value = numericValue;
                 
                 // ND 30 cannot exceed Total Solicitado
@@ -319,7 +319,7 @@ const SuprimentoFundosForm = () => {
                 
                 // Calculate ND 39 (difference)
                 newND39Value = calculateND39(newTotalValue, newND30Value);
-                setRawND39Input(numberToRawDigits(newND39Value));
+                // Não precisamos atualizar rawND39Input aqui, pois ele é calculado no useMemo
                 
             } else {
                 return prev;
