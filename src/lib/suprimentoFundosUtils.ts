@@ -83,7 +83,7 @@ export const generateSuprimentoFundosMemoriaCalculo = (
     const omPreposition = getOmPreposition(organizacao);
     const faseFormatada = formatFasesParaTexto(fase_atividade);
     
-    const equipeText = quantidade_equipes === 1 ? 'equipe' : 'equipes';
+    const militarText = quantidade_equipes === 1 ? 'militar' : 'militares';
     const diaText = dias_operacao === 1 ? 'dia' : 'dias';
     
     const valorTotal = valor_nd_30 + valor_nd_39;
@@ -105,7 +105,7 @@ export const generateSuprimentoFundosMemoriaCalculo = (
     // --- Fim Lógica ND ---
     
     // CABEÇALHO
-    const header = `${ndPrefix} - Solicitação de Suprimento de Fundos para ${quantidade_equipes} ${equipeText} ${omPreposition} ${organizacao}, durante ${dias_operacao} ${diaText} de ${faseFormatada}.`;
+    const header = `${ndPrefix} - Solicitação de Suprimento de Fundos para ${quantidade_equipes} ${militarText} ${omPreposition} ${organizacao}, durante ${dias_operacao} ${diaText} de ${faseFormatada}.`;
 
     // Detalhamento
     const detalhamento = `
