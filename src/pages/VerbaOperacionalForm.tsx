@@ -256,11 +256,12 @@ const VerbaOperacionalForm = () => {
         if (!editingId || !stagedUpdate) return false;
 
         // 1. Comparar campos principais
+        // Nota: ND 39 é calculada, então comparamos ND 30 e Total Solicitado (os inputs do usuário)
         if (
             formData.dias_operacao !== stagedUpdate.dias_operacao ||
             formData.quantidade_equipes !== stagedUpdate.quantidade_equipes ||
             !areNumbersEqual(formData.valor_total_solicitado, stagedUpdate.valor_total_solicitado) ||
-            !areNumbersEqual(formData.valor_nd_30, stagedUpdate.valor_nd_30) || // Agora ND 30 é o campo de comparação
+            !areNumbersEqual(formData.valor_nd_30, stagedUpdate.valor_nd_30) || // ND 30 é o input manual
             formData.om_detentora !== stagedUpdate.om_detentora ||
             formData.ug_detentora !== stagedUpdate.ug_detentora ||
             formData.om_favorecida !== stagedUpdate.om_favorecida ||
@@ -643,7 +644,7 @@ const VerbaOperacionalForm = () => {
             // MODO ADIÇÃO: Adicionar à lista pendente
             setPendingVerbas(prev => [...prev, calculatedData]);
             
-            // 5. Não resetar o formulário aqui para manter os valores na Seção 2
+            // 5. Não chamamos resetForm aqui para manter os valores na Seção 2
             
             toast.info("Item de Verba Operacional adicionado à lista pendente.");
             
