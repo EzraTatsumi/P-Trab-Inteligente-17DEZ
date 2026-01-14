@@ -1086,6 +1086,10 @@ const VerbaOperacionalForm = () => {
                                             
                                             // Verifica se a OM Detentora é diferente da OM Favorecida
                                             const isDifferentOmInView = item.om_detentora !== item.om_favorecida;
+                                            
+                                            // Lógica de concordância de número
+                                            const diasText = item.dias_operacao === 1 ? "dia" : "dias";
+                                            const equipesText = item.quantidade_equipes === 1 ? "equipe" : "equipes";
 
                                             return (
                                                 <Card 
@@ -1130,7 +1134,7 @@ const VerbaOperacionalForm = () => {
                                                                 <p className={cn("font-medium", isDifferentOmInView ? "text-red-600 font-bold" : "text-foreground")}>
                                                                     {item.om_detentora} ({formatCodug(item.ug_detentora)})
                                                                 </p>
-                                                                <p className="font-medium">{item.dias_operacao} dias / {item.quantidade_equipes} equipes</p>
+                                                                <p className="font-medium">{item.dias_operacao} {diasText} / {item.quantidade_equipes} {equipesText}</p>
                                                             </div>
                                                         </div>
                                                         
@@ -1232,6 +1236,10 @@ const VerbaOperacionalForm = () => {
                                                         
                                                         // Verifica se a OM Detentora é diferente da OM Favorecida
                                                         const isDifferentOmInView = registro.om_detentora !== registro.organizacao;
+                                                        
+                                                        // Lógica de concordância de número
+                                                        const diasText = registro.dias_operacao === 1 ? "dia" : "dias";
+                                                        const equipesText = registro.quantidade_equipes === 1 ? "equipe" : "equipes";
 
                                                         return (
                                                             <Card 
