@@ -61,10 +61,10 @@ interface CalculatedSuprimentoFundos extends TablesInsert<'verba_operacional_reg
     ug_favorecida: string;
 }
 
-// Função para calcular ND 39 com base no Total Solicitado e ND 30 (ND 39 é a dependente)
-const calculateND39 = (totalSolicitado: number, nd30Value: number): number => {
-    const nd39 = totalSolicitado - nd30Value;
-    return Math.max(0, nd39); // ND 39 não pode ser negativo
+// Função para calcular ND 30 com base no Total Solicitado e ND 39 (ND 30 é a dependente)
+const calculateND30 = (totalSolicitado: number, nd39Value: number): number => {
+    const nd30 = totalSolicitado - nd39Value;
+    return Math.max(0, nd30); // ND 30 não pode ser negativo
 };
 
 // Constantes para a OM Detentora padrão (CIE) - Mantido para compatibilidade com registros antigos
@@ -104,7 +104,7 @@ const suprimentoFundosSchema = z.object({
     return Math.abs(totalAlocado - data.valor_total_solicitado) < 0.01;
 }, {
     message: "A soma das NDs (30 e 39) deve ser igual ao Valor Total Solicitado.",
-    path: ["valor_nd_30"], // Aponta para o primeiro campo de ND para exibir o erro
+    path: ["valor_nd_39"], // Aponta para o campo de ND 39 para exibir o erro
 });
 
 // Estado inicial para o formulário
@@ -124,6 +124,9 @@ const initialFormState = {
     finalidade: "",
     local: "",
     tarefa: "",
+    // NDs (adicionados para consistência)
+    valor_nd_30: 0,
+    valor_nd_39: 0,
 };
 
 // Função para comparar números de ponto flutuante com tolerância
@@ -161,7 +164,7 @@ const SuprimentoFundosForm = () => {
     
     // Estado para inputs monetários
     const [rawTotalInput, setRawTotalInput] = useState<string>(numberToRawDigits(initialFormState.valor_total_solicitado));
-    const [rawND30Input, setRawND30Input] = useState<string>(numberToRawDigits(initialFormState.valor_nd_30));
+    // ND 30 é calculada, ND 39 é input manual
     const [rawND39Input, setRawND39Input] = useState<string>(numberToRawDigits(initialFormState.valor_nd_39));
 
     // Dados mestres
@@ -181,7 +184,22 @@ const SuprimentoFundosForm = () => {
     
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
     
-    // Efeito de inicialização da OM Detentora (CIE) removido. A OM Detentora agora é definida pela OM Favorecida.
+    // Efeito de inicialização da OM Favorecida (OM do PTrab)
+    useEffect(() => {
+        if (ptrabData && !editingId) {
+            const omFavorecida = oms?.find(om => om.nome_om === ptrabData.nome_om && om.codug_om === ptrabData.codug_om);
+            
+            setFormData(prev => ({
+                ...prev,
+                om_favorecida: ptrabData.nome_om,
+                ug_favorecida: ptrabData.codug_om,
+                om_detentora: ptrabData.nome_om, // Detentora = Favorecida por padrão
+                ug_detentora: ptrabData.codug_om, // Detentora = Favorecida por padrão
+            }));
+            setSelectedOmFavorecidaId(omFavorecida?.id);
+            setSelectedOmDetentoraId(omFavorecida?.id);
+        }
+    }, [ptrabData, oms, editingId]);
 
     // =================================================================
     // CÁLCULOS E MEMÓRIA (MEMOIZED)
@@ -198,10 +216,10 @@ const SuprimentoFundosForm = () => {
         }
         
         try {
-            // 1. Recalcular ND 39 (dependente) para garantir que o cálculo reflita o estado atual
+            // 1. Recalcular ND 30 (dependente)
             const totalSolicitado = formData.valor_total_solicitado;
-            const nd30Value = formData.valor_nd_30; 
-            const nd39Value = calculateND39(totalSolicitado, nd30Value); 
+            const nd39Value = formData.valor_nd_39; 
+            const nd30Value = calculateND30(totalSolicitado, nd39Value); 
             
             const calculatedFormData = {
                 ...formData,
@@ -239,7 +257,7 @@ const SuprimentoFundosForm = () => {
             formData.dias_operacao !== stagedUpdate.dias_operacao ||
             formData.quantidade_equipes !== stagedUpdate.quantidade_equipes ||
             !areNumbersEqual(formData.valor_total_solicitado, stagedUpdate.valor_total_solicitado) ||
-            !areNumbersEqual(formData.valor_nd_30, stagedUpdate.valor_nd_30) || 
+            !areNumbersEqual(formData.valor_nd_39, stagedUpdate.valor_nd_39) || // Agora ND 39 é o campo de comparação
             formData.om_detentora !== stagedUpdate.om_detentora ||
             formData.ug_detentora !== stagedUpdate.ug_detentora ||
             formData.om_favorecida !== stagedUpdate.om_favorecida ||
@@ -288,7 +306,7 @@ const SuprimentoFundosForm = () => {
     // HANDLERS DE INPUT
     // =================================================================
     
-    const handleCurrencyChange = (field: keyof typeof initialFormState, rawValue: string) => {
+    const handleCurrencyChange = (field: 'valor_total_solicitado' | 'valor_nd_39', rawValue: string) => {
         const { numericValue, digits } = formatCurrencyInput(rawValue);
         
         setFormData(prev => {
@@ -301,25 +319,22 @@ const SuprimentoFundosForm = () => {
                 setRawTotalInput(digits); // Atualiza o input bruto para refletir a digitação
                 newTotalValue = numericValue;
                 
-                // ND 30 é mantida como está, mas recalculamos ND 39 com base nela
-                newND39Value = calculateND39(newTotalValue, newND30Value);
+                // ND 39 é mantida como está, mas recalculamos ND 30 com base nela
+                newND30Value = calculateND30(newTotalValue, newND39Value);
                 
-                // Não precisamos atualizar rawND39Input aqui, pois ele é calculado no useMemo
+            } else if (field === 'valor_nd_39') {
+                setRawND39Input(digits); // Atualiza o input bruto para refletir a digitação
+                newND39Value = numericValue;
                 
-            } else if (field === 'valor_nd_30') {
-                setRawND30Input(digits); // Atualiza o input bruto para refletir a digitação
-                newND30Value = numericValue;
-                
-                // ND 30 cannot exceed Total Solicitado
-                if (newTotalValue > 0 && newND30Value > newTotalValue) {
-                    newND30Value = newTotalValue;
-                    setRawND30Input(numberToRawDigits(newND30Value)); 
-                    toast.warning("O valor da ND 30 foi limitado ao Valor Total Solicitado.");
+                // ND 39 cannot exceed Total Solicitado
+                if (newTotalValue > 0 && newND39Value > newTotalValue) {
+                    newND39Value = newTotalValue;
+                    setRawND39Input(numberToRawDigits(newND39Value)); 
+                    toast.warning("O valor da ND 39 foi limitado ao Valor Total Solicitado.");
                 }
                 
-                // Calculate ND 39 (difference)
-                newND39Value = calculateND39(newTotalValue, newND30Value);
-                // Não precisamos atualizar rawND39Input aqui, pois ele é calculado no useMemo
+                // Calculate ND 30 (difference)
+                newND30Value = calculateND30(newTotalValue, newND39Value);
                 
             } else {
                 return prev;
@@ -346,7 +361,7 @@ const SuprimentoFundosForm = () => {
             const dbRecords = recordsToSave.map(r => {
                 const { tempId, memoria_calculo_display, totalGeral, om_favorecida, ug_favorecida, ...rest } = r;
                 
-                // Adiciona os campos de detalhamento ao 'detalhamento' da DB
+                // Adiciona os campos de detalhamento ao 'detalhamento_customizado' da DB
                 const detalhamentoCustomizado = JSON.stringify({
                     objeto_aquisicao: (rest as any).objeto_aquisicao,
                     objeto_contratacao: (rest as any).objeto_contratacao,
@@ -466,10 +481,11 @@ const SuprimentoFundosForm = () => {
             // OM Favorecida e UG Favorecida são resetadas para vazio
             om_favorecida: "",
             ug_favorecida: "",
-            // Dias e equipes são resetados para 0 (vazio)
-            dias_operacao: 0,
-            quantidade_equipes: 1,
-            // NDs e Total são resetados para 0
+            fase_atividade: "",
+            om_detentora: "", 
+            ug_detentora: "", 
+            dias_operacao: 0, 
+            quantidade_equipes: 1, 
             valor_total_solicitado: 0,
             valor_nd_30: 0,
             valor_nd_39: 0,
@@ -479,9 +495,6 @@ const SuprimentoFundosForm = () => {
             finalidade: "",
             local: "",
             tarefa: "",
-            // Detentora também é resetada para vazio
-            om_detentora: "",
-            ug_detentora: "",
         }));
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
@@ -490,7 +503,6 @@ const SuprimentoFundosForm = () => {
         setStagedUpdate(null); 
         
         setRawTotalInput(numberToRawDigits(0));
-        setRawND30Input(numberToRawDigits(0));
         setRawND39Input(numberToRawDigits(0));
     };
     
@@ -520,11 +532,16 @@ const SuprimentoFundosForm = () => {
         let customDetails = initialFormState;
         try {
             if (registro.detalhamento_customizado) {
-                // O detalhamento customizado armazena o JSON dos detalhes
-                customDetails = JSON.parse(registro.detalhamento_customizado);
+                // Se o detalhamento_customizado for um JSON, ele contém os detalhes
+                const parsed = JSON.parse(registro.detalhamento_customizado);
+                // Verifica se o JSON contém as chaves esperadas (indicando que é o JSON de detalhes)
+                if (parsed.objeto_aquisicao !== undefined) {
+                    customDetails = parsed;
+                }
             }
         } catch (e) {
-            console.error("Erro ao parsear detalhamento customizado:", e);
+            // Se falhar, o detalhamento_customizado é a memória de cálculo customizada (texto)
+            console.log("Detalhamento customizado não é JSON de detalhes, tratando como memória de cálculo.");
         }
 
         // 4. Populate formData
@@ -535,8 +552,8 @@ const SuprimentoFundosForm = () => {
             quantidade_equipes: registro.quantidade_equipes,
             valor_total_solicitado: Number(registro.valor_total_solicitado || 0),
             fase_atividade: registro.fase_atividade || "",
-            om_detentora: registro.om_detentora || DEFAULT_OM_DETENTORA,
-            ug_detentora: registro.ug_detentora || DEFAULT_UG_DETENTORA,
+            om_detentora: registro.om_detentora || "",
+            ug_detentora: registro.ug_detentora || "",
             valor_nd_30: Number(registro.valor_nd_30 || 0),
             valor_nd_39: Number(registro.valor_nd_39 || 0),
             // NOVOS CAMPOS
@@ -551,8 +568,7 @@ const SuprimentoFundosForm = () => {
         
         // Atualizar inputs brutos
         setRawTotalInput(numberToRawDigits(newFormData.valor_total_solicitado));
-        setRawND30Input(numberToRawDigits(newFormData.valor_nd_30));
-        setRawND39Input(numberToRawDigits(newFormData.valor_nd_39));
+        setRawND39Input(numberToRawDigits(newFormData.valor_nd_39)); // ND 39 é o campo de input
 
         // 5. Calculate totals and generate memory
         const totals = calculateSuprimentoFundosTotals(newFormData as any);
@@ -609,14 +625,14 @@ const SuprimentoFundosForm = () => {
         e.preventDefault();
         
         try {
-            // 1. Recalcular ND 39 (dependente)
+            // 1. Recalcular ND 30 (dependente)
             const totalSolicitado = formData.valor_total_solicitado;
-            const nd30Value = formData.valor_nd_30;
-            const nd39Value = calculateND39(totalSolicitado, nd30Value);
+            const nd39Value = formData.valor_nd_39;
+            const nd30Value = calculateND30(totalSolicitado, nd39Value);
             
             const dataToValidate = {
                 ...formData,
-                valor_nd_39: nd39Value,
+                valor_nd_30: nd30Value, // Usar o valor calculado para validação
             };
             
             // 2. Validação Zod
@@ -666,8 +682,15 @@ const SuprimentoFundosForm = () => {
             
             if (editingId) {
                 const originalRecord = registros?.find(r => r.id === editingId);
-                // Se estiver editando, a memória customizada é o JSON dos detalhes
-                calculatedData.detalhamento_customizado = originalRecord?.detalhamento_customizado || null;
+                // Se o detalhamento_customizado for um texto (memória customizada), preservamos.
+                // Se for o JSON de detalhes, ele será sobrescrito pelos campos do formulário.
+                try {
+                    JSON.parse(originalRecord?.detalhamento_customizado || "");
+                    // É JSON de detalhes, não faz nada (será sobrescrito pelos campos do form)
+                } catch (e) {
+                    // É texto customizado (memória), preservamos
+                    calculatedData.detalhamento_customizado = originalRecord?.detalhamento_customizado || null;
+                }
                 
                 setStagedUpdate(calculatedData);
                 toast.info("Cálculo atualizado. Revise e confirme a atualização na Seção 3.");
@@ -685,8 +708,8 @@ const SuprimentoFundosForm = () => {
                 om_favorecida: "",
                 ug_favorecida: "",
                 fase_atividade: prev.fase_atividade,
-                om_detentora: "", // Reset Detentora
-                ug_detentora: "", // Reset Detentora
+                om_detentora: "", 
+                ug_detentora: "", 
                 dias_operacao: 0, 
                 quantidade_equipes: 1, 
                 valor_total_solicitado: 0,
@@ -701,10 +724,9 @@ const SuprimentoFundosForm = () => {
             }));
             
             setRawTotalInput(numberToRawDigits(0));
-            setRawND30Input(numberToRawDigits(0));
             setRawND39Input(numberToRawDigits(0));
-            setSelectedOmFavorecidaId(undefined); // Resetar o seletor da OM Favorecida
-            setSelectedOmDetentoraId(undefined); // Resetar o seletor da OM Detentora
+            setSelectedOmFavorecidaId(undefined); 
+            setSelectedOmDetentoraId(undefined); 
             
             toast.info("Item de Suprimento de Fundos adicionado à lista pendente.");
             
@@ -744,7 +766,7 @@ const SuprimentoFundosForm = () => {
     const handleOmFavorecidaChange = (omData: OMData | undefined) => {
         if (omData) {
             setSelectedOmFavorecidaId(omData.id);
-            // NOVO: Define a OM Detentora igual à OM Favorecida
+            // Define a OM Detentora igual à OM Favorecida
             setSelectedOmDetentoraId(omData.id); 
             setFormData(prev => ({
                 ...prev,
@@ -802,7 +824,16 @@ const SuprimentoFundosForm = () => {
         const memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo(registro as any);
         
         // 2. Usar a customizada se existir, senão usar a automática
-        setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
+        let memoriaInicial = memoriaAutomatica;
+        try {
+            // Se o detalhamento_customizado for um JSON, ele contém os detalhes, não a memória customizada
+            JSON.parse(registro.detalhamento_customizado || "");
+        } catch (e) {
+            // Se falhar, é um texto customizado (memória)
+            memoriaInicial = registro.detalhamento_customizado || memoriaAutomatica;
+        }
+        
+        setMemoriaEdit(memoriaInicial || "");
     };
 
     const handleCancelarEdicaoMemoria = () => {
@@ -812,15 +843,14 @@ const SuprimentoFundosForm = () => {
 
     const handleSalvarMemoriaCustomizada = async (registroId: string) => {
         try {
-            // Aqui, o campo 'detalhamento_customizado' da DB armazena o JSON dos detalhes,
-            // mas o campo 'detalhamento' armazena a memória de cálculo gerada.
-            // Para Suprimento de Fundos, vamos usar o campo 'detalhamento_customizado' para a memória editável.
+            // Para Suprimento de Fundos, o campo 'detalhamento_customizado' é usado para armazenar o JSON dos detalhes.
+            // Se o usuário editar a memória, o campo 'detalhamento_customizado' será sobrescrito com o texto da memória.
             
             const { error } = await supabase
                 .from("verba_operacional_registros")
                 .update({
                     detalhamento: "Suprimento de Fundos", // Mantém o marcador
-                    detalhamento_customizado: memoriaEdit.trim() || null,
+                    detalhamento_customizado: memoriaEdit.trim() || null, // Salva o texto da memória
                 })
                 .eq("id", registroId);
 
@@ -841,10 +871,24 @@ const SuprimentoFundosForm = () => {
         }
         
         try {
+            // Para restaurar a memória automática, precisamos re-salvar o JSON dos detalhes
+            const originalRecord = registros?.find(r => r.id === registroId);
+            if (!originalRecord) throw new Error("Registro original não encontrado.");
+            
+            // Recriar o JSON dos detalhes a partir dos campos do registro
+            const detalhamentoCustomizadoJSON = JSON.stringify({
+                objeto_aquisicao: originalRecord.detalhamento_customizado?.objeto_aquisicao || "",
+                objeto_contratacao: originalRecord.detalhamento_customizado?.objeto_contratacao || "",
+                proposito: originalRecord.detalhamento_customizado?.proposito || "",
+                finalidade: originalRecord.detalhamento_customizado?.finalidade || "",
+                local: originalRecord.detalhamento_customizado?.local || "",
+                tarefa: originalRecord.detalhamento_customizado?.tarefa || "",
+            });
+            
             const { error } = await supabase
                 .from("verba_operacional_registros")
                 .update({
-                    detalhamento_customizado: null,
+                    detalhamento_customizado: detalhamentoCustomizadoJSON,
                 })
                 .eq("id", registroId);
 
@@ -976,7 +1020,7 @@ const SuprimentoFundosForm = () => {
                                         {/* Dados da Solicitação (Dias e Equipes) */}
                                         <Card className="rounded-lg mb-4">
                                             <CardHeader className="py-3">
-                                                <CardTitle className="text-base font-semibold">Período e Quantidade</CardTitle>
+                                                <CardTitle className="text-base font-semibold">Período e Valor</CardTitle>
                                             </CardHeader>
                                             <CardContent className="pt-2">
                                                 <div className="p-4 bg-background rounded-lg border">
@@ -1144,14 +1188,32 @@ const SuprimentoFundosForm = () => {
                                                 </div>
                                                 
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    {/* ND 30 (Material) - EDITÁVEL */}
+                                                    {/* ND 30 (Material) - CALCULADO */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="valor_nd_30">ND 33.90.30 (Material)</Label>
                                                         <div className="relative">
-                                                            <CurrencyInput
+                                                            <Input
                                                                 id="valor_nd_30"
-                                                                rawDigits={rawND30Input}
-                                                                onChange={(digits) => handleCurrencyChange('valor_nd_30', digits)}
+                                                                value={formatCurrency(calculos.totalND30)}
+                                                                readOnly
+                                                                disabled
+                                                                className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100 h-12"
+                                                            />
+                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Calculado por diferença (Total Solicitado - ND 39).
+                                                        </p>
+                                                    </div>
+                                                    
+                                                    {/* ND 39 (Serviço) - EDITÁVEL */}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="valor_nd_39">ND 33.90.39 (Serviço)</Label>
+                                                        <div className="relative">
+                                                            <CurrencyInput
+                                                                id="valor_nd_39"
+                                                                rawDigits={rawND39Input}
+                                                                onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
                                                                 placeholder="0,00"
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 className="pl-12 text-lg h-12"
@@ -1159,25 +1221,7 @@ const SuprimentoFundosForm = () => {
                                                             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">
-                                                            Valor alocado para material.
-                                                        </p>
-                                                    </div>
-                                                    
-                                                    {/* ND 39 (Serviço) - CALCULADO */}
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="valor_nd_39">ND 33.90.39 (Serviço)</Label>
-                                                        <div className="relative">
-                                                            <Input
-                                                                id="valor_nd_39"
-                                                                value={formatCurrency(Number(calculos.totalND39 || 0))}
-                                                                readOnly
-                                                                disabled
-                                                                className="pl-12 text-lg font-bold bg-blue-500/10 text-blue-600 disabled:opacity-100 h-12"
-                                                            />
-                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
-                                                        </div>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Calculado por diferença (Total Solicitado - ND 30).
+                                                            Valor alocado para contratação de serviço.
                                                         </p>
                                                     </div>
                                                 </div>
@@ -1483,10 +1527,7 @@ const SuprimentoFundosForm = () => {
                                     
                                     {registros.map(registro => {
                                         const isEditing = editingMemoriaId === registro.id;
-                                        // Para Suprimento de Fundos, o detalhamento_customizado armazena o JSON dos detalhes,
-                                        // e o campo 'detalhamento' armazena a memória gerada.
-                                        // Se o detalhamento_customizado for um JSON válido, a memória é automática.
-                                        // Se for um texto, é customizada.
+                                        
                                         let hasCustomMemoria = false;
                                         let memoriaExibida = "";
                                         
