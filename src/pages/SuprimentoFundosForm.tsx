@@ -672,9 +672,9 @@ const SuprimentoFundosForm = () => {
                 // Se o detalhamento_customizado for um texto (memória customizada), preservamos.
                 try {
                     JSON.parse(originalRecord?.detalhamento_customizado || "");
-                    // É JSON de detalhes, não faz nada (será sobrescrito pelos campos do form)
+                    // Se o parse for bem-sucedido, o detalhamento_customizado é o JSON de detalhes, então a memória inicial é a automática
                 } catch (e) {
-                    // É texto customizado (memória), preservamos
+                    // Se falhar, é um texto customizado (memória), preservamos
                     calculatedData.detalhamento_customizado = originalRecord?.detalhamento_customizado || null;
                 }
                 
@@ -1508,7 +1508,7 @@ const SuprimentoFundosForm = () => {
                                             </Card>
                                         );
                                     })}
-                                </div>
+                                </section>
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
