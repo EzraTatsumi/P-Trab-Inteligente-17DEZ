@@ -106,8 +106,8 @@ const initialFormState = {
     quantidade_equipes: 0,
     valor_total_solicitado: 0,
     fase_atividade: "",
-    om_detentora: DEFAULT_OM_DETENTORA, // OM Destino do Recurso (Padrão CIE)
-    ug_detentora: DEFAULT_UG_DETENTORA, // UG Destino do Recurso (Padrão 160.062)
+    om_detentora: "", // OM Destino do Recurso (Padrão CIE)
+    ug_detentora: "", // UG Destino do Recurso (Padrão 160.062)
     valor_nd_30: 0, // Inicia zerado
     valor_nd_39: 0, // Inicia zerado (será preenchido ao digitar o total solicitado)
 };
@@ -159,9 +159,9 @@ const VerbaOperacionalForm = () => {
 
     const { data: registros, isLoading: isLoadingRegistros } = useQuery<VerbaOperacionalRegistro[]>({
         queryKey: ['verbaOperacionalRegistros', ptrabId],
-        queryFn: () => fetchPTrabRecords('verba_operacional_registros', ptrabId!),
+        queryFn: () => fetchPTrabRecords('verba_operacional_registros', ptrabId!, { detalhamento: 'Verba Operacional' }),
         enabled: !!ptrabId,
-        select: (data) => data.sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
+        select: (data) => data.filter(r => r.detalhamento !== 'Suprimento de Fundos').sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
     });
     
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
@@ -315,9 +315,6 @@ const VerbaOperacionalForm = () => {
                 setRawTotalInput(digits);
                 newTotalValue = numericValue;
                 
-                // NOVO: Aloca o valor total solicitado integralmente na ND 39
-                newND39Value = newTotalValue;
-                
                 // ND 30 é mantida como está, mas recalculamos ND 39 com base nela
                 newND39Value = calculateND39(newTotalValue, newND30Value);
                 
@@ -368,6 +365,7 @@ const VerbaOperacionalForm = () => {
                     ...rest,
                     organizacao: om_favorecida, // OM Favorecida (do PTrab)
                     ug: ug_favorecida, // UG Favorecida (do PTrab)
+                    detalhamento: "Verba Operacional", // Marcador para filtro
                     // om_detentora e ug_detentora já estão corretos
                 } as TablesInsert<'verba_operacional_registros'>;
             });
@@ -409,6 +407,7 @@ const VerbaOperacionalForm = () => {
                 ...rest,
                 organizacao: om_favorecida, // OM Favorecida (do PTrab)
                 ug: ug_favorecida, // UG Favorecida (do PTrab)
+                detalhamento: "Verba Operacional", // Marcador para filtro
                 // om_detentora e ug_detentora já estão corretos
             } as TablesUpdate<'verba_operacional_registros'>;
             
@@ -549,7 +548,7 @@ const VerbaOperacionalForm = () => {
             valor_nd_30: totals.totalND30,
             valor_nd_39: totals.totalND39,
             
-            detalhamento: memoria,
+            detalhamento: "Verba Operacional",
             detalhamento_customizado: registro.detalhamento_customizado || null, 
             
             // Campos de display
@@ -619,7 +618,7 @@ const VerbaOperacionalForm = () => {
                 valor_nd_30: totals.totalND30,
                 valor_nd_39: totals.totalND39,
                 
-                detalhamento: memoria,
+                detalhamento: "Verba Operacional",
                 detalhamento_customizado: null, 
                 
                 // Campos de display
@@ -643,17 +642,17 @@ const VerbaOperacionalForm = () => {
             // MODO ADIÇÃO: Adicionar à lista pendente
             setPendingVerbas(prev => [...prev, calculatedData]);
             
-            // 5. Resetar o formulário para o próximo item (mantendo OM Favorecida e Fase, e resetando Detentora para CIE)
+            // 5. Resetar o formulário para o próximo item, MANTENDO os dados da Seção 1 e OM Detentora
             setFormData(prev => ({
                 ...initialFormState,
-                om_favorecida: prev.om_favorecida,
-                ug_favorecida: prev.ug_favorecida,
-                fase_atividade: prev.fase_atividade,
-                om_detentora: DEFAULT_OM_DETENTORA,
-                ug_detentora: DEFAULT_UG_DETENTORA,
+                om_favorecida: prev.om_favorecida, // MANTIDO
+                ug_favorecida: prev.ug_favorecida, // MANTIDO
+                fase_atividade: prev.fase_atividade, // MANTIDO
+                om_detentora: prev.om_detentora, // MANTIDO
+                ug_detentora: prev.ug_detentora, // MANTIDO
                 // Resetar apenas os campos de cálculo
-                dias_operacao: 0, // Resetado para 0
-                quantidade_equipes: 0, // Resetado para 0
+                dias_operacao: 0, 
+                quantidade_equipes: 0, 
                 valor_total_solicitado: 0,
                 valor_nd_30: 0,
                 valor_nd_39: 0,
@@ -663,7 +662,6 @@ const VerbaOperacionalForm = () => {
             setRawTotalInput(numberToRawDigits(0));
             setRawND30Input(numberToRawDigits(0));
             setRawND39Input(numberToRawDigits(0));
-            setSelectedOmDetentoraId(undefined); // Resetar o seletor da OM Detentora
             
             toast.info("Item de Verba Operacional adicionado à lista pendente.");
             
@@ -1061,7 +1059,7 @@ const VerbaOperacionalForm = () => {
                                     
                                 </section>
                             )}
-                            
+
                             {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
                             {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
@@ -1427,7 +1425,7 @@ const VerbaOperacionalForm = () => {
                                                 <Card className="p-4 bg-background rounded-lg border">
                                                     {isEditing ? (
                                                         <Textarea
-                                                            value={memoriaEdit}
+                                                            value={memoriaExibida}
                                                             onChange={(e) => setMemoriaEdit(e.target.value)}
                                                             className="min-h-[300px] font-mono text-sm"
                                                             placeholder="Digite a memória de cálculo..."

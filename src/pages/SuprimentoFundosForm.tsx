@@ -248,7 +248,9 @@ const SuprimentoFundosForm = () => {
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : "Erro desconhecido no cálculo.";
             return {
-                totalGeral: 0, totalND30: 0, totalND39: 0,
+                totalGeral: 0,
+                totalND30: 0,
+                totalND39: 0,
                 memoria: `Erro ao calcular: ${errorMessage}`,
             };
         }
@@ -693,17 +695,17 @@ const SuprimentoFundosForm = () => {
             // MODO ADIÇÃO: Adicionar à lista pendente
             setPendingSuprimentos(prev => [...prev, calculatedData]);
             
-            // 5. Resetar o formulário para o próximo item
+            // 5. Resetar o formulário para o próximo item, MANTENDO os dados da Seção 1 e OM Detentora
             setFormData(prev => ({
                 ...initialFormState,
-                // OM Favorecida e UG Favorecida são resetadas para vazio
-                om_favorecida: "",
-                ug_favorecida: "",
-                fase_atividade: prev.fase_atividade,
-                om_detentora: "", 
-                ug_detentora: "", 
+                om_favorecida: prev.om_favorecida, // MANTIDO
+                ug_favorecida: prev.ug_favorecida, // MANTIDO
+                fase_atividade: prev.fase_atividade, // MANTIDO
+                om_detentora: prev.om_detentora, // MANTIDO
+                ug_detentora: prev.ug_detentora, // MANTIDO
+                // Resetar apenas os campos de cálculo e detalhamento
                 dias_operacao: 0, 
-                quantidade_equipes: 0, // ALTERADO: Resetado para 0
+                quantidade_equipes: 0, 
                 valor_total_solicitado: 0,
                 valor_nd_30: 0,
                 valor_nd_39: 0,
@@ -717,8 +719,6 @@ const SuprimentoFundosForm = () => {
             
             setRawTotalInput(numberToRawDigits(0));
             setRawND39Input(numberToRawDigits(0));
-            setSelectedOmFavorecidaId(undefined); 
-            setSelectedOmDetentoraId(undefined); 
             
             toast.info("Item de Suprimento de Fundos adicionado à lista pendente.");
             
@@ -1278,6 +1278,10 @@ const SuprimentoFundosForm = () => {
                                             
                                             // Verifica se a OM Detentora é diferente da OM Favorecida
                                             const isDifferentOmInView = item.om_detentora !== item.om_favorecida;
+                                            
+                                            // Lógica de concordância de número
+                                            const diasText = item.dias_operacao === 1 ? "dia" : "dias";
+                                            const efetivoText = item.quantidade_equipes === 1 ? "militar" : "militares"; // ALTERADO
 
                                             return (
                                                 <Card 
