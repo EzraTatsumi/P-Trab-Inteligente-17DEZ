@@ -83,10 +83,8 @@ export function OmSelector({
     }
   }, [filterByRM, omsList]);
 
-  // 2. Lógica para sugerir a OM padrão automaticamente
+  // 2. Lógica para sugerir a OM padrão automaticamente (Ajustado para só rodar se não houver selectedOmId)
   useEffect(() => {
-    // Só executa se o carregamento estiver completo, se não houver OM selecionada,
-    // se um ID padrão for fornecido e se a lista de OMs estiver populada.
     if (!loading && !selectedOmId && defaultOmId && oms.length > 0) {
       const defaultOM = oms.find(om => om.id === defaultOmId);
       if (defaultOM) {
@@ -139,16 +137,17 @@ export function OmSelector({
 
   const isOverallLoading = loading || isFetchingSelected;
 
-  // Lógica de exibição do texto no botão
+  // Lógica de exibição do texto no botão (AJUSTADA)
   const buttonText = useMemo(() => {
     // 1. Se a OM completa foi carregada (displayOM), use o nome dela.
     if (displayOM) {
       return displayOM.nome_om;
     }
     
-    // 2. Se temos um nome inicial (do registro de edição), use-o como fallback imediato.
-    if (initialOmName) {
-      return initialOmName;
+    // 2. Se estiver em modo de edição (selectedOmId existe) mas a OM ainda está sendo buscada, 
+    //    ou se o ID não foi encontrado, mas temos o nome inicial (fallback para edição).
+    if (selectedOmId && (isFetchingSelected || initialOmName)) {
+        return initialOmName || "Carregando OM...";
     }
     
     // 3. Se estiver carregando a lista de OMs (loading)
@@ -158,7 +157,7 @@ export function OmSelector({
     
     // 4. Caso contrário, mostre o placeholder.
     return placeholder;
-  }, [loading, displayOM, initialOmName, placeholder]);
+  }, [loading, displayOM, selectedOmId, isFetchingSelected, initialOmName, placeholder]);
 
 
   return (
