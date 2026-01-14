@@ -1169,7 +1169,7 @@ const SuprimentoFundosForm = () => {
                                                         <div className="relative">
                                                             <Input
                                                                 id="valor_nd_39"
-                                                                value={formatCurrency(formData.valor_nd_39)}
+                                                                value={formatCurrency(calculos.totalND39)}
                                                                 readOnly
                                                                 disabled
                                                                 className="pl-12 text-lg font-bold bg-blue-500/10 text-blue-600 disabled:opacity-100 h-12"
