@@ -93,6 +93,7 @@ src/pages/ClasseVIForm.tsx
 src/pages/ClasseVIIForm.tsx
 src/pages/ClasseVIIIForm.tsx
 src/pages/ClasseIXForm.tsx
+src/pages/
 src/pages/DiretrizesCusteioPage.tsx # Adicionado a pedido do usuário
 
 # INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
