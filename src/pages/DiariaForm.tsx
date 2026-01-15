@@ -180,6 +180,20 @@ const DiariaForm = () => {
     
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
 
+    // Efeito para preencher a OM de Destino (OM do PTrab) ao carregar
+    useEffect(() => {
+        if (ptrabData && !editingId) {
+            const omDestino = oms?.find(om => om.nome_om === ptrabData.nome_om && om.codug_om === ptrabData.codug_om);
+            
+            setFormData(prev => ({
+                ...prev,
+                organizacao: ptrabData.nome_om,
+                ug: ptrabData.codug_om,
+            }));
+            setSelectedOmId(omDestino?.id);
+        }
+    }, [ptrabData, oms, editingId]);
+
     // =================================================================
     // CÁLCULOS E MEMÓRIA (MEMOIZED)
     // =================================================================
@@ -311,8 +325,8 @@ const DiariaForm = () => {
             toast.success(`Sucesso! ${pendingDiarias.length} registro(s) de Diária adicionado(s).`);
             setPendingDiarias([]); // Limpa a lista pendente
             
-            // 1. Resetar o formulário
-            resetForm();
+            // 1. Resetar o formulário, mas mantendo OM e Fase
+            // Não chamamos resetForm aqui, mas sim a lógica de reset parcial
             
             // 2. Colocar o último registro salvo em modo de edição para exibir a Seção 5
             if (newRecords && newRecords.length > 0) {
@@ -375,10 +389,26 @@ const DiariaForm = () => {
 
     const resetForm = () => {
         setEditingId(null);
-        setFormData(initialFormState);
+        
+        // Mantém OM e Fase, mas reseta os campos de cálculo
+        setFormData(prev => ({
+            ...initialFormState,
+            organizacao: prev.organizacao,
+            ug: prev.ug,
+            fase_atividade: prev.fase_atividade,
+            // Mantém o destino selecionado para facilitar a adição de itens semelhantes
+            destino: prev.destino, 
+            // Reseta os campos de cálculo
+            dias_operacao: 0, 
+            nr_viagens: 0, 
+            local_atividade: "",
+            is_aereo: false,
+            quantidades_por_posto: initialFormState.quantidades_por_posto,
+        }));
+        
         setEditingMemoriaId(null); // Resetar estados de edição de memória
         setMemoriaEdit("");
-        setSelectedOmId(undefined);
+        // Não reseta selectedOmId, pois a OM de destino é mantida
         setStagedUpdate(null); // Limpa o staging
     };
     
@@ -547,17 +577,13 @@ const DiariaForm = () => {
             // MODO ADIÇÃO: Adicionar à lista pendente
             setPendingDiarias(prev => [...prev, calculatedData]);
             
-            // 5. Resetar o formulário para o próximo item (mantendo OM e Fase)
+            // 5. Resetar os campos de cálculo, MANTENDO OM, FASE e DESTINO
             setFormData(prev => ({
-                ...initialFormState,
-                organizacao: prev.organizacao,
-                ug: prev.ug,
-                // selectedOmId: selectedOmId, // selectedOmId é gerenciado pelo estado pai, não pelo formData
-                fase_atividade: prev.fase_atividade,
-                // Resetar apenas os campos de cálculo
-                dias_operacao: 0, // Mantido como 0
-                nr_viagens: 0, // Mantido como 0
+                ...prev,
+                dias_operacao: 0, 
+                nr_viagens: 0, 
                 local_atividade: "",
+                is_aereo: false,
                 quantidades_por_posto: initialFormState.quantidades_por_posto,
             }));
             
