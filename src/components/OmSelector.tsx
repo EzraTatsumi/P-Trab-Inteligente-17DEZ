@@ -97,7 +97,21 @@ export function OmSelector({
   // 3. Efeito para garantir que a OM selecionada seja exibida, mesmo que não esteja na lista 'oms' (e.g., inativa)
   useEffect(() => {
     if (!selectedOmId) {
-      setDisplayOM(undefined);
+      // Se não houver ID selecionado, mas houver nome/UG inicial (modo de edição sem ID ativo),
+      // criamos um objeto temporário para exibição.
+      if (initialOmName && initialOmUg) {
+        setDisplayOM({
+          id: 'temp', // ID temporário
+          nome_om: initialOmName,
+          codug_om: initialOmUg,
+          rm_vinculacao: '', // Placeholder
+          codug_rm_vinculacao: '', // Placeholder
+          cidade: '', // Placeholder
+          ativo: false, // Assumimos inativo/não encontrado
+        } as OMData);
+      } else {
+        setDisplayOM(undefined);
+      }
       return;
     }
 
@@ -133,7 +147,7 @@ export function OmSelector({
     // Dispara a busca individual imediatamente se o ID estiver presente e não encontrado na lista atual.
     fetchSelectedOM();
     
-  }, [selectedOmId, oms]); // Removido 'loading' das dependências para esta busca
+  }, [selectedOmId, oms, initialOmName, initialOmUg]); // Adicionado initialOmName/Ug para re-executar se o contexto de edição mudar
 
   const isOverallLoading = loading || isFetchingSelected;
 
