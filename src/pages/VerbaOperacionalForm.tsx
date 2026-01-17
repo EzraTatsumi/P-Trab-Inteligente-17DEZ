@@ -1229,23 +1229,12 @@ const VerbaOperacionalForm = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
-                                                                {isDifferentOmInView ? (
-                                                                    <div className="flex items-center gap-1 mt-1">
-                                                                        <AlertCircle className="h-4 w-4 text-red-600" />
-                                                                        <span className="text-sm font-medium text-red-600">
-                                                                            Destino Recurso: {item.om_detentora} ({formatCodug(item.ug_detentora)})
-                                                                        </span>
-                                                                    </div>
-                                                                ) : (
-                                                                    <p className="font-medium">OM Destino Recurso:</p>
-                                                                )}
+                                                                <p className="font-medium">OM Destino Recurso:</p>
                                                                 <p className="font-medium">Período / Equipes:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
-                                                                {!isDifferentOmInView && (
-                                                                    <p className="font-medium">{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
-                                                                )}
+                                                                <p className="font-medium">{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
                                                                 <p className="font-medium">{item.dias_operacao} {diasText} / {item.quantidade_equipes} {equipeText}</p>
                                                             </div>
                                                         </div>
@@ -1323,7 +1312,7 @@ const VerbaOperacionalForm = () => {
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
                                         <Sparkles className="h-5 w-5 text-accent" />
-                                        OMs Cadastradas ({registros.length})
+                                        Registros Salvos ({registros.length})
                                     </h3>
                                     
                                     {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
