@@ -1496,7 +1496,7 @@ const DiariaForm = () => {
                                                     <div className="flex flex-col flex-1 min-w-0">
                                                         <div className="flex items-center gap-2">
                                                             <h4 className="text-base font-semibold text-foreground">
-                                                                OM Destino: {registro.organizacao} (UG: {formatCodug(registro.ug)})
+                                                                {registro.organizacao} (UG: {formatCodug(registro.ug)})
                                                             </h4>
                                                             <Badge variant="default" className={cn("w-fit text-white", destinoColorClass)}>
                                                                 {destinoLabel}
