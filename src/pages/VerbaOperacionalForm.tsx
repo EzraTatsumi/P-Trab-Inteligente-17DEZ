@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -262,8 +262,7 @@ const VerbaOperacionalForm = () => {
     
     // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do stagedUpdate)
     const isVerbaDirty = useMemo(() => {
-        // Check if there is an item currently staged for review/update
-        if (!stagedUpdate) return false; 
+        if (!editingId || !stagedUpdate) return false;
 
         // 1. Comparar campos principais
         // Nota: ND 39 é calculada, então comparamos ND 30 e Total Solicitado (os inputs do usuário)
@@ -286,27 +285,12 @@ const VerbaOperacionalForm = () => {
         }
 
         return false;
-    }, [stagedUpdate, formData]);
+    }, [editingId, stagedUpdate, formData]);
     
-    // NOVO MEMO: Lógica para a Seção 3
-    const itemsToDisplay = useMemo(() => {
-        if (stagedUpdate) {
-            // Se estiver estagiando uma atualização ou um novo item, mostra-o primeiro
-            return [stagedUpdate, ...pendingVerbas];
-        }
-        return pendingVerbas;
-    }, [stagedUpdate, pendingVerbas]);
-    
-    const isStagingUpdate = !!stagedUpdate && !!editingId;
-    const isStagingNew = !!stagedUpdate && !editingId;
-
     // NOVO: Cálculo do total de todos os itens pendentes
     const totalPendingVerbas = useMemo(() => {
-        // Se estiver estagiando, o total é a soma do staged + pending
-        const stagedTotal = stagedUpdate ? stagedUpdate.valor_total_solicitado : 0;
-        const pendingTotal = pendingVerbas.reduce((sum, item) => sum + item.valor_total_solicitado, 0);
-        return stagedTotal + pendingTotal;
-    }, [pendingVerbas, stagedUpdate]);
+        return pendingVerbas.reduce((sum, item) => sum + item.valor_total_solicitado, 0);
+    }, [pendingVerbas]);
     
     // NOVO MEMO: Agrupa os registros por OM Favorecida (organizacao/ug)
     const registrosAgrupadosPorOM = useMemo(() => {
@@ -411,10 +395,17 @@ const VerbaOperacionalForm = () => {
             toast.success(`Sucesso! ${pendingVerbas.length} registro(s) de Verba Operacional adicionado(s).`);
             setPendingVerbas([]); 
             
-            // 1. Resetar o formulário (mantendo campos de contexto)
-            resetForm();
+            // CORREÇÃO: Manter campos de contexto e resetar apenas os campos de valor
+            setFormData(prev => ({
+                ...prev,
+                valor_total_solicitado: 0,
+                valor_nd_30: 0,
+                valor_nd_39: 0,
+            }));
+            setRawTotalInput(numberToRawDigits(0));
+            setRawND30Input(numberToRawDigits(0));
+            setRawND39Input(numberToRawDigits(0));
             
-            // 2. Colocar o último registro salvo em modo de edição para exibir a Seção 5
             if (newRecords && newRecords.length > 0) {
                 handleEdit(newRecords[0] as VerbaOperacionalRegistro);
             }
@@ -504,7 +495,7 @@ const VerbaOperacionalForm = () => {
         setMemoriaEdit("");
         setSelectedOmFavorecidaId(undefined);
         setSelectedOmDetentoraId(undefined); 
-        setStagedUpdate(null); // Limpa staged update
+        setStagedUpdate(null); 
         
         // Resetar inputs brutos
         setRawTotalInput(numberToRawDigits(0));
@@ -634,8 +625,7 @@ const VerbaOperacionalForm = () => {
             } as any);
             
             const calculatedData: CalculatedVerbaOperacional = {
-                // Use editingId if present, otherwise generate a new tempId
-                tempId: editingId || stagedUpdate?.tempId || Math.random().toString(36).substring(2, 9), 
+                tempId: editingId || Math.random().toString(36).substring(2, 9), 
                 p_trab_id: ptrabId!,
                 organizacao: formData.om_favorecida, // Mapeamento para DB
                 ug: formData.ug_favorecida, // Mapeamento para DB
@@ -651,7 +641,7 @@ const VerbaOperacionalForm = () => {
                 valor_nd_39: totals.totalND39,
                 
                 detalhamento: "Verba Operacional",
-                detalhamento_customizado: stagedUpdate?.detalhamento_customizado || null, 
+                detalhamento_customizado: null, 
                 
                 // Campos de display
                 totalGeral: totals.totalGeral,
@@ -660,23 +650,43 @@ const VerbaOperacionalForm = () => {
                 ug_favorecida: formData.ug_favorecida,
             };
             
-            // If editing, preserve the original custom memory
             if (editingId) {
+                // MODO EDIÇÃO: Estagia a atualização para revisão
                 const originalRecord = registros?.find(r => r.id === editingId);
                 calculatedData.detalhamento_customizado = originalRecord?.detalhamento_customizado || null;
-            }
-            
-            // 3. Stage the calculated data
-            setStagedUpdate(calculatedData);
-            
-            // 4. Provide feedback
-            if (editingId) {
+                
+                setStagedUpdate(calculatedData);
                 toast.info("Cálculo atualizado. Revise e confirme a atualização na Seção 3.");
-            } else {
-                toast.info("Item calculado. Revise e adicione à lista pendente na Seção 3.");
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); 
+                return;
             }
             
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); 
+            // MODO ADIÇÃO: Adicionar à lista pendente
+            setPendingVerbas(prev => [...prev, calculatedData]);
+            
+            // CORREÇÃO: Manter campos de contexto e resetar apenas os campos de valor
+            setFormData(prev => ({
+                ...prev,
+                // Manter campos de contexto
+                om_favorecida: prev.om_favorecida,
+                ug_favorecida: prev.ug_favorecida,
+                om_detentora: prev.om_detentora,
+                ug_detentora: prev.ug_detentora,
+                dias_operacao: prev.dias_operacao,
+                quantidade_equipes: prev.quantidade_equipes,
+                fase_atividade: prev.fase_atividade,
+                
+                // Resetar apenas os campos de valor
+                valor_total_solicitado: 0,
+                valor_nd_30: 0,
+                valor_nd_39: 0,
+            }));
+            
+            setRawTotalInput(numberToRawDigits(0));
+            setRawND30Input(numberToRawDigits(0));
+            setRawND39Input(numberToRawDigits(0));
+            
+            toast.info("Item de Verba Operacional adicionado à lista pendente.");
             
         } catch (err) {
             if (err instanceof z.ZodError) {
@@ -685,38 +695,6 @@ const VerbaOperacionalForm = () => {
                 toast.error(sanitizeError(err));
             }
         }
-    };
-    
-    // NOVO: Move o item estagiado para a lista pendente e reseta o formulário para o próximo item
-    const handleCommitStagedToPending = () => {
-        if (!stagedUpdate) return;
-        
-        setPendingVerbas(prev => [...prev, stagedUpdate]);
-        setStagedUpdate(null); // Clear staged item
-        
-        // Reset form values, keeping context fields
-        setFormData(prev => ({
-            ...initialFormState,
-            // Manter campos de contexto
-            om_favorecida: prev.om_favorecida,
-            ug_favorecida: prev.ug_favorecida,
-            om_detentora: prev.om_detentora,
-            ug_detentora: prev.ug_detentora,
-            dias_operacao: prev.dias_operacao,
-            quantidade_equipes: prev.quantidade_equipes,
-            fase_atividade: prev.fase_atividade,
-            
-            // Resetar apenas os campos de valor
-            valor_total_solicitado: 0,
-            valor_nd_30: 0,
-            valor_nd_39: 0,
-        }));
-        
-        setRawTotalInput(numberToRawDigits(0));
-        setRawND30Input(numberToRawDigits(0));
-        setRawND39Input(numberToRawDigits(0));
-        
-        toast.info("Item adicionado à lista pendente. Pronto para o próximo item ou para salvar.");
     };
     
     // Salva todos os itens pendentes no DB
@@ -737,16 +715,9 @@ const VerbaOperacionalForm = () => {
     };
     
     // Remove item da lista pendente
-    const handleRemovePending = (itemToRemove: CalculatedVerbaOperacional) => {
-        if (itemToRemove.tempId === stagedUpdate?.tempId && !editingId) {
-            // Se for o item estagiado (novo), apenas limpa o estágio
-            setStagedUpdate(null);
-            resetForm();
-        } else {
-            // Se for um item na lista pendente
-            setPendingVerbas(prev => prev.filter(p => p.tempId !== itemToRemove.tempId));
-            toast.info("Item removido da lista pendente.");
-        }
+    const handleRemovePending = (tempId: string) => {
+        setPendingVerbas(prev => prev.filter(p => p.tempId !== tempId));
+        toast.info("Item removido da lista pendente.");
     };
     
     // Handler para a OM Favorecida (OM do PTrab)
@@ -890,8 +861,8 @@ const VerbaOperacionalForm = () => {
                               isAllocationCorrect;
     
     // Lógica para a Seção 3
-    const itemsToReview = itemsToDisplay.filter(item => item.tempId === stagedUpdate?.tempId);
-    const itemsInPendingList = itemsToDisplay.filter(item => item.tempId !== stagedUpdate?.tempId);
+    const itemsToDisplay = stagedUpdate ? [stagedUpdate] : pendingVerbas;
+    const isStagingUpdate = !!stagedUpdate;
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1116,12 +1087,11 @@ const VerbaOperacionalForm = () => {
                             {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        3. Itens Adicionados ({itemsInPendingList.length})
-                                        {isStagingUpdate && <Badge variant="destructive">Revisão de Edição</Badge>}
+                                        3. Itens Adicionados ({itemsToDisplay.length})
                                     </h3>
                                     
-                                    {/* Alerta de Validação Final (Apenas se houver item estagiado E estiver sujo) */}
-                                    {stagedUpdate && isVerbaDirty && (
+                                    {/* Alerta de Validação Final (Apenas em modo de edição) */}
+                                    {editingId && isVerbaDirty && (
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertDescription className="font-medium">
@@ -1131,7 +1101,7 @@ const VerbaOperacionalForm = () => {
                                     )}
                                     
                                     <div className="space-y-4">
-                                        {itemsToReview.map((item) => {
+                                        {itemsToDisplay.map((item) => {
                                             const totalND30 = item.valor_nd_30;
                                             const totalND39 = item.valor_nd_39;
                                             
@@ -1160,12 +1130,11 @@ const VerbaOperacionalForm = () => {
                                                                 <p className="font-extrabold text-lg text-foreground text-right">
                                                                     {formatCurrency(item.totalGeral)}
                                                                 </p>
-                                                                {/* Botão de remoção para itens novos estagiados */}
-                                                                {isStagingNew && (
+                                                                {!isStagingUpdate && (
                                                                     <Button 
                                                                         variant="ghost" 
                                                                         size="icon" 
-                                                                        onClick={() => handleRemovePending(item)}
+                                                                        onClick={() => handleRemovePending(item.tempId)}
                                                                         disabled={isSaving}
                                                                     >
                                                                         <Trash2 className="h-4 w-4 text-destructive" />
@@ -1206,29 +1175,6 @@ const VerbaOperacionalForm = () => {
                                                 </Card>
                                             );
                                         })}
-                                        
-                                        {/* Itens já na lista pendente (se houver) */}
-                                        {itemsInPendingList.length > 0 && (
-                                            <div className="space-y-2 pt-4 border-t border-dashed">
-                                                <h4 className="text-sm font-semibold text-muted-foreground">Itens na Fila de Salvamento ({itemsInPendingList.length})</h4>
-                                                {itemsInPendingList.map(item => (
-                                                    <div key={item.tempId} className="flex justify-between items-center p-2 bg-background rounded-md border">
-                                                        <span className="text-sm">{item.om_favorecida} ({item.dias_operacao} dias)</span>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-medium text-sm">{formatCurrency(item.totalGeral)}</span>
-                                                            <Button 
-                                                                variant="ghost" 
-                                                                size="icon" 
-                                                                onClick={() => handleRemovePending(item)}
-                                                                disabled={isSaving}
-                                                            >
-                                                                <X className="h-4 w-4 text-destructive" />
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
                                     </div>
                                     
                                     {/* VALOR TOTAL DA OM (PENDENTE / STAGING) */}
@@ -1238,7 +1184,7 @@ const VerbaOperacionalForm = () => {
                                                 VALOR TOTAL DA OM
                                             </span>
                                             <span className="font-extrabold text-xl text-foreground">
-                                                {formatCurrency(totalPendingVerbas)}
+                                                {formatCurrency(isStagingUpdate ? stagedUpdate!.totalGeral : totalPendingVerbas)}
                                             </span>
                                         </CardContent>
                                     </Card>
@@ -1258,27 +1204,6 @@ const VerbaOperacionalForm = () => {
                                                 >
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                                                     Atualizar Registro
-                                                </Button>
-                                            </>
-                                        ) : isStagingNew ? ( 
-                                            <>
-                                                <Button 
-                                                    type="button" 
-                                                    variant="outline" 
-                                                    onClick={resetForm} 
-                                                    disabled={isSaving}
-                                                >
-                                                    <XCircle className="mr-2 h-4 w-4" />
-                                                    Limpar Formulário
-                                                </Button>
-                                                <Button 
-                                                    type="button" 
-                                                    onClick={handleCommitStagedToPending}
-                                                    disabled={isSaving || isVerbaDirty}
-                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
-                                                >
-                                                    <Plus className="mr-2 h-4 w-4" />
-                                                    Adicionar à Lista Pendente
                                                 </Button>
                                             </>
                                         ) : (

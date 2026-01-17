@@ -228,7 +228,7 @@ const DiariaForm = () => {
     
     // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do stagedUpdate)
     const isDiariaDirty = useMemo(() => {
-        if (!stagedUpdate) return false; // Se nada estiver estagiado, não há dirty check
+        if (!editingId || !stagedUpdate) return false;
 
         // 1. Comparar campos principais
         if (
@@ -236,9 +236,7 @@ const DiariaForm = () => {
             formData.destino !== stagedUpdate.destino ||
             formData.nr_viagens !== stagedUpdate.nr_viagens ||
             formData.local_atividade !== stagedUpdate.local_atividade ||
-            formData.is_aereo !== stagedUpdate.is_aereo ||
-            formData.organizacao !== stagedUpdate.organizacao ||
-            formData.ug !== stagedUpdate.ug
+            formData.is_aereo !== stagedUpdate.is_aereo
         ) {
             return true;
         }
@@ -261,26 +259,12 @@ const DiariaForm = () => {
         }
 
         return false;
-    }, [stagedUpdate, formData, calculos.totalGeral]);
+    }, [editingId, stagedUpdate, formData, calculos.totalGeral]);
     
-    // NOVO MEMO: Lógica para a Seção 3
-    const itemsToDisplay = useMemo(() => {
-        if (stagedUpdate) {
-            // Se estiver estagiando uma atualização ou um novo item, mostra-o primeiro
-            return [stagedUpdate, ...pendingDiarias];
-        }
-        return pendingDiarias;
-    }, [stagedUpdate, pendingDiarias]);
-    
-    const isStagingUpdate = !!stagedUpdate && !!editingId;
-    const isStagingNew = !!stagedUpdate && !editingId;
-
     // NOVO: Cálculo do total de todos os itens pendentes
     const totalPendingDiarias = useMemo(() => {
-        const stagedTotal = stagedUpdate ? stagedUpdate.valor_total : 0;
-        const pendingTotal = pendingDiarias.reduce((sum, item) => sum + item.valor_total, 0);
-        return stagedTotal + pendingTotal;
-    }, [pendingDiarias, stagedUpdate]);
+        return pendingDiarias.reduce((sum, item) => sum + item.valor_total, 0);
+    }, [pendingDiarias]);
     
     // NOVO MEMO: Agrupa os registros por OM de Destino (organizacao/ug)
     const registrosAgrupadosPorOM = useMemo(() => {
@@ -327,14 +311,33 @@ const DiariaForm = () => {
             toast.success(`Sucesso! ${pendingDiarias.length} registro(s) de Diária adicionado(s).`);
             setPendingDiarias([]); // Limpa a lista pendente
             
-            // 1. Resetar o formulário (mantendo campos de contexto)
-            resetForm();
+            // 1. Resetar o formulário (mantendo OM, Fase, Dias, Viagens, Destino, Local, Aéreo E QUANTIDADES)
+            const keptData = {
+                organizacao: formData.organizacao,
+                ug: formData.ug,
+                fase_atividade: formData.fase_atividade,
+                destino: formData.destino,
+                nr_viagens: formData.nr_viagens,
+                dias_operacao: formData.dias_operacao,
+                local_atividade: formData.local_atividade,
+                is_aereo: formData.is_aereo,
+                quantidades_por_posto: formData.quantidades_por_posto, // MANTIDO
+            };
+            
+            setFormData(prev => ({
+                ...initialFormState,
+                ...keptData,
+            }));
             
             // 2. Colocar o último registro salvo em modo de edição para exibir a Seção 5
             if (newRecords && newRecords.length > 0) {
                 const lastSavedRecord = newRecords[0]; // O primeiro item é o mais recente devido à ordenação
+                // Chamamos handleEdit com o registro recém-salvo
                 handleEdit(lastSavedRecord as DiariaRegistro);
             }
+            
+            // 3. Scroll para a seção 3 (itens adicionados)
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         },
         onError: (err) => {
             toast.error(sanitizeError(err));
@@ -391,15 +394,15 @@ const DiariaForm = () => {
     const resetForm = () => {
         setEditingId(null);
         setFormData(initialFormState);
-        setEditingMemoriaId(null); 
+        setEditingMemoriaId(null); // Resetar estados de edição de memória
         setMemoriaEdit("");
         setSelectedOmId(undefined);
-        setStagedUpdate(null); // Clear staged update
+        setStagedUpdate(null); // Limpa o staging
     };
     
     const handleClearPending = () => {
         setPendingDiarias([]);
-        setStagedUpdate(null); // Clear staged update
+        setStagedUpdate(null);
         resetForm();
     };
 
@@ -459,8 +462,8 @@ const DiariaForm = () => {
             quantidade: totals.totalMilitares,
             valor_taxa_embarque: totals.totalTaxaEmbarque,
             valor_total: totals.totalGeral,
-            valor_nd_30: 0, 
-            valor_nd_15: totals.totalGeral, 
+            valor_nd_30: 0, // CORRIGIDO: ND 30 é zero
+            valor_nd_15: totals.totalGeral, // CORRIGIDO: ND 15 é o total geral
             
             quantidades_por_posto: newFormData.quantidades_por_posto,
             detalhamento: memoria,
@@ -498,12 +501,14 @@ const DiariaForm = () => {
             // 1. Validação Zod
             diariaSchema.parse(formData);
             
-            // 2. Preparar o objeto final (calculatedData)
+            // 2. REMOVIDO: Validação estrita de OM/UG contra a lista de OMs cadastradas.
+            // Apenas garantimos que os campos de OM/UG estejam preenchidos (já feito pelo Zod)
+            
+            // 3. Preparar o objeto final (calculatedData)
             const destinoLabel = DESTINO_OPTIONS.find(d => d.value === formData.destino)?.label || formData.destino;
             
             const calculatedData: CalculatedDiaria = {
-                // Use editingId if present, otherwise generate a new tempId
-                tempId: editingId || stagedUpdate?.tempId || Math.random().toString(36).substring(2, 9), 
+                tempId: editingId || Math.random().toString(36).substring(2, 9), // Usa editingId como tempId se estiver editando
                 p_trab_id: ptrabId!,
                 organizacao: formData.organizacao,
                 ug: formData.ug,
@@ -519,12 +524,12 @@ const DiariaForm = () => {
                 quantidade: calculos.totalMilitares,
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
-                valor_nd_30: 0, 
-                valor_nd_15: calculos.totalGeral, 
+                valor_nd_30: 0, // CORRIGIDO: ND 30 é zero
+                valor_nd_15: calculos.totalGeral, // CORRIGIDO: ND 15 é o total geral
                 
                 quantidades_por_posto: formData.quantidades_por_posto,
                 detalhamento: calculos.memoria,
-                detalhamento_customizado: stagedUpdate?.detalhamento_customizado || null, 
+                detalhamento_customizado: null, 
                 is_aereo: formData.is_aereo,
                 
                 posto_graduacao: null,
@@ -536,23 +541,41 @@ const DiariaForm = () => {
                 memoria_calculo_display: calculos.memoria, 
             };
             
-            // If editing, preserve the original custom memory
             if (editingId) {
+                // MODO EDIÇÃO: Estagia a atualização para revisão
+                // Preserve custom memory if it exists on the original record being edited
                 const originalRecord = registros?.find(r => r.id === editingId);
                 calculatedData.detalhamento_customizado = originalRecord?.detalhamento_customizado || null;
-            }
-            
-            // 3. Stage the calculated data
-            setStagedUpdate(calculatedData);
-            
-            // 4. Provide feedback
-            if (editingId) {
+                
+                setStagedUpdate(calculatedData);
                 toast.info("Cálculo atualizado. Revise e confirme a atualização na Seção 3.");
-            } else {
-                toast.info("Item calculado. Revise e adicione à lista pendente na Seção 3.");
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); // Scroll down to review area
+                return;
             }
             
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); 
+            // MODO ADIÇÃO: Adicionar à lista pendente
+            setPendingDiarias(prev => [...prev, calculatedData]);
+            
+            // 5. Resetar o formulário para o próximo item (mantendo OM, Fase, Dias, Viagens, Destino, Local, Aéreo E QUANTIDADES)
+            // Mantemos os campos de contexto (OM, UG, Fase, Destino, Dias, Viagens, Local, Aéreo, Quantidades)
+            const keptData = {
+                organizacao: formData.organizacao,
+                ug: formData.ug,
+                fase_atividade: formData.fase_atividade,
+                destino: formData.destino,
+                nr_viagens: formData.nr_viagens,
+                dias_operacao: formData.dias_operacao,
+                local_atividade: formData.local_atividade, // MANTIDO
+                is_aereo: formData.is_aereo, // MANTIDO
+                quantidades_por_posto: formData.quantidades_por_posto, // MANTIDO
+            };
+            
+            setFormData(prev => ({
+                ...initialFormState,
+                ...keptData,
+            }));
+            
+            toast.info("Item de Diária adicionado à lista pendente.");
             
         } catch (err) {
             if (err instanceof z.ZodError) {
@@ -566,31 +589,6 @@ const DiariaForm = () => {
     const handleConfirmDelete = (registro: DiariaRegistro) => {
         setRegistroToDelete(registro);
         setShowDeleteDialog(true);
-    };
-
-    // NOVO: Move o item estagiado para a lista pendente e reseta o formulário para o próximo item
-    const handleCommitStagedToPending = () => {
-        if (!stagedUpdate) return;
-        
-        setPendingDiarias(prev => [...prev, stagedUpdate]);
-        setStagedUpdate(null); // Clear staged item
-        
-        // Reset form values, keeping context fields
-        setFormData(prev => ({
-            ...initialFormState,
-            // Manter campos de contexto (OM, UG, Fase, Destino, Dias, Viagens, Local, Aéreo, Quantidades)
-            organizacao: prev.organizacao,
-            ug: prev.ug,
-            fase_atividade: prev.fase_atividade,
-            destino: prev.destino,
-            nr_viagens: prev.nr_viagens,
-            dias_operacao: prev.dias_operacao,
-            local_atividade: prev.local_atividade, 
-            is_aereo: prev.is_aereo, 
-            quantidades_por_posto: prev.quantidades_por_posto, 
-        }));
-        
-        toast.info("Item adicionado à lista pendente. Pronto para o próximo item ou para salvar.");
     };
 
     // Salva todos os itens pendentes no DB
@@ -622,16 +620,9 @@ const DiariaForm = () => {
     };
     
     // Remove item da lista pendente
-    const handleRemovePending = (itemToRemove: CalculatedDiaria) => {
-        if (itemToRemove.tempId === stagedUpdate?.tempId && !editingId) {
-            // Se for o item estagiado (novo), apenas limpa o estágio
-            setStagedUpdate(null);
-            resetForm();
-        } else {
-            // Se for um item na lista pendente
-            setPendingDiarias(prev => prev.filter(p => p.tempId !== itemToRemove.tempId));
-            toast.info("Item removido da lista pendente.");
-        }
+    const handleRemovePending = (tempId: string) => {
+        setPendingDiarias(prev => prev.filter(p => p.tempId !== tempId));
+        toast.info("Item removido da lista pendente.");
     };
     
     const handleOmChange = (omData: OMData | undefined) => {
@@ -689,6 +680,9 @@ const DiariaForm = () => {
     };
 
     const handleSalvarMemoriaCustomizada = async (registroId: string) => {
+        // NOTE: Não temos um estado 'loading' local no DiariaForm, mas podemos usar o isSaving do updateMutation se necessário.
+        // Para simplificar, vamos usar o isSaving do updateMutation para desabilitar botões.
+        
         try {
             const { error } = await supabase
                 .from("diaria_registros")
@@ -795,8 +789,8 @@ const DiariaForm = () => {
     const referenciaLegal = diretrizesOp?.diaria_referencia_legal || 'Decreto/Portaria não cadastrada';
     
     // Lógica para a Seção 3
-    const itemsToReview = itemsToDisplay.filter(item => item.tempId === stagedUpdate?.tempId);
-    const itemsInPendingList = itemsToDisplay.filter(item => item.tempId !== stagedUpdate?.tempId);
+    const itemsToDisplay = stagedUpdate ? [stagedUpdate] : pendingDiarias;
+    const isStagingUpdate = !!stagedUpdate;
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1039,6 +1033,7 @@ const DiariaForm = () => {
                                         
                                         {/* BOTÕES DE AÇÃO (Salvar Item da Categoria) */}
                                         <div className="flex justify-end gap-3 pt-4">
+                                            {/* Revertido para o padrão: mesmo texto e desabilitação baseada apenas na prontidão do cálculo */}
                                             <Button 
                                                 type="submit" 
                                                 disabled={!isPTrabEditable || isSaving || !isCalculationReady}
@@ -1058,12 +1053,11 @@ const DiariaForm = () => {
                             {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        3. Itens Adicionados ({itemsInPendingList.length})
-                                        {isStagingUpdate && <Badge variant="destructive">Revisão de Edição</Badge>}
+                                        3. Itens Adicionados ({itemsToDisplay.length})
                                     </h3>
                                     
-                                    {/* NOVO: Alerta de Validação Final (Apenas se houver item estagiado E estiver sujo) */}
-                                    {stagedUpdate && isDiariaDirty && (
+                                    {/* NOVO: Alerta de Validação Final (Apenas em modo de edição) */}
+                                    {editingId && isDiariaDirty && (
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertDescription className="font-medium">
@@ -1073,7 +1067,7 @@ const DiariaForm = () => {
                                     )}
                                     
                                     <div className="space-y-4">
-                                        {itemsToReview.map((item) => {
+                                        {itemsToDisplay.map((item) => {
                                             const taxaEmbarqueUnitarioDisplay = formatCurrency(taxaEmbarqueUnitario);
                                             
                                             // Funções utilitárias para singular/plural
@@ -1164,12 +1158,11 @@ const DiariaForm = () => {
                                                                 <p className="font-extrabold text-lg text-foreground text-right">
                                                                     {formatCurrency(item.valor_total)}
                                                                 </p>
-                                                                {/* Botão de remoção para itens novos estagiados */}
-                                                                {isStagingNew && (
+                                                                {!isStagingUpdate && (
                                                                     <Button 
                                                                         variant="ghost" 
                                                                         size="icon" 
-                                                                        onClick={() => handleRemovePending(item)}
+                                                                        onClick={() => handleRemovePending(item.tempId)}
                                                                         disabled={isSaving}
                                                                     >
                                                                         <Trash2 className="h-4 w-4 text-destructive" />
@@ -1185,8 +1178,8 @@ const DiariaForm = () => {
                                                             <div className="grid grid-cols-3 gap-4 text-xs">
                                                                 <p className="font-medium text-muted-foreground col-span-1">Taxa de Embarque:</p>
                                                                 <p className="font-medium text-muted-foreground text-right col-span-2">
-                                                                    {taxaEmbarqueCalculation
-                                                                }</p>
+                                                                    {taxaEmbarqueCalculation}
+                                                                </p>
                                                             </div>
                                                             
                                                             {/* Separador Tracejado */}
@@ -1220,29 +1213,6 @@ const DiariaForm = () => {
                                                 </Card>
                                             );
                                         })}
-                                        
-                                        {/* Itens já na lista pendente (se houver) */}
-                                        {itemsInPendingList.length > 0 && (
-                                            <div className="space-y-2 pt-4 border-t border-dashed">
-                                                <h4 className="text-sm font-semibold text-muted-foreground">Itens na Fila de Salvamento ({itemsInPendingList.length})</h4>
-                                                {itemsInPendingList.map(item => (
-                                                    <div key={item.tempId} className="flex justify-between items-center p-2 bg-background rounded-md border">
-                                                        <span className="text-sm">{item.organizacao} ({item.dias_operacao} dias)</span>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-medium text-sm">{formatCurrency(item.valor_total)}</span>
-                                                            <Button 
-                                                                variant="ghost" 
-                                                                size="icon" 
-                                                                onClick={() => handleRemovePending(item)}
-                                                                disabled={isSaving}
-                                                            >
-                                                                <X className="h-4 w-4 text-destructive" />
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
                                     </div>
                                     
                                     {/* VALOR TOTAL DA OM (PENDENTE / STAGING) */}
@@ -1252,7 +1222,7 @@ const DiariaForm = () => {
                                                 VALOR TOTAL DA OM
                                             </span>
                                             <span className="font-extrabold text-xl text-foreground">
-                                                {formatCurrency(totalPendingDiarias)}
+                                                {formatCurrency(isStagingUpdate ? stagedUpdate!.valor_total : totalPendingDiarias)}
                                             </span>
                                         </CardContent>
                                     </Card>
@@ -1274,22 +1244,6 @@ const DiariaForm = () => {
                                                     Atualizar Registro
                                                 </Button>
                                             </>
-                                        ) : isStagingNew ? (
-                                            <>
-                                                <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
-                                                    <XCircle className="mr-2 h-4 w-4" />
-                                                    Limpar Formulário
-                                                </Button>
-                                                <Button 
-                                                    type="button" 
-                                                    onClick={handleCommitStagedToPending}
-                                                    disabled={isSaving || isDiariaDirty}
-                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
-                                                >
-                                                    <Plus className="mr-2 h-4 w-4" />
-                                                    Adicionar à Lista Pendente
-                                                </Button>
-                                            </>
                                         ) : (
                                             <>
                                                 <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
@@ -1308,6 +1262,125 @@ const DiariaForm = () => {
                                             </>
                                         )}
                                     </div>
+                                </section>
+                            )}
+
+                            {/* SEÇÃO 4: REGISTROS SALVOS (Agrupados por OM) */}
+                            {registros && registros.length > 0 && (
+                                <section className="space-y-4 border-b pb-6">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        <Sparkles className="h-5 w-5 text-accent" />
+                                        Registros Salvos ({registros.length})
+                                    </h3>
+                                    
+                                    {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
+                                        const totalOM = omRegistros.reduce((sum, r) => r.valor_total + sum, 0);
+                                        const omName = omKey.split(' (')[0];
+                                        const ug = omKey.split(' (')[1].replace(')', '');
+                                        
+                                        return (
+                                            <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
+                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                        OM Destino: {omName} (UG: {formatCodug(ug)})
+                                                        {/* Badge de Destino movido para cá */}
+                                                        <Badge 
+                                                            variant="default" 
+                                                            className={cn("text-xs text-white", getDestinoColorClass(omRegistros[0].destino as DestinoDiaria))}
+                                                        >
+                                                            {DESTINO_OPTIONS.find(d => d.value === omRegistros[0].destino)?.label || omRegistros[0].destino}
+                                                        </Badge>
+                                                    </h3>
+                                                    <span className="font-extrabold text-xl text-primary">
+                                                        {formatCurrency(totalOM)}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="space-y-3">
+                                                    {omRegistros.map((registro) => {
+                                                        const totalGeral = registro.valor_total;
+                                                        // CORRIGIDO: totalDiariaBase é o valor_nd_30 (que agora é 0) e Taxa de Embarque é valor_nd_15
+                                                        // Mas para fins de exibição, vamos usar os campos salvos:
+                                                        const totalDiariaBase = totalGeral - (registro.valor_taxa_embarque || 0);
+                                                        const totalTaxaEmbarque = registro.valor_taxa_embarque || 0;
+                                                        
+                                                        const destinoLabel = DESTINO_OPTIONS.find(d => d.value === registro.destino)?.label || registro.destino;
+                                                        const destinoColorClass = getDestinoColorClass(registro.destino as DestinoDiaria);
+                                                        
+                                                        return (
+                                                            <Card 
+                                                                key={registro.id} 
+                                                                className={cn(
+                                                                    "p-3 bg-background border"
+                                                                    // Removido: editingId === registro.id && "border-2 border-primary/50 shadow-lg"
+                                                                )}
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <h4 className="font-semibold text-base text-foreground">
+                                                                                Diárias ({registro.local_atividade})
+                                                                            </h4>
+                                                                            {/* NOVO BADGE: Fase da Atividade */}
+                                                                            <Badge variant="outline" className="text-xs">
+                                                                                {registro.fase_atividade}
+                                                                            </Badge>
+                                                                        </div>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            Efetivo: {registro.quantidade} | Período: {registro.dias_operacao} {registro.dias_operacao === 1 ? 'dia' : 'dias'} | Viagens: {registro.nr_viagens}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-lg text-primary/80">
+                                                                            {formatCurrency(totalGeral)}
+                                                                        </span>
+                                                                        <div className="flex gap-1">
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8"
+                                                                                onClick={() => handleEdit(registro)}
+                                                                                disabled={!isPTrabEditable || isSaving || pendingDiarias.length > 0}
+                                                                            >
+                                                                                <Pencil className="h-4 w-4" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                onClick={() => handleConfirmDelete(registro)}
+                                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                {/* Detalhes da Alocação */}
+                                                                <div className="pt-2 border-t mt-2">
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">Diária Base:</span>
+                                                                        <span className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">Taxa Embarque:</span>
+                                                                        <span className="font-medium text-green-600">{formatCurrency(totalTaxaEmbarque)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs font-bold pt-1">
+                                                                        <span className="text-muted-foreground">Total (ND 15):</span>
+                                                                        <span className="text-foreground">{formatCurrency(registro.valor_nd_15 || 0)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </Card>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
                                 </section>
                             )}
 
