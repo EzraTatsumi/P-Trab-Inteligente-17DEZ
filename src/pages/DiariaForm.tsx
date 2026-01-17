@@ -470,11 +470,6 @@ const DiariaForm = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const handleConfirmDelete = (registro: DiariaRegistro) => {
-        setRegistroToDelete(registro);
-        setShowDeleteDialog(true);
-    };
-
     // Adiciona o item calculado à lista pendente OU prepara a atualização (staging)
     const handleStageCalculation = (e: React.FormEvent) => {
         e.preventDefault();
@@ -936,586 +931,585 @@ const DiariaForm = () => {
                                                         </div>
                                                     </div>
                                                 </div>
+                                            </CardContent>
+                                        </Card>
+                                        
+                                        {/* Tabela de Posto/Graduação e Quantidade (Estilizada como Card) - NÍVEL IV */}
+                                        <Card className="mt-4 rounded-lg">
+                                            <CardHeader className="py-2">
+                                                <CardTitle className="text-base font-semibold">Efetivo por Posto/Graduação</CardTitle>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Referência Legal: {referenciaLegal}.
+                                                </p>
+                                            </CardHeader>
+                                            <CardContent className="p-3 pt-1">
+                                                <div className="rounded-lg border overflow-hidden">
+                                                    <Table>
+                                                        <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                                                            <TableRow className="bg-muted hover:bg-muted">
+                                                                <TableHead className="w-[30%]">Posto/Graduação</TableHead>
+                                                                <TableHead className="w-[15%] text-center">Valor Unitário</TableHead>
+                                                                <TableHead className="w-[20%] text-center">Taxa de Embarque</TableHead>
+                                                                <TableHead className="w-[15%] text-center">Efetivo</TableHead>
+                                                                <TableHead className="w-[20%] text-right">Custo Diária (R$)</TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {DIARIA_RANKS_CONFIG.map((rank) => {
+                                                                const qty = formData.quantidades_por_posto[rank.key] || 0;
+                                                                const unitValue = getUnitValueDisplay(rank.key, formData.destino);
+                                                                const calculatedCost = calculos.calculosPorPosto.find(c => c.posto === rank.label)?.custoTotal || 0;
+                                                                
+                                                                // Valor da Taxa de Embarque para esta linha
+                                                                const taxaEmbarqueDisplay = formData.is_aereo 
+                                                                    ? formatCurrency(taxaEmbarqueUnitario) 
+                                                                    : formatCurrency(0);
+                                                                
+                                                                return (
+                                                                    <TableRow key={rank.key}>
+                                                                        <TableCell className="font-medium">{rank.label}</TableCell>
+                                                                        <TableCell className="text-center text-sm text-muted-foreground">{unitValue}</TableCell>
+                                                                        <TableCell className="text-center text-sm text-muted-foreground">
+                                                                            {taxaEmbarqueDisplay}
+                                                                        </TableCell>
+                                                                        <TableCell className="text-center">
+                                                                            <Input
+                                                                                type="number"
+                                                                                min={0}
+                                                                                value={qty === 0 ? "" : qty}
+                                                                                onChange={(e) => handleRankQuantityChange(rank.key, e.target.value)}
+                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                                className="text-center max-w-[80px] mx-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                onKeyDown={handleEnterToNextField}
+                                                                                onWheel={(e) => e.currentTarget.blur()}
+                                                                            />
+                                                                        </TableCell>
+                                                                        <TableCell className="text-right font-semibold">
+                                                                            {formatCurrency(calculatedCost)}
+                                                                        </TableCell>
+                                                                    </TableRow>
+                                                                );
+                                                            })}
+                                                        </TableBody>
+                                                    </Table>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                        
+                                        {/* NOVO BLOCO DE RESUMO DE TOTAIS (NÍVEL IV) */}
+                                        <div className="space-y-2 mt-4">
+                                            <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
+                                                <span className="font-bold text-base">TOTAL GERAL</span>
+                                                <span className="font-extrabold text-xl text-primary">
+                                                    {formatCurrency(calculos.totalGeral)}
+                                                </span>
                                             </div>
-                                        </CardContent>
-                                    </Card>
-                                    
-                                    {/* Tabela de Posto/Graduação e Quantidade (Estilizada como Card) - NÍVEL IV */}
-                                    <Card className="mt-4 rounded-lg">
-                                        <CardHeader className="py-2">
-                                            <CardTitle className="text-base font-semibold">Efetivo por Posto/Graduação</CardTitle>
-                                            <p className="text-xs text-muted-foreground">
-                                                Referência Legal: {referenciaLegal}.
-                                            </p>
-                                        </CardHeader>
-                                        <CardContent className="p-3 pt-1">
-                                            <div className="rounded-lg border overflow-hidden">
-                                                <Table>
-                                                    <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
-                                                        <TableRow className="bg-muted hover:bg-muted">
-                                                            <TableHead className="w-[30%]">Posto/Graduação</TableHead>
-                                                            <TableHead className="w-[15%] text-center">Valor Unitário</TableHead>
-                                                            <TableHead className="w-[20%] text-center">Taxa de Embarque</TableHead>
-                                                            <TableHead className="w-[15%] text-center">Efetivo</TableHead>
-                                                            <TableHead className="w-[20%] text-right">Custo Diária (R$)</TableHead>
-                                                        </TableRow>
-                                                    </TableHeader>
-                                                    <TableBody>
-                                                        {DIARIA_RANKS_CONFIG.map((rank) => {
-                                                            const qty = formData.quantidades_por_posto[rank.key] || 0;
-                                                            const unitValue = getUnitValueDisplay(rank.key, formData.destino);
-                                                            const calculatedCost = calculos.calculosPorPosto.find(c => c.posto === rank.label)?.custoTotal || 0;
-                                                            
-                                                            // Valor da Taxa de Embarque para esta linha
-                                                            const taxaEmbarqueDisplay = formData.is_aereo 
-                                                                ? formatCurrency(taxaEmbarqueUnitario) 
-                                                                : formatCurrency(0);
-                                                            
-                                                            return (
-                                                                <TableRow key={rank.key}>
-                                                                    <TableCell className="font-medium">{rank.label}</TableCell>
-                                                                    <TableCell className="text-center text-sm text-muted-foreground">{unitValue}</TableCell>
-                                                                    <TableCell className="text-center text-sm text-muted-foreground">
-                                                                        {taxaEmbarqueDisplay}
-                                                                    </TableCell>
-                                                                    <TableCell className="text-center">
-                                                                        <Input
-                                                                            type="number"
-                                                                            min={0}
-                                                                            value={qty === 0 ? "" : qty}
-                                                                            onChange={(e) => handleRankQuantityChange(rank.key, e.target.value)}
-                                                                            disabled={!isPTrabEditable || isSaving}
-                                                                            className="text-center max-w-[80px] mx-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                            onKeyDown={handleEnterToNextField}
-                                                                            onWheel={(e) => e.currentTarget.blur()}
-                                                                        />
-                                                                    </TableCell>
-                                                                    <TableCell className="text-right font-semibold">
-                                                                        {formatCurrency(calculatedCost)}
-                                                                    </TableCell>
-                                                                </TableRow>
-                                                            );
-                                                        })}
-                                                    </TableBody>
-                                                </Table>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                    
-                                    {/* NOVO BLOCO DE RESUMO DE TOTAIS (NÍVEL IV) */}
-                                    <div className="space-y-2 mt-4">
-                                        <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
-                                            <span className="font-bold text-base">TOTAL GERAL</span>
-                                            <span className="font-extrabold text-xl text-primary">
-                                                {formatCurrency(calculos.totalGeral)}
-                                            </span>
                                         </div>
-                                    </div>
-                                    
-                                    {/* BOTÕES DE AÇÃO (Salvar Item da Categoria) */}
-                                    <div className="flex justify-end gap-3 pt-4">
-                                        {/* Revertido para o padrão: mesmo texto e desabilitação baseada apenas na prontidão do cálculo */}
-                                        <Button 
-                                            type="submit" 
-                                            disabled={!isPTrabEditable || isSaving || !isCalculationReady}
-                                            className="w-full md:w-auto bg-primary hover:bg-primary/90"
-                                        >
-                                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                            Salvar Item na Lista
-                                        </Button>
-                                    </div>
-                                    
-                                </Card> {/* FIM NÍVEL III */}
-                                
-                            </section>
-                        )}
-                        
-                        {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
-                        {itemsToDisplay.length > 0 && (
-                            <section className="space-y-4 border-b pb-6">
-                                <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    3. Itens Adicionados ({itemsToDisplay.length})
-                                </h3>
-                                
-                                {/* NOVO: Alerta de Validação Final (Apenas em modo de edição) */}
-                                {editingId && isDiariaDirty && (
-                                    <Alert variant="destructive">
-                                        <AlertCircle className="h-4 w-4" />
-                                        <AlertDescription className="font-medium">
-                                            Atenção: Os dados do formulário (Seção 2) foram alterados e não correspondem ao registro em revisão. Clique em "Salvar Item na Lista" na Seção 2 para atualizar o cálculo.
-                                        </AlertDescription>
-                                    </Alert>
-                                )}
-                                
-                                <div className="space-y-4">
-                                    {itemsToDisplay.map((item) => {
-                                        const taxaEmbarqueUnitarioDisplay = formatCurrency(taxaEmbarqueUnitario);
                                         
-                                        // Funções utilitárias para singular/plural
-                                        const pluralize = (count: number, singular: string, plural: string) => 
-                                            count === 1 ? singular : plural;
-
-                                        const militarText = pluralize(item.totalMilitares, 'militar', 'militares');
-                                        const viagemText = pluralize(item.nr_viagens, 'viagem', 'viagens');
-                                        
-                                        // --- Detailed Diária Calculation Generation ---
-                                        const rankCalculationElements = DIARIA_RANKS_CONFIG.map(rank => {
-                                            const qty = item.quantidades_por_posto[rank.key] || 0;
-                                            if (qty === 0) return null;
-
-                                            // Get raw unit value
-                                            const unitValueRaw = (() => {
-                                                if (!diretrizesOp) return 0;
-                                                let fieldSuffix: 'bsb' | 'capitais' | 'demais';
-                                                
-                                                switch (item.destino) {
-                                                    case 'bsb_capitais_especiais':
-                                                        fieldSuffix = 'bsb';
-                                                        break;
-                                                    case 'demais_capitais':
-                                                        fieldSuffix = 'capitais';
-                                                        break;
-                                                    case 'demais_dslc':
-                                                        fieldSuffix = 'demais';
-                                                        break;
-                                                    default:
-                                                        return 0;
-                                                }
-                                                const fieldKey = `${rank.fieldPrefix}_${fieldSuffix}` as keyof DiretrizOperacional;
-                                                return Number(diretrizesOp[fieldKey] || 0);
-                                            })();
-                                            
-                                            const diasPagamento = Math.max(0, item.dias_operacao - 0.5);
-                                            const subtotal = qty * unitValueRaw * diasPagamento * item.nr_viagens;
-                                            
-                                            const unitValueFormatted = formatCurrency(unitValueRaw);
-                                            const subtotalFormatted = formatCurrency(subtotal);
-                                            
-                                            // Lógica de pluralização de dias (0.5 = dia, 1 = dia, >1 = dias)
-                                            const diasText = Math.abs(diasPagamento - 0.5) < 0.001 || diasPagamento === 1 ? 'dia' : 'dias';
-                                            
-                                            const calculationString = `${qty} ${rank.label} x ${unitValueFormatted}/dia x ${formatNumber(diasPagamento, 1)} ${diasText} x ${item.nr_viagens} ${viagemText} = ${subtotalFormatted}`;
-                                            
-                                            return (
-                                                <p key={rank.key} className="font-medium text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis text-right">
-                                                    {calculationString}
-                                                </p>
-                                            );
-                                        }).filter(Boolean);
-
-                                        if (rankCalculationElements.length === 0) {
-                                            rankCalculationElements.push(
-                                                <p key="fallback" className="font-medium text-muted-foreground text-right">
-                                                    Nenhum militar adicionado.
-                                                </p>
-                                            );
-                                        }
-                                        
-                                        const totalTaxaEmbarque = item.valor_taxa_embarque;
-                                        const taxaEmbarqueCalculation = item.is_aereo 
-                                            ? `${item.totalMilitares} ${militarText} x ${taxaEmbarqueUnitarioDisplay} x ${item.nr_viagens} ${viagemText} = ${formatCurrency(totalTaxaEmbarque)}`
-                                            : 'Não Aéreo';
-
-                                        const totalDiariaBase = item.valor_total - item.valor_taxa_embarque;
-                                        
-                                        const isCurrentlyStaged = editingId && item.tempId === editingId;
-
-                                        return (
-                                            <Card 
-                                                key={item.tempId} 
-                                                className={cn(
-                                                    "border-2 shadow-md",
-                                                    // Mantendo o padrão de item pendente
-                                                    "border-secondary bg-secondary/10"
-                                                )}
-                                            >
-                                                <CardContent className="p-4">
-                                                    
-                                                    <div className={cn("flex justify-between items-center pb-2 mb-2", "border-b border-secondary/30")}>
-                                                        <h4 className="font-bold text-base text-foreground">
-                                                            Diárias ({item.local_atividade})
-                                                        </h4>
-                                                        <div className="flex items-center gap-2">
-                                                            <p className="font-extrabold text-lg text-foreground text-right">
-                                                                {formatCurrency(item.valor_total)}
-                                                            </p>
-                                                            {!isStagingUpdate && (
-                                                                <Button 
-                                                                    variant="ghost" 
-                                                                    size="icon" 
-                                                                    onClick={() => handleRemovePending(item.tempId)}
-                                                                    disabled={isSaving}
-                                                                >
-                                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    {/* Detalhes do Cálculo */}
-                                                    <div className="space-y-2 pt-1">
-                                                        
-                                                        {/* Taxa de Embarque Row */}
-                                                        <div className="grid grid-cols-3 gap-4 text-xs">
-                                                            <p className="font-medium text-muted-foreground col-span-1">Taxa de Embarque:</p>
-                                                            <p className="font-medium text-muted-foreground text-right col-span-2">
-                                                                {taxaEmbarqueCalculation}
-                                                            </p>
-                                                        </div>
-                                                        
-                                                        {/* Separador Tracejado */}
-                                                        <div className="w-full border-t border-dashed border-secondary/50 my-2" />
-
-                                                        {/* Diárias Section (Multi-line breakdown) */}
-                                                        <div className="grid grid-cols-3 gap-4 text-xs">
-                                                            <p className="font-medium text-muted-foreground col-span-1">Diárias Base:</p>
-                                                            <div className="space-y-1 w-full col-span-2">
-                                                                {rankCalculationElements}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    {/* SEPARADOR MOVIDO PARA CÁ */}
-                                                    <div className="w-full h-[1px] bg-secondary/30 my-3" />
-
-                                                    <div className="grid grid-cols-2 gap-4 text-xs pt-1">
-                                                        <div className="space-y-1">
-                                                            <p className="font-medium">OM Destino Recurso:</p>
-                                                            <p className="font-medium">Taxa de Embarque (ND 15):</p>
-                                                            <p className="font-medium">Diárias (ND 15):</p>
-                                                        </div>
-                                                        <div className="text-right space-y-1">
-                                                            <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
-                                                            <p className="font-medium text-green-600">{formatCurrency(totalTaxaEmbarque)}</p>
-                                                            <p className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</p>
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        );
-                                    })}
-                                </div>
-                                
-                                {/* VALOR TOTAL DA OM (PENDENTE / STAGING) */}
-                                <Card className="bg-gray-100 shadow-inner">
-                                    <CardContent className="p-4 flex justify-between items-center">
-                                        <span className="font-bold text-base uppercase">
-                                            VALOR TOTAL DA OM
-                                        </span>
-                                        <span className="font-extrabold text-xl text-foreground">
-                                            {formatCurrency(isStagingUpdate ? stagedUpdate!.valor_total : totalPendingDiarias)}
-                                        </span>
-                                    </CardContent>
-                                </Card>
-                                
-                                <div className="flex justify-end gap-3 pt-4">
-                                    {isStagingUpdate ? (
-                                        <>
-                                            <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
-                                                <XCircle className="mr-2 h-4 w-4" />
-                                                Limpar Formulário
-                                            </Button>
+                                        {/* BOTÕES DE AÇÃO (Salvar Item da Categoria) */}
+                                        <div className="flex justify-end gap-3 pt-4">
+                                            {/* Revertido para o padrão: mesmo texto e desabilitação baseada apenas na prontidão do cálculo */}
                                             <Button 
-                                                type="button" 
-                                                onClick={handleCommitStagedUpdate}
-                                                disabled={isSaving || isDiariaDirty} // Disable if dirty, force recalculation in Section 2
-                                                className="w-full md:w-auto bg-primary hover:bg-primary/90"
-                                            >
-                                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                                                Atualizar Registro
-                                            </Button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
-                                                <XCircle className="mr-2 h-4 w-4" />
-                                                Limpar Lista
-                                            </Button>
-                                            <Button 
-                                                type="button" 
-                                                onClick={handleSavePendingDiarias}
-                                                disabled={isSaving || pendingDiarias.length === 0}
+                                                type="submit" 
+                                                disabled={!isPTrabEditable || isSaving || !isCalculationReady}
                                                 className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                             >
                                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                Salvar Registros
+                                                Salvar Item na Lista
                                             </Button>
-                                        </>
-                                    )}
-                                </div>
-                            </section>
-                        )}
-
-                        {/* SEÇÃO 4: REGISTROS SALVOS (Agrupados por OM) */}
-                        {registros && registros.length > 0 && (
-                            <section className="space-y-4 border-b pb-6">
-                                <h3 className="text-xl font-bold flex items-center gap-2">
-                                    <Sparkles className="h-5 w-5 text-accent" />
-                                    Registros Salvos ({registros.length})
-                                </h3>
-                                
-                                {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
-                                    const totalOM = omRegistros.reduce((sum, r) => r.valor_total + sum, 0);
-                                    const omName = omKey.split(' (')[0];
-                                    const ug = omKey.split(' (')[1].replace(')', '');
+                                        </div>
+                                        
+                                    </Card> {/* FIM NÍVEL III */}
                                     
-                                    return (
-                                        <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
-                                            <div className="flex items-center justify-between mb-3 border-b pb-2">
-                                                <h3 className="font-bold text-lg text-primary flex items-center gap-2">
-                                                    OM Destino: {omName} (UG: {formatCodug(ug)})
-                                                    {/* Badge de Destino movido para cá */}
-                                                    <Badge 
-                                                        variant="default" 
-                                                        className={cn("text-xs text-white", getDestinoColorClass(omRegistros[0].destino as DestinoDiaria))}
-                                                    >
-                                                        {DESTINO_OPTIONS.find(d => d.value === omRegistros[0].destino)?.label || omRegistros[0].destino}
-                                                    </Badge>
-                                                </h3>
-                                                <span className="font-extrabold text-xl text-primary">
-                                                    {formatCurrency(totalOM)}
-                                                </span>
-                                            </div>
+                                </section>
+                            )}
+                            
+                            {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
+                            {itemsToDisplay.length > 0 && (
+                                <section className="space-y-4 border-b pb-6">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                                        3. Itens Adicionados ({itemsToDisplay.length})
+                                    </h3>
+                                    
+                                    {/* NOVO: Alerta de Validação Final (Apenas em modo de edição) */}
+                                    {editingId && isDiariaDirty && (
+                                        <Alert variant="destructive">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertDescription className="font-medium">
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados e não correspondem ao registro em revisão. Clique em "Salvar Item na Lista" na Seção 2 para atualizar o cálculo.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                    
+                                    <div className="space-y-4">
+                                        {itemsToDisplay.map((item) => {
+                                            const taxaEmbarqueUnitarioDisplay = formatCurrency(taxaEmbarqueUnitario);
                                             
-                                            <div className="space-y-3">
-                                                {omRegistros.map((registro) => {
-                                                    const totalGeral = registro.valor_total;
-                                                    // CORRIGIDO: totalDiariaBase é o valor_nd_30 (que agora é 0) e Taxa de Embarque é valor_nd_15
-                                                    // Mas para fins de exibição, vamos usar os campos salvos:
-                                                    const totalDiariaBase = totalGeral - (registro.valor_taxa_embarque || 0);
-                                                    const totalTaxaEmbarque = registro.valor_taxa_embarque || 0;
+                                            // Funções utilitárias para singular/plural
+                                            const pluralize = (count: number, singular: string, plural: string) => 
+                                                count === 1 ? singular : plural;
+
+                                            const militarText = pluralize(item.totalMilitares, 'militar', 'militares');
+                                            const viagemText = pluralize(item.nr_viagens, 'viagem', 'viagens');
+                                            
+                                            // --- Detailed Diária Calculation Generation ---
+                                            const rankCalculationElements = DIARIA_RANKS_CONFIG.map(rank => {
+                                                const qty = item.quantidades_por_posto[rank.key] || 0;
+                                                if (qty === 0) return null;
+
+                                                // Get raw unit value
+                                                const unitValueRaw = (() => {
+                                                    if (!diretrizesOp) return 0;
+                                                    let fieldSuffix: 'bsb' | 'capitais' | 'demais';
                                                     
-                                                    const destinoLabel = DESTINO_OPTIONS.find(d => d.value === registro.destino)?.label || registro.destino;
-                                                    const destinoColorClass = getDestinoColorClass(registro.destino as DestinoDiaria);
-                                                    
-                                                    return (
-                                                        <Card 
-                                                            key={registro.id} 
-                                                            className={cn(
-                                                                "p-3 bg-background border"
-                                                                // Removido: editingId === registro.id && "border-2 border-primary/50 shadow-lg"
-                                                            )}
-                                                        >
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex flex-col">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <h4 className="font-semibold text-base text-foreground">
-                                                                            Diárias ({registro.local_atividade})
-                                                                        </h4>
-                                                                        {/* NOVO BADGE: Fase da Atividade */}
-                                                                        <Badge variant="outline" className="text-xs">
-                                                                            {registro.fase_atividade}
-                                                                        </Badge>
-                                                                    </div>
-                                                                    <p className="text-xs text-muted-foreground">
-                                                                        Efetivo: {registro.quantidade} | Período: {registro.dias_operacao} {registro.dias_operacao === 1 ? 'dia' : 'dias'} | Viagens: {registro.nr_viagens}
-                                                                    </p>
-                                                                </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="font-bold text-lg text-primary/80">
-                                                                        {formatCurrency(totalGeral)}
-                                                                    </span>
-                                                                    <div className="flex gap-1">
-                                                                        <Button
-                                                                            type="button" 
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-8 w-8"
-                                                                            onClick={() => handleEdit(registro)}
-                                                                            disabled={!isPTrabEditable || isSaving || pendingDiarias.length > 0}
-                                                                        >
-                                                                            <Pencil className="h-4 w-4" />
-                                                                        </Button>
-                                                                        <Button
-                                                                            type="button" 
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            onClick={() => handleConfirmDelete(registro)}
-                                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                                            disabled={!isPTrabEditable || isSaving}
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </div>
-                                                                </div>
+                                                    switch (item.destino) {
+                                                        case 'bsb_capitais_especiais':
+                                                            fieldSuffix = 'bsb';
+                                                            break;
+                                                        case 'demais_capitais':
+                                                            fieldSuffix = 'capitais';
+                                                            break;
+                                                        case 'demais_dslc':
+                                                            fieldSuffix = 'demais';
+                                                            break;
+                                                        default:
+                                                            return 0;
+                                                    }
+                                                    const fieldKey = `${rank.fieldPrefix}_${fieldSuffix}` as keyof DiretrizOperacional;
+                                                    return Number(diretrizesOp[fieldKey] || 0);
+                                                })();
+                                                
+                                                const diasPagamento = Math.max(0, item.dias_operacao - 0.5);
+                                                const subtotal = qty * unitValueRaw * diasPagamento * item.nr_viagens;
+                                                
+                                                const unitValueFormatted = formatCurrency(unitValueRaw);
+                                                const subtotalFormatted = formatCurrency(subtotal);
+                                                
+                                                // Lógica de pluralização de dias (0.5 = dia, 1 = dia, >1 = dias)
+                                                const diasText = Math.abs(diasPagamento - 0.5) < 0.001 || diasPagamento === 1 ? 'dia' : 'dias';
+                                                
+                                                const calculationString = `${qty} ${rank.label} x ${unitValueFormatted}/dia x ${formatNumber(diasPagamento, 1)} ${diasText} x ${item.nr_viagens} ${viagemText} = ${subtotalFormatted}`;
+                                                
+                                                return (
+                                                    <p key={rank.key} className="font-medium text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis text-right">
+                                                        {calculationString}
+                                                    </p>
+                                                );
+                                            }).filter(Boolean);
+
+                                            if (rankCalculationElements.length === 0) {
+                                                rankCalculationElements.push(
+                                                    <p key="fallback" className="font-medium text-muted-foreground text-right">
+                                                        Nenhum militar adicionado.
+                                                    </p>
+                                                );
+                                            }
+                                            
+                                            const totalTaxaEmbarque = item.valor_taxa_embarque;
+                                            const taxaEmbarqueCalculation = item.is_aereo 
+                                                ? `${item.totalMilitares} ${militarText} x ${taxaEmbarqueUnitarioDisplay} x ${item.nr_viagens} ${viagemText} = ${formatCurrency(totalTaxaEmbarque)}`
+                                                : 'Não Aéreo';
+
+                                            const totalDiariaBase = item.valor_total - item.valor_taxa_embarque;
+                                            
+                                            const isCurrentlyStaged = editingId && item.tempId === editingId;
+
+                                            return (
+                                                <Card 
+                                                    key={item.tempId} 
+                                                    className={cn(
+                                                        "border-2 shadow-md",
+                                                        // Mantendo o padrão de item pendente
+                                                        "border-secondary bg-secondary/10"
+                                                    )}
+                                                >
+                                                    <CardContent className="p-4">
+                                                        
+                                                        <div className={cn("flex justify-between items-center pb-2 mb-2", "border-b border-secondary/30")}>
+                                                            <h4 className="font-bold text-base text-foreground">
+                                                                Diárias ({item.local_atividade})
+                                                            </h4>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="font-extrabold text-lg text-foreground text-right">
+                                                                    {formatCurrency(item.valor_total)}
+                                                                </p>
+                                                                {!isStagingUpdate && (
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="icon" 
+                                                                        onClick={() => handleRemovePending(item.tempId)}
+                                                                        disabled={isSaving}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Detalhes do Cálculo */}
+                                                        <div className="space-y-2 pt-1">
+                                                            
+                                                            {/* Taxa de Embarque Row */}
+                                                            <div className="grid grid-cols-3 gap-4 text-xs">
+                                                                <p className="font-medium text-muted-foreground col-span-1">Taxa de Embarque:</p>
+                                                                <p className="font-medium text-muted-foreground text-right col-span-2">
+                                                                    {taxaEmbarqueCalculation}
+                                                                </p>
                                                             </div>
                                                             
-                                                            {/* Detalhes da Alocação */}
-                                                            <div className="pt-2 border-t mt-2">
-                                                                <div className="flex justify-between text-xs">
-                                                                    <span className="text-muted-foreground">Diária Base:</span>
-                                                                    <span className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</span>
-                                                                </div>
-                                                                <div className="flex justify-between text-xs">
-                                                                    <span className="text-muted-foreground">Taxa Embarque:</span>
-                                                                    <span className="font-medium text-green-600">{formatCurrency(totalTaxaEmbarque)}</span>
-                                                                </div>
-                                                                <div className="flex justify-between text-xs font-bold pt-1">
-                                                                    <span className="text-muted-foreground">Total (ND 15):</span>
-                                                                    <span className="text-foreground">{formatCurrency(registro.valor_nd_15 || 0)}</span>
+                                                            {/* Separador Tracejado */}
+                                                            <div className="w-full border-t border-dashed border-secondary/50 my-2" />
+
+                                                            {/* Diárias Section (Multi-line breakdown) */}
+                                                            <div className="grid grid-cols-3 gap-4 text-xs">
+                                                                <p className="font-medium text-muted-foreground col-span-1">Diárias Base:</p>
+                                                                <div className="space-y-1 w-full col-span-2">
+                                                                    {rankCalculationElements}
                                                                 </div>
                                                             </div>
-                                                        </Card>
-                                                    );
-                                                })}
-                                            </div>
-                                        </Card>
-                                    );
-                                })}
-                            </section>
-                        )}
+                                                        </div>
+                                                        
+                                                        {/* SEPARADOR MOVIDO PARA CÁ */}
+                                                        <div className="w-full h-[1px] bg-secondary/30 my-3" />
 
-                        {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS (COPIADA DO CLASSE II) */}
-                        {registros && registros.length > 0 && (
-                            <div className="space-y-4 mt-8">
-                                <h3 className="text-xl font-bold flex items-center gap-2">
-                                    📋 Memórias de Cálculos Detalhadas
-                                </h3>
-                                
-                                {registros.map(registro => {
-                                    const isEditing = editingMemoriaId === registro.id;
-                                    const hasCustomMemoria = !!registro.detalhamento_customizado;
+                                                        <div className="grid grid-cols-2 gap-4 text-xs pt-1">
+                                                            <div className="space-y-1">
+                                                                <p className="font-medium">OM Destino Recurso:</p>
+                                                                <p className="font-medium">Taxa de Embarque (ND 15):</p>
+                                                                <p className="font-medium">Diárias (ND 15):</p>
+                                                            </div>
+                                                            <div className="text-right space-y-1">
+                                                                <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
+                                                                <p className="font-medium text-green-600">{formatCurrency(totalTaxaEmbarque)}</p>
+                                                                <p className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</p>
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
+                                    </div>
                                     
-                                    // Gera a memória automática para exibição/edição
-                                    const totals = calculateDiariaTotals(registro as any, diretrizesOp || {});
-                                    const memoriaAutomatica = generateDiariaMemoriaCalculo(registro as any, diretrizesOp || {}, totals);
+                                    {/* VALOR TOTAL DA OM (PENDENTE / STAGING) */}
+                                    <Card className="bg-gray-100 shadow-inner">
+                                        <CardContent className="p-4 flex justify-between items-center">
+                                            <span className="font-bold text-base uppercase">
+                                                VALOR TOTAL DA OM
+                                            </span>
+                                            <span className="font-extrabold text-xl text-foreground">
+                                                {formatCurrency(isStagingUpdate ? stagedUpdate!.valor_total : totalPendingDiarias)}
+                                            </span>
+                                        </CardContent>
+                                    </Card>
                                     
-                                    const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
-                                    
-                                    const destinoLabel = DESTINO_OPTIONS.find(d => d.value === registro.destino)?.label || registro.destino;
-                                    const destinoColorClass = getDestinoColorClass(registro.destino as DestinoDiaria);
+                                    <div className="flex justify-end gap-3 pt-4">
+                                        {isStagingUpdate ? (
+                                            <>
+                                                <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
+                                                    <XCircle className="mr-2 h-4 w-4" />
+                                                    Limpar Formulário
+                                                </Button>
+                                                <Button 
+                                                    type="button" 
+                                                    onClick={handleCommitStagedUpdate}
+                                                    disabled={isSaving || isDiariaDirty} // Disable if dirty, force recalculation in Section 2
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
+                                                >
+                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                                    Atualizar Registro
+                                                </Button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
+                                                    <XCircle className="mr-2 h-4 w-4" />
+                                                    Limpar Lista
+                                                </Button>
+                                                <Button 
+                                                    type="button" 
+                                                    onClick={handleSavePendingDiarias}
+                                                    disabled={isSaving || pendingDiarias.length === 0}
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
+                                                >
+                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                                    Salvar Registros
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
+                                </section>
+                            )}
 
-                                    return (
-                                        <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
-                                            
-                                            {/* Container para H4 e Botões */}
-                                            <div className="flex items-start justify-between gap-4 mb-2">
-                                                <div className="flex flex-col flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2">
-                                                        <h4 className="text-base font-semibold text-foreground">
-                                                            OM Destino: {registro.organizacao} (UG: {formatCodug(registro.ug)})
-                                                        </h4>
-                                                        <Badge variant="default" className={cn("w-fit text-white", destinoColorClass)}>
-                                                            {destinoLabel}
+                            {/* SEÇÃO 4: REGISTROS SALVOS (Agrupados por OM) */}
+                            {registros && registros.length > 0 && (
+                                <section className="space-y-4 border-b pb-6">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        <Sparkles className="h-5 w-5 text-accent" />
+                                        Registros Salvos ({registros.length})
+                                    </h3>
+                                    
+                                    {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
+                                        const totalOM = omRegistros.reduce((sum, r) => r.valor_total + sum, 0);
+                                        const omName = omKey.split(' (')[0];
+                                        const ug = omKey.split(' (')[1].replace(')', '');
+                                        
+                                        return (
+                                            <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
+                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                        OM Destino: {omName} (UG: {formatCodug(ug)})
+                                                        {/* Badge de Destino movido para cá */}
+                                                        <Badge 
+                                                            variant="default" 
+                                                            className={cn("text-xs text-white", getDestinoColorClass(omRegistros[0].destino as DestinoDiaria))}
+                                                        >
+                                                            {DESTINO_OPTIONS.find(d => d.value === omRegistros[0].destino)?.label || omRegistros[0].destino}
                                                         </Badge>
-                                                        {/* BADGE DE MEMÓRIA CUSTOMIZADA */}
-                                                        {hasCustomMemoria && !isEditing && (
-                                                            <Badge variant="outline" className="text-xs">
-                                                                Editada manualmente
+                                                    </h3>
+                                                    <span className="font-extrabold text-xl text-primary">
+                                                        {formatCurrency(totalOM)}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="space-y-3">
+                                                    {omRegistros.map((registro) => {
+                                                        const totalGeral = registro.valor_total;
+                                                        // CORRIGIDO: totalDiariaBase é o valor_nd_30 (que agora é 0) e Taxa de Embarque é valor_nd_15
+                                                        // Mas para fins de exibição, vamos usar os campos salvos:
+                                                        const totalDiariaBase = totalGeral - (registro.valor_taxa_embarque || 0);
+                                                        const totalTaxaEmbarque = registro.valor_taxa_embarque || 0;
+                                                        
+                                                        const destinoLabel = DESTINO_OPTIONS.find(d => d.value === registro.destino)?.label || registro.destino;
+                                                        const destinoColorClass = getDestinoColorClass(registro.destino as DestinoDiaria);
+                                                        
+                                                        return (
+                                                            <Card 
+                                                                key={registro.id} 
+                                                                className={cn(
+                                                                    "p-3 bg-background border"
+                                                                    // Removido: editingId === registro.id && "border-2 border-primary/50 shadow-lg"
+                                                                )}
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <h4 className="font-semibold text-base text-foreground">
+                                                                                Diárias ({registro.local_atividade})
+                                                                            </h4>
+                                                                            {/* NOVO BADGE: Fase da Atividade */}
+                                                                            <Badge variant="outline" className="text-xs">
+                                                                                {registro.fase_atividade}
+                                                                            </Badge>
+                                                                        </div>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            Efetivo: {registro.quantidade} | Período: {registro.dias_operacao} {registro.dias_operacao === 1 ? 'dia' : 'dias'} | Viagens: {registro.nr_viagens}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-lg text-primary/80">
+                                                                            {formatCurrency(totalGeral)}
+                                                                        </span>
+                                                                        <div className="flex gap-1">
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8"
+                                                                                onClick={() => handleEdit(registro)}
+                                                                                disabled={!isPTrabEditable || isSaving || pendingDiarias.length > 0}
+                                                                            >
+                                                                                <Pencil className="h-4 w-4" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                onClick={() => handleConfirmDelete(registro)}
+                                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                {/* Detalhes da Alocação */}
+                                                                <div className="pt-2 border-t mt-2">
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">Diária Base:</span>
+                                                                        <span className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">Taxa Embarque:</span>
+                                                                        <span className="font-medium text-green-600">{formatCurrency(totalTaxaEmbarque)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs font-bold pt-1">
+                                                                        <span className="text-muted-foreground">Total (ND 15):</span>
+                                                                        <span className="text-foreground">{formatCurrency(registro.valor_nd_15 || 0)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </Card>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
+                                </section>
+                            )}
+
+                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS (COPIADA DO CLASSE II) */}
+                            {registros && registros.length > 0 && (
+                                <div className="space-y-4 mt-8">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        📋 Memórias de Cálculos Detalhadas
+                                    </h3>
+                                    
+                                    {registros.map(registro => {
+                                        const isEditing = editingMemoriaId === registro.id;
+                                        const hasCustomMemoria = !!registro.detalhamento_customizado;
+                                        
+                                        // Gera a memória automática para exibição/edição
+                                        const totals = calculateDiariaTotals(registro as any, diretrizesOp || {});
+                                        const memoriaAutomatica = generateDiariaMemoriaCalculo(registro as any, diretrizesOp || {}, totals);
+                                        
+                                        const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
+                                        
+                                        const destinoLabel = DESTINO_OPTIONS.find(d => d.value === registro.destino)?.label || registro.destino;
+                                        const destinoColorClass = getDestinoColorClass(registro.destino as DestinoDiaria);
+
+                                        return (
+                                            <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
+                                                
+                                                {/* Container para H4 e Botões */}
+                                                <div className="flex items-start justify-between gap-4 mb-2">
+                                                    <div className="flex flex-col flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="text-base font-semibold text-foreground">
+                                                                OM Destino: {registro.organizacao} (UG: {formatCodug(registro.ug)})
+                                                            </h4>
+                                                            <Badge variant="default" className={cn("w-fit text-white", destinoColorClass)}>
+                                                                {destinoLabel}
                                                             </Badge>
+                                                            {/* BADGE DE MEMÓRIA CUSTOMIZADA */}
+                                                            {hasCustomMemoria && !isEditing && (
+                                                                <Badge variant="outline" className="text-xs">
+                                                                    Editada manualmente
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center justify-end gap-2 shrink-0">
+                                                        {!isEditing ? (
+                                                            <>
+                                                                <Button
+                                                                    type="button" // Garantir que o botão de edição de memória não submeta
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => handleIniciarEdicaoMemoria(registro)}
+                                                                    disabled={isSaving || !isPTrabEditable}
+                                                                    className="gap-2"
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                    Editar Memória
+                                                                </Button>
+                                                                
+                                                                {hasCustomMemoria && (
+                                                                    <Button
+                                                                        type="button" // Garantir que o botão de restauração não submeta
+                                                                        size="sm"
+                                                                        variant="ghost"
+                                                                        onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
+                                                                        disabled={isSaving || !isPTrabEditable}
+                                                                        className="gap-2 text-muted-foreground"
+                                                                    >
+                                                                        <RefreshCw className="h-4 w-4" />
+                                                                        Restaurar Automática
+                                                                    </Button>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Button
+                                                                    type="button" // Garantir que o botão de salvar memória não submeta
+                                                                    size="sm"
+                                                                    variant="default"
+                                                                    onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
+                                                                    disabled={isSaving}
+                                                                    className="gap-2"
+                                                                >
+                                                                    <Check className="h-4 w-4" />
+                                                                    Salvar
+                                                                </Button>
+                                                                <Button
+                                                                    type="button" // Garantir que o botão de cancelar memória não submeta
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={handleCancelarEdicaoMemoria}
+                                                                    disabled={isSaving}
+                                                                    className="gap-2"
+                                                                >
+                                                                    <XCircle className="h-4 w-4" />
+                                                                    Cancelar
+                                                                </Button>
+                                                            </>
                                                         )}
                                                     </div>
                                                 </div>
                                                 
-                                                <div className="flex items-center justify-end gap-2 shrink-0">
-                                                    {!isEditing ? (
-                                                        <>
-                                                            <Button
-                                                                type="button" // Garantir que o botão de edição de memória não submeta
-                                                                size="sm"
-                                                                variant="outline"
-                                                                onClick={() => handleIniciarEdicaoMemoria(registro)}
-                                                                disabled={isSaving || !isPTrabEditable}
-                                                                className="gap-2"
-                                                            >
-                                                                <Pencil className="h-4 w-4" />
-                                                                Editar Memória
-                                                            </Button>
-                                                            
-                                                            {hasCustomMemoria && (
-                                                                <Button
-                                                                    type="button" // Garantir que o botão de restauração não submeta
-                                                                    size="sm"
-                                                                    variant="ghost"
-                                                                    onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
-                                                                    disabled={isSaving || !isPTrabEditable}
-                                                                    className="gap-2 text-muted-foreground"
-                                                                >
-                                                                    <RefreshCw className="h-4 w-4" />
-                                                                    Restaurar Automática
-                                                                </Button>
-                                                            )}
-                                                        </>
+                                                <Card className="p-4 bg-background rounded-lg border">
+                                                    {isEditing ? (
+                                                        <Textarea
+                                                            value={memoriaEdit}
+                                                            onChange={(e) => setMemoriaEdit(e.target.value)}
+                                                            className="min-h-[300px] font-mono text-sm"
+                                                            placeholder="Digite a memória de cálculo..."
+                                                        />
                                                     ) : (
-                                                        <>
-                                                            <Button
-                                                                type="button" // Garantir que o botão de salvar memória não submeta
-                                                                size="sm"
-                                                                variant="default"
-                                                                onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
-                                                                disabled={isSaving}
-                                                                className="gap-2"
-                                                            >
-                                                                <Check className="h-4 w-4" />
-                                                                Salvar
-                                                            </Button>
-                                                            <Button
-                                                                type="button" // Garantir que o botão de cancelar memória não submeta
-                                                                size="sm"
-                                                                variant="outline"
-                                                                onClick={handleCancelarEdicaoMemoria}
-                                                                disabled={isSaving}
-                                                                className="gap-2"
-                                                            >
-                                                                <XCircle className="h-4 w-4" />
-                                                                Cancelar
-                                                            </Button>
-                                                        </>
+                                                        <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
+                                                            {memoriaExibida}
+                                                        </pre>
                                                     )}
-                                                </div>
+                                                </Card>
                                             </div>
-                                            
-                                            <Card className="p-4 bg-background rounded-lg border">
-                                                {isEditing ? (
-                                                    <Textarea
-                                                        value={memoriaEdit}
-                                                        onChange={(e) => setMemoriaEdit(e.target.value)}
-                                                        className="min-h-[300px] font-mono text-sm"
-                                                        placeholder="Digite a memória de cálculo..."
-                                                    />
-                                                ) : (
-                                                    <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
-                                                        {memoriaExibida}
-                                                    </pre>
-                                                )}
-                                            </Card>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </form>
-                </CardContent>
-            </Card>
-            
-            {/* Diálogo de Confirmação de Exclusão */}
-            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                            <Trash2 className="h-5 w-5" />
-                            Confirmar Exclusão
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Tem certeza que deseja excluir o registro de diária para a OM <span className="font-bold">{registroToDelete?.organizacao}</span>?
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogAction 
-                            onClick={() => registroToDelete && handleDeleteMutation.mutate(registroToDelete.id)}
-                            disabled={handleDeleteMutation.isPending}
-                            className="bg-destructive hover:bg-destructive/90"
-                        >
-                            {handleDeleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Excluir
-                        </AlertDialogAction>
-                        <AlertDialogCancel disabled={handleDeleteMutation.isPending}>Cancelar</AlertDialogCancel>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </form>
+                    </CardContent>
+                </Card>
+                
+                {/* Diálogo de Confirmação de Exclusão */}
+                <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                                <Trash2 className="h-5 w-5" />
+                                Confirmar Exclusão
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Tem certeza que deseja excluir o registro de diária para a OM <span className="font-bold">{registroToDelete?.organizacao}</span>?
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogAction 
+                                onClick={() => registroToDelete && handleDeleteMutation.mutate(registroToDelete.id)}
+                                disabled={handleDeleteMutation.isPending}
+                                className="bg-destructive hover:bg-destructive/90"
+                            >
+                                {handleDeleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Excluir
+                            </AlertDialogAction>
+                            <AlertDialogCancel disabled={handleDeleteMutation.isPending}>Cancelar</AlertDialogCancel>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
         </div>
-    </div>
-);
+    );
 };
 
 export default DiariaForm;
