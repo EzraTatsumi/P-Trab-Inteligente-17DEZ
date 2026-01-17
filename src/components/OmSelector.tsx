@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,9 @@ export function OmSelector({
   // NOVO ESTADO: Armazena os dados da OM selecionada, especialmente se ela não estiver na lista 'oms' (e.g., inativa)
   const [displayOM, setDisplayOM] = useState<OMData | undefined>(undefined);
   const [isFetchingSelected, setIsFetchingSelected] = useState(false); // Novo estado para carregar a OM selecionada
+  
+  // NOVO: Ref para controlar se a OM inicial foi carregada e notificada ao pai
+  const initialLoadRef = useRef(false); 
 
   const loadOMs = async () => {
     setLoading(true);
@@ -85,12 +88,13 @@ export function OmSelector({
 
   // 2. Lógica para sugerir a OM padrão automaticamente (Ajustado para só rodar se não houver selectedOmId)
   useEffect(() => {
-    if (!loading && !selectedOmId && defaultOmId && oms.length > 0) {
+    if (!loading && !selectedOmId && defaultOmId && oms.length > 0 && !initialLoadRef.current) {
       const defaultOM = oms.find(om => om.id === defaultOmId);
       if (defaultOM) {
         // Chama onChange para definir a OM padrão no estado pai
         onChange(defaultOM);
         setDisplayOM(defaultOM); // Define o displayOM imediatamente
+        initialLoadRef.current = true;
       }
     }
   }, [loading, selectedOmId, defaultOmId, oms, onChange]);
@@ -122,6 +126,12 @@ export function OmSelector({
     if (foundInList) {
       setDisplayOM(foundInList);
       setIsFetchingSelected(false); 
+      
+      // Notifica o pai se for a primeira carga e o ID foi fornecido
+      if (!initialLoadRef.current) {
+          onChange(foundInList);
+          initialLoadRef.current = true;
+      }
       return;
     }
 
@@ -136,7 +146,15 @@ export function OmSelector({
           .eq('id', selectedOmId)
           .maybeSingle();
         
-        setDisplayOM((data || undefined) as OMData | undefined);
+        const fetchedOM = (data || undefined) as OMData | undefined;
+        setDisplayOM(fetchedOM);
+        
+        // Notifica o pai após a busca assíncrona
+        if (fetchedOM && !initialLoadRef.current) {
+            onChange(fetchedOM);
+            initialLoadRef.current = true;
+        }
+        
       } catch (error) {
         console.error('Erro ao buscar OM selecionada:', error);
         // Se falhar, displayOM permanece undefined
@@ -148,7 +166,7 @@ export function OmSelector({
     // Dispara a busca individual imediatamente se o ID estiver presente e não encontrado na lista atual.
     fetchSelectedOM();
     
-  }, [selectedOmId, oms, initialOmName, initialOmUg]); // Adicionado initialOmName/Ug para re-executar se o contexto de edição mudar
+  }, [selectedOmId, oms, initialOmName, initialOmUg, onChange]); // Adicionado initialOmName/Ug para re-executar se o contexto de edição mudar
 
   const isOverallLoading = loading || isFetchingSelected;
 
@@ -211,6 +229,9 @@ export function OmSelector({
                     onChange(newSelection); // Passa o objeto completo ou undefined
                     setDisplayOM(newSelection); // Atualiza o estado de exibição imediatamente
                     setOpen(false);
+                    
+                    // Se o usuário fizer uma seleção manual, resetamos o initialLoadRef para permitir futuras inicializações
+                    initialLoadRef.current = false; 
                   }}
                 >
                   <Check
