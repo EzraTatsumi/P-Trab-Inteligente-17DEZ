@@ -918,15 +918,16 @@ const DiariaForm = () => {
                                                                     Deslocamento Aéreo?
                                                                 </Label>
                                                                 <div className="flex items-center space-x-2 h-10 mt-auto">
-                                                                <Switch
-                                                                    id="is_aereo"
-                                                                    checked={formData.is_aereo}
-                                                                    onCheckedChange={(checked) => setFormData({ ...formData, is_aereo: checked })}
-                                                                    disabled={!isPTrabEditable || isSaving}
-                                                                />
-                                                                <span className="text-sm text-muted-foreground">
-                                                                    {formData.is_aereo ? "Sim (Inclui Taxa de Embarque)" : "Não (Terrestre/Fluvial)"}
-                                                                </span>
+                                                                    <Switch
+                                                                        id="is_aereo"
+                                                                        checked={formData.is_aereo}
+                                                                        onCheckedChange={(checked) => setFormData({ ...formData, is_aereo: checked })}
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                    />
+                                                                    <span className="text-sm text-muted-foreground">
+                                                                        {formData.is_aereo ? "Sim (Inclui Taxa de Embarque)" : "Não (Terrestre/Fluvial)"}
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
