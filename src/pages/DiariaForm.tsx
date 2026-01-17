@@ -1441,13 +1441,9 @@ const DiariaForm = () => {
                                                                 <div className="pt-2 border-t mt-2">
                                                                     {/* NOVO: OM Destino */}
                                                                     <div className="flex justify-between text-xs mb-1">
-                                                                        <span className="text-muted-foreground font-semibold">OM Destino:</span>
+                                                                        <span className="text-muted-foreground">OM Destino:</span>
                                                                         <span className="font-medium text-foreground">{registro.organizacao} ({formatCodug(registro.ug)})</span>
-                                                                    </div>
-                                                                    <Separator className="my-1 bg-gray-300" />
-                                                                    
-                                                                    <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">Diária Base:</span>
+                                                                                                                                           <span className="text-muted-foreground">Diária Base:</span>
                                                                         <span className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</span>
                                                                     </div>
                                                                     <div className="flex justify-between text-xs">
