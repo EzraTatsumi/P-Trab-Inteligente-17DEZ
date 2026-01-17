@@ -1014,7 +1014,7 @@ const DiariaForm = () => {
                                                                         <TableCell className="text-right font-semibold">
                                                                             {formatCurrency(calculatedCost)}
                                                                         </TableCell>
-                                                                    </TableCell>
+                                                                    </TableRow>
                                                                 );
                                                             })}
                                                         </TableBody>
