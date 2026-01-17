@@ -93,8 +93,8 @@ src/pages/ClasseVIForm.tsx
 src/pages/ClasseVIIForm.tsx
 src/pages/ClasseVIIIForm.tsx
 src/pages/ClasseIXForm.tsx
-src/pages/DiariaForm.tsx
-src/ptrab/components/forms/VerbaOperationalForm.tsx
+# REMOVIDO:src/pages/DiariaForm.tsx
+# REMOVIDO:src/ptrab/components/forms/VerbaOperationalForm.tsx
 src/pages/DiretrizesCusteioPage.tsx # Adicionado a pedido do usuário
 
 # INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
