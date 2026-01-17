@@ -157,15 +157,13 @@ const VerbaOperacionalForm = () => {
         enabled: !!ptrabId,
     });
 
-    // CORREÇÃO: Removendo o filtro estrito de detalhamento da queryFn para garantir que registros antigos (com detalhamento nulo) sejam carregados.
     const { data: registros, isLoading: isLoadingRegistros } = useQuery<VerbaOperacionalRegistro[]>({
         queryKey: ['verbaOperacionalRegistros', ptrabId],
-        // Removido o filtro { detalhamento: 'Verba Operacional' } da queryFn
         queryFn: () => fetchPTrabRecords('verba_operacional_registros', ptrabId!), 
         enabled: !!ptrabId,
-        // Filtro client-side para garantir que apenas registros de Verba Operacional (ou nulos/antigos) sejam exibidos
+        // FILTRO CORRIGIDO: Se não for explicitamente 'Suprimento de Fundos', é Verba Operacional (ou registro antigo).
         select: (data) => data
-            .filter(r => r.detalhamento === 'Verba Operacional' || r.detalhamento === null)
+            .filter(r => r.detalhamento !== 'Suprimento de Fundos')
             .sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
     });
     
@@ -617,7 +615,7 @@ const VerbaOperacionalForm = () => {
         e.preventDefault();
         
         try {
-            // 1. Validação Zod
+            // 1. Recalcular ND 39 (dependente)
             const totalSolicitado = formData.valor_total_solicitado;
             const nd30Value = formData.valor_nd_30;
             const nd39Value = calculateND39(totalSolicitado, nd30Value);
@@ -643,13 +641,13 @@ const VerbaOperacionalForm = () => {
             const calculatedData: CalculatedVerbaOperacional = {
                 tempId: editingId || Math.random().toString(36).substring(2, 9), 
                 p_trab_id: ptrabId!,
-                organizacao: formData.om_favorecida, // Mapeamento para DB
-                ug: formData.ug_favorecida, // Mapeamento para DB
+                organizacao: formData.om_favorecida, 
+                ug: formData.ug_favorecida, 
                 om_detentora: formData.om_detentora,
                 ug_detentora: formData.ug_detentora,
                 dias_operacao: formData.dias_operacao,
                 fase_atividade: formData.fase_atividade,
-                quantidade_equipes: formData.quantidade_equipes,
+                quantidade_equipes: formData.quantidade_equipes, 
                 valor_total_solicitado: formData.valor_total_solicitado,
                 
                 // Campos calculados
