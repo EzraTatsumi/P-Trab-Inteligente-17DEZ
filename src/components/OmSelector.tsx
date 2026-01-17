@@ -28,16 +28,16 @@ interface OmSelectorProps {
   placeholder?: string;
   disabled?: boolean;
   omsList?: OMData[]; // Novo prop: lista de OMs pré-carregada
-  defaultOmId?: string; // NOVO: ID da OM padrão a ser sugerida
-  initialOmName?: string; // NOVO: Nome inicial da OM para exibição imediata
-  initialOmUg?: string; // NOVO: UG inicial da OM
+  defaultOmId?: string; // ID da OM padrão a ser sugerida (mantido, mas não usado para seleção automática)
+  initialOmName?: string; // Nome inicial da OM para exibição imediata (usado apenas como fallback de edição)
+  initialOmUg?: string; // UG inicial da OM
 }
 
 export function OmSelector({
   selectedOmId,
   onChange,
   filterByRM,
-  placeholder = "Selecione a OM de Destino", // AJUSTADO: Placeholder padrão conforme solicitação
+  placeholder = "Escolha a OM de Destino", // AJUSTADO: Placeholder padrão conforme solicitação
   disabled = false,
   omsList, // Usar a lista passada se existir
   defaultOmId, // Recebe o ID padrão
@@ -83,15 +83,11 @@ export function OmSelector({
     }
   }, [filterByRM, omsList]);
 
-  // 2. Lógica para sugerir a OM padrão automaticamente (Ajustado para só rodar se não houver selectedOmId)
+  // 2. Lógica para sugerir a OM padrão automaticamente (REMOVIDA A CHAMADA A onChange)
+  // O defaultOmId agora serve apenas como referência, não dispara a seleção automática.
   useEffect(() => {
-    if (!loading && !selectedOmId && defaultOmId && oms.length > 0) {
-      const defaultOM = oms.find(om => om.id === defaultOmId);
-      if (defaultOM) {
-        // Chama onChange para definir a OM padrão no estado pai
-        onChange(defaultOM);
-      }
-    }
+    // Lógica de seleção automática removida para forçar a escolha do usuário.
+    // O estado pai (DiariaForm) deve gerenciar o preenchimento inicial de `selectedOmId` se for o caso de edição.
   }, [loading, selectedOmId, defaultOmId, oms, onChange]);
 
   // 3. Efeito para garantir que a OM selecionada seja exibida, mesmo que não esteja na lista 'oms' (e.g., inativa)
@@ -151,10 +147,10 @@ export function OmSelector({
 
   const isOverallLoading = loading || isFetchingSelected;
 
-  // Lógica de exibição do texto no botão (AJUSTADA)
+  // Lógica de exibição do texto no botão (AJUSTADA para priorizar o placeholder se não houver selectedOmId)
   const buttonText = useMemo(() => {
-    // 1. Se a OM completa foi carregada (displayOM), use o nome dela.
-    if (displayOM) {
+    // 1. Se a OM completa foi carregada E houver um ID selecionado, use o nome dela.
+    if (displayOM && selectedOmId) {
       return displayOM.nome_om;
     }
     
@@ -184,7 +180,7 @@ export function OmSelector({
           className="w-full justify-between"
           disabled={disabled || isOverallLoading}
         >
-          <span className={cn("truncate", !selectedOmId && !displayOM && !initialOmName && "text-muted-foreground")}>
+          <span className={cn("truncate", !selectedOmId && !displayOM && "text-muted-foreground")}>
             {buttonText}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
