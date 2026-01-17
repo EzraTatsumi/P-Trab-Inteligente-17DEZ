@@ -1651,8 +1651,7 @@ const SuprimentoFundosForm = () => {
                                                                     Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
                                                                 </span>
                                                             </div>
-                                                        )}
-                                                    </div>
+                                                        </div>
                                                     
                                                     <div className="flex items-center justify-end gap-2 shrink-0">
                                                         {!isEditing ? (
