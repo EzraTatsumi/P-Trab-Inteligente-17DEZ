@@ -311,7 +311,7 @@ const DiariaForm = () => {
             toast.success(`Sucesso! ${pendingDiarias.length} registro(s) de Diária adicionado(s).`);
             setPendingDiarias([]); // Limpa a lista pendente
             
-            // 1. Resetar o formulário (mantendo OM e Fase)
+            // 1. Resetar o formulário (mantendo OM, Fase, Dias, Viagens, Destino, Local e Aéreo)
             const omData = {
                 organizacao: formData.organizacao,
                 ug: formData.ug,
@@ -319,15 +319,15 @@ const DiariaForm = () => {
                 destino: formData.destino,
                 nr_viagens: formData.nr_viagens,
                 dias_operacao: formData.dias_operacao,
+                local_atividade: formData.local_atividade, // MANTIDO
+                is_aereo: formData.is_aereo, // MANTIDO
             };
             
             setFormData(prev => ({
                 ...initialFormState,
                 ...omData,
-                // Resetar apenas os campos de cálculo que variam por item
-                local_atividade: "",
+                // Resetar apenas as quantidades de militares
                 quantidades_por_posto: initialFormState.quantidades_por_posto,
-                is_aereo: false, // Resetar aéreo para evitar erro
             }));
             
             // 2. Colocar o último registro salvo em modo de edição para exibir a Seção 5
@@ -557,8 +557,8 @@ const DiariaForm = () => {
             // MODO ADIÇÃO: Adicionar à lista pendente
             setPendingDiarias(prev => [...prev, calculatedData]);
             
-            // 5. Resetar o formulário para o próximo item (mantendo OM, Fase, Dias, Viagens e Destino)
-            // Mantemos os campos de contexto (OM, UG, Fase, Destino, Dias, Viagens)
+            // 5. Resetar o formulário para o próximo item (mantendo OM, Fase, Dias, Viagens, Destino, Local e Aéreo)
+            // Mantemos os campos de contexto (OM, UG, Fase, Destino, Dias, Viagens, Local, Aéreo)
             const omData = {
                 organizacao: formData.organizacao,
                 ug: formData.ug,
@@ -566,15 +566,15 @@ const DiariaForm = () => {
                 destino: formData.destino,
                 nr_viagens: formData.nr_viagens,
                 dias_operacao: formData.dias_operacao,
+                local_atividade: formData.local_atividade, // MANTIDO
+                is_aereo: formData.is_aereo, // MANTIDO
             };
             
             setFormData(prev => ({
                 ...initialFormState,
                 ...omData,
-                // Resetar apenas os campos de cálculo que variam por item
-                local_atividade: "",
+                // Resetar apenas as quantidades de militares
                 quantidades_por_posto: initialFormState.quantidades_por_posto,
-                is_aereo: false, // Resetar aéreo para evitar erro
             }));
             
             toast.info("Item de Diária adicionado à lista pendente.");
