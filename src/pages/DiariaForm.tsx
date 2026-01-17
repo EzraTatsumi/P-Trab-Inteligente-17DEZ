@@ -1056,8 +1056,8 @@ const DiariaForm = () => {
                                         3. Itens Adicionados ({itemsToDisplay.length})
                                     </h3>
                                     
-                                    {/* NOVO: Alerta de Validação Final (Apenas em modo de edição) */}
-                                    {editingId && isDiariaDirty && (
+                                    {/* Alerta de Validação Final (Exibido quando o formulário de edição está dessincronizado) */}
+                                    {isDiariaDirty && (
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertDescription className="font-medium">
