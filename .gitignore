@@ -86,16 +86,16 @@ src/pages/UserProfilePage.tsx
 src/components/reports/PTrabLogisticoReport.tsx
 src/components/reports/PTrabRacaoOperacionalReport.tsx
 src/pages/ClasseIForm.tsx
-# REMOVIDO:src/pages/ClasseIIForm.tsx
-# REMOVIDO:src/pages/ClasseIIIForm.tsx
-# REMOVIDO:src/pages/ClasseVForm.tsx
-# REMOVIDO:src/pages/ClasseVIForm.tsx
-# REMOVIDO:src/pages/ClasseVIIForm.tsx
-# REMOVIDO:src/pages/ClasseVIIIForm.tsx
-# REMOVIDO:src/pages/ClasseIXForm.tsx
+src/pages/ClasseIIForm.tsx
+src/pages/ClasseIIIForm.tsx
+src/pages/ClasseVForm.tsx
+src/pages/ClasseVIForm.tsx
+src/pages/ClasseVIIForm.tsx
+src/pages/ClasseVIIIForm.tsx
+src/pages/ClasseIXForm.tsx
 # REMOVIDO:src/pages/DiariaForm.tsx
-src/ptrab/components/forms/VerbaOperationalForm.tsx
-src/pages/VerbaOperationalForm.tsx
+# REMOVIDO:src/ptrab/components/forms/VerbaOperationalForm.tsx
+# REMOVIDO:src/pages/VerbaOperationalForm.tsx
 src/pages/SuprimentoFundosForm.tsx
 src/pages/DiretrizesCusteioPage.tsx
 src/pages/DiretrizesCusteioPage.tsx
