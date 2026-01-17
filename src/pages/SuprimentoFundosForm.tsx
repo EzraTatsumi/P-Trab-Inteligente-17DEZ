@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check } from "lucide-react";
 import { sanitizeError } from "@/lib/errorUtils";
@@ -574,7 +575,7 @@ const SuprimentoFundosForm = () => {
         setLastStagedFormData(null); 
         
         setRawTotalInput(numberToRawDigits(0));
-        setRawND39Input(numberToToRawDigits(0));
+        setRawND39Input(numberToRawDigits(0));
     };
     
     const handleClearPending = () => {
@@ -599,7 +600,7 @@ const SuprimentoFundosForm = () => {
         // 2. Configurar OM Detentora (OM Destino do Recurso)
         const omDetentoraToEdit = oms?.find(om => om.nome_om === registro.om_detentora && om.codug_om === registro.ug_detentora);
         setSelectedOmDetentoraId(omDetentoraToEdit?.id);
-        
+
         // 3. Populate formData
         const newFormData = {
             om_favorecida: registro.organizacao, 
