@@ -295,7 +295,6 @@ const DiariaForm = () => {
             }
             
             // Se o cálculo atual for diferente do cálculo do último item salvo (devido a diretrizes atualizadas), também é dirty.
-            // Nota: Isso é mais complexo, mas se as diretrizes mudarem, o usuário deve ser forçado a re-salvar.
             // Por enquanto, confiamos na comparação dos campos de entrada (formData).
             
             return false;
@@ -598,9 +597,24 @@ const DiariaForm = () => {
             
             // MODO ADIÇÃO: Adicionar à lista pendente
             setPendingDiarias(prev => {
-                // Se já houver itens, remove o último item (se for dirty) e adiciona o novo.
-                // No modo Novo Registro, sempre adicionamos um novo item, mas o lastSavedFormData é atualizado.
-                return [...prev, calculatedData];
+                // Se houver itens pendentes, substitui o último item.
+                if (prev.length > 0) {
+                    const lastItem = prev[prev.length - 1];
+                    // Se o formulário foi alterado (isDiariaDirty), substitui o último item.
+                    // Se o formulário não foi alterado, mas o usuário clicou novamente, ele também substitui (evita duplicatas idênticas).
+                    
+                    // Se o formulário atual é diferente do último salvo (ou se não há lastSavedFormData, mas há pending items), substitui.
+                    if (isDiariaDirty || !lastSavedFormData) {
+                        const newPending = [...prev.slice(0, -1), calculatedData];
+                        return newPending;
+                    }
+                    
+                    // Se o formulário não está dirty (ou seja, é idêntico ao último salvo), não faz nada (ou apenas atualiza o lastSavedFormData)
+                    return prev;
+                }
+                
+                // Se a lista estiver vazia, apenas adiciona.
+                return [calculatedData];
             });
             
             // NOVO: Salva o estado atual do formulário como o último salvo
@@ -814,7 +828,8 @@ const DiariaForm = () => {
     const isStagingUpdate = !!stagedUpdate;
     
     // NOVO: Condição para desabilitar o botão "Salvar Registros"
-    const isSavePendingDisabled = isSaving || pendingDiarias.length === 0 || isDiariaDirty;
+    // Se estiver no modo Novo Registro E o formulário estiver dirty, desabilita.
+    const isSavePendingDisabled = isSaving || pendingDiarias.length === 0 || (!editingId && isDiariaDirty);
 
     const getUnitValueDisplay = (rankKey: string, destino: DestinoDiaria) => {
         if (!diretrizesOp) return "R$ 0,00";
