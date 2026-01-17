@@ -109,6 +109,13 @@ export interface VerbaOperacionalRegistro {
   detalhamento_customizado?: string | null;
   valor_nd_30: number;
   valor_nd_39: number;
+  // NOVOS CAMPOS ADICIONADOS AO DB
+  objeto_aquisicao: string | null;
+  objeto_contratacao: string | null;
+  proposito: string | null;
+  finalidade: string | null;
+  local: string | null;
+  tarefa: string | null;
 }
 
 export interface ItemClasseIII {
@@ -815,7 +822,7 @@ const PTrabReportManager = () => {
         supabase.from('classe_iii_registros').select('*, detalhamento_customizado, itens_equipamentos, fase_atividade, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", ptrabId).maybeSingle(),
         supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId), // NOVO
-        supabase.from('verba_operacional_registros').select('*').eq('p_trab_id', ptrabId), // NOVO FETCH
+        supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId), // NOVO FETCH (incluindo novos campos)
       ]);
       
       // NOVO: Fetch Diretrizes Operacionais (necessário para gerar a memória de diária)
@@ -876,7 +883,7 @@ const PTrabReportManager = () => {
           is_aereo: r.is_aereo || false,
       })) as DiariaRegistro[]);
       
-      // NOVO: Processar Verba Operacional
+      // NOVO: Processar Verba Operacional (incluindo novos campos)
       setRegistrosVerbaOperacional((verbaOperacionalData || []).map(r => ({
           ...r,
           valor_total_solicitado: Number(r.valor_total_solicitado || 0),
@@ -884,6 +891,13 @@ const PTrabReportManager = () => {
           valor_nd_39: Number(r.valor_nd_39 || 0),
           dias_operacao: r.dias_operacao || 0,
           quantidade_equipes: r.quantidade_equipes || 0,
+          // Mapeamento dos novos campos
+          objeto_aquisicao: r.objeto_aquisicao || null,
+          objeto_contratacao: r.objeto_contratacao || null,
+          proposito: r.proposito || null,
+          finalidade: r.finalidade || null,
+          local: r.local || null,
+          tarefa: r.tarefa || null,
       })) as VerbaOperacionalRegistro[]);
       
     } catch (error) {

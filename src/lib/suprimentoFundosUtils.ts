@@ -16,7 +16,7 @@ export interface SuprimentoFundosRegistro {
   fase_atividade: string;
   valor_nd_30: number;
   valor_nd_39: number;
-  // Campos de Detalhamento (armazenados no detalhamento_customizado da DB)
+  // Campos de Detalhamento (agora colunas diretas na DB)
   objeto_aquisicao: string;
   objeto_contratacao: string;
   proposito: string;
