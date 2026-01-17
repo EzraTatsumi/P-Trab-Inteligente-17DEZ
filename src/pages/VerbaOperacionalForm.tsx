@@ -1234,7 +1234,7 @@ const VerbaOperacionalForm = () => {
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
-                                                                <p className="font-medium">{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
+                                                                <p className={cn("font-medium", isDifferentOmInView && "text-red-600")}>{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
                                                                 <p className="font-medium">{item.dias_operacao} {diasText} / {item.quantidade_equipes} {equipeText}</p>
                                                             </div>
                                                         </div>
@@ -1402,13 +1402,13 @@ const VerbaOperacionalForm = () => {
                                                                 
                                                                 {/* Detalhes da Alocação */}
                                                                 <div className="pt-2 border-t mt-2">
-                                                                    {/* OM Detentora (se for diferente da Favorecida) */}
-                                                                    {isDifferentOm && (
-                                                                        <div className="flex justify-between text-xs mb-1">
-                                                                            <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                                                            <span className="font-medium text-red-600">{registro.om_detentora} ({formatCodug(registro.ug_detentora)})</span>
-                                                                        </div>
-                                                                    )}
+                                                                    {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
+                                                                    <div className="flex justify-between text-xs mb-1">
+                                                                        <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                        <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
+                                                                            {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                        </span>
+                                                                    </div>
                                                                     <div className="flex justify-between text-xs">
                                                                         <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
                                                                         <span className="font-medium text-green-600">{formatCurrency(totalND30)}</span>
