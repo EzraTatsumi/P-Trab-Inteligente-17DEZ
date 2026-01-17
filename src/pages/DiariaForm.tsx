@@ -928,7 +928,7 @@ const DiariaForm = () => {
                                             className="w-full"
                                         >
                                             <TabsList className="grid w-full grid-cols-3">
-                                                {destinoOptions.map(opt => (
+                                                {DESTINO_OPTIONS.map(opt => (
                                                     <TabsTrigger key={opt.value} value={opt.value} disabled={!isPTrabEditable || isSaving}>
                                                         {opt.label}
                                                     </TabsTrigger>
