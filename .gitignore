@@ -93,7 +93,7 @@ src/pages/ClasseVIForm.tsx
 src/pages/ClasseVIIForm.tsx
 src/pages/ClasseVIIIForm.tsx
 src/pages/ClasseIXForm.tsx
-src/pages/DiariaForm.tsx
+# REMOVIDO:src/pages/DiariaForm.tsx
 # REMOVIDO:src/ptrab/components/forms/VerbaOperationalForm.tsx
 # REMOVIDO:src/pages/VerbaOperationalForm.tsx
 # REMOVIDO:src/pages/SuprimentoFundosForm.tsx
