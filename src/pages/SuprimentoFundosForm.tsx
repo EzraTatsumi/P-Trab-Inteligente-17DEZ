@@ -197,15 +197,14 @@ const SuprimentoFundosForm = () => {
     // Efeito de inicialização da OM Favorecida (OM do PTrab)
     useEffect(() => {
         if (ptrabData && !editingId) {
-            // 1. OM Favorecida (OM do PTrab) - Deve ser selecionável, mas o valor inicial é o do PTrab
-            const omFavorecida = oms?.find(om => om.nome_om === ptrabData.nome_om && om.codug_om === ptrabData.codug_om);
-            
+            // 1. OM Favorecida (OM do PTrab) - NÃO PRÉ-SELECIONAR para forçar a seleção manual.
+            // Os campos om_favorecida e ug_favorecida devem ser vazios no formData inicial.
             setFormData(prev => ({
                 ...prev,
-                om_favorecida: ptrabData.nome_om,
-                ug_favorecida: ptrabData.codug_om,
+                om_favorecida: "", // Vazio
+                ug_favorecida: "", // Vazio
             }));
-            setSelectedOmFavorecidaId(omFavorecida?.id);
+            setSelectedOmFavorecidaId(undefined); // Vazio
             
             // 2. OM Detentora (Padrão CIE)
             const cieOm = oms?.find(om => om.nome_om === DEFAULT_OM_DETENTORA && om.codug_om === DEFAULT_UG_DETENTORA);
@@ -1056,8 +1055,9 @@ const SuprimentoFundosForm = () => {
                                             onChange={handleOmFavorecidaChange}
                                             placeholder="Selecione a OM Favorecida"
                                             disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingSuprimentos.length > 0}
-                                            initialOmName={formData.om_favorecida}
-                                            initialOmUg={formData.ug_favorecida}
+                                            // CORREÇÃO: Apenas passa initialOmName/Ug se estiver em modo de edição
+                                            initialOmName={editingId ? formData.om_favorecida : undefined}
+                                            initialOmUg={editingId ? formData.ug_favorecida : undefined}
                                         />
                                     </div>
                                     <div className="space-y-2 col-span-1">
