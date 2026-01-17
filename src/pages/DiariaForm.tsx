@@ -518,8 +518,16 @@ const DiariaForm = () => {
             // 1. Validação Zod
             diariaSchema.parse(formData);
             
-            // 2. Validação de OM/UG
-            const omDestino = oms?.find(om => om.id === selectedOmId);
+            // 2. Validação de OM/UG (CORRIGIDO)
+            // Tenta encontrar a OM pelo ID selecionado (se houver)
+            let omDestino = oms?.find(om => om.id === selectedOmId);
+
+            // Se não encontrou pelo ID (ou ID é undefined), tenta encontrar pelo nome/UG preenchidos no formulário.
+            // Isso é crucial para validar a OM inicial do PTrab se ela não foi selecionada novamente.
+            if (!omDestino && formData.organizacao && formData.ug) {
+                omDestino = oms?.find(om => om.nome_om === formData.organizacao && om.codug_om === formData.ug);
+            }
+
             if (!omDestino || omDestino.codug_om !== formData.ug || omDestino.nome_om !== formData.organizacao) {
                 toast.error("OM de Destino inválida ou UG não corresponde.");
                 return;
