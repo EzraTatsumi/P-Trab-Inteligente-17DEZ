@@ -119,6 +119,26 @@ const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
     return Math.abs(a - b) < tolerance;
 };
 
+// Helper function to compare form data structures
+const compareFormData = (data1: typeof initialFormState, data2: typeof initialFormState) => {
+    // Compare all relevant input fields
+    if (
+        data1.dias_operacao !== data2.dias_operacao ||
+        data1.quantidade_equipes !== data2.quantidade_equipes ||
+        !areNumbersEqual(data1.valor_total_solicitado, data2.valor_total_solicitado) ||
+        !areNumbersEqual(data1.valor_nd_30, data2.valor_nd_30) ||
+        data1.om_detentora !== data2.om_detentora ||
+        data1.ug_detentora !== data2.ug_detentora ||
+        data1.om_favorecida !== data2.om_favorecida ||
+        data1.ug_favorecida !== data2.ug_favorecida ||
+        data1.fase_atividade !== data2.fase_atividade
+    ) {
+        return true;
+    }
+    return false;
+};
+
+
 const VerbaOperacionalForm = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -175,7 +195,6 @@ const VerbaOperacionalForm = () => {
     useEffect(() => {
         if (ptrabData && !editingId) {
             // 1. OM Favorecida (OM do PTrab) - NÃO PRÉ-SELECIONAR
-            // Mantemos os campos vazios e o ID undefined para forçar a seleção manual.
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: "", // Vazio
@@ -264,25 +283,7 @@ const VerbaOperacionalForm = () => {
     
     // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do stagedUpdate ou lastStagedFormData)
     const isVerbaDirty = useMemo(() => {
-        const compareData = (data1: typeof initialFormState, data2: typeof initialFormState) => {
-            // Compare all relevant input fields
-            if (
-                data1.dias_operacao !== data2.dias_operacao ||
-                data1.quantidade_equipes !== data2.quantidade_equipes ||
-                !areNumbersEqual(data1.valor_total_solicitado, data2.valor_total_solicitado) ||
-                !areNumbersEqual(data1.valor_nd_30, data2.valor_nd_30) ||
-                data1.om_detentora !== data2.om_detentora ||
-                data1.ug_detentora !== data2.ug_detentora ||
-                data1.om_favorecida !== data2.om_favorecida ||
-                data1.ug_favorecida !== data2.ug_favorecida ||
-                data1.fase_atividade !== data2.fase_atividade
-            ) {
-                return true;
-            }
-            return false;
-        };
-
-        // 1. MODO EDIÇÃO (Compara com stagedUpdate)
+        // MODO EDIÇÃO: Compara com stagedUpdate
         if (editingId && stagedUpdate) {
             // We need to convert stagedUpdate back to the form data structure for comparison
             const stagedFormData: typeof initialFormState = {
@@ -298,12 +299,16 @@ const VerbaOperacionalForm = () => {
                 fase_atividade: stagedUpdate.fase_atividade || '',
             };
             
-            return compareData(formData, stagedFormData);
+            // ND 39 é recalculada no stagedUpdate para garantir que a comparação seja justa
+            const nd39Recalculated = calculateND39(stagedFormData.valor_total_solicitado, stagedFormData.valor_nd_30);
+            stagedFormData.valor_nd_39 = nd39Recalculated;
+            
+            return compareFormData(formData, stagedFormData);
         }
         
-        // 2. MODO NOVO REGISTRO (Compara com lastStagedFormData)
+        // MODO NOVO REGISTRO: Compara com lastStagedFormData
         if (!editingId && pendingVerbas.length > 0 && lastStagedFormData) {
-            return compareData(formData, lastStagedFormData);
+            return compareFormData(formData, lastStagedFormData);
         }
 
         return false;
@@ -334,7 +339,7 @@ const VerbaOperacionalForm = () => {
     // HANDLERS DE INPUT
     // =================================================================
     
-    const handleCurrencyChange = (field: keyof typeof initialFormState, rawValue: string) => {
+    const handleCurrencyChange = (field: 'valor_total_solicitado' | 'valor_nd_30', rawValue: string) => {
         const { numericValue, digits } = formatCurrencyInput(rawValue);
         
         setFormData(prev => {
@@ -426,15 +431,19 @@ const VerbaOperacionalForm = () => {
                 ug_favorecida: prev.ug_favorecida,
                 om_detentora: prev.om_detentora,
                 ug_detentora: prev.ug_detentora,
-                dias_operacao: prev.dias_operacao,
-                quantidade_equipes: prev.quantidade_equipes,
                 fase_atividade: prev.fase_atividade,
                 
-                // Manter campos de valor (não resetar)
-                valor_total_solicitado: prev.valor_total_solicitado,
-                valor_nd_30: prev.valor_nd_30,
-                valor_nd_39: prev.valor_nd_39,
+                // Resetar apenas os campos de valor e numéricos
+                dias_operacao: 0,
+                quantidade_equipes: 0,
+                valor_total_solicitado: 0,
+                valor_nd_30: 0,
+                valor_nd_39: 0,
             }));
+            
+            setRawTotalInput(numberToRawDigits(0));
+            setRawND30Input(numberToRawDigits(0));
+            setRawND39Input(numberToRawDigits(0));
             
             if (newRecords && newRecords.length > 0) {
                 handleEdit(newRecords[0] as VerbaOperacionalRegistro);
@@ -507,9 +516,9 @@ const VerbaOperacionalForm = () => {
         setEditingId(null);
         setFormData(prev => ({
             ...initialFormState,
-            // OM Favorecida (do PTrab) - Vazio para forçar seleção
-            om_favorecida: "",
-            ug_favorecida: "",
+            // Manter a OM Favorecida (do PTrab) se já estiver definida
+            om_favorecida: prev.om_favorecida,
+            ug_favorecida: prev.ug_favorecida,
             // OM Detentora (Padrão CIE)
             om_detentora: DEFAULT_OM_DETENTORA,
             ug_detentora: DEFAULT_UG_DETENTORA,
@@ -520,13 +529,14 @@ const VerbaOperacionalForm = () => {
             valor_total_solicitado: 0,
             valor_nd_30: 0,
             valor_nd_39: 0,
+            fase_atividade: "",
         }));
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
         setSelectedOmFavorecidaId(undefined);
         setSelectedOmDetentoraId(undefined); 
         setStagedUpdate(null); 
-        setLastStagedFormData(null);
+        setLastStagedFormData(null); // NOVO: Limpa o lastStagedFormData
         
         // Resetar inputs brutos
         setRawTotalInput(numberToRawDigits(0));
@@ -537,6 +547,7 @@ const VerbaOperacionalForm = () => {
     const handleClearPending = () => {
         setPendingVerbas([]);
         setStagedUpdate(null);
+        setLastStagedFormData(null); // NOVO: Limpa o lastStagedFormData
         resetForm();
     };
 
@@ -723,15 +734,19 @@ const VerbaOperacionalForm = () => {
                 ug_favorecida: prev.ug_favorecida,
                 om_detentora: prev.om_detentora,
                 ug_detentora: prev.ug_detentora,
-                dias_operacao: prev.dias_operacao,
-                quantidade_equipes: prev.quantidade_equipes,
                 fase_atividade: prev.fase_atividade,
                 
-                // Manter campos de valor (não resetar)
-                valor_total_solicitado: prev.valor_total_solicitado,
-                valor_nd_30: prev.valor_nd_30,
-                valor_nd_39: prev.valor_nd_39,
+                // Resetar apenas os campos de valor e numéricos
+                dias_operacao: 0,
+                quantidade_equipes: 0,
+                valor_total_solicitado: 0,
+                valor_nd_30: 0,
+                valor_nd_39: 0,
             }));
+            
+            setRawTotalInput(numberToRawDigits(0));
+            setRawND30Input(numberToRawDigits(0));
+            setRawND39Input(numberToRawDigits(0));
             
         } catch (err) {
             if (err instanceof z.ZodError) {
@@ -763,7 +778,7 @@ const VerbaOperacionalForm = () => {
     const handleRemovePending = (tempId: string) => {
         setPendingVerbas(prev => {
             const newPending = prev.filter(p => p.tempId !== tempId);
-            // Se o item removido era o único, ou se a lista ficou vazia, limpamos o lastStagedFormData
+            // Se o item removido era o último, limpamos o lastStagedFormData
             if (newPending.length === 0) {
                 setLastStagedFormData(null);
             }
@@ -1084,7 +1099,7 @@ const VerbaOperacionalForm = () => {
                                                 <div className="grid grid-cols-2 gap-4">
                                                     {/* ND 30 (Material) - EDITÁVEL */}
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="valor_nd_30">ND 33.90.30 (Material)</Label>
+                                                        <Label htmlFor="valor_nd_30">ND 33.90.30 (Material) *</Label>
                                                         <div className="relative">
                                                             <CurrencyInput
                                                                 id="valor_nd_30"
@@ -1414,7 +1429,7 @@ const VerbaOperacionalForm = () => {
                                                 <Card className="p-4 bg-background rounded-lg border">
                                                     {isEditing ? (
                                                         <Textarea
-                                                            value={memoriaEdit}
+                                                            value={memoriaExibida}
                                                             onChange={(e) => setMemoriaEdit(e.target.value)}
                                                             className="min-h-[300px] font-mono text-sm"
                                                             placeholder="Digite a memória de cálculo..."

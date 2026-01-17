@@ -144,6 +144,32 @@ const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
     return Math.abs(a - b) < tolerance;
 };
 
+// Helper function to compare form data structures
+const compareFormData = (data1: typeof initialFormState, data2: typeof initialFormState) => {
+    // Compare all relevant input fields
+    if (
+        data1.dias_operacao !== data2.dias_operacao ||
+        data1.quantidade_equipes !== data2.quantidade_equipes ||
+        !areNumbersEqual(data1.valor_total_solicitado, data2.valor_total_solicitado) ||
+        !areNumbersEqual(data1.valor_nd_39, data2.valor_nd_39) || 
+        data1.om_detentora !== data2.om_detentora ||
+        data1.ug_detentora !== data2.ug_detentora ||
+        data1.om_favorecida !== data2.om_favorecida ||
+        data1.ug_favorecida !== data2.ug_favorecida ||
+        data1.fase_atividade !== data2.fase_atividade ||
+        data1.objeto_aquisicao !== data2.objeto_aquisicao ||
+        data1.objeto_contratacao !== data2.objeto_contratacao ||
+        data1.proposito !== data2.proposito ||
+        data1.finalidade !== data2.finalidade ||
+        data1.local !== data2.local ||
+        data1.tarefa !== data2.tarefa
+    ) {
+        return true;
+    }
+    return false;
+};
+
+
 const SuprimentoFundosForm = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -165,6 +191,9 @@ const SuprimentoFundosForm = () => {
     
     // NOVO ESTADO: Registro calculado para atualização (staging)
     const [stagedUpdate, setStagedUpdate] = useState<CalculatedSuprimentoFundos | null>(null);
+    
+    // NOVO ESTADO: Armazena o último formData que gerou um item em pendingSuprimentos
+    const [lastStagedFormData, setLastStagedFormData] = useState<typeof initialFormState | null>(null);
     
     // Estado para rastrear o ID da OM Favorecida (OM do PTrab)
     const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
@@ -283,38 +312,40 @@ const SuprimentoFundosForm = () => {
         }
     }, [formData, ptrabData]);
     
-    // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do stagedUpdate)
+    // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do stagedUpdate ou lastStagedFormData)
     const isSuprimentoDirty = useMemo(() => {
-        if (!editingId || !stagedUpdate) return false;
-
-        // 1. Comparar campos principais
-        if (
-            formData.dias_operacao !== stagedUpdate.dias_operacao ||
-            formData.quantidade_equipes !== stagedUpdate.quantidade_equipes || // CORRIGIDO
-            !areNumbersEqual(formData.valor_total_solicitado, stagedUpdate.valor_total_solicitado) ||
-            !areNumbersEqual(formData.valor_nd_39, stagedUpdate.valor_nd_39) || 
-            formData.om_detentora !== stagedUpdate.om_detentora ||
-            formData.ug_detentora !== stagedUpdate.ug_detentora ||
-            formData.om_favorecida !== stagedUpdate.om_favorecida ||
-            formData.ug_favorecida !== stagedUpdate.ug_favorecida ||
-            // NOVOS CAMPOS
-            formData.objeto_aquisicao !== (stagedUpdate as any).objeto_aquisicao ||
-            formData.objeto_contratacao !== (stagedUpdate as any).objeto_contratacao ||
-            formData.proposito !== (stagedUpdate as any).proposito ||
-            formData.finalidade !== (stagedUpdate as any).finalidade ||
-            formData.local !== (stagedUpdate as any).local ||
-            formData.tarefa !== (stagedUpdate as any).tarefa
-        ) {
-            return true;
+        // MODO EDIÇÃO: Compara com stagedUpdate
+        if (editingId && stagedUpdate) {
+            // We need to convert stagedUpdate back to the form data structure for comparison
+            const stagedFormData: typeof initialFormState = {
+                om_favorecida: stagedUpdate.organizacao,
+                ug_favorecida: stagedUpdate.ug,
+                om_detentora: stagedUpdate.om_detentora || '',
+                ug_detentora: stagedUpdate.ug_detentora || '',
+                dias_operacao: stagedUpdate.dias_operacao,
+                quantidade_equipes: stagedUpdate.quantidade_equipes,
+                valor_total_solicitado: stagedUpdate.valor_total_solicitado,
+                valor_nd_30: stagedUpdate.valor_nd_30,
+                valor_nd_39: stagedUpdate.valor_nd_39,
+                fase_atividade: stagedUpdate.fase_atividade || '',
+                objeto_aquisicao: (stagedUpdate as any).objeto_aquisicao || '',
+                objeto_contratacao: (stagedUpdate as any).objeto_contratacao || '',
+                proposito: (stagedUpdate as any).proposito || '',
+                finalidade: (stagedUpdate as any).finalidade || '',
+                local: (stagedUpdate as any).local || '',
+                tarefa: (stagedUpdate as any).tarefa || '',
+            };
+            
+            return compareFormData(formData, stagedFormData);
         }
-
-        // 2. Comparar fase de atividade (se for diferente, precisa re-estagiar para atualizar a memória)
-        if (formData.fase_atividade !== stagedUpdate.fase_atividade) {
-            return true;
+        
+        // MODO NOVO REGISTRO: Compara com lastStagedFormData
+        if (!editingId && pendingSuprimentos.length > 0 && lastStagedFormData) {
+            return compareFormData(formData, lastStagedFormData);
         }
 
         return false;
-    }, [editingId, stagedUpdate, formData]);
+    }, [editingId, stagedUpdate, formData, pendingSuprimentos.length, lastStagedFormData]);
     
     // NOVO: Cálculo do total de todos os itens pendentes
     const totalPendingSuprimentos = useMemo(() => {
@@ -430,8 +461,9 @@ const SuprimentoFundosForm = () => {
             queryClient.invalidateQueries({ queryKey: ["ptrabTotals", ptrabId] });
             toast.success(`Sucesso! ${pendingSuprimentos.length} registro(s) de Suprimento de Fundos adicionado(s).`);
             setPendingSuprimentos([]); 
+            setLastStagedFormData(null); // Limpa o lastStagedFormData após salvar
             
-            // CORREÇÃO: Manter campos de contexto (OMs, Dias, Equipes, Fase e Detalhes)
+            // CORREÇÃO: Manter campos de contexto e detalhes, resetar apenas os valores
             setFormData(prev => ({
                 ...prev,
                 // Manter campos de contexto e detalhes
@@ -540,9 +572,9 @@ const SuprimentoFundosForm = () => {
         setEditingId(null);
         setFormData(prev => ({
             ...initialFormState,
-            // Mantém a OM Favorecida (do PTrab) se já estiver definida
-            om_favorecida: ptrabData?.nome_om || "",
-            ug_favorecida: ptrabData?.codug_om || "",
+            // Manter a OM Favorecida (do PTrab) se já estiver definida
+            om_favorecida: prev.om_favorecida,
+            ug_favorecida: prev.ug_favorecida,
             // OM Detentora (Padrão CIE)
             om_detentora: DEFAULT_OM_DETENTORA,
             ug_detentora: DEFAULT_UG_DETENTORA,
@@ -566,6 +598,7 @@ const SuprimentoFundosForm = () => {
         setSelectedOmFavorecidaId(undefined);
         setSelectedOmDetentoraId(undefined); 
         setStagedUpdate(null); 
+        setLastStagedFormData(null); // NOVO: Limpa o lastStagedFormData
         
         setRawTotalInput(numberToRawDigits(0));
         setRawND39Input(numberToRawDigits(0));
@@ -574,6 +607,7 @@ const SuprimentoFundosForm = () => {
     const handleClearPending = () => {
         setPendingSuprimentos([]);
         setStagedUpdate(null);
+        setLastStagedFormData(null); // NOVO: Limpa o lastStagedFormData
         resetForm();
     };
 
@@ -767,9 +801,29 @@ const SuprimentoFundosForm = () => {
             }
             
             // MODO ADIÇÃO: Adicionar à lista pendente
-            setPendingSuprimentos(prev => [...prev, calculatedData]);
             
-            // CORREÇÃO: Manter campos de contexto (OMs, Dias, Equipes, Fase e Detalhes)
+            // Se o formulário está sujo (diferente do último estagiado) OU se a lista está vazia, adicionamos/substituímos.
+            const shouldStageNewItem = pendingSuprimentos.length === 0 || isSuprimentoDirty;
+
+            if (shouldStageNewItem) {
+                setPendingSuprimentos(prev => {
+                    if (prev.length > 0) {
+                        // Se a lista não está vazia, substitui o último item (pois o formulário está dirty)
+                        return [...prev.slice(0, -1), calculatedData];
+                    }
+                    // Se a lista está vazia, adiciona
+                    return [...prev, calculatedData];
+                });
+                
+                // Salva o estado atual do formulário como o último estagiado
+                setLastStagedFormData(formData);
+                
+                toast.info("Item de Suprimento de Fundos adicionado à lista pendente.");
+            } else {
+                toast.info("Nenhuma alteração detectada no item pendente.");
+            }
+            
+            // CORREÇÃO: Manter campos de contexto e detalhes, resetar apenas os valores
             setFormData(prev => ({
                 ...prev,
                 // Manter campos de contexto e detalhes
@@ -787,16 +841,14 @@ const SuprimentoFundosForm = () => {
                 local: prev.local,
                 tarefa: prev.tarefa,
                 
-                // Resetar apenas os campos de valor (REMOVIDO O RESET PARA MANTER O VALOR)
-                // valor_total_solicitado: 0,
-                // valor_nd_30: 0,
-                // valor_nd_39: 0,
+                // Resetar apenas os campos de valor
+                valor_total_solicitado: 0,
+                valor_nd_30: 0,
+                valor_nd_39: 0,
             }));
             
-            // setRawTotalInput(numberToRawDigits(0)); // REMOVIDO O RESET
-            // setRawND39Input(numberToRawDigits(0)); // REMOVIDO O RESET
-            
-            toast.info("Item de Suprimento de Fundos adicionado à lista pendente.");
+            setRawTotalInput(numberToRawDigits(0));
+            setRawND39Input(numberToRawDigits(0));
             
         } catch (err) {
             if (err instanceof z.ZodError) {
@@ -826,7 +878,14 @@ const SuprimentoFundosForm = () => {
     
     // Remove item da lista pendente
     const handleRemovePending = (tempId: string) => {
-        setPendingSuprimentos(prev => prev.filter(p => p.tempId !== tempId));
+        setPendingSuprimentos(prev => {
+            const newPending = prev.filter(p => p.tempId !== tempId);
+            // Se o item removido era o último, limpamos o lastStagedFormData
+            if (newPending.length === 0) {
+                setLastStagedFormData(null);
+            }
+            return newPending;
+        });
         toast.info("Item removido da lista pendente.");
     };
     
@@ -888,8 +947,42 @@ const SuprimentoFundosForm = () => {
         setEditingMemoriaId(registro.id);
         
         // 1. Gerar a memória automática
-        const totals = calculateSuprimentoFundosTotals(registro as any);
-        const memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo(registro as any);
+        const calculatedData = {
+            organizacao: registro.organizacao,
+            ug: registro.ug,
+            om_detentora: registro.om_detentora,
+            ug_detentora: registro.ug_detentora,
+            dias_operacao: registro.dias_operacao,
+            quantidade_equipes: registro.quantidade_equipes,
+            valor_total_solicitado: registro.valor_total_solicitado,
+            fase_atividade: registro.fase_atividade,
+            valor_nd_30: registro.valor_nd_30,
+            valor_nd_39: registro.valor_nd_39,
+            // Detalhes (necessários para a memória automática)
+            objeto_aquisicao: "",
+            objeto_contratacao: "",
+            proposito: "",
+            finalidade: "",
+            local: "",
+            tarefa: "",
+        };
+        
+        // Tenta parsear o detalhamento_customizado para obter os detalhes
+        try {
+            const parsed = JSON.parse(registro.detalhamento_customizado || "");
+            if (parsed.objeto_aquisicao !== undefined) {
+                calculatedData.objeto_aquisicao = parsed.objeto_aquisicao;
+                calculatedData.objeto_contratacao = parsed.objeto_contratacao;
+                calculatedData.proposito = parsed.proposito;
+                calculatedData.finalidade = parsed.finalidade;
+                calculatedData.local = parsed.local;
+                calculatedData.tarefa = parsed.tarefa;
+            }
+        } catch (e) {
+            // Se falhar, o detalhamento_customizado é o texto customizado (memória)
+        }
+        
+        const memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo(calculatedData as any);
         
         // 2. Usar a customizada se existir, senão usar a automática
         let memoriaInicial = memoriaAutomatica;
@@ -946,14 +1039,14 @@ const SuprimentoFundosForm = () => {
             // Recriar o JSON dos detalhes a partir dos campos do registro
             let detalhamentoCustomizadoJSON: string | null = null;
             
+            // Tenta parsear o detalhamento_customizado. Se for o JSON de detalhes, restauramos o JSON.
             try {
                 const parsed = JSON.parse(originalRecord.detalhamento_customizado || "");
                 if (parsed.objeto_aquisicao !== undefined) {
-                    // Se o original era o JSON de detalhes, restauramos o JSON
                     detalhamentoCustomizadoJSON = originalRecord.detalhamento_customizado;
                 }
             } catch (e) {
-                // Se o original era texto customizado, restauramos para null (que fará a memória automática ser gerada)
+                // Se falhar, o original era texto customizado, restauramos para null
                 detalhamentoCustomizadoJSON = null;
             }
             
@@ -1338,6 +1431,16 @@ const SuprimentoFundosForm = () => {
                                         3. Itens Adicionados ({itemsToDisplay.length})
                                     </h3>
                                     
+                                    {/* NOVO: Alerta de Validação Final (Modo Novo Registro) */}
+                                    {!editingId && isSuprimentoDirty && (
+                                        <Alert variant="destructive">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertDescription className="font-medium">
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados. Clique em "Salvar Item na Lista" na Seção 2 para atualizar o item pendente antes de salvar os registros.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                    
                                     {/* Alerta de Validação Final (Apenas em modo de edição) */}
                                     {editingId && isSuprimentoDirty && (
                                         <Alert variant="destructive">
@@ -1472,7 +1575,7 @@ const SuprimentoFundosForm = () => {
                                                 <Button 
                                                     type="button" 
                                                     onClick={handleSavePendingSuprimentos}
-                                                    disabled={isSaving || pendingSuprimentos.length === 0}
+                                                    disabled={isSaving || pendingSuprimentos.length === 0 || isSuprimentoDirty}
                                                     className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                                 >
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -1502,7 +1605,42 @@ const SuprimentoFundosForm = () => {
                                             hasCustomMemoria = !!registro.detalhamento_customizado;
                                         }
                                         
-                                        const memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo(registro as any);
+                                        // 1. Gerar a memória automática (precisa dos detalhes)
+                                        let calculatedDataForMemoria = {
+                                            organizacao: registro.organizacao,
+                                            ug: registro.ug,
+                                            om_detentora: registro.om_detentora,
+                                            ug_detentora: registro.ug_detentora,
+                                            dias_operacao: registro.dias_operacao,
+                                            quantidade_equipes: registro.quantidade_equipes,
+                                            valor_total_solicitado: registro.valor_total_solicitado,
+                                            fase_atividade: registro.fase_atividade,
+                                            valor_nd_30: registro.valor_nd_30,
+                                            valor_nd_39: registro.valor_nd_39,
+                                            objeto_aquisicao: "",
+                                            objeto_contratacao: "",
+                                            proposito: "",
+                                            finalidade: "",
+                                            local: "",
+                                            tarefa: "",
+                                        };
+                                        
+                                        // Tenta parsear o detalhamento_customizado para obter os detalhes
+                                        try {
+                                            const parsed = JSON.parse(registro.detalhamento_customizado || "");
+                                            if (parsed.objeto_aquisicao !== undefined) {
+                                                calculatedDataForMemoria.objeto_aquisicao = parsed.objeto_aquisicao;
+                                                calculatedDataForMemoria.objeto_contratacao = parsed.objeto_contratacao;
+                                                calculatedDataForMemoria.proposito = parsed.proposito;
+                                                calculatedDataForMemoria.finalidade = parsed.finalidade;
+                                                calculatedDataForMemoria.local = parsed.local;
+                                                calculatedDataForMemoria.tarefa = parsed.tarefa;
+                                            }
+                                        } catch (e) {
+                                            // Se falhar, o detalhamento_customizado é o texto customizado (memória)
+                                        }
+                                        
+                                        const memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo(calculatedDataForMemoria as any);
                                         
                                         let memoriaExibida = memoriaAutomatica;
                                         if (isEditing) {
