@@ -395,7 +395,7 @@ const VerbaOperacionalForm = () => {
             toast.success(`Sucesso! ${pendingVerbas.length} registro(s) de Verba Operacional adicionado(s).`);
             setPendingVerbas([]); 
             
-            // CORREÇÃO: Não zera os campos de contexto (OMs, Dias, Equipes, Fase)
+            // CORREÇÃO: Manter campos de contexto e resetar apenas os campos de valor
             setFormData(prev => ({
                 ...prev,
                 valor_total_solicitado: 0,
@@ -664,7 +664,7 @@ const VerbaOperacionalForm = () => {
             // MODO ADIÇÃO: Adicionar à lista pendente
             setPendingVerbas(prev => [...prev, calculatedData]);
             
-            // CORREÇÃO: Manter campos de contexto (OMs, Dias, Equipes, Fase)
+            // CORREÇÃO: Manter campos de contexto e resetar apenas os campos de valor
             setFormData(prev => ({
                 ...prev,
                 // Manter campos de contexto

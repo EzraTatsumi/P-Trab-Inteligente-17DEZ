@@ -65,10 +65,10 @@ export const generateSuprimentoFundosMemoriaCalculo = (
     const { 
         dias_operacao, 
         quantidade_equipes, 
-        organizacao, 
-        ug,
-        om_detentora,
-        ug_detentora,
+        organizacao, // OM Favorecida (para o cabeçalho)
+        ug, // UG Favorecida
+        om_detentora, // OM Destino do Recurso (para o detalhamento)
+        ug_detentora, // UG Destino do Recurso
         fase_atividade,
         valor_nd_30,
         valor_nd_39,
@@ -104,10 +104,10 @@ export const generateSuprimentoFundosMemoriaCalculo = (
     }
     // --- Fim Lógica ND ---
     
-    // CABEÇALHO
+    // CABEÇALHO: Usa OM Favorecida (organizacao)
     const header = `${ndPrefix} - Solicitação de Suprimento de Fundos para ${quantidade_equipes} ${militarText} ${omPreposition} ${organizacao}, durante ${dias_operacao} ${diaText} de ${faseFormatada}.`;
 
-    // Detalhamento
+    // Detalhamento: Usa OM Detentora (om_detentora)
     const detalhamento = `
 OM Favorecida: ${organizacao} (UG: ${formatCodug(ug)})
 OM Destino Recurso: ${om_detentora} (UG: ${formatCodug(ug_detentora)})
