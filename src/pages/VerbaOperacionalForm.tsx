@@ -773,11 +773,41 @@ const VerbaOperacionalForm = () => {
         toast.info("Item removido da lista pendente.");
     };
     
-    // Handler para a OM Favorecida (OM do PTrab)
-// ... (existing logic)
+    const handleOmFavorecidaChange = (omData: OMData | undefined) => {
+        if (omData) {
+            setSelectedOmFavorecidaId(omData.id);
+            setFormData(prev => ({
+                ...prev,
+                om_favorecida: omData.nome_om,
+                ug_favorecida: omData.codug_om,
+            }));
+        } else {
+            setSelectedOmFavorecidaId(undefined);
+            setFormData(prev => ({
+                ...prev,
+                om_favorecida: "",
+                ug_favorecida: "",
+            }));
+        }
+    };
     
-    // Handler para a OM Detentora (OM Destino do Recurso)
-// ... (existing logic)
+    const handleOmDetentoraChange = (omData: OMData | undefined) => {
+        if (omData) {
+            setSelectedOmDetentoraId(omData.id);
+            setFormData(prev => ({
+                ...prev,
+                om_detentora: omData.nome_om,
+                ug_detentora: omData.codug_om,
+            }));
+        } else {
+            setSelectedOmDetentoraId(undefined);
+            setFormData(prev => ({
+                ...prev,
+                om_detentora: "",
+                ug_detentora: "",
+            }));
+        }
+    };
     
     const handleFaseAtividadeChange = (fase: string) => {
         setFormData(prev => ({
@@ -788,7 +818,77 @@ const VerbaOperacionalForm = () => {
     
     // --- Lógica de Edição de Memória ---
     
-// ... (existing logic for memory editing)
+    const handleIniciarEdicaoMemoria = (registro: VerbaOperacionalRegistro) => {
+        setEditingMemoriaId(registro.id);
+        
+        // 1. Gerar a memória automática mais recente
+        const calculatedData = {
+            organizacao: registro.organizacao,
+            ug: registro.ug,
+            om_detentora: registro.om_detentora,
+            ug_detentora: registro.ug_detentora,
+            dias_operacao: registro.dias_operacao,
+            quantidade_equipes: registro.quantidade_equipes,
+            valor_total_solicitado: registro.valor_total_solicitado,
+            fase_atividade: registro.fase_atividade,
+            valor_nd_30: registro.valor_nd_30,
+            valor_nd_39: registro.valor_nd_39,
+        };
+        const memoriaAutomatica = generateVerbaOperacionalMemoriaCalculo(calculatedData as any);
+        
+        // 2. Usar a customizada se existir, senão usar a automática recém-gerada
+        setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
+    };
+
+    const handleCancelarEdicaoMemoria = () => {
+        setEditingMemoriaId(null);
+        setMemoriaEdit("");
+    };
+
+    const handleSalvarMemoriaCustomizada = async (registroId: string) => {
+        try {
+            const { error } = await supabase
+                .from("verba_operacional_registros")
+                .update({
+                    detalhamento_customizado: memoriaEdit.trim() || null,
+                })
+                .eq("id", registroId);
+
+            if (error) throw error;
+
+            toast.success("Memória de cálculo atualizada com sucesso!");
+            handleCancelarEdicaoMemoria();
+            queryClient.invalidateQueries({ queryKey: ["verbaOperacionalRegistros", ptrabId] });
+        } catch (error) {
+            console.error("Erro ao salvar memória:", error);
+            toast.error(sanitizeError(error));
+        }
+    };
+
+    const handleRestaurarMemoriaAutomatica = async (registroId: string) => {
+        if (!confirm("Deseja realmente restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
+            return;
+        }
+        
+        try {
+            const { error } = await supabase
+                .from("verba_operacional_registros")
+                .update({
+                    detalhamento_customizado: null,
+                })
+                .eq("id", registroId);
+
+            if (error) throw error;
+
+            toast.success("Memória de cálculo restaurada!");
+            queryClient.invalidateQueries({ queryKey: ["verbaOperacionalRegistros", ptrabId] });
+        } catch (error) {
+            console.error("Erro ao restaurar memória:", error);
+            toast.error(sanitizeError(error));
+        }
+    };
+    
+    // --- Fim Lógica de Edição de Memória ---
     
     // =================================================================
     // RENDERIZAÇÃO
@@ -1207,4 +1307,274 @@ const VerbaOperacionalForm = () => {
                             )}
 
                             {/* SEÇÃO 4: REGISTROS SALVOS (Agrupados por OM) */}
-// ... (rest of file)
+                            {registros && registros.length > 0 && (
+                                <section className="space-y-4">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        <Sparkles className="h-5 w-5 text-accent" />
+                                        Registros Salvos ({registros.length})
+                                    </h3>
+                                    
+                                    {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
+                                        const totalOM = omRegistros.reduce((sum, r) => Number(r.valor_total_solicitado) + sum, 0);
+                                        const omName = omKey.split(' (')[0];
+                                        const ug = omKey.split(' (')[1].replace(')', '');
+                                        
+                                        return (
+                                            <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
+                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                        OM Favorecida: {omName} (UG: {formatCodug(ug)})
+                                                    </h3>
+                                                    <span className="font-extrabold text-xl text-primary">
+                                                        {formatCurrency(totalOM)}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="space-y-3">
+                                                    {omRegistros.map((registro) => {
+                                                        const totalGeral = Number(registro.valor_total_solicitado || 0);
+                                                        const totalND30 = Number(registro.valor_nd_30 || 0);
+                                                        const totalND39 = Number(registro.valor_nd_39 || 0);
+                                                        
+                                                        const isDifferentOmInView = registro.om_detentora !== registro.organizacao;
+                                                        
+                                                        const diasText = registro.dias_operacao === 1 ? "dia" : "dias";
+                                                        const equipesText = registro.quantidade_equipes === 1 ? "equipe" : "equipes";
+                                                        
+                                                        return (
+                                                            <Card 
+                                                                key={registro.id} 
+                                                                className={cn(
+                                                                    "p-3 bg-background border",
+                                                                    editingId === registro.id && "border-2 border-primary/50 shadow-lg"
+                                                                )}
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <h4 className="font-semibold text-base text-foreground">
+                                                                                Verba Operacional ({formatCurrency(totalGeral)})
+                                                                            </h4>
+                                                                            <Badge variant="outline" className="text-xs">
+                                                                                {registro.fase_atividade}
+                                                                            </Badge>
+                                                                        </div>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            Período: {registro.dias_operacao} {diasText} | Equipes: {registro.quantidade_equipes}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-lg text-primary/80">
+                                                                            {formatCurrency(totalGeral)}
+                                                                        </span>
+                                                                        <div className="flex gap-1">
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8"
+                                                                                onClick={() => handleEdit(registro)}
+                                                                                disabled={!isPTrabEditable || isSaving || pendingVerbas.length > 0}
+                                                                            >
+                                                                                <Pencil className="h-4 w-4" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                onClick={() => handleConfirmDelete(registro)}
+                                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                {/* Detalhes da Alocação */}
+                                                                <div className="pt-2 border-t mt-2">
+                                                                    <div className="flex justify-between text-xs mb-1">
+                                                                        <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                        <span className={cn("font-medium", isDifferentOmInView ? "text-red-600 font-bold" : "text-foreground")}>
+                                                                            {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
+                                                                        <span className="font-medium text-green-600">{formatCurrency(totalND30)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
+                                                                        <span className="font-medium text-blue-600">{formatCurrency(totalND39)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </Card>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
+                                </section>
+                            )}
+
+                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
+                            {registros && registros.length > 0 && (
+                                <div className="space-y-4 mt-8">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        📋 Memórias de Cálculos Detalhadas
+                                    </h3>
+                                    
+                                    {registros.map(registro => {
+                                        const isEditing = editingMemoriaId === registro.id;
+                                        const hasCustomMemoria = !!registro.detalhamento_customizado;
+                                        
+                                        // Gera a memória automática para exibição/edição
+                                        const calculatedData = {
+                                            organizacao: registro.organizacao,
+                                            ug: registro.ug,
+                                            om_detentora: registro.om_detentora,
+                                            ug_detentora: registro.ug_detentora,
+                                            dias_operacao: registro.dias_operacao,
+                                            quantidade_equipes: registro.quantidade_equipes,
+                                            valor_total_solicitado: registro.valor_total_solicitado,
+                                            fase_atividade: registro.fase_atividade,
+                                            valor_nd_30: registro.valor_nd_30,
+                                            valor_nd_39: registro.valor_nd_39,
+                                        };
+                                        const memoriaAutomatica = generateVerbaOperacionalMemoriaCalculo(calculatedData as any);
+                                        
+                                        const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
+                                        
+                                        return (
+                                            <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
+                                                
+                                                {/* Container para H4 e Botões */}
+                                                <div className="flex items-start justify-between gap-4 mb-2">
+                                                    <div className="flex flex-col flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="text-base font-semibold text-foreground">
+                                                                OM Favorecida: {registro.organizacao} (UG: {formatCodug(registro.ug)})
+                                                            </h4>
+                                                            {/* BADGE DE MEMÓRIA CUSTOMIZADA */}
+                                                            {hasCustomMemoria && !isEditing && (
+                                                                <Badge variant="outline" className="text-xs">
+                                                                    Editada manualmente
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center justify-end gap-2 shrink-0">
+                                                        {!isEditing ? (
+                                                            <>
+                                                                <Button
+                                                                    type="button" 
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => handleIniciarEdicaoMemoria(registro)}
+                                                                    disabled={isSaving || !isPTrabEditable}
+                                                                    className="gap-2"
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                    Editar Memória
+                                                                </Button>
+                                                                
+                                                                {hasCustomMemoria && (
+                                                                    <Button
+                                                                        type="button" 
+                                                                        size="sm"
+                                                                        variant="ghost"
+                                                                        onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
+                                                                        disabled={isSaving || !isPTrabEditable}
+                                                                        className="gap-2 text-muted-foreground"
+                                                                    >
+                                                                        <RefreshCw className="h-4 w-4" />
+                                                                        Restaurar Automática
+                                                                    </Button>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Button
+                                                                    type="button" 
+                                                                    size="sm"
+                                                                    variant="default"
+                                                                    onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
+                                                                    disabled={isSaving}
+                                                                    className="gap-2"
+                                                                >
+                                                                    <Check className="h-4 w-4" />
+                                                                    Salvar
+                                                                </Button>
+                                                                <Button
+                                                                    type="button" 
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={handleCancelarEdicaoMemoria}
+                                                                    disabled={isSaving}
+                                                                    className="gap-2"
+                                                                >
+                                                                    <XCircle className="h-4 w-4" />
+                                                                    Cancelar
+                                                                </Button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                
+                                                <Card className="p-4 bg-background rounded-lg border">
+                                                    {isEditing ? (
+                                                        <Textarea
+                                                            value={memoriaEdit}
+                                                            onChange={(e) => setMemoriaEdit(e.target.value)}
+                                                            className="min-h-[300px] font-mono text-sm"
+                                                            placeholder="Digite a memória de cálculo..."
+                                                        />
+                                                    ) : (
+                                                        <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
+                                                            {memoriaExibida}
+                                                        </pre>
+                                                    )}
+                                                </Card>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </form>
+                    </CardContent>
+                </Card>
+                
+                {/* Diálogo de Confirmação de Exclusão */}
+                <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                                <Trash2 className="h-5 w-5" />
+                                Confirmar Exclusão
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Tem certeza que deseja excluir o registro de Verba Operacional para a OM <span className="font-bold">{registroToDelete?.organizacao}</span>?
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogAction 
+                                onClick={() => registroToDelete && handleDeleteMutation.mutate(registroToDelete.id)}
+                                disabled={handleDeleteMutation.isPending}
+                                className="bg-destructive hover:bg-destructive/90"
+                            >
+                                {handleDeleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Excluir
+                            </AlertDialogAction>
+                            <AlertDialogCancel disabled={handleDeleteMutation.isPending}>Cancelar</AlertDialogCancel>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
+        </div>
+    );
+};
+
+export default VerbaOperacionalForm;
