@@ -1644,17 +1644,13 @@ const SuprimentoFundosForm = () => {
                                                                 </Badge>
                                                             )}
                                                         </div>
-                                                        {isDifferentOmInMemoria ? (
+                                                        {isDifferentOmInMemoria && (
                                                             <div className="flex items-center gap-1 mt-1">
                                                                 <AlertCircle className="h-4 w-4 text-red-600" />
                                                                 <span className="text-sm font-medium text-red-600">
                                                                     Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
                                                                 </span>
                                                             </div>
-                                                        ) : (
-                                                            <p className="text-xs text-muted-foreground">
-                                                                Destino Recurso: {registro.om_detentora} (UG: {formatCodug(registro.ug_detentora)})
-                                                            </p>
                                                         )}
                                                     </div>
                                                     
