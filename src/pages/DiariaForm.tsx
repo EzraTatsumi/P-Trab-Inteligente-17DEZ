@@ -311,8 +311,24 @@ const DiariaForm = () => {
             toast.success(`Sucesso! ${pendingDiarias.length} registro(s) de Diária adicionado(s).`);
             setPendingDiarias([]); // Limpa a lista pendente
             
-            // 1. Resetar o formulário
-            resetForm();
+            // 1. Resetar o formulário (mantendo OM e Fase)
+            const omData = {
+                organizacao: formData.organizacao,
+                ug: formData.ug,
+                fase_atividade: formData.fase_atividade,
+                destino: formData.destino,
+                nr_viagens: formData.nr_viagens,
+                dias_operacao: formData.dias_operacao,
+            };
+            
+            setFormData(prev => ({
+                ...initialFormState,
+                ...omData,
+                // Resetar apenas os campos de cálculo que variam por item
+                local_atividade: "",
+                quantidades_por_posto: initialFormState.quantidades_por_posto,
+                is_aereo: false, // Resetar aéreo para evitar erro
+            }));
             
             // 2. Colocar o último registro salvo em modo de edição para exibir a Seção 5
             if (newRecords && newRecords.length > 0) {
@@ -320,6 +336,9 @@ const DiariaForm = () => {
                 // Chamamos handleEdit com o registro recém-salvo
                 handleEdit(lastSavedRecord as DiariaRegistro);
             }
+            
+            // 3. Scroll para a seção 3 (itens adicionados)
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         },
         onError: (err) => {
             toast.error(sanitizeError(err));
@@ -483,12 +502,8 @@ const DiariaForm = () => {
             // 1. Validação Zod
             diariaSchema.parse(formData);
             
-            // 2. Validação de OM/UG
-            const omDestino = oms?.find(om => om.id === selectedOmId);
-            if (!omDestino || omDestino.codug_om !== formData.ug || omDestino.nome_om !== formData.organizacao) {
-                toast.error("OM de Destino inválida ou UG não corresponde.");
-                return;
-            }
+            // 2. REMOVIDO: Validação estrita de OM/UG contra a lista de OMs cadastradas.
+            // Apenas garantimos que os campos de OM/UG estejam preenchidos (já feito pelo Zod)
             
             // 3. Preparar o objeto final (calculatedData)
             const destinoLabel = DESTINO_OPTIONS.find(d => d.value === formData.destino)?.label || formData.destino;
@@ -543,8 +558,19 @@ const DiariaForm = () => {
             setPendingDiarias(prev => [...prev, calculatedData]);
             
             // 5. Resetar o formulário para o próximo item (mantendo OM, Fase, Dias, Viagens e Destino)
+            // Mantemos os campos de contexto (OM, UG, Fase, Destino, Dias, Viagens)
+            const omData = {
+                organizacao: formData.organizacao,
+                ug: formData.ug,
+                fase_atividade: formData.fase_atividade,
+                destino: formData.destino,
+                nr_viagens: formData.nr_viagens,
+                dias_operacao: formData.dias_operacao,
+            };
+            
             setFormData(prev => ({
-                ...prev,
+                ...initialFormState,
+                ...omData,
                 // Resetar apenas os campos de cálculo que variam por item
                 local_atividade: "",
                 quantidades_por_posto: initialFormState.quantidades_por_posto,
@@ -988,7 +1014,7 @@ const DiariaForm = () => {
                                                                         <TableCell className="text-right font-semibold">
                                                                             {formatCurrency(calculatedCost)}
                                                                         </TableCell>
-                                                                    </TableRow>
+                                                                    </TableCell>
                                                                 );
                                                             })}
                                                         </TableBody>
