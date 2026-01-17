@@ -463,8 +463,32 @@ const SuprimentoFundosForm = () => {
             setPendingSuprimentos([]); 
             setLastStagedFormData(null); // Limpa o lastStagedFormData após salvar
             
-            // Chamamos resetForm para limpar o formulário para a próxima entrada
-            resetForm();
+            // CORREÇÃO: Manter campos de contexto e detalhes, resetar apenas os valores
+            setFormData(prev => ({
+                ...prev,
+                // Manter campos de contexto e detalhes
+                om_favorecida: prev.om_favorecida,
+                ug_favorecida: prev.ug_favorecida,
+                om_detentora: prev.om_detentora,
+                ug_detentora: prev.ug_detentora,
+                dias_operacao: prev.dias_operacao,
+                quantidade_equipes: prev.quantidade_equipes,
+                fase_atividade: prev.fase_atividade,
+                objeto_aquisicao: prev.objeto_aquisicao,
+                objeto_contratacao: prev.objeto_contratacao,
+                proposito: prev.proposito,
+                finalidade: prev.finalidade,
+                local: prev.local,
+                tarefa: prev.tarefa,
+                
+                // Resetar apenas os campos de valor
+                valor_total_solicitado: 0,
+                valor_nd_30: 0,
+                valor_nd_39: 0,
+            }));
+            
+            setRawTotalInput(numberToRawDigits(0));
+            setRawND39Input(numberToRawDigits(0));
             
             if (newRecords && newRecords.length > 0) {
                 handleEdit(newRecords[0] as SuprimentoFundosRegistroDB);
@@ -545,31 +569,23 @@ const SuprimentoFundosForm = () => {
     // =================================================================
 
     const resetForm = () => {
-        // Captura o estado atual da OM Detentora e Favorecida para manter o contexto
-        const currentOmFavorecida = formData.om_favorecida;
-        const currentUgFavorecida = formData.ug_favorecida;
-        const currentOmDetentora = formData.om_detentora;
-        const currentUgDetentora = formData.ug_detentora;
-        const currentFaseAtividade = formData.fase_atividade;
-        
         setEditingId(null);
         setFormData(prev => ({
             ...initialFormState,
-            // Manter campos de contexto
-            om_favorecida: currentOmFavorecida,
-            ug_favorecida: currentUgFavorecida,
-            om_detentora: currentOmDetentora,
-            ug_detentora: currentUgDetentora,
-            fase_atividade: currentFaseAtividade,
-            
-            // Resetar apenas os campos de valor e numéricos para 0
+            // Manter a OM Favorecida (do PTrab) se já estiver definida
+            om_favorecida: prev.om_favorecida,
+            ug_favorecida: prev.ug_favorecida,
+            // OM Detentora (Padrão CIE)
+            om_detentora: DEFAULT_OM_DETENTORA,
+            ug_detentora: DEFAULT_UG_DETENTORA,
+            // Dias e equipes são resetados para 0 (vazio)
             dias_operacao: 0,
             quantidade_equipes: 0,
+            // NDs e Total são resetados para 0
             valor_total_solicitado: 0,
             valor_nd_30: 0,
             valor_nd_39: 0,
-            
-            // Resetar campos de detalhe
+            // Detalhes são resetados
             objeto_aquisicao: "",
             objeto_contratacao: "",
             proposito: "",
@@ -579,7 +595,8 @@ const SuprimentoFundosForm = () => {
         }));
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
-        // Não resetar selectedOmIds aqui, pois eles são definidos pelo useEffect ou handleOmChange
+        setSelectedOmFavorecidaId(undefined);
+        setSelectedOmDetentoraId(undefined); 
         setStagedUpdate(null); 
         setLastStagedFormData(null); // NOVO: Limpa o lastStagedFormData
         
@@ -790,23 +807,48 @@ const SuprimentoFundosForm = () => {
 
             if (shouldStageNewItem) {
                 setPendingSuprimentos(prev => {
-                    // Se a lista não está vazia, substitui o último item (pois o formulário está dirty)
+                    if (prev.length > 0) {
+                        // Se a lista não está vazia, substitui o último item (pois o formulário está dirty)
+                        return [...prev.slice(0, -1), calculatedData];
+                    }
                     // Se a lista está vazia, adiciona
-                    const newPending = prev.length > 0 && isSuprimentoDirty ? [...prev.slice(0, -1), calculatedData] : [...prev, calculatedData];
-                    
-                    // Salva o estado atual do formulário como o último estagiado
-                    setLastStagedFormData(formData);
-                    
-                    return newPending;
+                    return [...prev, calculatedData];
                 });
+                
+                // Salva o estado atual do formulário como o último estagiado
+                setLastStagedFormData(formData);
                 
                 toast.info("Item de Suprimento de Fundos adicionado à lista pendente.");
             } else {
                 toast.info("Nenhuma alteração detectada no item pendente.");
             }
             
-            // CORREÇÃO: Resetar o formulário para o estado inicial (exceto contexto OM/Fase)
-            resetForm();
+            // CORREÇÃO: Manter campos de contexto e detalhes, resetar apenas os valores
+            setFormData(prev => ({
+                ...prev,
+                // Manter campos de contexto e detalhes
+                om_favorecida: prev.om_favorecida,
+                ug_favorecida: prev.ug_favorecida,
+                om_detentora: prev.om_detentora,
+                ug_detentora: prev.ug_detentora,
+                dias_operacao: prev.dias_operacao,
+                quantidade_equipes: prev.quantidade_equipes,
+                fase_atividade: prev.fase_atividade,
+                objeto_aquisicao: prev.objeto_aquisicao,
+                objeto_contratacao: prev.objeto_contratacao,
+                proposito: prev.proposito,
+                finalidade: prev.finalidade,
+                local: prev.local,
+                tarefa: prev.tarefa,
+                
+                // Resetar apenas os campos de valor
+                valor_total_solicitado: 0,
+                valor_nd_30: 0,
+                valor_nd_39: 0,
+            }));
+            
+            setRawTotalInput(numberToRawDigits(0));
+            setRawND39Input(numberToRawDigits(0));
             
         } catch (err) {
             if (err instanceof z.ZodError) {
