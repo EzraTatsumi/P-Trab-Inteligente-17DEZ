@@ -1444,6 +1444,7 @@ const DiariaForm = () => {
                                                                         <span className="text-muted-foreground">OM Destino:</span>
                                                                         <span className="font-medium text-foreground">{registro.organizacao} ({formatCodug(registro.ug)})</span>
                                                                                                                                     
+                                                                     </div>
                                                                     <div className="flex justify-between text-xs">
                                                                         <span className="text-muted-foreground">Diária Base:</span>
                                                                         <span className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</span>
