@@ -470,8 +470,12 @@ const SuprimentoFundosForm = () => {
                 valor_nd_39: prev.valor_nd_39,
             }));
             
+            // NOVO: Carregar o primeiro registro recém-salvo em modo de edição
             if (newRecords && newRecords.length > 0) {
                 handleEdit(newRecords[0] as SuprimentoFundosRegistroDB);
+            } else {
+                // Se por algum motivo não houver newRecords, apenas reseta o formulário
+                resetForm();
             }
         },
         onError: (err) => {
@@ -570,7 +574,7 @@ const SuprimentoFundosForm = () => {
         setLastStagedFormData(null); 
         
         setRawTotalInput(numberToRawDigits(0));
-        setRawND39Input(numberToRawDigits(0));
+        setRawND39Input(numberToToRawDigits(0));
     };
     
     const handleClearPending = () => {
@@ -1486,6 +1490,87 @@ const SuprimentoFundosForm = () => {
                                                 </Button>
                                             </>
                                         )}
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
+                            {registros && registros.length > 0 && (
+                                <section className="space-y-4 mt-8">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        4. Registros Salvos ({registros.length})
+                                    </h3>
+                                    
+                                    <div className="border rounded-lg overflow-hidden">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="w-[20%]">OM Favorecida</TableHead>
+                                                    <TableHead className="w-[15%]">Dias / Efetivo</TableHead>
+                                                    <TableHead className="w-[20%]">ND 30 / ND 39</TableHead>
+                                                    <TableHead className="w-[15%] text-right">Valor Total</TableHead>
+                                                    <TableHead className="w-[10%] text-center">Memória</TableHead>
+                                                    <TableHead className="w-[10%] text-right">Ações</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {registros.map((registro) => {
+                                                    const isEditingMemoria = editingMemoriaId === registro.id;
+                                                    const isDifferentOm = registro.om_detentora !== registro.organizacao;
+                                                    
+                                                    return (
+                                                        <TableRow key={registro.id}>
+                                                            <TableCell className="font-medium">
+                                                                {registro.organizacao} ({formatCodug(registro.ug)})
+                                                                {isDifferentOm && (
+                                                                    <p className="text-xs text-red-600 font-semibold mt-1">
+                                                                        Destino: {registro.om_detentora}
+                                                                    </p>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {registro.dias_operacao} dias / {registro.quantidade_equipes} {registro.quantidade_equipes === 1 ? 'militar' : 'militares'}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <p className="text-xs text-green-600">ND 30: {formatCurrency(registro.valor_nd_30)}</p>
+                                                                <p className="text-xs text-blue-600">ND 39: {formatCurrency(registro.valor_nd_39)}</p>
+                                                            </TableCell>
+                                                            <TableCell className="text-right font-bold">
+                                                                {formatCurrency(registro.valor_total_solicitado)}
+                                                            </TableCell>
+                                                            <TableCell className="text-center">
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="sm" 
+                                                                    onClick={() => handleIniciarEdicaoMemoria(registro)}
+                                                                    disabled={!isPTrabEditable}
+                                                                >
+                                                                    <Pencil className={cn("h-4 w-4", isEditingMemoria ? "text-primary" : "text-muted-foreground")} />
+                                                                </Button>
+                                                            </TableCell>
+                                                            <TableCell className="text-right space-x-2 whitespace-nowrap">
+                                                                <Button 
+                                                                    variant="outline" 
+                                                                    size="icon" 
+                                                                    onClick={() => handleEdit(registro)}
+                                                                    disabled={!isPTrabEditable || isSaving}
+                                                                >
+                                                                    <Edit className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button 
+                                                                    variant="destructive" 
+                                                                    size="icon" 
+                                                                    onClick={() => handleConfirmDelete(registro)}
+                                                                    disabled={!isPTrabEditable || isSaving}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })}
+                                            </TableBody>
+                                        </Table>
                                     </div>
                                 </section>
                             )}
