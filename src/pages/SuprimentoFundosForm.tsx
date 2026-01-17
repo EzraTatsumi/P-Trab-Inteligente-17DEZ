@@ -1636,7 +1636,7 @@ const SuprimentoFundosForm = () => {
                                                     <div className="flex flex-col flex-1 min-w-0">
                                                         <div className="flex items-center gap-2">
                                                             <h4 className="text-base font-semibold text-foreground">
-                                                                {registro.organizacao} (UG: {formatCodug(registro.ug)})
+                                                                OM Favorecida: {registro.organizacao} (UG: {formatCodug(registro.ug)})
                                                             </h4>
                                                             {hasCustomMemoria && !isEditing && (
                                                                 <Badge variant="outline" className="text-xs">
@@ -1651,7 +1651,11 @@ const SuprimentoFundosForm = () => {
                                                                     Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
                                                                 </span>
                                                             </div>
-                                                                                                                                                       
+                                                        ) : (
+                                                            <p className="text-xs text-muted-foreground">
+                                                                Destino Recurso: {registro.om_detentora} (UG: {formatCodug(registro.ug_detentora)})
+                                                            </p>
+                                                        )}
                                                     </div>
                                                     
                                                     <div className="flex items-center justify-end gap-2 shrink-0">
