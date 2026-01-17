@@ -1652,7 +1652,7 @@ const SuprimentoFundosForm = () => {
                                                                 </span>
                                                             </div>
                                                         </div>
-                                                    
+                                                    </div>
                                                     <div className="flex items-center justify-end gap-2 shrink-0">
                                                         {!isEditing ? (
                                                             <>
