@@ -48,8 +48,8 @@ export const diretrizOperacionalSchema = z.object({
     observacoes: z.string().optional().nullable(),
 });
 
-// --- Verba Operacional Schema (Used in VerbaOperacionalForm) ---
-export const verbaOperacionalSchema = z.object({
+// --- Verba Operacional Base Schema (Sem Refinamento) ---
+const verbaOperacionalBase = z.object({
     // Campos de contexto (OMs)
     om_favorecida: z.string().min(1, "A OM Favorecida é obrigatória."),
     ug_favorecida: z.string().min(1, "A UG Favorecida é obrigatória."),
@@ -65,8 +65,10 @@ export const verbaOperacionalSchema = z.object({
     valor_total_solicitado: z.number().min(0.01, "O valor total solicitado deve ser maior que zero."),
     valor_nd_30: z.number().min(0, "ND 30 não pode ser negativa."),
     valor_nd_39: z.number().min(0, "ND 39 não pode ser negativa."),
-    
-}).refine(data => {
+});
+
+// --- Verba Operacional Schema (Com Refinamento) ---
+export const verbaOperacionalSchema = verbaOperacionalBase.refine(data => {
     // A soma das NDs deve ser igual ao valor total solicitado (com pequena tolerância)
     const totalAlocado = data.valor_nd_30 + data.valor_nd_39;
     return areNumbersEqual(totalAlocado, data.valor_total_solicitado);
@@ -75,8 +77,8 @@ export const verbaOperacionalSchema = z.object({
     path: ["valor_nd_39"], // Aponta para o campo de ND 39 para exibir o erro
 });
 
-// --- Suprimento de Fundos Schema (Used in SuprimentoFundosForm) ---
-export const suprimentoFundosSchema = verbaOperacionalSchema.extend({
+// --- Suprimento de Fundos Schema (Com Extensão e Refinamento) ---
+export const suprimentoFundosSchema = verbaOperacionalBase.extend({
     // Campos de detalhamento específicos para Suprimento de Fundos
     objeto_aquisicao: z.string().min(1, "O Objeto de Aquisição (Material) é obrigatório."),
     objeto_contratacao: z.string().min(1, "O Objeto de Contratação (Serviço) é obrigatório."),
@@ -84,4 +86,11 @@ export const suprimentoFundosSchema = verbaOperacionalSchema.extend({
     finalidade: z.string().min(1, "A Finalidade é obrigatória."),
     local: z.string().min(1, "O Local é obrigatório."),
     tarefa: z.string().min(1, "A Tarefa é obrigatória."),
+}).refine(data => {
+    // Re-aplica a validação de alocação total
+    const totalAlocado = data.valor_nd_30 + data.valor_nd_39;
+    return areNumbersEqual(totalAlocado, data.valor_total_solicitado);
+}, {
+    message: "A soma das NDs (30 e 39) deve ser igual ao Valor Total Solicitado.",
+    path: ["valor_nd_39"], // Aponta para o campo de ND 39 para exibir o erro
 });
