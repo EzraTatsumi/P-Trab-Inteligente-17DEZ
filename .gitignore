@@ -104,7 +104,7 @@ src/pages/DiretrizesCusteioPage.tsx
 
 src/lib/omUtils.ts
 src/lib/ptrabUtils.ts
-# REMOVIDO: src/lib/validationSchemas.ts
+src/lib/validationSchemas.ts
 
 # NOVAS EXCLUSÕES ADICIONAIS (UI e Páginas Estáticas)
 src/components/Benefits.tsx
@@ -183,5 +183,5 @@ src/lib/errorUtils.ts
 src/lib/ptrabUtils.ts
 src/lib/utils.ts
 src/lib/omUtils.ts
-# REMOVIDO: src/lib/validationSchemas.ts
+src/lib/validationSchemas.ts
 src/lib/classeIUtils.ts
