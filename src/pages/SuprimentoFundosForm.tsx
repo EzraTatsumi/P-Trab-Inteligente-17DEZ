@@ -1377,24 +1377,13 @@ const SuprimentoFundosForm = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
-                                                                {isDifferentOmInView ? (
-                                                                    <div className="flex items-center gap-1 mt-1">
-                                                                        <AlertCircle className="h-4 w-4 text-red-600" />
-                                                                        <span className="text-sm font-medium text-red-600">
-                                                                            Destino Recurso: {item.om_detentora} ({formatCodug(item.ug_detentora)})
-                                                                        </span>
-                                                                    </div>
-                                                                ) : (
-                                                                    <p className="font-medium">OM Destino Recurso:</p>
-                                                                )}
+                                                                <p className="font-medium">OM Destino Recurso:</p>
                                                                 <p className="font-medium">Período / Efetivo:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
-                                                                {!isDifferentOmInView && (
-                                                                    <p className="font-medium">{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
-                                                                )}
-                                                                <p className="font-medium">{item.dias_operacao} dias / {item.quantidade_equipes} {efetivoText}</p>
+                                                                <p className={cn("font-medium", isDifferentOmInView && "text-red-600")}>{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
+                                                                <p className="font-medium">{item.dias_operacao} {diasText} / {item.quantidade_equipes} {efetivoText}</p>
                                                             </div>
                                                         </div>
                                                         
@@ -1468,82 +1457,124 @@ const SuprimentoFundosForm = () => {
 
                             {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
                             {registros && registros.length > 0 && (
-                                <section className="space-y-4 mt-8">
+                                <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
-                                        4. Registros Salvos ({registros.length})
+                                        <Sparkles className="h-5 w-5 text-accent" />
+                                        OMs Cadastradas ({registros.length})
                                     </h3>
                                     
-                                    <div className="border rounded-lg overflow-hidden">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead className="w-[20%]">OM Favorecida</TableHead>
-                                                    <TableHead className="w-[15%]">Dias / Efetivo</TableHead>
-                                                    <TableHead className="w-[20%]">ND 30 / ND 39</TableHead>
-                                                    <TableHead className="w-[15%] text-right">Valor Total</TableHead>
-                                                    <TableHead className="w-[10%] text-center">Memória</TableHead>
-                                                    <TableHead className="w-[10%] text-right">Ações</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {registros.map((registro) => {
-                                                    const isEditingMemoria = editingMemoriaId === registro.id;
-                                                    const isDifferentOm = registro.om_detentora !== registro.organizacao;
-                                                    
-                                                    return (
-                                                        <TableRow key={registro.id}>
-                                                            <TableCell className="font-medium">
-                                                                {registro.organizacao} ({formatCodug(registro.ug)})
-                                                                {isDifferentOm && (
-                                                                    <p className="text-xs text-red-600 font-semibold mt-1">
-                                                                        Destino: {registro.om_detentora}
-                                                                    </p>
+                                    {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
+                                        // O total da OM é a soma do valor_total_solicitado
+                                        const totalOM = omRegistros.reduce((sum, r) => Number(r.valor_total_solicitado) + sum, 0);
+                                        const omName = omKey.split(' (')[0];
+                                        const ug = omKey.split(' (')[1].replace(')', '');
+                                        
+                                        return (
+                                            <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
+                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                        {omName} (UG: {formatCodug(ug)})
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {omRegistros[0].fase_atividade}
+                                                        </Badge>
+                                                    </h3>
+                                                    <span className="font-extrabold text-xl text-primary">
+                                                        {formatCurrency(totalOM)}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="space-y-3">
+                                                    {omRegistros.map((registro) => {
+                                                        const totalSolicitado = Number(registro.valor_total_solicitado || 0);
+                                                        const totalND30 = Number(registro.valor_nd_30 || 0);
+                                                        const totalND39 = Number(registro.valor_nd_39 || 0);
+                                                        
+                                                        const isDifferentOm = registro.om_detentora !== registro.organizacao;
+                                                        
+                                                        const diasText = registro.dias_operacao === 1 ? 'dia' : 'dias';
+                                                        const efetivoText = registro.quantidade_equipes === 1 ? 'militar' : 'militares';
+                                                        
+                                                        return (
+                                                            <Card 
+                                                                key={registro.id} 
+                                                                className={cn(
+                                                                    "p-3 bg-background border"
                                                                 )}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {registro.dias_operacao} dias / {registro.quantidade_equipes} {registro.quantidade_equipes === 1 ? 'militar' : 'militares'}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <p className="text-xs text-green-600">ND 30: {formatCurrency(registro.valor_nd_30)}</p>
-                                                                <p className="text-xs text-blue-600">ND 39: {formatCurrency(registro.valor_nd_39)}</p>
-                                                            </TableCell>
-                                                            <TableCell className="text-right font-bold">
-                                                                {formatCurrency(registro.valor_total_solicitado)}
-                                                            </TableCell>
-                                                            <TableCell className="text-center">
-                                                                <Button 
-                                                                    variant="ghost" 
-                                                                    size="sm" 
-                                                                    onClick={() => handleIniciarEdicaoMemoria(registro)}
-                                                                    disabled={!isPTrabEditable}
-                                                                >
-                                                                    <Pencil className={cn("h-4 w-4", isEditingMemoria ? "text-primary" : "text-muted-foreground")} />
-                                                                </Button>
-                                                            </TableCell>
-                                                            <TableCell className="text-right space-x-2 whitespace-nowrap">
-                                                                <Button 
-                                                                    variant="outline" 
-                                                                    size="icon" 
-                                                                    onClick={() => handleEdit(registro)}
-                                                                    disabled={!isPTrabEditable || isSaving}
-                                                                >
-                                                                    <Edit className="h-4 w-4" />
-                                                                </Button>
-                                                                <Button 
-                                                                    variant="destructive" 
-                                                                    size="icon" 
-                                                                    onClick={() => handleConfirmDelete(registro)}
-                                                                    disabled={!isPTrabEditable || isSaving}
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    );
-                                                })}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <h4 className="font-semibold text-base text-foreground">
+                                                                                Suprimento de Fundos
+                                                                            </h4>
+                                                                            {registro.fase_atividade !== omRegistros[0].fase_atividade && (
+                                                                                <Badge variant="outline" className="text-xs">
+                                                                                    {registro.fase_atividade}
+                                                                                </Badge>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            Período: {registro.dias_operacao} {diasText} | Efetivo: {registro.quantidade_equipes} {efetivoText}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-lg text-primary/80">
+                                                                            {formatCurrency(totalSolicitado)}
+                                                                        </span>
+                                                                        <div className="flex gap-1">
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8"
+                                                                                onClick={() => handleEdit(registro)}
+                                                                                disabled={!isPTrabEditable || isSaving || pendingSuprimentos.length > 0}
+                                                                            >
+                                                                                <Pencil className="h-4 w-4" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                onClick={() => handleConfirmDelete(registro)}
+                                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                {/* Detalhes da Alocação */}
+                                                                <div className="pt-2 border-t mt-2">
+                                                                    {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
+                                                                    <div className="flex justify-between text-xs mb-1">
+                                                                        <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                        <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
+                                                                            {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
+                                                                        <span className="font-medium text-green-600">{formatCurrency(totalND30)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
+                                                                        <span className="font-medium text-blue-600">{formatCurrency(totalND39)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs font-bold pt-1">
+                                                                        <span className="text-muted-foreground">Total Solicitado:</span>
+                                                                        <span className="text-foreground">{formatCurrency(totalSolicitado)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </Card>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
                                 </section>
                             )}
 
