@@ -49,6 +49,8 @@ interface OMData {
     codug_om: string;
     rm_vinculacao: string;
     codug_rm_vinculacao: string;
+    cidade: string | null;
+    ativo: boolean;
 }
 
 // Tipo para o registro calculado antes de salvar (inclui campos de display)
@@ -195,10 +197,36 @@ const SuprimentoFundosForm = () => {
     // Efeito de inicialização da OM Favorecida (OM do PTrab)
     useEffect(() => {
         if (ptrabData && !editingId) {
-            // Se não estiver editando, resetamos para o estado inicial (vazio)
-            resetForm();
-        } else if (ptrabData && editingId) {
+            // 1. OM Favorecida (OM do PTrab) - Deve ser selecionável, mas o valor inicial é o do PTrab
+            const omFavorecida = oms?.find(om => om.nome_om === ptrabData.nome_om && om.codug_om === ptrabData.codug_om);
+            
+            setFormData(prev => ({
+                ...prev,
+                om_favorecida: ptrabData.nome_om,
+                ug_favorecida: ptrabData.codug_om,
+            }));
+            setSelectedOmFavorecidaId(omFavorecida?.id);
+            
+            // 2. OM Detentora (Padrão CIE)
+            const cieOm = oms?.find(om => om.nome_om === DEFAULT_OM_DETENTORA && om.codug_om === DEFAULT_UG_DETENTORA);
+            if (cieOm) {
+                setSelectedOmDetentoraId(cieOm.id);
+                setFormData(prev => ({
+                    ...prev,
+                    om_detentora: DEFAULT_OM_DETENTORA,
+                    ug_detentora: DEFAULT_UG_DETENTORA,
+                }));
+            } else {
+                setSelectedOmDetentoraId(undefined);
+                setFormData(prev => ({
+                    ...prev,
+                    om_detentora: DEFAULT_OM_DETENTORA,
+                    ug_detentora: DEFAULT_UG_DETENTORA,
+                }));
+            }
+            
             // Se estiver editando, garantimos que os seletores de OM sejam inicializados
+        } else if (ptrabData && editingId) {
             const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
             const omDetentora = oms?.find(om => om.nome_om === formData.om_detentora && om.codug_om === formData.ug_detentora);
             
@@ -486,7 +514,15 @@ const SuprimentoFundosForm = () => {
 
     const resetForm = () => {
         setEditingId(null);
-        setFormData(initialFormState);
+        setFormData(prev => ({
+            ...initialFormState,
+            // Mantém a OM Favorecida (do PTrab) se já estiver definida
+            om_favorecida: ptrabData?.nome_om || "",
+            ug_favorecida: ptrabData?.codug_om || "",
+            // OM Detentora (Padrão CIE)
+            om_detentora: DEFAULT_OM_DETENTORA,
+            ug_detentora: DEFAULT_UG_DETENTORA,
+        }));
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
         setSelectedOmFavorecidaId(undefined);
@@ -823,7 +859,7 @@ const SuprimentoFundosForm = () => {
             JSON.parse(registro.detalhamento_customizado || "");
             // Se o parse for bem-sucedido, o detalhamento_customizado é o JSON de detalhes, então a memória inicial é a automática
         } catch (e) {
-            // Se falhar, é um texto customizado (memória)
+            // Se falhar, é um texto customizado (memória), preservamos
             memoriaInicial = registro.detalhamento_customizado || memoriaAutomatica;
         }
         
@@ -1253,7 +1289,7 @@ const SuprimentoFundosForm = () => {
                                     
                                 </section>
                             )}
-                            
+
                             {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
                             {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">

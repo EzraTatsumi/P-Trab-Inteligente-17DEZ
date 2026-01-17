@@ -90,6 +90,7 @@ export function OmSelector({
       if (defaultOM) {
         // Chama onChange para definir a OM padrão no estado pai
         onChange(defaultOM);
+        setDisplayOM(defaultOM); // Define o displayOM imediatamente
       }
     }
   }, [loading, selectedOmId, defaultOmId, oms, onChange]);
@@ -203,7 +204,12 @@ export function OmSelector({
                   value={`${om.nome_om} ${om.codug_om} ${om.rm_vinculacao} ${om.id}`} 
                   onSelect={() => {
                     const selected = oms.find(o => o.id === om.id); // Usamos o om.id do loop para garantir a seleção correta
-                    onChange(selected?.id === selectedOmId ? undefined : selected); // Passa o objeto completo ou undefined
+                    
+                    // Se o item selecionado for o mesmo que já está selecionado, deseleciona (passa undefined)
+                    const newSelection = selected?.id === selectedOmId ? undefined : selected;
+                    
+                    onChange(newSelection); // Passa o objeto completo ou undefined
+                    setDisplayOM(newSelection); // Atualiza o estado de exibição imediatamente
                     setOpen(false);
                   }}
                 >

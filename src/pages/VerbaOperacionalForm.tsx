@@ -48,6 +48,8 @@ interface OMData {
     codug_om: string;
     rm_vinculacao: string;
     codug_rm_vinculacao: string;
+    cidade: string | null;
+    ativo: boolean;
 }
 
 // Tipo para o registro calculado antes de salvar (inclui campos de display)
@@ -196,6 +198,13 @@ const VerbaOperacionalForm = () => {
                     ug_detentora: DEFAULT_UG_DETENTORA,
                 }));
             }
+        } else if (ptrabData && editingId) {
+            // Se estiver editando, garantimos que os seletores de OM sejam inicializados
+            const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
+            const omDetentora = oms?.find(om => om.nome_om === formData.om_detentora && om.codug_om === formData.ug_detentora);
+            
+            setSelectedOmFavorecidaId(omFavorecida?.id);
+            setSelectedOmDetentoraId(omDetentora?.id);
         }
     }, [ptrabData, oms, editingId]);
 
@@ -386,7 +395,7 @@ const VerbaOperacionalForm = () => {
             toast.success(`Sucesso! ${pendingVerbas.length} registro(s) de Verba Operacional adicionado(s).`);
             setPendingVerbas([]); 
             
-            // Não chamamos resetForm aqui para manter os dados da Seção 2
+            // Não chamamos resetForm aqui para manter os dados na Seção 2
             // resetForm(); 
             
             if (newRecords && newRecords.length > 0) {
@@ -463,6 +472,9 @@ const VerbaOperacionalForm = () => {
             // Mantém a OM Favorecida (do PTrab) se já estiver definida
             om_favorecida: ptrabData?.nome_om || "",
             ug_favorecida: ptrabData?.codug_om || "",
+            // OM Detentora (Padrão CIE)
+            om_detentora: DEFAULT_OM_DETENTORA,
+            ug_detentora: DEFAULT_UG_DETENTORA,
             // Dias e equipes são resetados para 0 (vazio)
             dias_operacao: 0,
             quantidade_equipes: 0,
