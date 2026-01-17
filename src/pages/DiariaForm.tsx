@@ -1361,7 +1361,7 @@ const DiariaForm = () => {
                                             <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                                                 <div className="flex items-center justify-between mb-3 border-b pb-2">
                                                     <h3 className="font-bold text-lg text-primary flex items-center gap-2">
-                                                        OM Destino: {omName} (UG: {formatCodug(ug)})
+                                                        {omName} (UG: {formatCodug(ug)})
                                                         {/* Badge de Destino movido para cá */}
                                                         <Badge 
                                                             variant="default" 
@@ -1439,6 +1439,13 @@ const DiariaForm = () => {
                                                                 
                                                                 {/* Detalhes da Alocação */}
                                                                 <div className="pt-2 border-t mt-2">
+                                                                    {/* NOVO: OM Destino */}
+                                                                    <div className="flex justify-between text-xs mb-1">
+                                                                        <span className="text-muted-foreground font-semibold">OM Destino:</span>
+                                                                        <span className="font-medium text-foreground">{registro.organizacao} ({formatCodug(registro.ug)})</span>
+                                                                    </div>
+                                                                    <Separator className="my-1 bg-gray-300" />
+                                                                    
                                                                     <div className="flex justify-between text-xs">
                                                                         <span className="text-muted-foreground">Diária Base:</span>
                                                                         <span className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</span>
