@@ -177,8 +177,9 @@ export function OmSelector({
       return displayOM.nome_om;
     }
     
-    // 2. Se estiver em modo de edição (selectedOmId existe) mas a OM ainda está sendo buscada, 
+    // 2. Se estiver em modo de edição (selectedOmId existe) E a OM ainda está sendo buscada, 
     //    ou se o ID não foi encontrado, mas temos o nome inicial (fallback para edição).
+    //    REMOVIDO: A dependência de initialOmName/Ug para o fallback, a menos que selectedOmId esteja presente.
     if (selectedOmId && (isFetchingSelected || initialOmName)) {
         return initialOmName || "Carregando OM...";
     }

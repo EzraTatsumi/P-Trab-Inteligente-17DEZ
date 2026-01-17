@@ -175,8 +175,7 @@ const VerbaOperacionalForm = () => {
     useEffect(() => {
         if (ptrabData && !editingId) {
             // 1. OM Favorecida (OM do PTrab) - NÃO PRÉ-SELECIONAR
-            // Apenas inicializa os campos de OM Favorecida no formData com strings vazias,
-            // forçando a seleção manual no OmSelector.
+            // Mantemos os campos vazios e o ID undefined para forçar a seleção manual.
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: "", // Vazio
@@ -968,8 +967,9 @@ const VerbaOperacionalForm = () => {
                                             onChange={handleOmFavorecidaChange}
                                             placeholder="Selecione a OM Favorecida"
                                             disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingVerbas.length > 0}
-                                            initialOmName={formData.om_favorecida}
-                                            initialOmUg={formData.ug_favorecida}
+                                            // CORREÇÃO: Apenas passa initialOmName/Ug se estiver em modo de edição
+                                            initialOmName={editingId ? formData.om_favorecida : undefined}
+                                            initialOmUg={editingId ? formData.ug_favorecida : undefined}
                                         />
                                     </div>
                                     <div className="space-y-2 col-span-1">
@@ -1303,119 +1303,6 @@ const VerbaOperacionalForm = () => {
                                             </>
                                         )}
                                     </div>
-                                </section>
-                            )}
-
-                            {/* SEÇÃO 4: REGISTROS SALVOS (Agrupados por OM) */}
-                            {registros && registros.length > 0 && (
-                                <section className="space-y-4">
-                                    <h3 className="text-xl font-bold flex items-center gap-2">
-                                        <Sparkles className="h-5 w-5 text-accent" />
-                                        Registros Salvos ({registros.length})
-                                    </h3>
-                                    
-                                    {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
-                                        const totalOM = omRegistros.reduce((sum, r) => Number(r.valor_total_solicitado) + sum, 0);
-                                        const omName = omKey.split(' (')[0];
-                                        const ug = omKey.split(' (')[1].replace(')', '');
-                                        
-                                        return (
-                                            <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
-                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
-                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
-                                                        OM Favorecida: {omName} (UG: {formatCodug(ug)})
-                                                    </h3>
-                                                    <span className="font-extrabold text-xl text-primary">
-                                                        {formatCurrency(totalOM)}
-                                                    </span>
-                                                </div>
-                                                
-                                                <div className="space-y-3">
-                                                    {omRegistros.map((registro) => {
-                                                        const totalGeral = Number(registro.valor_total_solicitado || 0);
-                                                        const totalND30 = Number(registro.valor_nd_30 || 0);
-                                                        const totalND39 = Number(registro.valor_nd_39 || 0);
-                                                        
-                                                        const isDifferentOmInView = registro.om_detentora !== registro.organizacao;
-                                                        
-                                                        const diasText = registro.dias_operacao === 1 ? "dia" : "dias";
-                                                        const equipesText = registro.quantidade_equipes === 1 ? "equipe" : "equipes";
-                                                        
-                                                        return (
-                                                            <Card 
-                                                                key={registro.id} 
-                                                                className={cn(
-                                                                    "p-3 bg-background border",
-                                                                    editingId === registro.id && "border-2 border-primary/50 shadow-lg"
-                                                                )}
-                                                            >
-                                                                <div className="flex items-center justify-between">
-                                                                    <div className="flex flex-col">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <h4 className="font-semibold text-base text-foreground">
-                                                                                Verba Operacional ({formatCurrency(totalGeral)})
-                                                                            </h4>
-                                                                            <Badge variant="outline" className="text-xs">
-                                                                                {registro.fase_atividade}
-                                                                            </Badge>
-                                                                        </div>
-                                                                        <p className="text-xs text-muted-foreground">
-                                                                            Período: {registro.dias_operacao} {diasText} | Equipes: {registro.quantidade_equipes}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="font-bold text-lg text-primary/80">
-                                                                            {formatCurrency(totalGeral)}
-                                                                        </span>
-                                                                        <div className="flex gap-1">
-                                                                            <Button
-                                                                                type="button" 
-                                                                                variant="ghost"
-                                                                                size="icon"
-                                                                                className="h-8 w-8"
-                                                                                onClick={() => handleEdit(registro)}
-                                                                                disabled={!isPTrabEditable || isSaving || pendingVerbas.length > 0}
-                                                                            >
-                                                                                <Pencil className="h-4 w-4" />
-                                                                            </Button>
-                                                                            <Button
-                                                                                type="button" 
-                                                                                variant="ghost"
-                                                                                size="icon"
-                                                                                onClick={() => handleConfirmDelete(registro)}
-                                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                                                disabled={!isPTrabEditable || isSaving}
-                                                                            >
-                                                                                <Trash2 className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                
-                                                                {/* Detalhes da Alocação */}
-                                                                <div className="pt-2 border-t mt-2">
-                                                                    <div className="flex justify-between text-xs mb-1">
-                                                                        <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                                                        <span className={cn("font-medium", isDifferentOmInView ? "text-red-600 font-bold" : "text-foreground")}>
-                                                                            {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">ND 33.90.30 (Material):</span>
-                                                                        <span className="font-medium text-green-600">{formatCurrency(totalND30)}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
-                                                                        <span className="font-medium text-blue-600">{formatCurrency(totalND39)}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </Card>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </Card>
-                                        );
-                                    })}
                                 </section>
                             )}
 
