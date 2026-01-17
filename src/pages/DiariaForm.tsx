@@ -232,8 +232,6 @@ const DiariaForm = () => {
 
         // 1. Comparar campos principais
         if (
-            formData.organizacao !== stagedUpdate.organizacao || // ADICIONADO NA ETAPA ANTERIOR
-            formData.ug !== stagedUpdate.ug || // ADICIONADO NA ETAPA ANTERIOR
             formData.dias_operacao !== stagedUpdate.dias_operacao ||
             formData.destino !== stagedUpdate.destino ||
             formData.nr_viagens !== stagedUpdate.nr_viagens ||
@@ -1033,16 +1031,6 @@ const DiariaForm = () => {
                                             </div>
                                         </div>
                                         
-                                        {/* NOVO: Alerta para modo de adição (Cálculo pronto, mas não estagiado) */}
-                                        {isCalculationReady && !editingId && (
-                                            <Alert variant="default" className="mt-4">
-                                                <AlertCircle className="h-4 w-4" />
-                                                <AlertDescription className="font-medium">
-                                                    Cálculo pronto! Clique em "Salvar Item na Lista" para adicionar este registro à lista pendente na Seção 3.
-                                                </AlertDescription>
-                                            </Alert>
-                                        )}
-
                                         {/* BOTÕES DE AÇÃO (Salvar Item da Categoria) */}
                                         <div className="flex justify-end gap-3 pt-4">
                                             {/* Revertido para o padrão: mesmo texto e desabilitação baseada apenas na prontidão do cálculo */}
@@ -1068,8 +1056,8 @@ const DiariaForm = () => {
                                         3. Itens Adicionados ({itemsToDisplay.length})
                                     </h3>
                                     
-                                    {/* Alerta de Validação Final (Exibido quando o formulário de edição está dessincronizado) */}
-                                    {isDiariaDirty && (
+                                    {/* NOVO: Alerta de Validação Final (Apenas em modo de edição) */}
+                                    {editingId && isDiariaDirty && (
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertDescription className="font-medium">
