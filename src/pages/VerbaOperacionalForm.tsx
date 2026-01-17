@@ -395,7 +395,7 @@ const VerbaOperacionalForm = () => {
             toast.success(`Sucesso! ${pendingVerbas.length} registro(s) de Verba Operacional adicionado(s).`);
             setPendingVerbas([]); 
             
-            // CORREÇÃO: Manter campos de contexto e resetar apenas os campos de valor
+            // CORREÇÃO: Manter campos de contexto e manter campos de valor
             setFormData(prev => ({
                 ...prev,
                 // Manter campos de contexto
@@ -407,15 +407,16 @@ const VerbaOperacionalForm = () => {
                 quantidade_equipes: prev.quantidade_equipes,
                 fase_atividade: prev.fase_atividade,
                 
-                // Resetar apenas os campos de valor
-                valor_total_solicitado: 0,
-                valor_nd_30: 0,
-                valor_nd_39: 0,
+                // Manter campos de valor (não resetar)
+                valor_total_solicitado: prev.valor_total_solicitado,
+                valor_nd_30: prev.valor_nd_30,
+                valor_nd_39: prev.valor_nd_39,
             }));
             
-            setRawTotalInput(numberToRawDigits(0));
-            setRawND30Input(numberToRawDigits(0));
-            setRawND39Input(numberToRawDigits(0));
+            // Manter inputs brutos (não resetar)
+            // setRawTotalInput(numberToRawDigits(0)); // REMOVIDO
+            // setRawND30Input(numberToRawDigits(0)); // REMOVIDO
+            // setRawND39Input(numberToRawDigits(0)); // REMOVIDO
             
             if (newRecords && newRecords.length > 0) {
                 handleEdit(newRecords[0] as VerbaOperacionalRegistro);
@@ -675,7 +676,7 @@ const VerbaOperacionalForm = () => {
             // MODO ADIÇÃO: Adicionar à lista pendente
             setPendingVerbas(prev => [...prev, calculatedData]);
             
-            // CORREÇÃO: Manter campos de contexto e resetar apenas os campos de valor
+            // CORREÇÃO: Manter campos de contexto e manter campos de valor
             setFormData(prev => ({
                 ...prev,
                 // Manter campos de contexto
@@ -687,15 +688,16 @@ const VerbaOperacionalForm = () => {
                 quantidade_equipes: prev.quantidade_equipes,
                 fase_atividade: prev.fase_atividade,
                 
-                // Resetar apenas os campos de valor
-                valor_total_solicitado: 0,
-                valor_nd_30: 0,
-                valor_nd_39: 0,
+                // Manter campos de valor (não resetar)
+                valor_total_solicitado: prev.valor_total_solicitado,
+                valor_nd_30: prev.valor_nd_30,
+                valor_nd_39: prev.valor_nd_39,
             }));
             
-            setRawTotalInput(numberToRawDigits(0));
-            setRawND30Input(numberToRawDigits(0));
-            setRawND39Input(numberToRawDigits(0));
+            // Não resetar inputs brutos
+            // setRawTotalInput(numberToRawDigits(0)); // REMOVIDO
+            // setRawND30Input(numberToRawDigits(0)); // REMOVIDO
+            // setRawND39Input(numberToRawDigits(0)); // REMOVIDO
             
             toast.info("Item de Verba Operacional adicionado à lista pendente.");
             
@@ -1243,7 +1245,7 @@ const VerbaOperacionalForm = () => {
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
                                         <Sparkles className="h-5 w-5 text-accent" />
-                                        Registros Salvos ({registros.length})
+                                        4. Registros Salvos ({registros.length})
                                     </h3>
                                     
                                     {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
@@ -1359,7 +1361,7 @@ const VerbaOperacionalForm = () => {
                             {registros && registros.length > 0 && (
                                 <div className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
-                                        📋 Memórias de Cálculos Detalhadas
+                                        📋 5. Memórias de Cálculos Detalhadas
                                     </h3>
                                     
                                     {registros.map(registro => {
