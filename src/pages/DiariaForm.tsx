@@ -1381,7 +1381,7 @@ const DiariaForm = () => {
                                             </Card>
                                         );
                                     })}
-                                </div>
+                                </section>
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS (COPIADA DO CLASSE II) */}
