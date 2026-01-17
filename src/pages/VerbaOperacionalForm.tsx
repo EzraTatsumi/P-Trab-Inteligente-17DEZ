@@ -15,7 +15,7 @@ import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { formatCurrency, formatCodug, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
-import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/ptrabUtils";
+import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/lib/ptrabUtils";
 import { 
     calculateVerbaOperacionalTotals, 
     generateVerbaOperacionalMemoriaCalculo 
@@ -395,16 +395,27 @@ const VerbaOperacionalForm = () => {
             toast.success(`Sucesso! ${pendingVerbas.length} registro(s) de Verba Operacional adicionado(s).`);
             setPendingVerbas([]); 
             
-            // CORREÇÃO: Manter campos de contexto e resetar apenas os campos de valor
+            // CORREÇÃO: Manter campos de contexto e valores monetários
+            const keptData = {
+                om_favorecida: formData.om_favorecida,
+                ug_favorecida: formData.ug_favorecida,
+                om_detentora: formData.om_detentora,
+                ug_detentora: formData.ug_detentora,
+                dias_operacao: formData.dias_operacao,
+                quantidade_equipes: formData.quantidade_equipes,
+                fase_atividade: formData.fase_atividade,
+                valor_total_solicitado: formData.valor_total_solicitado,
+                valor_nd_30: formData.valor_nd_30,
+                valor_nd_39: formData.valor_nd_39,
+            };
+            
             setFormData(prev => ({
-                ...prev,
-                valor_total_solicitado: 0,
-                valor_nd_30: 0,
-                valor_nd_39: 0,
+                ...initialFormState,
+                ...keptData,
             }));
-            setRawTotalInput(numberToRawDigits(0));
-            setRawND30Input(numberToRawDigits(0));
-            setRawND39Input(numberToRawDigits(0));
+            
+            // Os inputs brutos (rawTotalInput, rawND30Input, rawND39Input) já retêm o valor
+            // pois não são resetados aqui.
             
             if (newRecords && newRecords.length > 0) {
                 handleEdit(newRecords[0] as VerbaOperacionalRegistro);
@@ -664,27 +675,27 @@ const VerbaOperacionalForm = () => {
             // MODO ADIÇÃO: Adicionar à lista pendente
             setPendingVerbas(prev => [...prev, calculatedData]);
             
-            // CORREÇÃO: Manter campos de contexto e resetar apenas os campos de valor
+            // CORREÇÃO: Manter todos os campos do formulário, incluindo os valores monetários
+            const keptData = {
+                om_favorecida: formData.om_favorecida,
+                ug_favorecida: formData.ug_favorecida,
+                om_detentora: formData.om_detentora,
+                ug_detentora: formData.ug_detentora,
+                dias_operacao: formData.dias_operacao,
+                quantidade_equipes: formData.quantidade_equipes,
+                fase_atividade: formData.fase_atividade,
+                valor_total_solicitado: formData.valor_total_solicitado,
+                valor_nd_30: formData.valor_nd_30,
+                valor_nd_39: formData.valor_nd_39,
+            };
+            
             setFormData(prev => ({
-                ...prev,
-                // Manter campos de contexto
-                om_favorecida: prev.om_favorecida,
-                ug_favorecida: prev.ug_favorecida,
-                om_detentora: prev.om_detentora,
-                ug_detentora: prev.ug_detentora,
-                dias_operacao: prev.dias_operacao,
-                quantidade_equipes: prev.quantidade_equipes,
-                fase_atividade: prev.fase_atividade,
-                
-                // Resetar apenas os campos de valor
-                valor_total_solicitado: 0,
-                valor_nd_30: 0,
-                valor_nd_39: 0,
+                ...initialFormState,
+                ...keptData,
             }));
             
-            setRawTotalInput(numberToRawDigits(0));
-            setRawND30Input(numberToRawDigits(0));
-            setRawND39Input(numberToRawDigits(0));
+            // Os inputs brutos (rawTotalInput, rawND30Input, rawND39Input) já retêm o valor
+            // pois não são resetados aqui.
             
             toast.info("Item de Verba Operacional adicionado à lista pendente.");
             
@@ -891,7 +902,7 @@ const VerbaOperacionalForm = () => {
                                 </h3>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {/* OM FAVORECIDA (OM do PTrab) */}
+                                    {/* OM Favorecida (OM do PTrab) */}
                                     <div className="space-y-2 col-span-1">
                                         <Label htmlFor="om_favorecida">OM Favorecida *</Label>
                                         <OmSelector
