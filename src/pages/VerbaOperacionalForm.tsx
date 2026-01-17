@@ -18,7 +18,7 @@ import { formatCurrency, formatCodug, formatCurrencyInput, numberToRawDigits } f
 import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/ptrabUtils";
 import { 
     calculateVerbaOperacionalTotals, 
-    generateVerbaOperacionalMemoriaCalculo 
+    generateVerbaOperacionalMemoriaCalculo, 
 } from "@/lib/verbaOperacionalUtils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -36,7 +36,7 @@ import * as z from "zod";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
 import { cn } from "@/lib/utils"; 
-import CurrencyInput from "@/components/CurrencyInput"; // Componente para input monetário
+import CurrencyInput from "@/components/CurrencyInput";
 
 // Tipos de dados
 type VerbaOperacionalRegistro = Tables<'verba_operacional_registros'>;
@@ -186,7 +186,7 @@ const VerbaOperacionalForm = () => {
         queryKey: ['verbaOperacionalRegistros', ptrabId],
         queryFn: () => fetchPTrabRecords('verba_operacional_registros', ptrabId!, { detalhamento: 'Verba Operacional' }),
         enabled: !!ptrabId,
-        select: (data) => data.filter(r => r.detalhamento !== 'Suprimento de Fundos').sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
+        select: (data) => data.filter(r => r.detalhamento === 'Verba Operacional').sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
     });
     
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
@@ -536,7 +536,7 @@ const VerbaOperacionalForm = () => {
         setSelectedOmFavorecidaId(undefined);
         setSelectedOmDetentoraId(undefined); 
         setStagedUpdate(null); 
-        setLastStagedFormData(null); // NOVO: Limpa o lastStagedFormData
+        setLastStagedFormData(null); // Limpa o lastStagedFormData
         
         // Resetar inputs brutos
         setRawTotalInput(numberToRawDigits(0));
@@ -547,7 +547,7 @@ const VerbaOperacionalForm = () => {
     const handleClearPending = () => {
         setPendingVerbas([]);
         setStagedUpdate(null);
-        setLastStagedFormData(null); // NOVO: Limpa o lastStagedFormData
+        setLastStagedFormData(null); // Limpa o lastStagedFormData
         resetForm();
     };
 
@@ -620,6 +620,14 @@ const VerbaOperacionalForm = () => {
             memoria_calculo_display: memoria, 
             om_favorecida: newFormData.om_favorecida,
             ug_favorecida: newFormData.ug_favorecida,
+            
+            // Campos de detalhamento (Verba Operacional não usa estes, mas o tipo da DB exige)
+            objeto_aquisicao: null,
+            objeto_contratacao: null,
+            proposito: null,
+            finalidade: null,
+            local: null,
+            tarefa: null,
         };
         
         setStagedUpdate(stagedData); 
@@ -651,20 +659,28 @@ const VerbaOperacionalForm = () => {
                 valor_nd_39: nd39Value,
             };
             
-            verbaOperacionalSchema.parse(dataToValidate);
+            // Adiciona campos de detalhamento vazios para satisfazer o schema temporariamente
+            const tempValidationData = {
+                ...dataToValidate,
+                objeto_aquisicao: "temp",
+                objeto_contratacao: "temp",
+                proposito: "temp",
+                finalidade: "temp",
+                local: "temp",
+                tarefa: "temp",
+            };
+            
+            suprimentoFundosSchema.parse(tempValidationData);
             
             // 2. Preparar o objeto final (calculatedData)
-            const totals = calculateVerbaOperacionalTotals({
+            const calculatedDataForUtils = {
                 ...dataToValidate,
                 organizacao: dataToValidate.om_favorecida,
                 ug: dataToValidate.ug_favorecida,
-            } as any);
-            
-            const memoria = generateVerbaOperacionalMemoriaCalculo({
-                ...dataToValidate,
-                organizacao: dataToValidate.om_favorecida,
-                ug: dataToValidate.ug_favorecida,
-            } as any);
+            };
+
+            const totals = calculateVerbaOperacionalTotals(calculatedDataForUtils as any);
+            const memoria = generateVerbaOperacionalMemoriaCalculo(calculatedDataForUtils as any);
             
             const calculatedData: CalculatedVerbaOperacional = {
                 tempId: editingId || Math.random().toString(36).substring(2, 9), 
@@ -690,6 +706,14 @@ const VerbaOperacionalForm = () => {
                 memoria_calculo_display: memoria, 
                 om_favorecida: formData.om_favorecida,
                 ug_favorecida: formData.ug_favorecida,
+                
+                // Campos de detalhamento (Verba Operacional não usa estes, mas o tipo da DB exige)
+                objeto_aquisicao: null,
+                objeto_contratacao: null,
+                proposito: null,
+                finalidade: null,
+                local: null,
+                tarefa: null,
             };
             
             if (editingId) {
@@ -864,6 +888,7 @@ const VerbaOperacionalForm = () => {
             const { error } = await supabase
                 .from("verba_operacional_registros")
                 .update({
+                    detalhamento: "Verba Operacional", // Mantém o marcador
                     detalhamento_customizado: memoriaEdit.trim() || null,
                 })
                 .eq("id", registroId);
@@ -1088,8 +1113,8 @@ const VerbaOperacionalForm = () => {
                                                         onChange={handleOmDetentoraChange}
                                                         placeholder="Selecione a OM Detentora"
                                                         disabled={!isPTrabEditable || isSaving}
-                                                        initialOmName={formData.om_detentora}
-                                                        initialOmUg={formData.ug_detentora}
+                                                        initialOmName={editingId ? formData.om_detentora : undefined}
+                                                        initialOmUg={editingId ? formData.ug_detentora : undefined}
                                                     />
                                                     <p className="text-xs text-muted-foreground">
                                                         UG de Destino: {formatCodug(formData.ug_detentora)}
@@ -1241,14 +1266,23 @@ const VerbaOperacionalForm = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
-                                                                <p className="font-medium">OM Destino:</p>
+                                                                {isDifferentOmInView ? (
+                                                                    <div className="flex items-center gap-1 mt-1">
+                                                                        <AlertCircle className="h-4 w-4 text-red-600" />
+                                                                        <span className="text-sm font-medium text-red-600">
+                                                                            Destino Recurso: {item.om_detentora} ({formatCodug(item.ug_detentora)})
+                                                                        </span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <p className="font-medium">OM Destino Recurso:</p>
+                                                                )}
                                                                 <p className="font-medium">Período / Equipes:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
-                                                                <p className={cn("font-medium", isDifferentOmInView ? "text-red-600 font-bold" : "text-foreground")}>
-                                                                    {item.om_detentora} ({formatCodug(item.ug_detentora)})
-                                                                </p>
+                                                                {!isDifferentOmInView && (
+                                                                    <p className="font-medium">{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
+                                                                )}
                                                                 <p className="font-medium">{item.dias_operacao} {diasText} / {item.quantidade_equipes} {equipesText}</p>
                                                             </div>
                                                         </div>
@@ -1321,6 +1355,115 @@ const VerbaOperacionalForm = () => {
                                 </section>
                             )}
 
+                            {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
+                            {registros && registros.length > 0 && (
+                                <section className="space-y-4 mt-8">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        4. Registros Salvos ({registros.length})
+                                    </h3>
+                                    
+                                    {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
+                                        const totalOM = omRegistros.reduce((sum, r) => r.valor_total_solicitado + sum, 0);
+                                        const omName = omKey.split(' (')[0];
+                                        const ug = omKey.split(' (')[1].replace(')', '');
+                                        
+                                        return (
+                                            <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
+                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                        {omName} (UG: {formatCodug(ug)})
+                                                    </h3>
+                                                    <span className="font-extrabold text-xl text-primary">
+                                                        {formatCurrency(totalOM)}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="space-y-3">
+                                                    {omRegistros.map((registro) => {
+                                                        const isDifferentOm = registro.om_detentora !== registro.organizacao;
+                                                        
+                                                        return (
+                                                            <Card 
+                                                                key={registro.id} 
+                                                                className={cn(
+                                                                    "p-3 bg-background border"
+                                                                )}
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <h4 className="font-semibold text-base text-foreground">
+                                                                                Verba Operacional
+                                                                            </h4>
+                                                                            <Badge variant="outline" className="text-xs">
+                                                                                {registro.fase_atividade}
+                                                                            </Badge>
+                                                                        </div>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            Período: {registro.dias_operacao} {registro.dias_operacao === 1 ? 'dia' : 'dias'} | Equipes: {registro.quantidade_equipes}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-lg text-primary/80">
+                                                                            {formatCurrency(registro.valor_total_solicitado)}
+                                                                        </span>
+                                                                        <div className="flex gap-1">
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8"
+                                                                                onClick={() => handleEdit(registro)}
+                                                                                disabled={!isPTrabEditable || isSaving || pendingVerbas.length > 0}
+                                                                            >
+                                                                                <Pencil className="h-4 w-4" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                onClick={() => handleConfirmDelete(registro)}
+                                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                {/* Detalhes da Alocação */}
+                                                                <div className="pt-2 border-t mt-2">
+                                                                    {/* OM Destino Recurso */}
+                                                                    <div className="flex justify-between text-xs mb-1">
+                                                                        <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                        <span className={cn("font-medium", isDifferentOm ? "text-red-600 font-bold" : "text-foreground")}>
+                                                                            {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">ND 30 (Material):</span>
+                                                                        <span className="font-medium text-green-600">{formatCurrency(registro.valor_nd_30)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">ND 39 (Serviço):</span>
+                                                                        <span className="font-medium text-blue-600">{formatCurrency(registro.valor_nd_39)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs font-bold pt-1">
+                                                                        <span className="text-muted-foreground">Total (ND 30/39):</span>
+                                                                        <span className="text-foreground">{formatCurrency(registro.valor_nd_30 + registro.valor_nd_39)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </Card>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
+                                </section>
+                            )}
+
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
                             {registros && registros.length > 0 && (
                                 <div className="space-y-4 mt-8">
@@ -1330,10 +1473,17 @@ const VerbaOperacionalForm = () => {
                                     
                                     {registros.map(registro => {
                                         const isEditing = editingMemoriaId === registro.id;
-                                        const hasCustomMemoria = !!registro.detalhamento_customizado;
                                         
-                                        // Gera a memória automática para exibição/edição
-                                        const calculatedData = {
+                                        // Verifica se o detalhamento_customizado é um texto customizado
+                                        let hasCustomMemoria = false;
+                                        try {
+                                            JSON.parse(registro.detalhamento_customizado || "");
+                                        } catch (e) {
+                                            hasCustomMemoria = !!registro.detalhamento_customizado;
+                                        }
+                                        
+                                        // 1. Gerar a memória automática
+                                        const calculatedDataForMemoria = {
                                             organizacao: registro.organizacao,
                                             ug: registro.ug,
                                             om_detentora: registro.om_detentora,
@@ -1345,27 +1495,46 @@ const VerbaOperacionalForm = () => {
                                             valor_nd_30: registro.valor_nd_30,
                                             valor_nd_39: registro.valor_nd_39,
                                         };
-                                        const memoriaAutomatica = generateVerbaOperacionalMemoriaCalculo(calculatedData as any);
                                         
-                                        const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
+                                        const memoriaAutomatica = generateVerbaOperacionalMemoriaCalculo(calculatedDataForMemoria as any);
                                         
+                                        let memoriaExibida = memoriaAutomatica;
+                                        if (isEditing) {
+                                            memoriaExibida = memoriaEdit;
+                                        } else if (hasCustomMemoria) {
+                                            memoriaExibida = registro.detalhamento_customizado!;
+                                        }
+                                        
+                                        // Verifica se a OM Detentora é diferente da OM Favorecida
+                                        const isDifferentOmInMemoria = registro.om_detentora !== registro.organizacao;
+
                                         return (
                                             <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                                                 
-                                                {/* Container para H4 e Botões */}
                                                 <div className="flex items-start justify-between gap-4 mb-2">
                                                     <div className="flex flex-col flex-1 min-w-0">
                                                         <div className="flex items-center gap-2">
                                                             <h4 className="text-base font-semibold text-foreground">
                                                                 OM Favorecida: {registro.organizacao} (UG: {formatCodug(registro.ug)})
                                                             </h4>
-                                                            {/* BADGE DE MEMÓRIA CUSTOMIZADA */}
                                                             {hasCustomMemoria && !isEditing && (
                                                                 <Badge variant="outline" className="text-xs">
                                                                     Editada manualmente
                                                                 </Badge>
                                                             )}
                                                         </div>
+                                                        {isDifferentOmInMemoria ? (
+                                                            <div className="flex items-center gap-1 mt-1">
+                                                                <AlertCircle className="h-4 w-4 text-red-600" />
+                                                                <span className="text-sm font-medium text-red-600">
+                                                                    Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-xs text-muted-foreground">
+                                                                Destino Recurso: {registro.om_detentora} (UG: {formatCodug(registro.ug_detentora)})
+                                                            </p>
+                                                        )}
                                                     </div>
                                                     
                                                     <div className="flex items-center justify-end gap-2 shrink-0">
