@@ -149,6 +149,9 @@ const DiariaForm = () => {
     // NOVO ESTADO: Registro calculado para atualização (staging)
     const [stagedUpdate, setStagedUpdate] = useState<CalculatedDiaria | null>(null);
     
+    // NOVO ESTADO: Armazena o último formData que gerou um item em pendingDiarias
+    const [lastSavedFormData, setLastSavedFormData] = useState<typeof initialFormState | null>(null);
+    
     // Estado para rastrear o ID da OM selecionada no OmSelector
     const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
 
@@ -226,40 +229,80 @@ const DiariaForm = () => {
         }
     }, [formData, diretrizesOp, ptrabData]);
     
-    // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do stagedUpdate)
+    // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do stagedUpdate ou lastSavedFormData)
     const isDiariaDirty = useMemo(() => {
-        if (!editingId || !stagedUpdate) return false;
-
-        // 1. Comparar campos principais
-        if (
-            formData.dias_operacao !== stagedUpdate.dias_operacao ||
-            formData.destino !== stagedUpdate.destino ||
-            formData.nr_viagens !== stagedUpdate.nr_viagens ||
-            formData.local_atividade !== stagedUpdate.local_atividade ||
-            formData.is_aereo !== stagedUpdate.is_aereo
-        ) {
-            return true;
-        }
-
-        // 2. Comparar quantidades por posto
-        for (const rank of DIARIA_RANKS_CONFIG) {
-            if (formData.quantidades_por_posto[rank.key] !== stagedUpdate.quantidades_por_posto[rank.key]) {
+        // 1. MODO EDIÇÃO (Compara com stagedUpdate)
+        if (editingId && stagedUpdate) {
+            // 1. Comparar campos principais
+            if (
+                formData.dias_operacao !== stagedUpdate.dias_operacao ||
+                formData.destino !== stagedUpdate.destino ||
+                formData.nr_viagens !== stagedUpdate.nr_viagens ||
+                formData.local_atividade !== stagedUpdate.local_atividade ||
+                formData.is_aereo !== stagedUpdate.is_aereo
+            ) {
                 return true;
             }
+
+            // 2. Comparar quantidades por posto
+            for (const rank of DIARIA_RANKS_CONFIG) {
+                if (formData.quantidades_por_posto[rank.key] !== stagedUpdate.quantidades_por_posto[rank.key]) {
+                    return true;
+                }
+            }
+            
+            // 3. Comparar o total calculado atual (baseado nas diretrizes atuais) com o total salvo no stagedUpdate.
+            if (!areNumbersEqual(calculos.totalGeral, stagedUpdate.valor_total)) {
+                 return true;
+            }
+
+            // 4. Comparar fase de atividade
+            if (formData.fase_atividade !== stagedUpdate.fase_atividade) {
+                return true;
+            }
+            
+            // 5. Comparar OM/UG
+            if (formData.organizacao !== stagedUpdate.organizacao || formData.ug !== stagedUpdate.ug) {
+                return true;
+            }
+
+            return false;
         }
         
-        // 3. Comparar o total calculado atual (baseado nas diretrizes atuais) com o total salvo no stagedUpdate.
-        if (!areNumbersEqual(calculos.totalGeral, stagedUpdate.valor_total)) {
-             return true;
-        }
-
-        // 4. Comparar fase de atividade (se for diferente, precisa re-estagiar para atualizar a memória)
-        if (formData.fase_atividade !== stagedUpdate.fase_atividade) {
-            return true;
+        // 2. MODO NOVO REGISTRO (Compara com lastSavedFormData)
+        if (!editingId && pendingDiarias.length > 0 && lastSavedFormData) {
+            // Se houver itens pendentes, e o formulário atual for diferente do último salvo, é dirty.
+            
+            // Compara todos os campos relevantes
+            if (
+                formData.dias_operacao !== lastSavedFormData.dias_operacao ||
+                formData.destino !== lastSavedFormData.destino ||
+                formData.nr_viagens !== lastSavedFormData.nr_viagens ||
+                formData.local_atividade !== lastSavedFormData.local_atividade ||
+                formData.is_aereo !== lastSavedFormData.is_aereo ||
+                formData.fase_atividade !== lastSavedFormData.fase_atividade ||
+                formData.organizacao !== lastSavedFormData.organizacao ||
+                formData.ug !== lastSavedFormData.ug
+            ) {
+                return true;
+            }
+            
+            // Compara quantidades por posto
+            for (const rank of DIARIA_RANKS_CONFIG) {
+                if (formData.quantidades_por_posto[rank.key] !== lastSavedFormData.quantidades_por_posto[rank.key]) {
+                    return true;
+                }
+            }
+            
+            // Se o cálculo atual for diferente do cálculo do último item salvo (devido a diretrizes atualizadas), também é dirty.
+            // Nota: Isso é mais complexo, mas se as diretrizes mudarem, o usuário deve ser forçado a re-salvar.
+            // Por enquanto, confiamos na comparação dos campos de entrada (formData).
+            
+            return false;
         }
 
         return false;
-    }, [editingId, stagedUpdate, formData, calculos.totalGeral]);
+    }, [editingId, stagedUpdate, formData, calculos.totalGeral, pendingDiarias.length, lastSavedFormData]);
     
     // NOVO: Cálculo do total de todos os itens pendentes
     const totalPendingDiarias = useMemo(() => {
@@ -310,6 +353,7 @@ const DiariaForm = () => {
             queryClient.invalidateQueries({ queryKey: ["ptrabTotals", ptrabId] });
             toast.success(`Sucesso! ${pendingDiarias.length} registro(s) de Diária adicionado(s).`);
             setPendingDiarias([]); // Limpa a lista pendente
+            setLastSavedFormData(null); // Limpa o lastSavedFormData
             
             // 1. Resetar o formulário (mantendo OM, Fase, Dias, Viagens, Destino, Local, Aéreo E QUANTIDADES)
             const keptData = {
@@ -321,7 +365,7 @@ const DiariaForm = () => {
                 dias_operacao: formData.dias_operacao,
                 local_atividade: formData.local_atividade,
                 is_aereo: formData.is_aereo,
-                quantidades_por_posto: formData.quantidades_por_posto, // MANTIDO
+                quantidades_por_posto: formData.quantidades_por_posto,
             };
             
             setFormData(prev => ({
@@ -398,6 +442,7 @@ const DiariaForm = () => {
         setMemoriaEdit("");
         setSelectedOmId(undefined);
         setStagedUpdate(null); // Limpa o staging
+        setLastSavedFormData(null); // Limpa o lastSavedFormData
     };
     
     const handleClearPending = () => {
@@ -437,6 +482,7 @@ const DiariaForm = () => {
             quantidades_por_posto: (registro.quantidades_por_posto || initialFormState.quantidades_por_posto) as QuantidadesPorPosto,
         };
         setFormData(newFormData);
+        setLastSavedFormData(newFormData); // Define o lastSavedFormData para o modo edição (embora não seja usado no isDirty)
 
         // 2. Calculate totals based on the *saved* record data and *current* directives
         const totals = calculateDiariaTotals(newFormData as any, diretrizesOp);
@@ -501,10 +547,7 @@ const DiariaForm = () => {
             // 1. Validação Zod
             diariaSchema.parse(formData);
             
-            // 2. REMOVIDO: Validação estrita de OM/UG contra a lista de OMs cadastradas.
-            // Apenas garantimos que os campos de OM/UG estejam preenchidos (já feito pelo Zod)
-            
-            // 3. Preparar o objeto final (calculatedData)
+            // 2. Preparar o objeto final (calculatedData)
             const destinoLabel = DESTINO_OPTIONS.find(d => d.value === formData.destino)?.label || formData.destino;
             
             const calculatedData: CalculatedDiaria = {
@@ -554,7 +597,14 @@ const DiariaForm = () => {
             }
             
             // MODO ADIÇÃO: Adicionar à lista pendente
-            setPendingDiarias(prev => [...prev, calculatedData]);
+            setPendingDiarias(prev => {
+                // Se já houver itens, remove o último item (se for dirty) e adiciona o novo.
+                // No modo Novo Registro, sempre adicionamos um novo item, mas o lastSavedFormData é atualizado.
+                return [...prev, calculatedData];
+            });
+            
+            // NOVO: Salva o estado atual do formulário como o último salvo
+            setLastSavedFormData(formData);
             
             // 5. Resetar o formulário para o próximo item (mantendo OM, Fase, Dias, Viagens, Destino, Local, Aéreo E QUANTIDADES)
             // Mantemos os campos de contexto (OM, UG, Fase, Destino, Dias, Viagens, Local, Aéreo, Quantidades)
@@ -622,6 +672,12 @@ const DiariaForm = () => {
     // Remove item da lista pendente
     const handleRemovePending = (tempId: string) => {
         setPendingDiarias(prev => prev.filter(p => p.tempId !== tempId));
+        
+        // Se a lista ficar vazia, limpa o lastSavedFormData para permitir um novo item sem dirty check
+        if (pendingDiarias.length === 1) {
+            setLastSavedFormData(null);
+        }
+        
         toast.info("Item removido da lista pendente.");
     };
     
@@ -680,9 +736,6 @@ const DiariaForm = () => {
     };
 
     const handleSalvarMemoriaCustomizada = async (registroId: string) => {
-        // NOTE: Não temos um estado 'loading' local no DiariaForm, mas podemos usar o isSaving do updateMutation se necessário.
-        // Para simplificar, vamos usar o isSaving do updateMutation para desabilitar botões.
-        
         try {
             const { error } = await supabase
                 .from("diaria_registros")
@@ -749,15 +802,20 @@ const DiariaForm = () => {
                             formData.ug.length > 0 && 
                             formData.fase_atividade.length > 0;
 
-    const isCalculationReady = isBaseFormReady &&
-                              formData.dias_operacao > 0 &&
-                              formData.nr_viagens > 0 &&
-                              formData.local_atividade.length > 0 &&
-                              calculos.totalMilitares > 0;
+    const isSolicitationDataReady = formData.dias_operacao > 0 &&
+                                    formData.nr_viagens > 0 &&
+                                    formData.local_atividade.length > 0 &&
+                                    calculos.totalMilitares > 0;
+
+    const isCalculationReady = isBaseFormReady && isSolicitationDataReady;
     
-    // Usando DESTINO_OPTIONS importado
-    const destinoOptions = DESTINO_OPTIONS;
+    // Lógica para a Seção 3
+    const itemsToDisplay = stagedUpdate ? [stagedUpdate] : pendingDiarias;
+    const isStagingUpdate = !!stagedUpdate;
     
+    // NOVO: Condição para desabilitar o botão "Salvar Registros"
+    const isSavePendingDisabled = isSaving || pendingDiarias.length === 0 || isDiariaDirty;
+
     const getUnitValueDisplay = (rankKey: string, destino: DestinoDiaria) => {
         if (!diretrizesOp) return "R$ 0,00";
         
@@ -788,10 +846,6 @@ const DiariaForm = () => {
     const taxaEmbarqueUnitario = diretrizesOp?.taxa_embarque ? Number(diretrizesOp.taxa_embarque) : 0;
     const referenciaLegal = diretrizesOp?.diaria_referencia_legal || 'Decreto/Portaria não cadastrada';
     
-    // Lógica para a Seção 3
-    const itemsToDisplay = stagedUpdate ? [stagedUpdate] : pendingDiarias;
-    const isStagingUpdate = !!stagedUpdate;
-
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
             <div className="max-w-6xl mx-auto space-y-6">
@@ -1056,7 +1110,17 @@ const DiariaForm = () => {
                                         3. Itens Adicionados ({itemsToDisplay.length})
                                     </h3>
                                     
-                                    {/* NOVO: Alerta de Validação Final (Apenas em modo de edição) */}
+                                    {/* NOVO: Alerta de Validação Final (Modo Novo Registro) */}
+                                    {!editingId && isDiariaDirty && (
+                                        <Alert variant="destructive">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertDescription className="font-medium">
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados. Clique em "Salvar Item na Lista" na Seção 2 para atualizar o item pendente antes de salvar os registros.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                    
+                                    {/* Alerta de Validação Final (Apenas em modo de edição) */}
                                     {editingId && isDiariaDirty && (
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
@@ -1253,7 +1317,7 @@ const DiariaForm = () => {
                                                 <Button 
                                                     type="button" 
                                                     onClick={handleSavePendingDiarias}
-                                                    disabled={isSaving || pendingDiarias.length === 0}
+                                                    disabled={isSavePendingDisabled} // NOVO: Usa a condição de desabilitação
                                                     className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                                 >
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -1299,8 +1363,7 @@ const DiariaForm = () => {
                                                 <div className="space-y-3">
                                                     {omRegistros.map((registro) => {
                                                         const totalGeral = registro.valor_total;
-                                                        // CORRIGIDO: totalDiariaBase é o valor_nd_30 (que agora é 0) e Taxa de Embarque é valor_nd_15
-                                                        // Mas para fins de exibição, vamos usar os campos salvos:
+                                                        // Para fins de exibição, vamos usar os campos salvos:
                                                         const totalDiariaBase = totalGeral - (registro.valor_taxa_embarque || 0);
                                                         const totalTaxaEmbarque = registro.valor_taxa_embarque || 0;
                                                         
