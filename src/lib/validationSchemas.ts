@@ -5,6 +5,12 @@ const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
     return Math.abs(a - b) < tolerance;
 };
 
+// --- Login Schema ---
+export const loginSchema = z.object({
+    email: z.string().email("E-mail inválido."),
+    password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres."),
+});
+
 // --- Diretriz Operacional Schema (Used in CustosOperacionaisPage) ---
 export const diretrizOperacionalSchema = z.object({
     ano_referencia: z.number().int().min(2020, "Ano inválido."),
