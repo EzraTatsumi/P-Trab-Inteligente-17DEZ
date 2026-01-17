@@ -787,14 +787,14 @@ const SuprimentoFundosForm = () => {
                 local: prev.local,
                 tarefa: prev.tarefa,
                 
-                // Resetar apenas os campos de valor
-                valor_total_solicitado: 0,
-                valor_nd_30: 0,
-                valor_nd_39: 0,
+                // Resetar apenas os campos de valor (REMOVIDO O RESET PARA MANTER O VALOR)
+                // valor_total_solicitado: 0,
+                // valor_nd_30: 0,
+                // valor_nd_39: 0,
             }));
             
-            setRawTotalInput(numberToRawDigits(0));
-            setRawND39Input(numberToRawDigits(0));
+            // setRawTotalInput(numberToRawDigits(0)); // REMOVIDO O RESET
+            // setRawND39Input(numberToRawDigits(0)); // REMOVIDO O RESET
             
             toast.info("Item de Suprimento de Fundos adicionado à lista pendente.");
             
