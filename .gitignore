@@ -93,7 +93,7 @@ src/pages/ClasseVIForm.tsx
 src/pages/ClasseVIIForm.tsx
 src/pages/ClasseVIIIForm.tsx
 src/pages/ClasseIXForm.tsx
-# REMOVIDO: src/pages/DiariaForm.tsx
+src/pages/DiariaForm.tsx
 src/ptrab/components/forms/VerbaOperationalForm.tsx
 src/pages/DiretrizesCusteioPage.tsx # Adicionado a pedido do usuário
 

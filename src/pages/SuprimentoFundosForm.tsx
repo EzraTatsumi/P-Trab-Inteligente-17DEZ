@@ -7,19 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check } from "lucide-react";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
-import { formatCurrency, formatCodug, numberToRawDigits } from "@/lib/formatUtils";
+import { formatCurrency, formatCodug, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
 import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/ptrabUtils";
 import { 
     calculateSuprimentoFundosTotals, 
     generateSuprimentoFundosMemoriaCalculo,
-    SuprimentoFundosRegistro,
-} from "@/lib/suprimentoFundosUtils";
+    SuprimentoFundosRegistro, // Importar o tipo de registro da DB
+} from "@/lib/suprimentoFundosUtils"; // NOVO UTILITÁRIO
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -37,10 +37,9 @@ import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
 import { cn } from "@/lib/utils"; 
 import CurrencyInput from "@/components/CurrencyInput";
-import { useNDAllocation } from "@/hooks/useNDAllocation"; // NOVO HOOK
-import { MemoriaCalculoEditor } from "@/components/MemoriaCalculoEditor"; // NOVO COMPONENTE
 
 // Tipos de dados
+// Usamos o tipo de Verba Operacional como base, pois a estrutura da DB é a mesma
 type SuprimentoFundosRegistroDB = Tables<'verba_operacional_registros'>; 
 
 // Tipo de dados para OmSelector
@@ -70,14 +69,28 @@ interface CalculatedSuprimentoFundos extends TablesInsert<'verba_operacional_reg
     tarefa: string;
 }
 
+// Função para calcular ND 30 com base no Total Solicitado e ND 39 (ND 30 é a dependente)
+const calculateND30 = (totalSolicitado: number, nd39Value: number): number => {
+    const nd30 = totalSolicitado - nd39Value;
+    return Math.max(0, nd30); // ND 30 não pode ser negativo
+};
+
+// Constantes para a OM Detentora padrão (CIE) - Mantido para compatibilidade com registros antigos
+const DEFAULT_OM_DETENTORA = "CIE";
+const DEFAULT_UG_DETENTORA = "160062";
+
 // Schema de validação para o formulário de Suprimento de Fundos
 const suprimentoFundosSchema = z.object({
+    // OM Favorecida (OM do PTrab) - Usada para o cabeçalho da memória (organizacao/ug na DB)
     om_favorecida: z.string().min(1, "A OM Favorecida (do PTrab) é obrigatória."),
     ug_favorecida: z.string().min(1, "A UG Favorecida (do PTrab) é obrigatória."),
+    
+    // OM Detentora (OM Destino do Recurso) - Onde o recurso será alocado (om_detentora/ug_detentora na DB)
     om_detentora: z.string().min(1, "A OM Destino do Recurso é obrigatória."),
     ug_detentora: z.string().min(1, "A UG Destino do Recurso é obrigatória."),
+    
     dias_operacao: z.number().int().min(1, "O número de dias deve ser maior que zero."),
-    quantidade_equipes: z.number().int().min(1, "O efetivo deve ser maior que zero."),
+    quantidade_equipes: z.number().int().min(1, "O efetivo deve ser maior que zero."), // CORRIGIDO: Usando nome da DB
     valor_total_solicitado: z.number().min(0.01, "O valor total solicitado deve ser maior que zero."),
     fase_atividade: z.string().min(1, "A fase da atividade é obrigatória."),
     
@@ -94,11 +107,12 @@ const suprimentoFundosSchema = z.object({
     valor_nd_39: z.number().min(0, "ND 39 não pode ser negativa."),
     
 }).refine(data => {
+    // A soma das NDs deve ser igual ao valor total solicitado (com pequena tolerância)
     const totalAlocado = data.valor_nd_30 + data.valor_nd_39;
     return Math.abs(totalAlocado - data.valor_total_solicitado) < 0.01;
 }, {
     message: "A soma das NDs (30 e 39) deve ser igual ao Valor Total Solicitado.",
-    path: ["valor_nd_39"],
+    path: ["valor_nd_39"], // Aponta para o campo de ND 39 para exibir o erro
 });
 
 // Estado inicial para o formulário
@@ -106,17 +120,19 @@ const initialFormState = {
     om_favorecida: "", 
     ug_favorecida: "", 
     dias_operacao: 0,
-    quantidade_equipes: 0,
+    quantidade_equipes: 0, // ALTERADO: Inicializa com 0 para aparecer o placeholder
     valor_total_solicitado: 0,
     fase_atividade: "",
     om_detentora: "", 
     ug_detentora: "", 
+    // NOVOS CAMPOS
     objeto_aquisicao: "",
     objeto_contratacao: "",
     proposito: "",
     finalidade: "",
     local: "",
     tarefa: "",
+    // NDs (adicionados para consistência)
     valor_nd_30: 0,
     valor_nd_39: 0,
 };
@@ -126,7 +142,7 @@ const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
     return Math.abs(a - b) < tolerance;
 };
 
-const SuprimentoFundosManagerPage = () => {
+const SuprimentoFundosForm = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const ptrabId = searchParams.get('ptrabId');
@@ -138,7 +154,9 @@ const SuprimentoFundosManagerPage = () => {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [registroToDelete, setRegistroToDelete] = useState<SuprimentoFundosRegistroDB | null>(null);
     
-    // ESTADOS DE EDIÇÃO DE MEMÓRIA (REMOVIDOS, USAR MemoriaCalculoEditor)
+    // ESTADOS DE EDIÇÃO DE MEMÓRIA
+    const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
+    const [memoriaEdit, setMemoriaEdit] = useState<string>("");
     
     // NOVO ESTADO: Array de registros calculados, mas não salvos
     const [pendingSuprimentos, setPendingSuprimentos] = useState<CalculatedSuprimentoFundos[]>([]);
@@ -152,23 +170,10 @@ const SuprimentoFundosManagerPage = () => {
     // Estado para rastrear o ID da OM Detentora (OM Destino do Recurso)
     const [selectedOmDetentoraId, setSelectedOmDetentoraId] = useState<string | undefined>(undefined);
     
-    // NOVO HOOK: Gerenciamento de NDs (ND 39 manual, ND 30 calculada)
-    const {
-        totalSolicitado, valorND30, valorND39, totalAlocado, isAllocationCorrect,
-        rawTotalInput, rawND30Input, rawND39Input,
-        handleTotalChange, handleND30Change, handleND39Change, resetAllocation
-    } = useNDAllocation(formData.valor_total_solicitado, formData.valor_nd_30, formData.valor_nd_39);
-
-    // Efeito para sincronizar o hook com o formData
-    useEffect(() => {
-        setFormData(prev => ({
-            ...prev,
-            valor_total_solicitado: totalSolicitado,
-            valor_nd_30: valorND30,
-            valor_nd_39: valorND39,
-        }));
-    }, [totalSolicitado, valorND30, valorND39]);
-
+    // Estado para inputs monetários
+    const [rawTotalInput, setRawTotalInput] = useState<string>(numberToRawDigits(initialFormState.valor_total_solicitado));
+    // ND 30 é calculada, ND 39 é input manual
+    const [rawND39Input, setRawND39Input] = useState<string>(numberToRawDigits(initialFormState.valor_nd_39));
 
     // Dados mestres
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
@@ -180,7 +185,7 @@ const SuprimentoFundosManagerPage = () => {
     // SuprimentoFundos usa a tabela 'verba_operacional_registros'
     const { data: registros, isLoading: isLoadingRegistros } = useQuery<SuprimentoFundosRegistroDB[]>({
         queryKey: ['suprimentoFundosRegistros', ptrabId],
-        queryFn: () => fetchPTrabRecords('verba_operacional_registros', ptrabId!, { detalhamento: 'Suprimento de Fundos' }),
+        queryFn: () => fetchPTrabRecords('verba_operacional_registros', ptrabId!, { detalhamento: 'Suprimento de Fundos' }), // Filtro para Suprimento de Fundos
         enabled: !!ptrabId,
         select: (data) => data.filter(r => r.detalhamento?.includes('Suprimento de Fundos')).sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
     });
@@ -190,32 +195,15 @@ const SuprimentoFundosManagerPage = () => {
     // Efeito de inicialização da OM Favorecida (OM do PTrab)
     useEffect(() => {
         if (ptrabData && !editingId) {
-            const omFavorecida = oms?.find(om => om.nome_om === ptrabData.nome_om && om.codug_om === ptrabData.codug_om);
+            // Se não estiver editando, resetamos para o estado inicial (vazio)
+            resetForm();
+        } else if (ptrabData && editingId) {
+            // Se estiver editando, garantimos que os seletores de OM sejam inicializados
+            const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
+            const omDetentora = oms?.find(om => om.nome_om === formData.om_detentora && om.codug_om === formData.ug_detentora);
             
-            setFormData(prev => ({
-                ...prev,
-                om_favorecida: ptrabData.nome_om,
-                ug_favorecida: ptrabData.codug_om,
-            }));
             setSelectedOmFavorecidaId(omFavorecida?.id);
-            
-            // OM Detentora (Padrão CIE)
-            const cieOm = oms?.find(om => om.nome_om === "CIE" && om.codug_om === "160062");
-            if (cieOm) {
-                setSelectedOmDetentoraId(cieOm.id);
-                setFormData(prev => ({
-                    ...prev,
-                    om_detentora: "CIE",
-                    ug_detentora: "160062",
-                }));
-            } else {
-                setSelectedOmDetentoraId(undefined);
-                setFormData(prev => ({
-                    ...prev,
-                    om_detentora: "CIE",
-                    ug_detentora: "160062",
-                }));
-            }
+            setSelectedOmDetentoraId(omDetentora?.id);
         }
     }, [ptrabData, oms, editingId]);
 
@@ -234,22 +222,23 @@ const SuprimentoFundosManagerPage = () => {
         }
         
         try {
-            if (formData.dias_operacao <= 0 || formData.quantidade_equipes <= 0 || formData.valor_total_solicitado <= 0 || formData.om_detentora.length === 0) {
-                return {
-                    totalGeral: 0, totalND30: 0, totalND39: 0,
-                    memoria: "Preencha todos os campos obrigatórios para calcular.",
-                };
-            }
+            // 1. Recalcular ND 30 (dependente)
+            const totalSolicitado = formData.valor_total_solicitado;
+            const nd39Value = formData.valor_nd_39; 
+            const nd30Value = calculateND30(totalSolicitado, nd39Value); 
             
             const calculatedFormData = {
                 ...formData,
                 organizacao: formData.om_favorecida, 
                 ug: formData.ug_favorecida, 
-                valor_nd_30: valorND30,
-                valor_nd_39: valorND39,
+                valor_nd_30: nd30Value,
+                valor_nd_39: nd39Value,
             };
 
+            // 2. Calcular totais
             const totals = calculateSuprimentoFundosTotals(calculatedFormData as any);
+            
+            // 3. Gerar memória
             const memoria = generateSuprimentoFundosMemoriaCalculo(calculatedFormData as any);
             
             return {
@@ -265,7 +254,7 @@ const SuprimentoFundosManagerPage = () => {
                 memoria: `Erro ao calcular: ${errorMessage}`,
             };
         }
-    }, [formData, ptrabData, valorND30, valorND39]);
+    }, [formData, ptrabData]);
     
     // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do stagedUpdate)
     const isSuprimentoDirty = useMemo(() => {
@@ -274,9 +263,9 @@ const SuprimentoFundosManagerPage = () => {
         // 1. Comparar campos principais
         if (
             formData.dias_operacao !== stagedUpdate.dias_operacao ||
-            formData.quantidade_equipes !== stagedUpdate.quantidade_equipes ||
+            formData.quantidade_equipes !== stagedUpdate.quantidade_equipes || // CORRIGIDO
             !areNumbersEqual(formData.valor_total_solicitado, stagedUpdate.valor_total_solicitado) ||
-            !areNumbersEqual(formData.valor_nd_39, stagedUpdate.valor_nd_39) || // ND 39 é o input manual
+            !areNumbersEqual(formData.valor_nd_39, stagedUpdate.valor_nd_39) || 
             formData.om_detentora !== stagedUpdate.om_detentora ||
             formData.ug_detentora !== stagedUpdate.ug_detentora ||
             formData.om_favorecida !== stagedUpdate.om_favorecida ||
@@ -292,7 +281,7 @@ const SuprimentoFundosManagerPage = () => {
             return true;
         }
 
-        // 2. Comparar fase de atividade
+        // 2. Comparar fase de atividade (se for diferente, precisa re-estagiar para atualizar a memória)
         if (formData.fase_atividade !== stagedUpdate.fase_atividade) {
             return true;
         }
@@ -308,6 +297,7 @@ const SuprimentoFundosManagerPage = () => {
     // NOVO MEMO: Agrupa os registros por OM Favorecida (organizacao/ug)
     const registrosAgrupadosPorOM = useMemo(() => {
         return registros?.reduce((acc, registro) => {
+            // Agrupamos pela OM Favorecida (organizacao/ug na DB)
             const omFavorecida = registro.organizacao; 
             const ugFavorecida = registro.ug; 
             const key = `${omFavorecida} (${ugFavorecida})`;
@@ -325,11 +315,46 @@ const SuprimentoFundosManagerPage = () => {
     // =================================================================
     
     const handleCurrencyChange = (field: 'valor_total_solicitado' | 'valor_nd_39', rawValue: string) => {
-        if (field === 'valor_total_solicitado') {
-            handleTotalChange(formatCurrencyInput(rawValue).numericValue, rawValue);
-        } else if (field === 'valor_nd_39') {
-            handleND39Change(formatCurrencyInput(rawValue).numericValue, rawValue);
-        }
+        const { numericValue, digits } = formatCurrencyInput(rawValue);
+        
+        setFormData(prev => {
+            let newFormData = { ...prev };
+            let newND30Value = prev.valor_nd_30;
+            let newND39Value = prev.valor_nd_39;
+            let newTotalValue = prev.valor_total_solicitado;
+
+            if (field === 'valor_total_solicitado') {
+                setRawTotalInput(digits); // Atualiza o input bruto para refletir a digitação
+                newTotalValue = numericValue;
+                
+                // ND 39 é mantida como está, mas recalculamos ND 30 com base nela
+                newND30Value = calculateND30(newTotalValue, newND39Value);
+                
+            } else if (field === 'valor_nd_39') {
+                setRawND39Input(digits); // Atualiza o input bruto para refletir a digitação
+                newND39Value = numericValue;
+                
+                // ND 39 cannot exceed Total Solicitado
+                if (newTotalValue > 0 && newND39Value > newTotalValue) {
+                    newND39Value = newTotalValue;
+                    setRawND39Input(numberToRawDigits(newND39Value)); 
+                    toast.warning("O valor da ND 39 foi limitado ao Valor Total Solicitado.");
+                }
+                
+                // Calculate ND 30 (difference)
+                newND30Value = calculateND30(newTotalValue, newND39Value);
+                
+            } else {
+                return prev;
+            }
+            
+            return { 
+                ...newFormData, 
+                valor_total_solicitado: newTotalValue,
+                valor_nd_30: newND30Value,
+                valor_nd_39: newND39Value, 
+            };
+        });
     };
     
     // =================================================================
@@ -340,9 +365,11 @@ const SuprimentoFundosManagerPage = () => {
         mutationFn: async (recordsToSave: CalculatedSuprimentoFundos[]) => {
             if (recordsToSave.length === 0) return;
             
+            // Mapeia os campos do formData para os campos da DB
             const dbRecords = recordsToSave.map(r => {
                 const { tempId, memoria_calculo_display, totalGeral, om_favorecida, ug_favorecida, ...rest } = r;
                 
+                // Adiciona os campos de detalhamento ao 'detalhamento_customizado' da DB
                 const detalhamentoCustomizado = JSON.stringify({
                     objeto_aquisicao: (rest as any).objeto_aquisicao,
                     objeto_contratacao: (rest as any).objeto_contratacao,
@@ -354,10 +381,11 @@ const SuprimentoFundosManagerPage = () => {
                 
                 return {
                     ...rest,
-                    organizacao: om_favorecida,
-                    ug: ug_favorecida,
-                    detalhamento: "Suprimento de Fundos",
-                    detalhamento_customizado: detalhamentoCustomizado,
+                    organizacao: om_favorecida, // OM Favorecida (do PTrab)
+                    ug: ug_favorecida, // UG Favorecida (do PTrab)
+                    detalhamento: "Suprimento de Fundos", // Marcador para filtro
+                    detalhamento_customizado: detalhamentoCustomizado, // Armazena os detalhes aqui
+                    quantidade_equipes: rest.quantidade_equipes, // CORRIGIDO: Mapeia 'quantidade_equipes'
                 } as TablesInsert<'verba_operacional_registros'>;
             });
             
@@ -391,8 +419,10 @@ const SuprimentoFundosManagerPage = () => {
         mutationFn: async (data: CalculatedSuprimentoFundos) => {
             if (!editingId) throw new Error("ID de edição ausente.");
             
+            // Mapeia os campos do stagedUpdate para os campos da DB
             const { tempId, memoria_calculo_display, totalGeral, om_favorecida, ug_favorecida, ...rest } = data;
             
+            // Adiciona os campos de detalhamento ao 'detalhamento_customizado' da DB
             const detalhamentoCustomizado = JSON.stringify({
                 objeto_aquisicao: (rest as any).objeto_aquisicao,
                 objeto_contratacao: (rest as any).objeto_contratacao,
@@ -404,10 +434,11 @@ const SuprimentoFundosManagerPage = () => {
             
             const dbUpdateData: TablesUpdate<'verba_operacional_registros'> = {
                 ...rest,
-                organizacao: om_favorecida,
-                ug: ug_favorecida,
-                detalhamento: "Suprimento de Fundos",
-                detalhamento_customizado: detalhamentoCustomizado,
+                organizacao: om_favorecida, 
+                ug: ug_favorecida, 
+                detalhamento: "Suprimento de Fundos", // Mantém o marcador
+                detalhamento_customizado: detalhamentoCustomizado, // Atualiza os detalhes
+                quantidade_equipes: rest.quantidade_equipes, // CORRIGIDO: Mapeia 'quantidade_equipes'
             } as TablesUpdate<'verba_operacional_registros'>;
             
             const { error } = await supabase
@@ -455,20 +486,15 @@ const SuprimentoFundosManagerPage = () => {
 
     const resetForm = () => {
         setEditingId(null);
-        resetAllocation();
-        
-        setFormData(prev => ({
-            ...initialFormState,
-            om_favorecida: ptrabData?.nome_om || "",
-            ug_favorecida: ptrabData?.codug_om || "",
-            om_detentora: "CIE",
-            ug_detentora: "160062",
-            fase_atividade: prev.fase_atividade,
-        }));
-        
+        setFormData(initialFormState);
+        setEditingMemoriaId(null); 
+        setMemoriaEdit("");
         setSelectedOmFavorecidaId(undefined);
         setSelectedOmDetentoraId(undefined); 
         setStagedUpdate(null); 
+        
+        setRawTotalInput(numberToRawDigits(0));
+        setRawND39Input(numberToRawDigits(0));
     };
     
     const handleClearPending = () => {
@@ -485,12 +511,15 @@ const SuprimentoFundosManagerPage = () => {
         
         setEditingId(registro.id);
         
+        // 1. Configurar OM Favorecida (OM do PTrab)
         const omFavorecidaToEdit = oms?.find(om => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
         setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
         
+        // 2. Configurar OM Detentora (OM Destino do Recurso)
         const omDetentoraToEdit = oms?.find(om => om.nome_om === registro.om_detentora && om.codug_om === registro.ug_detentora);
         setSelectedOmDetentoraId(omDetentoraToEdit?.id);
         
+        // 3. Parsear Detalhamento Customizado para os campos de detalhe
         let customDetails = initialFormState;
         let memoriaCustomizadaTexto: string | null = null;
         
@@ -500,24 +529,28 @@ const SuprimentoFundosManagerPage = () => {
                 if (parsed.objeto_aquisicao !== undefined) {
                     customDetails = parsed;
                 } else {
+                    // Não é JSON de detalhes, é a memória customizada (texto)
                     memoriaCustomizadaTexto = registro.detalhamento_customizado;
                 }
             }
         } catch (e) {
+            // Falha no parse, é a memória customizada (texto)
             memoriaCustomizadaTexto = registro.detalhamento_customizado || null;
         }
 
+        // 4. Populate formData
         const newFormData = {
             om_favorecida: registro.organizacao, 
             ug_favorecida: registro.ug, 
             dias_operacao: registro.dias_operacao,
-            quantidade_equipes: registro.quantidade_equipes,
+            quantidade_equipes: registro.quantidade_equipes, // CORRIGIDO
             valor_total_solicitado: Number(registro.valor_total_solicitado || 0),
             fase_atividade: registro.fase_atividade || "",
             om_detentora: registro.om_detentora || "",
             ug_detentora: registro.ug_detentora || "",
             valor_nd_30: Number(registro.valor_nd_30 || 0),
             valor_nd_39: Number(registro.valor_nd_39 || 0),
+            // NOVOS CAMPOS
             objeto_aquisicao: customDetails.objeto_aquisicao || "",
             objeto_contratacao: customDetails.objeto_contratacao || "",
             proposito: customDetails.proposito || "",
@@ -527,14 +560,15 @@ const SuprimentoFundosManagerPage = () => {
         };
         setFormData(newFormData);
         
-        // Sincronizar o hook de ND com os valores do registro
-        handleTotalChange(newFormData.valor_total_solicitado, numberToRawDigits(newFormData.valor_total_solicitado));
-        // Como ND 39 é o campo manual para SF, sincronizamos ele por último para forçar o cálculo de ND 30
-        handleND39Change(newFormData.valor_nd_39, numberToRawDigits(newFormData.valor_nd_39));
+        // Atualizar inputs brutos
+        setRawTotalInput(numberToRawDigits(newFormData.valor_total_solicitado));
+        setRawND39Input(numberToRawDigits(newFormData.valor_nd_39)); // ND 39 é o campo de input
 
+        // 5. Calculate totals and generate memory
         const totals = calculateSuprimentoFundosTotals(newFormData as any);
         const memoria = generateSuprimentoFundosMemoriaCalculo(newFormData as any);
         
+        // 6. Stage the current record data immediately for display in Section 3
         const stagedData: CalculatedSuprimentoFundos = {
             tempId: registro.id,
             p_trab_id: ptrabId!,
@@ -544,20 +578,21 @@ const SuprimentoFundosManagerPage = () => {
             ug_detentora: newFormData.ug_detentora,
             dias_operacao: newFormData.dias_operacao,
             fase_atividade: newFormData.fase_atividade,
-            quantidade_equipes: newFormData.quantidade_equipes,
+            quantidade_equipes: newFormData.quantidade_equipes, // CORRIGIDO
             valor_total_solicitado: newFormData.valor_total_solicitado,
             
             valor_nd_30: totals.totalND30,
             valor_nd_39: totals.totalND39,
             
             detalhamento: "Suprimento de Fundos",
-            detalhamento_customizado: memoriaCustomizadaTexto,
+            detalhamento_customizado: memoriaCustomizadaTexto, // Preserva o texto customizado se houver
             
             totalGeral: totals.totalGeral,
             memoria_calculo_display: memoria, 
             om_favorecida: newFormData.om_favorecida,
             ug_favorecida: newFormData.ug_favorecida,
             
+            // Incluir campos de detalhamento no stagedUpdate para comparação
             objeto_aquisicao: newFormData.objeto_aquisicao,
             objeto_contratacao: newFormData.objeto_contratacao,
             proposito: newFormData.proposito,
@@ -567,6 +602,9 @@ const SuprimentoFundosManagerPage = () => {
         } as CalculatedSuprimentoFundos;
         
         setStagedUpdate(stagedData); 
+
+        setEditingMemoriaId(null); 
+        setMemoriaEdit("");
         
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -576,18 +614,25 @@ const SuprimentoFundosManagerPage = () => {
         setShowDeleteDialog(true);
     };
 
+    // Adiciona o item calculado à lista pendente OU prepara a atualização (staging)
     const handleStageCalculation = (e: React.FormEvent) => {
         e.preventDefault();
         
         try {
+            // 1. Recalcular ND 30 (dependente)
+            const totalSolicitado = formData.valor_total_solicitado;
+            const nd39Value = formData.valor_nd_39;
+            const nd30Value = calculateND30(totalSolicitado, nd39Value);
+            
             const dataToValidate = {
                 ...formData,
-                valor_nd_30: valorND30,
-                valor_nd_39: valorND39,
+                valor_nd_30: nd30Value, // Usar o valor calculado para validação
             };
             
+            // 2. Validação Zod
             suprimentoFundosSchema.parse(dataToValidate);
             
+            // 3. Preparar o objeto final (calculatedData)
             const calculatedDataForUtils = {
                 ...dataToValidate,
                 organizacao: dataToValidate.om_favorecida,
@@ -606,7 +651,7 @@ const SuprimentoFundosManagerPage = () => {
                 ug_detentora: formData.ug_detentora,
                 dias_operacao: formData.dias_operacao,
                 fase_atividade: formData.fase_atividade,
-                quantidade_equipes: formData.quantidade_equipes,
+                quantidade_equipes: formData.quantidade_equipes, // CORRIGIDO
                 valor_total_solicitado: formData.valor_total_solicitado,
                 
                 valor_nd_30: totals.totalND30,
@@ -620,6 +665,7 @@ const SuprimentoFundosManagerPage = () => {
                 om_favorecida: formData.om_favorecida,
                 ug_favorecida: formData.ug_favorecida,
                 
+                // Incluir campos de detalhamento no objeto a ser salvo/estagiado
                 objeto_aquisicao: formData.objeto_aquisicao,
                 objeto_contratacao: formData.objeto_contratacao,
                 proposito: formData.proposito,
@@ -631,14 +677,14 @@ const SuprimentoFundosManagerPage = () => {
             if (editingId) {
                 const originalRecord = registros?.find(r => r.id === editingId);
                 
-                let memoriaCustomizadaTexto: string | null = null;
+                // Se o detalhamento_customizado for um texto (memória customizada), preservamos.
                 try {
                     JSON.parse(originalRecord?.detalhamento_customizado || "");
+                    // Se o parse for bem-sucedido, o detalhamento_customizado é o JSON de detalhes, então a memória inicial é a automática
                 } catch (e) {
-                    memoriaCustomizadaTexto = originalRecord?.detalhamento_customizado || null;
+                    // Se falhar, é um texto customizado (memória), preservamos
+                    calculatedData.detalhamento_customizado = originalRecord?.detalhamento_customizado || null;
                 }
-                
-                calculatedData.detalhamento_customizado = memoriaCustomizadaTexto;
                 
                 setStagedUpdate(calculatedData);
                 toast.info("Cálculo atualizado. Revise e confirme a atualização na Seção 3.");
@@ -646,18 +692,33 @@ const SuprimentoFundosManagerPage = () => {
                 return;
             }
             
+            // MODO ADIÇÃO: Adicionar à lista pendente
             setPendingSuprimentos(prev => [...prev, calculatedData]);
             
+            // 5. Resetar o formulário para o próximo item, MANTENDO os dados da Seção 1 e OM Detentora
             setFormData(prev => ({
                 ...initialFormState,
-                om_favorecida: prev.om_favorecida,
-                ug_favorecida: prev.ug_favorecida,
-                fase_atividade: prev.fase_atividade,
-                om_detentora: prev.om_detentora,
-                ug_detentora: prev.ug_detentora,
+                om_favorecida: prev.om_favorecida, // MANTIDO
+                ug_favorecida: prev.ug_favorecida, // MANTIDO
+                fase_atividade: prev.fase_atividade, // MANTIDO
+                om_detentora: prev.om_detentora, // MANTIDO
+                ug_detentora: prev.ug_detentora, // MANTIDO
+                // Resetar apenas os campos de cálculo e detalhamento
+                dias_operacao: 0, 
+                quantidade_equipes: 0, 
+                valor_total_solicitado: 0,
+                valor_nd_30: 0,
+                valor_nd_39: 0,
+                objeto_aquisicao: "",
+                objeto_contratacao: "",
+                proposito: "",
+                finalidade: "",
+                local: "",
+                tarefa: "",
             }));
             
-            resetAllocation();
+            setRawTotalInput(numberToRawDigits(0));
+            setRawND39Input(numberToRawDigits(0));
             
             toast.info("Item de Suprimento de Fundos adicionado à lista pendente.");
             
@@ -670,6 +731,7 @@ const SuprimentoFundosManagerPage = () => {
         }
     };
     
+    // Salva todos os itens pendentes no DB
     const handleSavePendingSuprimentos = () => {
         if (pendingSuprimentos.length === 0) {
             toast.warning("Nenhum item pendente para salvar.");
@@ -679,41 +741,46 @@ const SuprimentoFundosManagerPage = () => {
         saveMutation.mutate(pendingSuprimentos);
     };
     
+    // NOVO: Confirma a atualização do item estagiado no DB
     const handleCommitStagedUpdate = () => {
         if (!editingId || !stagedUpdate) return;
         
         updateMutation.mutate(stagedUpdate);
     };
     
+    // Remove item da lista pendente
     const handleRemovePending = (tempId: string) => {
         setPendingSuprimentos(prev => prev.filter(p => p.tempId !== tempId));
         toast.info("Item removido da lista pendente.");
     };
     
+    // Handler para a OM Favorecida (OM do PTrab)
     const handleOmFavorecidaChange = (omData: OMData | undefined) => {
         if (omData) {
             setSelectedOmFavorecidaId(omData.id);
+            // Define a OM Detentora igual à OM Favorecida
             setSelectedOmDetentoraId(omData.id); 
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: omData.nome_om,
                 ug_favorecida: omData.codug_om,
-                om_detentora: omData.nome_om,
-                ug_detentora: omData.codug_om,
+                om_detentora: omData.nome_om, // OM Detentora = OM Favorecida
+                ug_detentora: omData.codug_om, // UG Detentora = UG Favorecida
             }));
         } else {
             setSelectedOmFavorecidaId(undefined);
-            setSelectedOmDetentoraId(undefined);
+            setSelectedOmDetentoraId(undefined); // Reset Detentora
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: "",
                 ug_favorecida: "",
-                om_detentora: "",
-                ug_detentora: "",
+                om_detentora: "", // Reset Detentora
+                ug_detentora: "", // Reset Detentora
             }));
         }
     };
     
+    // Handler para a OM Detentora (OM Destino do Recurso)
     const handleOmDetentoraChange = (omData: OMData | undefined) => {
         if (omData) {
             setSelectedOmDetentoraId(omData.id);
@@ -739,8 +806,102 @@ const SuprimentoFundosManagerPage = () => {
         }));
     };
     
-    // --- Lógica de Edição de Memória (USANDO MemoriaCalculoEditor) ---
+    // --- Lógica de Edição de Memória ---
     
+    const handleIniciarEdicaoMemoria = (registro: SuprimentoFundosRegistroDB) => {
+        setEditingMemoriaId(registro.id);
+        
+        // 1. Gerar a memória automática
+        const totals = calculateSuprimentoFundosTotals(registro as any);
+        const memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo(registro as any);
+        
+        // 2. Usar a customizada se existir, senão usar a automática
+        let memoriaInicial = memoriaAutomatica;
+        
+        // Tenta parsear o detalhamento_customizado. Se falhar, é um texto customizado.
+        try {
+            JSON.parse(registro.detalhamento_customizado || "");
+            // Se o parse for bem-sucedido, o detalhamento_customizado é o JSON de detalhes, então a memória inicial é a automática
+        } catch (e) {
+            // Se falhar, é um texto customizado (memória)
+            memoriaInicial = registro.detalhamento_customizado || memoriaAutomatica;
+        }
+        
+        setMemoriaEdit(memoriaInicial || "");
+    };
+
+    const handleCancelarEdicaoMemoria = () => {
+        setEditingMemoriaId(null);
+        setMemoriaEdit("");
+    };
+
+    const handleSalvarMemoriaCustomizada = async (registroId: string) => {
+        try {
+            // Se o usuário editar a memória, o campo 'detalhamento_customizado' será sobrescrito com o texto da memória.
+            
+            const { error } = await supabase
+                .from("verba_operacional_registros")
+                .update({
+                    detalhamento: "Suprimento de Fundos", // Mantém o marcador
+                    detalhamento_customizado: memoriaEdit.trim() || null, // Salva o texto da memória
+                })
+                .eq("id", registroId);
+
+            if (error) throw error;
+
+            toast.success("Memória de cálculo atualizada com sucesso!");
+            handleCancelarEdicaoMemoria();
+            queryClient.invalidateQueries({ queryKey: ["suprimentoFundosRegistros", ptrabId] });
+        } catch (error) {
+            console.error("Erro ao salvar memória:", error);
+            toast.error(sanitizeError(error));
+        }
+    };
+
+    const handleRestaurarMemoriaAutomatica = async (registroId: string) => {
+        if (!confirm("Deseja realmente restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
+            return;
+        }
+        
+        try {
+            const originalRecord = registros?.find(r => r.id === registroId);
+            if (!originalRecord) throw new Error("Registro original não encontrado.");
+            
+            // Recriar o JSON dos detalhes a partir dos campos do registro
+            let detalhamentoCustomizadoJSON: string | null = null;
+            
+            try {
+                const parsed = JSON.parse(originalRecord.detalhamento_customizado || "");
+                if (parsed.objeto_aquisicao !== undefined) {
+                    // Se o original era o JSON de detalhes, restauramos o JSON
+                    detalhamentoCustomizadoJSON = originalRecord.detalhamento_customizado;
+                }
+            } catch (e) {
+                // Se o original era texto customizado, restauramos para null (que fará a memória automática ser gerada)
+                detalhamentoCustomizadoJSON = null;
+            }
+            
+            const { error } = await supabase
+                .from("verba_operacional_registros")
+                .update({
+                    detalhamento_customizado: detalhamentoCustomizadoJSON,
+                })
+                .eq("id", registroId);
+
+            if (error) throw error;
+
+            toast.success("Memória de cálculo restaurada!");
+            queryClient.invalidateQueries({ queryKey: ["suprimentoFundosRegistros", ptrabId] });
+        } catch (error) {
+            console.error("Erro ao restaurar memória:", error);
+            toast.error(sanitizeError(error));
+        }
+    };
+    
+    // =================================================================
+    // RENDERIZAÇÃO
+    // =================================================================
+
     const isGlobalLoading = isLoadingPTrab || isLoadingRegistros || isLoadingOms;
 
     if (isGlobalLoading) {
@@ -761,9 +922,13 @@ const SuprimentoFundosManagerPage = () => {
                             formData.ug_detentora.length > 0 &&
                             formData.fase_atividade.length > 0;
 
+    // Verifica se os campos numéricos da Solicitação estão preenchidos
     const isSolicitationDataReady = formData.dias_operacao > 0 &&
                                     formData.quantidade_equipes > 0 && 
                                     formData.valor_total_solicitado > 0;
+
+    // Verifica se o total alocado (ND 30 + ND 39) é igual ao total solicitado
+    const isAllocationCorrect = areNumbersEqual(formData.valor_total_solicitado, calculos.totalGeral);
 
     const isCalculationReady = isBaseFormReady &&
                               isSolicitationDataReady &&
@@ -775,6 +940,7 @@ const SuprimentoFundosManagerPage = () => {
                               formData.local.length > 0 &&
                               formData.tarefa.length > 0;
     
+    // Lógica para a Seção 3
     const itemsToDisplay = stagedUpdate ? [stagedUpdate] : pendingSuprimentos;
     const isStagingUpdate = !!stagedUpdate;
 
@@ -998,7 +1164,7 @@ const SuprimentoFundosManagerPage = () => {
                                         {isSolicitationDataReady && (
                                             <Card className="mt-4 rounded-lg p-4 bg-background">
                                                 <h4 className="font-semibold text-base mb-4">
-                                                    Alocação de Recursos (Valor Total: {formatCurrency(totalSolicitado)})
+                                                    Alocação de Recursos (Valor Total: {formatCurrency(formData.valor_total_solicitado)})
                                                 </h4>
                                                 
                                                 {/* OM Destino do Recurso (Detentora) */}
@@ -1024,7 +1190,7 @@ const SuprimentoFundosManagerPage = () => {
                                                         <div className="relative">
                                                             <Input
                                                                 id="valor_nd_30"
-                                                                value={formatCurrency(valorND30)}
+                                                                value={formatCurrency(calculos.totalND30)}
                                                                 readOnly
                                                                 disabled
                                                                 className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100 h-12"
@@ -1059,7 +1225,7 @@ const SuprimentoFundosManagerPage = () => {
                                                 <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
                                                     <span className="font-bold text-sm">TOTAL ALOCADO:</span>
                                                     <span className={cn("font-extrabold text-lg", isAllocationCorrect ? "text-primary" : "text-destructive")}>
-                                                        {formatCurrency(totalAlocado)}
+                                                        {formatCurrency(calculos.totalGeral)}
                                                     </span>
                                                 </div>
                                                 
@@ -1087,7 +1253,7 @@ const SuprimentoFundosManagerPage = () => {
                                     
                                 </section>
                             )}
-
+                            
                             {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
                             {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
@@ -1095,6 +1261,7 @@ const SuprimentoFundosManagerPage = () => {
                                         3. Itens Adicionados ({itemsToDisplay.length})
                                     </h3>
                                     
+                                    {/* Alerta de Validação Final (Apenas em modo de edição) */}
                                     {editingId && isSuprimentoDirty && (
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
@@ -1109,8 +1276,13 @@ const SuprimentoFundosManagerPage = () => {
                                             const totalND30 = item.valor_nd_30;
                                             const totalND39 = item.valor_nd_39;
                                             
+                                            // Verifica se a OM Detentora é diferente da OM Favorecida
                                             const isDifferentOmInView = item.om_detentora !== item.om_favorecida;
                                             
+                                            // Lógica de concordância de número
+                                            const diasText = item.dias_operacao === 1 ? "dia" : "dias";
+                                            const efetivoText = item.quantidade_equipes === 1 ? "militar" : "militares"; // ALTERADO
+
                                             return (
                                                 <Card 
                                                     key={item.tempId} 
@@ -1146,14 +1318,23 @@ const SuprimentoFundosManagerPage = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
-                                                                <p className="font-medium">OM Destino:</p>
+                                                                {isDifferentOmInView ? (
+                                                                    <div className="flex items-center gap-1 mt-1">
+                                                                        <AlertCircle className="h-4 w-4 text-red-600" />
+                                                                        <span className="text-sm font-medium text-red-600">
+                                                                            Destino Recurso: {item.om_detentora} ({formatCodug(item.ug_detentora)})
+                                                                        </span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <p className="font-medium">OM Destino Recurso:</p>
+                                                                )}
                                                                 <p className="font-medium">Período / Efetivo:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
-                                                                <p className={cn("font-medium", isDifferentOmInView ? "text-red-600 font-bold" : "text-foreground")}>
-                                                                    {item.om_detentora} ({formatCodug(item.ug_detentora)})
-                                                                </p>
+                                                                {!isDifferentOmInView && (
+                                                                    <p className="font-medium">{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
+                                                                )}
                                                                 <p className="font-medium">{item.dias_operacao} dias / {item.quantidade_equipes} militares</p>
                                                             </div>
                                                         </div>
@@ -1228,7 +1409,7 @@ const SuprimentoFundosManagerPage = () => {
 
                             {/* SEÇÃO 4: REGISTROS SALVOS (Agrupados por OM Favorecida) */}
                             {registros && registros.length > 0 && (
-                                <section className="space-y-4 mt-8">
+                                <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
                                         <Sparkles className="h-5 w-5 text-accent" />
                                         Registros Salvos ({registros.length})
@@ -1254,24 +1435,12 @@ const SuprimentoFundosManagerPage = () => {
                                                     {omRegistros.map((registro) => {
                                                         const totalGeral = registro.valor_nd_30 + registro.valor_nd_39;
                                                         
+                                                        // Verifica se a OM Detentora é diferente da OM Favorecida
                                                         const isDifferentOmInView = registro.om_detentora !== registro.organizacao;
                                                         
-                                                        let memoriaAutomatica = "Memória de cálculo não disponível.";
-                                                        try {
-                                                            const customDetails = JSON.parse(registro.detalhamento_customizado || "{}");
-                                                            memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo({
-                                                                ...registro,
-                                                                objeto_aquisicao: customDetails.objeto_aquisicao || "",
-                                                                objeto_contratacao: customDetails.objeto_contratacao || "",
-                                                                proposito: customDetails.proposito || "",
-                                                                finalidade: customDetails.finalidade || "",
-                                                                local: customDetails.local || "",
-                                                                tarefa: customDetails.tarefa || "",
-                                                            } as SuprimentoFundosRegistro);
-                                                        } catch (e) {
-                                                            // Se falhar, o detalhamento_customizado é a memória customizada (texto)
-                                                            memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo(registro as SuprimentoFundosRegistro);
-                                                        }
+                                                        // Lógica de concordância de número
+                                                        const diasText = registro.dias_operacao === 1 ? "dia" : "dias";
+                                                        const efetivoText = registro.quantidade_equipes === 1 ? "militar" : "militares"; // ALTERADO
 
                                                         return (
                                                             <Card 
@@ -1288,9 +1457,6 @@ const SuprimentoFundosManagerPage = () => {
                                                                                 {registro.fase_atividade}
                                                                             </Badge>
                                                                         </div>
-                                                                        <p className="text-xs text-muted-foreground">
-                                                                            Período: {registro.dias_operacao} {registro.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: {registro.quantidade_equipes}
-                                                                        </p>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="font-bold text-lg text-primary/80">
@@ -1352,7 +1518,7 @@ const SuprimentoFundosManagerPage = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS (USANDO NOVO COMPONENTE) */}
+                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
                             {registros && registros.length > 0 && (
                                 <div className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1360,63 +1526,130 @@ const SuprimentoFundosManagerPage = () => {
                                     </h3>
                                     
                                     {registros.map(registro => {
+                                        const isEditing = editingMemoriaId === registro.id;
                                         
-                                        let memoriaAutomatica = "Memória de cálculo não disponível.";
-                                        let memoriaCustomizada = registro.detalhamento_customizado;
-                                        
-                                        // Tenta parsear o detalhamento_customizado. Se falhar, é um texto customizado (memória).
+                                        // Tenta parsear o detalhamento_customizado. Se falhar, é um texto customizado.
+                                        let hasCustomMemoria = false;
                                         try {
-                                            const customDetails = JSON.parse(registro.detalhamento_customizado || "{}");
-                                            if (customDetails.objeto_aquisicao !== undefined) {
-                                                // É o JSON de detalhes, então geramos a memória automática
-                                                memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo({
-                                                    ...registro,
-                                                    objeto_aquisicao: customDetails.objeto_aquisicao || "",
-                                                    objeto_contratacao: customDetails.objeto_contratacao || "",
-                                                    proposito: customDetails.proposito || "",
-                                                    finalidade: customDetails.finalidade || "",
-                                                    local: customDetails.local || "",
-                                                    tarefa: customDetails.tarefa || "",
-                                                } as SuprimentoFundosRegistro);
-                                                memoriaCustomizada = null; // Não há memória customizada (texto)
-                                            }
+                                            JSON.parse(registro.detalhamento_customizado || "");
                                         } catch (e) {
-                                            // Se falhar, o detalhamento_customizado é a memória customizada (texto)
-                                            memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo(registro as SuprimentoFundosRegistro);
-                                            memoriaCustomizada = registro.detalhamento_customizado;
+                                            hasCustomMemoria = !!registro.detalhamento_customizado;
                                         }
                                         
+                                        const memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo(registro as any);
+                                        
+                                        let memoriaExibida = memoriaAutomatica;
+                                        if (isEditing) {
+                                            memoriaExibida = memoriaEdit;
+                                        } else if (hasCustomMemoria) {
+                                            memoriaExibida = registro.detalhamento_customizado!;
+                                        }
+                                        
+                                        // Verifica se a OM Detentora é diferente da OM Favorecida
                                         const isDifferentOmInMemoria = registro.om_detentora !== registro.organizacao;
 
                                         return (
                                             <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                                                 
-                                                <div className="flex flex-col flex-1 min-w-0 mb-2">
-                                                    <h4 className="text-base font-semibold text-foreground">
-                                                        OM Favorecida: {registro.organizacao} (UG: {formatCodug(registro.ug)})
-                                                    </h4>
-                                                    {isDifferentOmInMemoria ? (
-                                                        <div className="flex items-center gap-1 mt-1">
-                                                            <AlertCircle className="h-4 w-4 text-red-600" />
-                                                            <span className="text-sm font-medium text-red-600">
-                                                                Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
-                                                            </span>
+                                                <div className="flex items-start justify-between gap-4 mb-2">
+                                                    <div className="flex flex-col flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="text-base font-semibold text-foreground">
+                                                                OM Favorecida: {registro.organizacao} (UG: {formatCodug(registro.ug)})
+                                                            </h4>
+                                                            {hasCustomMemoria && !isEditing && (
+                                                                <Badge variant="outline" className="text-xs">
+                                                                    Editada manualmente
+                                                                </Badge>
+                                                            )}
                                                         </div>
-                                                    ) : (
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Destino Recurso: {registro.om_detentora} (UG: {formatCodug(registro.ug_detentora)})
-                                                        </p>
-                                                    )}
+                                                        {/* NOVO LOCAL DO ALERTA VISUAL */}
+                                                        {isDifferentOmInMemoria ? (
+                                                            <div className="flex items-center gap-1 mt-1">
+                                                                <AlertCircle className="h-4 w-4 text-red-600" />
+                                                                <span className="text-sm font-medium text-red-600">
+                                                                    Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-xs text-muted-foreground">
+                                                                Destino Recurso: {registro.om_detentora} (UG: {formatCodug(registro.ug_detentora)})
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center justify-end gap-2 shrink-0">
+                                                        {!isEditing ? (
+                                                            <>
+                                                                <Button
+                                                                    type="button" 
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => handleIniciarEdicaoMemoria(registro)}
+                                                                    disabled={isSaving || !isPTrabEditable}
+                                                                    className="gap-2"
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                    Editar Memória
+                                                                </Button>
+                                                                
+                                                                {hasCustomMemoria && (
+                                                                    <Button
+                                                                        type="button" 
+                                                                        size="sm"
+                                                                        variant="ghost"
+                                                                        onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
+                                                                        disabled={isSaving || !isPTrabEditable}
+                                                                        className="gap-2 text-muted-foreground"
+                                                                    >
+                                                                        <RefreshCw className="h-4 w-4" />
+                                                                        Restaurar Automática
+                                                                    </Button>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Button
+                                                                    type="button" 
+                                                                    size="sm"
+                                                                    variant="default"
+                                                                    onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
+                                                                    disabled={isSaving}
+                                                                    className="gap-2"
+                                                                >
+                                                                    <Check className="h-4 w-4" />
+                                                                    Salvar
+                                                                </Button>
+                                                                <Button
+                                                                    type="button" 
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={handleCancelarEdicaoMemoria}
+                                                                    disabled={isSaving}
+                                                                    className="gap-2"
+                                                                >
+                                                                    <XCircle className="h-4 w-4" />
+                                                                    Cancelar
+                                                                </Button>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 
-                                                <MemoriaCalculoEditor
-                                                    registroId={registro.id}
-                                                    tableName="verba_operacional_registros"
-                                                    memoriaAutomatica={memoriaAutomatica}
-                                                    memoriaCustomizada={memoriaCustomizada}
-                                                    isPTrabEditable={isPTrabEditable}
-                                                    queryKey={["suprimentoFundosRegistros", ptrabId]}
-                                                />
+                                                <Card className="p-4 bg-background rounded-lg border">
+                                                    {isEditing ? (
+                                                        <Textarea
+                                                            value={memoriaExibida}
+                                                            onChange={(e) => setMemoriaEdit(e.target.value)}
+                                                            className="min-h-[300px] font-mono text-sm"
+                                                            placeholder="Digite a memória de cálculo..."
+                                                        />
+                                                    ) : (
+                                                        <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
+                                                            {memoriaExibida}
+                                                        </pre>
+                                                    )}
+                                                </Card>
                                             </div>
                                         );
                                     })}
@@ -1456,4 +1689,4 @@ const SuprimentoFundosManagerPage = () => {
     );
 };
 
-export default SuprimentoFundosManagerPage;
+export default SuprimentoFundosForm;

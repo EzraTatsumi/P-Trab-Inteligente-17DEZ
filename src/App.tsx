@@ -25,11 +25,11 @@ import OmConfigPage from "./pages/OmConfigPage";
 import OmBulkUploadPage from "./pages/OmBulkUploadPage";
 import PTrabExportImportPage from "./pages/PTrabExportImportPage";
 import UserProfilePage from "./pages/UserProfilePage";
-import SharePage from "./pages/SharePage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
-import DiariaManagerPage from "./pages/DiariaManagerPage"; // ROTA ATUALIZADA
-import VerbaOperacionalManagerPage from "./pages/VerbaOperacionalManagerPage"; // ROTA ATUALIZADA
-import SuprimentoFundosManagerPage from "./pages/SuprimentoFundosManagerPage"; // ROTA ATUALIZADA
+import SharePage from "./pages/SharePage"; // Importar SharePage
+import ResetPasswordPage from "./pages/ResetPasswordPage"; // Importar ResetPasswordPage
+import DiariaForm from "./pages/DiariaForm"; // Importar DiariaForm
+import VerbaOperacionalForm from "./pages/VerbaOperacionalForm"; // NOVO IMPORT
+import SuprimentoFundosForm from "./pages/SuprimentoFundosForm"; // NOVO IMPORT
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,7 +45,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} /> {/* NOVA ROTA */}
               <Route path="/ptrab" element={<PTrabManager />} />
               <Route path="/ptrab/form" element={<PTrabForm />} />
               <Route path="/ptrab/print" element={<PTrabReportManager />} />
@@ -57,9 +57,9 @@ const App = () => (
               <Route path="/ptrab/classe-viii" element={<ClasseVIIIForm />} />
               <Route path="/ptrab/classe-ix" element={<ClasseIXForm />} />
               <Route path="/ptrab/classe-iii" element={<ClasseIIIForm />} />
-              <Route path="/ptrab/diaria" element={<DiariaManagerPage />} /> {/* ROTA ATUALIZADA */}
-              <Route path="/ptrab/verba-operacional" element={<VerbaOperacionalManagerPage />} /> {/* ROTA ATUALIZADA */}
-              <Route path="/ptrab/suprimento-fundos" element={<SuprimentoFundosManagerPage />} /> {/* ROTA ATUALIZADA */}
+              <Route path="/ptrab/diaria" element={<DiariaForm />} /> {/* ROTA ADICIONADA */}
+              <Route path="/ptrab/verba-operacional" element={<VerbaOperacionalForm />} /> {/* NOVA ROTA */}
+              <Route path="/ptrab/suprimento-fundos" element={<SuprimentoFundosForm />} /> {/* NOVA ROTA */}
               <Route path="/config/custos-operacionais" element={<CustosOperacionaisPage />} />
               <Route path="/config/diretrizes" element={<DiretrizesCusteioPage />} />
               <Route path="/config/visualizacao" element={<VisualizacaoConfigPage />} />
