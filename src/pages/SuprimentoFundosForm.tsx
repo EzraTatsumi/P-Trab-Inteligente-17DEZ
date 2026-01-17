@@ -463,7 +463,7 @@ const SuprimentoFundosForm = () => {
             setPendingSuprimentos([]); 
             setLastStagedFormData(null); // Limpa o lastStagedFormData após salvar
             
-            // CORREÇÃO: Manter campos de contexto e detalhes, resetar apenas os valores
+            // CORREÇÃO: Manter campos de contexto, detalhes E valores
             setFormData(prev => ({
                 ...prev,
                 // Manter campos de contexto e detalhes
@@ -481,14 +481,15 @@ const SuprimentoFundosForm = () => {
                 local: prev.local,
                 tarefa: prev.tarefa,
                 
-                // Resetar apenas os campos de valor
-                valor_total_solicitado: 0,
-                valor_nd_30: 0,
-                valor_nd_39: 0,
+                // Manter campos de valor (não resetar)
+                valor_total_solicitado: prev.valor_total_solicitado,
+                valor_nd_30: prev.valor_nd_30,
+                valor_nd_39: prev.valor_nd_39,
             }));
             
-            setRawTotalInput(numberToRawDigits(0));
-            setRawND39Input(numberToRawDigits(0));
+            // Manter inputs brutos (não resetar)
+            // setRawTotalInput(numberToRawDigits(0)); // REMOVIDO
+            // setRawND39Input(numberToRawDigits(0)); // REMOVIDO
             
             if (newRecords && newRecords.length > 0) {
                 handleEdit(newRecords[0] as SuprimentoFundosRegistroDB);
@@ -823,7 +824,7 @@ const SuprimentoFundosForm = () => {
                 toast.info("Nenhuma alteração detectada no item pendente.");
             }
             
-            // CORREÇÃO: Manter campos de contexto e detalhes, resetar apenas os valores
+            // CORREÇÃO: Manter campos de contexto, detalhes E valores
             setFormData(prev => ({
                 ...prev,
                 // Manter campos de contexto e detalhes
@@ -841,14 +842,15 @@ const SuprimentoFundosForm = () => {
                 local: prev.local,
                 tarefa: prev.tarefa,
                 
-                // Resetar apenas os campos de valor
-                valor_total_solicitado: 0,
-                valor_nd_30: 0,
-                valor_nd_39: 0,
+                // REMOVIDO O RESET DOS VALORES AQUI
+                // valor_total_solicitado: 0,
+                // valor_nd_30: 0,
+                // valor_nd_39: 0,
             }));
             
-            setRawTotalInput(numberToRawDigits(0));
-            setRawND39Input(numberToRawDigits(0));
+            // REMOVIDO O RESET DOS INPUTS BRUTOS AQUI
+            // setRawTotalInput(numberToRawDigits(0));
+            // setRawND39Input(numberToRawDigits(0));
             
         } catch (err) {
             if (err instanceof z.ZodError) {
