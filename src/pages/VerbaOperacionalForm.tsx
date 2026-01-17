@@ -1118,7 +1118,6 @@ const VerbaOperacionalForm = () => {
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
                                         3. Itens Adicionados ({itemsInPendingList.length})
                                         {isStagingUpdate && <Badge variant="destructive">Revisão de Edição</Badge>}
-                                        {isStagingNew && <Badge variant="secondary">Novo Item em Revisão</Badge>}
                                     </h3>
                                     
                                     {/* Alerta de Validação Final (Apenas se houver item estagiado E estiver sujo) */}
@@ -1276,7 +1275,7 @@ const VerbaOperacionalForm = () => {
                                                     type="button" 
                                                     onClick={handleCommitStagedToPending}
                                                     disabled={isSaving || isVerbaDirty}
-                                                    className="w-full md:w-auto bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                                 >
                                                     <Plus className="mr-2 h-4 w-4" />
                                                     Adicionar à Lista Pendente

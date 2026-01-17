@@ -1060,7 +1060,6 @@ const DiariaForm = () => {
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
                                         3. Itens Adicionados ({itemsInPendingList.length})
                                         {isStagingUpdate && <Badge variant="destructive">Revisão de Edição</Badge>}
-                                        {isStagingNew && <Badge variant="secondary">Novo Item em Revisão</Badge>}
                                     </h3>
                                     
                                     {/* NOVO: Alerta de Validação Final (Apenas se houver item estagiado E estiver sujo) */}
@@ -1186,8 +1185,8 @@ const DiariaForm = () => {
                                                             <div className="grid grid-cols-3 gap-4 text-xs">
                                                                 <p className="font-medium text-muted-foreground col-span-1">Taxa de Embarque:</p>
                                                                 <p className="font-medium text-muted-foreground text-right col-span-2">
-                                                                    {taxaEmbarqueCalculation}
-                                                                </p>
+                                                                    {taxaEmbarqueCalculation
+                                                                }</p>
                                                             </div>
                                                             
                                                             {/* Separador Tracejado */}
@@ -1285,7 +1284,7 @@ const DiariaForm = () => {
                                                     type="button" 
                                                     onClick={handleCommitStagedToPending}
                                                     disabled={isSaving || isDiariaDirty}
-                                                    className="w-full md:w-auto bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                                 >
                                                     <Plus className="mr-2 h-4 w-4" />
                                                     Adicionar à Lista Pendente
