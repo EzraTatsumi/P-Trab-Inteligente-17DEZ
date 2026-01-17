@@ -1483,7 +1483,7 @@ const VerbaOperacionalForm = () => {
                                                     <div className="flex flex-col flex-1 min-w-0">
                                                         <div className="flex items-center gap-2">
                                                             <h4 className="text-base font-semibold text-foreground">
-                                                                OM Favorecida: {registro.organizacao} (UG: {formatCodug(registro.ug)})
+                                                                {registro.organizacao} (UG: {formatCodug(registro.ug)})
                                                             </h4>
                                                             {hasCustomMemoria && !isEditing && (
                                                                 <Badge variant="outline" className="text-xs">
