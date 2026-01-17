@@ -240,7 +240,7 @@ Total: ${formatNumber(totalLitros, 2)} L x ${formatCurrency(precoMedio)} = ${for
             categoriaLabel = 'Equipamentos Diversos';
         }
         
-        const header = `${ndPrefix} - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${categoriaLabel} ${omArticle} ${omDetentoraEquipamento}, durante ${diasOperacaoGlobal} ${diasPluralHeader} de ${faseAtividade}.`;
+        const header = `${ndPrefix} - Aquisição de Combustível (${combustivelLabel}) para ${totalEquipamentos} ${omArticle} ${omDetentoraEquipamento}, durante ${diasOperacaoGlobal} ${diasPluralHeader} de ${faseAtividade}.`;
 
         let totalLitrosSemMargem = 0;
         let detalhes: string[] = [];
@@ -271,7 +271,7 @@ Total: ${formatNumber(totalLitros, 2)} L x ${formatCurrency(precoMedio)} = ${for
         const precoLitro = tipoCombustivel === 'GASOLINA' 
             ? refLPC?.preco_gasolina ?? 0 
             : refLPC?.preco_diesel ?? 0;
-        const valorTotal = totalLitrosComMargem * precoLitro;
+        const valorTotalCalculado = totalLitrosComMargem * precoLitro; // RENOMEADO
         
         const formatarData = (data: string) => {
             const [ano, mes, dia] = data.split('-');
@@ -293,7 +293,7 @@ ${formulaPrincipal}
 ${detalhes.join('\n')}
 
 Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(totalLitros)} L ${unidadeLabel}.
-Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotal)}.`;
+Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLitro)} = ${formatCurrency(valorTotalCalculado)}.`; // USANDO RENOMEADO
     }
 };
 
@@ -394,6 +394,12 @@ Total: ${formatNumber(total_litros, 2)} L x ${formatCurrency(precoMedio)} = ${fo
             detalhes.push(`- ${item.item}: ${formulaLitros} = ${formatNumber(litrosSemMargemItem)} L ${unidadeLabel}.`);
         });
         
+        const totalLitrosComMargem = totalLitrosSemMargem * 1.3;
+        const precoLitro = tipoCombustivel === 'GASOLINA' 
+            ? refLPC?.preco_gasolina ?? 0 
+            : refLPC?.preco_diesel ?? 0;
+        const valorTotalCalculado = totalLitrosComMargem * precoLitro; // RENOMEADO
+        
         const totalEquipamentos = detailed_items.reduce((sum, item) => sum + item.quantidade, 0);
         const omArticle = getOmArticle(om_destino);
         
@@ -417,6 +423,6 @@ ${formulaPrincipal}
 ${detalhes.join('\n')}
 
 Total: ${formatNumber(totalLitrosSemMargem)} L ${unidadeLabel} + 30% (Margem) = ${formatNumber(total_litros)} L ${unidadeLabel}.
-Valor: ${formatNumber(total_litros)} L ${unidadeLabel} x ${formatCurrency(preco_litro)} = ${formatCurrency(valor_total)}.`;
+Valor: ${formatNumber(total_litros)} L ${unidadeLabel} x ${formatCurrency(preco_litro)} = ${formatCurrency(valorTotalCalculado)}.`; // USANDO RENOMEADO
     }
 };
