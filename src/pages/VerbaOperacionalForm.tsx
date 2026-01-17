@@ -174,17 +174,17 @@ const VerbaOperacionalForm = () => {
     // Efeito para preencher a OM Favorecida (OM do PTrab) e a OM Detentora (CIE) ao carregar
     useEffect(() => {
         if (ptrabData && !editingId) {
-            // 1. OM Favorecida (OM do PTrab) - Deve ser selecionável, mas o valor inicial é o do PTrab
-            const omFavorecida = oms?.find(om => om.nome_om === ptrabData.nome_om && om.codug_om === ptrabData.codug_om);
-            
+            // 1. OM Favorecida (OM do PTrab) - NÃO PRÉ-SELECIONAR
+            // Apenas inicializa os campos de OM Favorecida no formData com strings vazias,
+            // forçando a seleção manual no OmSelector.
             setFormData(prev => ({
                 ...prev,
-                om_favorecida: ptrabData.nome_om,
-                ug_favorecida: ptrabData.codug_om,
+                om_favorecida: "", // Vazio
+                ug_favorecida: "", // Vazio
             }));
-            setSelectedOmFavorecidaId(omFavorecida?.id);
+            setSelectedOmFavorecidaId(undefined); // Vazio
             
-            // 2. OM Detentora (Padrão CIE)
+            // 2. OM Detentora (Padrão CIE) - PODE SER PRÉ-SELECIONADA
             const cieOm = oms?.find(om => om.nome_om === DEFAULT_OM_DETENTORA && om.codug_om === DEFAULT_UG_DETENTORA);
             if (cieOm) {
                 setSelectedOmDetentoraId(cieOm.id);
@@ -508,9 +508,9 @@ const VerbaOperacionalForm = () => {
         setEditingId(null);
         setFormData(prev => ({
             ...initialFormState,
-            // Mantém a OM Favorecida (do PTrab) se já estiver definida
-            om_favorecida: ptrabData?.nome_om || "",
-            ug_favorecida: ptrabData?.codug_om || "",
+            // OM Favorecida (do PTrab) - Vazio para forçar seleção
+            om_favorecida: "",
+            ug_favorecida: "",
             // OM Detentora (Padrão CIE)
             om_detentora: DEFAULT_OM_DETENTORA,
             ug_detentora: DEFAULT_UG_DETENTORA,
