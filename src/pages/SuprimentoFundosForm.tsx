@@ -1651,8 +1651,6 @@ const SuprimentoFundosForm = () => {
                                                                     Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
                                                                 </span>
                                                             </div>
-                                                        ) : (
-                                                            
                                                         )}
                                                     </div>
                                                     
