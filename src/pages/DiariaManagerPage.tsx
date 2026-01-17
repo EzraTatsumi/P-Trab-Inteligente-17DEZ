@@ -5,17 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Briefcase, Loader2, Save, Trash2, Edit, Plus, Users, MapPin, Calendar, Check, X, ClipboardList, FileText, Plane, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check } from "lucide-react";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
-import { formatCurrency, formatNumber, formatCodug, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, formatCodug } from "@/lib/formatUtils";
 import { PTrabData, fetchPTrabData, fetchPTrabRecords, fetchDiretrizesOperacionais } from "@/lib/ptrabUtils";
 import { 
     DIARIA_RANKS_CONFIG, 
@@ -42,10 +40,10 @@ import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator"; 
 import { LocalAtividadeSelect } from "@/components/LocalAtividadeSelect";
 import { DESTINO_OPTIONS } from "@/lib/diariaConstants";
-import { cn } from "@/lib/utils"; // Importar cn
+import { cn } from "@/lib/utils";
+import { MemoriaCalculoEditor } from "@/components/MemoriaCalculoEditor"; // NOVO COMPONENTE
 
 // Tipos de dados
 type DiariaRegistro = Tables<'diaria_registros'>;
@@ -67,7 +65,6 @@ interface CalculatedDiaria extends TablesInsert<'diaria_registros'> {
     // Campos de display adicionais
     destinoLabel: string;
     totalMilitares: number;
-    // valor_nd_15 já está em TablesInsert<'diaria_registros'>
 }
 
 // Schema de validação para o formulário de Diária
@@ -83,7 +80,6 @@ const diariaSchema = z.object({
     fase_atividade: z.string().min(1, "A fase da atividade é obrigatória."),
     is_aereo: z.boolean(),
     
-    // Campo nomeado para as quantidades por posto
     quantidades_por_posto: z.record(z.string(), z.number().int().min(0)).refine(
         (data) => Object.values(data).some(qty => qty > 0),
         { message: "Pelo menos um militar deve ser adicionado." }
@@ -97,9 +93,9 @@ const diariaSchema = z.object({
 const initialFormState = {
     organizacao: "",
     ug: "",
-    dias_operacao: 0, // Alterado para 0 para iniciar vazio
+    dias_operacao: 0,
     destino: 'bsb_capitais_especiais' as DestinoDiaria,
-    nr_viagens: 0, // Alterado para 0 para iniciar vazio
+    nr_viagens: 0,
     local_atividade: "",
     fase_atividade: "",
     is_aereo: false,
@@ -117,17 +113,17 @@ const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
 const getDestinoColorClass = (destino: DestinoDiaria) => {
     switch (destino) {
         case 'bsb_capitais_especiais':
-            return 'bg-blue-600 hover:bg-blue-700'; // Azul para BSB/Capitais Especiais
+            return 'bg-blue-600 hover:bg-blue-700';
         case 'demais_capitais':
-            return 'bg-green-600 hover:bg-green-700'; // Verde para Demais Capitais
+            return 'bg-green-600 hover:bg-green-700';
         case 'demais_dslc':
-            return 'bg-purple-600 hover:bg-purple-700'; // Roxo para Demais DSL/C
+            return 'bg-purple-600 hover:bg-purple-700';
         default:
             return 'bg-gray-500 hover:bg-gray-600';
     }
 };
 
-const DiariaForm = () => {
+const DiariaManagerPage = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const ptrabId = searchParams.get('ptrabId');
@@ -139,9 +135,7 @@ const DiariaForm = () => {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [registroToDelete, setRegistroToDelete] = useState<DiariaRegistro | null>(null);
     
-    // ESTADOS DE EDIÇÃO DE MEMÓRIA (COPIADOS DO CLASSE II)
-    const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
-    const [memoriaEdit, setMemoriaEdit] = useState<string>("");
+    // ESTADOS DE EDIÇÃO DE MEMÓRIA (REMOVIDOS, USAR MemoriaCalculoEditor)
     
     // NOVO ESTADO: Array de registros calculados, mas não salvos
     const [pendingDiarias, setPendingDiarias] = useState<CalculatedDiaria[]>([]);
@@ -159,11 +153,9 @@ const DiariaForm = () => {
         enabled: !!ptrabId,
     });
     
-    // NOVO: Busca o ano de referência padrão/mais recente
     const { data: diretrizYearData, isLoading: isLoadingDiretrizYear } = useDefaultDiretrizYear();
     const anoReferencia = diretrizYearData?.year;
 
-    // Busca as diretrizes operacionais usando o ano de referência
     const { data: diretrizesOp, isLoading: isLoadingDiretrizes } = useQuery<DiretrizOperacional>({
         queryKey: ['diretrizesOperacionais', anoReferencia],
         queryFn: () => fetchDiretrizesOperacionais(anoReferencia!),
@@ -211,7 +203,6 @@ const DiariaForm = () => {
         }
         
         try {
-            // Validação rápida dos campos essenciais antes de calcular
             if (formData.dias_operacao <= 0 || formData.nr_viagens <= 0 || !formData.destino || formData.organizacao.length === 0) {
                 return {
                     totalDiariaBase: 0, totalTaxaEmbarque: 0, totalGeral: 0, totalMilitares: 0, calculosPorPosto: [],
@@ -267,7 +258,7 @@ const DiariaForm = () => {
              return true;
         }
 
-        // 4. Comparar fase de atividade (se for diferente, precisa re-estagiar para atualizar a memória)
+        // 4. Comparar fase de atividade
         if (formData.fase_atividade !== stagedUpdate.fase_atividade) {
             return true;
         }
@@ -283,7 +274,6 @@ const DiariaForm = () => {
     // NOVO MEMO: Agrupa os registros por OM de Destino (organizacao/ug)
     const registrosAgrupadosPorOM = useMemo(() => {
         return registros?.reduce((acc, registro) => {
-            // Usamos a OM de Destino como chave de agrupamento principal
             const omDestino = registro.organizacao;
             const ugDestino = registro.ug;
             const key = `${omDestino} (${ugDestino})`;
@@ -304,9 +294,8 @@ const DiariaForm = () => {
         mutationFn: async (recordsToSave: TablesInsert<'diaria_registros'>[]) => {
             if (recordsToSave.length === 0) return;
             
-            // Mapeia para o formato de inserção, garantindo que valor_nd_39 não seja enviado
             const dbRecords = recordsToSave.map(record => {
-                const { valor_nd_39, ...rest } = record as any; // Remove valor_nd_39 se ainda estiver no tipo
+                const { valor_nd_39, ...rest } = record as any;
                 return rest;
             });
 
@@ -314,7 +303,7 @@ const DiariaForm = () => {
                 .from("diaria_registros")
                 .insert(dbRecords)
                 .select('*')
-                .order('created_at', { ascending: false }); // Ordena para pegar o último inserido
+                .order('created_at', { ascending: false });
             
             if (error) throw error;
             return data;
@@ -323,15 +312,10 @@ const DiariaForm = () => {
             queryClient.invalidateQueries({ queryKey: ["diariaRegistros", ptrabId] });
             queryClient.invalidateQueries({ queryKey: ["ptrabTotals", ptrabId] });
             toast.success(`Sucesso! ${pendingDiarias.length} registro(s) de Diária adicionado(s).`);
-            setPendingDiarias([]); // Limpa a lista pendente
+            setPendingDiarias([]);
             
-            // 1. Resetar o formulário, mas mantendo OM e Fase
-            // Não chamamos resetForm aqui, mas sim a lógica de reset parcial
-            
-            // 2. Colocar o último registro salvo em modo de edição para exibir a Seção 5
             if (newRecords && newRecords.length > 0) {
-                const lastSavedRecord = newRecords[0]; // O primeiro item é o mais recente devido à ordenação
-                // Chamamos handleEdit com o registro recém-salvo
+                const lastSavedRecord = newRecords[0];
                 handleEdit(lastSavedRecord as DiariaRegistro);
             }
         },
@@ -354,7 +338,7 @@ const DiariaForm = () => {
             queryClient.invalidateQueries({ queryKey: ["diariaRegistros", ptrabId] });
             queryClient.invalidateQueries({ queryKey: ["ptrabTotals", ptrabId] });
             toast.success(`Registro de Diária atualizado com sucesso!`);
-            setStagedUpdate(null); // Limpa o staging após o sucesso
+            setStagedUpdate(null);
             resetForm();
         },
         onError: (err) => {
@@ -376,7 +360,7 @@ const DiariaForm = () => {
             toast.success("Registro de Diária excluído com sucesso!");
             setRegistroToDelete(null);
             setShowDeleteDialog(false);
-            resetForm(); // Garante que o modo de edição seja limpo
+            resetForm();
         },
         onError: (err) => {
             toast.error(sanitizeError(err));
@@ -390,15 +374,12 @@ const DiariaForm = () => {
     const resetForm = () => {
         setEditingId(null);
         
-        // Mantém OM e Fase, mas reseta os campos de cálculo
         setFormData(prev => ({
             ...initialFormState,
             organizacao: prev.organizacao,
             ug: prev.ug,
             fase_atividade: prev.fase_atividade,
-            // Mantém o destino selecionado para facilitar a adição de itens semelhantes
-            destino: prev.destino, 
-            // Reseta os campos de cálculo
+            destino: prev.destino,
             dias_operacao: 0, 
             nr_viagens: 0, 
             local_atividade: "",
@@ -406,10 +387,7 @@ const DiariaForm = () => {
             quantidades_por_posto: initialFormState.quantidades_por_posto,
         }));
         
-        setEditingMemoriaId(null); // Resetar estados de edição de memória
-        setMemoriaEdit("");
-        // Não reseta selectedOmId, pois a OM de destino é mantida
-        setStagedUpdate(null); // Limpa o staging
+        setStagedUpdate(null);
     };
     
     const handleClearPending = () => {
@@ -434,7 +412,6 @@ const DiariaForm = () => {
         const omToEdit = oms?.find(om => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
         setSelectedOmId(omToEdit?.id);
 
-        // 1. Populate formData
         const newFormData = {
             organizacao: registro.organizacao,
             ug: registro.ug,
@@ -450,13 +427,11 @@ const DiariaForm = () => {
         };
         setFormData(newFormData);
 
-        // 2. Calculate totals based on the *saved* record data and *current* directives
         const totals = calculateDiariaTotals(newFormData as any, diretrizesOp);
         const memoria = generateDiariaMemoriaCalculo(newFormData as any, diretrizesOp, totals);
         
         const destinoLabel = DESTINO_OPTIONS.find(d => d.value === newFormData.destino)?.label || newFormData.destino;
 
-        // 3. Stage the current record data immediately for display in Section 3
         const stagedData: CalculatedDiaria = {
             tempId: registro.id,
             p_trab_id: ptrabId!,
@@ -470,12 +445,11 @@ const DiariaForm = () => {
             nr_viagens: newFormData.nr_viagens,
             local_atividade: newFormData.local_atividade,
             
-            // Campos calculados
             quantidade: totals.totalMilitares,
             valor_taxa_embarque: totals.totalTaxaEmbarque,
             valor_total: totals.totalGeral,
-            valor_nd_30: 0, // CORRIGIDO: ND 30 é zero
-            valor_nd_15: totals.totalGeral, // CORRIGIDO: ND 15 é o total geral
+            valor_nd_30: 0,
+            valor_nd_15: totals.totalGeral,
             
             quantidades_por_posto: newFormData.quantidades_por_posto,
             detalhamento: memoria,
@@ -484,19 +458,15 @@ const DiariaForm = () => {
             
             posto_graduacao: null,
             valor_diaria_unitario: null,
-
-            // Campos de display para a lista pendente
+            valor_nd_39: 0, // Adicionado para satisfazer o tipo TablesInsert
+            
             destinoLabel: destinoLabel,
             totalMilitares: totals.totalMilitares,
             memoria_calculo_display: memoria, 
         };
         
-        setStagedUpdate(stagedData); // Set the staged update immediately
+        setStagedUpdate(stagedData);
 
-        // Reset memory edit states
-        setEditingMemoriaId(null); 
-        setMemoriaEdit("");
-        
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -505,7 +475,6 @@ const DiariaForm = () => {
         setShowDeleteDialog(true);
     };
 
-    // Adiciona o item calculado à lista pendente OU prepara a atualização (staging)
     const handleStageCalculation = (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -515,15 +484,10 @@ const DiariaForm = () => {
         }
         
         try {
-            // 1. Validação Zod
             diariaSchema.parse(formData);
             
-            // 2. Validação de OM/UG (CORRIGIDO)
-            // Tenta encontrar a OM pelo ID selecionado (se houver)
             let omDestino = oms?.find(om => om.id === selectedOmId);
 
-            // Se não encontrou pelo ID (ou ID é undefined), tenta encontrar pelo nome/UG preenchidos no formulário.
-            // Isso é crucial para validar a OM inicial do PTrab se ela não foi selecionada novamente.
             if (!omDestino && formData.organizacao && formData.ug) {
                 omDestino = oms?.find(om => om.nome_om === formData.organizacao && om.codug_om === formData.ug);
             }
@@ -533,11 +497,13 @@ const DiariaForm = () => {
                 return;
             }
             
-            // 3. Preparar o objeto final (calculatedData)
             const destinoLabel = DESTINO_OPTIONS.find(d => d.value === formData.destino)?.label || formData.destino;
             
+            const totals = calculateDiariaTotals(formData as any, diretrizesOp);
+            const memoria = generateDiariaMemoriaCalculo(formData as any, diretrizesOp, totals);
+            
             const calculatedData: CalculatedDiaria = {
-                tempId: editingId || Math.random().toString(36).substring(2, 9), // Usa editingId como tempId se estiver editando
+                tempId: editingId || Math.random().toString(36).substring(2, 9),
                 p_trab_id: ptrabId!,
                 organizacao: formData.organizacao,
                 ug: formData.ug,
@@ -549,43 +515,38 @@ const DiariaForm = () => {
                 nr_viagens: formData.nr_viagens,
                 local_atividade: formData.local_atividade,
                 
-                // Campos calculados
-                quantidade: calculos.totalMilitares,
-                valor_taxa_embarque: calculos.totalTaxaEmbarque,
-                valor_total: calculos.totalGeral,
-                valor_nd_30: 0, // CORRIGIDO: ND 30 é zero
-                valor_nd_15: calculos.totalGeral, // CORRIGIDO: ND 15 é o total geral
+                quantidade: totals.totalMilitares,
+                valor_taxa_embarque: totals.totalTaxaEmbarque,
+                valor_total: totals.totalGeral,
+                valor_nd_30: 0,
+                valor_nd_15: totals.totalGeral,
                 
                 quantidades_por_posto: formData.quantidades_por_posto,
-                detalhamento: calculos.memoria,
+                detalhamento: memoria,
                 detalhamento_customizado: null, 
                 is_aereo: formData.is_aereo,
                 
                 posto_graduacao: null,
                 valor_diaria_unitario: null,
+                valor_nd_39: 0, // Adicionado para satisfazer o tipo TablesInsert
 
-                // Campos de display para a lista pendente
                 destinoLabel: destinoLabel,
-                totalMilitares: calculos.totalMilitares,
-                memoria_calculo_display: calculos.memoria, 
+                totalMilitares: totals.totalMilitares,
+                memoria_calculo_display: memoria, 
             };
             
             if (editingId) {
-                // MODO EDIÇÃO: Estagia a atualização para revisão
-                // Preserve custom memory if it exists on the original record being edited
                 const originalRecord = registros?.find(r => r.id === editingId);
                 calculatedData.detalhamento_customizado = originalRecord?.detalhamento_customizado || null;
                 
                 setStagedUpdate(calculatedData);
                 toast.info("Cálculo atualizado. Revise e confirme a atualização na Seção 3.");
-                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); // Scroll down to review area
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                 return;
             }
             
-            // MODO ADIÇÃO: Adicionar à lista pendente
             setPendingDiarias(prev => [...prev, calculatedData]);
             
-            // 5. Resetar os campos de cálculo, MANTENDO OM, FASE e DESTINO
             setFormData(prev => ({
                 ...prev,
                 dias_operacao: 0, 
@@ -606,16 +567,13 @@ const DiariaForm = () => {
         }
     };
     
-    // Salva todos os itens pendentes no DB
     const handleSavePendingDiarias = () => {
         if (pendingDiarias.length === 0) {
             toast.warning("Nenhum item pendente para salvar.");
             return;
         }
         
-        // Mapeia os itens pendentes para o formato de inserção no DB
         const recordsToSave: TablesInsert<'diaria_registros'>[] = pendingDiarias.map(p => {
-            // Remove campos de display e temporários
             const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, valor_nd_39, ...dbRecord } = p as any;
             return dbRecord as TablesInsert<'diaria_registros'>;
         });
@@ -623,18 +581,14 @@ const DiariaForm = () => {
         saveMutation.mutate(recordsToSave);
     };
     
-    // NOVO: Confirma a atualização do item estagiado no DB
     const handleCommitStagedUpdate = () => {
         if (!editingId || !stagedUpdate) return;
         
-        // Mapeia o stagedUpdate para o formato de atualização no DB
         const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, valor_nd_39, ...dbRecord } = stagedUpdate as any;
         
-        // updateMutation espera TablesUpdate, que é o dbRecord sem o ID
         updateMutation.mutate(dbRecord as TablesUpdate<'diaria_registros'>);
     };
     
-    // Remove item da lista pendente
     const handleRemovePending = (tempId: string) => {
         setPendingDiarias(prev => prev.filter(p => p.tempId !== tempId));
         toast.info("Item removido da lista pendente.");
@@ -676,103 +630,6 @@ const DiariaForm = () => {
         }));
     };
     
-    // --- Lógica de Edição de Memória (Copiada do Classe II) ---
-    
-    const handleIniciarEdicaoMemoria = (registro: DiariaRegistro) => {
-        setEditingMemoriaId(registro.id);
-        
-        // 1. Gerar a memória automática mais recente
-        const totals = calculateDiariaTotals(registro as any, diretrizesOp || {});
-        const memoriaAutomatica = generateDiariaMemoriaCalculo(registro as any, diretrizesOp || {}, totals);
-        
-        // 2. Usar a customizada se existir, senão usar a automática recém-gerada
-        setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
-    };
-
-    const handleCancelarEdicaoMemoria = () => {
-        setEditingMemoriaId(null);
-        setMemoriaEdit("");
-    };
-
-    const handleSalvarMemoriaCustomizada = async (registroId: string) => {
-        // NOTE: Não temos um estado 'loading' local no DiariaForm, mas podemos usar o isSaving do updateMutation se necessário.
-        // Para simplificar, vamos usar o isSaving do updateMutation para desabilitar botões.
-        
-        try {
-            const { error } = await supabase
-                .from("diaria_registros")
-                .update({
-                    detalhamento_customizado: memoriaEdit.trim() || null,
-                })
-                .eq("id", registroId);
-
-            if (error) throw error;
-
-            toast.success("Memória de cálculo atualizada com sucesso!");
-            handleCancelarEdicaoMemoria();
-            queryClient.invalidateQueries({ queryKey: ["diariaRegistros", ptrabId] });
-        } catch (error) {
-            console.error("Erro ao salvar memória:", error);
-            toast.error(sanitizeError(error));
-        }
-    };
-
-    const handleRestaurarMemoriaAutomatica = async (registroId: string) => {
-        if (!confirm("Deseja realmente restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
-            return;
-        }
-        
-        try {
-            const { error } = await supabase
-                .from("diaria_registros")
-                .update({
-                    detalhamento_customizado: null,
-                })
-                .eq("id", registroId);
-
-            if (error) throw error;
-
-            toast.success("Memória de cálculo restaurada!");
-            queryClient.invalidateQueries({ queryKey: ["diariaRegistros", ptrabId] });
-        } catch (error) {
-            console.error("Erro ao restaurar memória:", error);
-            toast.error(sanitizeError(error));
-        }
-    };
-    
-    // --- Fim Lógica de Edição de Memória ---
-    
-    // =================================================================
-    // RENDERIZAÇÃO
-    // =================================================================
-
-    const isGlobalLoading = isLoadingPTrab || isLoadingRegistros || isLoadingOms || isLoadingDiretrizes || isLoadingDiretrizYear;
-
-    if (isGlobalLoading) {
-        return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                <span className="ml-2 text-muted-foreground">Carregando dados do P Trab e diretrizes...</span>
-            </div>
-        );
-    }
-
-    const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
-    const isSaving = saveMutation.isPending || updateMutation.isPending;
-    
-    const isBaseFormReady = formData.organizacao.length > 0 && 
-                            formData.ug.length > 0 && 
-                            formData.fase_atividade.length > 0;
-
-    const isCalculationReady = isBaseFormReady &&
-                              formData.dias_operacao > 0 &&
-                              formData.nr_viagens > 0 &&
-                              formData.local_atividade.length > 0 &&
-                              calculos.totalMilitares > 0;
-    
-    // Usando DESTINO_OPTIONS importado
-    const destinoOptions = DESTINO_OPTIONS;
-    
     const getUnitValueDisplay = (rankKey: string, destino: DestinoDiaria) => {
         if (!diretrizesOp) return "R$ 0,00";
         
@@ -803,7 +660,6 @@ const DiariaForm = () => {
     const taxaEmbarqueUnitario = diretrizesOp?.taxa_embarque ? Number(diretrizesOp.taxa_embarque) : 0;
     const referenciaLegal = diretrizesOp?.diaria_referencia_legal || 'Decreto/Portaria não cadastrada';
     
-    // Lógica para a Seção 3
     const itemsToDisplay = stagedUpdate ? [stagedUpdate] : pendingDiarias;
     const isStagingUpdate = !!stagedUpdate;
 
@@ -882,14 +738,13 @@ const DiariaForm = () => {
                                                 setFormData(prev => ({ 
                                                     ...prev, 
                                                     destino: value as DestinoDiaria,
-                                                    // Limpa o local da atividade ao mudar o destino, forçando nova seleção/digitação
                                                     local_atividade: "" 
                                                 }));
                                             }}
                                             className="w-full"
                                         >
                                             <TabsList className="grid w-full grid-cols-3">
-                                                {destinoOptions.map(opt => (
+                                                {DESTINO_OPTIONS.map(opt => (
                                                     <TabsTrigger key={opt.value} value={opt.value} disabled={!isPTrabEditable || isSaving}>
                                                         {opt.label}
                                                     </TabsTrigger>
@@ -898,10 +753,9 @@ const DiariaForm = () => {
                                         </Tabs>
                                     </div>
                                     
-                                    {/* NÍVEL III: Card com fundo cinza para agrupar a configuração */}
                                     <Card className="mt-6 bg-muted/50 rounded-lg p-4">
                                         
-                                        {/* Dados da Viagem (Card) - NÍVEL IV */}
+                                        {/* Dados da Viagem (Card) */}
                                         <Card className="rounded-lg">
                                             <CardHeader className="py-3">
                                                 <CardTitle className="text-base font-semibold">Dados da Viagem</CardTitle>
@@ -951,7 +805,6 @@ const DiariaForm = () => {
                                                                     disabled={!isPTrabEditable || isSaving}
                                                                 />
                                                             </div>
-                                                            {/* NOVO CAMPO: Deslocamento Aéreo */}
                                                             <div className="flex flex-col col-span-1">
                                                                 <Label htmlFor="is_aereo" className="text-sm font-medium mb-2">
                                                                     Deslocamento Aéreo?
@@ -974,12 +827,12 @@ const DiariaForm = () => {
                                             </CardContent>
                                         </Card>
                                         
-                                        {/* Tabela de Posto/Graduação e Quantidade (Estilizada como Card) - NÍVEL IV */}
+                                        {/* Tabela de Posto/Graduação e Quantidade */}
                                         <Card className="mt-4 rounded-lg">
                                             <CardHeader className="py-2">
                                                 <CardTitle className="text-base font-semibold">Efetivo por Posto/Graduação</CardTitle>
                                                 <p className="text-xs text-muted-foreground">
-                                                    Referência Legal: {referenciaLegal}.
+                                                    Referência Legal: {referenciaLegal}. Taxa de Embarque: {formatCurrency(taxaEmbarqueUnitario)}.
                                                 </p>
                                             </CardHeader>
                                             <CardContent className="p-3 pt-1">
@@ -1000,7 +853,6 @@ const DiariaForm = () => {
                                                                 const unitValue = getUnitValueDisplay(rank.key, formData.destino);
                                                                 const calculatedCost = calculos.calculosPorPosto.find(c => c.posto === rank.label)?.custoTotal || 0;
                                                                 
-                                                                // Valor da Taxa de Embarque para esta linha
                                                                 const taxaEmbarqueDisplay = formData.is_aereo 
                                                                     ? formatCurrency(taxaEmbarqueUnitario) 
                                                                     : formatCurrency(0);
@@ -1036,10 +888,10 @@ const DiariaForm = () => {
                                             </CardContent>
                                         </Card>
                                         
-                                        {/* NOVO BLOCO DE RESUMO DE TOTAIS (NÍVEL IV) */}
+                                        {/* NOVO BLOCO DE RESUMO DE TOTAIS */}
                                         <div className="space-y-2 mt-4">
                                             <div className="flex justify-between items-center p-3 bg-background rounded-lg border">
-                                                <span className="font-bold text-base">TOTAL GERAL</span>
+                                                <span className="font-bold text-base">TOTAL GERAL (ND 33.90.15)</span>
                                                 <span className="font-extrabold text-xl text-primary">
                                                     {formatCurrency(calculos.totalGeral)}
                                                 </span>
@@ -1048,7 +900,6 @@ const DiariaForm = () => {
                                         
                                         {/* BOTÕES DE AÇÃO (Salvar Item da Categoria) */}
                                         <div className="flex justify-end gap-3 pt-4">
-                                            {/* Revertido para o padrão: mesmo texto e desabilitação baseada apenas na prontidão do cálculo */}
                                             <Button 
                                                 type="submit" 
                                                 disabled={!isPTrabEditable || isSaving || !isCalculationReady}
@@ -1059,7 +910,7 @@ const DiariaForm = () => {
                                             </Button>
                                         </div>
                                         
-                                    </Card> {/* FIM NÍVEL III */}
+                                    </Card>
                                     
                                 </section>
                             )}
@@ -1071,7 +922,6 @@ const DiariaForm = () => {
                                         3. Itens Adicionados ({itemsToDisplay.length})
                                     </h3>
                                     
-                                    {/* NOVO: Alerta de Validação Final (Apenas em modo de edição) */}
                                     {editingId && isDiariaDirty && (
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
@@ -1085,19 +935,16 @@ const DiariaForm = () => {
                                         {itemsToDisplay.map((item) => {
                                             const taxaEmbarqueUnitarioDisplay = formatCurrency(taxaEmbarqueUnitario);
                                             
-                                            // Funções utilitárias para singular/plural
                                             const pluralize = (count: number, singular: string, plural: string) => 
                                                 count === 1 ? singular : plural;
 
                                             const militarText = pluralize(item.totalMilitares, 'militar', 'militares');
                                             const viagemText = pluralize(item.nr_viagens, 'viagem', 'viagens');
                                             
-                                            // --- Detailed Diária Calculation Generation ---
                                             const rankCalculationElements = DIARIA_RANKS_CONFIG.map(rank => {
                                                 const qty = item.quantidades_por_posto[rank.key] || 0;
                                                 if (qty === 0) return null;
 
-                                                // Get raw unit value
                                                 const unitValueRaw = (() => {
                                                     if (!diretrizesOp) return 0;
                                                     let fieldSuffix: 'bsb' | 'capitais' | 'demais';
@@ -1125,7 +972,6 @@ const DiariaForm = () => {
                                                 const unitValueFormatted = formatCurrency(unitValueRaw);
                                                 const subtotalFormatted = formatCurrency(subtotal);
                                                 
-                                                // Lógica de pluralização de dias (0.5 = dia, 1 = dia, >1 = dias)
                                                 const diasText = Math.abs(diasPagamento - 0.5) < 0.001 || diasPagamento === 1 ? 'dia' : 'dias';
                                                 
                                                 const calculationString = `${qty} ${rank.label} x ${unitValueFormatted}/dia x ${formatNumber(diasPagamento, 1)} ${diasText} x ${item.nr_viagens} ${viagemText} = ${subtotalFormatted}`;
@@ -1152,14 +998,11 @@ const DiariaForm = () => {
 
                                             const totalDiariaBase = item.valor_total - item.valor_taxa_embarque;
                                             
-                                            const isCurrentlyStaged = editingId && item.tempId === editingId;
-
                                             return (
                                                 <Card 
                                                     key={item.tempId} 
                                                     className={cn(
                                                         "border-2 shadow-md",
-                                                        // Mantendo o padrão de item pendente
                                                         "border-secondary bg-secondary/10"
                                                     )}
                                                 >
@@ -1209,7 +1052,6 @@ const DiariaForm = () => {
                                                             </div>
                                                         </div>
                                                         
-                                                        {/* SEPARADOR MOVIDO PARA CÁ */}
                                                         <div className="w-full h-[1px] bg-secondary/30 my-3" />
 
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
@@ -1252,7 +1094,7 @@ const DiariaForm = () => {
                                                 <Button 
                                                     type="button" 
                                                     onClick={handleCommitStagedUpdate}
-                                                    disabled={isSaving || isDiariaDirty} // Disable if dirty, force recalculation in Section 2
+                                                    disabled={isSaving || isDiariaDirty}
                                                     className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                                 >
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
@@ -1298,7 +1140,6 @@ const DiariaForm = () => {
                                                 <div className="flex items-center justify-between mb-3 border-b pb-2">
                                                     <h3 className="font-bold text-lg text-primary flex items-center gap-2">
                                                         OM Destino: {omName} (UG: {formatCodug(ug)})
-                                                        {/* Badge de Destino movido para cá */}
                                                         <Badge 
                                                             variant="default" 
                                                             className={cn("text-xs text-white", getDestinoColorClass(omRegistros[0].destino as DestinoDiaria))}
@@ -1314,8 +1155,6 @@ const DiariaForm = () => {
                                                 <div className="space-y-3">
                                                     {omRegistros.map((registro) => {
                                                         const totalGeral = registro.valor_total;
-                                                        // CORRIGIDO: totalDiariaBase é o valor_nd_30 (que agora é 0) e Taxa de Embarque é valor_nd_15
-                                                        // Mas para fins de exibição, vamos usar os campos salvos:
                                                         const totalDiariaBase = totalGeral - (registro.valor_taxa_embarque || 0);
                                                         const totalTaxaEmbarque = registro.valor_taxa_embarque || 0;
                                                         
@@ -1325,10 +1164,7 @@ const DiariaForm = () => {
                                                         return (
                                                             <Card 
                                                                 key={registro.id} 
-                                                                className={cn(
-                                                                    "p-3 bg-background border"
-                                                                    // Removido: editingId === registro.id && "border-2 border-primary/50 shadow-lg"
-                                                                )}
+                                                                className="p-3 bg-background border"
                                                             >
                                                                 <div className="flex items-center justify-between">
                                                                     <div className="flex flex-col">
@@ -1336,7 +1172,6 @@ const DiariaForm = () => {
                                                                             <h4 className="font-semibold text-base text-foreground">
                                                                                 Diárias ({registro.local_atividade})
                                                                             </h4>
-                                                                            {/* NOVO BADGE: Fase da Atividade */}
                                                                             <Badge variant="outline" className="text-xs">
                                                                                 {registro.fase_atividade}
                                                                             </Badge>
@@ -1374,7 +1209,6 @@ const DiariaForm = () => {
                                                                     </div>
                                                                 </div>
                                                                 
-                                                                {/* Detalhes da Alocação */}
                                                                 <div className="pt-2 border-t mt-2">
                                                                     <div className="flex justify-between text-xs">
                                                                         <span className="text-muted-foreground">Diária Base:</span>
@@ -1399,7 +1233,7 @@ const DiariaForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS (COPIADA DO CLASSE II) */}
+                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
                             {registros && registros.length > 0 && (
                                 <div className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1407,14 +1241,7 @@ const DiariaForm = () => {
                                     </h3>
                                     
                                     {registros.map(registro => {
-                                        const isEditing = editingMemoriaId === registro.id;
-                                        const hasCustomMemoria = !!registro.detalhamento_customizado;
-                                        
-                                        // Gera a memória automática para exibição/edição
-                                        const totals = calculateDiariaTotals(registro as any, diretrizesOp || {});
-                                        const memoriaAutomatica = generateDiariaMemoriaCalculo(registro as any, diretrizesOp || {}, totals);
-                                        
-                                        const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
+                                        const memoriaAutomatica = generateDiariaMemoriaCalculo(registro as any, diretrizesOp || {}, calculateDiariaTotals(registro as any, diretrizesOp || {}));
                                         
                                         const destinoLabel = DESTINO_OPTIONS.find(d => d.value === registro.destino)?.label || registro.destino;
                                         const destinoColorClass = getDestinoColorClass(registro.destino as DestinoDiaria);
@@ -1422,97 +1249,25 @@ const DiariaForm = () => {
                                         return (
                                             <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                                                 
-                                                {/* Container para H4 e Botões */}
-                                                <div className="flex items-start justify-between gap-4 mb-2">
-                                                    <div className="flex flex-col flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2">
-                                                            <h4 className="text-base font-semibold text-foreground">
-                                                                OM Destino: {registro.organizacao} (UG: {formatCodug(registro.ug)})
-                                                            </h4>
-                                                            <Badge variant="default" className={cn("w-fit text-white", destinoColorClass)}>
-                                                                {destinoLabel}
-                                                            </Badge>
-                                                            {/* BADGE DE MEMÓRIA CUSTOMIZADA */}
-                                                            {hasCustomMemoria && !isEditing && (
-                                                                <Badge variant="outline" className="text-xs">
-                                                                    Editada manualmente
-                                                                </Badge>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <div className="flex items-center justify-end gap-2 shrink-0">
-                                                        {!isEditing ? (
-                                                            <>
-                                                                <Button
-                                                                    type="button" // Garantir que o botão de edição de memória não submeta
-                                                                    size="sm"
-                                                                    variant="outline"
-                                                                    onClick={() => handleIniciarEdicaoMemoria(registro)}
-                                                                    disabled={isSaving || !isPTrabEditable}
-                                                                    className="gap-2"
-                                                                >
-                                                                    <Pencil className="h-4 w-4" />
-                                                                    Editar Memória
-                                                                </Button>
-                                                                
-                                                                {hasCustomMemoria && (
-                                                                    <Button
-                                                                        type="button" // Garantir que o botão de restauração não submeta
-                                                                        size="sm"
-                                                                        variant="ghost"
-                                                                        onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
-                                                                        disabled={isSaving || !isPTrabEditable}
-                                                                        className="gap-2 text-muted-foreground"
-                                                                    >
-                                                                        <RefreshCw className="h-4 w-4" />
-                                                                        Restaurar Automática
-                                                                    </Button>
-                                                                )}
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Button
-                                                                    type="button" // Garantir que o botão de salvar memória não submeta
-                                                                    size="sm"
-                                                                    variant="default"
-                                                                    onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
-                                                                    disabled={isSaving}
-                                                                    className="gap-2"
-                                                                >
-                                                                    <Check className="h-4 w-4" />
-                                                                    Salvar
-                                                                </Button>
-                                                                <Button
-                                                                    type="button" // Garantir que o botão de cancelar memória não submeta
-                                                                    size="sm"
-                                                                    variant="outline"
-                                                                    onClick={handleCancelarEdicaoMemoria}
-                                                                    disabled={isSaving}
-                                                                    className="gap-2"
-                                                                >
-                                                                    <XCircle className="h-4 w-4" />
-                                                                    Cancelar
-                                                                </Button>
-                                                            </>
-                                                        )}
+                                                <div className="flex flex-col flex-1 min-w-0 mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="text-base font-semibold text-foreground">
+                                                            OM Destino: {registro.organizacao} (UG: {formatCodug(registro.ug)})
+                                                        </h4>
+                                                        <Badge variant="default" className={cn("w-fit text-white", destinoColorClass)}>
+                                                            {destinoLabel}
+                                                        </Badge>
                                                     </div>
                                                 </div>
                                                 
-                                                <Card className="p-4 bg-background rounded-lg border">
-                                                    {isEditing ? (
-                                                        <Textarea
-                                                            value={memoriaEdit}
-                                                            onChange={(e) => setMemoriaEdit(e.target.value)}
-                                                            className="min-h-[300px] font-mono text-sm"
-                                                            placeholder="Digite a memória de cálculo..."
-                                                        />
-                                                    ) : (
-                                                        <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
-                                                            {memoriaExibida}
-                                                        </pre>
-                                                    )}
-                                                </Card>
+                                                <MemoriaCalculoEditor
+                                                    registroId={registro.id}
+                                                    tableName="diaria_registros"
+                                                    memoriaAutomatica={memoriaAutomatica}
+                                                    memoriaCustomizada={registro.detalhamento_customizado}
+                                                    isPTrabEditable={isPTrabEditable}
+                                                    queryKey={["diariaRegistros", ptrabId]}
+                                                />
                                             </div>
                                         );
                                     })}
@@ -1552,4 +1307,4 @@ const DiariaForm = () => {
     );
 };
 
-export default DiariaForm;
+export default DiariaManagerPage;

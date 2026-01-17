@@ -47,6 +47,7 @@ export const calculateSuprimentoFundosTotals = (
     totalND30: number,
     totalND39: number,
 } => {
+    // A lógica de cálculo de NDs é feita no frontend (useNDAllocation)
     const totalGeral = data.valor_nd_30 + data.valor_nd_39;
     
     return {
