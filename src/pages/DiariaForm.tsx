@@ -232,6 +232,8 @@ const DiariaForm = () => {
 
         // 1. Comparar campos principais
         if (
+            formData.organizacao !== stagedUpdate.organizacao || // ADICIONADO
+            formData.ug !== stagedUpdate.ug || // ADICIONADO
             formData.dias_operacao !== stagedUpdate.dias_operacao ||
             formData.destino !== stagedUpdate.destino ||
             formData.nr_viagens !== stagedUpdate.nr_viagens ||
