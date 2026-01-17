@@ -2379,7 +2379,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                     <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                       <div className="flex items-center justify-between mb-3 border-b pb-2">
                         <h3 className="font-bold text-lg text-primary">
-                          OM Detentora: {omName} (UG: {formatCodug(ug)})
+                        {omName} (UG: {formatCodug(ug)})
                         </h3>
                         <span className="font-extrabold text-xl text-primary">
                           {formatCurrency(group.total)}
@@ -2603,7 +2603,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
                         <div className="flex flex-col flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <h4 className="text-base font-semibold text-foreground">
-                              OM Detentora: {om} ({formatCodug(ug)})
+                            {om} ({formatCodug(ug)})
                             </h4>
                             {/* NOVO BADGE: Categoria do Material (com cor específica) */}
                             <Badge variant="default" className={cn("w-fit shrink-0", categoryBadgeStyle.className)}>
