@@ -38,6 +38,7 @@ import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
 import { cn } from "@/lib/utils"; 
 import CurrencyInput from "@/components/CurrencyInput";
+import { suprimentoFundosSchema } from "@/lib/validationSchemas"; // IMPORTAR NOVO SCHEMA
 
 // Tipos de dados
 // Usamos o tipo de Verba Operacional como base, pois a estrutura da DB é a mesma
@@ -74,42 +75,6 @@ const calculateND30 = (totalSolicitado: number, nd39Value: number): number => {
 // Constantes para a OM Detentora padrão (CIE) - Mantido para compatibilidade com registros antigos
 const DEFAULT_OM_DETENTORA = "CIE";
 const DEFAULT_UG_DETENTORA = "160062";
-
-// Schema de validação para o formulário de Suprimento de Fundos
-const suprimentoFundosSchema = z.object({
-    // OM Favorecida (OM do PTrab) - Usada para o cabeçalho da memória (organizacao/ug na DB)
-    om_favorecida: z.string().min(1, "A OM Favorecida (do PTrab) é obrigatória."),
-    ug_favorecida: z.string().min(1, "A UG Favorecida (do PTrab) é obrigatória."),
-    
-    // OM Detentora (OM Destino do Recurso) - Onde o recurso será alocado (om_detentora/ug_detentora na DB)
-    om_detentora: z.string().min(1, "A OM Destino do Recurso é obrigatória."),
-    ug_detentora: z.string().min(1, "A UG Destino do Recurso é obrigatória."),
-    
-    dias_operacao: z.number().int().min(1, "O número de dias deve ser maior que zero."),
-    quantidade_equipes: z.number().int().min(1, "O efetivo deve ser maior que zero."), // CORRIGIDO: Usando nome da DB
-    valor_total_solicitado: z.number().min(0.01, "O valor total solicitado deve ser maior que zero."),
-    fase_atividade: z.string().min(1, "A fase da atividade é obrigatória."),
-    
-    // NOVOS CAMPOS DE DETALHAMENTO (AGORA COLUNAS DIRETAS)
-    objeto_aquisicao: z.string().min(1, "O Objeto de Aquisição (Material) é obrigatório."),
-    objeto_contratacao: z.string().min(1, "O Objeto de Contratação (Serviço) é obrigatório."),
-    proposito: z.string().min(1, "O Propósito é obrigatório."),
-    finalidade: z.string().min(1, "A Finalidade é obrigatória."),
-    local: z.string().min(1, "O Local é obrigatório."),
-    tarefa: z.string().min(1, "A Tarefa é obrigatória."),
-    
-    // Alocação de NDs
-    valor_nd_30: z.number().min(0, "ND 30 não pode ser negativa."),
-    valor_nd_39: z.number().min(0, "ND 39 não pode ser negativa."),
-    
-}).refine(data => {
-    // A soma das NDs deve ser igual ao valor total solicitado (com pequena tolerância)
-    const totalAlocado = data.valor_nd_30 + data.valor_nd_39;
-    return Math.abs(totalAlocado - data.valor_total_solicitado) < 0.01;
-}, {
-    message: "A soma das NDs (30 e 39) deve ser igual ao Valor Total Solicitado.",
-    path: ["valor_nd_39"], // Aponta para o campo de ND 39 para exibir o erro
-});
 
 // Estado inicial para o formulário
 const initialFormState = {
@@ -210,9 +175,10 @@ const SuprimentoFundosForm = () => {
     // SuprimentoFundos usa a tabela 'verba_operacional_registros'
     const { data: registros, isLoading: isLoadingRegistros } = useQuery<SuprimentoFundosRegistroDB[]>({
         queryKey: ['suprimentoFundosRegistros', ptrabId],
-        queryFn: () => fetchPTrabRecords('verba_operacional_registros', ptrabId!, { detalhamento: 'Suprimento de Fundos' }), // Filtro para Suprimento de Fundos
+        queryFn: () => fetchPTrabRecords('verba_operacional_registros', ptrabId!), // Filtro removido da queryFn
         enabled: !!ptrabId,
-        select: (data) => data.filter(r => r.detalhamento?.includes('Suprimento de Fundos')).sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
+        // Filtro client-side para Suprimento de Fundos (detalhamento deve ser 'Suprimento de Fundos')
+        select: (data) => data.filter(r => r.detalhamento === 'Suprimento de Fundos').sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
     });
     
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
@@ -247,6 +213,7 @@ const SuprimentoFundosForm = () => {
             }
             
         } else if (ptrabData && editingId) {
+            // Se estiver editando, tentamos encontrar os IDs das OMs para o seletor
             const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
             const omDetentora = oms?.find(om => om.nome_om === formData.om_detentora && om.codug_om === formData.ug_detentora);
             
@@ -628,7 +595,11 @@ const SuprimentoFundosForm = () => {
         setRawND39Input(numberToRawDigits(newFormData.valor_nd_39)); 
 
         // 4. Calculate totals and generate memory
-        const totals = calculateSuprimentoFundosTotals(newFormData as any);
+        const totals = calculateSuprimentoFundosTotals({
+            ...newFormData,
+            organizacao: newFormData.om_favorecida,
+            ug: newFormData.ug_favorecida,
+        } as any);
         const memoria = generateSuprimentoFundosMemoriaCalculo({
             ...newFormData,
             organizacao: newFormData.om_favorecida,
@@ -1369,7 +1340,7 @@ const SuprimentoFundosForm = () => {
                                             
                                             // Lógica de concordância de número
                                             const diasText = item.dias_operacao === 1 ? "dia" : "dias";
-                                            const efetivoText = item.quantidade_equipes === 1 ? "militar" : "militares"; 
+                                            const efetivoText = item.quantidade_equipes === 1 ? 'militar' : 'militares'; 
 
                                             return (
                                                 <Card 
