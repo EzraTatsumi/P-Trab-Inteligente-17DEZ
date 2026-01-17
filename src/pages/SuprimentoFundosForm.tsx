@@ -1652,9 +1652,7 @@ const SuprimentoFundosForm = () => {
                                                                 </span>
                                                             </div>
                                                         ) : (
-                                                            <p className="text-xs text-muted-foreground">
-                                                                Destino Recurso: {registro.om_detentora} (UG: {formatCodug(registro.ug_detentora)})
-                                                            </p>
+                                                            
                                                         )}
                                                     </div>
                                                     
