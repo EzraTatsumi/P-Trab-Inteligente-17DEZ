@@ -100,7 +100,7 @@ export const generateVerbaOperacionalMemoriaCalculo = (
 
 ${sigilosoLine}
 
-Valor Total Solicitado: ${formatCurrency(valorTotal)}.`;
+Total: ${formatCurrency(valorTotal)}.`; // ALTERADO AQUI
 
     return header + detalhamento;
 };
