@@ -11,7 +11,7 @@ import { Tables } from "@/integrations/supabase/types";
 import {
   PTrabData,
   DiariaRegistro,
-  VerbaOperacionalRegistro, // IMPORTAR NOVO TIPO
+  VerbaOperacionalRegistro, 
   calculateDays,
 } from "@/pages/PTrabReportManager"; 
 import { DIARIA_RANKS_CONFIG } from "@/lib/diariaUtils";
@@ -19,11 +19,13 @@ import { DIARIA_RANKS_CONFIG } from "@/lib/diariaUtils";
 interface PTrabOperacionalReportProps {
   ptrabData: PTrabData;
   registrosDiaria: DiariaRegistro[];
-  registrosVerbaOperacional: VerbaOperacionalRegistro[]; // NOVO PROP
+  registrosVerbaOperacional: VerbaOperacionalRegistro[]; 
+  registrosSuprimentoFundos: VerbaOperacionalRegistro[]; // NOVO PROP
   diretrizesOperacionais: Tables<'diretrizes_operacionais'> | null;
   fileSuffix: string;
   generateDiariaMemoriaCalculo: (registro: DiariaRegistro, diretrizesOp: Tables<'diretrizes_operacionais'> | null) => string;
-  generateVerbaOperacionalMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; // NOVO PROP
+  generateVerbaOperacionalMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; 
+  generateSuprimentoFundosMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; // NOVO PROP
 }
 
 // Função auxiliar para determinar o artigo (DO/DA)
@@ -67,25 +69,27 @@ const getArticleForOM = (omName: string): 'DO' | 'DA' => {
 const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   ptrabData,
   registrosDiaria,
-  registrosVerbaOperacional, // NOVO PROP
+  registrosVerbaOperacional, 
+  registrosSuprimentoFundos, // NOVO PROP
   diretrizesOperacionais,
   fileSuffix,
   generateDiariaMemoriaCalculo,
-  generateVerbaOperacionalMemoriaCalculo, // NOVO PROP
+  generateVerbaOperacionalMemoriaCalculo, 
+  generateSuprimentoFundosMemoriaCalculo, // NOVO PROP
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
   
   const diasOperacao = useMemo(() => calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim), [ptrabData]);
   
-  // NOVO: Agrupamento por OM (Diária e Verba Operacional)
+  // NOVO: Agrupamento por OM (Diária, Verba Operacional e Suprimento de Fundos)
   const registrosAgrupadosPorOM = useMemo(() => {
-    const groups: Record<string, { diarias: DiariaRegistro[], verbas: VerbaOperacionalRegistro[] }> = {};
+    const groups: Record<string, { diarias: DiariaRegistro[], verbas: VerbaOperacionalRegistro[], suprimentos: VerbaOperacionalRegistro[] }> = {};
 
     const initializeGroup = (om: string, ug: string) => {
         const omKey = `${om} (${ug})`;
         if (!groups[omKey]) {
-            groups[omKey] = { diarias: [], verbas: [] };
+            groups[omKey] = { diarias: [], verbas: [], suprimentos: [] };
         }
         return groups[omKey];
     };
@@ -106,16 +110,26 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         group.verbas.push(registro);
     });
     
+    // 3. Agrupar Suprimento de Fundos (OM Detentora do Recurso)
+    registrosSuprimentoFundos.forEach(registro => {
+        // A OM Detentora é a OM de destino do recurso (om_detentora/ug_detentora)
+        const omDetentora = registro.om_detentora || registro.organizacao;
+        const ugDetentora = registro.ug_detentora || registro.ug;
+        
+        const group = initializeGroup(omDetentora, ugDetentora);
+        group.suprimentos.push(registro);
+    });
+    
     return groups;
-  }, [registrosDiaria, registrosVerbaOperacional]);
+  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos]);
 
   // Calcula os totais gerais de cada ND com base nos registros de Diária e Verba Operacional
   const totaisND = useMemo(() => {
     const totals = {
       nd15: 0, // Diárias (33.90.15)
-      nd30: 0, // 33.90.30 (Passagens Aéreas + Verba Operacional ND 30)
+      nd30: 0, // 33.90.30 (Passagens Aéreas + Verba Operacional ND 30 + Suprimento ND 30)
       nd33: 0, // 33.90.33 (Vazio por enquanto)
-      nd39: 0, // 33.90.39 (Verba Operacional ND 39)
+      nd39: 0, // 33.90.39 (Verba Operacional ND 39 + Suprimento ND 39)
       nd00: 0, // 33.90.00 (Vazio por enquanto)
     };
 
@@ -130,6 +144,12 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         totals.nd30 += r.valor_nd_30;
         totals.nd39 += r.valor_nd_39;
     });
+    
+    // 3. Suprimento de Fundos (NOVO)
+    registrosSuprimentoFundos.forEach(r => {
+        totals.nd30 += r.valor_nd_30;
+        totals.nd39 += r.valor_nd_39;
+    });
 
     const totalGND3 = totals.nd15 + totals.nd30 + totals.nd33 + totals.nd39 + totals.nd00;
     
@@ -137,7 +157,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
       ...totals,
       totalGND3,
     };
-  }, [registrosDiaria, registrosVerbaOperacional]);
+  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos]);
   
   // Função para gerar o nome do arquivo (reutilizada do Logístico)
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
@@ -214,7 +234,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, totaisND, fileSuffix, diasOperacao, generateDiariaMemoriaCalculo, registrosDiaria, diretrizesOperacionais, toast, registrosVerbaOperacional, generateVerbaOperacionalMemoriaCalculo]);
+  }, [ptrabData, totaisND, fileSuffix, diasOperacao, generateDiariaMemoriaCalculo, registrosDiaria, diretrizesOperacionais, toast, registrosVerbaOperacional, generateVerbaOperacionalMemoriaCalculo, registrosSuprimentoFundos, generateSuprimentoFundosMemoriaCalculo]);
 
   // Função para Imprimir (Abre a caixa de diálogo de impressão)
   const handlePrint = useCallback(() => {
@@ -421,6 +441,13 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             subtotalOM.nd39 += r.valor_nd_39;
             subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39;
         });
+        
+        // Add Suprimento de Fundos totals to subtotal (NOVO)
+        group.suprimentos.forEach(r => {
+            subtotalOM.nd30 += r.valor_nd_30;
+            subtotalOM.nd39 += r.valor_nd_39;
+            subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39;
+        });
 
         // --- 1. Render Diárias ---
         group.diarias.forEach(registro => {
@@ -535,6 +562,76 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             
             // I: DETALHAMENTO
             const memoria = generateVerbaOperacionalMemoriaCalculo(registro);
+            row.getCell('I').value = memoria;
+            row.getCell('I').alignment = leftTopAlignment; 
+            row.getCell('I').font = { name: 'Arial', size: 6.5 };
+            
+            // Apply base styles
+            ['A', 'B', 'I'].forEach(col => {
+                row.getCell(col).font = baseFontStyle;
+            });
+            
+            ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
+                row.getCell(col).border = cellBorder;
+            });
+            currentRow++;
+        });
+        
+        // --- 3. Render Suprimento de Fundos (NOVO) ---
+        group.suprimentos.forEach(registro => {
+            const row = worksheet.getRow(currentRow);
+            const totalLinha = registro.valor_nd_30 + registro.valor_nd_39;
+            
+            // OM Detentora do Recurso
+            const omDetentora = registro.om_detentora || registro.organizacao;
+            const ugDetentora = registro.ug_detentora || registro.ug;
+            
+            // A: DESPESAS
+            row.getCell('A').value = `SUPRIMENTO DE FUNDOS`; 
+            row.getCell('A').alignment = leftMiddleAlignment; 
+            
+            // B: OM (UGE) CODUG (OM Detentora do Recurso)
+            row.getCell('B').value = `${omDetentora}\n(${formatCodug(ugDetentora)})`;
+            row.getCell('B').alignment = dataCenterMiddleAlignment; 
+            
+            // C: 33.90.15 (0)
+            row.getCell('C').value = 0;
+            row.getCell('C').alignment = dataCenterMiddleAlignment;
+            row.getCell('C').numFmt = 'R$ #,##0.00';
+            row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // D: 33.90.30 (Suprimento ND 30)
+            row.getCell('D').value = registro.valor_nd_30;
+            row.getCell('D').alignment = dataCenterMiddleAlignment;
+            row.getCell('D').numFmt = 'R$ #,##0.00';
+            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // E: 33.90.33 (0)
+            row.getCell('E').value = 0;
+            row.getCell('E').alignment = dataCenterMiddleAlignment;
+            row.getCell('E').numFmt = 'R$ #,##0.00';
+            row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // F: 33.90.39 (Suprimento ND 39)
+            row.getCell('F').value = registro.valor_nd_39;
+            row.getCell('F').alignment = dataCenterMiddleAlignment;
+            row.getCell('F').numFmt = 'R$ #,##0.00';
+            row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // G: 33.90.00 (0)
+            row.getCell('G').value = 0;
+            row.getCell('G').alignment = dataCenterMiddleAlignment;
+            row.getCell('G').numFmt = 'R$ #,##0.00';
+            row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // H: GND 3 (Total da linha)
+            row.getCell('H').value = totalLinha;
+            row.getCell('H').alignment = dataCenterMiddleAlignment;
+            row.getCell('H').numFmt = 'R$ #,##0.00';
+            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // I: DETALHAMENTO
+            const memoria = generateSuprimentoFundosMemoriaCalculo(registro);
             row.getCell('I').value = memoria;
             row.getCell('I').alignment = leftTopAlignment; 
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
@@ -722,10 +819,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
       description: "O relatório Operacional foi salvo com sucesso.",
       duration: 3000,
     });
-  }, [registrosDiaria, registrosVerbaOperacional, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, diretrizesOperacionais, toast, registrosAgrupadosPorOM]);
+  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, diretrizesOperacionais, toast, registrosAgrupadosPorOM]);
 
 
-  if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0) {
+  if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0 && registrosSuprimentoFundos.length === 0) {
     return (
       <Card className="mt-4">
         <CardHeader>
@@ -736,7 +833,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-muted-foreground">Nenhum registro de Diária ou Verba Operacional encontrado para este P Trab.</p>
+            <p className="text-muted-foreground">Nenhum registro de Diária, Verba Operacional ou Suprimento de Fundos encontrado para este P Trab.</p>
           </div>
         </CardContent>
       </Card>
@@ -783,7 +880,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
           <p className="info-item font-bold">5. DESPESAS OPERACIONAIS REALIZADAS OU A REALIZAR:</p>
         </div>
 
-        {registrosDiaria.length > 0 || registrosVerbaOperacional.length > 0 ? (
+        {registrosDiaria.length > 0 || registrosVerbaOperacional.length > 0 || registrosSuprimentoFundos.length > 0 ? (
           <div className="ptrab-table-wrapper">
             <table className="ptrab-table-op">
               <thead>
@@ -819,6 +916,12 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 }), { nd15: 0, nd30: 0, nd33: 0, nd39: 0, nd00: 0, totalGND3: 0 });
                 
                 group.verbas.forEach(r => {
+                    subtotalOM.nd30 += r.valor_nd_30;
+                    subtotalOM.nd39 += r.valor_nd_39;
+                    subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39;
+                });
+                
+                group.suprimentos.forEach(r => { // NOVO: Suprimento de Fundos
                     subtotalOM.nd30 += r.valor_nd_30;
                     subtotalOM.nd39 += r.valor_nd_39;
                     subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39;
@@ -885,6 +988,39 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                 </tr>
                             );
                         })}
+                        
+                        {/* --- 3. Render Suprimento de Fundos (NOVO) --- */}
+                        {group.suprimentos.map((registro, index) => {
+                            const totalLinha = registro.valor_nd_30 + registro.valor_nd_39;
+                            
+                            // OM Detentora do Recurso
+                            const omDetentora = registro.om_detentora || registro.organizacao;
+                            const ugDetentora = registro.ug_detentora || registro.ug;
+                            
+                            return (
+                                <tr key={`suprimento-${registro.id}`} className="expense-row">
+                                  <td className="col-despesas-op"> 
+                                    SUPRIMENTO DE FUNDOS
+                                  </td>
+                                  <td className="col-om-op">
+                                    <div>{omDetentora}</div>
+                                    <div>({formatCodug(ugDetentora)})</div>
+                                  </td>
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.15 */}
+                                  <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_30)}</td> {/* 33.90.30 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.33 */}
+                                  <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_39)}</td> {/* 33.90.39 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.00 */}
+                                  <td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
+                                  <td className="col-detalhamento-op">
+                                    <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                                      {generateSuprimentoFundosMemoriaCalculo(registro)}
+                                    </div>
+                                  </td>
+                                </tr>
+                            );
+                        })}
+
                         
                         {/* Subtotal Row 1: SOMA POR ND E GP DE DESPESA - NDs agora em Cinza (#D9D9D9) */}
                         <tr className="subtotal-om-soma-row">

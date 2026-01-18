@@ -87,7 +87,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     }
   });
   
-  // 2. Fetch Classe II/V/VI/VII/VIII/IX records from their respective tables
+  // 2. Fetch Classes II, V, VI, VII, VIII, IX records from their respective tables
   const [
     { data: classeIIData, error: classeIIError },
     { data: classeVData, error: classeVError },

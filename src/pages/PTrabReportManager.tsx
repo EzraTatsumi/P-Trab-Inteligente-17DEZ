@@ -782,7 +782,8 @@ const PTrabReportManager = () => {
   const [registrosClasseII, setRegistrosClasseII] = useState<ClasseIIRegistro[]>([]);
   const [registrosClasseIII, setRegistrosClasseIII] = useState<ClasseIIIRegistro[]>([]);
   const [registrosDiaria, setRegistrosDiaria] = useState<DiariaRegistro[]>([]); // NOVO: Estado para Diárias
-  const [registrosVerbaOperacional, setRegistrosVerbaOperacional] = useState<VerbaOperacionalRegistro[]>([]); // NOVO: Estado para Verba Operacional
+  const [registrosVerbaOperacional, setRegistrosVerbaOperacional] = useState<VerbaOperacionalRegistro[]>([]); 
+  const [registrosSuprimentoFundos, setRegistrosSuprimentoFundos] = useState<VerbaOperacionalRegistro[]>([]); // NOVO ESTADO
   const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null); // NOVO: Estado para Diretrizes Operacionais
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
   const [loading, setLoading] = useState(true);
@@ -900,22 +901,25 @@ const PTrabReportManager = () => {
           is_aereo: r.is_aereo || false,
       })) as DiariaRegistro[]);
       
-      // NOVO: Processar Verba Operacional (incluindo novos campos)
-      setRegistrosVerbaOperacional((verbaOperacionalData || []).map(r => ({
+      // NOVO: Processar Verba Operacional e Suprimento de Fundos
+      const allVerbaRecords = (verbaOperacionalData || []).map(r => ({
           ...r,
           valor_total_solicitado: Number(r.valor_total_solicitado || 0),
           valor_nd_30: Number(r.valor_nd_30 || 0),
           valor_nd_39: Number(r.valor_nd_39 || 0),
           dias_operacao: r.dias_operacao || 0,
           quantidade_equipes: r.quantidade_equipes || 0,
-          // Mapeamento dos novos campos
           objeto_aquisicao: r.objeto_aquisicao || null,
           objeto_contratacao: r.objeto_contratacao || null,
           proposito: r.proposito || null,
           finalidade: r.finalidade || null,
           local: r.local || null,
           tarefa: r.tarefa || null,
-      })) as VerbaOperacionalRegistro[]);
+      })) as VerbaOperacionalRegistro[];
+      
+      // Separar Verba Operacional de Suprimento de Fundos
+      setRegistrosVerbaOperacional(allVerbaRecords.filter(r => r.detalhamento !== 'Suprimento de Fundos'));
+      setRegistrosSuprimentoFundos(allVerbaRecords.filter(r => r.detalhamento === 'Suprimento de Fundos'));
       
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
@@ -1246,6 +1250,7 @@ const PTrabReportManager = () => {
                 ptrabData={ptrabData}
                 registrosDiaria={registrosDiaria}
                 registrosVerbaOperacional={registrosVerbaOperacional} // PASSANDO NOVO PROP
+                registrosSuprimentoFundos={registrosSuprimentoFundos} // PASSANDO NOVO PROP
                 diretrizesOperacionais={diretrizesOperacionais}
                 fileSuffix={fileSuffix}
                 generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada}
