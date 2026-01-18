@@ -93,10 +93,10 @@ src/pages/ClasseVIForm.tsx
 src/pages/ClasseVIIForm.tsx
 src/pages/ClasseVIIIForm.tsx
 src/pages/ClasseIXForm.tsx
-# REMOVIDO:src/pages/DiariaForm.tsx
-# REMOVIDO:src/ptrab/components/forms/VerbaOperationalForm.tsx
-# REMOVIDO:src/pages/VerbaOperationalForm.tsx
-# REMOVIDO:src/pages/SuprimentoFundosForm.tsx
+src/pages/DiariaForm.tsx
+src/ptrab/components/forms/VerbaOperationalForm.tsx
+src/pages/VerbaOperationalForm.tsx
+src/pages/SuprimentoFundosForm.tsx
 # REMOVIDO:src/pages/DiretrizesCusteioPage.tsx
 src/pages/DiretrizesCusteioPage.tsx
 
@@ -104,7 +104,7 @@ src/pages/DiretrizesCusteioPage.tsx
 
 src/lib/omUtils.ts
 src/lib/ptrabUtils.ts
-# REMOVIDO: src/lib/validationSchemas.ts
+src/lib/validationSchemas.ts
 
 # NOVAS EXCLUSÕES ADICIONAIS (UI e Páginas Estáticas)
 src/components/Benefits.tsx
@@ -183,5 +183,5 @@ src/lib/errorUtils.ts
 src/lib/ptrabUtils.ts
 src/lib/utils.ts
 src/lib/omUtils.ts
-# REMOVIDO: src/lib/validationSchemas.ts
+src/lib/validationSchemas.ts
 src/lib/classeIUtils.ts
