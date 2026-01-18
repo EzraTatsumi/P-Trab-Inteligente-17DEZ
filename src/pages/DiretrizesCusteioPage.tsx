@@ -1217,10 +1217,8 @@ const DiretrizesCusteioPage = () => {
                   onValueChange={(value) => setSelectedYear(parseInt(value))}
                 >
                   <SelectTrigger>
-                    {/* AJUSTE: Usar selectedYear como conteúdo do SelectValue para garantir que o valor seja exibido imediatamente após o carregamento. */}
-                    <SelectValue placeholder="Selecione o ano">
-                      {selectedYear > 0 ? selectedYear : "Selecione o ano"}
-                    </SelectValue>
+                    {/* Revertendo para o padrão shadcn/ui, pois o estado de carregamento agora é gerenciado */}
+                    <SelectValue placeholder="Selecione o ano" />
                   </SelectTrigger>
                   <SelectContent>
                     {availableYears.map((year) => (

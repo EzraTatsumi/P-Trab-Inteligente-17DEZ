@@ -191,7 +191,6 @@ const CustosOperacionaisPage = () => {
       }
       
       // Only update selectedYear if it's different from the current state to avoid unnecessary re-renders/re-fetches
-      // REMOVIDO: setSelectedYear(prevYear => prevYear !== yearToSelect ? yearToSelect : yearToSelect);
       // O setSelectedYear será feito no useEffect que reage ao defaultYearData
       
     } catch (error: any) {
@@ -665,6 +664,16 @@ const CustosOperacionaisPage = () => {
     );
   };
 
+  // Adicionando a verificação de carregamento
+  if (loading || isLoadingDefaultYear) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <p className="text-muted-foreground ml-2">Carregando configurações...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -699,10 +708,8 @@ const CustosOperacionaisPage = () => {
                   onValueChange={(value) => setSelectedYear(parseInt(value))}
                 >
                   <SelectTrigger>
-                    {/* CORREÇÃO: Usar selectedYear como conteúdo do SelectValue para garantir que o valor seja exibido imediatamente após o carregamento, mesmo que o placeholder esteja definido. */}
-                    <SelectValue placeholder="Selecione o ano">
-                      {selectedYear > 0 ? selectedYear : "Selecione o ano"}
-                    </SelectValue>
+                    {/* Revertendo para o padrão shadcn/ui, pois o estado de carregamento agora é gerenciado */}
+                    <SelectValue placeholder="Selecione o ano" />
                   </SelectTrigger>
                   <SelectContent>
                     {availableYears.map((year) => (
