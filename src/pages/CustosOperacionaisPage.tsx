@@ -20,6 +20,7 @@ import * as z from "zod";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // Importar Table components
 import { useDefaultOperacionalYear } from "@/hooks/useDefaultOperacionalYear"; // NOVO HOOK
+import { useQueryClient } from "@tanstack/react-query"; // Adicionar useQueryClient
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -85,6 +86,7 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
   const { user } = useSession();
+  const queryClient = useQueryClient(); // Inicializar queryClient
   const [loading, setLoading] = useState(true);
   
   const currentYear = new Date().getFullYear();
@@ -383,6 +385,8 @@ const CustosOperacionaisPage = () => {
         toast.success("Diretrizes Operacionais criadas!");
       }
       
+      // Invalida a query de diretrizes para o ano selecionado
+      queryClient.invalidateQueries({ queryKey: ["diretrizesOperacionais", diretrizes.ano_referencia] });
       await loadAvailableYears(defaultYear);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -414,8 +418,9 @@ const CustosOperacionaisPage = () => {
         
       if (error) throw error;
       
-      // Atualiza o estado local do hook (que é o que o componente usa)
-      defaultYearData?.defaultYear = diretrizes.ano_referencia;
+      // Invalida a query do hook useDefaultOperacionalYear para forçar a atualização
+      queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
+      
       toast.success(`Ano ${diretrizes.ano_referencia} definido como padrão para cálculos!`);
       
     } catch (error: any) {
@@ -453,6 +458,9 @@ const CustosOperacionaisPage = () => {
       toast.success(`Diretrizes operacionais do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
       setIsYearManagementDialogOpen(false);
       setSelectedYear(targetYear);
+      
+      // Invalida a query de anos disponíveis e o default year
+      queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
       await loadAvailableYears(defaultYear);
       
     } catch (error: any) {
@@ -488,6 +496,9 @@ const CustosOperacionaisPage = () => {
 
       toast.success(`Diretrizes operacionais do ano ${year} excluídas com sucesso!`);
       setIsYearManagementDialogOpen(false);
+      
+      // Invalida a query de anos disponíveis e o default year
+      queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
       await loadAvailableYears(defaultYear);
       
     } catch (error: any) {
