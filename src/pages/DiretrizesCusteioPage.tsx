@@ -192,10 +192,29 @@ const DiretrizesCusteioPage = () => {
   
   const { handleEnterToNextField } = useFormNavigation();
 
+  // Efeito para rolar para o topo na montagem
   useEffect(() => {
-    checkAuthAndLoadYears();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  // NOVO EFEITO: Carrega anos disponíveis e define o ano selecionado quando o defaultYearData estiver pronto
+  useEffect(() => {
+    if (!isLoadingDefaultYear && defaultYearData) {
+        const checkAuthAndLoadYears = async () => {
+            const { data: { session } = { session: null } } = await supabase.auth.getSession();
+            if (!session) {
+                toast.error("Você precisa estar autenticado");
+                navigate("/login");
+                return;
+            }
+            
+            // 2. Carrega os anos disponíveis e define o ano selecionado
+            await loadAvailableYears(defaultYearData.defaultYear);
+            setSelectedYear(defaultYearData.year);
+        };
+        checkAuthAndLoadYears();
+    }
+  }, [isLoadingDefaultYear, defaultYearData]); // Depende do hook de query
 
   useEffect(() => {
     if (selectedYear) {
@@ -203,27 +222,7 @@ const DiretrizesCusteioPage = () => {
     }
   }, [selectedYear]);
 
-  const checkAuthAndLoadYears = async () => {
-    const { data: { session } = { session: null } } = await supabase.auth.getSession();
-    if (!session) {
-      toast.error("Você precisa estar autenticado");
-      navigate("/login");
-      return;
-    }
-    
-    // 1. O ano padrão é carregado pelo hook useDefaultLogisticaYear
-    if (defaultYearData) {
-        // 2. Em seguida, carrega os anos disponíveis e define o ano selecionado
-        await loadAvailableYears(defaultYearData.defaultYear);
-        setSelectedYear(defaultYearData.year);
-    }
-  };
-
-  const loadDefaultYear = async (userId: string): Promise<number | null> => {
-    // Esta função não é mais necessária, pois usamos o hook useDefaultLogisticaYear
-    // Mas mantemos o corpo para evitar quebra de código se for chamado em outro lugar
-    return defaultYearData?.defaultYear || null;
-  };
+  // REMOVIDA: checkAuthAndLoadYears
 
   const loadAvailableYears = async (defaultYearId: number | null) => {
     try {
@@ -853,6 +852,9 @@ const DiretrizesCusteioPage = () => {
         setDiretrizes(prev => ({ ...prev, classe_i_valor_qr: numericValue }));
     }
   };
+  
+  // NOVO ESTADO PARA RASTREAR O INPUT FOCADO NA LISTA DINÂMICA
+  const [focusedInput, setFocusedInput] = useState<{ index: number, field: string, rawDigits: string } | null>(null);
   
   // --- Funções de Gerenciamento da Classe II, V, VI, VII e VIII ---
   const handleAddClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, categoria: DiretrizClasseIIForm['categoria']) => {
