@@ -1132,7 +1132,7 @@ const SuprimentoFundosForm = () => {
                                                                 id="objeto_aquisicao"
                                                                 value={formData.objeto_aquisicao}
                                                                 onChange={(e) => setFormData({ ...formData, objeto_aquisicao: e.target.value })}
-                                                                placeholder="Ex: Material de escritório e limpeza"
+                                                                placeholder="Ex: Materiais (Limpeza, Escritório, Construção), alimentação de pessoal"
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 onKeyDown={handleEnterToNextField}
@@ -1144,7 +1144,7 @@ const SuprimentoFundosForm = () => {
                                                                 id="objeto_contratacao"
                                                                 value={formData.objeto_contratacao}
                                                                 onChange={(e) => setFormData({ ...formData, objeto_contratacao: e.target.value })}
-                                                                placeholder="Ex: Pequenos reparos e manutenção"
+                                                                placeholder="Ex: Serviços para atender eventuais imprevistos (Pequenos reparos e manutenção)"
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 onKeyDown={handleEnterToNextField}
@@ -1159,7 +1159,7 @@ const SuprimentoFundosForm = () => {
                                                                 id="proposito"
                                                                 value={formData.proposito}
                                                                 onChange={(e) => setFormData({ ...formData, proposito: e.target.value })}
-                                                                placeholder="Ex: Apoiar a Operação X"
+                                                                placeholder="Ex: Garantir a continuidade das atividades"
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 onKeyDown={handleEnterToNextField}
@@ -1171,7 +1171,7 @@ const SuprimentoFundosForm = () => {
                                                                 id="finalidade"
                                                                 value={formData.finalidade}
                                                                 onChange={(e) => setFormData({ ...formData, finalidade: e.target.value })}
-                                                                placeholder="Ex: Garantir a continuidade das atividades"
+                                                                placeholder="Ex: ao manter o fornecimento de suprimentos"
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 onKeyDown={handleEnterToNextField}
@@ -1186,7 +1186,7 @@ const SuprimentoFundosForm = () => {
                                                                 id="local"
                                                                 value={formData.local}
                                                                 onChange={(e) => setFormData({ ...formData, local: e.target.value })}
-                                                                placeholder="Ex: Marabá/PA"
+                                                                placeholder="Ex: Base Operacional"
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 onKeyDown={handleEnterToNextField}
@@ -1198,7 +1198,7 @@ const SuprimentoFundosForm = () => {
                                                                 id="tarefa"
                                                                 value={formData.tarefa}
                                                                 onChange={(e) => setFormData({ ...formData, tarefa: e.target.value })}
-                                                                placeholder="Ex: Aquisição de material de consumo"
+                                                                placeholder="Ex: Montagem das Estruturas Logísticas"
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 onKeyDown={handleEnterToNextField}
