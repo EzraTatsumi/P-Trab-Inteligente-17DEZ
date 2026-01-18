@@ -658,17 +658,13 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     // Linha 2: VALOR TOTAL
     const totalGeralFinalRow = worksheet.getRow(currentRow);
     
-    // Mescla A até F (Cinza Claro) - Colspan 6
-    worksheet.mergeCells(`A${currentRow}:F${currentRow}`);
+    // Mescla A até G (Colspan 7)
+    worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
+    totalGeralFinalRow.getCell('A').value = 'VALOR TOTAL';
+    totalGeralFinalRow.getCell('A').alignment = rightMiddleAlignment; // Alinhado à direita
+    totalGeralFinalRow.getCell('A').font = headerFontStyle;
     totalGeralFinalRow.getCell('A').fill = totalOMFill;
     totalGeralFinalRow.getCell('A').border = cellBorder;
-    
-    // Célula G: VALOR TOTAL (Cinza Claro)
-    totalGeralFinalRow.getCell('G').value = 'VALOR TOTAL';
-    totalGeralFinalRow.getCell('G').alignment = centerMiddleAlignment;
-    totalGeralFinalRow.getCell('G').font = headerFontStyle;
-    totalGeralFinalRow.getCell('G').fill = totalOMFill;
-    totalGeralFinalRow.getCell('G').border = cellBorder;
     
     // Célula H: Valor Total GND 3 (Cinza Claro)
     totalGeralFinalRow.getCell('H').value = totaisND.totalGND3;
@@ -678,7 +674,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     totalGeralFinalRow.getCell('H').border = cellBorder;
     totalGeralFinalRow.getCell('H').numFmt = 'R$ #,##0.00';
 
-    // Célula I: Vazia (CORRIGIDO: Deve ser cinza claro)
+    // Célula I: Vazia (Cinza Claro)
     totalGeralFinalRow.getCell('I').value = '';
     totalGeralFinalRow.getCell('I').alignment = centerMiddleAlignment;
     totalGeralFinalRow.getCell('I').font = headerFontStyle;
@@ -936,11 +932,14 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 <td></td>
               </tr>
               
-              {/* Grand Total Row 2: VALOR TOTAL - Já estava em Cinza (#E8E8E8) */}
+              {/* Grand Total Row 2: VALOR TOTAL - Mesclando A-G e alinhando à direita */}
               <tr className="total-geral-final-row">
-                <td colSpan={6} style={{ backgroundColor: '#E8E8E8', border: '1px solid #000', borderRight: 'none' }}></td>
-                <td className="text-center font-bold" style={{ whiteSpace: 'nowrap', backgroundColor: '#E8E8E8', border: '1px solid #000' }}>VALOR TOTAL</td>
-                <td className="text-center font-bold" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}>{formatCurrency(totaisND.totalGND3)}</td>
+                <td colSpan={7} className="text-right font-bold" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000', borderRight: 'none' }}>
+                    VALOR TOTAL
+                </td>
+                <td className="col-nd-op-small text-center font-bold total-gnd3-cell" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}>
+                    {formatCurrency(totaisND.totalGND3)}
+                </td>
                 <td style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}></td> {/* Coluna I vazia */}
               </tr>
             </tbody>
@@ -1055,7 +1054,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             border: 1px solid #000 !important;
             padding: 3px 4px;
         }
-        .total-geral-final-row td:nth-child(1) { /* Colspan 6 */
+        .total-geral-final-row td:nth-child(1) { /* Colspan 7 */
             text-align: right;
             background-color: #E8E8E8 !important;
         }
