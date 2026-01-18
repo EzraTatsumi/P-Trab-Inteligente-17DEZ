@@ -98,7 +98,6 @@ src/pages/DiariaForm.tsx
 # REMOVIDO: src/pages/VerbaOperationalForm.tsx
 src/pages/SuprimentoFundosForm.tsx
 # REMOVIDO:src/pages/DiretrizesCusteioPage.tsx
-src/pages/DiretrizesCusteioPage.tsx
 
 # INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
 
