@@ -8,7 +8,7 @@ import { useSession } from "@/components/SessionContextProvider";
  * 
  * @returns O ano de referência e o ano padrão definido no perfil.
  */
-export const useDefaultOperacionalYear = () => {
+export const useDefaultDiretrizYear = () => {
     const { user } = useSession();
     const currentYear = new Date().getFullYear();
 

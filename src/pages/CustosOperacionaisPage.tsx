@@ -19,7 +19,7 @@ import { diretrizOperacionalSchema } from "@/lib/validationSchemas";
 import * as z from "zod";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // Importar Table components
-import { useDefaultOperacionalYear } from "@/hooks/useDefaultOperacionalYear"; // NOVO HOOK
+import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear"; // NOVO HOOK
 import { useQueryClient } from "@tanstack/react-query"; // Adicionar useQueryClient
 
 // Tipo derivado da nova tabela
@@ -97,7 +97,7 @@ const CustosOperacionaisPage = () => {
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   
   // NOVO HOOK: Carrega o ano padrão operacional
-  const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultOperacionalYear();
+  const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear();
   const defaultYear = defaultYearData?.defaultYear || null;
   
   // Estado para armazenar os inputs brutos (apenas dígitos) para campos monetários
@@ -129,7 +129,7 @@ const CustosOperacionaisPage = () => {
   }, [selectedYear]);
 
   const loadDefaultYear = async (userId: string): Promise<number | null> => {
-    // Esta função não é mais necessária, pois usamos o hook useDefaultOperacionalYear
+    // Esta função não é mais necessária, pois usamos o hook useDefaultDiretrizYear
     return defaultYearData?.defaultYear || null;
   };
 
@@ -193,7 +193,7 @@ const CustosOperacionaisPage = () => {
       return;
     }
     
-    // 1. O ano padrão é carregado pelo hook useDefaultOperacionalYear
+    // 1. O ano padrão é carregado pelo hook useDefaultDiretrizYear
     if (defaultYearData) {
         // 2. Em seguida, carrega os anos disponíveis e define o ano selecionado
         await loadAvailableYears(defaultYearData.defaultYear);
@@ -418,7 +418,7 @@ const CustosOperacionaisPage = () => {
         
       if (error) throw error;
       
-      // Invalida a query do hook useDefaultOperacionalYear para forçar a atualização
+      // Invalida a query do hook useDefaultDiretrizYear para forçar a atualização
       queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
       
       toast.success(`Ano ${diretrizes.ano_referencia} definido como padrão para cálculos!`);

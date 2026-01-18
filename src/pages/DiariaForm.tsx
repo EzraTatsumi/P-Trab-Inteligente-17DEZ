@@ -362,9 +362,9 @@ const DiariaForm = () => {
                 destino: formData.destino,
                 nr_viagens: formData.nr_viagens,
                 dias_operacao: formData.dias_operacao,
-                local_atividade: formData.local_atividade,
-                is_aereo: formData.is_aereo,
-                quantidades_por_posto: formData.quantidades_por_posto,
+                local_atividade: formData.local_atividade, // MANTIDO
+                is_aereo: formData.is_aereo, // MANTIDO
+                quantidades_por_posto: formData.quantidades_por_posto, // MANTIDO
             };
             
             setFormData(prev => ({
