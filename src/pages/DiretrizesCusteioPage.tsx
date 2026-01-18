@@ -853,27 +853,6 @@ const DiretrizesCusteioPage = () => {
     }
   };
   
-  // NOVO ESTADO PARA RASTREAR O INPUT FOCADO NA LISTA DINÂMICA
-  const [focusedInput, setFocusedInput] = useState<{ index: number, field: string, rawDigits: string } | null>(null);
-  
-  // --- Funções de Gerenciamento da Classe II, V, VI, VII e VIII ---
-  const handleAddClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, categoria: DiretrizClasseIIForm['categoria']) => {
-    setConfig(prev => [
-      ...prev,
-      { categoria: categoria, item: "", valor_mnt_dia: 0 } as DiretrizClasseIIForm
-    ]);
-  };
-
-  const handleRemoveClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, index: number) => {
-    setConfig(config.filter((_, i) => i !== index));
-  };
-
-  const handleUpdateClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, index: number, field: keyof DiretrizClasseIIForm, value: any) => {
-    const novosItens = [...config];
-    novosItens[index] = { ...novosItens[index], [field]: value };
-    setConfig(novosItens);
-  };
-  
   // Função para renderizar a lista de itens da Classe II/V/VI/VII/VIII por categoria
   const renderClasseList = (
     config: DiretrizClasseIIForm[], 
