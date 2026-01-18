@@ -44,6 +44,9 @@ import {
 import { 
   generateVerbaOperacionalMemoriaCalculo as generateVerbaOperacionalMemoriaCalculoUtility,
 } from "@/lib/verbaOperacionalUtils"; // NOVO: Importar utilitários de Verba Operacional
+import { 
+  generateSuprimentoFundosMemoriaCalculo as generateSuprimentoFundosMemoriaCalculoUtility,
+} from "@/lib/suprimentoFundosUtils"; // NOVO: Importar utilitários de Suprimento de Fundos
 import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais } from "@/lib/ptrabUtils";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
@@ -94,7 +97,7 @@ export interface DiariaRegistro {
   is_aereo: boolean;
 }
 
-// NOVO TIPO: VerbaOperacionalRegistro
+// NOVO TIPO: VerbaOperacionalRegistro (Usado para Verba Operacional e Suprimento de Fundos)
 export interface VerbaOperacionalRegistro {
   id: string;
   organizacao: string;
@@ -359,8 +362,8 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
 
     // Lógica para Ração Quente (QS/QR)
     if (tipo === 'QS') {
-        if (registro.memoriaQSCustomizada && registro.memoriaQSCustomizada.trim().length > 0) {
-            return registro.memoriaQSCustomizada;
+        if (registro.memoria_calculo_qs_customizada && registro.memoria_calculo_qs_customizada.trim().length > 0) {
+            return registro.memoria_calculo_qs_customizada;
         }
         const { qs } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
@@ -394,8 +397,8 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
     }
 
     if (tipo === 'QR') {
-        if (registro.memoriaQRCustomizada && registro.memoriaQRCustomizada.trim().length > 0) {
-            return registro.memoriaQRCustomizada;
+        if (registro.memoria_calculo_qr_customizada && registro.memoria_calculo_qr_customizada.trim().length > 0) {
+            return registro.memoria_calculo_qr_customizada;
         }
         const { qr } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
@@ -675,6 +678,20 @@ export const generateVerbaOperacionalMemoriaCalculoUnificada = (
     
     // O cálculo da Verba Operacional é simples e não depende de diretrizes externas, apenas dos dados do registro.
     return generateVerbaOperacionalMemoriaCalculoUtility(registro as any);
+};
+
+/**
+ * Função unificada para gerar a memória de cálculo do Suprimento de Fundos, priorizando o customizado.
+ */
+export const generateSuprimentoFundosMemoriaCalculoUnificada = (
+    registro: VerbaOperacionalRegistro
+): string => {
+    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
+        return registro.detalhamento_customizado;
+    }
+    
+    // Usa o utilitário específico para Suprimento de Fundos
+    return generateSuprimentoFundosMemoriaCalculoUtility(registro as any);
 };
 
 
@@ -1232,7 +1249,8 @@ const PTrabReportManager = () => {
                 diretrizesOperacionais={diretrizesOperacionais}
                 fileSuffix={fileSuffix}
                 generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada}
-                generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculoUnificada} // PASSANDO NOVO UTILITÁRIO
+                generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculoUnificada}
+                generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculoUnificada} // NOVO PROP
             />
         );
       case 'material_permanente':
