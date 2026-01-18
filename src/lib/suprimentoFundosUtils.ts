@@ -37,6 +37,36 @@ const getOmPreposition = (omName: string): 'do' | 'da' => {
 };
 
 /**
+ * Determina a preposição correta ('no' ou 'na') para o local.
+ */
+const getLocalPreposition = (localName: string): 'no' | 'na' => {
+    if (!localName) return 'no';
+    
+    const lowerLocal = localName.toLowerCase().trim();
+    
+    // Regras de exceção e palavras-chave femininas
+    if (
+        lowerLocal.includes('base') || 
+        lowerLocal.includes('área') || 
+        lowerLocal.includes('sede') ||
+        lowerLocal.includes('vila') ||
+        lowerLocal.includes('cidade') ||
+        lowerLocal.includes('região') ||
+        lowerLocal.includes('zona')
+    ) {
+        return 'na';
+    }
+    
+    // Regra geral: se termina em 'a', assume feminino (na). Caso contrário, masculino (no).
+    // Exceções comuns como 'programa' (masculino) são difíceis de capturar sem um dicionário.
+    if (lowerLocal.endsWith('a')) {
+        return 'na';
+    }
+    
+    return 'no';
+};
+
+/**
  * Calcula o custo total do Suprimento de Fundos.
  * O total geral é a soma das NDs alocadas.
  */
@@ -102,11 +132,11 @@ export const generateSuprimentoFundosMemoriaCalculo = (
     // --- Fim Lógica ND ---
     
     // --- Lógica para determinar a preposição do local (no/na) ---
-    const localLower = local.toLowerCase().trim();
-    const localPreposition = localLower.endsWith('a') || localLower.endsWith('e') ? 'na' : 'no';
+    const localPreposition = getLocalPreposition(local);
+    const tarefaPreposition = getLocalPreposition(tarefa); // Usando a mesma lógica para a tarefa
     
     // CABEÇALHO REFORMULADO
-    const header = `${ndPrefix} - Solicitação de Suprimento de Fundos para ${quantidade_equipes} ${efetivoText} ${omPreposition} ${organizacao} para custear despesas com ${objeto_aquisicao} ou contratação de ${objeto_contratacao}, a fim de ${proposito} ao ${finalidade} ${localPreposition} ${local} ${localPreposition} ${tarefa}, durante ${dias_operacao} ${diaText} de ${faseFormatada}.`;
+    const header = `${ndPrefix} - Solicitação de Suprimento de Fundos para ${quantidade_equipes} ${efetivoText} ${omPreposition} ${organizacao} para custear despesas com ${objeto_aquisicao} ou contratação de ${objeto_contratacao}, a fim de ${proposito} ao ${finalidade} ${localPreposition} ${local} ${tarefaPreposition} ${tarefa}, durante ${dias_operacao} ${diaText} de ${faseFormatada}.`;
 
     // Detalhamento: Apenas a linha Total
     const detalhamento = `
