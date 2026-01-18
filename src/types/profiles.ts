@@ -6,13 +6,18 @@ export type Profile = Tables<'profiles'> & {
         nome_om: string;
         codug_om: string;
     } | null;
+    // Campos de ano padrão atualizados
+    default_logistica_year: number | null;
+    default_operacional_year: number | null;
 };
 
 export interface ProfileFormValues {
     first_name: string;
     last_name: string;
     avatar_url: string;
-    default_diretriz_year: number | null;
+    // Campos de ano padrão atualizados
+    default_logistica_year: number | null;
+    default_operacional_year: number | null;
     // Campos da OM (para exibição e seleção)
     om_id: string | null;
     om_name: string;

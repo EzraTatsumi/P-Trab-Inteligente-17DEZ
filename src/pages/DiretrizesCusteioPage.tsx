@@ -26,7 +26,9 @@ import { defaultClasseIXConfig } from "@/data/classeIXData"; // IMPORTADO
 import { formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils"; // Import new utilities
 import { useSession } from "@/components/SessionContextProvider";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { useDefaultLogisticaYear } from "@/hooks/useDefaultLogisticaYear"; // NOVO HOOK
 
+// ... (restante das constantes e defaults)
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
   { nome_equipamento: "Gerador até 15 kva GAS", tipo_combustivel: "GAS", consumo: 1.25, unidade: "L/h" },
@@ -161,9 +163,10 @@ const DiretrizesCusteioPage = () => {
   const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig);
   const [classeIXConfig, setClasseIXConfig] = useState<DiretrizClasseIXForm[]>(defaultClasseIXConfig); // USANDO A IMPORTAÇÃO
   
-  const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(new Date().getFullYear()));
+  const currentYear = new Date().getFullYear();
+  const [diretrizes, setDiretrizes] = useState<Partial<DiretrizCusteio>>(defaultDiretrizes(currentYear));
   const [availableYears, setAvailableYears] = useState<number[]>([]);
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedClasseIITab, setSelectedClasseIITab] = useState<string>(CATEGORIAS_CLASSE_II[0]);
   const [selectedClasseVTab, setSelectedClasseVTab] = useState<string>(CATEGORIAS_CLASSE_V[0]);
   const [selectedClasseVITab, setSelectedClasseVITab] = useState<string>(CATEGORIAS_CLASSE_VI[0]); 
@@ -173,10 +176,12 @@ const DiretrizesCusteioPage = () => {
   const [selectedClasseIXTab, setSelectedClasseIXTab] = useState<string>(CATEGORIAS_CLASSE_IX[0]);
   
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
-  const [defaultYear, setDefaultYear] = useState<number | null>(null);
+  
+  // Substituído defaultYear por defaultLogisticaYear do hook
+  const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultLogisticaYear();
+  const defaultYear = defaultYearData?.defaultYear || null;
   
   // NOVOS ESTADOS PARA RAW INPUTS (CLASSE I)
-  const currentYear = new Date().getFullYear();
   const [rawQSInput, setRawQSInput] = useState<string>(numberToRawDigits(defaultDiretrizes(currentYear).classe_i_valor_qs));
   const [rawQRInput, setRawQRInput] = useState<string>(numberToRawDigits(defaultDiretrizes(currentYear).classe_i_valor_qr));
   
@@ -204,31 +209,18 @@ const DiretrizesCusteioPage = () => {
       return;
     }
     
-    // 1. Load default year first
-    const fetchedDefaultYear = await loadDefaultYear(session.user.id);
-    
-    // 2. Then load available years and set the initial selected year
-    await loadAvailableYears(fetchedDefaultYear);
+    // 1. O ano padrão é carregado pelo hook useDefaultLogisticaYear
+    if (defaultYearData) {
+        // 2. Em seguida, carrega os anos disponíveis e define o ano selecionado
+        await loadAvailableYears(defaultYearData.defaultYear);
+        setSelectedYear(defaultYearData.year);
+    }
   };
 
   const loadDefaultYear = async (userId: string): Promise<number | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('default_diretriz_year')
-        .eq('id', userId)
-        .maybeSingle();
-        
-      if (error && error.code !== 'PGRST116') throw error;
-      
-      const year = data?.default_diretriz_year || null;
-      setDefaultYear(year);
-      return year;
-    } catch (error) {
-      console.error("Erro ao carregar ano padrão:", error);
-      setDefaultYear(null);
-      return null;
-    }
+    // Esta função não é mais necessária, pois usamos o hook useDefaultLogisticaYear
+    // Mas mantemos o corpo para evitar quebra de código se for chamado em outro lugar
+    return defaultYearData?.defaultYear || null;
   };
 
   const loadAvailableYears = async (defaultYearId: number | null) => {
@@ -247,9 +239,6 @@ const DiretrizesCusteioPage = () => {
       const years = data ? data.map(d => d.ano_referencia) : [];
       
       // Lógica de inclusão do ano atual:
-      // Inclui o currentYear APENAS se:
-      // 1. Ele for o defaultYearId (para garantir que o padrão seja editável)
-      // 2. OU se não houver NENHUM ano salvo (fallback para o default)
       const yearsToInclude = new Set(years);
       
       if (defaultYearId && !yearsToInclude.has(defaultYearId)) {
@@ -263,18 +252,6 @@ const DiretrizesCusteioPage = () => {
       
       const uniqueYears = Array.from(yearsToInclude).filter(y => y > 0).sort((a, b) => b - a);
       setAvailableYears(uniqueYears);
-
-      // Determine the year to select: Default year > Most recent available year with data > Current year (fallback)
-      let yearToSelect = currentYear;
-      
-      if (defaultYearId && uniqueYears.includes(defaultYearId)) {
-          yearToSelect = defaultYearId;
-      } else if (years.length > 0) {
-          yearToSelect = Math.max(...years); // Seleciona o ano mais recente que REALMENTE tem dados
-      }
-      
-      // Only update selectedYear if it's different from the current state to avoid unnecessary re-renders/re-fetches
-      setSelectedYear(prevYear => prevYear !== yearToSelect ? yearToSelect : yearToSelect);
 
     } catch (error: any) {
       console.error("Erro ao carregar anos disponíveis:", error);
@@ -325,7 +302,7 @@ const DiretrizesCusteioPage = () => {
         setRawQRInput(numberToRawDigits(defaultValues.classe_i_valor_qr));
       }
       
-      // --- Carregar Classe II, V, VI, VII e VIII (usando a mesma tabela) ---
+      // --- Carregar Classes II, V, VI, VII, VIII e IX (mantido) ---
       const allClasseItemsCategories = [...CATEGORIAS_CLASSE_II, ...CATEGORIAS_CLASSE_V, ...CATEGORIAS_CLASSE_VI, ...CATEGORIAS_CLASSE_VII, ...CATEGORIAS_CLASSE_VIII];
       
       const { data: classeItemsData } = await supabase
@@ -409,7 +386,7 @@ const DiretrizesCusteioPage = () => {
         setClasseVIIIRemontaConfig(defaultClasseVIIIRemontaConfig);
       }
       
-      // --- Carregar Classe IX ---
+      // --- Carregar Classe IX (mantido) ---
       const { data: classeIXData, error: classeIXError } = await supabase
         .from("diretrizes_classe_ix")
         .select("categoria, item, valor_mnt_dia, valor_acionamento_mensal")
@@ -454,7 +431,7 @@ const DiretrizesCusteioPage = () => {
       }
 
 
-      // --- Carregar Classe III - Equipamentos ---
+      // --- Carregar Classe III - Equipamentos (mantido) ---
       const loadEquipamentos = async (categoria: string, setter: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, defaultData: DiretrizEquipamentoForm[]) => {
         const { data: equipamentosData } = await supabase
           .from("diretrizes_equipamentos_classe_iii")
@@ -666,14 +643,16 @@ const DiretrizesCusteioPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
       
+      // ATUALIZADO: Usando o novo campo default_logistica_year
       const { error } = await supabase
         .from('profiles')
-        .update({ default_diretriz_year: diretrizes.ano_referencia })
+        .update({ default_logistica_year: diretrizes.ano_referencia })
         .eq('id', user.id);
         
       if (error) throw error;
       
-      setDefaultYear(diretrizes.ano_referencia);
+      // Atualiza o estado local do hook (que é o que o componente usa)
+      defaultYearData?.defaultYear = diretrizes.ano_referencia;
       toast.success(`Ano ${diretrizes.ano_referencia} definido como padrão para cálculos!`);
       
     } catch (error: any) {
@@ -1213,7 +1192,7 @@ const DiretrizesCusteioPage = () => {
   };
 
 
-  if (loading) {
+  if (loading || isLoadingDefaultYear) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />

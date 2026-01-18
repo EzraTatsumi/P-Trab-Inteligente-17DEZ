@@ -19,6 +19,7 @@ import { diretrizOperacionalSchema } from "@/lib/validationSchemas";
 import * as z from "zod";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // Importar Table components
+import { useDefaultOperacionalYear } from "@/hooks/useDefaultOperacionalYear"; // NOVO HOOK
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -92,7 +93,10 @@ const CustosOperacionaisPage = () => {
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
-  const [defaultYear, setDefaultYear] = useState<number | null>(null);
+  
+  // NOVO HOOK: Carrega o ano padrão operacional
+  const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultOperacionalYear();
+  const defaultYear = defaultYearData?.defaultYear || null;
   
   // Estado para armazenar os inputs brutos (apenas dígitos) para campos monetários
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
@@ -123,23 +127,8 @@ const CustosOperacionaisPage = () => {
   }, [selectedYear]);
 
   const loadDefaultYear = async (userId: string): Promise<number | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('default_diretriz_year')
-        .eq('id', userId)
-        .maybeSingle();
-        
-      if (error && error.code !== 'PGRST116') throw error;
-      
-      const year = data?.default_diretriz_year || null;
-      setDefaultYear(year);
-      return year;
-    } catch (error) {
-      console.error("Erro ao carregar ano padrão:", error);
-      setDefaultYear(null);
-      return null;
-    }
+    // Esta função não é mais necessária, pois usamos o hook useDefaultOperacionalYear
+    return defaultYearData?.defaultYear || null;
   };
 
   const loadAvailableYears = async (defaultYearId: number | null) => {
@@ -159,9 +148,6 @@ const CustosOperacionaisPage = () => {
       const years = data ? data.map(d => d.ano_referencia) : [];
       
       // Lógica de inclusão do ano atual:
-      // Inclui o currentYear APENAS se:
-      // 1. Ele for o defaultYearId (para garantir que o padrão seja editável)
-      // 2. OU se não houver NENHUM ano salvo (fallback para o default)
       const yearsToInclude = new Set(years);
       
       if (defaultYearId && !yearsToInclude.has(defaultYearId)) {
@@ -205,8 +191,12 @@ const CustosOperacionaisPage = () => {
       return;
     }
     
-    const fetchedDefaultYear = await loadDefaultYear(session.user.id);
-    await loadAvailableYears(fetchedDefaultYear);
+    // 1. O ano padrão é carregado pelo hook useDefaultOperacionalYear
+    if (defaultYearData) {
+        // 2. Em seguida, carrega os anos disponíveis e define o ano selecionado
+        await loadAvailableYears(defaultYearData.defaultYear);
+        setSelectedYear(defaultYearData.year);
+    }
   };
 
   const loadDiretrizesForYear = async (year: number) => {
@@ -416,14 +406,16 @@ const CustosOperacionaisPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
       
+      // ATUALIZADO: Usando o novo campo default_operacional_year
       const { error } = await supabase
         .from('profiles')
-        .update({ default_diretriz_year: diretrizes.ano_referencia })
+        .update({ default_operacional_year: diretrizes.ano_referencia })
         .eq('id', user.id);
         
       if (error) throw error;
       
-      setDefaultYear(diretrizes.ano_referencia);
+      // Atualiza o estado local do hook (que é o que o componente usa)
+      defaultYearData?.defaultYear = diretrizes.ano_referencia;
       toast.success(`Ano ${diretrizes.ano_referencia} definido como padrão para cálculos!`);
       
     } catch (error: any) {
@@ -672,7 +664,7 @@ const CustosOperacionaisPage = () => {
           <Button 
             variant="outline" 
             onClick={() => setIsYearManagementDialogOpen(true)}
-            disabled={loading}
+            disabled={loading || isLoadingDefaultYear}
           >
             <Settings className="mr-2 h-4 w-4" />
             Gerenciar Anos
