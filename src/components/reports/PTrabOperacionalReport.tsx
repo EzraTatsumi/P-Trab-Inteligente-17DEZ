@@ -254,6 +254,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const headerFillGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: corHeader } }; // FFD9D9D9
     const headerFillAzul = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; // FFB4C7E7
     const totalOMFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corGrandTotal } }; // FFE8E8E8
+    const totalGeralFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSomaND } }; // FFD9D9D9
     // -------------------------------------------
 
     let currentRow = 1;
@@ -663,22 +664,22 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     totalGeralFinalRow.getCell('A').value = 'VALOR TOTAL';
     totalGeralFinalRow.getCell('A').alignment = rightMiddleAlignment; // Alinhado à direita
     totalGeralFinalRow.getCell('A').font = headerFontStyle;
-    totalGeralFinalRow.getCell('A').fill = totalOMFill;
+    totalGeralFinalRow.getCell('A').fill = totalGeralFill; // FFD9D9D9 (Cinza)
     totalGeralFinalRow.getCell('A').border = cellBorder;
     
-    // Célula H: Valor Total GND 3 (Cinza Claro)
+    // Célula H: Valor Total GND 3 (Cinza)
     totalGeralFinalRow.getCell('H').value = totaisND.totalGND3;
     totalGeralFinalRow.getCell('H').alignment = centerMiddleAlignment;
     totalGeralFinalRow.getCell('H').font = headerFontStyle;
-    totalGeralFinalRow.getCell('H').fill = totalOMFill;
+    totalGeralFinalRow.getCell('H').fill = totalGeralFill; // FFD9D9D9 (Cinza)
     totalGeralFinalRow.getCell('H').border = cellBorder;
     totalGeralFinalRow.getCell('H').numFmt = 'R$ #,##0.00';
 
-    // Célula I: Vazia (Cinza Claro)
+    // Célula I: Vazia (Cinza)
     totalGeralFinalRow.getCell('I').value = '';
     totalGeralFinalRow.getCell('I').alignment = centerMiddleAlignment;
     totalGeralFinalRow.getCell('I').font = headerFontStyle;
-    totalGeralFinalRow.getCell('I').fill = totalOMFill;
+    totalGeralFinalRow.getCell('I').fill = totalGeralFill; // FFD9D9D9 (Cinza)
     totalGeralFinalRow.getCell('I').border = cellBorder;
 
     currentRow++;
@@ -934,13 +935,13 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
               
               {/* Grand Total Row 2: VALOR TOTAL - Mesclando A-G e alinhando à direita */}
               <tr className="total-geral-final-row">
-                <td colSpan={7} className="text-right font-bold" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000', borderRight: 'none' }}>
+                <td colSpan={7} className="text-right font-bold" style={{ backgroundColor: '#D9D9D9', border: '1px solid #000', borderRight: 'none' }}>
                     VALOR TOTAL
                 </td>
-                <td className="col-nd-op-small text-center font-bold total-gnd3-cell" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}>
+                <td className="col-nd-op-small text-center font-bold total-gnd3-cell" style={{ backgroundColor: '#D9D9D9', border: '1px solid #000' }}>
                     {formatCurrency(totaisND.totalGND3)}
                 </td>
-                <td style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}></td> {/* Coluna I vazia */}
+                <td style={{ backgroundColor: '#D9D9D9', border: '1px solid #000' }}></td> {/* Coluna I vazia */}
               </tr>
             </tbody>
             </table>
@@ -1048,7 +1049,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         .total-geral-final-row {
             font-weight: bold;
             page-break-inside: avoid;
-            background-color: #E8E8E8; /* Cinza Claro */
+            background-color: #D9D9D9; /* Cinza */
         }
         .total-geral-final-row td {
             border: 1px solid #000 !important;
@@ -1056,7 +1057,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         }
         .total-geral-final-row td:nth-child(1) { /* Colspan 7 */
             text-align: right;
-            background-color: #E8E8E8 !important;
+            background-color: #D9D9D9 !important;
         }
         
         /* AJUSTE DE ALINHAMENTO DO RODAPÉ */
@@ -1121,7 +1122,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
               print-color-adjust: exact;
           }
           .total-geral-final-row td {
-              background-color: #E8E8E8 !important;
+              background-color: #D9D9D9 !important; /* Alterado para D9D9D9 */
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
           }
