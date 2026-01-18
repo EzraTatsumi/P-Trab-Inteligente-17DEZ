@@ -154,7 +154,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
       heightLeft -= contentHeight;
 
       while (heightLeft > -1) { 
-        position = heightLeft - imgHeight + margin; 
+        position = heightLeft - imgWidth + margin; 
         pdf.addPage();
         pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
         heightLeft -= contentHeight;
@@ -510,27 +510,27 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             currentRow++;
         });
 
-        // Subtotal Row for OM
-        const subtotalRow = worksheet.getRow(currentRow);
+        // Subtotal Row 1: SOMA POR ND E GP DE DESPESA
+        const subtotalSomaRow = worksheet.getRow(currentRow);
         
         // Célula A+B (Cinza)
-        subtotalRow.getCell('A').value = `VALOR TOTAL DO ${omName}`;
+        subtotalSomaRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
         worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
-        subtotalRow.getCell('A').alignment = rightMiddleAlignment;
-        subtotalRow.getCell('A').font = headerFontStyle;
-        subtotalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotalOM } }; // Cinza
-        subtotalRow.getCell('A').border = cellBorder;
+        subtotalSomaRow.getCell('A').alignment = rightMiddleAlignment;
+        subtotalSomaRow.getCell('A').font = headerFontStyle;
+        subtotalSomaRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotalOM } }; // Cinza
+        subtotalSomaRow.getCell('A').border = cellBorder;
         
-        // Células C, D, E, F, G, H (NDs - MUDADO PARA CINZA)
-        subtotalRow.getCell('C').value = subtotalOM.nd15;
-        subtotalRow.getCell('D').value = subtotalOM.nd30;
-        subtotalRow.getCell('E').value = subtotalOM.nd33; // 33.90.33
-        subtotalRow.getCell('F').value = subtotalOM.nd39; // 33.90.39
-        subtotalRow.getCell('G').value = subtotalOM.nd00; // 33.90.00
-        subtotalRow.getCell('H').value = subtotalOM.totalGND3; // GND 3 Total
+        // Células C, D, E, F, G, H (NDs - Cinza)
+        subtotalSomaRow.getCell('C').value = subtotalOM.nd15;
+        subtotalSomaRow.getCell('D').value = subtotalOM.nd30;
+        subtotalSomaRow.getCell('E').value = subtotalOM.nd33; // 33.90.33
+        subtotalSomaRow.getCell('F').value = subtotalOM.nd39; // 33.90.39
+        subtotalSomaRow.getCell('G').value = subtotalOM.nd00; // 33.90.00
+        subtotalSomaRow.getCell('H').value = subtotalOM.totalGND3; // GND 3 Total
         
         ['C', 'D', 'E', 'F', 'G', 'H'].forEach(col => {
-            const cell = subtotalRow.getCell(col);
+            const cell = subtotalSomaRow.getCell(col);
             cell.alignment = centerMiddleAlignment;
             cell.font = headerFontStyle;
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotalOM } }; // Cinza
@@ -538,12 +538,40 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             cell.numFmt = 'R$ #,##0.00';
         });
         
-        // Célula I (CORRIGIDO: Deve ser cinza)
-        subtotalRow.getCell('I').value = '';
-        subtotalRow.getCell('I').alignment = centerMiddleAlignment;
-        subtotalRow.getCell('I').font = headerFontStyle;
-        subtotalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotalOM } }; // Cinza
-        subtotalRow.getCell('I').border = cellBorder;
+        // Célula I (Cinza)
+        subtotalSomaRow.getCell('I').value = '';
+        subtotalSomaRow.getCell('I').alignment = centerMiddleAlignment;
+        subtotalSomaRow.getCell('I').font = headerFontStyle;
+        subtotalSomaRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotalOM } }; // Cinza
+        subtotalSomaRow.getCell('I').border = cellBorder;
+
+        currentRow++;
+
+        // Subtotal Row 2: VALOR TOTAL DO(A) OM
+        const subtotalFinalRow = worksheet.getRow(currentRow);
+        
+        // Mescla A até G (Cinza Claro) - Colspan 7
+        worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
+        subtotalFinalRow.getCell('A').value = `VALOR TOTAL DO(A) ${omName}`;
+        subtotalFinalRow.getCell('A').alignment = rightMiddleAlignment;
+        subtotalFinalRow.getCell('A').font = headerFontStyle;
+        subtotalFinalRow.getCell('A').fill = totalOMFill; // FFE8E8E8
+        subtotalFinalRow.getCell('A').border = cellBorder;
+        
+        // Célula H: Valor Total GND 3 (Cinza Claro)
+        subtotalFinalRow.getCell('H').value = subtotalOM.totalGND3;
+        subtotalFinalRow.getCell('H').alignment = centerMiddleAlignment;
+        subtotalFinalRow.getCell('H').font = headerFontStyle;
+        subtotalFinalRow.getCell('H').fill = totalOMFill; // FFE8E8E8
+        subtotalFinalRow.getCell('H').border = cellBorder;
+        subtotalFinalRow.getCell('H').numFmt = 'R$ #,##0.00';
+
+        // Célula I: Vazia (Cinza Claro)
+        subtotalFinalRow.getCell('I').value = '';
+        subtotalFinalRow.getCell('I').alignment = centerMiddleAlignment;
+        subtotalFinalRow.getCell('I').font = headerFontStyle;
+        subtotalFinalRow.getCell('I').fill = totalOMFill; // FFE8E8E8
+        subtotalFinalRow.getCell('I').border = cellBorder;
 
         currentRow++;
     });
@@ -821,10 +849,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             );
                         })}
                         
-                        {/* Subtotal Row - NDs agora em Cinza (#D9D9D9) */}
-                        <tr className="subtotal-om-row">
+                        {/* Subtotal Row 1: SOMA POR ND E GP DE DESPESA - NDs agora em Cinza (#D9D9D9) */}
+                        <tr className="subtotal-om-soma-row">
                             <td colSpan={2} className="text-right font-bold" style={{ backgroundColor: '#D9D9D9', border: '1px solid #000' }}>
-                                VALOR TOTAL DO {omName}
+                                SOMA POR ND E GP DE DESPESA
                             </td>
                             <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(subtotalOM.nd15)}</td>
                             <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(subtotalOM.nd30)}</td>
@@ -832,7 +860,18 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(subtotalOM.nd39)}</td>
                             <td className="col-nd-op-small text-center font-bold" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(subtotalOM.nd00)}</td>
                             <td className="col-nd-op-small text-center font-bold total-gnd3-cell" style={{ backgroundColor: '#D9D9D9' }}>{formatCurrency(subtotalOM.totalGND3)}</td>
-                            <td></td>
+                            <td style={{ backgroundColor: '#D9D9D9', border: '1px solid #000' }}></td>
+                        </tr>
+                        
+                        {/* Subtotal Row 2: VALOR TOTAL DO(A) OM - Cinza Claro (#E8E8E8) */}
+                        <tr className="subtotal-om-final-row">
+                            <td colSpan={7} className="text-right font-bold" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000', borderRight: 'none' }}>
+                                VALOR TOTAL DO(A) {omName}
+                            </td>
+                            <td className="col-nd-op-small text-center font-bold total-gnd3-cell" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}>
+                                {formatCurrency(subtotalOM.totalGND3)}
+                            </td>
+                            <td style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}></td>
                         </tr>
                     </React.Fragment>
                 );
@@ -910,23 +949,42 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         
         .total-gnd3-cell { background-color: #B4C7E7 !important; }
         
-        /* Estilos para Subtotal OM */
-        .subtotal-om-row { 
+        /* Estilos para Subtotal OM - Linha 1 (Soma por ND) */
+        .subtotal-om-soma-row { 
             font-weight: bold; 
             page-break-inside: avoid; 
             background-color: #D9D9D9; /* Cinza */
         }
-        .subtotal-om-row td {
+        .subtotal-om-soma-row td {
             border: 1px solid #000 !important;
             padding: 3px 4px;
         }
-        .subtotal-om-row td:nth-child(1) { /* Colspan 2 */
+        .subtotal-om-soma-row td:nth-child(1) { /* Colspan 2 */
             text-align: right;
             background-color: #D9D9D9 !important;
         }
         /* Garante que as NDs no subtotal sejam cinzas */
-        .subtotal-om-row .col-nd-op-small {
+        .subtotal-om-soma-row .col-nd-op-small {
             background-color: #D9D9D9 !important;
+        }
+        
+        /* Estilos para Subtotal OM - Linha 2 (Valor Total) */
+        .subtotal-om-final-row {
+            font-weight: bold;
+            page-break-inside: avoid;
+            background-color: #E8E8E8; /* Cinza Claro */
+        }
+        .subtotal-om-final-row td {
+            border: 1px solid #000 !important;
+            padding: 3px 4px;
+        }
+        .subtotal-om-final-row td:nth-child(1) { /* Colspan 7 */
+            text-align: right;
+            background-color: #E8E8E8 !important;
+        }
+        /* Garante que a coluna H seja Cinza Claro */
+        .subtotal-om-final-row .col-nd-op-small {
+            background-color: #E8E8E8 !important;
         }
         
         /* Estilos para Total Geral */
@@ -1008,8 +1066,13 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
           }
           
           /* Subtotal e Totais agora são Cinza */
-          .subtotal-om-row td {
+          .subtotal-om-soma-row td {
               background-color: #D9D9D9 !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+          }
+          .subtotal-om-final-row td {
+              background-color: #E8E8E8 !important;
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
           }
