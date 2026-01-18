@@ -1060,6 +1060,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             background-color: #D9D9D9 !important;
         }
         
+        /* CORREÇÃO: Garante que a coluna H (GND 3) no Total Geral Final seja Cinza D9D9D9 */
+        .total-geral-final-row .col-nd-op-small {
+            background-color: #D9D9D9 !important;
+        }
+        
         /* AJUSTE DE ALINHAMENTO DO RODAPÉ */
         .ptrab-footer { margin-top: 3rem; text-align: center; }
         .signature-block { margin-top: 4rem; display: inline-block; text-align: center; }
