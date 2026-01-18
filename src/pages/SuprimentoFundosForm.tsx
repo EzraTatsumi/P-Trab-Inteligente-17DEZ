@@ -1132,7 +1132,7 @@ const SuprimentoFundosForm = () => {
                                                                 id="objeto_aquisicao"
                                                                 value={formData.objeto_aquisicao}
                                                                 onChange={(e) => setFormData({ ...formData, objeto_aquisicao: e.target.value })}
-                                                                placeholder="Ex: Materiais (Limpeza, Escritório, Construção), alimentação de pessoal"
+                                                                placeholder="Ex: Materiais , alimentação de pessoal"
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 onKeyDown={handleEnterToNextField}
