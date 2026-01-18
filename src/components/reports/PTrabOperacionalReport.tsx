@@ -26,6 +26,27 @@ interface PTrabOperacionalReportProps {
   generateVerbaOperacionalMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; // NOVO PROP
 }
 
+// Função auxiliar para determinar o artigo (DO/DA)
+const getArticleForOM = (omName: string): 'DO' | 'DA' => {
+    const lowerOmName = omName.toLowerCase().trim();
+    // Heurística simples para OMs masculinas comuns
+    if (
+      lowerOmName.startsWith('comando') ||
+      lowerOmName.startsWith('departamento') ||
+      lowerOmName.startsWith('regimento') ||
+      lowerOmName.startsWith('batalhão') ||
+      lowerOmName.startsWith('grupamento') ||
+      lowerOmName.startsWith('colégio') ||
+      lowerOmName.startsWith('hospital') ||
+      lowerOmName.startsWith('o ')
+    ) {
+      return 'DO';
+    }
+    // Assume feminino por padrão (A OM, A Brigada, A Companhia, A Escola)
+    return 'DA';
+};
+
+
 const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   ptrabData,
   registrosDiaria,
@@ -364,6 +385,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     Object.entries(registrosAgrupadosPorOM).forEach(([omKey, group]) => {
         const omName = omKey.split(' (')[0];
         const ug = omKey.split(' (')[1].replace(')', '');
+        const article = getArticleForOM(omName); // Determina DO/DA
         
         // Calculate subtotal for this OM
         const subtotalOM = group.diarias.reduce((acc, r) => ({
@@ -552,7 +574,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         
         // Mescla A até G (Cinza Claro) - Colspan 7
         worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
-        subtotalFinalRow.getCell('A').value = `VALOR TOTAL DO(A) ${omName}`;
+        subtotalFinalRow.getCell('A').value = `VALOR TOTAL ${article} ${omName}`;
         subtotalFinalRow.getCell('A').alignment = rightMiddleAlignment;
         subtotalFinalRow.getCell('A').font = headerFontStyle;
         subtotalFinalRow.getCell('A').fill = totalOMFill; // FFE8E8E8
@@ -770,6 +792,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
               {Object.entries(registrosAgrupadosPorOM).map(([omKey, group]) => {
                 const omName = omKey.split(' (')[0];
                 const ug = omKey.split(' (')[1].replace(')', '');
+                const article = getArticleForOM(omName); // Determina DO/DA
                 
                 // Calculate subtotal for this OM
                 const subtotalOM = group.diarias.reduce((acc, r) => ({
@@ -866,7 +889,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                         {/* Subtotal Row 2: VALOR TOTAL DO(A) OM - Cinza Claro (#E8E8E8) */}
                         <tr className="subtotal-om-final-row">
                             <td colSpan={7} className="text-right font-bold" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000', borderRight: 'none' }}>
-                                VALOR TOTAL DO(A) {omName}
+                                VALOR TOTAL {article} {omName}
                             </td>
                             <td className="col-nd-op-small text-center font-bold total-gnd3-cell" style={{ backgroundColor: '#E8E8E8', border: '1px solid #000' }}>
                                 {formatCurrency(subtotalOM.totalGND3)}
