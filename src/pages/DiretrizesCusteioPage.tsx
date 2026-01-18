@@ -27,6 +27,7 @@ import { formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils"; // I
 import { useSession } from "@/components/SessionContextProvider";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { useDefaultLogisticaYear } from "@/hooks/useDefaultLogisticaYear"; // NOVO HOOK
+import { useQueryClient } from "@tanstack/react-query"; // Adicionar useQueryClient
 
 // ... (restante das constantes e defaults)
 
@@ -140,6 +141,7 @@ const defaultDiretrizes = (year: number) => ({
 const DiretrizesCusteioPage = () => {
   const navigate = useNavigate();
   const { user } = useSession();
+  const queryClient = useQueryClient(); // Inicializar queryClient
   const [loading, setLoading] = useState(true);
   const [showClasseIAlimentacaoConfig, setShowClasseIAlimentacaoConfig] = useState(false);
   const [showClasseIIConfig, setShowClasseIIConfig] = useState(false);
@@ -651,8 +653,9 @@ const DiretrizesCusteioPage = () => {
         
       if (error) throw error;
       
-      // Atualiza o estado local do hook (que é o que o componente usa)
-      defaultYearData?.defaultYear = diretrizes.ano_referencia;
+      // Invalida a query do hook useDefaultLogisticaYear para forçar a atualização
+      queryClient.invalidateQueries({ queryKey: ["defaultLogisticaYear", user.id] });
+      
       toast.success(`Ano ${diretrizes.ano_referencia} definido como padrão para cálculos!`);
       
     } catch (error: any) {
@@ -1212,7 +1215,7 @@ const DiretrizesCusteioPage = () => {
           <Button 
             variant="outline" 
             onClick={() => setIsYearManagementDialogOpen(true)}
-            disabled={loading}
+            disabled={loading || isLoadingDefaultYear}
           >
             <Settings className="mr-2 h-4 w-4" />
             Gerenciar Anos
