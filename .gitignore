@@ -98,6 +98,7 @@ src/ptrab/components/forms/VerbaOperationalForm.tsx
 src/pages/VerbaOperationalForm.tsx
 src/pages/SuprimentoFundosForm.tsx
 # REMOVIDO:src/pages/DiretrizesCusteioPage.tsx
+# REMOVIDO:src/pages/CusteioOperacionaisPage.tsx
 
 # INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
 
