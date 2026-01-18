@@ -83,7 +83,7 @@ export const generateSuprimentoFundosMemoriaCalculo = (
     const omPreposition = getOmPreposition(organizacao);
     const faseFormatada = formatFasesParaTexto(fase_atividade);
     
-    const militarText = quantidade_equipes === 1 ? 'militar' : 'militares';
+    const efetivoText = quantidade_equipes === 1 ? 'militar' : 'militares';
     const diaText = dias_operacao === 1 ? 'dia' : 'dias';
     
     const valorTotal = valor_nd_30 + valor_nd_39;
@@ -104,21 +104,19 @@ export const generateSuprimentoFundosMemoriaCalculo = (
     }
     // --- Fim Lógica ND ---
     
-    // CABEÇALHO: Usa OM Favorecida (organizacao)
-    const header = `${ndPrefix} - Solicitação de Suprimento de Fundos para ${quantidade_equipes} ${militarText} ${omPreposition} ${organizacao}, durante ${dias_operacao} ${diaText} de ${faseFormatada}.`;
+    // --- Lógica para determinar a preposição do local (no/na) ---
+    // Heurística simples: se o local terminar em 'A' ou 'E', usa 'na'. Caso contrário, usa 'no'.
+    const localLower = local.toLowerCase().trim();
+    const localPreposition = localLower.endsWith('a') || localLower.endsWith('e') ? 'na' : 'no';
+    
+    // CABEÇALHO REFORMULADO
+    const header = `${ndPrefix} - Solicitação de Suprimento de Fundos para ${quantidade_equipes} ${efetivoText} ${omPreposition} ${organizacao} para custear despesas com ${objeto_aquisicao} ou contratação de ${objeto_contratacao}, a fim de ${proposito} ao ${finalidade} ${localPreposition} ${local} ${localPreposition} ${tarefa}, durante ${dias_operacao} ${diaText} de ${faseFormatada}.`;
 
     // Detalhamento: Usa OM Detentora (om_detentora)
     const detalhamento = `
+
 OM Favorecida: ${organizacao} (UG: ${formatCodug(ug)})
 OM Destino Recurso: ${om_detentora} (UG: ${formatCodug(ug_detentora)})
-
-Detalhes da Aplicação:
-- Objeto de Aquisição (Material): ${objeto_aquisicao}
-- Objeto de Contratação (Serviço): ${objeto_contratacao}
-- Propósito: ${proposito}
-- Finalidade: ${finalidade}
-- Local: ${local}
-- Tarefa: ${tarefa}
 
 Alocação:
 - ND 33.90.30 (Material): ${formatCurrency(valor_nd_30)}
