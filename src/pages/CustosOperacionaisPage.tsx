@@ -158,18 +158,37 @@ const CustosOperacionaisPage = () => {
 
       const years = data ? data.map(d => d.ano_referencia) : [];
       
-      const uniqueYears = Array.from(new Set([...years, currentYear, defaultYearId || 0])).filter(y => y > 0).sort((a, b) => b - a);
+      // Lógica de inclusão do ano atual:
+      // Inclui o currentYear APENAS se:
+      // 1. Ele for o defaultYearId (para garantir que o padrão seja editável)
+      // 2. OU se não houver NENHUM ano salvo (fallback para o default)
+      const yearsToInclude = new Set(years);
+      
+      if (defaultYearId && !yearsToInclude.has(defaultYearId)) {
+          yearsToInclude.add(defaultYearId);
+      }
+      
+      // Se não houver NENHUM ano salvo (years.length === 0), adiciona o ano atual como fallback
+      if (years.length === 0 && !yearsToInclude.has(currentYear)) {
+          yearsToInclude.add(currentYear);
+      }
+      
+      const uniqueYears = Array.from(yearsToInclude).filter(y => y > 0).sort((a, b) => b - a);
       setAvailableYears(uniqueYears);
 
-      // Lógica de priorização: Ano Padrão > Ano Mais Recente > Ano Atual
+      // Determine the year to select: Default year > Most recent available year with data > Current year (fallback)
       let yearToSelect = currentYear;
+      
+      // Se houver anos salvos, o ano mais recente é o primeiro da lista 'years' (já ordenada)
+      const mostRecentSavedYear = years.length > 0 ? years[0] : null;
       
       if (defaultYearId && uniqueYears.includes(defaultYearId)) {
           yearToSelect = defaultYearId;
-      } else if (uniqueYears.length > 0) {
-          yearToSelect = uniqueYears[0];
+      } else if (mostRecentSavedYear) {
+          yearToSelect = mostRecentSavedYear;
       }
       
+      // Only update selectedYear if it's different from the current state to avoid unnecessary re-renders/re-fetches
       setSelectedYear(prevYear => prevYear !== yearToSelect ? yearToSelect : yearToSelect);
 
     } catch (error: any) {
@@ -227,18 +246,18 @@ const CustosOperacionaisPage = () => {
         
         // NOVOS CAMPOS DE DIÁRIA
         diaria_referencia_legal: loadedData.diaria_referencia_legal || defaultDiretrizes(year).diaria_referencia_legal,
-        diaria_of_gen_bsb: Number(loadedData.diaria_of_gen_bsb || DIARIA_RANKS_CONFIG[0].bsb),
-        diaria_of_gen_capitais: Number(loadedData.diaria_of_gen_capitais || DIARIA_RANKS_CONFIG[0].capitais),
-        diaria_of_gen_demais: Number(loadedData.diaria_of_gen_demais || DIARIA_RANKS_CONFIG[0].demais),
-        diaria_of_sup_bsb: Number(loadedData.diaria_of_sup_bsb || DIARIA_RANKS_CONFIG[1].bsb),
-        diaria_of_sup_capitais: Number(loadedData.diaria_of_sup_capitais || DIARIA_RANKS_CONFIG[1].capitais),
-        diaria_of_sup_demais: Number(loadedData.diaria_of_sup_demais || DIARIA_RANKS_CONFIG[1].demais),
-        diaria_of_int_sgt_bsb: Number(loadedData.diaria_of_int_sgt_bsb || DIARIA_RANKS_CONFIG[2].bsb),
-        diaria_of_int_sgt_capitais: Number(loadedData.diaria_of_int_sgt_capitais || DIARIA_RANKS_CONFIG[2].capitais),
-        diaria_of_int_sgt_demais: Number(loadedData.diaria_of_int_sgt_demais || DIARIA_RANKS_CONFIG[2].demais),
-        diaria_demais_pracas_bsb: Number(loadedData.diaria_demais_pracas_bsb || DIARIA_RANKS_CONFIG[3].bsb),
-        diaria_demais_pracas_capitais: Number(loadedData.diaria_demais_pracas_capitais || DIARIA_RANKS_CONFIG[3].capitais),
-        diaria_demais_pracas_demais: Number(loadedData.diaria_demais_pracas_demais || DIARIA_RANKS_CONFIG[3].demais),
+        diaria_of_gen_bsb: Number(loadedData.diaria_of_gen_bsb || 0),
+        diaria_of_gen_capitais: Number(loadedData.diaria_of_gen_capitais || 0),
+        diaria_of_gen_demais: Number(loadedData.diaria_of_gen_demais || 0),
+        diaria_of_sup_bsb: Number(loadedData.diaria_of_sup_bsb || 0),
+        diaria_of_sup_capitais: Number(loadedData.diaria_of_sup_capitais || 0),
+        diaria_of_sup_demais: Number(loadedData.diaria_of_sup_demais || 0),
+        diaria_of_int_sgt_bsb: Number(loadedData.diaria_of_int_sgt_bsb || 0),
+        diaria_of_int_sgt_capitais: Number(loadedData.diaria_of_int_sgt_capitais || 0),
+        diaria_of_int_sgt_demais: Number(loadedData.diaria_of_int_sgt_demais || 0),
+        diaria_demais_pracas_bsb: Number(loadedData.diaria_demais_pracas_bsb || 0),
+        diaria_demais_pracas_capitais: Number(loadedData.diaria_demais_pracas_capitais || 0),
+        diaria_demais_pracas_demais: Number(loadedData.diaria_demais_pracas_demais || 0),
         
         // NOVO CAMPO
         taxa_embarque: Number(loadedData.taxa_embarque || defaultDiretrizes(year).taxa_embarque),
