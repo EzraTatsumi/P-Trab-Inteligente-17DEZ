@@ -1217,7 +1217,10 @@ const DiretrizesCusteioPage = () => {
                   onValueChange={(value) => setSelectedYear(parseInt(value))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o ano" />
+                    {/* AJUSTE: Usar selectedYear como conteúdo do SelectValue para garantir que o valor seja exibido imediatamente após o carregamento. */}
+                    <SelectValue placeholder="Selecione o ano">
+                      {selectedYear > 0 ? selectedYear : "Selecione o ano"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {availableYears.map((year) => (

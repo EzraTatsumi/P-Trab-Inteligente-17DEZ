@@ -699,7 +699,10 @@ const CustosOperacionaisPage = () => {
                   onValueChange={(value) => setSelectedYear(parseInt(value))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o ano" />
+                    {/* CORREÇÃO: Usar selectedYear como conteúdo do SelectValue para garantir que o valor seja exibido imediatamente após o carregamento, mesmo que o placeholder esteja definido. */}
+                    <SelectValue placeholder="Selecione o ano">
+                      {selectedYear > 0 ? selectedYear : "Selecione o ano"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {availableYears.map((year) => (
