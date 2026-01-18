@@ -28,8 +28,24 @@ interface PTrabOperacionalReportProps {
 
 // Função auxiliar para determinar o artigo (DO/DA)
 const getArticleForOM = (omName: string): 'DO' | 'DA' => {
+    const normalizedOmName = omName.toUpperCase().trim();
+
+    // 1. Cmdo Rule: If the name contains "CMDO", it is masculine (DO).
+    // Ex: Cmdo 23ª Bda Inf Sl -> DO
+    if (normalizedOmName.includes('CMDO')) {
+        return 'DO';
+    }
+
+    // 2. Ordinal Rule: Check for ª (feminine) or º (masculine)
+    if (normalizedOmName.includes('ª')) {
+        return 'DA';
+    }
+    if (normalizedOmName.includes('º')) {
+        return 'DO';
+    }
+
+    // 3. Existing Noun Rule (Heuristic for full names or common abbreviations)
     const lowerOmName = omName.toLowerCase().trim();
-    // Heurística simples para OMs masculinas comuns
     if (
       lowerOmName.startsWith('comando') ||
       lowerOmName.startsWith('departamento') ||
@@ -42,7 +58,8 @@ const getArticleForOM = (omName: string): 'DO' | 'DA' => {
     ) {
       return 'DO';
     }
-    // Assume feminino por padrão (A OM, A Brigada, A Companhia, A Escola)
+    
+    // 4. Default: Feminine
     return 'DA';
 };
 
