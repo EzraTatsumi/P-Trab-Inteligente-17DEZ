@@ -66,9 +66,6 @@ export const generateSuprimentoFundosMemoriaCalculo = (
         dias_operacao, 
         quantidade_equipes, 
         organizacao, // OM Favorecida (para o cabeçalho)
-        ug, // UG Favorecida
-        om_detentora, // OM Destino do Recurso (para o detalhamento)
-        ug_detentora, // UG Destino do Recurso
         fase_atividade,
         valor_nd_30,
         valor_nd_39,
@@ -105,24 +102,16 @@ export const generateSuprimentoFundosMemoriaCalculo = (
     // --- Fim Lógica ND ---
     
     // --- Lógica para determinar a preposição do local (no/na) ---
-    // Heurística simples: se o local terminar em 'A' ou 'E', usa 'na'. Caso contrário, usa 'no'.
     const localLower = local.toLowerCase().trim();
     const localPreposition = localLower.endsWith('a') || localLower.endsWith('e') ? 'na' : 'no';
     
     // CABEÇALHO REFORMULADO
     const header = `${ndPrefix} - Solicitação de Suprimento de Fundos para ${quantidade_equipes} ${efetivoText} ${omPreposition} ${organizacao} para custear despesas com ${objeto_aquisicao} ou contratação de ${objeto_contratacao}, a fim de ${proposito} ao ${finalidade} ${localPreposition} ${local} ${localPreposition} ${tarefa}, durante ${dias_operacao} ${diaText} de ${faseFormatada}.`;
 
-    // Detalhamento: Usa OM Detentora (om_detentora)
+    // Detalhamento: Apenas a linha Total
     const detalhamento = `
 
-OM Favorecida: ${organizacao} (UG: ${formatCodug(ug)})
-OM Destino Recurso: ${om_detentora} (UG: ${formatCodug(ug_detentora)})
-
-Alocação:
-- ND 33.90.30 (Material): ${formatCurrency(valor_nd_30)}
-- ND 33.90.39 (Serviço): ${formatCurrency(valor_nd_39)}
-
-Valor Total Solicitado: ${formatCurrency(valorTotal)}.`;
+Total: ${formatCurrency(valorTotal)}.`;
 
     return header + detalhamento;
 };
