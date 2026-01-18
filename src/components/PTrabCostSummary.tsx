@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Droplet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase } from "lucide-react";
+import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase } from "lucide-react";
 import {
   Accordion,
   AccordionItem,
@@ -1246,7 +1246,7 @@ export const PTrabCostSummary = ({
                             <AccordionTrigger className="p-0 hover:no-underline">
                                 <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
                                     <div className="flex items-center gap-1 text-foreground">
-                                        <Droplet className="h-3 w-3 text-blue-500" />
+                                        <Wallet className="h-3 w-3 text-blue-500" />
                                         Suprimento de Fundos
                                     </div>
                                     <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
