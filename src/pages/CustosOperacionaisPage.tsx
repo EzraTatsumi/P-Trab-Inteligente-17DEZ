@@ -117,21 +117,35 @@ const CustosOperacionaisPage = () => {
   
   const { handleEnterToNextField } = useFormNavigation();
 
+  // Efeito para rolar para o topo na montagem
   useEffect(() => {
-    checkAuthAndLoadYears();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  // NOVO EFEITO: Carrega anos disponíveis e define o ano selecionado quando o defaultYearData estiver pronto
+  useEffect(() => {
+    if (!isLoadingDefaultYear && defaultYearData) {
+        const checkAuthAndLoadYears = async () => {
+            const { data: { session } = { session: null } } = await supabase.auth.getSession();
+            if (!session) {
+                toast.error("Você precisa estar autenticado");
+                navigate("/login");
+                return;
+            }
+            
+            // 2. Carrega os anos disponíveis e define o ano selecionado
+            await loadAvailableYears(defaultYearData.defaultYear);
+            setSelectedYear(defaultYearData.year);
+        };
+        checkAuthAndLoadYears();
+    }
+  }, [isLoadingDefaultYear, defaultYearData]); // Depende do hook de query
 
   useEffect(() => {
     if (selectedYear) {
       loadDiretrizesForYear(selectedYear);
     }
   }, [selectedYear]);
-
-  const loadDefaultYear = async (userId: string): Promise<number | null> => {
-    // Esta função não é mais necessária, pois usamos o hook useDefaultDiretrizYear
-    return defaultYearData?.defaultYear || null;
-  };
 
   const loadAvailableYears = async (defaultYearId: number | null) => {
     try {
@@ -177,29 +191,16 @@ const CustosOperacionaisPage = () => {
       }
       
       // Only update selectedYear if it's different from the current state to avoid unnecessary re-renders/re-fetches
-      setSelectedYear(prevYear => prevYear !== yearToSelect ? yearToSelect : yearToSelect);
-
+      // REMOVIDO: setSelectedYear(prevYear => prevYear !== yearToSelect ? yearToSelect : yearToSelect);
+      // O setSelectedYear será feito no useEffect que reage ao defaultYearData
+      
     } catch (error: any) {
       console.error("Erro ao carregar anos disponíveis:", error);
       toast.error("Erro ao carregar anos disponíveis");
     }
   };
   
-  const checkAuthAndLoadYears = async () => {
-    const { data: { session } = { session: null } } = await supabase.auth.getSession();
-    if (!session) {
-      toast.error("Você precisa estar autenticado");
-      navigate("/login");
-      return;
-    }
-    
-    // 1. O ano padrão é carregado pelo hook useDefaultDiretrizYear
-    if (defaultYearData) {
-        // 2. Em seguida, carrega os anos disponíveis e define o ano selecionado
-        await loadAvailableYears(defaultYearData.defaultYear);
-        setSelectedYear(defaultYearData.year);
-    }
-  };
+  // REMOVIDA: checkAuthAndLoadYears (substituída pelo useEffect acima)
 
   const loadDiretrizesForYear = async (year: number) => {
     try {
