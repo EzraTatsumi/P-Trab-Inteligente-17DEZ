@@ -5,6 +5,11 @@ const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
     return Math.abs(a - b) < tolerance;
 };
 
+// Helper to check if any military personnel count is greater than zero
+const isEfetivoPresent = (quantidades: Record<string, number>): boolean => {
+    return Object.values(quantidades).some(q => q > 0);
+};
+
 // --- Login Schema ---
 export const loginSchema = z.object({
     email: z.string().email("E-mail inválido."),
@@ -93,4 +98,37 @@ export const suprimentoFundosSchema = verbaOperacionalBase.extend({
 }, {
     message: "A soma das NDs (30 e 39) deve ser igual ao Valor Total Solicitado.",
     path: ["valor_nd_39"], // Aponta para o campo de ND 39 para exibir o erro
+});
+
+// --- Diaria Schema (NOVO) ---
+export const diariaSchema = z.object({
+    // Context fields (OMs)
+    om_favorecida: z.string().min(1, "A OM Favorecida é obrigatória."),
+    ug_favorecida: z.string().min(1, "A UG Favorecida é obrigatória."),
+    om_detentora: z.string().min(1, "A OM Destino do Recurso é obrigatória."),
+    ug_detentora: z.string().min(1, "A UG Destino do Recurso é obrigatória."),
+    
+    // Period and Location
+    dias_operacao: z.number().int().min(1, "O número de dias deve ser maior que zero."),
+    nr_viagens: z.number().int().min(1, "O número de viagens deve ser maior que zero."),
+    destino: z.enum(['bsb_capitais_especiais', 'demais_capitais', 'demais_dslc'], {
+        required_error: "O destino é obrigatório.",
+    }),
+    local_atividade: z.string().min(1, "O local da atividade é obrigatório."),
+    fase_atividade: z.string().min(1, "A fase da atividade é obrigatória."),
+    
+    // Efetivo
+    quantidades_por_posto: z.record(z.string(), z.number().int().min(0)),
+    
+    // Flags
+    is_aereo: z.boolean(),
+    
+    // Optional fields
+    detalhamento_customizado: z.string().optional().nullable(),
+}).refine(data => {
+    // Validation: At least one military member must be present
+    return isEfetivoPresent(data.quantidades_por_posto);
+}, {
+    message: "Informe a quantidade de militares por posto/graduação.",
+    path: ["quantidades_por_posto"],
 });
