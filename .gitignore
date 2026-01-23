@@ -47,7 +47,7 @@ src/assets/
 # Removendo exclusões de componentes de autenticação ativos:
 src/components/ForgotPasswordDialog.tsx
 src/components/EmailVerificationDialog.tsx
-src/components/SignupDialog.tsx
+# REMOVIDO:src/components/SignupDialog.tsx
 src/components/EmailConfirmationDialog.tsx
 
 src/components/YearManagementDialog.tsx
