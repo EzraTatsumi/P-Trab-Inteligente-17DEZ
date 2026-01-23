@@ -90,7 +90,7 @@ const DOMAIN_CORRECTIONS: Record<string, string> = {
     "hotmal.com": "hotmail.com",
     "outlok.com": "outlook.com",
     "outloock.com": "outlook.com",
-    "outlok.com": "outlook.com",
+    "outlok.com": "outlook.com", 
     "outlookcom": "outlook.com", 
     "live.com.br": "live.com",
     "live.com": "live.com",
@@ -409,6 +409,17 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     </li>
   );
 
+  const hasOms = oms && oms.length > 0;
+  const selectPlaceholder = isLoadingOms 
+    ? (
+        <div className="flex items-center text-muted-foreground">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando OMs...
+        </div>
+      )
+    : hasOms 
+      ? "Selecione a OM" 
+      : "Nenhuma OM disponível";
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -480,16 +491,10 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                 <Select
                   value={form.sigla_om}
                   onValueChange={(value) => handleSelectChange("sigla_om", value)}
-                  disabled={isLoadingOms}
+                  disabled={isLoadingOms || !hasOms}
                 >
                   <SelectTrigger id="sigla_om" className="justify-start">
-                    {isLoadingOms ? (
-                      <div className="flex items-center text-muted-foreground">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando OMs...
-                      </div>
-                    ) : (
-                      <SelectValue placeholder="Selecione a OM" />
-                    )}
+                    <SelectValue placeholder={selectPlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
                     {oms?.map((om) => (
@@ -683,7 +688,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             </Alert>
 
             <DialogFooter className="mt-4 md:col-span-3">
-              <Button type="submit" disabled={loading || isLoadingOms}>
+              <Button type="submit" disabled={loading || isLoadingOms || !hasOms}>
                 {loading ? "Verificando..." : "Criar Conta"}
               </Button>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
