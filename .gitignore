@@ -128,7 +128,7 @@ src/components/UnlinkPTrabDialog.tsx
 src/components/ForgotPasswordDialog.tsx
 src/components/EmailConfirmationDialog.tsx
 src/components/EmailVerificationDialog.tsx
-src/components/SignupDialog.tsx
+
 src/components/SignupSuccessDialog.tsx
 src/pages/ResetPasswordPage.tsx
 src/pages/SharePage.tsx
