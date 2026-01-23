@@ -20,7 +20,6 @@ import { z } from "zod";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import InputMask from 'react-input-mask';
-import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import {
   Select,
   SelectContent,
@@ -49,6 +48,7 @@ const signupSchema = z.object({
   nome_completo: z.string().min(5, "Nome completo é obrigatório."),
   nome_guerra: z.string().min(2, "Nome de Guerra é obrigatório."),
   posto_graduacao: z.enum(MILITARY_RANKS as [string, ...string[]], { message: "Posto/Graduação é obrigatório." }),
+  // Sigla da OM agora é apenas um campo de texto obrigatório
   sigla_om: z.string().min(2, "Sigla da OM é obrigatória."),
   funcao_om: z.string().min(2, "Função na OM é obrigatória."),
   // Nova validação para o formato (99) 999999999 (11 dígitos)
@@ -90,7 +90,7 @@ const DOMAIN_CORRECTIONS: Record<string, string> = {
     "hotmal.com": "hotmail.com",
     "outlok.com": "outlook.com",
     "outloock.com": "outlook.com",
-    "outlok.com": "outlook.com", 
+    "outlok.com": "outlook.com",
     "outlookcom": "outlook.com", 
     "live.com.br": "live.com",
     "live.com": "live.com",
@@ -150,7 +150,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
   
   const { handleEnterToNextField } = useFormNavigation();
   
-  const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
+  // Removido: const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
 
   const suggestedEmailCorrection = useMemo(() => {
     const watchedEmail = form.email;
@@ -232,15 +232,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             telefone,
         } = parsed.data;
         
-        const selectedOmData = oms?.find(om => om.nome_om === sigla_om);
-        if (!selectedOmData) {
-            throw new Error("OM de vinculação não encontrada na lista.");
-        }
-
-        /* =====================================================
-           1. PRÉ-CHECAGEM DE EXISTÊNCIA (JÁ FEITA NO handleSignup)
-           REMOVIDO DAQUI
-        ====================================================== */
+        // Removido: Checagem de OM e obtenção de dados de UG/RM
 
         /* =====================================================
            2. SIGNUP SUPABASE
@@ -257,9 +249,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                     sigla_om,
                     funcao_om,
                     telefone,
-                    codug_om: selectedOmData.codug_om,
-                    rm_vinculacao: selectedOmData.rm_vinculacao,
-                    codug_rm_vinculacao: selectedOmData.codug_rm_vinculacao,
+                    // Removido: codug_om, rm_vinculacao, codug_rm_vinculacao
                 },
             },
         });
@@ -345,15 +335,9 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
       }
 
       /* =====================================================
-         3. VALIDAÇÃO DA OM
+         3. VALIDAÇÃO DA OM (REMOVIDA)
       ====================================================== */
-      const selectedOmData = oms?.find(om => om.nome_om === parsed.data.sigla_om);
-      if (!selectedOmData) {
-        const msg = "OM de vinculação não encontrada na lista.";
-        toast.error(msg);
-        setSubmissionError(msg);
-        return;
-      }
+      // Removido: Lógica de busca e validação da OM na lista.
       
       /* =====================================================
          4. PRÉ-CHECAGEM DE EXISTÊNCIA (MOVIDO PARA CÁ)
@@ -409,17 +393,6 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
     </li>
   );
 
-  const hasOms = oms && oms.length > 0;
-  const selectPlaceholder = isLoadingOms 
-    ? (
-        <div className="flex items-center text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando OMs...
-        </div>
-      )
-    : hasOms 
-      ? "Selecione a OM" 
-      : "Nenhuma OM disponível";
-
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -472,7 +445,9 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                   onValueChange={(value) => handleSelectChange("posto_graduacao", value)}
                 >
                   <SelectTrigger id="posto_graduacao" className="justify-start">
-                    <SelectValue placeholder="Seu Posto/Grad" />
+                    <SelectValue placeholder="Seu Posto/Grad">
+                      {form.posto_graduacao || "Seu Posto/Grad"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {MILITARY_RANKS.map((rank) => (
@@ -485,25 +460,18 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                 {validationErrors.posto_graduacao && <p className="text-xs text-destructive">{validationErrors.posto_graduacao}</p>}
               </div>
               
-              {/* Campo Sigla da OM (Select) */}
+              {/* Campo Sigla da OM (Input Manual) */}
               <div className="space-y-1">
                 <Label htmlFor="sigla_om">Sigla da OM *</Label>
-                <Select
+                <Input
+                  id="sigla_om"
+                  name="sigla_om"
                   value={form.sigla_om}
-                  onValueChange={(value) => handleSelectChange("sigla_om", value)}
-                  disabled={isLoadingOms || !hasOms}
-                >
-                  <SelectTrigger id="sigla_om" className="justify-start">
-                    <SelectValue placeholder={selectPlaceholder} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {oms?.map((om) => (
-                      <SelectItem key={om.id} value={om.nome_om}>
-                        {om.nome_om}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={handleChange}
+                  placeholder="Ex: 1ª RM, CML"
+                  required
+                  onKeyDown={handleEnterToNextField}
+                />
                 {validationErrors.sigla_om && <p className="text-xs text-destructive">{validationErrors.sigla_om}</p>}
               </div>
               
@@ -688,7 +656,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
             </Alert>
 
             <DialogFooter className="mt-4 md:col-span-3">
-              <Button type="submit" disabled={loading || isLoadingOms || !hasOms}>
+              <Button type="submit" disabled={loading}>
                 {loading ? "Verificando..." : "Criar Conta"}
               </Button>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
