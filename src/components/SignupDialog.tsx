@@ -461,9 +461,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                   onValueChange={(value) => handleSelectChange("posto_graduacao", value)}
                 >
                   <SelectTrigger id="posto_graduacao" className="justify-start">
-                    <SelectValue placeholder="Seu Posto/Grad">
-                      {form.posto_graduacao || "Seu Posto/Grad"}
-                    </SelectValue>
+                    <SelectValue placeholder="Seu Posto/Grad" />
                   </SelectTrigger>
                   <SelectContent>
                     {MILITARY_RANKS.map((rank) => (
@@ -490,9 +488,7 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando OMs...
                       </div>
                     ) : (
-                      <SelectValue placeholder="Selecione a OM">
-                        {form.sigla_om || "Selecione a OM"}
-                      </SelectValue>
+                      <SelectValue placeholder="Selecione a OM" />
                     )}
                   </SelectTrigger>
                   <SelectContent>
