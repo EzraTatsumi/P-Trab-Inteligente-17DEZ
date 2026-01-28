@@ -96,7 +96,7 @@ src/pages/ClasseIXForm.tsx
 src/pages/DiariaForm.tsx
 src/ptrab/components/forms/VerbaOperationalForm.tsx
 src/pages/VerbaOperationalForm.tsx
-# REMOVIDO:src/pages/SuprimentoFundosForm.tsx
+src/pages/SuprimentoFundosForm.tsx
 src/pages/DiretrizesCusteioPage.tsx
 src/pages/CusteioOperacionaisPage.tsx
 
