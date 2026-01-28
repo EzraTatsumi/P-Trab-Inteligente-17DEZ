@@ -119,7 +119,7 @@ src/components/FeedbackDialog.tsx
 src/components/RefLPCFormSection.tsx
 src/components/OmUploadConfirmDialog.tsx
 src/components/ConsolidationNumberDialog.tsx
-#REMOVIDO: src/components/PTrabCostSummary.tsx
+src/components/PTrabCostSummary.tsx
 src/components/AIChatDrawer.tsx
 src/components/ManageSharingDialog.tsx
 src/components/LinkPTrabDialog.tsx
@@ -133,9 +133,9 @@ src/components/SignupSuccessDialog.tsx
 src/pages/ResetPasswordPage.tsx
 src/pages/SharePage.tsx
 src/pages/Login.tsx
-# REMOVIDO:src/pages/PTrabManager.tsx
-# REMOVIDO:src/pages/PTrabForm.tsx
-# REMOVIDO:src/pages/PTrabReportManager.tsx
+src/pages/PTrabManager.tsx
+src/pages/PTrabForm.tsx
+src/pages/PTrabReportManager.tsx
 src/components/OmSelector.tsx
 src/components/SessionContextProvider.tsx
 src/hooks/useMilitaryOrganizations.ts
@@ -150,7 +150,7 @@ src/types/refLPC.ts
 src/types/diretrizes.ts
 src/integrations/supabase/types.ts
 src/integrations/supabase/client.ts
-# REMOVIDO: src/App.tsx
+src/App.tsx
 src/App.css
 src/index.css
 tailwind.config.ts
