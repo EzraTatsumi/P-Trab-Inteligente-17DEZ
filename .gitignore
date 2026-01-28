@@ -1,186 +1,85 @@
-# Logs
-logs
+# =========================
+# DEPENDÊNCIAS / BUILD
+# =========================
+node_modules/
+dist/
+build/
+.out/
+.next/
+coverage/
+
+# =========================
+# LOCK FILES (grandes)
+# =========================
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# =========================
+# LOGS / CACHE
+# =========================
 *.log
+*.tmp
+*.cache
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# =========================
+# AMBIENTE / SEGREDOS
+# =========================
+.env
+.env.*
+config.toml
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# =========================
+# DADOS GRANDES
+# =========================
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.json
+*.xml
+*.zip
+*.gz
+
+# =========================
+# SUPABASE (vilão nº 1)
+# =========================
+supabase/migrations/
+supabase/functions/**/node_modules/
+supabase/.temp/
+supabase/.cache/
+
+# =========================
+# IA / DYAD / CONTEXTO
+# =========================
+.llm/
+.ai/
+.context/
+.chat/
+.memory/
+.history/
+
+# =========================
+# IDE / SISTEMA
+# =========================
+.vscode/
+.idea/
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
 
-# Lovable Context Optimization
+# =========================
+# MOBILE / CAPACITOR
+# =========================
 android/
 ios/
-bun.lockb
-supabase/migrations/
-diretrizes_classe_ix_export.csv
 
-# Excluir componentes de UI gerados pelo shadcn/ui (redução de contexto)
-src/components/ui/
-
-# Excluir arquivos de dados estáticos e assets
-src/data/classeIIData.ts
-src/data/classeVIIData.ts
-src/data/classeVIIIData.ts
-src/data/classeIIIData.ts
-src/data/classeVIData.ts
-src/data/classeVData.ts
-src/assets/
-
-# EXCLUSÕES DE FUNCIONALIDADES FINALIZADAS
-# Mantendo Login.tsx e ResetPasswordPage.tsx no contexto, pois são páginas de rota
-# Removendo exclusões de componentes de autenticação ativos:
-src/components/ForgotPasswordDialog.tsx
-src/components/EmailVerificationDialog.tsx
-src/components/SignupDialog.tsx
-src/components/EmailConfirmationDialog.tsx
-
-src/components/YearManagementDialog.tsx
-src/pages/PTrabExportImportPage.tsx
-src/components/ExportPasswordDialog.tsx
-src/components/ImportPTrabOptionsDialog.tsx
-src/components/ImportConflictDialog.tsx
-src/components/MinutaNumberDialog.tsx
-src/lib/cryptoUtils.ts
-src/integrations/supabase/api.ts1
-supabase/functions/fetch-fuel-prices/index.ts
-supabase/functions/fetch-share-preview/index.ts
-
-# Excluir páginas de configuração secundária
-src/pages/VisualizacaoConfigPage.tsx
-
-# Excluir arquivos de consolidação e numeração
-src/components/PTrabConsolidationDialog.tsx
-
-# Excluir arquivos de Gerenciamento, Clonagem e Crédito
-src/components/CloneVariationDialog.tsx
-src/components/CreditPromptDialog.tsx
-src/components/CreditInputDialog.tsx
-src/components/CreditInputCard.tsx
-src/components/RmSelector.tsx
-src/components/MarkdownAccordion.tsx
-src/components/MarkdownViewer.tsx
-src/components/HelpDialog.tsx
-src/components/ClasseIIIRegistryForm.tsx
-src/hooks/useFormNavigation.ts
-src/hooks/use-mobile.tsx
-src/lib/creditUtils.ts
-
-# NOVAS EXCLUSÕES ADICIONAIS (UI e Páginas Estáticas)
-src/pages/UserProfilePage.tsx
-src/components/reports/PTrabLogisticoReport.tsx
-src/components/reports/PTrabRacaoOperacionalReport.tsx
-src/pages/ClasseIForm.tsx
-src/pages/ClasseIIForm.tsx
-src/pages/ClasseIIIForm.tsx
-src/pages/ClasseVForm.tsx
-src/pages/ClasseVIForm.tsx
-src/pages/ClasseVIIForm.tsx
-src/pages/ClasseVIIIForm.tsx
-src/pages/ClasseIXForm.tsx
-src/pages/DiariaForm.tsx
-src/ptrab/components/forms/VerbaOperationalForm.tsx
-src/pages/VerbaOperationalForm.tsx
-src/pages/SuprimentoFundosForm.tsx
-src/pages/DiretrizesCusteioPage.tsx
-src/pages/CusteioOperacionaisPage.tsx
-
-# INCLUSÃO DE ARQUIVOS ESSENCIAIS NO CONTEXTO
-
-src/lib/omUtils.ts
-src/lib/ptrabUtils.ts
-src/lib/validationSchemas.ts
-
-# NOVAS EXCLUSÕES ADICIONAIS (UI e Páginas Estáticas)
-src/components/Benefits.tsx
-src/components/Features.tsx
-src/components/Process.tsx
-src/components/Stakeholders.tsx
-src/components/Footer.tsx
-src/components/ScrollIndicatorButton.tsx
-src/pages/Index.tsx
-src/pages/NotFound.tsx
-src/components/FeedbackDialog.tsx
-src/components/RefLPCFormSection.tsx
-src/components/OmUploadConfirmDialog.tsx
-src/components/ConsolidationNumberDialog.tsx
-src/components/PTrabCostSummary.tsx
-src/components/AIChatDrawer.tsx
-src/components/ManageSharingDialog.tsx
-src/components/LinkPTrabDialog.tsx
-src/components/ShareLinkDialog.tsx
-src/components/UnlinkPTrabDialog.tsx
-src/components/ForgotPasswordDialog.tsx
-src/components/EmailConfirmationDialog.tsx
-src/components/EmailVerificationDialog.tsx
-
-src/components/SignupSuccessDialog.tsx
-src/pages/ResetPasswordPage.tsx
-src/pages/SharePage.tsx
-src/pages/Login.tsx
-src/pages/PTrabManager.tsx
-src/pages/PTrabForm.tsx
-src/pages/PTrabReportManager.tsx
-src/components/OmSelector.tsx
-src/components/SessionContextProvider.tsx
-src/hooks/useMilitaryOrganizations.ts
-src/lib/badgeUtils.ts
-src/lib/classeIIIBadgeUtils.ts
-src/lib/classeIXUtils.ts
-src/data/classeIXData.ts
-src/types/diretrizesClasseII.ts
-src/types/diretrizesClasseIX.ts
-src/types/diretrizesEquipamentos.ts
-src/types/refLPC.ts
-src/types/diretrizes.ts
-src/integrations/supabase/types.ts
-src/integrations/supabase/client.ts
-src/App.tsx
-src/App.css
-src/index.css
-tailwind.config.ts
-components.json
-tsconfig.json
-tsconfig.app.json
-tsconfig.node.json
-vite.config.ts
-eslint.config.js
-postcss.config.js
-package.json!!!!
-capacitor.config.ts
-vercel.json
-index.html
-README.md
-AI_RULES.md
-src/vite-env.d.ts
-.env
-public/robots.txt
-public/placeholder.svg
-supabase/functions/chat-ai/index.ts
-supabase/functions/delete-user/index.ts
-supabase/functions/email-exists/index.ts
-src/docs/BusinessRules.md
-src/docs/UserGuide.md
-src/docs/Architecture.md
-src/docs/SecurityCompliance.md
-src/lib/ptrabNumberUtils.ts
-src/lib/errorUtils.ts
-src/lib/ptrabUtils.ts
-src/lib/utils.ts
-src/lib/omUtils.ts
-src/lib/classeIUtils.ts
+# =========================
+# TEMP
+# =========================
+*.swp
+*.swo
+*.bak
+*.old
