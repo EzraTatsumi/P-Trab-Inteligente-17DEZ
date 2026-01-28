@@ -47,7 +47,7 @@ src/assets/
 # Removendo exclusões de componentes de autenticação ativos:
 src/components/ForgotPasswordDialog.tsx
 src/components/EmailVerificationDialog.tsx
-# REMOVIDO: src/components/SignupDialog.tsx
+src/components/SignupDialog.tsx
 src/components/EmailConfirmationDialog.tsx
 
 src/components/YearManagementDialog.tsx
@@ -136,7 +136,7 @@ src/pages/Login.tsx
 # REMOVIDO:src/pages/PTrabManager.tsx
 # REMOVIDO:src/pages/PTrabForm.tsx
 # REMOVIDO:src/pages/PTrabReportManager.tsx
-# REMOVIDO:src/components/OmSelector.tsx
+src/components/OmSelector.tsx
 src/components/SessionContextProvider.tsx
 src/hooks/useMilitaryOrganizations.ts
 src/lib/badgeUtils.ts
