@@ -77,8 +77,7 @@ interface PTrabLogisticoReportProps {
   generateClasseVIIMemoriaCalculo: (registro: any) => string;
   // NOVO PROP: Receber a função de geração de memória de cálculo da Classe VIII
   generateClasseVIIIMemoriaCalculo: (registro: any) => string;
-  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe III (granular)
-  generateClasseIIIMemoriaCalculo: (registro: ClasseIIIRegistro) => string;
+  // REMOVIDO: generateClasseIIIMemoriaCalculo: (registro: ClasseIIIRegistro) => string;
 }
 
 // Implementação padrão (fallback) para generateClasseIIMemoriaCalculo
@@ -202,12 +201,6 @@ const defaultGenerateClasseVIIIMemoriaCalculo = (registro: any): string => {
     return registro.detalhamento || "Memória de cálculo não disponível.";
 };
 
-// Implementação padrão (fallback) para generateClasseIIIMemoriaCalculo
-const defaultGenerateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro): string => {
-    // Se não for passada a função do Manager, retorna o detalhamento consolidado (fallback)
-    return registro.detalhamento_customizado || registro.detalhamento || "Memória de cálculo não disponível.";
-};
-
 
 // =================================================================
 // FUNÇÕES AUXILIARES DE RÓTULO
@@ -243,7 +236,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   generateClasseVIMemoriaCalculo = defaultGenerateClasseVIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VI
   generateClasseVIIMemoriaCalculo = defaultGenerateClasseVIIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VII
   generateClasseVIIIMemoriaCalculo = defaultGenerateClasseVIIIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VIII
-  generateClasseIIIMemoriaCalculo = defaultGenerateClasseIIIMemoriaCalculo, // NOVO: ADICIONADO CLASSE III
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -371,7 +363,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, valorTotalSolicitado, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo, totalDiesel, totalGasolina, totalValorCombustivelFinal]);
+  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, valorTotalSolicitado, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateVIIIMemoriaCalculo, totalDiesel, totalGasolina, totalValorCombustivelFinal]);
 
   // NOVO: Função para abrir o diálogo de impressão do navegador
   const handlePrint = () => {
@@ -723,7 +715,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     rowData.precoTotalH = '';
                 }
                 
-                rowData.detalhamentoValue = generateClasseIIIMemoriaCalculo(registro);
+                // *** MUDANÇA CRÍTICA: Usar a memória pré-calculada granular ***
+                rowData.detalhamentoValue = linhaClasseIII.memoria_calculo;
                 
             } else if (isClasseII_IX) { // Classes II, V, VI, VII, VIII, IX
                 const registro = (linha as LinhaClasseII).registro as ClasseIIRegistro;
@@ -1077,7 +1070,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     }
-  }, [ptrabData, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, totalGeral_33_90_30, totalGeral_33_90_39, totalGeral_GND3_ND, valorTotalSolicitado, totalDiesel, totalGasolina, totalValorCombustivelFinal, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, generateClasseVIIIMemoriaCalculo, generateClasseIIIMemoriaCalculo]);
+  }, [ptrabData, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, totalGeral_33_90_30, totalGeral_33_90_39, totalGeral_GND3_ND, valorTotalSolicitado, totalDiesel, totalGasolina, totalValorCombustivelFinal, fileSuffix, generateClasseIMemoriaCalculo, generateClasseIIMemoriaCalculo, generateClasseVMemoriaCalculo, generateClasseVIMemoriaCalculo, generateClasseVIIMemoriaCalculo, generateClasseVIIIMemoriaCalculo]);
 
 
   if (!ptrabData) return null;
@@ -1286,7 +1279,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                                 rowData.precoTotalH = '';
                             }
                             
-                            rowData.detalhamentoValue = generateClasseIIIMemoriaCalculo(registro);
+                            // *** MUDANÇA CRÍTICA: Usar a memória pré-calculada granular ***
+                            rowData.detalhamentoValue = linhaClasseIII.memoria_calculo;
                             
                         } else if (isClasseII_IX) { // Classes II, V, VI, VII, VIII, IX
                             const registro = (linha as LinhaClasseII).registro as ClasseIIRegistro;

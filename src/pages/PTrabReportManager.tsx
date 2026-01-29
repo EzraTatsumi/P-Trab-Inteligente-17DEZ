@@ -215,7 +215,7 @@ export interface LinhaClasseIII {
   valor_total_linha: number;
   total_litros_linha: number;
   preco_litro_linha: number;
-  memoria_calculo: string;
+  memoria_calculo: string; // Armazena a memória de cálculo granular
 }
 
 // NOVO TIPO: Estrutura granular para geração de memória da Classe III
@@ -528,124 +528,6 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
 };
 
 /**
- * Função para gerar a memória de cálculo da Classe III (Combustível/Lubrificante)
- * no nível granular (o mesmo nível de detalhe da edição do usuário).
- */
-export const generateClasseIIIMemoriaCalculo = (registro: ClasseIIIRegistro, refLPC: RefLPC | null): string => {
-    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
-        return registro.detalhamento_customizado;
-    }
-    
-    const itens = registro.itens_equipamentos || [];
-    
-    if (registro.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO') {
-        
-        let finalMemoria = "";
-        
-        const gruposPorCombustivel = itens.reduce((grupos, item) => {
-            const tipo = item.tipo_combustivel_fixo;
-            if (!grupos[tipo]) grupos[tipo] = [];
-            grupos[tipo].push(item);
-            return grupos;
-        }, {} as Record<'GASOLINA' | 'DIESEL', ItemClasseIII[]>);
-        
-        Object.entries(gruposPorCombustivel).forEach(([tipoCombustivel, itensGrupo]) => {
-            itensGrupo.forEach(item => {
-                if (item.memoria_customizada && item.memoria_customizada.trim().length > 0) {
-                    finalMemoria += item.memoria_customizada + "\n\n";
-                    return;
-                }
-                
-                const suprimento_tipo = item.tipo_combustivel_fixo === 'GASOLINA' ? 'COMBUSTIVEL_GASOLINA' : 'COMBUSTIVEL_DIESEL';
-                
-                const granularItem: GranularDisplayItem = {
-                    id: `${registro.id}-${item.item}-${suprimento_tipo}`,
-                    om_destino: registro.organizacao,
-                    ug_destino: registro.ug,
-                    categoria: item.categoria,
-                    suprimento_tipo: suprimento_tipo,
-                    valor_total: 0,
-                    total_litros: 0,
-                    preco_litro: registro.preco_litro,
-                    dias_operacao: registro.dias_operacao,
-                    fase_atividade: registro.fase_atividade || '',
-                    valor_nd_30: registro.valor_nd_30,
-                    valor_nd_39: registro.valor_nd_39,
-                    original_registro: registro,
-                    detailed_items: [item],
-                };
-                
-                const rmFornecimento = registro.om_detentora || '';
-                const codugRmFornecimento = registro.ug_detentora || '';
-                
-                const totals = calculateItemTotals(item, refLPC, registro.dias_operacao);
-                granularItem.valor_total = totals.valorCombustivel;
-                granularItem.total_litros = totals.totalLitros;
-                
-                finalMemoria += generateClasseIIIGranularUtility(
-                    granularItem, 
-                    refLPC, 
-                    rmFornecimento, 
-                    codugRmFornecimento
-                ) + "\n\n";
-            });
-        });
-        
-        return finalMemoria.trim();
-        
-    } else if (registro.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO') {
-        
-        const gruposPorCategoria = itens.reduce((grupos, item) => {
-            const categoria = item.categoria;
-            if (!grupos[categoria]) grupos[categoria] = [];
-            grupos[categoria].push(item);
-            return grupos;
-        }, {} as Record<'GERADOR' | 'EMBARCACAO', ItemClasseIII[]>);
-        
-        let finalMemoria = "";
-        
-        Object.entries(gruposPorCategoria).forEach(([categoria, itensGrupo]) => {
-            const itemComMemoria = itensGrupo.find(i => !!i.memoria_customizada) || itensGrupo[0];
-            if (itemComMemoria && itemComMemoria.memoria_customizada && itemComMemoria.memoria_customizada.trim().length > 0) {
-                finalMemoria += itemComMemoria.memoria_customizada + "\n\n";
-                return;
-            }
-            
-            const omDestinoLubrificante = registro.om_detentora || '';
-            const ugDestinoLubrificante = registro.ug_detentora || '';
-            
-            const granularItem: GranularDisplayItem = {
-                id: `${registro.id}-${categoria}-LUBRIFICANTE`,
-                om_destino: registro.organizacao,
-                ug_destino: registro.ug,
-                categoria: categoria as any,
-                suprimento_tipo: 'LUBRIFICANTE',
-                valor_total: registro.valor_total,
-                total_litros: registro.total_litros,
-                preco_litro: 0,
-                dias_operacao: registro.dias_operacao,
-                fase_atividade: registro.fase_atividade || '',
-                valor_nd_30: registro.valor_nd_30,
-                valor_nd_39: registro.valor_nd_39,
-                original_registro: registro,
-                detailed_items: itensGrupo,
-            };
-            
-            finalMemoria += generateClasseIIIGranularUtility(
-                granularItem, 
-                refLPC, 
-                omDestinoLubrificante, 
-                ugDestinoLubrificante
-            ) + "\n\n";
-        });
-        
-        return finalMemoria.trim();
-    }
-    
-    return registro.detalhamento || "Memória de cálculo não disponível.";
-};
-
-/**
  * Função unificada para gerar a memória de cálculo da Diária, priorizando o customizado.
  */
 export const generateDiariaMemoriaCalculoUnificada = (
@@ -669,7 +551,7 @@ export const generateDiariaMemoriaCalculoUnificada = (
 /**
  * Função unificada para gerar a memória de cálculo da Verba Operacional, priorizando o customizado.
  */
-export const generateVerbaOperacionalMemoriaCalculoUnificada = (
+export const generateVerbaOperacionalMemoriaCalculada = (
     registro: VerbaOperacionalRegistro
 ): string => {
     if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
@@ -683,7 +565,7 @@ export const generateVerbaOperacionalMemoriaCalculoUnificada = (
 /**
  * Função unificada para gerar a memória de cálculo do Suprimento de Fundos, priorizando o customizado.
  */
-export const generateSuprimentoFundosMemoriaCalculoUnificada = (
+export const generateSuprimentoFundosMemoriaCalculada = (
     registro: VerbaOperacionalRegistro
 ): string => {
     if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
@@ -1001,8 +883,10 @@ const PTrabReportManager = () => {
             
             let omDestinoRecurso: string;
             if (isCombustivel) {
+                // Para Combustível, o recurso vai para a OM Fornecedora (om_detentora) se for diferente da OM que usa (organizacao)
                 omDestinoRecurso = registro.om_detentora || registro.organizacao;
             } else {
+                // Para Lubrificante, o recurso vai para a OM que usa (organizacao)
                 omDestinoRecurso = registro.organizacao;
             }
             
@@ -1010,6 +894,7 @@ const PTrabReportManager = () => {
             
             const itens = registro.itens_equipamentos || [];
             
+            // Agrupa os itens granulares por Categoria (GERADOR, EMBARCACAO, etc.)
             const gruposGranulares: Record<string, ItemClasseIII[]> = {};
             
             itens.forEach(item => {
@@ -1030,11 +915,10 @@ const PTrabReportManager = () => {
                 itensGrupo.forEach(item => {
                     const totals = calculateItemTotals(item, refLPC, registro.dias_operacao);
                     if (isCombustivel) {
-                        if (item.tipo_combustivel_fixo === registro.tipo_combustivel) {
-                            totalLitrosLinha += totals.totalLitros;
-                            valorTotalLinha += totals.valorCombustivel;
-                            precoLitroLinha = totals.precoLitro;
-                        }
+                        totalLitrosLinha += totals.totalLitros;
+                        valorTotalLinha += totals.valorCombustivel;
+                        precoLitroLinha = totals.precoLitro; // Deve ser o mesmo para todos os itens do mesmo tipo de combustível/OM
+                        
                     } else if (isLubrificante) {
                         totalLitrosLinha += totals.litrosLubrificante;
                         valorTotalLinha += totals.valorLubrificante;
@@ -1042,7 +926,7 @@ const PTrabReportManager = () => {
                     }
                 });
                 
-                if (valorTotalLinha === 0) return;
+                if (valorTotalLinha === 0 && totalLitrosLinha === 0) return;
 
                 const tipoSuprimento: LinhaClasseIII['tipo_suprimento'] = isCombustivel 
                     ? (primeiroItem.tipo_combustivel_fixo === 'GASOLINA' ? 'COMBUSTIVEL_GASOLINA' : 'COMBUSTIVEL_DIESEL')
@@ -1053,8 +937,8 @@ const PTrabReportManager = () => {
                 const omFornecedora = registro.om_detentora || '';
                 const ugFornecedora = registro.ug_detentora || '';
                 
-                const omDestinoLubrificante = registro.om_detentora || '';
-                const ugDestinoLubrificante = registro.ug_detentora || '';
+                const omDestinoLubrificante = registro.organizacao; // Lubrificante é consumido na OM que usa
+                const ugDestinoLubrificante = registro.ug;
                 
                 const granularItem: GranularDisplayItem = {
                     id: `${registro.id}-${categoriaKey}-${tipoSuprimento}`,
@@ -1070,7 +954,7 @@ const PTrabReportManager = () => {
                     valor_nd_30: isCombustivel ? valorTotalLinha : (isLubrificante ? valorTotalLinha : 0),
                     valor_nd_39: 0,
                     original_registro: registro,
-                    detailed_items: itensGrupo,
+                    detailed_items: itensGrupo, // Passa apenas os itens deste grupo granular
                 };
                 
                 const itemComMemoria = itensGrupo.find(i => !!i.memoria_customizada) || itensGrupo[0];
@@ -1232,7 +1116,6 @@ const PTrabReportManager = () => {
             generateClasseVIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)}
             generateClasseVIIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)}
             generateClasseVIIIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)}
-            generateClasseIIIMemoriaCalculo={(registro) => generateClasseIIIMemoriaCalculo(registro, refLPC)}
           />
         );
       case 'racao_operacional':
@@ -1254,8 +1137,8 @@ const PTrabReportManager = () => {
                 diretrizesOperacionais={diretrizesOperacionais}
                 fileSuffix={fileSuffix}
                 generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada}
-                generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculoUnificada}
-                generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculoUnificada} // NOVO PROP
+                generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada}
+                generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada} // NOVO PROP
             />
         );
       case 'material_permanente':
