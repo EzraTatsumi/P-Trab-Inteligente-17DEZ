@@ -43,7 +43,7 @@ const DIARIA_RANKS_CONFIG = [
 
 // Mapeamento de campos para rótulos e tipo de input (R$ ou Fator)
 const OPERATIONAL_FIELDS = [
-  { key: 'fator_passagens_aereas', label: 'Passagens Aéreas (Fator)', type: 'factor' as const, placeholder: 'Ex: 1.5 (para 150%)' },
+  // { key: 'fator_passagens_aereas', label: 'Passagens Aéreas (Fator)', type: 'factor' as const, placeholder: 'Ex: 1.5 (para 150%)' }, // REMOVIDO
   { key: 'fator_servicos_terceiros', label: 'Serviços de Terceiros (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.10 (para 10%)' },
   { key: 'valor_verba_operacional_dia', label: 'Verba Operacional (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 50,00' },
   { key: 'valor_suprimentos_fundo_dia', label: 'Suprimentos de Fundos (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 20,00' },
@@ -58,7 +58,7 @@ const OPERATIONAL_FIELDS = [
 // Valores padrão para inicialização (incluindo os novos campos de diária)
 const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   ano_referencia: year,
-  fator_passagens_aereas: 0,
+  fator_passagens_aereas: 0, // Mantido no default, mas não exibido no formulário principal
   fator_servicos_terceiros: 0,
   valor_verba_operacional_dia: 0,
   valor_suprimentos_fundo_dia: 0,
