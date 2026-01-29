@@ -16,7 +16,8 @@ export interface TrechoSelection extends TrechoPassagem {
     diretriz_id: string;
     om_detentora: string;
     ug_detentora: string;
-    quantidade_passagens: number; // Quantidade solicitada para este trecho (assumida como 1 na seleção inicial)
+    quantidade_passagens: number; // Quantidade solicitada para este trecho
+    // Nota: O ID do trecho é herdado de TrechoPassagem (propriedade 'id')
 }
 
 interface PassagemTrechoSelectorDialogProps {
@@ -79,13 +80,14 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
     }, [currentSelections]);
 
     const isSelected = (trechoId: string): boolean => {
-        // Verifica se o trecho está na lista de seleções atuais
-        return currentSelections.some(t => t.trecho_id === trechoId);
+        // Usa 'id' (herdado de TrechoPassagem) para verificar a seleção
+        return currentSelections.some(t => t.id === trechoId);
     };
 
     const handleSelectionChange = (trechoId: string, isChecked: boolean, diretriz: DiretrizPassagem, trecho: TrechoPassagem) => {
         setCurrentSelections(prev => {
-            const existingIndex = prev.findIndex(t => t.trecho_id === trechoId);
+            // Usa 'id' para encontrar o índice existente
+            const existingIndex = prev.findIndex(t => t.id === trechoId);
             
             if (isChecked) {
                 // Adiciona seleção (se não existir)
@@ -104,7 +106,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                 return prev; 
             } else {
                 // Remove seleção
-                return prev.filter(t => t.trecho_id !== trechoId);
+                return prev.filter(t => t.id !== trechoId);
             }
         });
     };
@@ -182,7 +184,9 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                                                             <TableCell>
                                                                 <Checkbox 
                                                                     checked={isTrechoSelected}
-                                                                    onCheckedChange={(checked) => handleSelectionChange(trecho.id, checked as boolean, diretriz, trecho)}
+                                                                    // CORREÇÃO 1: Garantir que 'checked' é boolean puro (true)
+                                                                    // CORREÇÃO 2: Usar trecho.id para consistência
+                                                                    onCheckedChange={(checked) => handleSelectionChange(trecho.id, checked === true, diretriz, trecho)}
                                                                 />
                                                             </TableCell>
                                                             <TableCell className="font-medium">
