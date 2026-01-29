@@ -123,8 +123,8 @@ const compareFormData = (data1: PassagemFormState, data2: PassagemFormState) => 
     }
     
     // Comparar detalhes dos trechos (IDs e quantidades)
-    const trechos1 = data1.selected_trechos.map(t => `${t.trecho_id}-${t.quantidade_passagens}`).sort().join('|');
-    const trechos2 = data2.selected_trechos.map(t => `${t.trecho_id}-${t.quantidade_passagens}`).sort().join('|');
+    const trechos1 = data1.selected_trechos.map(t => `${t.id}-${t.quantidade_passagens}`).sort().join('|');
+    const trechos2 = data2.selected_trechos.map(t => `${t.id}-${t.quantidade_passagens}`).sort().join('|');
     
     if (trechos1 !== trechos2) {
         return true;
@@ -275,7 +275,7 @@ const PassagemForm = () => {
                     om_detentora: trecho.om_detentora,
                     ug_detentora: trecho.ug_detentora,
                     diretriz_id: trecho.diretriz_id,
-                    trecho_id: trecho.trecho_id,
+                    trecho_id: trecho.id, // Usar 'id' do trecho
                     origem: trecho.origem,
                     destino: trecho.destino,
                     tipo_transporte: trecho.tipo_transporte,
@@ -413,10 +413,10 @@ const PassagemForm = () => {
         
         // 2. Reconstruir a lista de trechos selecionados a partir dos dados do registro
         const trechoFromRecord: TrechoSelection = {
+            id: registro.trecho_id, // Usar trecho_id como id
+            diretriz_id: registro.diretriz_id,
             om_detentora: registro.om_detentora,
             ug_detentora: registro.ug_detentora,
-            diretriz_id: registro.diretriz_id,
-            trecho_id: registro.trecho_id,
             origem: registro.origem,
             destino: registro.destino,
             tipo_transporte: registro.tipo_transporte as TipoTransporte,
@@ -457,7 +457,7 @@ const PassagemForm = () => {
             om_detentora: trechoFromRecord.om_detentora,
             ug_detentora: trechoFromRecord.ug_detentora,
             diretriz_id: trechoFromRecord.diretriz_id,
-            trecho_id: trechoFromRecord.trecho_id,
+            trecho_id: trechoFromRecord.id, // Usar id do trecho
             origem: trechoFromRecord.origem,
             destino: trechoFromRecord.destino,
             tipo_transporte: trechoFromRecord.tipo_transporte,
@@ -539,11 +539,10 @@ const PassagemForm = () => {
                 fase_atividade: formData.fase_atividade,
                 
                 // Campos de Trecho (usamos o primeiro trecho para preencher os campos DB legados)
-                // OM Detentora/UG Detentora no DB é a OM Destino do Recurso
                 om_detentora: formData.om_destino,
                 ug_detentora: formData.ug_destino,
                 diretriz_id: firstTrecho.diretriz_id,
-                trecho_id: firstTrecho.trecho_id,
+                trecho_id: firstTrecho.id, // Usar id do trecho
                 origem: firstTrecho.origem,
                 destino: firstTrecho.destino,
                 tipo_transporte: firstTrecho.tipo_transporte,
@@ -713,7 +712,7 @@ const PassagemForm = () => {
         
         setFormData(prev => {
             const newSelections = prev.selected_trechos.map(t => 
-                t.trecho_id === trechoId ? { ...t, quantidade_passagens: quantity } : t
+                t.id === trechoId ? { ...t, quantidade_passagens: quantity } : t
             ).filter(t => t.quantidade_passagens > 0); // Remove se a quantidade for zero
             
             return {
@@ -730,10 +729,10 @@ const PassagemForm = () => {
         
         // 1. Reconstruir o TrechoSelection para gerar a memória automática
         const trechoFromRecord: TrechoSelection = {
+            id: registro.trecho_id, // Usar trecho_id como id
             om_detentora: registro.om_detentora,
             ug_detentora: registro.ug_detentora,
             diretriz_id: registro.diretriz_id,
-            trecho_id: registro.trecho_id,
             origem: registro.origem,
             destino: registro.destino,
             tipo_transporte: registro.tipo_transporte as TipoTransporte,
@@ -770,7 +769,7 @@ const PassagemForm = () => {
                 om_detentora: trecho.om_detentora,
                 ug_detentora: trecho.ug_detentora,
                 diretriz_id: trecho.diretriz_id,
-                trecho_id: trecho.trecho_id,
+                trecho_id: trecho.id, // Usar id do trecho
                 origem: trecho.origem,
                 destino: trecho.destino,
                 tipo_transporte: trecho.tipo_transporte,
@@ -873,7 +872,7 @@ const PassagemForm = () => {
                     om_detentora: r.om_detentora,
                     ug_detentora: r.ug_detentora,
                     diretriz_id: firstTrecho.diretriz_id,
-                    trecho_id: firstTrecho.trecho_id,
+                    trecho_id: firstTrecho.id, // Usar id do trecho
                     origem: firstTrecho.origem,
                     destino: firstTrecho.destino,
                     tipo_transporte: firstTrecho.tipo_transporte,
@@ -935,7 +934,7 @@ const PassagemForm = () => {
                 om_detentora: rest.om_detentora,
                 ug_detentora: rest.ug_detentora,
                 diretriz_id: firstTrecho.diretriz_id,
-                trecho_id: firstTrecho.trecho_id,
+                trecho_id: firstTrecho.id, // Usar id do trecho
                 origem: firstTrecho.origem,
                 destino: firstTrecho.destino,
                 tipo_transporte: firstTrecho.tipo_transporte,
@@ -1206,37 +1205,18 @@ const PassagemForm = () => {
                                                                     const totalTrecho = calculateTrechoTotal(trecho);
                                                                     
                                                                     return (
-                                                                        <TableRow key={trecho.trecho_id}>
+                                                                        <TableRow key={trecho.id}>
                                                                             <TableCell className="font-bold w-[100px]">
                                                                                 <div className="flex items-center gap-1">
-                                                                                    <Button 
-                                                                                        type="button" 
-                                                                                        variant="outline" 
-                                                                                        size="icon" 
-                                                                                        className="h-6 w-6"
-                                                                                        onClick={() => handleTrechoQuantityChange(trecho.trecho_id, trecho.quantidade_passagens - 1)}
-                                                                                        disabled={!isPTrabEditable || isSaving}
-                                                                                    >
-                                                                                        <Minus className="h-3 w-3" />
-                                                                                    </Button>
+                                                                                    {/* Botões de incremento/decremento removidos */}
                                                                                     <Input
                                                                                         type="number"
-                                                                                        min={0}
+                                                                                        min={1}
                                                                                         value={trecho.quantidade_passagens === 0 ? "" : trecho.quantidade_passagens}
-                                                                                        onChange={(e) => handleTrechoQuantityChange(trecho.trecho_id, parseInt(e.target.value) || 0)}
-                                                                                        className="w-16 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                        onChange={(e) => handleTrechoQuantityChange(trecho.id, parseInt(e.target.value) || 0)}
+                                                                                        className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                                         disabled={!isPTrabEditable || isSaving}
                                                                                     />
-                                                                                    <Button 
-                                                                                        type="button" 
-                                                                                        variant="outline" 
-                                                                                        size="icon" 
-                                                                                        className="h-6 w-6"
-                                                                                        onClick={() => handleTrechoQuantityChange(trecho.trecho_id, trecho.quantidade_passagens + 1)}
-                                                                                        disabled={!isPTrabEditable || isSaving}
-                                                                                    >
-                                                                                        <Plus className="h-3 w-3" />
-                                                                                    </Button>
                                                                                 </div>
                                                                             </TableCell>
                                                                             <TableCell>
@@ -1550,10 +1530,10 @@ const PassagemForm = () => {
                                         
                                         // 1. Reconstruir o TrechoSelection para gerar a memória automática
                                         const trechoFromRecord: TrechoSelection = {
+                                            id: registro.trecho_id, // Usar trecho_id como id
                                             om_detentora: registro.om_detentora,
                                             ug_detentora: registro.ug_detentora,
                                             diretriz_id: registro.diretriz_id,
-                                            trecho_id: registro.trecho_id,
                                             origem: registro.origem,
                                             destino: registro.destino,
                                             tipo_transporte: registro.tipo_transporte as TipoTransporte,
@@ -1590,7 +1570,7 @@ const PassagemForm = () => {
                                                 om_detentora: trecho.om_detentora,
                                                 ug_detentora: trecho.ug_detentora,
                                                 diretriz_id: trecho.diretriz_id,
-                                                trecho_id: trecho.trecho_id,
+                                                trecho_id: trecho.id, // Usar id do trecho
                                                 origem: trecho.origem,
                                                 destino: trecho.destino,
                                                 tipo_transporte: trecho.tipo_transporte,
