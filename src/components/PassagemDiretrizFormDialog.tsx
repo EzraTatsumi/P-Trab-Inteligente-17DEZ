@@ -400,7 +400,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                     </Card>
                 </div>
 
-                <div className="flex justify-between gap-2 pt-4 border-t">
+                <div className="flex justify-end gap-2 pt-4 border-t">
                     <Button 
                         type="button" 
                         onClick={handleSave}
