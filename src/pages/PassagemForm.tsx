@@ -716,8 +716,7 @@ const PassagemForm = () => {
                 t.id === trechoId ? { ...t, quantidade_passagens: quantity } : t
             );
             
-            // IMPORTANTE: Removemos a filtragem que removia o trecho se a quantidade fosse zero.
-            // O trecho só deve ser removido pelo diálogo de seleção.
+            // Não remove o trecho se a quantidade for zero.
             return {
                 ...prev,
                 selected_trechos: newSelections,
@@ -1209,12 +1208,13 @@ const PassagemForm = () => {
                                                                     
                                                                     return (
                                                                         <TableRow key={trecho.id}>
-                                                                            <TableCell className="font-bold w-[100px]">
+                                                                            <TableCell className="w-[100px]">
                                                                                 <div className="flex items-center justify-center gap-1">
                                                                                     <Input
                                                                                         type="number"
-                                                                                        min={0} // Permitir 0, mas a validação final exige > 0
-                                                                                        value={trecho.quantidade_passagens} // Exibe 0 se for 0
+                                                                                        min={0} 
+                                                                                        placeholder="Ex: 3"
+                                                                                        value={trecho.quantidade_passagens === 0 ? "" : trecho.quantidade_passagens}
                                                                                         onChange={(e) => handleTrechoQuantityChange(trecho.id, parseInt(e.target.value) || 0)}
                                                                                         className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                                         disabled={!isPTrabEditable || isSaving}
