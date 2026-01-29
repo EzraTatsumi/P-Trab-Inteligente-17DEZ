@@ -1045,30 +1045,8 @@ const PassagemForm = () => {
                                             <CardContent className="pt-2">
                                                 <div className="p-4 bg-background rounded-lg border">
                                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                        {/* OM DESTINO DO RECURSO (MOVIDO PARA CÁ) */}
-                                                        <div className="space-y-2 col-span-1">
-                                                            <Label htmlFor="om_destino">OM Destino do Recurso *</Label>
-                                                            <OmSelector
-                                                                selectedOmId={selectedOmDestinoId}
-                                                                onChange={handleOmDestinoChange}
-                                                                placeholder="Selecione a OM Destino"
-                                                                disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingPassagens.length > 0}
-                                                                initialOmName={editingId ? formData.om_destino : undefined}
-                                                                initialOmUg={editingId ? formData.ug_destino : undefined}
-                                                            />
-                                                        </div>
-                                                        {/* UG DESTINO (MOVIDO PARA CÁ) */}
-                                                        <div className="space-y-2 col-span-1">
-                                                            <Label htmlFor="ug_destino">UG Destino</Label>
-                                                            <Input
-                                                                id="ug_destino"
-                                                                value={formatCodug(formData.ug_destino)}
-                                                                disabled
-                                                                className="bg-muted/50"
-                                                            />
-                                                        </div>
                                                         
-                                                        {/* CAMPO: DIAS OPERAÇÃO */}
+                                                        {/* CAMPO 1: DIAS OPERAÇÃO (Período) */}
                                                         <div className="space-y-2 col-span-1">
                                                             <Label htmlFor="dias_operacao">Período (Nr Dias) *</Label>
                                                             <Input
@@ -1085,7 +1063,8 @@ const PassagemForm = () => {
                                                                 className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                             />
                                                         </div>
-                                                        {/* CAMPO: EFETIVO */}
+                                                        
+                                                        {/* CAMPO 2: EFETIVO */}
                                                         <div className="space-y-2 col-span-1">
                                                             <Label htmlFor="efetivo">Efetivo *</Label>
                                                             <Input
@@ -1101,6 +1080,29 @@ const PassagemForm = () => {
                                                                 onWheel={(e) => e.currentTarget.blur()}
                                                                 className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                             />
+                                                        </div>
+                                                        
+                                                        {/* CAMPO 3 & 4: OM DESTINO E UG DESTINO (Agrupados) */}
+                                                        <div className="space-y-2 col-span-1">
+                                                            <Label htmlFor="om_destino">OM Destino do Recurso *</Label>
+                                                            <OmSelector
+                                                                selectedOmId={selectedOmDestinoId}
+                                                                onChange={handleOmDestinoChange}
+                                                                placeholder="Selecione a OM Destino"
+                                                                disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingPassagens.length > 0}
+                                                                initialOmName={editingId ? formData.om_destino : undefined}
+                                                                initialOmUg={editingId ? formData.ug_destino : undefined}
+                                                            />
+                                                            {/* UG DESTINO (Pequeno, abaixo da OM Destino) */}
+                                                            <div className="space-y-1 pt-1">
+                                                                <Label htmlFor="ug_destino" className="text-xs text-muted-foreground">UG Destino</Label>
+                                                                <Input
+                                                                    id="ug_destino"
+                                                                    value={formatCodug(formData.ug_destino)}
+                                                                    disabled
+                                                                    className="bg-muted/50 h-8 text-sm"
+                                                                />
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
