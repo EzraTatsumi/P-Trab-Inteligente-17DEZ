@@ -58,7 +58,7 @@ const PTrabForm = () => {
     { id: "locacao-viatura", name: "Locação de Viatura" },
     { id: "locacao-estruturas", name: "Locação de Estruturas" },
     { id: "servico-grafico", name: "Serviço Gráfico" },
-    { id: "passagem-aerea", name: "Passagem Aérea" },
+    { id: "passagem-aerea", name: "Passagens" }, // Rótulo alterado
     { id: "diaria", name: "Pagamento de Diárias" },
     { id: "verba-operacional", name: "Verba Operacional" },
     { id: "suprimento-fundos", name: "Suprimento de Fundos" }, // NOVO ITEM
@@ -196,6 +196,8 @@ const PTrabForm = () => {
       navigate(`/ptrab/verba-operacional?ptrabId=${ptrabId}`);
     } else if (itemId === 'suprimento-fundos') {
       navigate(`/ptrab/suprimento-fundos?ptrabId=${ptrabId}`);
+    } else if (itemId === 'passagem-aerea') {
+      navigate(`/ptrab/passagem-aerea?ptrabId=${ptrabId}`);
     } else {
       // Trata itens operacionais não implementados
       toast.info(`Funcionalidade '${itemName}' (Operacional) ainda não implementada.`);
