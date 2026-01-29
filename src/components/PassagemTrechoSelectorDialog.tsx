@@ -58,6 +58,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
     initialSelections,
 }) => {
     const [currentSelections, setCurrentSelections] = useState<TrechoSelection[]>(initialSelections);
+    // Inicializa o estado de colapso para que todos os contratos comecem FECHADOS
     const [collapseState, setCollapseState] = useState<Record<string, boolean>>({});
 
     const { data: diretrizes, isLoading, isError } = useQuery({
@@ -71,8 +72,17 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
         if (open) {
             // Filtra para garantir que apenas trechos com quantidade > 0 sejam mantidos
             setCurrentSelections(initialSelections.filter(t => t.quantidade_passagens > 0));
+            
+            // Garante que todos os contratos comecem fechados ao abrir o diálogo
+            if (diretrizes) {
+                const initialCollapseState: Record<string, boolean> = {};
+                diretrizes.forEach(d => {
+                    initialCollapseState[d.id] = false; // Começa fechado
+                });
+                setCollapseState(initialCollapseState);
+            }
         }
-    }, [open, initialSelections]);
+    }, [open, initialSelections, diretrizes]);
     
     // Calcula o total de trechos selecionados
     const totalTrechosSelecionados = useMemo(() => {
@@ -148,7 +158,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                             {diretrizes.map(diretriz => (
                                 <Collapsible 
                                     key={diretriz.id} 
-                                    open={collapseState[diretriz.id] ?? true} // ABRIR POR PADRÃO
+                                    open={collapseState[diretriz.id] ?? false} // Começa fechado
                                     onOpenChange={() => handleToggleCollapse(diretriz.id)}
                                     className="border rounded-lg"
                                 >
@@ -179,14 +189,31 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                                                 {diretriz.trechos.map(trecho => {
                                                     const isTrechoSelected = isSelected(trecho.id);
                                                     
+                                                    // Função de toggle para a linha
+                                                    const toggleSelection = () => {
+                                                        handleSelectionChange(trecho.id, !isTrechoSelected, diretriz, trecho);
+                                                    };
+
                                                     return (
-                                                        <TableRow key={trecho.id} className={cn(isTrechoSelected && "bg-green-500/10 hover:bg-green-500/20")}>
+                                                        <TableRow 
+                                                            key={trecho.id} 
+                                                            className={cn(
+                                                                "cursor-pointer",
+                                                                isTrechoSelected ? "bg-green-500/10 hover:bg-green-500/20" : "hover:bg-muted/50"
+                                                            )}
+                                                            onClick={toggleSelection}
+                                                        >
                                                             <TableCell>
                                                                 <Checkbox 
                                                                     checked={isTrechoSelected}
-                                                                    // CORREÇÃO 1: Garantir que 'checked' é boolean puro (true)
-                                                                    // CORREÇÃO 2: Usar trecho.id para consistência
-                                                                    onCheckedChange={(checked) => handleSelectionChange(trecho.id, checked === true, diretriz, trecho)}
+                                                                    // Previne que o clique no checkbox dispare o clique na linha duas vezes
+                                                                    onCheckedChange={(checked) => {
+                                                                        // O clique na linha já trata o toggle. 
+                                                                        // Se o usuário clicar diretamente no checkbox, garantimos a consistência.
+                                                                        handleSelectionChange(trecho.id, checked === true, diretriz, trecho);
+                                                                    }}
+                                                                    // Adiciona onClick para parar a propagação e evitar duplo toggle
+                                                                    onClick={(e) => e.stopPropagation()}
                                                                 />
                                                             </TableCell>
                                                             <TableCell className="font-medium">
