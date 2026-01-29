@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { Pencil, Trash2, ChevronDown, ChevronUp, Plane, Car, Ship } from "lucide-react";
+import { Pencil, Trash2, ChevronDown, ChevronUp, Plane, Bus, Ship } from "lucide-react";
 import { formatCurrency, formatCodug } from "@/lib/formatUtils";
 import { DiretrizPassagem, TrechoPassagem, TipoTransporte } from "@/types/diretrizesPassagens";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -17,7 +17,7 @@ interface PassagemDiretrizRowProps {
 const getTransportIcon = (tipo: TipoTransporte) => {
     switch (tipo) {
         case 'AÉREO': return <Plane className="h-4 w-4 text-blue-600" />;
-        case 'TERRESTRE': return <Car className="h-4 w-4 text-green-600" />;
+        case 'TERRESTRE': return <Bus className="h-4 w-4 text-green-600" />;
         case 'FLUVIAL': return <Ship className="h-4 w-4 text-cyan-600" />;
         default: return null;
     }
