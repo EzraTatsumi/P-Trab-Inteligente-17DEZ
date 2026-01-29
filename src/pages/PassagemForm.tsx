@@ -76,7 +76,7 @@ interface PassagemFormState {
     om_destino: string; // NOVO CAMPO
     ug_destino: string; // NOVO CAMPO
     dias_operacao: number;
-    efetivo: number; // REINTRODUZIDO
+    efetivo: number; 
     fase_atividade: string;
     
     // Dados dos Trechos Selecionados (Lista de TrechoSelection)
@@ -89,7 +89,7 @@ const initialFormState: PassagemFormState = {
     om_destino: "",
     ug_destino: "",
     dias_operacao: 0,
-    efetivo: 0, // REINTRODUZIDO
+    efetivo: 0, 
     fase_atividade: "",
     selected_trechos: [],
 };
@@ -111,7 +111,7 @@ const compareFormData = (data1: PassagemFormState, data2: PassagemFormState) => 
     // Compare todos os campos relevantes
     if (
         data1.dias_operacao !== data2.dias_operacao ||
-        data1.efetivo !== data2.efetivo || // REINTRODUZIDO
+        data1.efetivo !== data2.efetivo || 
         data1.om_favorecida !== data2.om_favorecida ||
         data1.ug_favorecida !== data2.ug_favorecida ||
         data1.om_destino !== data2.om_destino || // Comparar OM Destino
@@ -123,9 +123,8 @@ const compareFormData = (data1: PassagemFormState, data2: PassagemFormState) => 
     }
     
     // Comparar detalhes dos trechos (IDs e quantidades)
-    // Usamos a chave composta (diretriz_id + trecho_id) para garantir a unicidade
-    const trechos1 = data1.selected_trechos.map(t => `${t.diretriz_id}-${t.trecho_id}-${t.quantidade_passagens}`).sort().join('|');
-    const trechos2 = data2.selected_trechos.map(t => `${t.diretriz_id}-${t.trecho_id}-${t.quantidade_passagens}`).sort().join('|');
+    const trechos1 = data1.selected_trechos.map(t => `${t.trecho_id}-${t.quantidade_passagens}`).sort().join('|');
+    const trechos2 = data2.selected_trechos.map(t => `${t.trecho_id}-${t.quantidade_passagens}`).sort().join('|');
     
     if (trechos1 !== trechos2) {
         return true;
@@ -193,7 +192,7 @@ const PassagemForm = () => {
         if (ptrabData && !editingId) {
             // Modo Novo Registro: Limpar
             setFormData(prev => ({
-                ...initialFormState,
+                ...prev,
                 om_favorecida: "", 
                 ug_favorecida: "", 
                 om_destino: "",
@@ -244,11 +243,6 @@ const PassagemForm = () => {
     // CÁLCULOS E MEMÓRIA (MEMOIZED)
     // =================================================================
     
-    // NOVO MEMO: Calcula o efetivo total (soma das quantidades de passagens)
-    const calculatedEfetivo = useMemo(() => {
-        return formData.selected_trechos.reduce((sum, t) => sum + t.quantidade_passagens, 0);
-    }, [formData.selected_trechos]);
-    
     const calculos = useMemo(() => {
         if (!ptrabData || formData.selected_trechos.length === 0) {
             return {
@@ -257,8 +251,6 @@ const PassagemForm = () => {
                 memoria: "Selecione pelo menos um trecho e preencha os dados de solicitação.",
             };
         }
-        
-        const efetivo = calculatedEfetivo; // Usa o efetivo calculado
         
         try {
             let totalGeral = 0;
@@ -299,14 +291,13 @@ const PassagemForm = () => {
                     ...calculatedFormData,
                     valor_total: totalTrecho,
                     valor_nd_33: totalTrecho,
-                    efetivo: efetivo, // Passa o efetivo total para a memória
                 });
                 memoria += "\n";
             });
             
             memoria += `\n==================================================\n`;
             memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalGeral)}\n`;
-            memoria += `Efetivo: ${efetivo} militares\n`;
+            memoria += `Efetivo: ${formData.efetivo} militares\n`;
             memoria += `==================================================\n`;
             
             return {
@@ -322,7 +313,7 @@ const PassagemForm = () => {
                 memoria: `Erro ao calcular: ${errorMessage}`,
             };
         }
-    }, [formData, ptrabData, calculatedEfetivo]);
+    }, [formData, ptrabData]);
     
     // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do stagedUpdate ou lastStagedFormData)
     const isPassagemDirty = useMemo(() => {
@@ -332,10 +323,10 @@ const PassagemForm = () => {
             const stagedFormData: PassagemFormState = {
                 om_favorecida: stagedUpdate.organizacao,
                 ug_favorecida: stagedUpdate.ug,
-                om_destino: stagedUpdate.om_detentora || '', 
-                ug_destino: stagedUpdate.ug_detentora || '', 
+                om_destino: stagedUpdate.om_detentora || '', // Usar om_detentora como om_destino
+                ug_destino: stagedUpdate.ug_detentora || '', // Usar ug_detentora como ug_destino
                 dias_operacao: stagedUpdate.dias_operacao,
-                efetivo: stagedUpdate.efetivo || 0, // REINTRODUZIDO
+                efetivo: stagedUpdate.efetivo || 0, 
                 fase_atividade: stagedUpdate.fase_atividade || '',
                 selected_trechos: stagedUpdate.selected_trechos,
             };
@@ -371,6 +362,490 @@ const PassagemForm = () => {
         }, {} as Record<string, PassagemRegistroDB[]>) || {};
     }, [registros]);
 
+    // =================================================================
+    // HANDLERS DE AÇÃO
+    // =================================================================
+
+    const resetForm = () => {
+        setEditingId(null);
+        setFormData(prev => ({
+            ...initialFormState,
+            // Manter a OM Favorecida (do PTrab) se já estiver definida
+            om_favorecida: prev.om_favorecida,
+            ug_favorecida: prev.ug_favorecida,
+            om_destino: prev.om_destino,
+            ug_destino: prev.ug_destino,
+            // Resetar campos de solicitação
+            dias_operacao: 0,
+            efetivo: 0,
+            fase_atividade: "",
+            selected_trechos: [],
+        }));
+        setEditingMemoriaId(null); 
+        setMemoriaEdit("");
+        setSelectedOmFavorecidaId(undefined);
+        setSelectedOmDestinoId(undefined);
+        setStagedUpdate(null); 
+        setLastStagedFormData(null); 
+    };
+    
+    const handleClearPending = () => {
+        setPendingPassagens([]);
+        setStagedUpdate(null);
+        setLastStagedFormData(null); 
+        resetForm();
+    };
+
+    const handleEdit = (registro: PassagemRegistroDB) => {
+        if (pendingPassagens.length > 0) {
+            toast.warning("Salve ou limpe os itens pendentes antes de editar um registro existente.");
+            return;
+        }
+        
+        setEditingId(registro.id);
+        
+        // 1. Configurar OM Favorecida e OM Destino
+        const omFavorecidaToEdit = oms?.find(om => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
+        setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
+        
+        const omDestinoToEdit = oms?.find(om => om.nome_om === registro.om_detentora && om.codug_om === registro.ug_detentora);
+        setSelectedOmDestinoId(omDestinoToEdit?.id);
+        
+        // 2. Reconstruir a lista de trechos selecionados a partir dos dados do registro
+        const trechoFromRecord: TrechoSelection = {
+            om_detentora: registro.om_detentora,
+            ug_detentora: registro.ug_detentora,
+            diretriz_id: registro.diretriz_id,
+            trecho_id: registro.trecho_id,
+            origem: registro.origem,
+            destino: registro.destino,
+            tipo_transporte: registro.tipo_transporte as TipoTransporte,
+            is_ida_volta: registro.is_ida_volta,
+            valor_unitario: Number(registro.valor_unitario || 0),
+            quantidade_passagens: registro.quantidade_passagens,
+            valor: Number(registro.valor_unitario || 0), // Adiciona 'valor' para compatibilidade com TrechoPassagem
+        };
+
+        // 3. Populate formData
+        const newFormData: PassagemFormState = {
+            om_favorecida: registro.organizacao, 
+            ug_favorecida: registro.ug, 
+            om_destino: registro.om_detentora,
+            ug_destino: registro.ug_detentora,
+            dias_operacao: registro.dias_operacao,
+            efetivo: registro.efetivo || 0, // Usar o campo efetivo
+            fase_atividade: registro.fase_atividade || "",
+            selected_trechos: [trechoFromRecord], // Usamos apenas o trecho do registro para edição
+        };
+        setFormData(newFormData);
+        
+        // 4. Calculate totals and generate memory (usando a nova lógica de cálculo)
+        // Recalculamos aqui para garantir que o stagedUpdate reflita o estado atual
+        const { totalGeral, totalND33, memoria } = calculos;
+        
+        // 5. Stage the current record data immediately for display in Section 3
+        const stagedData: CalculatedPassagem = {
+            tempId: registro.id,
+            p_trab_id: ptrabId!,
+            organizacao: newFormData.om_favorecida, 
+            ug: newFormData.ug_favorecida, 
+            dias_operacao: newFormData.dias_operacao,
+            efetivo: newFormData.efetivo,
+            fase_atividade: newFormData.fase_atividade,
+            
+            // Campos de Trecho (usamos o primeiro trecho para preencher os campos DB legados)
+            om_detentora: trechoFromRecord.om_detentora,
+            ug_detentora: trechoFromRecord.ug_detentora,
+            diretriz_id: trechoFromRecord.diretriz_id,
+            trecho_id: trechoFromRecord.trecho_id,
+            origem: trechoFromRecord.origem,
+            destino: trechoFromRecord.destino,
+            tipo_transporte: trechoFromRecord.tipo_transporte,
+            is_ida_volta: trechoFromRecord.is_ida_volta,
+            valor_unitario: trechoFromRecord.valor_unitario,
+            quantidade_passagens: trechoFromRecord.quantidade_passagens,
+            
+            valor_total: totalGeral,
+            valor_nd_33: totalND33,
+            
+            detalhamento: registro.detalhamento,
+            detalhamento_customizado: registro.detalhamento_customizado, 
+            
+            totalGeral: totalGeral,
+            memoria_calculo_display: memoria, 
+            om_favorecida: newFormData.om_favorecida,
+            ug_favorecida: newFormData.ug_favorecida,
+            selected_trechos: newFormData.selected_trechos, // Adiciona a lista de trechos
+        } as CalculatedPassagem;
+        
+        setStagedUpdate(stagedData); 
+
+        setEditingMemoriaId(null); 
+        setMemoriaEdit("");
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleConfirmDelete = (registro: PassagemRegistroDB) => {
+        setRegistroToDelete(registro);
+        setShowDeleteDialog(true);
+    };
+
+    // Adiciona o item calculado à lista pendente OU prepara a atualização (staging)
+    const handleStageCalculation = (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        try {
+            // 1. Validação básica
+            if (formData.selected_trechos.length === 0) {
+                throw new Error("Selecione pelo menos um trecho de passagem na Seção 2.");
+            }
+            if (formData.dias_operacao <= 0) {
+                throw new Error("O número de dias deve ser maior que zero.");
+            }
+            if (formData.efetivo <= 0) {
+                throw new Error("O efetivo deve ser maior que zero.");
+            }
+            if (!formData.om_favorecida || !formData.ug_favorecida) {
+                throw new Error("A OM Favorecida é obrigatória.");
+            }
+            if (!formData.om_destino || !formData.ug_destino) {
+                throw new Error("A OM Destino do Recurso é obrigatória.");
+            }
+            
+            // Validação de quantidade de passagens
+            const totalPassagens = formData.selected_trechos.reduce((sum, t) => sum + t.quantidade_passagens, 0);
+            if (totalPassagens <= 0) {
+                throw new Error("A quantidade total de passagens solicitadas deve ser maior que zero.");
+            }
+            
+            // 2. Calcular totais e memória (já feito no useMemo)
+            const { totalGeral, totalND33, memoria } = calculos;
+            
+            // 3. Preparar o objeto final (calculatedData)
+            
+            // Para fins de salvamento no DB (que ainda espera um único registro por linha),
+            // vamos criar um registro que representa o total da solicitação, usando os dados
+            // do PRIMEIRO trecho para preencher os campos obrigatórios de FK/detalhe.
+            const firstTrecho = formData.selected_trechos[0];
+
+            const calculatedData: CalculatedPassagem = {
+                tempId: editingId || Math.random().toString(36).substring(2, 9), 
+                p_trab_id: ptrabId!,
+                organizacao: formData.om_favorecida, 
+                ug: formData.ug_favorecida, 
+                dias_operacao: formData.dias_operacao,
+                efetivo: formData.efetivo, // NOVO CAMPO
+                fase_atividade: formData.fase_atividade,
+                
+                // Campos de Trecho (usamos o primeiro trecho para preencher os campos DB legados)
+                // OM Detentora/UG Detentora no DB é a OM Destino do Recurso
+                om_detentora: formData.om_destino,
+                ug_detentora: formData.ug_destino,
+                diretriz_id: firstTrecho.diretriz_id,
+                trecho_id: firstTrecho.trecho_id,
+                origem: firstTrecho.origem,
+                destino: firstTrecho.destino,
+                tipo_transporte: firstTrecho.tipo_transporte,
+                is_ida_volta: firstTrecho.is_ida_volta,
+                valor_unitario: firstTrecho.valor_unitario,
+                quantidade_passagens: totalPassagens, // Total de passagens
+                
+                valor_total: totalGeral,
+                valor_nd_33: totalND33,
+                
+                detalhamento: "Passagens", // Marcador
+                detalhamento_customizado: null, 
+                
+                totalGeral: totalGeral,
+                memoria_calculo_display: memoria, 
+                om_favorecida: formData.om_favorecida,
+                ug_favorecida: formData.ug_favorecida,
+                selected_trechos: formData.selected_trechos, // Salva a lista completa
+            } as CalculatedPassagem;
+            
+            if (editingId) {
+                const originalRecord = registros?.find(r => r.id === editingId);
+                
+                // Preserva a memória customizada se existir
+                let memoriaCustomizadaTexto: string | null = null;
+                try {
+                    JSON.parse(originalRecord?.detalhamento_customizado || "");
+                } catch (e) {
+                    memoriaCustomizadaTexto = originalRecord?.detalhamento_customizado || null;
+                }
+                
+                calculatedData.detalhamento_customizado = memoriaCustomizadaTexto;
+                
+                setStagedUpdate(calculatedData);
+                toast.info("Cálculo atualizado. Revise e confirme a atualização na Seção 3.");
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); 
+                return;
+            }
+            
+            // MODO ADIÇÃO: Adicionar à lista pendente
+            
+            const shouldStageNewItem = pendingPassagens.length === 0 || compareFormData(formData, lastStagedFormData || initialFormState);
+
+            if (shouldStageNewItem) {
+                setPendingPassagens(prev => {
+                    // Se estivermos no modo de adição e o formulário mudou, adiciona um novo item.
+                    // Se o formulário não mudou, apenas atualiza o último item (se houver).
+                    if (pendingPassagens.length > 0 && !compareFormData(formData, lastStagedFormData || initialFormState)) {
+                        return [...prev.slice(0, -1), calculatedData];
+                    }
+                    return [...prev, calculatedData];
+                });
+                
+                setLastStagedFormData(formData);
+                
+                toast.info("Item de Passagem adicionado à lista pendente.");
+            } else {
+                toast.info("Nenhuma alteração detectada no item pendente.");
+            }
+            
+            // Manter campos de contexto e trecho
+            setFormData(prev => ({
+                ...prev,
+                om_favorecida: prev.om_favorecida,
+                ug_favorecida: prev.ug_favorecida,
+                om_destino: prev.om_destino,
+                ug_destino: prev.ug_destino,
+                dias_operacao: prev.dias_operacao,
+                efetivo: prev.efetivo,
+                fase_atividade: prev.fase_atividade,
+                selected_trechos: prev.selected_trechos,
+            }));
+            
+        } catch (err: any) {
+            toast.error(err.message || "Erro desconhecido ao calcular.");
+        }
+    };
+    
+    // Salva todos os itens pendentes no DB
+    const handleSavePendingPassagens = () => {
+        if (pendingPassagens.length === 0) {
+            toast.warning("Nenhum item pendente para salvar.");
+            return;
+        }
+        
+        saveMutation.mutate(pendingPassagens);
+    };
+    
+    // NOVO: Confirma a atualização do item estagiado no DB
+    const handleCommitStagedUpdate = () => {
+        if (!editingId || !stagedUpdate) return;
+        
+        updateMutation.mutate(stagedUpdate);
+    };
+    
+    // Remove item da lista pendente
+    const handleRemovePending = (tempId: string) => {
+        setPendingPassagens(prev => {
+            const newPending = prev.filter(p => p.tempId !== tempId);
+            if (newPending.length === 0) {
+                setLastStagedFormData(null);
+            }
+            return newPending;
+        });
+        toast.info("Item removido da lista pendente.");
+    };
+    
+    // Handler para a OM Favorecida (OM do PTrab)
+    const handleOmFavorecidaChange = (omData: OMData | undefined) => {
+        if (omData) {
+            setSelectedOmFavorecidaId(omData.id);
+            setFormData(prev => ({
+                ...prev,
+                om_favorecida: omData.nome_om,
+                ug_favorecida: omData.codug_om,
+            }));
+        } else {
+            setSelectedOmFavorecidaId(undefined);
+            setFormData(prev => ({
+                ...prev,
+                om_favorecida: "",
+                ug_favorecida: "",
+            }));
+        }
+    };
+    
+    // Handler para a OM Destino do Recurso
+    const handleOmDestinoChange = (omData: OMData | undefined) => {
+        if (omData) {
+            setSelectedOmDestinoId(omData.id);
+            setFormData(prev => ({
+                ...prev,
+                om_destino: omData.nome_om,
+                ug_destino: omData.codug_om,
+            }));
+        } else {
+            setSelectedOmDestinoId(undefined);
+            setFormData(prev => ({
+                ...prev,
+                om_destino: "",
+                ug_destino: "",
+            }));
+        }
+    };
+    
+    const handleFaseAtividadeChange = (fase: string) => {
+        setFormData(prev => ({
+            ...prev,
+            fase_atividade: fase,
+        }));
+    };
+    
+    // --- Lógica de Seleção de Trecho (Callback do Dialog) ---
+    const handleTrechoSelected = (trechos: TrechoSelection[]) => {
+        // Atualiza o formulário com a lista de trechos selecionados
+        setFormData(prev => ({
+            ...prev,
+            selected_trechos: trechos,
+        }));
+        
+        toast.success(`${trechos.length} trecho(s) selecionado(s).`);
+    };
+    
+    // --- Lógica de Edição de Quantidade de Trecho no Formulário Principal ---
+    const handleTrechoQuantityChange = (trechoId: string, quantity: number) => {
+        if (quantity < 0) return;
+        
+        setFormData(prev => {
+            const newSelections = prev.selected_trechos.map(t => 
+                t.trecho_id === trechoId ? { ...t, quantidade_passagens: quantity } : t
+            ).filter(t => t.quantidade_passagens > 0); // Remove se a quantidade for zero
+            
+            return {
+                ...prev,
+                selected_trechos: newSelections,
+            };
+        });
+    };
+    
+    // --- Lógica de Edição de Memória ---
+    
+    const handleIniciarEdicaoMemoria = (registro: PassagemRegistroDB) => {
+        setEditingMemoriaId(registro.id);
+        
+        // 1. Reconstruir o TrechoSelection para gerar a memória automática
+        const trechoFromRecord: TrechoSelection = {
+            om_detentora: registro.om_detentora,
+            ug_detentora: registro.ug_detentora,
+            diretriz_id: registro.diretriz_id,
+            trecho_id: registro.trecho_id,
+            origem: registro.origem,
+            destino: registro.destino,
+            tipo_transporte: registro.tipo_transporte as TipoTransporte,
+            is_ida_volta: registro.is_ida_volta,
+            valor_unitario: Number(registro.valor_unitario || 0),
+            quantidade_passagens: registro.quantidade_passagens,
+            valor: Number(registro.valor_unitario || 0), // Adiciona 'valor' para compatibilidade com TrechoPassagem
+        };
+        
+        // 2. Gerar a memória automática (usando a lógica de cálculo de múltiplos trechos, mas com apenas 1 trecho)
+        const calculatedDataForMemoria: PassagemFormState = {
+            om_favorecida: registro.organizacao,
+            ug_favorecida: registro.ug,
+            om_destino: registro.om_detentora,
+            ug_destino: registro.ug_detentora,
+            dias_operacao: registro.dias_operacao,
+            efetivo: registro.efetivo || 0,
+            fase_atividade: registro.fase_atividade || "",
+            selected_trechos: [trechoFromRecord],
+        };
+        
+        // Nota: Para registros antigos, o cálculo é feito com base no único trecho salvo.
+        const { memoria: memoriaAutomatica } = useMemo(() => {
+            if (calculatedDataForMemoria.selected_trechos.length === 0) return { memoria: "" };
+            
+            const trecho = calculatedDataForMemoria.selected_trechos[0];
+            const totalTrecho = calculateTrechoTotal(trecho);
+            
+            const calculatedFormData: PassagemFormType = {
+                organizacao: calculatedDataForMemoria.om_favorecida, 
+                ug: calculatedDataForMemoria.ug_favorecida, 
+                dias_operacao: calculatedDataForMemoria.dias_operacao,
+                fase_atividade: calculatedDataForMemoria.fase_atividade,
+                om_detentora: trecho.om_detentora,
+                ug_detentora: trecho.ug_detentora,
+                diretriz_id: trecho.diretriz_id,
+                trecho_id: trecho.trecho_id,
+                origem: trecho.origem,
+                destino: trecho.destino,
+                tipo_transporte: trecho.tipo_transporte,
+                is_ida_volta: trecho.is_ida_volta,
+                valor_unitario: trecho.valor_unitario,
+                quantidade_passagens: trecho.quantidade_passagens,
+            };
+            
+            let memoria = `--- Trecho Único: ${trecho.origem} -> ${trecho.destino} ---\n`;
+            memoria += generatePassagemMemoriaCalculo({
+                ...calculatedFormData,
+                valor_total: totalTrecho,
+                valor_nd_33: totalTrecho,
+            });
+            memoria += "\n";
+            memoria += `\n==================================================\n`;
+            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalTrecho)}\n`;
+            memoria += `Efetivo: ${calculatedDataForMemoria.efetivo} militares\n`;
+            memoria += `==================================================\n`;
+            
+            return { memoria };
+        }, [calculatedDataForMemoria]);
+        
+        // 3. Usar a customizada se existir, senão usar a automática
+        setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
+    };
+
+    const handleCancelarEdicaoMemoria = () => {
+        setEditingMemoriaId(null);
+        setMemoriaEdit("");
+    };
+
+    const handleSalvarMemoriaCustomizada = async (registroId: string) => {
+        try {
+            const { error } = await supabase
+                .from("passagem_registros")
+                .update({
+                    detalhamento_customizado: memoriaEdit.trim() || null, 
+                })
+                .eq("id", registroId);
+
+            if (error) throw error;
+
+            toast.success("Memória de cálculo atualizada com sucesso!");
+            handleCancelarEdicaoMemoria();
+            queryClient.invalidateQueries({ queryKey: ["passagemRegistros", ptrabId] });
+        } catch (error) {
+            console.error("Erro ao salvar memória:", error);
+            toast.error(sanitizeError(error));
+        }
+    };
+
+    const handleRestaurarMemoriaAutomatica = async (registroId: string) => {
+        if (!confirm("Deseja realmente restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
+            return;
+        }
+        
+        try {
+            const { error } = await supabase
+                .from("passagem_registros")
+                .update({
+                    detalhamento_customizado: null,
+                })
+                .eq("id", registroId);
+
+            if (error) throw error;
+
+            toast.success("Memória de cálculo restaurada!");
+            queryClient.invalidateQueries({ queryKey: ["passagemRegistros", ptrabId] });
+        } catch (error) {
+            console.error("Erro ao restaurar memória:", error);
+            toast.error(sanitizeError(error));
+        }
+    };
+    
     // =================================================================
     // MUTAÇÕES
     // =================================================================
@@ -512,500 +987,6 @@ const PassagemForm = () => {
     });
     
     // =================================================================
-    // HANDLERS DE AÇÃO
-    // =================================================================
-
-    const resetForm = () => {
-        setEditingId(null);
-        setFormData(prev => ({
-            ...initialFormState,
-            // Manter a OM Favorecida (do PTrab) se já estiver definida
-            om_favorecida: prev.om_favorecida,
-            ug_favorecida: prev.ug_favorecida,
-            om_destino: prev.om_destino,
-            ug_destino: prev.ug_destino,
-            // Resetar campos de solicitação
-            dias_operacao: 0,
-            efetivo: 0, // REINTRODUZIDO
-            fase_atividade: "",
-            selected_trechos: [],
-        }));
-        setEditingMemoriaId(null); 
-        setMemoriaEdit("");
-        setSelectedOmFavorecidaId(undefined);
-        setSelectedOmDestinoId(undefined);
-        setStagedUpdate(null); 
-        setLastStagedFormData(null); 
-    };
-    
-    const handleClearPending = () => {
-        setPendingPassagens([]);
-        setStagedUpdate(null);
-        setLastStagedFormData(null); 
-        resetForm();
-    };
-
-    const handleEdit = (registro: PassagemRegistroDB) => {
-        if (pendingPassagens.length > 0) {
-            toast.warning("Salve ou limpe os itens pendentes antes de editar um registro existente.");
-            return;
-        }
-        
-        setEditingId(registro.id);
-        
-        // 1. Configurar OM Favorecida e OM Destino
-        const omFavorecidaToEdit = oms?.find(om => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
-        setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
-        
-        const omDestinoToEdit = oms?.find(om => om.nome_om === registro.om_detentora && om.codug_om === registro.ug_detentora);
-        setSelectedOmDestinoId(omDestinoToEdit?.id);
-        
-        // 2. Reconstruir a lista de trechos selecionados a partir dos dados do registro
-        // Nota: O DB armazena apenas 1 trecho por registro, mas o formulário suporta múltiplos.
-        // Ao editar, tratamos o registro salvo como um único trecho.
-        const trechoFromRecord: TrechoSelection = {
-            om_detentora: registro.om_detentora,
-            ug_detentora: registro.ug_detentora,
-            diretriz_id: registro.diretriz_id,
-            trecho_id: registro.trecho_id,
-            origem: registro.origem,
-            destino: registro.destino,
-            tipo_transporte: registro.tipo_transporte as TipoTransporte,
-            is_ida_volta: registro.is_ida_volta,
-            valor_unitario: Number(registro.valor_unitario || 0),
-            quantidade_passagens: registro.quantidade_passagens,
-            valor: Number(registro.valor_unitario || 0), // Adiciona 'valor' para compatibilidade com TrechoPassagem
-        };
-
-        // 3. Populate formData
-        const newFormData: PassagemFormState = {
-            om_favorecida: registro.organizacao, 
-            ug_favorecida: registro.ug, 
-            om_destino: registro.om_detentora,
-            ug_destino: registro.ug_detentora,
-            dias_operacao: registro.dias_operacao,
-            efetivo: registro.efetivo || 0, // REINTRODUZIDO
-            fase_atividade: registro.fase_atividade || "",
-            selected_trechos: [trechoFromRecord], // Usamos apenas o trecho do registro para edição
-        };
-        setFormData(newFormData);
-        
-        // 4. Calculate totals and generate memory (usando a nova lógica de cálculo)
-        // Recalculamos aqui para garantir que o stagedUpdate reflita o estado atual
-        const { totalGeral, totalND33, memoria } = calculos;
-        
-        // 5. Stage the current record data immediately for display in Section 3
-        const stagedData: CalculatedPassagem = {
-            tempId: registro.id,
-            p_trab_id: ptrabId!,
-            organizacao: newFormData.om_favorecida, 
-            ug: newFormData.ug_favorecida, 
-            dias_operacao: newFormData.dias_operacao,
-            efetivo: newFormData.efetivo,
-            fase_atividade: newFormData.fase_atividade,
-            
-            // Campos de Trecho (usamos o primeiro trecho para preencher os campos DB legados)
-            om_detentora: trechoFromRecord.om_detentora,
-            ug_detentora: trechoFromRecord.ug_detentora,
-            diretriz_id: trechoFromRecord.diretriz_id,
-            trecho_id: trechoFromRecord.trecho_id,
-            origem: trechoFromRecord.origem,
-            destino: trechoFromRecord.destino,
-            tipo_transporte: trechoFromRecord.tipo_transporte,
-            is_ida_volta: trechoFromRecord.is_ida_volta,
-            valor_unitario: trechoFromRecord.valor_unitario,
-            quantidade_passagens: trechoFromRecord.quantidade_passagens,
-            
-            valor_total: totalGeral,
-            valor_nd_33: totalND33,
-            
-            detalhamento: registro.detalhamento,
-            detalhamento_customizado: registro.detalhamento_customizado, 
-            
-            totalGeral: totalGeral,
-            memoria_calculo_display: memoria, 
-            om_favorecida: newFormData.om_favorecida,
-            ug_favorecida: newFormData.ug_favorecida,
-            selected_trechos: newFormData.selected_trechos, // Adiciona a lista de trechos
-        } as CalculatedPassagem;
-        
-        setStagedUpdate(stagedData); 
-
-        setEditingMemoriaId(null); 
-        setMemoriaEdit("");
-        
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
-    const handleConfirmDelete = (registro: PassagemRegistroDB) => {
-        setRegistroToDelete(registro);
-        setShowDeleteDialog(true);
-    };
-
-    // Adiciona o item calculado à lista pendente OU prepara a atualização (staging)
-    const handleStageCalculation = (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        try {
-            // 1. Validação básica
-            if (formData.selected_trechos.length === 0) {
-                throw new Error("Selecione pelo menos um trecho de passagem na Seção 2.");
-            }
-            if (formData.dias_operacao <= 0) {
-                throw new Error("O número de dias deve ser maior que zero.");
-            }
-            if (formData.efetivo <= 0) {
-                throw new Error("O efetivo deve ser maior que zero.");
-            }
-            if (!formData.om_favorecida || !formData.ug_favorecida) {
-                throw new Error("A OM Favorecida é obrigatória.");
-            }
-            if (!formData.om_destino || !formData.ug_destino) {
-                throw new Error("A OM Destino do Recurso é obrigatória.");
-            }
-            
-            // Validação de quantidade de passagens
-            const totalPassagens = formData.selected_trechos.reduce((sum, t) => sum + t.quantidade_passagens, 0);
-            if (totalPassagens <= 0) {
-                throw new Error("A quantidade total de passagens solicitadas deve ser maior que zero.");
-            }
-            
-            // 2. Calcular totais e memória (já feito no useMemo)
-            const { totalGeral, totalND33, memoria } = calculos;
-            
-            // 3. Preparar o objeto final (calculatedData)
-            
-            // Para fins de salvamento no DB (que ainda espera um único registro por linha),
-            // vamos criar um registro que representa o total da solicitação, usando os dados
-            // do PRIMEIRO trecho para preencher os campos obrigatórios de FK/detalhe.
-            const firstTrecho = formData.selected_trechos[0];
-
-            const calculatedData: CalculatedPassagem = {
-                tempId: editingId || Math.random().toString(36).substring(2, 9), 
-                p_trab_id: ptrabId!,
-                organizacao: formData.om_favorecida, 
-                ug: formData.ug_favorecida, 
-                dias_operacao: formData.dias_operacao,
-                efetivo: formData.efetivo, // REINTRODUZIDO
-                fase_atividade: formData.fase_atividade,
-                
-                // Campos de Trecho (usamos o primeiro trecho para preencher os campos DB legados)
-                // OM Detentora/UG Detentora no DB é a OM Destino do Recurso
-                om_detentora: formData.om_destino,
-                ug_detentora: formData.ug_destino,
-                diretriz_id: firstTrecho.diretriz_id,
-                trecho_id: firstTrecho.trecho_id,
-                origem: firstTrecho.origem,
-                destino: firstTrecho.destino,
-                tipo_transporte: firstTrecho.tipo_transporte,
-                is_ida_volta: firstTrecho.is_ida_volta,
-                valor_unitario: firstTrecho.valor_unitario,
-                quantidade_passagens: totalPassagens, // Total de passagens
-                
-                valor_total: totalGeral,
-                valor_nd_33: totalND33,
-                
-                detalhamento: "Passagens", // Marcador
-                detalhamento_customizado: null, 
-                
-                totalGeral: totalGeral,
-                memoria_calculo_display: memoria, 
-                om_favorecida: formData.om_favorecida,
-                ug_favorecida: formData.ug_favorecida,
-                selected_trechos: formData.selected_trechos, // Salva a lista completa
-            } as CalculatedPassagem;
-            
-            if (editingId) {
-                const originalRecord = registros?.find(r => r.id === editingId);
-                
-                // Preserva a memória customizada se existir
-                let memoriaCustomizadaTexto: string | null = null;
-                try {
-                    JSON.parse(originalRecord?.detalhamento_customizado || "");
-                } catch (e) {
-                    memoriaCustomizadaTexto = originalRecord?.detalhamento_customizado || null;
-                }
-                
-                calculatedData.detalhamento_customizado = memoriaCustomizadaTexto;
-                
-                setStagedUpdate(calculatedData);
-                toast.info("Cálculo atualizado. Revise e confirme a atualização na Seção 3.");
-                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); 
-                return;
-            }
-            
-            // MODO ADIÇÃO: Adicionar à lista pendente
-            
-            const shouldStageNewItem = pendingPassagens.length === 0 || compareFormData(formData, lastStagedFormData || initialFormState);
-
-            if (shouldStageNewItem) {
-                setPendingPassagens(prev => {
-                    // Se estivermos no modo de adição e o formulário mudou, adiciona um novo item.
-                    // Se o formulário não mudou, apenas atualiza o último item (se houver).
-                    if (pendingPassagens.length > 0 && !compareFormData(formData, lastStagedFormData || initialFormState)) {
-                        return [...prev.slice(0, -1), calculatedData];
-                    }
-                    return [...prev, calculatedData];
-                });
-                
-                setLastStagedFormData(formData);
-                
-                toast.info("Item de Passagem adicionado à lista pendente.");
-            } else {
-                toast.info("Nenhuma alteração detectada no item pendente.");
-            }
-            
-            // Manter campos de contexto e trecho
-            setFormData(prev => ({
-                ...prev,
-                om_favorecida: prev.om_favorecida,
-                ug_favorecida: prev.ug_favorecida,
-                om_destino: prev.om_destino,
-                ug_destino: prev.ug_destino,
-                dias_operacao: prev.dias_operacao,
-                efetivo: prev.efetivo, // REINTRODUZIDO
-                fase_atividade: prev.fase_atividade,
-                selected_trechos: prev.selected_trechos,
-            }));
-            
-        } catch (err: any) {
-            toast.error(err.message || "Erro desconhecido ao calcular.");
-        }
-    };
-    
-    // Salva todos os itens pendentes no DB
-    const handleSavePendingPassagens = () => {
-        if (pendingPassagens.length === 0) {
-            toast.warning("Nenhum item pendente para salvar.");
-            return;
-        }
-        
-        saveMutation.mutate(pendingPassagens);
-    };
-    
-    // NOVO: Confirma a atualização do item estagiado no DB
-    const handleCommitStagedUpdate = () => {
-        if (!editingId || !stagedUpdate) return;
-        
-        updateMutation.mutate(stagedUpdate);
-    };
-    
-    // Remove item da lista pendente
-    const handleRemovePending = (tempId: string) => {
-        setPendingPassagens(prev => {
-            const newPending = prev.filter(p => p.tempId !== tempId);
-            if (newPending.length === 0) {
-                setLastStagedFormData(null);
-            }
-            return newPending;
-        });
-        toast.info("Item removido da lista pendente.");
-    };
-    
-    // Handler para a OM Favorecida (OM do PTrab)
-    const handleOmFavorecidaChange = (omData: OMData | undefined) => {
-        if (omData) {
-            setSelectedOmFavorecidaId(omData.id);
-            setFormData(prev => ({
-                ...prev,
-                om_favorecida: omData.nome_om,
-                ug_favorecida: omData.codug_om,
-            }));
-        } else {
-            setSelectedOmFavorecidaId(undefined);
-            setFormData(prev => ({
-                ...prev,
-                om_favorecida: "",
-                ug_favorecida: "",
-            }));
-        }
-    };
-    
-    // Handler para a OM Destino do Recurso
-    const handleOmDestinoChange = (omData: OMData | undefined) => {
-        if (omData) {
-            setSelectedOmDestinoId(omData.id);
-            setFormData(prev => ({
-                ...prev,
-                om_destino: omData.nome_om,
-                ug_destino: omData.codug_om,
-            }));
-        } else {
-            setSelectedOmDestinoId(undefined);
-            setFormData(prev => ({
-                ...prev,
-                om_destino: "",
-                ug_destino: "",
-            }));
-        }
-    };
-    
-    const handleFaseAtividadeChange = (fase: string) => {
-        setFormData(prev => ({
-            ...prev,
-            fase_atividade: fase,
-        }));
-    };
-    
-    // --- Lógica de Seleção de Trecho (Callback do Dialog) ---
-    const handleTrechoSelected = (trechos: TrechoSelection[]) => {
-        // Atualiza o formulário com a lista de trechos selecionados
-        setFormData(prev => ({
-            ...prev,
-            selected_trechos: trechos,
-        }));
-        
-        toast.success(`${trechos.length} trecho(s) selecionado(s).`);
-    };
-    
-    // --- Lógica de Edição de Quantidade de Trecho no Formulário Principal ---
-    const handleTrechoQuantityChange = (diretrizId: string, trechoId: string, quantity: number) => {
-        if (quantity < 0) return;
-        
-        setFormData(prev => {
-            const newSelections = prev.selected_trechos.map(t => 
-                // CORREÇÃO CRÍTICA: Usar a combinação de IDs para garantir que apenas o trecho correto seja atualizado
-                (t.diretriz_id === diretrizId && t.trecho_id === trechoId)
-                    ? { ...t, quantidade_passagens: quantity } 
-                    : t
-            ).filter(t => t.quantidade_passagens > 0); // Remove se a quantidade for zero
-            
-            // Atualiza o efetivo no formData para refletir a soma das passagens
-            const newEfetivo = newSelections.reduce((sum, t) => sum + t.quantidade_passagens, 0);
-            
-            return {
-                ...prev,
-                selected_trechos: newSelections,
-                efetivo: newEfetivo, // Atualiza o campo efetivo
-            };
-        });
-    };
-    
-    // --- Lógica de Edição de Memória ---
-    
-    const handleIniciarEdicaoMemoria = (registro: PassagemRegistroDB) => {
-        setEditingMemoriaId(registro.id);
-        
-        // 1. Reconstruir o TrechoSelection para gerar a memória automática
-        const trechoFromRecord: TrechoSelection = {
-            om_detentora: registro.om_detentora,
-            ug_detentora: registro.ug_detentora,
-            diretriz_id: registro.diretriz_id,
-            trecho_id: registro.trecho_id,
-            origem: registro.origem,
-            destino: registro.destino,
-            tipo_transporte: registro.tipo_transporte as TipoTransporte,
-            is_ida_volta: registro.is_ida_volta,
-            valor_unitario: Number(registro.valor_unitario || 0),
-            quantidade_passagens: registro.quantidade_passagens,
-            valor: Number(registro.valor_unitario || 0), // Adiciona 'valor' para compatibilidade com TrechoPassagem
-        };
-        
-        // 2. Gerar a memória automática (usando a lógica de cálculo de múltiplos trechos, mas com apenas 1 trecho)
-        const calculatedDataForMemoria: PassagemFormState = {
-            om_favorecida: registro.organizacao,
-            ug_favorecida: registro.ug,
-            om_destino: registro.om_detentora,
-            ug_destino: registro.ug_detentora,
-            dias_operacao: registro.dias_operacao,
-            efetivo: registro.efetivo || 0,
-            fase_atividade: registro.fase_atividade || "",
-            selected_trechos: [trechoFromRecord],
-        };
-        
-        // Nota: Para registros antigos, o cálculo é feito com base no único trecho salvo.
-        const { memoria: memoriaAutomatica } = useMemo(() => {
-            if (calculatedDataForMemoria.selected_trechos.length === 0) return { memoria: "" };
-            
-            const trecho = calculatedDataForMemoria.selected_trechos[0];
-            const totalTrecho = calculateTrechoTotal(trecho);
-            
-            const calculatedFormData: PassagemFormType = {
-                organizacao: calculatedDataForMemoria.om_favorecida, 
-                ug: calculatedDataForMemoria.ug_favorecida, 
-                dias_operacao: calculatedDataForMemoria.dias_operacao,
-                fase_atividade: calculatedDataForMemoria.fase_atividade,
-                om_detentora: trecho.om_detentora,
-                ug_detentora: trecho.ug_detentora,
-                diretriz_id: trecho.diretriz_id,
-                trecho_id: trecho.trecho_id,
-                origem: trecho.origem,
-                destino: trecho.destino,
-                tipo_transporte: trecho.tipo_transporte,
-                is_ida_volta: trecho.is_ida_volta,
-                valor_unitario: trecho.valor_unitario,
-                quantidade_passagens: trecho.quantidade_passagens,
-            };
-            
-            let memoria = `--- Trecho Único: ${trecho.origem} -> ${trecho.destino} ---\n`;
-            memoria += generatePassagemMemoriaCalculo({
-                ...calculatedFormData,
-                valor_total: totalTrecho,
-                valor_nd_33: totalTrecho,
-                efetivo: calculatedDataForMemoria.efetivo,
-            });
-            memoria += "\n";
-            memoria += `\n==================================================\n`;
-            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalTrecho)}\n`;
-            memoria += `Efetivo: ${calculatedDataForMemoria.efetivo} militares\n`;
-            memoria += `==================================================\n`;
-            
-            return { memoria };
-        }, [calculatedDataForMemoria]);
-        
-        // 3. Usar a customizada se existir, senão usar a automática
-        setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
-    };
-
-    const handleCancelarEdicaoMemoria = () => {
-        setEditingMemoriaId(null);
-        setMemoriaEdit("");
-    };
-
-    const handleSalvarMemoriaCustomizada = async (registroId: string) => {
-        try {
-            const { error } = await supabase
-                .from("passagem_registros")
-                .update({
-                    detalhamento_customizado: memoriaEdit.trim() || null, 
-                })
-                .eq("id", registroId);
-
-            if (error) throw error;
-
-            toast.success("Memória de cálculo atualizada com sucesso!");
-            handleCancelarEdicaoMemoria();
-            queryClient.invalidateQueries({ queryKey: ["passagemRegistros", ptrabId] });
-        } catch (error) {
-            console.error("Erro ao salvar memória:", error);
-            toast.error(sanitizeError(error));
-        }
-    };
-
-    const handleRestaurarMemoriaAutomatica = async (registroId: string) => {
-        if (!confirm("Deseja realmente restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
-            return;
-        }
-        
-        try {
-            const { error } = await supabase
-                .from("passagem_registros")
-                .update({
-                    detalhamento_customizado: null,
-                })
-                .eq("id", registroId);
-
-            if (error) throw error;
-
-            toast.success("Memória de cálculo restaurada!");
-            queryClient.invalidateQueries({ queryKey: ["passagemRegistros", ptrabId] });
-        } catch (error) {
-            console.error("Erro ao restaurar memória:", error);
-            toast.error(sanitizeError(error));
-        }
-    };
-    
-    // =================================================================
     // RENDERIZAÇÃO
     // =================================================================
 
@@ -1030,11 +1011,11 @@ const PassagemForm = () => {
 
     // Verifica se os campos numéricos da Solicitação estão preenchidos (incluindo OM Destino, agora na Seção 2)
     const isSolicitationDataReady = formData.dias_operacao > 0 &&
-                                    calculatedEfetivo > 0 && // Usa o efetivo calculado
-                                    formData.om_destino.length > 0 && 
-                                    formData.ug_destino.length > 0 && 
+                                    formData.efetivo > 0 &&
+                                    formData.om_destino.length > 0 && // Adicionado aqui
+                                    formData.ug_destino.length > 0 && // Adicionado aqui
                                     formData.selected_trechos.length > 0 &&
-                                    formData.selected_trechos.every(t => t.quantidade_passagens > 0); 
+                                    formData.selected_trechos.every(t => t.quantidade_passagens > 0); // Verifica se há quantidade > 0
 
     const isCalculationReady = isBaseFormReady && isSolicitationDataReady;
     
@@ -1104,6 +1085,9 @@ const PassagemForm = () => {
                                             disabled={!isPTrabEditable || isSaving || pendingPassagens.length > 0}
                                         />
                                     </div>
+                                    
+                                    {/* OM DESTINO DO RECURSO (REMOVIDO DA SEÇÃO 1) */}
+                                    {/* UG DESTINO (REMOVIDO DA SEÇÃO 1) */}
                                 </div>
                             </section>
 
@@ -1119,7 +1103,7 @@ const PassagemForm = () => {
                                         {/* Dados da Solicitação (Dias, Efetivo, OM Destino) */}
                                         <Card className="rounded-lg mb-4">
                                             <CardHeader className="py-3">
-                                                <CardTitle className="text-base font-semibold">Período e Destino do Recurso</CardTitle>
+                                                <CardTitle className="text-base font-semibold">Período, Efetivo e Destino do Recurso</CardTitle>
                                             </CardHeader>
                                             <CardContent className="pt-2">
                                                 <div className="p-4 bg-background rounded-lg border">
@@ -1143,22 +1127,22 @@ const PassagemForm = () => {
                                                             />
                                                         </div>
                                                         
-                                                        {/* CAMPO 2: EFETIVO (AGORA CALCULADO) */}
+                                                        {/* CAMPO 2: EFETIVO */}
                                                         <div className="space-y-2 col-span-1">
-                                                            <Label htmlFor="efetivo">Efetivo (Total de Passagens)</Label>
+                                                            <Label htmlFor="efetivo">Efetivo *</Label>
                                                             <Input
                                                                 id="efetivo"
                                                                 type="number"
-                                                                min={0}
-                                                                placeholder="0"
-                                                                value={calculatedEfetivo}
-                                                                readOnly
-                                                                disabled
-                                                                className="max-w-[150px] bg-muted/50 font-bold text-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                min={1}
+                                                                placeholder="Ex: 10"
+                                                                value={formData.efetivo === 0 ? "" : formData.efetivo}
+                                                                onChange={(e) => setFormData({ ...formData, efetivo: parseInt(e.target.value) || 0 })}
+                                                                required
+                                                                disabled={!isPTrabEditable || isSaving}
+                                                                onKeyDown={handleEnterToNextField}
+                                                                onWheel={(e) => e.currentTarget.blur()}
+                                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                             />
-                                                            <p className="text-xs text-muted-foreground">
-                                                                Calculado automaticamente pela soma das quantidades de passagens.
-                                                            </p>
                                                         </div>
                                                         
                                                         {/* CAMPO 3 & 4: OM DESTINO E UG DESTINO (Agrupados) */}
@@ -1222,17 +1206,37 @@ const PassagemForm = () => {
                                                                     const totalTrecho = calculateTrechoTotal(trecho);
                                                                     
                                                                     return (
-                                                                        <TableRow key={`${trecho.diretriz_id}-${trecho.trecho_id}`}>
+                                                                        <TableRow key={trecho.trecho_id}>
                                                                             <TableCell className="font-bold w-[100px]">
                                                                                 <div className="flex items-center gap-1">
+                                                                                    <Button 
+                                                                                        type="button" 
+                                                                                        variant="outline" 
+                                                                                        size="icon" 
+                                                                                        className="h-6 w-6"
+                                                                                        onClick={() => handleTrechoQuantityChange(trecho.trecho_id, trecho.quantidade_passagens - 1)}
+                                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                                    >
+                                                                                        <Minus className="h-3 w-3" />
+                                                                                    </Button>
                                                                                     <Input
                                                                                         type="number"
                                                                                         min={0}
                                                                                         value={trecho.quantidade_passagens === 0 ? "" : trecho.quantidade_passagens}
-                                                                                        onChange={(e) => handleTrechoQuantityChange(trecho.diretriz_id, trecho.trecho_id, parseInt(e.target.value) || 0)}
-                                                                                        className="w-full text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                        onChange={(e) => handleTrechoQuantityChange(trecho.trecho_id, parseInt(e.target.value) || 0)}
+                                                                                        className="w-16 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                                         disabled={!isPTrabEditable || isSaving}
                                                                                     />
+                                                                                    <Button 
+                                                                                        type="button" 
+                                                                                        variant="outline" 
+                                                                                        size="icon" 
+                                                                                        className="h-6 w-6"
+                                                                                        onClick={() => handleTrechoQuantityChange(trecho.trecho_id, trecho.quantidade_passagens + 1)}
+                                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                                    >
+                                                                                        <Plus className="h-3 w-3" />
+                                                                                    </Button>
                                                                                 </div>
                                                                             </TableCell>
                                                                             <TableCell>
@@ -1600,7 +1604,6 @@ const PassagemForm = () => {
                                                 ...calculatedFormData,
                                                 valor_total: totalTrecho,
                                                 valor_nd_33: totalTrecho,
-                                                efetivo: calculatedDataForMemoria.efetivo,
                                             });
                                             memoria += "\n";
                                             memoria += `\n==================================================\n`;
