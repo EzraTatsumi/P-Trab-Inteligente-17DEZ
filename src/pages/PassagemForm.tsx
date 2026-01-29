@@ -210,6 +210,34 @@ const PassagemForm = () => {
             setSelectedOmDestinoId(omDestino?.id);
         }
     }, [ptrabData, oms, editingId]);
+    
+    // NOVO EFEITO: Preenchimento automático da OM Destino do Recurso
+    useEffect(() => {
+        // Se estiver em modo de edição, não faz o preenchimento automático
+        if (editingId) return;
+        
+        // Se a OM Favorecida estiver preenchida E a OM Destino não estiver (ou for diferente)
+        if (formData.om_favorecida && formData.ug_favorecida) {
+            const omFavorecida = formData.om_favorecida;
+            const ugFavorecida = formData.ug_favorecida;
+            
+            // Apenas preenche se a OM Destino estiver vazia
+            if (!formData.om_destino) {
+                // Encontra o ID da OM Favorecida na lista de OMs
+                const omData = oms?.find(om => om.nome_om === omFavorecida && om.codug_om === ugFavorecida);
+                
+                if (omData) {
+                    setSelectedOmDestinoId(omData.id);
+                    setFormData(prev => ({
+                        ...prev,
+                        om_destino: omFavorecida,
+                        ug_destino: ugFavorecida,
+                    }));
+                }
+            }
+        }
+    }, [formData.om_favorecida, formData.ug_favorecida, formData.om_destino, formData.ug_destino, editingId, oms]);
+
 
     // =================================================================
     // CÁLCULOS E MEMÓRIA (MEMOIZED)
@@ -826,9 +854,13 @@ const PassagemForm = () => {
         mutationFn: async (recordsToSave: CalculatedPassagem[]) => {
             if (recordsToSave.length === 0) return;
             
+            // Mapeia os campos para a DB (salvando apenas o primeiro trecho, pois a DB só suporta 1 por linha)
             const dbRecords = recordsToSave.map(r => {
                 // Desestruturar campos que não existem no DB
                 const { tempId, memoria_calculo_display, totalGeral, om_favorecida, ug_favorecida, selected_trechos, ...rest } = r;
+                
+                // Usamos o primeiro trecho para preencher os campos de detalhe (origem, destino, etc.)
+                const firstTrecho = selected_trechos[0];
                 
                 const dbRecord: TablesInsert<'passagem_registros'> = {
                     ...rest,
@@ -836,7 +868,21 @@ const PassagemForm = () => {
                     ug: ug_favorecida, 
                     detalhamento: "Passagens", 
                     detalhamento_customizado: rest.detalhamento_customizado, 
-                    // om_detentora e ug_detentora já estão em 'rest' e representam a OM Destino
+                    
+                    // Campos de Trecho (usamos o primeiro trecho para preencher os campos DB legados)
+                    om_detentora: r.om_detentora,
+                    ug_detentora: r.ug_detentora,
+                    diretriz_id: firstTrecho.diretriz_id,
+                    trecho_id: firstTrecho.trecho_id,
+                    origem: firstTrecho.origem,
+                    destino: firstTrecho.destino,
+                    tipo_transporte: firstTrecho.tipo_transporte,
+                    is_ida_volta: firstTrecho.is_ida_volta,
+                    valor_unitario: firstTrecho.valor_unitario,
+                    quantidade_passagens: selected_trechos.reduce((sum, t) => sum + t.quantidade_passagens, 0), // Total de passagens
+                    
+                    valor_total: totalGeral,
+                    valor_nd_33: totalGeral, // ND 33 é o total
                 } as TablesInsert<'passagem_registros'>;
                 
                 return dbRecord;
@@ -875,13 +921,30 @@ const PassagemForm = () => {
             
             const { tempId, memoria_calculo_display, totalGeral, om_favorecida, ug_favorecida, selected_trechos, ...rest } = data;
             
+            // Usamos o primeiro trecho para preencher os campos de detalhe (origem, destino, etc.)
+            const firstTrecho = selected_trechos[0];
+            
             const dbUpdateData: TablesUpdate<'passagem_registros'> = {
                 ...rest,
                 organizacao: om_favorecida, 
                 ug: ug_favorecida, 
                 detalhamento: "Passagens", 
                 detalhamento_customizado: rest.detalhamento_customizado, 
-                // om_detentora e ug_detentora já estão em 'rest' e representam a OM Destino
+                
+                // Campos de Trecho (usamos o primeiro trecho para preencher os campos DB legados)
+                om_detentora: rest.om_detentora,
+                ug_detentora: rest.ug_detentora,
+                diretriz_id: firstTrecho.diretriz_id,
+                trecho_id: firstTrecho.trecho_id,
+                origem: firstTrecho.origem,
+                destino: firstTrecho.destino,
+                tipo_transporte: firstTrecho.tipo_transporte,
+                is_ida_volta: firstTrecho.is_ida_volta,
+                valor_unitario: firstTrecho.valor_unitario,
+                quantidade_passagens: selected_trechos.reduce((sum, t) => sum + t.quantidade_passagens, 0), // Total de passagens
+                
+                valor_total: totalGeral,
+                valor_nd_33: totalGeral, // ND 33 é o total
             } as TablesUpdate<'passagem_registros'>;
             
             const { error } = await supabase
@@ -1090,8 +1153,8 @@ const PassagemForm = () => {
                                                                 onChange={handleOmDestinoChange}
                                                                 placeholder="Selecione a OM Destino"
                                                                 disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingPassagens.length > 0}
-                                                                initialOmName={editingId ? formData.om_destino : undefined}
-                                                                initialOmUg={editingId ? formData.ug_destino : undefined}
+                                                                initialOmName={editingId ? formData.om_destino : formData.om_favorecida}
+                                                                initialOmUg={editingId ? formData.ug_destino : formData.ug_favorecida}
                                                             />
                                                             {/* UG DESTINO (Pequeno, abaixo da OM Destino) */}
                                                             {formData.ug_destino && (
