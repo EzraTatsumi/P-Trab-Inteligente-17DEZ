@@ -708,13 +708,16 @@ const PassagemForm = () => {
     
     // --- Lógica de Edição de Quantidade de Trecho no Formulário Principal ---
     const handleTrechoQuantityChange = (trechoId: string, quantity: number) => {
+        // Garante que a quantidade não seja negativa
         if (quantity < 0) return;
         
         setFormData(prev => {
             const newSelections = prev.selected_trechos.map(t => 
                 t.id === trechoId ? { ...t, quantidade_passagens: quantity } : t
-            ).filter(t => t.quantidade_passagens > 0); // Remove se a quantidade for zero
+            );
             
+            // IMPORTANTE: Removemos a filtragem que removia o trecho se a quantidade fosse zero.
+            // O trecho só deve ser removido pelo diálogo de seleção.
             return {
                 ...prev,
                 selected_trechos: newSelections,
@@ -1210,8 +1213,8 @@ const PassagemForm = () => {
                                                                                 <div className="flex items-center justify-center gap-1">
                                                                                     <Input
                                                                                         type="number"
-                                                                                        min={1}
-                                                                                        value={trecho.quantidade_passagens === 0 ? "" : trecho.quantidade_passagens}
+                                                                                        min={0} // Permitir 0, mas a validação final exige > 0
+                                                                                        value={trecho.quantidade_passagens} // Exibe 0 se for 0
                                                                                         onChange={(e) => handleTrechoQuantityChange(trecho.id, parseInt(e.target.value) || 0)}
                                                                                         className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                                         disabled={!isPTrabEditable || isSaving}
