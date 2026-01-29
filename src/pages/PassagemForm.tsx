@@ -1109,8 +1109,9 @@ const PassagemForm = () => {
                                                 <CardTitle className="text-base font-semibold">Período, Efetivo e Destino do Recurso</CardTitle>
                                             </CardHeader>
                                             <CardContent className="pt-2">
+                                                {/* Ajuste da grade para 4 colunas (ou 2x2) */}
                                                 <div className="p-4 bg-background rounded-lg border">
-                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                                         
                                                         {/* CAMPO 1: DIAS OPERAÇÃO (Período) */}
                                                         <div className="space-y-2 col-span-1">
@@ -1148,7 +1149,7 @@ const PassagemForm = () => {
                                                             />
                                                         </div>
                                                         
-                                                        {/* CAMPO 3 & 4: OM DESTINO E UG DESTINO (Agrupados) */}
+                                                        {/* CAMPO 3: OM DESTINO */}
                                                         <div className="space-y-2 col-span-1">
                                                             <Label htmlFor="om_destino">OM Destino do Recurso *</Label>
                                                             <OmSelector
@@ -1159,12 +1160,17 @@ const PassagemForm = () => {
                                                                 initialOmName={editingId ? formData.om_destino : formData.om_favorecida}
                                                                 initialOmUg={editingId ? formData.ug_destino : formData.ug_favorecida}
                                                             />
-                                                            {/* UG DESTINO (Pequeno, abaixo da OM Destino) */}
-                                                            <div className="pt-1">
-                                                                <span className="text-xs text-muted-foreground font-medium">
-                                                                    UG Destino: <span className="text-foreground font-semibold">{formatCodug(formData.ug_destino)}</span>
-                                                                </span>
-                                                            </div>
+                                                        </div>
+
+                                                        {/* CAMPO 4: UG DESTINO */}
+                                                        <div className="space-y-2 col-span-1">
+                                                            <Label htmlFor="ug_destino">UG Destino</Label>
+                                                            <Input
+                                                                id="ug_destino"
+                                                                value={formatCodug(formData.ug_destino)}
+                                                                disabled
+                                                                className="bg-muted/50"
+                                                            />
                                                         </div>
                                                     </div>
                                                 </div>
