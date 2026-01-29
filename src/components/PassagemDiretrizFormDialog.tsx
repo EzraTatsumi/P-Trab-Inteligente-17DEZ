@@ -5,7 +5,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox"; // Novo: Checkbox para Ida/Volta
+import { Switch } from "@/components/ui/switch"; // Revertido para Switch
 import { Save, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
@@ -16,8 +16,8 @@ import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DiretrizPassagem, TrechoPassagem, TipoTransporte, DiretrizPassagemForm } from "@/types/diretrizesPassagens";
 import CurrencyInput from "@/components/CurrencyInput";
-import { DatePicker } from "@/components/DatePicker"; // Novo: DatePicker
-import { format, parseISO } from "date-fns"; // Novo: Funções de data
+import { DatePicker } from "@/components/DatePicker";
+import { format, parseISO } from "date-fns";
 
 interface PassagemDiretrizFormDialogProps {
     open: boolean;
@@ -216,7 +216,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                         {isEditingContract ? `Editar Contrato de Passagens: ${passagemForm.om_referencia}` : "Novo Contrato de Passagens"}
                     </DialogTitle>
                     <DialogDescription>
-                        Cadastre a OM de referência, o número do pregão, a vigência e os trechos de custo associados a este contrato para o ano {selectedYear}.
+                        Cadastre a OM de referência, o número do pregão, a vigência e os trechos de custo associados a este contrato.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -287,7 +287,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                         </CardTitle>
                         
                         {/* Formulário de Trecho */}
-                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 border p-3 rounded-lg bg-secondary/50">
+                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 border p-3 rounded-lg bg-muted/50">
                             <div className="space-y-2 col-span-2">
                                 <Label htmlFor="trecho-origem">Origem / Destino *</Label>
                                 <div className="flex gap-2">
@@ -332,15 +332,15 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                     </SelectContent>
                                 </Select>
                             </div>
-                            {/* NOVO: Checkbox para Ida/Volta */}
+                            {/* Switch para Ida/Volta com rótulo dinâmico */}
                             <div className="col-span-1 flex items-center pt-6">
-                                <Checkbox
+                                <Switch
                                     id="trecho-ida-volta"
                                     checked={trechoForm.is_ida_volta}
-                                    onCheckedChange={(checked) => setTrechoForm({ ...trechoForm, is_ida_volta: !!checked })}
+                                    onCheckedChange={(checked) => setTrechoForm({ ...trechoForm, is_ida_volta: checked })}
                                 />
-                                <Label htmlFor="trecho-ida-volta" className="ml-2 text-sm font-medium cursor-pointer">
-                                    Ida e Volta
+                                <Label htmlFor="trecho-ida-volta" className="ml-2 text-sm font-medium cursor-pointer whitespace-nowrap">
+                                    {trechoForm.is_ida_volta ? "Ida e Volta" : "Somente Ida"}
                                 </Label>
                             </div>
                             <div className="space-y-2 col-span-1 flex flex-col justify-end">
@@ -363,7 +363,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                         <TableHead>Trecho</TableHead>
                                         <TableHead className="text-center">Tipo</TableHead>
                                         <TableHead className="text-right">Valor</TableHead>
-                                        <TableHead className="text-center">Ida/Volta</TableHead>
+                                        <TableHead className="text-center">Modalidade</TableHead>
                                         <TableHead className="w-[100px] text-right">Ações</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -374,7 +374,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                             <TableCell className="text-center">{trecho.tipo_transporte}</TableCell>
                                             <TableCell className="text-right font-semibold">{formatCurrency(trecho.valor)}</TableCell>
                                             <TableCell className="text-center">
-                                                {trecho.is_ida_volta ? "Sim" : "Não"}
+                                                {trecho.is_ida_volta ? "Ida e Volta" : "Somente Ida"}
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
