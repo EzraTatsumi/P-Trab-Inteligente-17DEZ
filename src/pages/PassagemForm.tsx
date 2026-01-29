@@ -1213,7 +1213,8 @@ const PassagemForm = () => {
                                                                                     <Input
                                                                                         type="number"
                                                                                         min={0} 
-                                                                                        value={trecho.quantidade_passagens} // Exibe 0 se for 0
+                                                                                        placeholder="Ex: 3"
+                                                                                        value={trecho.quantidade_passagens === 0 ? "" : trecho.quantidade_passagens}
                                                                                         onChange={(e) => handleTrechoQuantityChange(trecho.id, parseInt(e.target.value) || 0)}
                                                                                         className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                                         disabled={!isPTrabEditable || isSaving}
