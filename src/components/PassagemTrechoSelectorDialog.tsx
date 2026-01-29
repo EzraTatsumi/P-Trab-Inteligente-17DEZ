@@ -1,4 +1,4 @@
-' para '>' na linha 256 e a limpeza do arquivo.">
+' por um hífen '-'.">
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -253,7 +253,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                             <AlertTriangle className="h-8 w-8 text-destructive mb-2 mx-auto" />
                             <p className="text-sm text-muted-foreground">
                                 Nenhum contrato de passagens ativo encontrado para o ano {selectedYear}. 
-                                Cadastre-os em "Configurações > Custos Operacionais".
+                                Cadastre-os em "Configurações - Custos Operacionais".
                             </p>
                         </div>
                     )}
