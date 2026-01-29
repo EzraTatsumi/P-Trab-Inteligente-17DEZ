@@ -37,7 +37,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import * as z from "zod";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
-import { cn } from "@/lib/utils"; 
+import { cn } => "@/lib/utils"; 
 import CurrencyInput from "@/components/CurrencyInput";
 import PassagemTrechoSelectorDialog, { TrechoSelection } from "@/components/PassagemTrechoSelectorDialog";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
@@ -443,8 +443,9 @@ const PassagemForm = () => {
         return false;
     }, [editingId, stagedUpdate, formData, pendingPassagens.length, lastStagedFormData]);
     
-    // CORREÇÃO: Usar item.totalGeral em vez de item.valor_total
+    // NOVO: Cálculo do total de todos os itens pendentes
     const totalPendingPassagens = useMemo(() => {
+        // CORREÇÃO: Usar item.totalGeral em vez de item.valor_total (que é o campo do DB)
         return pendingPassagens.reduce((sum, item) => sum + item.totalGeral, 0);
     }, [pendingPassagens]);
     
@@ -565,13 +566,13 @@ const PassagemForm = () => {
             valor_unitario: trechoFromRecord.valor_unitario,
             quantidade_passagens: trechoFromRecord.quantidade_passagens,
             
-            valor_total: totalGeral, // Este é o campo que será salvo no DB
+            valor_total: totalGeral,
             valor_nd_33: totalND33,
             
             detalhamento: registro.detalhamento,
             detalhamento_customizado: registro.detalhamento_customizado, 
             
-            totalGeral: totalGeral, // Este é o campo usado para exibição local
+            totalGeral: totalGeral,
             memoria_calculo_display: memoria, 
             om_favorecida: newFormData.om_favorecida,
             ug_favorecida: newFormData.ug_favorecida,
@@ -864,7 +865,7 @@ const PassagemForm = () => {
             selected_trechos: [trechoFromRecord],
         };
         
-        // Nota: Para registros antigos, o cálculo é feito com base no único trecho salvo.
+        // USAR A FUNÇÃO AUXILIAR PARA CALCULAR A MEMÓRIA AUTOMÁTICA
         const { memoria: memoriaAutomatica } = calculatePassagemData(calculatedDataForMemoria, ptrabData);
         
         // 3. Usar a customizada se existir, senão usar a automática
