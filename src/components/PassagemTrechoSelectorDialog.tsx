@@ -1,205 +1,227 @@
-na mensagem de erro.">
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Tables } from "@/integrations/supabase/types";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertTriangle, Check, Plane } from "lucide-react";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardTitle } from "@/components/ui/card";
-import { formatCurrency, formatDate, formatCodug } from "@/lib/formatUtils";
+import { Loader2, Plane, Check, AlertTriangle, MapPin, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { DiretrizPassagem, TrechoPassagem, TipoTransporte } from "@/types/diretrizesPassagens";
-import { useSession } from "@/components/SessionContextProvider";
+import { formatCurrency, formatCodug, formatDate } from "@/lib/formatUtils";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-interface PassagemTrechoSelectorDialogProps {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    selectedYear: number;
-    onSelect: (trecho: {
-        om_detentora: string;
-        ug_detentora: string;
-        diretriz_id: string;
-        trecho_id: string;
-        origem: string;
-        destino: string;
-        tipo_transporte: TipoTransporte;
-        is_ida_volta: boolean;
-        valor_unitario: number;
-    }) => void;
+// Tipo de retorno esperado pelo PassagemForm
+interface TrechoSelection {
+    om_detentora: string;
+    ug_detentora: string;
+    diretriz_id: string;
+    trecho_id: string;
+    origem: string;
+    destino: string;
+    tipo_transporte: TipoTransporte;
+    is_ida_volta: boolean;
+    valor_unitario: number;
 }
 
-const fetchDiretrizesPassagens = async (userId: string, year: number): Promise<DiretrizPassagem[]> => {
-    const { data, error } = await supabase
-        .from('diretrizes_passagens')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('ano_referencia', year)
-        .eq('ativo', true)
-        .order('om_referencia', { ascending: true });
-        
-    if (error) throw new Error("Falha ao carregar diretrizes de passagens.");
-    
-    return data as DiretrizPassagem[];
+interface PassagemTrechoSelectorDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSelect: (trecho: TrechoSelection) => void;
+  selectedYear: number;
+}
+
+const fetchDiretrizesPassagens = async (year: number): Promise<DiretrizPassagem[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('diretrizes_passagens')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('ano_referencia', year)
+    .eq('ativo', true)
+    .order('om_referencia', { ascending: true });
+
+  if (error) {
+    console.error("Erro ao buscar diretrizes de passagens:", error);
+    throw new Error("Falha ao carregar contratos de passagens.");
+  }
+
+  return data as DiretrizPassagem[];
 };
 
 const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> = ({
-    open,
-    onOpenChange,
-    selectedYear,
-    onSelect,
+  open,
+  onOpenChange,
+  onSelect,
+  selectedYear,
 }) => {
-    const { user } = useSession();
-    const [selectedTrecho, setSelectedTrecho] = useState<TrechoPassagem & { diretriz_id: string, om_referencia: string, ug_referencia: string, data_inicio_vigencia: string | null, data_fim_vigencia: string | null } | null>(null);
-    const [selectedDiretriz, setSelectedDiretriz] = useState<DiretrizPassagem | null>(null);
+  const { data: diretrizes, isLoading, isError } = useQuery({
+    queryKey: ['diretrizesPassagens', selectedYear],
+    queryFn: () => fetchDiretrizesPassagens(selectedYear),
+    enabled: open,
+  });
+  
+  const [selectedDiretrizId, setSelectedDiretrizId] = useState<string | null>(null);
+  const [selectedTrechoId, setSelectedTrechoId] = useState<string | null>(null);
 
-    const { data: diretrizes, isLoading, isError } = useQuery({
-        queryKey: ['diretrizesPassagens', user?.id, selectedYear],
-        queryFn: () => fetchDiretrizesPassagens(user!.id, selectedYear),
-        enabled: open && !!user?.id && !!selectedYear,
-    });
-    
-    // Reset state when dialog opens/closes
-    if (!open && (selectedTrecho || selectedDiretriz)) {
-        setSelectedTrecho(null);
-        setSelectedDiretriz(null);
+  const selectedDiretriz = useMemo(() => {
+    return diretrizes?.find(d => d.id === selectedDiretrizId) || null;
+  }, [diretrizes, selectedDiretrizId]);
+
+  const selectedTrecho = useMemo(() => {
+    if (!selectedDiretriz || !selectedTrechoId) return null;
+    // Trechos é um array de objetos JSONB, precisamos garantir que a busca seja correta
+    const trechosArray = selectedDiretriz.trechos as unknown as TrechoPassagem[];
+    return trechosArray.find(t => t.id === selectedTrechoId) || null;
+  }, [selectedDiretriz, selectedTrechoId]);
+
+  const handleConfirmSelection = () => {
+    if (!selectedDiretriz || !selectedTrecho) {
+      toast.error("Selecione um trecho válido.");
+      return;
     }
 
-    const allTrechos = useMemo(() => {
-        if (!diretrizes) return [];
-        
-        return diretrizes.flatMap(diretriz => 
-            (diretriz.trechos as TrechoPassagem[]).map(trecho => ({
-                ...trecho,
-                diretriz_id: diretriz.id,
-                om_referencia: diretriz.om_referencia,
-                ug_referencia: diretriz.ug_referencia,
-                numero_pregao: diretriz.numero_pregao,
-                data_inicio_vigencia: diretriz.data_inicio_vigencia,
-                data_fim_vigencia: diretriz.data_fim_vigencia,
-            }))
-        );
-    }, [diretrizes]);
-    
-    const handleSelectTrecho = (trecho: TrechoPassagem & { diretriz_id: string, om_referencia: string, ug_referencia: string, data_inicio_vigencia: string | null, data_fim_vigencia: string | null }) => {
-        setSelectedTrecho(trecho);
-        setSelectedDiretriz(diretrizes?.find(d => d.id === trecho.diretriz_id) || null);
-    };
-    
-    const handleConfirmSelection = () => {
-        if (!selectedTrecho || !selectedDiretriz) return;
-        
-        onSelect({
-            om_detentora: selectedDiretriz.om_referencia,
-            ug_detentora: selectedDiretriz.ug_referencia,
-            diretriz_id: selectedDiretriz.id,
-            trecho_id: selectedTrecho.id,
-            origem: selectedTrecho.origem,
-            destino: selectedTrecho.destino,
-            tipo_transporte: selectedTrecho.tipo_transporte,
-            is_ida_volta: selectedTrecho.is_ida_volta,
-            valor_unitario: selectedTrecho.valor,
-        });
-        onOpenChange(false);
+    const selection: TrechoSelection = {
+      om_detentora: selectedDiretriz.om_referencia,
+      ug_detentora: selectedDiretriz.ug_referencia,
+      diretriz_id: selectedDiretriz.id,
+      trecho_id: selectedTrecho.id,
+      origem: selectedTrecho.origem,
+      destino: selectedTrecho.destino,
+      tipo_transporte: selectedTrecho.tipo_transporte,
+      is_ida_volta: selectedTrecho.is_ida_volta,
+      valor_unitario: selectedTrecho.valor,
     };
 
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Plane className="h-5 w-5 text-primary" />
-                        Seleção de Trecho de Passagem
-                    </DialogTitle>
-                    <DialogDescription>
-                        Selecione um trecho de passagem ativo de um contrato cadastrado para o ano {selectedYear}.
-                    </DialogDescription>
-                </DialogHeader>
+    onSelect(selection);
+    onOpenChange(false);
+  };
+  
+  // Reset state when dialog opens/closes
+  // CORREÇÃO: Usar useEffect para resetar o estado quando o diálogo fechar
+  useEffect(() => {
+    if (!open) {
+        setSelectedDiretrizId(null);
+        setSelectedTrechoId(null);
+    }
+  }, [open]);
 
-                {isLoading ? (
-                    <div className="text-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
-                        <p className="text-sm text-muted-foreground mt-2">Carregando contratos...</p>
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Plane className="h-5 w-5 text-primary" />
+            Selecionar Trecho de Passagem
+          </DialogTitle>
+          <DialogDescription>
+            Selecione o contrato (Diretriz) e o trecho específico para a solicitação.
+            <span className="block mt-1 text-xs text-red-600">
+                Apenas contratos ativos para o ano {selectedYear} são exibidos.
+            </span>
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="flex justify-center items-center h-40">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <span className="ml-2">Carregando diretrizes...</span>
+          </div>
+        ) : isError || !diretrizes || diretrizes.length === 0 ? (
+          <div className="flex flex-col justify-center items-center h-40 text-center p-4">
+            <AlertTriangle className="h-8 w-8 text-destructive mb-2" />
+            <p className="text-sm text-muted-foreground">
+              Nenhum contrato de passagens ativo encontrado para o ano {selectedYear}. 
+              Cadastre-os em "Configurações > Custos Operacionais".
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {diretrizes.map((diretriz) => (
+              <Collapsible 
+                key={diretriz.id} 
+                open={selectedDiretrizId === diretriz.id}
+                onOpenChange={(open) => {
+                    setSelectedDiretrizId(open ? diretriz.id : null);
+                    setSelectedTrechoId(null); // Reset trecho ao mudar de diretriz
+                }}
+                className="border rounded-lg"
+              >
+                <CollapsibleTrigger asChild>
+                  <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                    <div className="flex flex-col text-left">
+                      <h4 className="font-semibold text-base">
+                        {diretriz.om_referencia} (UG: {formatCodug(diretriz.ug_referencia)})
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        Pregão: {diretriz.numero_pregao || 'N/A'} | Vigência: {formatDate(diretriz.data_inicio_vigencia)} a {formatDate(diretriz.data_fim_vigencia)}
+                      </p>
                     </div>
-                ) : isError || allTrechos.length === 0 ? (
-                    <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Nenhum Contrato Ativo</AlertTitle>
-                        <p className="text-sm">Não foram encontradas diretrizes de passagens ativas para o ano {selectedYear}. Cadastre-as em Configurações > Custos Operacionais.</p>
-                    </Alert>
-                ) : (
-                    <div className="space-y-4">
-                        <div className="max-h-[50vh] overflow-y-auto border rounded-lg">
-                            <Table>
-                                <TableHeader className="sticky top-0 bg-background z-10">
-                                    <TableRow>
-                                        <TableHead className="w-[10%]">Tipo</TableHead>
-                                        <TableHead className="w-[30%]">Trecho</TableHead>
-                                        <TableHead className="w-[15%] text-center">Valor</TableHead>
-                                        <TableHead className="w-[25%]">Contratante (OM)</TableHead>
-                                        <TableHead className="w-[20%]">Vigência</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {allTrechos.map((trecho, index) => (
-                                        <TableRow 
-                                            key={index} 
-                                            onClick={() => handleSelectTrecho(trecho)}
-                                            className={cn(
-                                                "cursor-pointer hover:bg-muted/50",
-                                                selectedTrecho?.id === trecho.id && "bg-primary/10 hover:bg-primary/20 border-l-4 border-primary"
-                                            )}
-                                        >
-                                            <TableCell className="font-medium text-xs">
-                                                {trecho.tipo_transporte}
-                                                <div className="text-muted-foreground text-[10px]">{trecho.is_ida_volta ? 'Ida/Volta' : 'Somente Ida'}</div>
-                                            </TableCell>
-                                            <TableCell className="text-sm">
-                                                {trecho.origem} &rarr; {trecho.destino}
-                                            </TableCell>
-                                            <TableCell className="text-center font-bold text-sm">
-                                                {formatCurrency(trecho.valor)}
-                                            </TableCell>
-                                            <TableCell className="text-xs">
-                                                {trecho.om_referencia} ({trecho.numero_pregao})
-                                            </TableCell>
-                                            <TableCell className="text-xs text-muted-foreground">
-                                                {formatDate(trecho.data_inicio_vigencia)} - {formatDate(trecho.data_fim_vigencia)}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", selectedDiretrizId === diretriz.id && "rotate-180")} />
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="border-t bg-background">
+                  <div className="p-4 space-y-3">
+                    <h5 className="font-medium text-sm mb-2">Selecione o Trecho:</h5>
+                    {/* CORREÇÃO: Garantir que trechos seja tratado como array de TrechoPassagem */}
+                    {(diretriz.trechos as unknown as TrechoPassagem[]).length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center">Nenhum trecho cadastrado neste contrato.</p>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {(diretriz.trechos as unknown as TrechoPassagem[]).map((trecho) => (
+                                <div
+                                    key={trecho.id}
+                                    className={cn(
+                                        "p-3 border rounded-md cursor-pointer transition-all",
+                                        selectedTrechoId === trecho.id
+                                            ? "border-primary ring-2 ring-primary/50 bg-primary/10"
+                                            : "hover:bg-muted"
+                                    )}
+                                    onClick={() => setSelectedTrechoId(trecho.id)}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-semibold text-sm flex items-center gap-1">
+                                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                                            {trecho.origem} &rarr; {trecho.destino}
+                                        </span>
+                                        {selectedTrechoId === trecho.id && <Check className="h-4 w-4 text-primary" />}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                        <span className="font-medium">{trecho.tipo_transporte}</span> | 
+                                        <span className="ml-1">{trecho.is_ida_volta ? 'Ida e Volta' : 'Somente Ida'}</span>
+                                    </div>
+                                    <div className="text-sm font-bold mt-1">
+                                        {formatCurrency(trecho.valor)}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                        
-                        {selectedTrecho && (
-                            <Alert variant="default" className="bg-primary/10 border-primary/50">
-                                <Check className="h-4 w-4 text-primary" />
-                                <AlertTitle>Trecho Selecionado:</AlertTitle>
-                                <AlertDescription className="text-sm font-medium">
-                                    {selectedTrecho.origem} &rarr; {selectedTrecho.destino} ({selectedTrecho.tipo_transporte}) - {formatCurrency(selectedTrecho.valor)}
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Contratante: {selectedDiretriz?.om_referencia} (UG: {formatCodug(selectedDiretriz?.ug_referencia)})
-                                    </p>
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                    </div>
-                )}
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            ))}
+          </div>
+        )}
 
-                <div className="flex justify-end gap-2 pt-4">
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
-                        Cancelar
-                    </Button>
-                    <Button onClick={handleConfirmSelection} disabled={!selectedTrecho || isLoading}>
-                        Confirmar Seleção
-                    </Button>
-                </div>
-            </DialogContent>
-        </Dialog>
-    );
+        <div className="flex justify-end pt-4 border-t">
+          <Button 
+            onClick={handleConfirmSelection} 
+            disabled={!selectedTrecho || isLoading}
+          >
+            Confirmar Seleção
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 export default PassagemTrechoSelectorDialog;
