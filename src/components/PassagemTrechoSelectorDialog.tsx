@@ -80,6 +80,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
     }, [currentSelections]);
 
     const isSelected = (trechoId: string): boolean => {
+        // Verifica se o trecho está na lista de seleções atuais
         return currentSelections.some(t => t.trecho_id === trechoId);
     };
 
@@ -88,7 +89,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
             const existingIndex = prev.findIndex(t => t.trecho_id === trechoId);
             
             if (isChecked) {
-                // Adiciona seleção (quantidade padrão 1)
+                // Adiciona seleção (se não existir)
                 if (existingIndex === -1) {
                     const newSelection: TrechoSelection = {
                         ...trecho,
@@ -100,6 +101,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                     };
                     return [...prev, newSelection];
                 }
+                // Se já existir, retorna o estado anterior (evita duplicidade)
                 return prev; 
             } else {
                 // Remove seleção
