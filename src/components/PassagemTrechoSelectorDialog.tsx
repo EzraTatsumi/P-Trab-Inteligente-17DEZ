@@ -187,7 +187,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                     <div className="text-center py-8">
                         <AlertTriangle className="h-6 w-6 mx-auto text-yellow-600 mb-2" />
                         <p className="text-sm text-muted-foreground">
-                            Nenhum trecho de passagem ativo encontrado para o ano {selectedYear}. Cadastre os contratos em "Configurações > Custos Operacionais".
+                            Nenhum trecho de passagem ativo encontrado para o ano {selectedYear}. Cadastre os contratos em "Configurações - Custos Operacionais".
                         </p>
                     </div>
                 ) : (
