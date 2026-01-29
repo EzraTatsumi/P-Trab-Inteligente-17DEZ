@@ -10,9 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { formatCurrency } from "@/lib/formatUtils";
+import { formatCurrency, numberToRawDigits, formatCurrencyInput } from "@/lib/formatUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
-import { CurrencyInput } from "@/components/CurrencyInput";
+import CurrencyInput from "@/components/CurrencyInput";
 
 interface CreditInputDialogProps {
   open: boolean;
@@ -24,6 +24,13 @@ interface CreditInputDialogProps {
   onSave: (gnd3: number, gnd4: number) => void;
 }
 
+// Função auxiliar para converter dígitos brutos (string) para número (float)
+const rawDigitsToNumber = (rawDigits: string): number => {
+    if (!rawDigits) return 0;
+    // formatCurrencyInput retorna { numericValue, formatted, digits }
+    return formatCurrencyInput(rawDigits).numericValue;
+};
+
 export const CreditInputDialog = ({
   open,
   onOpenChange,
@@ -33,26 +40,30 @@ export const CreditInputDialog = ({
   initialCreditGND4,
   onSave,
 }: CreditInputDialogProps) => {
-  // State now holds the numeric value, managed by CurrencyInput's onChange
-  const [creditGND3, setCreditGND3] = useState<number>(initialCreditGND3);
-  const [creditGND4, setCreditGND4] = useState<number>(initialCreditGND4);
+  // Estado agora armazena os dígitos brutos (string)
+  const [rawCreditGND3, setRawCreditGND3] = useState<string>(numberToRawDigits(initialCreditGND3));
+  const [rawCreditGND4, setRawCreditGND4] = useState<string>(numberToRawDigits(initialCreditGND4));
   const { handleEnterToNextField } = useFormNavigation();
 
   // Sincroniza o estado interno com os props iniciais quando o diálogo abre
   useEffect(() => {
     if (open) {
-      setCreditGND3(initialCreditGND3);
-      setCreditGND4(initialCreditGND4);
+      setRawCreditGND3(numberToRawDigits(initialCreditGND3));
+      setRawCreditGND4(numberToRawDigits(initialCreditGND4));
     }
   }, [open, initialCreditGND3, initialCreditGND4]);
 
+  // Converte os dígitos brutos para valores numéricos para cálculo
+  const creditGND3 = rawDigitsToNumber(rawCreditGND3);
+  const creditGND4 = rawDigitsToNumber(rawCreditGND4);
+
   const handleSave = () => {
-    // State already holds the numeric values
+    // Passa os valores numéricos convertidos para o onSave
     onSave(creditGND3, creditGND4);
     onOpenChange(false);
   };
 
-  // Calcula os custos e saldos usando os valores numéricos do estado
+  // Calcula os custos e saldos usando os valores numéricos convertidos
   const saldoGND3 = creditGND3 - totalGND3Cost;
   const saldoGND4 = creditGND4 - totalGND4Cost;
 
@@ -76,8 +87,8 @@ export const CreditInputDialog = ({
             <Label htmlFor="credit-gnd3" className="font-semibold text-sm">GND 3 - Custeio</Label>
             <CurrencyInput
               id="credit-gnd3"
-              value={creditGND3}
-              onChange={setCreditGND3}
+              rawDigits={rawCreditGND3}
+              onChange={setRawCreditGND3}
               onKeyDown={handleEnterToNextField}
             />
             
@@ -98,8 +109,8 @@ export const CreditInputDialog = ({
             <Label htmlFor="credit-gnd4" className="font-semibold text-sm">GND 4 - Investimento (Material Permanente)</Label>
             <CurrencyInput
               id="credit-gnd4"
-              value={creditGND4}
-              onChange={setCreditGND4}
+              rawDigits={rawCreditGND4}
+              onChange={setRawCreditGND4}
               onKeyDown={handleEnterToNextField}
             />
             
