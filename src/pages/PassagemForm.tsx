@@ -1193,7 +1193,7 @@ const PassagemForm = () => {
                                                         <Table>
                                                             <TableHeader>
                                                                 <TableRow>
-                                                                    <TableHead className="w-[100px]">Qtd</TableHead>
+                                                                    <TableHead className="w-[100px] text-center">Qtd</TableHead>
                                                                     <TableHead>Trecho</TableHead>
                                                                     <TableHead>Tipo</TableHead>
                                                                     <TableHead className="text-right">Valor Unitário</TableHead>
@@ -1207,8 +1207,7 @@ const PassagemForm = () => {
                                                                     return (
                                                                         <TableRow key={trecho.id}>
                                                                             <TableCell className="font-bold w-[100px]">
-                                                                                <div className="flex items-center gap-1">
-                                                                                    {/* Botões de incremento/decremento removidos */}
+                                                                                <div className="flex items-center justify-center gap-1">
                                                                                     <Input
                                                                                         type="number"
                                                                                         min={1}
@@ -1226,7 +1225,11 @@ const PassagemForm = () => {
                                                                                 </p>
                                                                             </TableCell>
                                                                             <TableCell className="text-xs">
-                                                                                {trecho.tipo_transporte} ({trecho.is_ida_volta ? 'I/V' : 'Ida'})
+                                                                                {/* Formatação em duas linhas */}
+                                                                                <div className="flex flex-col">
+                                                                                    <span className="font-medium">{trecho.tipo_transporte}</span>
+                                                                                    <span className="text-muted-foreground">({trecho.is_ida_volta ? 'Ida/Volta' : 'Ida'})</span>
+                                                                                </div>
                                                                             </TableCell>
                                                                             <TableCell className="text-right text-sm">
                                                                                 {formatCurrency(trecho.valor_unitario)}
