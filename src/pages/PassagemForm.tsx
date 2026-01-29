@@ -39,7 +39,7 @@ import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
 import { cn } from "@/lib/utils"; 
 import CurrencyInput from "@/components/CurrencyInput";
-import PassagemTrechoSelectorDialog from "@/components/PassagemTrechoSelectorDialog";
+import PassagemTrechoSelectorDialog, { TrechoSelection } from "@/components/PassagemTrechoSelectorDialog";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { TrechoPassagem, TipoTransporte } from "@/types/diretrizesPassagens";
 
@@ -65,31 +65,29 @@ interface CalculatedPassagem extends TablesInsert<'passagem_registros'> {
     // Campos Favorecida (para display)
     om_favorecida: string;
     ug_favorecida: string;
+    // Novo: Armazena os trechos selecionados para recálculo/display
+    selected_trechos: TrechoSelection[];
 }
 
 // Estado inicial para o formulário
-const initialFormState: PassagemFormType & { trecho_selecionado: boolean } = {
+interface PassagemFormState {
+    om_favorecida: string; 
+    ug_favorecida: string; 
+    dias_operacao: number;
+    efetivo: number; // NOVO CAMPO
+    fase_atividade: string;
+    
+    // Dados dos Trechos Selecionados (Lista de TrechoSelection)
+    selected_trechos: TrechoSelection[];
+}
+
+const initialFormState: PassagemFormState = {
     om_favorecida: "", 
     ug_favorecida: "", 
     dias_operacao: 0,
+    efetivo: 0, // Inicializado
     fase_atividade: "",
-    
-    // Dados do Trecho Selecionado (OM Detentora é a OM Contratante)
-    om_detentora: "",
-    ug_detentora: "",
-    diretriz_id: "",
-    trecho_id: "",
-    origem: "",
-    destino: "",
-    tipo_transporte: 'AÉREO',
-    is_ida_volta: false,
-    valor_unitario: 0,
-    
-    // Quantidade
-    quantidade_passagens: 0,
-    
-    // Campo de controle de UI
-    trecho_selecionado: false,
+    selected_trechos: [],
 };
 
 // Função para comparar números de ponto flutuante com tolerância
@@ -98,20 +96,27 @@ const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
 };
 
 // Helper function to compare form data structures
-const compareFormData = (data1: typeof initialFormState, data2: typeof initialFormState) => {
-    // Compare all relevant input fields
+const compareFormData = (data1: PassagemFormState, data2: PassagemFormState) => {
+    // Compare todos os campos relevantes
     if (
         data1.dias_operacao !== data2.dias_operacao ||
-        data1.quantidade_passagens !== data2.quantidade_passagens ||
-        data1.om_detentora !== data2.om_detentora ||
-        data1.ug_detentora !== data2.ug_detentora ||
+        data1.efetivo !== data2.efetivo || // Comparar efetivo
         data1.om_favorecida !== data2.om_favorecida ||
         data1.ug_favorecida !== data2.ug_favorecida ||
         data1.fase_atividade !== data2.fase_atividade ||
-        data1.trecho_id !== data2.trecho_id
+        data1.selected_trechos.length !== data2.selected_trechos.length
     ) {
         return true;
     }
+    
+    // Comparar detalhes dos trechos (simplificado, apenas IDs e quantidades)
+    const trechos1 = data1.selected_trechos.map(t => `${t.trecho_id}-${t.quantidade_passagens}`).sort().join('|');
+    const trechos2 = data2.selected_trechos.map(t => `${t.trecho_id}-${t.quantidade_passagens}`).sort().join('|');
+    
+    if (trechos1 !== trechos2) {
+        return true;
+    }
+    
     return false;
 };
 
@@ -123,7 +128,7 @@ const PassagemForm = () => {
     const queryClient = useQueryClient();
     const { handleEnterToNextField } = useFormNavigation();
     
-    const [formData, setFormData] = useState<typeof initialFormState>(initialFormState);
+    const [formData, setFormData] = useState<PassagemFormState>(initialFormState);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [registroToDelete, setRegistroToDelete] = useState<PassagemRegistroDB | null>(null);
@@ -139,13 +144,10 @@ const PassagemForm = () => {
     const [stagedUpdate, setStagedUpdate] = useState<CalculatedPassagem | null>(null);
     
     // NOVO ESTADO: Armazena o último formData que gerou um item em pendingPassagens
-    const [lastStagedFormData, setLastStagedFormData] = useState<typeof initialFormState | null>(null);
+    const [lastStagedFormData, setLastStagedFormData] = useState<PassagemFormState | null>(null);
     
     // Estado para rastrear o ID da OM Favorecida (OM do PTrab)
     const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
-    
-    // Estado para rastrear o ID da OM Detentora (OM Contratante)
-    const [selectedOmDetentoraId, setSelectedOmDetentoraId] = useState<string | undefined>(undefined);
     
     // Estado para o diálogo de seleção de trechos
     const [showTrechoSelector, setShowTrechoSelector] = useState(false);
@@ -182,21 +184,10 @@ const PassagemForm = () => {
             }));
             setSelectedOmFavorecidaId(undefined); 
             
-            // 2. OM Detentora (Resetada, pois deve vir da seleção do trecho)
-            setFormData(prev => ({
-                ...prev,
-                om_detentora: "",
-                ug_detentora: "",
-            }));
-            setSelectedOmDetentoraId(undefined);
-            
         } else if (ptrabData && editingId) {
             // Se estiver editando, tentamos encontrar os IDs das OMs para o seletor
             const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
-            const omDetentora = oms?.find(om => om.nome_om === formData.om_detentora && om.codug_om === formData.ug_detentora);
-            
             setSelectedOmFavorecidaId(omFavorecida?.id);
-            setSelectedOmDetentoraId(omDetentora?.id);
         }
     }, [ptrabData, oms, editingId]);
 
@@ -205,33 +196,64 @@ const PassagemForm = () => {
     // =================================================================
     
     const calculos = useMemo(() => {
-        if (!ptrabData || !formData.trecho_selecionado) {
+        if (!ptrabData || formData.selected_trechos.length === 0) {
             return {
                 totalGeral: 0,
                 totalND33: 0,
-                memoria: "Selecione um trecho e preencha a quantidade de passagens.",
+                memoria: "Selecione pelo menos um trecho e preencha os dados de solicitação.",
             };
         }
         
         try {
-            const calculatedFormData: PassagemFormType = {
-                ...formData,
-                organizacao: formData.om_favorecida, 
-                ug: formData.ug_favorecida, 
-            };
-
-            // 1. Calcular totais
-            const totals = calculatePassagemTotals(calculatedFormData);
+            // O cálculo agora é feito por trecho e somado
+            let totalGeral = 0;
+            let totalND33 = 0;
+            let memoria = "";
             
-            // 2. Gerar memória
-            const memoria = generatePassagemMemoriaCalculo({
-                ...calculatedFormData,
-                valor_total: totals.totalGeral,
-                valor_nd_33: totals.totalND33,
+            formData.selected_trechos.forEach((trecho, index) => {
+                const calculatedFormData: PassagemFormType = {
+                    organizacao: formData.om_favorecida, 
+                    ug: formData.ug_favorecida, 
+                    dias_operacao: formData.dias_operacao,
+                    fase_atividade: formData.fase_atividade,
+                    
+                    // Dados do Trecho Selecionado
+                    om_detentora: trecho.om_detentora,
+                    ug_detentora: trecho.ug_detentora,
+                    diretriz_id: trecho.diretriz_id,
+                    trecho_id: trecho.trecho_id,
+                    origem: trecho.origem,
+                    destino: trecho.destino,
+                    tipo_transporte: trecho.tipo_transporte,
+                    is_ida_volta: trecho.is_ida_volta,
+                    valor_unitario: trecho.valor_unitario,
+                    
+                    // Quantidade
+                    quantidade_passagens: trecho.quantidade_passagens,
+                };
+
+                const totals = calculatePassagemTotals(calculatedFormData);
+                
+                totalGeral += totals.totalGeral;
+                totalND33 += totals.totalND33;
+                
+                memoria += `--- Trecho ${index + 1}: ${trecho.origem} -> ${trecho.destino} ---\n`;
+                memoria += generatePassagemMemoriaCalculo({
+                    ...calculatedFormData,
+                    valor_total: totals.totalGeral,
+                    valor_nd_33: totals.totalND33,
+                });
+                memoria += "\n";
             });
             
+            memoria += `\n==================================================\n`;
+            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalGeral)}\n`;
+            memoria += `Efetivo Apoiado: ${formData.efetivo} militares\n`;
+            memoria += `==================================================\n`;
+            
             return {
-                ...totals,
+                totalGeral,
+                totalND33,
                 memoria,
             };
         } catch (e) {
@@ -248,26 +270,14 @@ const PassagemForm = () => {
     const isPassagemDirty = useMemo(() => {
         // MODO EDIÇÃO: Compara com stagedUpdate
         if (editingId && stagedUpdate) {
-            // We need to convert stagedUpdate back to the form data structure for comparison
-            const stagedFormData: typeof initialFormState = {
+            // Reconstruir o estado do formulário a partir do stagedUpdate
+            const stagedFormData: PassagemFormState = {
                 om_favorecida: stagedUpdate.organizacao,
                 ug_favorecida: stagedUpdate.ug,
-                om_detentora: stagedUpdate.om_detentora,
-                ug_detentora: stagedUpdate.ug_detentora,
                 dias_operacao: stagedUpdate.dias_operacao,
+                efetivo: stagedUpdate.efetivo || 0, // Usar o campo efetivo
                 fase_atividade: stagedUpdate.fase_atividade || '',
-                quantidade_passagens: stagedUpdate.quantidade_passagens,
-                
-                // Campos de trecho
-                diretriz_id: stagedUpdate.diretriz_id,
-                trecho_id: stagedUpdate.trecho_id,
-                origem: stagedUpdate.origem,
-                destino: stagedUpdate.destino,
-                tipo_transporte: stagedUpdate.tipo_transporte as TipoTransporte,
-                is_ida_volta: stagedUpdate.is_ida_volta,
-                valor_unitario: stagedUpdate.valor_unitario,
-                
-                trecho_selecionado: true, // Sempre true se estiver staged
+                selected_trechos: stagedUpdate.selected_trechos,
             };
             
             return compareFormData(formData, stagedFormData);
@@ -312,23 +322,15 @@ const PassagemForm = () => {
             // Manter a OM Favorecida (do PTrab) se já estiver definida
             om_favorecida: prev.om_favorecida,
             ug_favorecida: prev.ug_favorecida,
-            // Resetar campos de trecho e quantidade
-            quantidade_passagens: 0,
-            trecho_selecionado: false,
-            om_detentora: "",
-            ug_detentora: "",
-            diretriz_id: "",
-            trecho_id: "",
-            origem: "",
-            destino: "",
-            tipo_transporte: 'AÉREO',
-            is_ida_volta: false,
-            valor_unitario: 0,
+            // Resetar campos de solicitação
+            dias_operacao: 0,
+            efetivo: 0,
+            fase_atividade: "",
+            selected_trechos: [],
         }));
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
         setSelectedOmFavorecidaId(undefined);
-        setSelectedOmDetentoraId(undefined); 
         setStagedUpdate(null); 
         setLastStagedFormData(null); 
     };
@@ -352,18 +354,10 @@ const PassagemForm = () => {
         const omFavorecidaToEdit = oms?.find(om => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
         setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
         
-        // 2. Configurar OM Detentora (OM Contratante)
-        const omDetentoraToEdit = oms?.find(om => om.nome_om === registro.om_detentora && om.codug_om === registro.ug_detentora);
-        setSelectedOmDetentoraId(omDetentoraToEdit?.id);
-
-        // 3. Populate formData
-        const newFormData: typeof initialFormState = {
-            om_favorecida: registro.organizacao, 
-            ug_favorecida: registro.ug, 
-            dias_operacao: registro.dias_operacao,
-            fase_atividade: registro.fase_atividade || "",
-            
-            // Dados do Trecho
+        // 2. Reconstruir a lista de trechos selecionados a partir dos dados do registro
+        // Nota: O registro DB armazena apenas 1 trecho por linha, mas o novo modelo usa uma lista.
+        // Para compatibilidade, vamos criar um TrechoSelection a partir dos campos existentes.
+        const trechoFromRecord: TrechoSelection = {
             om_detentora: registro.om_detentora,
             ug_detentora: registro.ug_detentora,
             diretriz_id: registro.diretriz_id,
@@ -373,21 +367,22 @@ const PassagemForm = () => {
             tipo_transporte: registro.tipo_transporte as TipoTransporte,
             is_ida_volta: registro.is_ida_volta,
             valor_unitario: Number(registro.valor_unitario || 0),
-            
-            // Quantidade
             quantidade_passagens: registro.quantidade_passagens,
-            
-            trecho_selecionado: true,
+        };
+
+        // 3. Populate formData
+        const newFormData: PassagemFormState = {
+            om_favorecida: registro.organizacao, 
+            ug_favorecida: registro.ug, 
+            dias_operacao: registro.dias_operacao,
+            efetivo: registro.efetivo || 0, // Usar o campo efetivo
+            fase_atividade: registro.fase_atividade || "",
+            selected_trechos: [trechoFromRecord], // Usamos apenas o trecho do registro para edição
         };
         setFormData(newFormData);
         
-        // 4. Calculate totals and generate memory
-        const totals = calculatePassagemTotals(newFormData);
-        const memoria = generatePassagemMemoriaCalculo({
-            ...newFormData,
-            valor_total: totals.totalGeral,
-            valor_nd_33: totals.totalND33,
-        });
+        // 4. Calculate totals and generate memory (usando a nova lógica de cálculo)
+        const { totalGeral, totalND33, memoria } = calculos;
         
         // 5. Stage the current record data immediately for display in Section 3
         const stagedData: CalculatedPassagem = {
@@ -395,32 +390,33 @@ const PassagemForm = () => {
             p_trab_id: ptrabId!,
             organizacao: newFormData.om_favorecida, 
             ug: newFormData.ug_favorecida, 
-            om_detentora: newFormData.om_detentora,
-            ug_detentora: newFormData.ug_detentora,
             dias_operacao: newFormData.dias_operacao,
+            efetivo: newFormData.efetivo,
             fase_atividade: newFormData.fase_atividade,
             
-            // Trecho details
-            diretriz_id: newFormData.diretriz_id,
-            trecho_id: newFormData.trecho_id,
-            origem: newFormData.origem,
-            destino: newFormData.destino,
-            tipo_transporte: newFormData.tipo_transporte,
-            is_ida_volta: newFormData.is_ida_volta,
-            valor_unitario: newFormData.valor_unitario,
+            // Campos de Trecho (usamos o primeiro trecho para preencher os campos DB legados)
+            om_detentora: trechoFromRecord.om_detentora,
+            ug_detentora: trechoFromRecord.ug_detentora,
+            diretriz_id: trechoFromRecord.diretriz_id,
+            trecho_id: trechoFromRecord.trecho_id,
+            origem: trechoFromRecord.origem,
+            destino: trechoFromRecord.destino,
+            tipo_transporte: trechoFromRecord.tipo_transporte,
+            is_ida_volta: trechoFromRecord.is_ida_volta,
+            valor_unitario: trechoFromRecord.valor_unitario,
+            quantidade_passagens: trechoFromRecord.quantidade_passagens,
             
-            quantidade_passagens: newFormData.quantidade_passagens,
-            
-            valor_total: totals.totalGeral,
-            valor_nd_33: totals.totalND33,
+            valor_total: totalGeral,
+            valor_nd_33: totalND33,
             
             detalhamento: registro.detalhamento,
             detalhamento_customizado: registro.detalhamento_customizado, 
             
-            totalGeral: totals.totalGeral,
+            totalGeral: totalGeral,
             memoria_calculo_display: memoria, 
             om_favorecida: newFormData.om_favorecida,
             ug_favorecida: newFormData.ug_favorecida,
+            selected_trechos: newFormData.selected_trechos, // Adiciona a lista de trechos
         } as CalculatedPassagem;
         
         setStagedUpdate(stagedData); 
@@ -442,63 +438,62 @@ const PassagemForm = () => {
         
         try {
             // 1. Validação básica
-            if (!formData.trecho_selecionado) {
-                throw new Error("Selecione um trecho de passagem na Seção 2.");
-            }
-            if (formData.quantidade_passagens <= 0) {
-                throw new Error("A quantidade de passagens deve ser maior que zero.");
+            if (formData.selected_trechos.length === 0) {
+                throw new Error("Selecione pelo menos um trecho de passagem na Seção 2.");
             }
             if (formData.dias_operacao <= 0) {
                 throw new Error("O número de dias deve ser maior que zero.");
+            }
+            if (formData.efetivo <= 0) {
+                throw new Error("O efetivo apoiado deve ser maior que zero.");
             }
             if (!formData.om_favorecida || !formData.ug_favorecida) {
                 throw new Error("A OM Favorecida é obrigatória.");
             }
             
-            // 2. Preparar o objeto final (calculatedData)
-            const calculatedDataForUtils: PassagemFormType = {
-                ...formData,
-                organizacao: formData.om_favorecida,
-                ug: formData.ug_favorecida,
-            };
-
-            const totals = calculatePassagemTotals(calculatedDataForUtils);
+            // 2. Calcular totais e memória (já feito no useMemo)
+            const { totalGeral, totalND33, memoria } = calculos;
             
+            // 3. Preparar o objeto final (calculatedData)
+            
+            // Para fins de salvamento no DB (que ainda espera um único registro por linha),
+            // vamos criar um registro que representa o total da solicitação, usando os dados
+            // do PRIMEIRO trecho para preencher os campos obrigatórios de FK/detalhe.
+            const firstTrecho = formData.selected_trechos[0];
+            const totalPassagens = formData.selected_trechos.reduce((sum, t) => sum + t.quantidade_passagens, 0);
+
             const calculatedData: CalculatedPassagem = {
                 tempId: editingId || Math.random().toString(36).substring(2, 9), 
                 p_trab_id: ptrabId!,
                 organizacao: formData.om_favorecida, 
                 ug: formData.ug_favorecida, 
-                om_detentora: formData.om_detentora,
-                ug_detentora: formData.ug_detentora,
                 dias_operacao: formData.dias_operacao,
+                efetivo: formData.efetivo, // NOVO CAMPO
                 fase_atividade: formData.fase_atividade,
                 
-                // Trecho details
-                diretriz_id: formData.diretriz_id,
-                trecho_id: formData.trecho_id,
-                origem: formData.origem,
-                destino: formData.destino,
-                tipo_transporte: formData.tipo_transporte,
-                is_ida_volta: formData.is_ida_volta,
-                valor_unitario: formData.valor_unitario,
+                // Campos de Trecho (usamos o primeiro trecho para preencher os campos DB legados)
+                om_detentora: firstTrecho.om_detentora,
+                ug_detentora: firstTrecho.ug_detentora,
+                diretriz_id: firstTrecho.diretriz_id,
+                trecho_id: firstTrecho.trecho_id,
+                origem: firstTrecho.origem,
+                destino: firstTrecho.destino,
+                tipo_transporte: firstTrecho.tipo_transporte,
+                is_ida_volta: firstTrecho.is_ida_volta,
+                valor_unitario: firstTrecho.valor_unitario,
+                quantidade_passagens: totalPassagens, // Total de passagens
                 
-                quantidade_passagens: formData.quantidade_passagens,
-                
-                valor_total: totals.totalGeral,
-                valor_nd_33: totals.totalND33,
+                valor_total: totalGeral,
+                valor_nd_33: totalND33,
                 
                 detalhamento: "Passagens", // Marcador
                 detalhamento_customizado: null, 
                 
-                totalGeral: totals.totalGeral,
-                memoria_calculo_display: generatePassagemMemoriaCalculo({
-                    ...calculatedDataForUtils,
-                    valor_total: totals.totalGeral,
-                    valor_nd_33: totals.totalND33,
-                }), 
+                totalGeral: totalGeral,
+                memoria_calculo_display: memoria, 
                 om_favorecida: formData.om_favorecida,
                 ug_favorecida: formData.ug_favorecida,
+                selected_trechos: formData.selected_trechos, // Salva a lista completa
             } as CalculatedPassagem;
             
             if (editingId) {
@@ -545,20 +540,9 @@ const PassagemForm = () => {
                 om_favorecida: prev.om_favorecida,
                 ug_favorecida: prev.ug_favorecida,
                 dias_operacao: prev.dias_operacao,
+                efetivo: prev.efetivo,
                 fase_atividade: prev.fase_atividade,
-                quantidade_passagens: prev.quantidade_passagens,
-                
-                // Manter dados do trecho
-                om_detentora: prev.om_detentora,
-                ug_detentora: prev.ug_detentora,
-                diretriz_id: prev.diretriz_id,
-                trecho_id: prev.trecho_id,
-                origem: prev.origem,
-                destino: prev.destino,
-                tipo_transporte: prev.tipo_transporte,
-                is_ida_volta: prev.is_ida_volta,
-                valor_unitario: prev.valor_unitario,
-                trecho_selecionado: prev.trecho_selecionado,
+                selected_trechos: prev.selected_trechos,
             }));
             
         } catch (err: any) {
@@ -622,40 +606,14 @@ const PassagemForm = () => {
     };
     
     // --- Lógica de Seleção de Trecho (Callback do Dialog) ---
-    const handleTrechoSelected = (trecho: {
-        om_detentora: string;
-        ug_detentora: string;
-        diretriz_id: string;
-        trecho_id: string;
-        origem: string;
-        destino: string;
-        tipo_transporte: TipoTransporte;
-        is_ida_volta: boolean;
-        valor_unitario: number;
-    }) => {
-        // Atualiza o formulário com os dados do trecho selecionado
+    const handleTrechoSelected = (trechos: TrechoSelection[]) => {
+        // Atualiza o formulário com a lista de trechos selecionados
         setFormData(prev => ({
             ...prev,
-            om_detentora: trecho.om_detentora,
-            ug_detentora: trecho.ug_detentora,
-            diretriz_id: trecho.diretriz_id,
-            trecho_id: trecho.trecho_id,
-            origem: trecho.origem,
-            destino: trecho.destino,
-            tipo_transporte: trecho.tipo_transporte,
-            is_ida_volta: trecho.is_ida_volta,
-            valor_unitario: trecho.valor_unitario,
-            trecho_selecionado: true,
-            
-            // Se estiver editando, precisamos garantir que a quantidade não seja zero
-            quantidade_passagens: prev.quantidade_passagens > 0 ? prev.quantidade_passagens : 1,
+            selected_trechos: trechos,
         }));
         
-        // Atualiza o ID da OM Detentora para o seletor de OM (apenas para fins de visualização)
-        const omDetentora = oms?.find(om => om.nome_om === trecho.om_detentora && om.codug_om === trecho.ug_detentora);
-        setSelectedOmDetentoraId(omDetentora?.id);
-        
-        toast.success(`Trecho ${trecho.origem} -> ${trecho.destino} selecionado.`);
+        toast.success(`${trechos.length} trecho(s) selecionado(s).`);
     };
     
     // --- Lógica de Edição de Memória ---
@@ -663,31 +621,70 @@ const PassagemForm = () => {
     const handleIniciarEdicaoMemoria = (registro: PassagemRegistroDB) => {
         setEditingMemoriaId(registro.id);
         
-        // 1. Gerar a memória automática
-        const calculatedData: PassagemRegistro = {
-            organizacao: registro.organizacao,
-            ug: registro.ug,
+        // 1. Reconstruir o TrechoSelection para gerar a memória automática
+        const trechoFromRecord: TrechoSelection = {
             om_detentora: registro.om_detentora,
             ug_detentora: registro.ug_detentora,
-            dias_operacao: registro.dias_operacao,
-            fase_atividade: registro.fase_atividade || "",
-            
             diretriz_id: registro.diretriz_id,
             trecho_id: registro.trecho_id,
             origem: registro.origem,
             destino: registro.destino,
-            tipo_transporte: registro.tipo_transporte,
+            tipo_transporte: registro.tipo_transporte as TipoTransporte,
             is_ida_volta: registro.is_ida_volta,
-            valor_unitario: registro.valor_unitario,
-            
+            valor_unitario: Number(registro.valor_unitario || 0),
             quantidade_passagens: registro.quantidade_passagens,
-            valor_total: registro.valor_total,
-            valor_nd_33: registro.valor_nd_33,
-        } as PassagemRegistro;
+        };
         
-        const memoriaAutomatica = generatePassagemMemoriaCalculo(calculatedData);
+        // 2. Gerar a memória automática (usando a lógica de cálculo de múltiplos trechos, mas com apenas 1 trecho)
+        const calculatedDataForMemoria: PassagemFormState = {
+            om_favorecida: registro.organizacao,
+            ug_favorecida: registro.ug,
+            dias_operacao: registro.dias_operacao,
+            efetivo: registro.efetivo || 0,
+            fase_atividade: registro.fase_atividade || "",
+            selected_trechos: [trechoFromRecord],
+        };
         
-        // 2. Usar a customizada se existir, senão usar a automática
+        // Nota: Para registros antigos, o cálculo é feito com base no único trecho salvo.
+        const { memoria: memoriaAutomatica } = useMemo(() => {
+            if (calculatedDataForMemoria.selected_trechos.length === 0) return { memoria: "" };
+            
+            const trecho = calculatedDataForMemoria.selected_trechos[0];
+            const calculatedFormData: PassagemFormType = {
+                organizacao: calculatedDataForMemoria.om_favorecida, 
+                ug: calculatedDataForMemoria.ug_favorecida, 
+                dias_operacao: calculatedDataForMemoria.dias_operacao,
+                fase_atividade: calculatedDataForMemoria.fase_atividade,
+                om_detentora: trecho.om_detentora,
+                ug_detentora: trecho.ug_detentora,
+                diretriz_id: trecho.diretriz_id,
+                trecho_id: trecho.trecho_id,
+                origem: trecho.origem,
+                destino: trecho.destino,
+                tipo_transporte: trecho.tipo_transporte,
+                is_ida_volta: trecho.is_ida_volta,
+                valor_unitario: trecho.valor_unitario,
+                quantidade_passagens: trecho.quantidade_passagens,
+            };
+            
+            const totals = calculatePassagemTotals(calculatedFormData);
+            
+            let memoria = `--- Trecho Único: ${trecho.origem} -> ${trecho.destino} ---\n`;
+            memoria += generatePassagemMemoriaCalculo({
+                ...calculatedFormData,
+                valor_total: totals.totalGeral,
+                valor_nd_33: totals.totalND33,
+            });
+            memoria += "\n";
+            memoria += `\n==================================================\n`;
+            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totals.totalGeral)}\n`;
+            memoria += `Efetivo Apoiado: ${calculatedDataForMemoria.efetivo} militares\n`;
+            memoria += `==================================================\n`;
+            
+            return { memoria };
+        }, [calculatedDataForMemoria]);
+        
+        // 3. Usar a customizada se existir, senão usar a automática
         setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
     };
 
@@ -748,7 +745,8 @@ const PassagemForm = () => {
             if (recordsToSave.length === 0) return;
             
             const dbRecords = recordsToSave.map(r => {
-                const { tempId, memoria_calculo_display, totalGeral, om_favorecida, ug_favorecida, ...rest } = r;
+                // Desestruturar campos que não existem no DB
+                const { tempId, memoria_calculo_display, totalGeral, om_favorecida, ug_favorecida, selected_trechos, ...rest } = r;
                 
                 const dbRecord: TablesInsert<'passagem_registros'> = {
                     ...rest,
@@ -756,6 +754,7 @@ const PassagemForm = () => {
                     ug: ug_favorecida, 
                     detalhamento: "Passagens", 
                     detalhamento_customizado: rest.detalhamento_customizado, 
+                    // O campo 'efetivo' já está em 'rest'
                 } as TablesInsert<'passagem_registros'>;
                 
                 return dbRecord;
@@ -792,7 +791,7 @@ const PassagemForm = () => {
         mutationFn: async (data: CalculatedPassagem) => {
             if (!editingId) throw new Error("ID de edição ausente.");
             
-            const { tempId, memoria_calculo_display, totalGeral, om_favorecida, ug_favorecida, ...rest } = data;
+            const { tempId, memoria_calculo_display, totalGeral, om_favorecida, ug_favorecida, selected_trechos, ...rest } = data;
             
             const dbUpdateData: TablesUpdate<'passagem_registros'> = {
                 ...rest,
@@ -800,6 +799,7 @@ const PassagemForm = () => {
                 ug: ug_favorecida, 
                 detalhamento: "Passagens", 
                 detalhamento_customizado: rest.detalhamento_customizado, 
+                // O campo 'efetivo' já está em 'rest'
             } as TablesUpdate<'passagem_registros'>;
             
             const { error } = await supabase
@@ -865,14 +865,19 @@ const PassagemForm = () => {
 
     // Verifica se os campos numéricos da Solicitação estão preenchidos
     const isSolicitationDataReady = formData.dias_operacao > 0 &&
-                                    formData.quantidade_passagens > 0 &&
-                                    formData.trecho_selecionado;
+                                    formData.efetivo > 0 &&
+                                    formData.selected_trechos.length > 0;
 
     const isCalculationReady = isBaseFormReady && isSolicitationDataReady;
     
     // Lógica para a Seção 3
     const itemsToDisplay = stagedUpdate ? [stagedUpdate] : pendingPassagens;
     const isStagingUpdate = !!stagedUpdate;
+    
+    // Trechos iniciais para o diálogo (se estiver editando)
+    const initialTrechosForDialog = editingId && stagedUpdate 
+        ? stagedUpdate.selected_trechos 
+        : formData.selected_trechos;
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
@@ -943,10 +948,10 @@ const PassagemForm = () => {
                                     
                                     <Card className="mt-6 bg-muted/50 rounded-lg p-4">
                                         
-                                        {/* Dados da Solicitação (Dias e Quantidade) */}
+                                        {/* Dados da Solicitação (Dias e Efetivo) */}
                                         <Card className="rounded-lg mb-4">
                                             <CardHeader className="py-3">
-                                                <CardTitle className="text-base font-semibold">Período e Quantidade</CardTitle>
+                                                <CardTitle className="text-base font-semibold">Período e Efetivo Apoiado</CardTitle>
                                             </CardHeader>
                                             <CardContent className="pt-2">
                                                 <div className="p-4 bg-background rounded-lg border">
@@ -967,15 +972,16 @@ const PassagemForm = () => {
                                                                 className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                             />
                                                         </div>
+                                                        {/* NOVO CAMPO: EFETIVO */}
                                                         <div className="space-y-2 col-span-1">
-                                                            <Label htmlFor="quantidade_passagens">Quantidade de Passagens *</Label>
+                                                            <Label htmlFor="efetivo">Efetivo Apoiado *</Label>
                                                             <Input
-                                                                id="quantidade_passagens"
+                                                                id="efetivo"
                                                                 type="number"
                                                                 min={1}
                                                                 placeholder="Ex: 10"
-                                                                value={formData.quantidade_passagens === 0 ? "" : formData.quantidade_passagens}
-                                                                onChange={(e) => setFormData({ ...formData, quantidade_passagens: parseInt(e.target.value) || 0 })}
+                                                                value={formData.efetivo === 0 ? "" : formData.efetivo}
+                                                                onChange={(e) => setFormData({ ...formData, efetivo: parseInt(e.target.value) || 0 })}
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 onKeyDown={handleEnterToNextField}
@@ -991,7 +997,7 @@ const PassagemForm = () => {
                                         {/* Detalhes da Passagem (Seleção de Trecho) */}
                                         <Card className="mt-4 rounded-lg p-4 bg-background">
                                             <h4 className="font-semibold text-base mb-4">
-                                                Trecho e Contrato
+                                                Trechos e Contratos Selecionados
                                             </h4>
                                             
                                             <div className="space-y-4">
@@ -1003,33 +1009,54 @@ const PassagemForm = () => {
                                                     className="w-full"
                                                 >
                                                     <Plane className="mr-2 h-4 w-4" />
-                                                    {formData.trecho_selecionado ? "Alterar Trecho Selecionado" : "Selecionar Trecho de Contrato *"}
+                                                    {formData.selected_trechos.length > 0 ? `Alterar/Adicionar Trechos (${formData.selected_trechos.length} selecionados)` : "Selecionar Trechos de Contrato *"}
                                                 </Button>
                                                 
-                                                {formData.trecho_selecionado && (
-                                                    <div className="border p-3 rounded-md space-y-1">
-                                                        <div className="flex justify-between text-sm">
-                                                            <span className="font-medium">Trecho:</span>
-                                                            <span>{formData.origem} &rarr; {formData.destino}</span>
-                                                        </div>
-                                                        <div className="flex justify-between text-sm">
-                                                            <span className="font-medium">Tipo / Modalidade:</span>
-                                                            <span>{formData.tipo_transporte} ({formData.is_ida_volta ? 'Ida/Volta' : 'Somente Ida'})</span>
-                                                        </div>
-                                                        <div className="flex justify-between text-sm">
-                                                            <span className="font-medium">Valor Unitário:</span>
-                                                            <span className="font-bold text-primary">{formatCurrency(formData.valor_unitario)}</span>
-                                                        </div>
-                                                        <div className="flex justify-between text-sm border-t pt-1 mt-1">
-                                                            <span className="font-medium">OM Contratante:</span>
-                                                            <span className="text-muted-foreground">{formData.om_detentora} ({formatCodug(formData.ug_detentora)})</span>
-                                                        </div>
+                                                {/* Exibição dos Múltiplos Trechos Selecionados */}
+                                                {formData.selected_trechos.length > 0 && (
+                                                    <div className="border p-3 rounded-md space-y-2">
+                                                        <Table>
+                                                            <TableHeader>
+                                                                <TableRow>
+                                                                    <TableHead className="w-[100px]">Qtd</TableHead>
+                                                                    <TableHead>Trecho</TableHead>
+                                                                    <TableHead>Tipo</TableHead>
+                                                                    <TableHead className="text-right">Valor Unitário</TableHead>
+                                                                    <TableHead className="text-right">Total Trecho</TableHead>
+                                                                </TableRow>
+                                                            </TableHeader>
+                                                            <TableBody>
+                                                                {formData.selected_trechos.map((trecho, index) => {
+                                                                    const totalTrecho = trecho.valor_unitario * trecho.quantidade_passagens * (trecho.is_ida_volta ? 2 : 1);
+                                                                    return (
+                                                                        <TableRow key={index}>
+                                                                            <TableCell className="font-bold">{trecho.quantidade_passagens}</TableCell>
+                                                                            <TableCell>
+                                                                                {trecho.origem} &rarr; {trecho.destino}
+                                                                                <p className="text-xs text-muted-foreground mt-0.5">
+                                                                                    Contratante: {trecho.om_detentora} ({formatCodug(trecho.ug_detentora)})
+                                                                                </p>
+                                                                            </TableCell>
+                                                                            <TableCell className="text-xs">
+                                                                                {trecho.tipo_transporte} ({trecho.is_ida_volta ? 'I/V' : 'Ida'})
+                                                                            </TableCell>
+                                                                            <TableCell className="text-right text-sm">
+                                                                                {formatCurrency(trecho.valor_unitario)}
+                                                                            </TableCell>
+                                                                            <TableCell className="text-right font-semibold text-sm">
+                                                                                {formatCurrency(totalTrecho)}
+                                                                            </TableCell>
+                                                                        </TableRow>
+                                                                    );
+                                                                })}
+                                                            </TableBody>
+                                                        </Table>
                                                     </div>
                                                 )}
                                             </div>
                                             
                                             <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
-                                                <span className="font-bold text-sm">VALOR TOTAL:</span>
+                                                <span className="font-bold text-sm">VALOR TOTAL DA SOLICITAÇÃO:</span>
                                                 <span className={cn("font-extrabold text-lg text-primary")}>
                                                     {formatCurrency(calculos.totalGeral)}
                                                 </span>
@@ -1075,7 +1102,8 @@ const PassagemForm = () => {
                                             const totalND33 = item.valor_nd_33;
                                             
                                             const diasText = item.dias_operacao === 1 ? "dia" : "dias";
-                                            const passagemText = item.quantidade_passagens === 1 ? 'passagem' : 'passagens'; 
+                                            const totalPassagens = item.selected_trechos.reduce((sum, t) => sum + t.quantidade_passagens, 0);
+                                            const passagemText = totalPassagens === 1 ? 'passagem' : 'passagens'; 
 
                                             return (
                                                 <Card 
@@ -1089,7 +1117,7 @@ const PassagemForm = () => {
                                                         
                                                         <div className={cn("flex justify-between items-center pb-2 mb-2", "border-b border-secondary/30")}>
                                                             <h4 className="font-bold text-base text-foreground">
-                                                                Passagens ({item.origem} &rarr; {item.destino})
+                                                                Passagens (Total de {item.selected_trechos.length} Trecho(s))
                                                             </h4>
                                                             <div className="flex items-center gap-2">
                                                                 <p className="font-extrabold text-lg text-foreground text-right">
@@ -1112,13 +1140,13 @@ const PassagemForm = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
-                                                                <p className="font-medium">OM Contratante:</p>
-                                                                <p className="font-medium">Quantidade / Dias:</p>
+                                                                <p className="font-medium">Efetivo Apoiado:</p>
+                                                                <p className="font-medium">Total Passagens / Dias:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
-                                                                <p className="font-medium">{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
-                                                                <p className="font-medium">{item.quantidade_passagens} {passagemText} / {item.dias_operacao} {diasText}</p>
+                                                                <p className="font-medium">{item.efetivo} militares</p>
+                                                                <p className="font-medium">{totalPassagens} {passagemText} / {item.dias_operacao} {diasText}</p>
                                                             </div>
                                                         </div>
                                                         
@@ -1238,8 +1266,8 @@ const PassagemForm = () => {
                                                                                 </Badge>
                                                                             )}
                                                                         </div>
-                                                                        <p className="text-xs text-muted-foreground">
-                                                                            {registro.quantidade_passagens} {passagemText} | {registro.dias_operacao} {diasText}
+                                                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                                                            {registro.quantidade_passagens} {passagemText} | {registro.dias_operacao} {diasText} | Efetivo: {registro.efetivo}
                                                                         </p>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
@@ -1310,29 +1338,68 @@ const PassagemForm = () => {
                                         
                                         let hasCustomMemoria = !!registro.detalhamento_customizado;
                                         
-                                        // 1. Gerar a memória automática
-                                        const calculatedDataForMemoria: PassagemRegistro = {
-                                            organizacao: registro.organizacao,
-                                            ug: registro.ug,
+                                        // 1. Reconstruir o TrechoSelection para gerar a memória automática
+                                        const trechoFromRecord: TrechoSelection = {
                                             om_detentora: registro.om_detentora,
                                             ug_detentora: registro.ug_detentora,
-                                            dias_operacao: registro.dias_operacao,
-                                            fase_atividade: registro.fase_atividade || "",
-                                            
                                             diretriz_id: registro.diretriz_id,
                                             trecho_id: registro.trecho_id,
                                             origem: registro.origem,
                                             destino: registro.destino,
-                                            tipo_transporte: registro.tipo_transporte,
+                                            tipo_transporte: registro.tipo_transporte as TipoTransporte,
                                             is_ida_volta: registro.is_ida_volta,
-                                            valor_unitario: registro.valor_unitario,
-                                            
+                                            valor_unitario: Number(registro.valor_unitario || 0),
                                             quantidade_passagens: registro.quantidade_passagens,
-                                            valor_total: registro.valor_total,
-                                            valor_nd_33: registro.valor_nd_33,
-                                        } as PassagemRegistro;
+                                        };
                                         
-                                        const memoriaAutomatica = generatePassagemMemoriaCalculo(calculatedDataForMemoria);
+                                        // 2. Gerar a memória automática (usando a lógica de cálculo de múltiplos trechos, mas com apenas 1 trecho)
+                                        const calculatedDataForMemoria: PassagemFormState = {
+                                            om_favorecida: registro.organizacao,
+                                            ug_favorecida: registro.ug,
+                                            dias_operacao: registro.dias_operacao,
+                                            efetivo: registro.efetivo || 0,
+                                            fase_atividade: registro.fase_atividade || "",
+                                            selected_trechos: [trechoFromRecord],
+                                        };
+                                        
+                                        // Nota: Para registros antigos, o cálculo é feito com base no único trecho salvo.
+                                        const { memoria: memoriaAutomatica } = useMemo(() => {
+                                            if (calculatedDataForMemoria.selected_trechos.length === 0) return { memoria: "" };
+                                            
+                                            const trecho = calculatedDataForMemoria.selected_trechos[0];
+                                            const calculatedFormData: PassagemFormType = {
+                                                organizacao: calculatedDataForMemoria.om_favorecida, 
+                                                ug: calculatedDataForMemoria.ug_favorecida, 
+                                                dias_operacao: calculatedDataForMemoria.dias_operacao,
+                                                fase_atividade: calculatedDataForMemoria.fase_atividade,
+                                                om_detentora: trecho.om_detentora,
+                                                ug_detentora: trecho.ug_detentora,
+                                                diretriz_id: trecho.diretriz_id,
+                                                trecho_id: trecho.trecho_id,
+                                                origem: trecho.origem,
+                                                destino: trecho.destino,
+                                                tipo_transporte: trecho.tipo_transporte,
+                                                is_ida_volta: trecho.is_ida_volta,
+                                                valor_unitario: trecho.valor_unitario,
+                                                quantidade_passagens: trecho.quantidade_passagens,
+                                            };
+                                            
+                                            const totals = calculatePassagemTotals(calculatedFormData);
+                                            
+                                            let memoria = `--- Trecho Único: ${trecho.origem} -> ${trecho.destino} ---\n`;
+                                            memoria += generatePassagemMemoriaCalculo({
+                                                ...calculatedFormData,
+                                                valor_total: totals.totalGeral,
+                                                valor_nd_33: totals.totalND33,
+                                            });
+                                            memoria += "\n";
+                                            memoria += `\n==================================================\n`;
+                                            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totals.totalGeral)}\n`;
+                                            memoria += `Efetivo Apoiado: ${calculatedDataForMemoria.efetivo} militares\n`;
+                                            memoria += `==================================================\n`;
+                                            
+                                            return { memoria };
+                                        }, [calculatedDataForMemoria]);
                                         
                                         let memoriaExibida = memoriaAutomatica;
                                         if (isEditing) {
@@ -1477,6 +1544,7 @@ const PassagemForm = () => {
                     onOpenChange={setShowTrechoSelector}
                     onSelect={handleTrechoSelected}
                     selectedYear={selectedYear}
+                    initialSelections={initialTrechosForDialog}
                 />
             </div>
         </div>
