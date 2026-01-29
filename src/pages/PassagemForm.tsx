@@ -216,13 +216,14 @@ const PassagemForm = () => {
         // Se estiver em modo de edição, não faz o preenchimento automático
         if (editingId) return;
         
-        // Se a OM Favorecida estiver preenchida E a OM Destino não estiver (ou for diferente)
+        // Se a OM Favorecida estiver preenchida
         if (formData.om_favorecida && formData.ug_favorecida) {
             const omFavorecida = formData.om_favorecida;
             const ugFavorecida = formData.ug_favorecida;
             
-            // Apenas preenche se a OM Destino estiver vazia
-            if (!formData.om_destino) {
+            // Apenas preenche se a OM Destino estiver vazia OU se a OM Destino for diferente da OM Favorecida
+            // (No modo de criação, queremos que a OM Destino espelhe a OM Favorecida por padrão)
+            if (!formData.om_destino || formData.om_destino !== omFavorecida) {
                 // Encontra o ID da OM Favorecida na lista de OMs
                 const omData = oms?.find(om => om.nome_om === omFavorecida && om.codug_om === ugFavorecida);
                 
@@ -236,7 +237,7 @@ const PassagemForm = () => {
                 }
             }
         }
-    }, [formData.om_favorecida, formData.ug_favorecida, formData.om_destino, formData.ug_destino, editingId, oms]);
+    }, [formData.om_favorecida, formData.ug_favorecida, editingId, oms]);
 
 
     // =================================================================
@@ -1517,7 +1518,7 @@ const PassagemForm = () => {
                                             </Card>
                                         );
                                     })}
-                                </section>
+                                </div>
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
