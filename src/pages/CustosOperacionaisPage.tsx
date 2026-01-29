@@ -771,7 +771,7 @@ const CustosOperacionaisPage = () => {
                   </Card>
               ) : (
                   <Card className="p-4 text-center text-muted-foreground">
-                      Nenhum contrato de passagens cadastrado para o ano {selectedYear}.
+                      Nenhum contrato de passagens cadastrado para o ano de referência.
                   </Card>
               )}
               
