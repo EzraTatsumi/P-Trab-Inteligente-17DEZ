@@ -211,35 +211,7 @@ const PassagemForm = () => {
         }
     }, [ptrabData, oms, editingId]);
     
-    // NOVO EFEITO: Preenchimento automático da OM Destino do Recurso
-    useEffect(() => {
-        // Se estiver em modo de edição, não faz o preenchimento automático
-        if (editingId) return;
-        
-        // Se a OM Favorecida estiver preenchida
-        if (formData.om_favorecida && formData.ug_favorecida) {
-            const omFavorecida = formData.om_favorecida;
-            const ugFavorecida = formData.ug_favorecida;
-            
-            // Verifica se a OM Destino está vazia OU se ela não está sincronizada com a OM Favorecida
-            const isOmDestinoUnsynced = formData.om_destino !== omFavorecida || formData.ug_destino !== ugFavorecida;
-
-            if (!formData.om_destino || isOmDestinoUnsynced) {
-                // Encontra o ID da OM Favorecida na lista de OMs
-                const omData = oms?.find(om => om.nome_om === omFavorecida && om.codug_om === ugFavorecida);
-                
-                if (omData) {
-                    setSelectedOmDestinoId(omData.id);
-                    setFormData(prev => ({
-                        ...prev,
-                        om_destino: omFavorecida,
-                        ug_destino: ugFavorecida,
-                    }));
-                }
-            }
-        }
-    }, [formData.om_favorecida, formData.ug_favorecida, editingId, oms, formData.om_destino, formData.ug_destino]);
-
+    // REMOVIDO: useEffect de preenchimento automático da OM Destino (substituído pela lógica no handler)
 
     // =================================================================
     // CÁLCULOS E MEMÓRIA (MEMOIZED)
@@ -656,17 +628,23 @@ const PassagemForm = () => {
     const handleOmFavorecidaChange = (omData: OMData | undefined) => {
         if (omData) {
             setSelectedOmFavorecidaId(omData.id);
+            setSelectedOmDestinoId(omData.id); // Sincroniza OM Destino
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: omData.nome_om,
                 ug_favorecida: omData.codug_om,
+                om_destino: omData.nome_om, // Preenchimento automático
+                ug_destino: omData.codug_om, // Preenchimento automático
             }));
         } else {
             setSelectedOmFavorecidaId(undefined);
+            setSelectedOmDestinoId(undefined); // Limpa OM Destino
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: "",
                 ug_favorecida: "",
+                om_destino: "", // Limpa OM Destino
+                ug_destino: "", // Limpa UG Destino
             }));
         }
     };
@@ -848,146 +826,6 @@ const PassagemForm = () => {
             toast.error(sanitizeError(error));
         }
     };
-    
-    // =================================================================
-    // MUTAÇÕES
-    // =================================================================
-
-    const saveMutation = useMutation({
-        mutationFn: async (recordsToSave: CalculatedPassagem[]) => {
-            if (recordsToSave.length === 0) return;
-            
-            // Mapeia os campos para a DB (salvando apenas o primeiro trecho, pois a DB só suporta 1 por linha)
-            const dbRecords = recordsToSave.map(r => {
-                // Desestruturar campos que não existem no DB
-                const { tempId, memoria_calculo_display, totalGeral, om_favorecida, ug_favorecida, selected_trechos, ...rest } = r;
-                
-                // Usamos o primeiro trecho para preencher os campos de detalhe (origem, destino, etc.)
-                const firstTrecho = selected_trechos[0];
-                
-                const dbRecord: TablesInsert<'passagem_registros'> = {
-                    ...rest,
-                    organizacao: om_favorecida, 
-                    ug: ug_favorecida, 
-                    detalhamento: "Passagens", 
-                    detalhamento_customizado: rest.detalhamento_customizado, 
-                    
-                    // Campos de Trecho (usamos o primeiro trecho para preencher os campos DB legados)
-                    om_detentora: r.om_detentora,
-                    ug_detentora: r.ug_detentora,
-                    diretriz_id: firstTrecho.diretriz_id,
-                    trecho_id: firstTrecho.id, // Usar id do trecho
-                    origem: firstTrecho.origem,
-                    destino: firstTrecho.destino,
-                    tipo_transporte: firstTrecho.tipo_transporte,
-                    is_ida_volta: firstTrecho.is_ida_volta,
-                    valor_unitario: firstTrecho.valor_unitario,
-                    quantidade_passagens: selected_trechos.reduce((sum, t) => sum + t.quantidade_passagens, 0), // Total de passagens
-                    
-                    valor_total: totalGeral,
-                    valor_nd_33: totalGeral, // ND 33 é o total
-                } as TablesInsert<'passagem_registros'>;
-                
-                return dbRecord;
-            });
-            
-            const { data, error } = await supabase
-                .from("passagem_registros")
-                .insert(dbRecords)
-                .select('*')
-                .order('created_at', { ascending: false }); 
-            
-            if (error) throw error;
-            return data;
-        },
-        onSuccess: (newRecords) => {
-            queryClient.invalidateQueries({ queryKey: ["passagemRegistros", ptrabId] });
-            queryClient.invalidateQueries({ queryKey: ["ptrabTotals", ptrabId] });
-            toast.success(`Sucesso! ${pendingPassagens.length} registro(s) de Passagem adicionado(s).`);
-            setPendingPassagens([]); 
-            setLastStagedFormData(null); 
-            
-            if (newRecords && newRecords.length > 0) {
-                handleEdit(newRecords[0] as PassagemRegistroDB);
-            } else {
-                resetForm();
-            }
-        },
-        onError: (err) => {
-            toast.error(sanitizeError(err));
-        },
-    });
-    
-    const updateMutation = useMutation({
-        mutationFn: async (data: CalculatedPassagem) => {
-            if (!editingId) throw new Error("ID de edição ausente.");
-            
-            const { tempId, memoria_calculo_display, totalGeral, om_favorecida, ug_favorecida, selected_trechos, ...rest } = data;
-            
-            // Usamos o primeiro trecho para preencher os campos de detalhe (origem, destino, etc.)
-            const firstTrecho = selected_trechos[0];
-            
-            const dbUpdateData: TablesUpdate<'passagem_registros'> = {
-                ...rest,
-                organizacao: om_favorecida, 
-                ug: ug_favorecida, 
-                detalhamento: "Passagens", 
-                detalhamento_customizado: rest.detalhamento_customizado, 
-                
-                // Campos de Trecho (usamos o primeiro trecho para preencher os campos DB legados)
-                om_detentora: rest.om_detentora,
-                ug_detentora: rest.ug_detentora,
-                diretriz_id: firstTrecho.diretriz_id,
-                trecho_id: firstTrecho.id, // Usar id do trecho
-                origem: firstTrecho.origem,
-                destino: firstTrecho.destino,
-                tipo_transporte: firstTrecho.tipo_transporte,
-                is_ida_volta: firstTrecho.is_ida_volta,
-                valor_unitario: firstTrecho.valor_unitario,
-                quantidade_passagens: selected_trechos.reduce((sum, t) => sum + t.quantidade_passagens, 0), // Total de passagens
-                
-                valor_total: totalGeral,
-                valor_nd_33: totalGeral, // ND 33 é o total
-            } as TablesUpdate<'passagem_registros'>;
-            
-            const { error } = await supabase
-                .from("passagem_registros")
-                .update(dbUpdateData)
-                .eq("id", editingId);
-            if (error) throw error;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["passagemRegistros", ptrabId] });
-            queryClient.invalidateQueries({ queryKey: ["ptrabTotals", ptrabId] });
-            toast.success(`Registro de Passagem atualizado com sucesso!`);
-            setStagedUpdate(null); 
-            resetForm();
-        },
-        onError: (err) => {
-            toast.error(sanitizeError(err));
-        },
-    });
-
-    const handleDeleteMutation = useMutation({
-        mutationFn: async (id: string) => {
-            const { error } = await supabase
-                .from("passagem_registros")
-                .delete()
-                .eq("id", id);
-            if (error) throw error;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["passagemRegistros", ptrabId] });
-            queryClient.invalidateQueries({ queryKey: ["ptrabTotals", ptrabId] });
-            toast.success("Registro de Passagem excluído com sucesso!");
-            setRegistroToDelete(null);
-            setShowDeleteDialog(false);
-            resetForm(); 
-        },
-        onError: (err) => {
-            toast.error(sanitizeError(err));
-        },
-    });
     
     // =================================================================
     // RENDERIZAÇÃO
