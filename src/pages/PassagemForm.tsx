@@ -73,8 +73,10 @@ interface CalculatedPassagem extends TablesInsert<'passagem_registros'> {
 interface PassagemFormState {
     om_favorecida: string; 
     ug_favorecida: string; 
+    om_destino: string; // NOVO CAMPO
+    ug_destino: string; // NOVO CAMPO
     dias_operacao: number;
-    efetivo: number; // NOVO CAMPO
+    efetivo: number; 
     fase_atividade: string;
     
     // Dados dos Trechos Selecionados (Lista de TrechoSelection)
@@ -84,8 +86,10 @@ interface PassagemFormState {
 const initialFormState: PassagemFormState = {
     om_favorecida: "", 
     ug_favorecida: "", 
+    om_destino: "",
+    ug_destino: "",
     dias_operacao: 0,
-    efetivo: 0, // Inicializado
+    efetivo: 0, 
     fase_atividade: "",
     selected_trechos: [],
 };
@@ -93,7 +97,8 @@ const initialFormState: PassagemFormState = {
 // Função para calcular o valor total de um trecho (considerando ida/volta)
 const calculateTrechoTotal = (trecho: TrechoSelection): number => {
     const multiplier = trecho.is_ida_volta ? 2 : 1;
-    return trecho.valor_unitario * trecho.quantidade_passagens * multiplier;
+    // Usa valor_unitario que é o valor do trecho
+    return trecho.valor_unitario * trecho.quantidade_passagens * multiplier; 
 };
 
 // Função para comparar números de ponto flutuante com tolerância
@@ -106,9 +111,11 @@ const compareFormData = (data1: PassagemFormState, data2: PassagemFormState) => 
     // Compare todos os campos relevantes
     if (
         data1.dias_operacao !== data2.dias_operacao ||
-        data1.efetivo !== data2.efetivo || // Comparar efetivo
+        data1.efetivo !== data2.efetivo || 
         data1.om_favorecida !== data2.om_favorecida ||
         data1.ug_favorecida !== data2.ug_favorecida ||
+        data1.om_destino !== data2.om_destino || // Comparar OM Destino
+        data1.ug_destino !== data2.ug_destino || // Comparar UG Destino
         data1.fase_atividade !== data2.fase_atividade ||
         data1.selected_trechos.length !== data2.selected_trechos.length
     ) {
@@ -152,8 +159,9 @@ const PassagemForm = () => {
     // NOVO ESTADO: Armazena o último formData que gerou um item em pendingPassagens
     const [lastStagedFormData, setLastStagedFormData] = useState<PassagemFormState | null>(null);
     
-    // Estado para rastrear o ID da OM Favorecida (OM do PTrab)
+    // Estado para rastrear o ID da OM Favorecida e OM Destino
     const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
+    const [selectedOmDestinoId, setSelectedOmDestinoId] = useState<string | undefined>(undefined);
     
     // Estado para o diálogo de seleção de trechos
     const [showTrechoSelector, setShowTrechoSelector] = useState(false);
@@ -179,21 +187,27 @@ const PassagemForm = () => {
     
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
     
-    // Efeito de inicialização da OM Favorecida (OM do PTrab)
+    // Efeito de inicialização da OM Favorecida e OM Destino
     useEffect(() => {
         if (ptrabData && !editingId) {
-            // 1. OM Favorecida (OM do PTrab) - NÃO PRÉ-SELECIONAR para forçar a seleção manual.
+            // Modo Novo Registro: Limpar
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: "", 
                 ug_favorecida: "", 
+                om_destino: "",
+                ug_destino: "",
             }));
             setSelectedOmFavorecidaId(undefined); 
+            setSelectedOmDestinoId(undefined);
             
         } else if (ptrabData && editingId) {
-            // Se estiver editando, tentamos encontrar os IDs das OMs para o seletor
+            // Modo Edição: Preencher
             const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
             setSelectedOmFavorecidaId(omFavorecida?.id);
+            
+            const omDestino = oms?.find(om => om.nome_om === formData.om_destino && om.codug_om === formData.ug_destino);
+            setSelectedOmDestinoId(omDestino?.id);
         }
     }, [ptrabData, oms, editingId]);
 
@@ -255,7 +269,7 @@ const PassagemForm = () => {
             
             memoria += `\n==================================================\n`;
             memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalGeral)}\n`;
-            memoria += `Efetivo Apoiado: ${formData.efetivo} militares\n`;
+            memoria += `Efetivo: ${formData.efetivo} militares\n`;
             memoria += `==================================================\n`;
             
             return {
@@ -281,8 +295,10 @@ const PassagemForm = () => {
             const stagedFormData: PassagemFormState = {
                 om_favorecida: stagedUpdate.organizacao,
                 ug_favorecida: stagedUpdate.ug,
+                om_destino: stagedUpdate.om_detentora || '', // Usar om_detentora como om_destino
+                ug_destino: stagedUpdate.ug_detentora || '', // Usar ug_detentora como ug_destino
                 dias_operacao: stagedUpdate.dias_operacao,
-                efetivo: stagedUpdate.efetivo || 0, // Usar o campo efetivo
+                efetivo: stagedUpdate.efetivo || 0, 
                 fase_atividade: stagedUpdate.fase_atividade || '',
                 selected_trechos: stagedUpdate.selected_trechos,
             };
@@ -329,6 +345,8 @@ const PassagemForm = () => {
             // Manter a OM Favorecida (do PTrab) se já estiver definida
             om_favorecida: prev.om_favorecida,
             ug_favorecida: prev.ug_favorecida,
+            om_destino: prev.om_destino,
+            ug_destino: prev.ug_destino,
             // Resetar campos de solicitação
             dias_operacao: 0,
             efetivo: 0,
@@ -338,6 +356,7 @@ const PassagemForm = () => {
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
         setSelectedOmFavorecidaId(undefined);
+        setSelectedOmDestinoId(undefined);
         setStagedUpdate(null); 
         setLastStagedFormData(null); 
     };
@@ -357,13 +376,14 @@ const PassagemForm = () => {
         
         setEditingId(registro.id);
         
-        // 1. Configurar OM Favorecida (OM do PTrab)
+        // 1. Configurar OM Favorecida e OM Destino
         const omFavorecidaToEdit = oms?.find(om => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
         setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
         
+        const omDestinoToEdit = oms?.find(om => om.nome_om === registro.om_detentora && om.codug_om === registro.ug_detentora);
+        setSelectedOmDestinoId(omDestinoToEdit?.id);
+        
         // 2. Reconstruir a lista de trechos selecionados a partir dos dados do registro
-        // Nota: O registro DB armazena apenas 1 trecho por linha, mas o novo modelo usa uma lista.
-        // Para compatibilidade, vamos criar um TrechoSelection a partir dos campos existentes.
         const trechoFromRecord: TrechoSelection = {
             om_detentora: registro.om_detentora,
             ug_detentora: registro.ug_detentora,
@@ -382,6 +402,8 @@ const PassagemForm = () => {
         const newFormData: PassagemFormState = {
             om_favorecida: registro.organizacao, 
             ug_favorecida: registro.ug, 
+            om_destino: registro.om_detentora,
+            ug_destino: registro.ug_detentora,
             dias_operacao: registro.dias_operacao,
             efetivo: registro.efetivo || 0, // Usar o campo efetivo
             fase_atividade: registro.fase_atividade || "",
@@ -454,10 +476,13 @@ const PassagemForm = () => {
                 throw new Error("O número de dias deve ser maior que zero.");
             }
             if (formData.efetivo <= 0) {
-                throw new Error("O efetivo apoiado deve ser maior que zero.");
+                throw new Error("O efetivo deve ser maior que zero.");
             }
             if (!formData.om_favorecida || !formData.ug_favorecida) {
                 throw new Error("A OM Favorecida é obrigatória.");
+            }
+            if (!formData.om_destino || !formData.ug_destino) {
+                throw new Error("A OM Destino do Recurso é obrigatória.");
             }
             
             // Validação de quantidade de passagens
@@ -486,8 +511,9 @@ const PassagemForm = () => {
                 fase_atividade: formData.fase_atividade,
                 
                 // Campos de Trecho (usamos o primeiro trecho para preencher os campos DB legados)
-                om_detentora: firstTrecho.om_detentora,
-                ug_detentora: firstTrecho.ug_detentora,
+                // OM Detentora/UG Detentora no DB é a OM Destino do Recurso
+                om_detentora: formData.om_destino,
+                ug_detentora: formData.ug_destino,
                 diretriz_id: firstTrecho.diretriz_id,
                 trecho_id: firstTrecho.trecho_id,
                 origem: firstTrecho.origem,
@@ -555,6 +581,8 @@ const PassagemForm = () => {
                 ...prev,
                 om_favorecida: prev.om_favorecida,
                 ug_favorecida: prev.ug_favorecida,
+                om_destino: prev.om_destino,
+                ug_destino: prev.ug_destino,
                 dias_operacao: prev.dias_operacao,
                 efetivo: prev.efetivo,
                 fase_atividade: prev.fase_atividade,
@@ -610,6 +638,25 @@ const PassagemForm = () => {
                 ...prev,
                 om_favorecida: "",
                 ug_favorecida: "",
+            }));
+        }
+    };
+    
+    // Handler para a OM Destino do Recurso
+    const handleOmDestinoChange = (omData: OMData | undefined) => {
+        if (omData) {
+            setSelectedOmDestinoId(omData.id);
+            setFormData(prev => ({
+                ...prev,
+                om_destino: omData.nome_om,
+                ug_destino: omData.codug_om,
+            }));
+        } else {
+            setSelectedOmDestinoId(undefined);
+            setFormData(prev => ({
+                ...prev,
+                om_destino: "",
+                ug_destino: "",
             }));
         }
     };
@@ -672,6 +719,8 @@ const PassagemForm = () => {
         const calculatedDataForMemoria: PassagemFormState = {
             om_favorecida: registro.organizacao,
             ug_favorecida: registro.ug,
+            om_destino: registro.om_detentora,
+            ug_destino: registro.ug_detentora,
             dias_operacao: registro.dias_operacao,
             efetivo: registro.efetivo || 0,
             fase_atividade: registro.fase_atividade || "",
@@ -711,7 +760,7 @@ const PassagemForm = () => {
             memoria += "\n";
             memoria += `\n==================================================\n`;
             memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalTrecho)}\n`;
-            memoria += `Efetivo Apoiado: ${calculatedDataForMemoria.efetivo} militares\n`;
+            memoria += `Efetivo: ${calculatedDataForMemoria.efetivo} militares\n`;
             memoria += `==================================================\n`;
             
             return { memoria };
@@ -787,7 +836,7 @@ const PassagemForm = () => {
                     ug: ug_favorecida, 
                     detalhamento: "Passagens", 
                     detalhamento_customizado: rest.detalhamento_customizado, 
-                    // O campo 'efetivo' já está em 'rest'
+                    // om_detentora e ug_detentora já estão em 'rest' e representam a OM Destino
                 } as TablesInsert<'passagem_registros'>;
                 
                 return dbRecord;
@@ -832,7 +881,7 @@ const PassagemForm = () => {
                 ug: ug_favorecida, 
                 detalhamento: "Passagens", 
                 detalhamento_customizado: rest.detalhamento_customizado, 
-                // O campo 'efetivo' já está em 'rest'
+                // om_detentora e ug_detentora já estão em 'rest' e representam a OM Destino
             } as TablesUpdate<'passagem_registros'>;
             
             const { error } = await supabase
@@ -894,6 +943,8 @@ const PassagemForm = () => {
     
     const isBaseFormReady = formData.om_favorecida.length > 0 && 
                             formData.ug_favorecida.length > 0 && 
+                            formData.om_destino.length > 0 && // Novo campo
+                            formData.ug_destino.length > 0 && // Novo campo
                             formData.fase_atividade.length > 0;
 
     // Verifica se os campos numéricos da Solicitação estão preenchidos
@@ -924,7 +975,7 @@ const PassagemForm = () => {
                 <Card>
                     <CardHeader>
                         <CardTitle>
-                            Aquisição de Passagens (ND 33)
+                            Aquisição de Passagens
                         </CardTitle>
                         <CardDescription>
                             Solicitação de recursos para aquisição de passagens aéreas, terrestres ou fluviais.
@@ -940,7 +991,7 @@ const PassagemForm = () => {
                                 </h3>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {/* OM FAVORECIDA (OM do PTrab) */}
+                                    {/* OM FAVORECIDA */}
                                     <div className="space-y-2 col-span-1">
                                         <Label htmlFor="om_favorecida">OM Favorecida *</Label>
                                         <OmSelector
@@ -970,6 +1021,28 @@ const PassagemForm = () => {
                                             disabled={!isPTrabEditable || isSaving || pendingPassagens.length > 0}
                                         />
                                     </div>
+                                    
+                                    {/* OM DESTINO DO RECURSO */}
+                                    <div className="space-y-2 col-span-1">
+                                        <Label htmlFor="om_destino">OM Destino do Recurso *</Label>
+                                        <OmSelector
+                                            selectedOmId={selectedOmDestinoId}
+                                            onChange={handleOmDestinoChange}
+                                            placeholder="Selecione a OM Destino"
+                                            disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingPassagens.length > 0}
+                                            initialOmName={editingId ? formData.om_destino : undefined}
+                                            initialOmUg={editingId ? formData.ug_destino : undefined}
+                                        />
+                                    </div>
+                                    <div className="space-y-2 col-span-1">
+                                        <Label htmlFor="ug_destino">UG Destino</Label>
+                                        <Input
+                                            id="ug_destino"
+                                            value={formatCodug(formData.ug_destino)}
+                                            disabled
+                                            className="bg-muted/50"
+                                        />
+                                    </div>
                                 </div>
                             </section>
 
@@ -985,7 +1058,7 @@ const PassagemForm = () => {
                                         {/* Dados da Solicitação (Dias e Efetivo) */}
                                         <Card className="rounded-lg mb-4">
                                             <CardHeader className="py-3">
-                                                <CardTitle className="text-base font-semibold">Período e Efetivo Apoiado</CardTitle>
+                                                <CardTitle className="text-base font-semibold">Período e Efetivo</CardTitle>
                                             </CardHeader>
                                             <CardContent className="pt-2">
                                                 <div className="p-4 bg-background rounded-lg border">
@@ -1006,9 +1079,9 @@ const PassagemForm = () => {
                                                                 className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                             />
                                                         </div>
-                                                        {/* NOVO CAMPO: EFETIVO */}
+                                                        {/* CAMPO: EFETIVO */}
                                                         <div className="space-y-2 col-span-1">
-                                                            <Label htmlFor="efetivo">Efetivo Apoiado *</Label>
+                                                            <Label htmlFor="efetivo">Efetivo *</Label>
                                                             <Input
                                                                 id="efetivo"
                                                                 type="number"
@@ -1206,11 +1279,13 @@ const PassagemForm = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
-                                                                <p className="font-medium">Efetivo Apoiado:</p>
+                                                                <p className="font-medium">OM Destino do Recurso:</p>
+                                                                <p className="font-medium">Efetivo:</p>
                                                                 <p className="font-medium">Total Passagens / Dias:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
+                                                                <p className="font-medium">{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
                                                                 <p className="font-medium">{item.efetivo} militares</p>
                                                                 <p className="font-medium">{totalPassagens} {passagemText} / {item.dias_operacao} {diasText}</p>
                                                             </div>
@@ -1368,7 +1443,7 @@ const PassagemForm = () => {
                                                                 {/* Detalhes da Alocação */}
                                                                 <div className="pt-2 border-t mt-2">
                                                                     <div className="flex justify-between text-xs mb-1">
-                                                                        <span className="text-muted-foreground">OM Contratante:</span>
+                                                                        <span className="text-muted-foreground">OM Destino do Recurso:</span>
                                                                         <span className="font-medium">
                                                                             {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
                                                                         </span>
@@ -1423,6 +1498,8 @@ const PassagemForm = () => {
                                         const calculatedDataForMemoria: PassagemFormState = {
                                             om_favorecida: registro.organizacao,
                                             ug_favorecida: registro.ug,
+                                            om_destino: registro.om_detentora,
+                                            ug_destino: registro.ug_detentora,
                                             dias_operacao: registro.dias_operacao,
                                             efetivo: registro.efetivo || 0,
                                             fase_atividade: registro.fase_atividade || "",
@@ -1462,7 +1539,7 @@ const PassagemForm = () => {
                                             memoria += "\n";
                                             memoria += `\n==================================================\n`;
                                             memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalTrecho)}\n`;
-                                            memoria += `Efetivo Apoiado: ${calculatedDataForMemoria.efetivo} militares\n`;
+                                            memoria += `Efetivo: ${calculatedDataForMemoria.efetivo} militares\n`;
                                             memoria += `==================================================\n`;
                                             
                                             return { memoria };
@@ -1493,7 +1570,7 @@ const PassagemForm = () => {
                                                         <div className="flex items-center gap-1 mt-1">
                                                             <Plane className="h-4 w-4 text-primary" />
                                                             <span className="text-sm font-medium text-primary">
-                                                                Contratante: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                OM Destino: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
                                                             </span>
                                                         </div>
                                                     </div>

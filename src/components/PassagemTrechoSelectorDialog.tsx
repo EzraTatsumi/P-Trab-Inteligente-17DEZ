@@ -1,22 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Plane, AlertTriangle, Check, Plus, Minus, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Plane, AlertTriangle, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { DiretrizPassagem, TrechoPassagem, TipoTransporte } from '@/types/diretrizesPassagens';
 import { formatCurrency, formatDate, formatCodug } from '@/lib/formatUtils';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Define a estrutura de seleção de trecho que será retornada
 export interface TrechoSelection extends TrechoPassagem {
     diretriz_id: string;
     om_detentora: string;
     ug_detentora: string;
-    quantidade_passagens: number; // Quantidade solicitada para este trecho
+    quantidade_passagens: number; // Quantidade solicitada para este trecho (assumida como 1 na seleção inicial)
 }
 
 interface PassagemTrechoSelectorDialogProps {
@@ -26,12 +26,6 @@ interface PassagemTrechoSelectorDialogProps {
     onSelect: (trechos: TrechoSelection[]) => void;
     initialSelections: TrechoSelection[];
 }
-
-// Função para calcular o valor total de um trecho (considerando ida/volta)
-const calculateTrechoTotal = (trecho: TrechoPassagem, quantidade: number): number => {
-    const multiplier = trecho.is_ida_volta ? 2 : 1;
-    return trecho.valor * quantidade * multiplier;
-};
 
 const fetchDiretrizesPassagens = async (year: number): Promise<DiretrizPassagem[]> => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -62,6 +56,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
     onSelect,
     initialSelections,
 }) => {
+    // Mantemos a quantidade na seleção, mas a definimos como 1 ao selecionar
     const [currentSelections, setCurrentSelections] = useState<TrechoSelection[]>(initialSelections);
     const [collapseState, setCollapseState] = useState<Record<string, boolean>>({});
 
@@ -74,59 +69,49 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
     // Sincroniza as seleções iniciais quando o diálogo abre
     useEffect(() => {
         if (open) {
-            setCurrentSelections(initialSelections);
+            // Filtra para garantir que apenas trechos com quantidade > 0 sejam mantidos
+            setCurrentSelections(initialSelections.filter(t => t.quantidade_passagens > 0));
         }
     }, [open, initialSelections]);
     
-    // Calcula o total de passagens selecionadas
-    const totalPassagens = useMemo(() => {
-        return currentSelections.reduce((sum, t) => sum + t.quantidade_passagens, 0);
-    }, [currentSelections]);
-    
-    const totalValor = useMemo(() => {
-        return currentSelections.reduce((sum, t) => sum + calculateTrechoTotal(t, t.quantidade_passagens), 0);
+    // Calcula o total de trechos selecionados
+    const totalTrechosSelecionados = useMemo(() => {
+        return currentSelections.length;
     }, [currentSelections]);
 
-    const handleQuantityChange = (trechoId: string, quantity: number, diretriz: DiretrizPassagem, trecho: TrechoPassagem) => {
-        if (quantity < 0) return;
+    const isSelected = (trechoId: string): boolean => {
+        return currentSelections.some(t => t.trecho_id === trechoId);
+    };
 
+    const handleSelectionChange = (trechoId: string, isChecked: boolean, diretriz: DiretrizPassagem, trecho: TrechoPassagem) => {
         setCurrentSelections(prev => {
             const existingIndex = prev.findIndex(t => t.trecho_id === trechoId);
             
-            const newSelection: TrechoSelection = {
-                ...trecho,
-                diretriz_id: diretriz.id,
-                om_detentora: diretriz.om_referencia,
-                ug_detentora: diretriz.ug_referencia,
-                quantidade_passagens: quantity,
-            };
-
-            if (existingIndex !== -1) {
-                // Atualiza a quantidade ou remove se for zero
-                if (quantity === 0) {
-                    return prev.filter(t => t.trecho_id !== trechoId);
+            if (isChecked) {
+                // Adiciona seleção (quantidade padrão 1)
+                if (existingIndex === -1) {
+                    const newSelection: TrechoSelection = {
+                        ...trecho,
+                        diretriz_id: diretriz.id,
+                        om_detentora: diretriz.om_referencia,
+                        ug_detentora: diretriz.ug_referencia,
+                        quantidade_passagens: 1, // Assumimos 1 passagem ao selecionar
+                        valor_unitario: trecho.valor, // Usar 'valor' do TrechoPassagem como 'valor_unitario'
+                    };
+                    return [...prev, newSelection];
                 }
-                const newSelections = [...prev];
-                newSelections[existingIndex] = newSelection;
-                return newSelections;
-            } else if (quantity > 0) {
-                // Adiciona novo trecho
-                return [...prev, newSelection];
+                return prev; 
+            } else {
+                // Remove seleção
+                return prev.filter(t => t.trecho_id !== trechoId);
             }
-            
-            return prev;
         });
     };
     
     const handleConfirm = () => {
-        // Filtra para garantir que apenas seleções válidas sejam retornadas
-        const validSelections = currentSelections.filter(t => t.quantidade_passagens > 0);
-        onSelect(validSelections);
+        // Retorna apenas os trechos selecionados (que terão quantidade_passagens >= 1)
+        onSelect(currentSelections);
         onOpenChange(false);
-    };
-    
-    const getQuantity = (trechoId: string): number => {
-        return currentSelections.find(t => t.trecho_id === trechoId)?.quantidade_passagens || 0;
     };
     
     const handleToggleCollapse = (diretrizId: string) => {
@@ -145,7 +130,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                         Seleção de Trechos de Passagens
                     </DialogTitle>
                     <DialogDescription>
-                        Informe a quantidade de passagens necessárias para cada trecho disponível nos contratos ativos para o ano {selectedYear}.
+                        Selecione os trechos de passagens necessários com base nos contratos ativos para o ano {selectedYear}.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -181,20 +166,24 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                                         <Table>
                                             <TableHeader>
                                                 <TableRow>
-                                                    <TableHead className="w-[30%]">Trecho</TableHead>
-                                                    <TableHead className="w-[15%]">Tipo</TableHead>
-                                                    <TableHead className="w-[15%] text-right">Valor Unitário</TableHead>
-                                                    <TableHead className="w-[20%] text-center">Quantidade</TableHead>
-                                                    <TableHead className="w-[20%] text-right">Total</TableHead>
+                                                    <TableHead className="w-[5%]"></TableHead> {/* Checkbox */}
+                                                    <TableHead className="w-[45%]">Trecho</TableHead>
+                                                    <TableHead className="w-[25%]">Tipo</TableHead>
+                                                    <TableHead className="w-[25%] text-right">Valor Unitário</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
                                                 {diretriz.trechos.map(trecho => {
-                                                    const quantidade = getQuantity(trecho.id);
-                                                    const total = calculateTrechoTotal(trecho, quantidade);
+                                                    const isTrechoSelected = isSelected(trecho.id);
                                                     
                                                     return (
-                                                        <TableRow key={trecho.id} className={cn(quantidade > 0 && "bg-green-500/10 hover:bg-green-500/20")}>
+                                                        <TableRow key={trecho.id} className={cn(isTrechoSelected && "bg-green-500/10 hover:bg-green-500/20")}>
+                                                            <TableCell>
+                                                                <Checkbox 
+                                                                    checked={isTrechoSelected}
+                                                                    onCheckedChange={(checked) => handleSelectionChange(trecho.id, checked as boolean, diretriz, trecho)}
+                                                                />
+                                                            </TableCell>
                                                             <TableCell className="font-medium">
                                                                 {trecho.origem} &rarr; {trecho.destino}
                                                             </TableCell>
@@ -203,38 +192,6 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                                                             </TableCell>
                                                             <TableCell className="text-right">
                                                                 {formatCurrency(trecho.valor)}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <div className="flex items-center justify-center gap-1">
-                                                                    <Button 
-                                                                        type="button" 
-                                                                        variant="outline" 
-                                                                        size="icon" 
-                                                                        className="h-6 w-6"
-                                                                        onClick={() => handleQuantityChange(trecho.id, quantidade - 1, diretriz, trecho)}
-                                                                    >
-                                                                        <Minus className="h-3 w-3" />
-                                                                    </Button>
-                                                                    <Input
-                                                                        type="number"
-                                                                        min={0}
-                                                                        value={quantidade === 0 ? "" : quantidade}
-                                                                        onChange={(e) => handleQuantityChange(trecho.id, parseInt(e.target.value) || 0, diretriz, trecho)}
-                                                                        className="w-16 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                    />
-                                                                    <Button 
-                                                                        type="button" 
-                                                                        variant="outline" 
-                                                                        size="icon" 
-                                                                        className="h-6 w-6"
-                                                                        onClick={() => handleQuantityChange(trecho.id, quantidade + 1, diretriz, trecho)}
-                                                                    >
-                                                                        <Plus className="h-3 w-3" />
-                                                                    </Button>
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell className="text-right font-semibold">
-                                                                {formatCurrency(total)}
                                                             </TableCell>
                                                         </TableRow>
                                                     );
@@ -257,25 +214,20 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                 </div>
 
                 <DialogFooter className="mt-4">
-                    <div className="flex items-center justify-between w-full">
-                        <div className="text-lg font-bold">
-                            Total de Passagens: <span className="text-primary">{totalPassagens}</span>
-                        </div>
-                        <div className="flex gap-2">
-                            <Button 
-                                type="button" 
-                                onClick={handleConfirm}
-                                disabled={isLoading}
-                            >
-                                <Check className="mr-2 h-4 w-4" />
-                                Confirmar Seleção
+                    <div className="flex items-center justify-end w-full gap-2">
+                        <Button 
+                            type="button" 
+                            onClick={handleConfirm}
+                            disabled={isLoading || totalTrechosSelecionados === 0}
+                        >
+                            <Check className="mr-2 h-4 w-4" />
+                            Confirmar Seleção ({totalTrechosSelecionados})
+                        </Button>
+                        <DialogClose asChild>
+                            <Button type="button" variant="outline">
+                                Cancelar
                             </Button>
-                            <DialogClose asChild>
-                                <Button type="button" variant="outline">
-                                    Cancelar
-                                </Button>
-                            </DialogClose>
-                        </div>
+                        </DialogClose>
                     </div>
                 </DialogFooter>
             </DialogContent>
