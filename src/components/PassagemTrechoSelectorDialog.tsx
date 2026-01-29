@@ -181,11 +181,15 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                                                             <TableCell className="text-center">
                                                                 <Button
                                                                     size="sm"
-                                                                    variant={isTrechoSelected ? "secondary" : "default"}
+                                                                    // Se selecionado, usa a variante 'outline' para o verde claro
+                                                                    variant={isTrechoSelected ? "outline" : "default"}
                                                                     onClick={() => handleSelectionToggle(diretriz, trecho)}
                                                                     className={cn(
                                                                         "w-full",
-                                                                        isTrechoSelected ? "bg-green-600 hover:bg-green-700 text-white" : "bg-primary hover:bg-primary/90"
+                                                                        // Estilo para Selecionado (Verde Claro)
+                                                                        isTrechoSelected 
+                                                                            ? "border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700" 
+                                                                            : "bg-primary hover:bg-primary/90" // Estilo para Selecionar (Padrão)
                                                                     )}
                                                                 >
                                                                     {isTrechoSelected ? (
