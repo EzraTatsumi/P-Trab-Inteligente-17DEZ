@@ -363,7 +363,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, valorTotalSolicitado, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateVIIIMemoriaCalculo, totalDiesel, totalGasolina, totalValorCombustivelFinal]);
+  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, valorTotalSolicitado, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo, totalDiesel, totalGasolina, totalValorCombustivelFinal]);
 
   // NOVO: Função para abrir o diálogo de impressão do navegador
   const handlePrint = () => {
@@ -748,11 +748,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 }
                 
                 // Line 1: Class - Category
-                rowData.despesasValue = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
+                line1 = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
                 
                 if (isDifferentOm) {
                     // Line 2: OM Detentora
-                    rowData.despesasValue += `\n${omDetentora}`;
+                    line2 = omDetentora;
                 }
                 
                 // CORREÇÃO: Garante OM \n UG na coluna B
@@ -1171,7 +1171,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   ];
 
                   return (
-                    <React.Fragment key={nomeOM}>
+                    <React.Fragment key={`${nomeOM}-group`}>
                       {allExpenseLines.map((linha, index) => {
                         // Type guards to determine the type of line
                         const isClasseI = 'tipo' in linha;
