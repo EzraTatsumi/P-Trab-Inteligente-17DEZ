@@ -56,7 +56,6 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
     onSelect,
     initialSelections,
 }) => {
-    // Mantemos a quantidade na seleção, mas a definimos como 1 ao selecionar
     const [currentSelections, setCurrentSelections] = useState<TrechoSelection[]>(initialSelections);
     const [collapseState, setCollapseState] = useState<Record<string, boolean>>({});
 
@@ -101,7 +100,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                     };
                     return [...prev, newSelection];
                 }
-                // Se já existir, retorna o estado anterior (evita duplicidade)
+                // Se já existir, retorna o estado anterior (evita duplicação)
                 return prev; 
             } else {
                 // Remove seleção
@@ -147,7 +146,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                             {diretrizes.map(diretriz => (
                                 <Collapsible 
                                     key={diretriz.id} 
-                                    open={collapseState[diretriz.id] ?? false} 
+                                    open={collapseState[diretriz.id] ?? true} // ABRIR POR PADRÃO
                                     onOpenChange={() => handleToggleCollapse(diretriz.id)}
                                     className="border rounded-lg"
                                 >
