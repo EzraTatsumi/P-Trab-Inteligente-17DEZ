@@ -1,297 +1,289 @@
-import { useState, useMemo, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Loader2, Plane, Check, AlertTriangle, MapPin, Calendar, ChevronDown, ChevronUp, X } from "lucide-react";
-import { DiretrizPassagem, TrechoPassagem, TipoTransporte } from "@/types/diretrizesPassagens";
-import { formatCurrency, formatCodug, formatDate } from "@/lib/formatUtils";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+' in a string literal and implementing the component logic for selecting passage segments.">
+import React, { useState, useEffect, useMemo } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Loader2, Plane, AlertTriangle, Check, Plus, Minus, ChevronDown, ChevronUp } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { DiretrizPassagem, TrechoPassagem, TipoTransporte } from '@/types/diretrizesPassagens';
+import { formatCurrency, formatDate, formatCodug } from '@/lib/formatUtils';
+import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-// Tipo de retorno esperado pelo PassagemForm
-export interface TrechoSelection {
+// Define a estrutura de seleção de trecho que será retornada
+export interface TrechoSelection extends TrechoPassagem {
+    diretriz_id: string;
     om_detentora: string;
     ug_detentora: string;
-    diretriz_id: string;
-    trecho_id: string;
-    origem: string;
-    destino: string;
-    tipo_transporte: TipoTransporte;
-    is_ida_volta: boolean;
-    valor_unitario: number;
-    // Novo campo para armazenar a quantidade de passagens para este trecho
-    quantidade_passagens: number; 
+    quantidade_passagens: number; // Quantidade solicitada para este trecho
 }
 
 interface PassagemTrechoSelectorDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  // Agora onSelect recebe uma lista de TrechoSelection
-  onSelect: (trechos: TrechoSelection[]) => void; 
-  selectedYear: number;
-  // Novo: Lista de trechos já selecionados para pré-preenchimento
-  initialSelections: TrechoSelection[];
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    selectedYear: number;
+    onSelect: (trechos: TrechoSelection[]) => void;
+    initialSelections: TrechoSelection[];
 }
 
+// Função para calcular o valor total de um trecho (considerando ida/volta)
+const calculateTrechoTotal = (trecho: TrechoPassagem, quantidade: number): number => {
+    const multiplier = trecho.is_ida_volta ? 2 : 1;
+    return trecho.valor * quantidade * multiplier;
+};
+
 const fetchDiretrizesPassagens = async (year: number): Promise<DiretrizPassagem[]> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
 
-  const { data, error } = await supabase
-    .from('diretrizes_passagens')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('ano_referencia', year)
-    .eq('ativo', true)
-    .order('om_referencia', { ascending: true });
+    // Busca diretrizes ativas para o ano selecionado
+    const { data, error } = await supabase
+        .from('diretrizes_passagens')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('ano_referencia', year)
+        .eq('ativo', true)
+        .order('om_referencia', { ascending: true });
 
-  if (error) {
-    console.error("Erro ao buscar diretrizes de passagens:", error);
-    throw new Error("Falha ao carregar contratos de passagens.");
-  }
-
-  return data as DiretrizPassagem[];
+    if (error) throw error;
+    
+    // Garante que trechos é um array de TrechoPassagem
+    return (data || []).map(d => ({
+        ...d,
+        trechos: (d.trechos as unknown as TrechoPassagem[]) || [],
+    })) as DiretrizPassagem[];
 };
 
 const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> = ({
-  open,
-  onOpenChange,
-  onSelect,
-  selectedYear,
-  initialSelections = [],
+    open,
+    onOpenChange,
+    selectedYear,
+    onSelect,
+    initialSelections,
 }) => {
-  const { data: diretrizes, isLoading, isError } = useQuery({
-    queryKey: ['diretrizesPassagens', selectedYear],
-    queryFn: () => fetchDiretrizesPassagens(selectedYear),
-    enabled: open,
-  });
-  
-  // Estado para armazenar os trechos selecionados (incluindo a quantidade)
-  const [currentSelections, setCurrentSelections] = useState<TrechoSelection[]>([]);
-  
-  // Estado para controlar qual diretriz está aberta
-  const [openDiretrizId, setOpenDiretrizId] = useState<string | null>(null);
+    const [currentSelections, setCurrentSelections] = useState<TrechoSelection[]>(initialSelections);
+    const [collapseState, setCollapseState] = useState<Record<string, boolean>>({});
 
-  // Inicializa o estado com as seleções iniciais
-  useEffect(() => {
-    if (open) {
-        setCurrentSelections(initialSelections);
-    }
-  }, [open, initialSelections]);
-  
-  // Função para adicionar/remover trecho
-  const handleToggleTrecho = (diretriz: DiretrizPassagem, trecho: TrechoPassagem) => {
-    const trechoKey = `${diretriz.id}-${trecho.id}`;
-    const existingIndex = currentSelections.findIndex(s => 
-        s.diretriz_id === diretriz.id && s.trecho_id === trecho.id
-    );
-
-    if (existingIndex !== -1) {
-      // Remover
-      setCurrentSelections(prev => prev.filter((_, index) => index !== existingIndex));
-    } else {
-      // Adicionar
-      const newSelection: TrechoSelection = {
-        om_detentora: diretriz.om_referencia,
-        ug_detentora: diretriz.ug_referencia,
-        diretriz_id: diretriz.id,
-        trecho_id: trecho.id,
-        origem: trecho.origem,
-        destino: trecho.destino,
-        tipo_transporte: trecho.tipo_transporte,
-        is_ida_volta: trecho.is_ida_volta,
-        valor_unitario: trecho.valor,
-        quantidade_passagens: 1, // Valor inicial
-      };
-      setCurrentSelections(prev => [...prev, newSelection]);
-    }
-  };
-  
-  // Função para atualizar a quantidade de passagens
-  const handleUpdateQuantity = (diretrizId: string, trechoId: string, quantity: number) => {
-    setCurrentSelections(prev => prev.map(s => {
-      if (s.diretriz_id === diretrizId && s.trecho_id === trechoId) {
-        return { ...s, quantidade_passagens: quantity };
-      }
-      return s;
-    }));
-  };
-
-  const handleConfirmSelection = () => {
-    if (currentSelections.length === 0) {
-      toast.error("Selecione pelo menos um trecho.");
-      return;
-    }
+    const { data: diretrizes, isLoading, isError } = useQuery({
+        queryKey: ['diretrizesPassagens', selectedYear],
+        queryFn: () => fetchDiretrizesPassagens(selectedYear),
+        enabled: open,
+    });
     
-    const invalidQuantity = currentSelections.some(s => s.quantidade_passagens <= 0);
-    if (invalidQuantity) {
-        toast.error("A quantidade de passagens deve ser maior que zero para todos os trechos selecionados.");
-        return;
-    }
+    // Sincroniza as seleções iniciais quando o diálogo abre
+    useEffect(() => {
+        if (open) {
+            setCurrentSelections(initialSelections);
+        }
+    }, [open, initialSelections]);
+    
+    // Calcula o total de passagens selecionadas
+    const totalPassagens = useMemo(() => {
+        return currentSelections.reduce((sum, t) => sum + t.quantidade_passagens, 0);
+    }, [currentSelections]);
 
-    onSelect(currentSelections);
-    onOpenChange(false);
-  };
-  
-  const totalSelectedValue = useMemo(() => {
-      return currentSelections.reduce((sum, s) => sum + (s.valor_unitario * s.quantidade_passagens * (s.is_ida_volta ? 2 : 1)), 0);
-  }, [currentSelections]);
+    const handleQuantityChange = (trechoId: string, quantity: number, diretriz: DiretrizPassagem, trecho: TrechoPassagem) => {
+        if (quantity < 0) return;
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Plane className="h-5 w-5 text-primary" />
-            Selecionar Trechos de Passagem
-          </DialogTitle>
-          <DialogDescription>
-            Selecione um ou mais trechos de contratos (Diretrizes) para a solicitação.
-            <span className="block mt-1 text-xs text-red-600">
-                Apenas contratos ativos para o ano {selectedYear} são exibidos.
-            </span>
-          </DialogDescription>
-        </DialogHeader>
+        setCurrentSelections(prev => {
+            const existingIndex = prev.findIndex(t => t.trecho_id === trechoId);
+            
+            if (quantity === 0) {
+                // Remove se a quantidade for zero
+                return prev.filter(t => t.trecho_id !== trechoId);
+            }
 
-        {isLoading ? (
-          <div className="flex justify-center items-center h-40">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <span className="ml-2">Carregando diretrizes...</span>
-          </div>
-        ) : isError || !diretrizes || diretrizes.length === 0 ? (
-          <div className="flex flex-col justify-center items-center h-40 text-center p-4">
-            <AlertTriangle className="h-8 w-8 text-destructive mb-2" />
-            <p className="text-sm text-muted-foreground">
-              Nenhum contrato de passagens ativo encontrado para o ano {selectedYear}. 
-              Cadastre-os em "Configurações > Custos Operacionais".
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {diretrizes.map((diretriz) => (
-              <Collapsible 
-                key={diretriz.id} 
-                open={openDiretrizId === diretriz.id}
-                onOpenChange={(open) => {
-                    setOpenDiretrizId(open ? diretriz.id : null);
-                }}
-                className="border rounded-lg"
-              >
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-                    <div className="flex flex-col text-left">
-                      <h4 className="font-semibold text-base">
-                        {diretriz.om_referencia} (UG: {formatCodug(diretriz.ug_referencia)})
-                      </h4>
-                      <p className="text-sm text-muted-foreground">
-                        Pregão: {diretriz.numero_pregao || 'N/A'} | Vigência: {formatDate(diretriz.data_inicio_vigencia)} a {formatDate(diretriz.data_fim_vigencia)}
-                      </p>
-                    </div>
-                    {openDiretrizId === diretriz.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="border-t bg-background">
-                  <div className="p-4 space-y-3">
-                    <h5 className="font-medium text-sm mb-2">Selecione os Trechos:</h5>
-                    {/* CORREÇÃO: Garantir que trechos seja tratado como array de TrechoPassagem */}
-                    {(diretriz.trechos as unknown as TrechoPassagem[]).length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center">Nenhum trecho cadastrado neste contrato.</p>
+            const newSelection: TrechoSelection = {
+                ...trecho,
+                diretriz_id: diretriz.id,
+                om_detentora: diretriz.om_referencia,
+                ug_detentora: diretriz.ug_referencia,
+                quantidade_passagens: quantity,
+            };
+
+            if (existingIndex !== -1) {
+                // Atualiza a quantidade
+                const newSelections = [...prev];
+                newSelections[existingIndex] = newSelection;
+                return newSelections;
+            } else {
+                // Adiciona novo trecho
+                return [...prev, newSelection];
+            }
+        });
+    };
+    
+    const handleConfirm = () => {
+        if (totalPassagens === 0) {
+            // Permite fechar sem seleção, mas avisa
+            onSelect([]);
+            onOpenChange(false);
+            return;
+        }
+        onSelect(currentSelections);
+        onOpenChange(false);
+    };
+    
+    const getQuantity = (trechoId: string): number => {
+        return currentSelections.find(t => t.trecho_id === trechoId)?.quantidade_passagens || 0;
+    };
+    
+    const handleToggleCollapse = (diretrizId: string) => {
+        setCollapseState(prev => ({
+            ...prev,
+            [diretrizId]: !prev[diretrizId],
+        }));
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Plane className="h-6 w-6 text-primary" />
+                        Seleção de Trechos de Passagens
+                    </DialogTitle>
+                    <DialogDescription>
+                        Selecione os trechos e a quantidade de passagens necessárias com base nos contratos ativos para o ano {selectedYear}.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-4">
+                    {isLoading ? (
+                        <div className="text-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+                            <p className="text-sm text-muted-foreground mt-2">Carregando contratos...</p>
+                        </div>
+                    ) : diretrizes && diretrizes.length > 0 ? (
+                        <div className="space-y-4">
+                            {diretrizes.map(diretriz => (
+                                <Collapsible 
+                                    key={diretriz.id} 
+                                    open={collapseState[diretriz.id] ?? false} 
+                                    onOpenChange={() => handleToggleCollapse(diretriz.id)}
+                                    className="border rounded-lg"
+                                >
+                                    <CollapsibleTrigger asChild>
+                                        <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                                            <div className="flex flex-col text-left">
+                                                <h4 className="font-semibold text-base">
+                                                    Contrato: {diretriz.om_referencia} (UG: {formatCodug(diretriz.ug_referencia)})
+                                                </h4>
+                                                <p className="text-sm text-muted-foreground">
+                                                    Pregão: {diretriz.numero_pregao || 'N/A'} | Vigência: {formatDate(diretriz.data_inicio_vigencia)} a {formatDate(diretriz.data_fim_vigencia)}
+                                                </p>
+                                            </div>
+                                            {collapseState[diretriz.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                        </div>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="border-t">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="w-[30%]">Trecho</TableHead>
+                                                    <TableHead className="w-[15%]">Tipo</TableHead>
+                                                    <TableHead className="w-[15%] text-right">Valor Unitário</TableHead>
+                                                    <TableHead className="w-[20%] text-center">Quantidade</TableHead>
+                                                    <TableHead className="w-[20%] text-right">Total</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {diretriz.trechos.map(trecho => {
+                                                    const quantidade = getQuantity(trecho.id);
+                                                    const total = calculateTrechoTotal(trecho, quantidade);
+                                                    
+                                                    return (
+                                                        <TableRow key={trecho.id} className={cn(quantidade > 0 && "bg-green-500/10 hover:bg-green-500/20")}>
+                                                            <TableCell className="font-medium">
+                                                                {trecho.origem} &rarr; {trecho.destino}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs">
+                                                                {trecho.tipo_transporte} ({trecho.is_ida_volta ? 'Ida/Volta' : 'Somente Ida'})
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                {formatCurrency(trecho.valor)}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <div className="flex items-center justify-center gap-1">
+                                                                    <Button 
+                                                                        type="button" 
+                                                                        variant="outline" 
+                                                                        size="icon" 
+                                                                        className="h-6 w-6"
+                                                                        onClick={() => handleQuantityChange(trecho.id, quantidade - 1, diretriz, trecho)}
+                                                                    >
+                                                                        <Minus className="h-3 w-3" />
+                                                                    </Button>
+                                                                    <Input
+                                                                        type="number"
+                                                                        min={0}
+                                                                        value={quantidade === 0 ? "" : quantidade}
+                                                                        onChange={(e) => handleQuantityChange(trecho.id, parseInt(e.target.value) || 0, diretriz, trecho)}
+                                                                        className="w-16 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                    />
+                                                                    <Button 
+                                                                        type="button" 
+                                                                        variant="outline" 
+                                                                        size="icon" 
+                                                                        className="h-6 w-6"
+                                                                        onClick={() => handleQuantityChange(trecho.id, quantidade + 1, diretriz, trecho)}
+                                                                    >
+                                                                        <Plus className="h-3 w-3" />
+                                                                    </Button>
+                                                                </div>
+                                                            </TableCell>
+                                                            <TableCell className="text-right font-semibold">
+                                                                {formatCurrency(total)}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })}
+                                            </TableBody>
+                                        </Table>
+                                    </CollapsibleContent>
+                                </Collapsible>
+                            ))}
+                        </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {(diretriz.trechos as unknown as TrechoPassagem[]).map((trecho) => {
-                                const isSelected = currentSelections.some(s => 
-                                    s.diretriz_id === diretriz.id && s.trecho_id === trecho.id
-                                );
-                                const currentQuantity = currentSelections.find(s => 
-                                    s.diretriz_id === diretriz.id && s.trecho_id === trecho.id
-                                )?.quantidade_passagens || 1;
-                                
-                                return (
-                                    <div
-                                        key={trecho.id}
-                                        className={cn(
-                                            "p-3 border rounded-md cursor-pointer transition-all",
-                                            isSelected
-                                                ? "border-primary ring-2 ring-primary/50 bg-primary/10"
-                                                : "hover:bg-muted"
-                                        )}
-                                        onClick={() => handleToggleTrecho(diretriz, trecho)}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-semibold text-sm flex items-center gap-1">
-                                                <MapPin className="h-4 w-4 text-muted-foreground" />
-                                                {trecho.origem} &rarr; {trecho.destino}
-                                            </span>
-                                            {isSelected ? <Check className="h-4 w-4 text-primary" /> : <Plane className="h-4 w-4 text-muted-foreground" />}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground mt-1">
-                                            <span className="font-medium">{trecho.tipo_transporte}</span> | 
-                                            <span className="ml-1">{trecho.is_ida_volta ? 'Ida e Volta' : 'Somente Ida'}</span>
-                                        </div>
-                                        <div className="text-sm font-bold mt-1 flex justify-between items-center">
-                                            <span>{formatCurrency(trecho.valor)}</span>
-                                            {isSelected && (
-                                                <div className="flex items-center gap-2">
-                                                    <label htmlFor={`qty-${trecho.id}`} className="text-xs font-normal text-muted-foreground">Qtd:</label>
-                                                    <input
-                                                        id={`qty-${trecho.id}`}
-                                                        type="number"
-                                                        min={1}
-                                                        value={currentQuantity}
-                                                        onChange={(e) => {
-                                                            const qty = parseInt(e.target.value) || 1;
-                                                            handleUpdateQuantity(diretriz.id, trecho.id, qty);
-                                                        }}
-                                                        onClick={(e) => e.stopPropagation()} // Previne o toggle ao clicar no input
-                                                        className="w-16 p-1 border rounded text-center text-sm font-medium text-foreground"
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                        <div className="text-center py-8">
+                            <AlertTriangle className="h-8 w-8 text-destructive mb-2 mx-auto" />
+                            <p className="text-sm text-muted-foreground">
+                                Nenhum contrato de passagens ativo encontrado para o ano {selectedYear}. 
+                                Cadastre-os em "Configurações > Custos Operacionais".
+                            </p>
                         </div>
                     )}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            ))}
-          </div>
-        )}
-        
-        {/* Resumo da Seleção */}
-        <div className="pt-4 border-t space-y-3">
-            <h4 className="font-semibold text-base">Resumo da Seleção</h4>
-            <div className="flex justify-between items-center p-3 border rounded-md bg-muted/50">
-                <span className="font-medium">Trechos Selecionados:</span>
-                <span className="font-bold text-lg text-primary">{currentSelections.length}</span>
-            </div>
-            <div className="flex justify-between items-center p-3 border rounded-md bg-muted/50">
-                <span className="font-medium">Valor Total Estimado:</span>
-                <span className="font-bold text-lg text-primary">{formatCurrency(totalSelectedValue)}</span>
-            </div>
-        </div>
+                </div>
 
-        <div className="flex justify-end pt-4">
-          <Button 
-            onClick={handleConfirmSelection} 
-            disabled={currentSelections.length === 0 || isLoading}
-          >
-            Confirmar Seleção ({currentSelections.length})
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+                <DialogFooter className="mt-4">
+                    <div className="flex items-center justify-between w-full">
+                        <div className="text-lg font-bold">
+                            Total de Passagens: <span className="text-primary">{totalPassagens}</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <DialogClose asChild>
+                                <Button type="button" variant="outline">
+                                    Cancelar
+                                </Button>
+                            </DialogClose>
+                            <Button 
+                                type="button" 
+                                onClick={handleConfirm}
+                                disabled={isLoading}
+                            >
+                                <Check className="mr-2 h-4 w-4" />
+                                Confirmar Seleção
+                            </Button>
+                        </div>
+                    </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 };
 
 export default PassagemTrechoSelectorDialog;
