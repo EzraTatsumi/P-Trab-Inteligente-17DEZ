@@ -153,7 +153,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                         </DialogTitle>
                     </DialogHeader>
                     <p className="text-muted-foreground">
-                        Não foi possível carregar as diretrizes de passagens para o ano {selectedYear}. Verifique se os contratos foram cadastrados em "Configurações > Custos Operacionais".
+                        Não foi possível carregar as diretrizes de passagens para o ano {selectedYear}. Verifique se os contratos foram cadastrados em "Configurações - Custos Operacionais".
                     </p>
                     <DialogFooter>
                         <DialogClose asChild>
