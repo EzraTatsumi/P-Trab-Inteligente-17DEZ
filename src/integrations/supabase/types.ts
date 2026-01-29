@@ -125,7 +125,6 @@ export type Database = {
           updated_at: string
           valor_nd_30: number
           valor_nd_39: number
-          valor_total: number
         }
         Insert: {
           categoria: string
@@ -766,6 +765,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      diretrizes_passagens: {
+        Row: {
+          id: string
+          user_id: string
+          ano_referencia: number
+          om_referencia: string
+          ug_referencia: string
+          numero_pregao: string | null
+          trechos: Json
+          ativo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          ano_referencia: number
+          om_referencia: string
+          ug_referencia: string
+          numero_pregao?: string | null
+          trechos?: Json
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          ano_referencia?: number
+          om_referencia?: string
+          ug_referencia?: string
+          numero_pregao?: string | null
+          trechos?: Json
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diretrizes_passagens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organizacoes_militares: {
         Row: {

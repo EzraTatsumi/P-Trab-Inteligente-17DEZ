@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,20 +7,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp, Plus, Trash2, Pencil, Plane } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { YearManagementDialog } from "@/components/YearManagementDialog";
-import { formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
+import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodug } from "@/lib/formatUtils";
 import { useSession } from "@/components/SessionContextProvider";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { diretrizOperacionalSchema } from "@/lib/validationSchemas";
 import * as z from "zod";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // Importar Table components
-import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear"; // NOVO HOOK
-import { useQueryClient } from "@tanstack/react-query"; // Adicionar useQueryClient
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
+import { OmSelector } from "@/components/OmSelector";
+import { OMData } from "@/lib/omUtils";
+import { DiretrizPassagem, TrechoPassagem, TipoTransporte } from "@/types/diretrizesPassagens";
+import CurrencyInput from "@/components/CurrencyInput";
+import { Switch } from "@/components/ui/switch";
+import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -35,7 +41,6 @@ const DIARIA_RANKS_CONFIG = [
 
 // Mapeamento de campos para rótulos e tipo de input (R$ ou Fator)
 const OPERATIONAL_FIELDS = [
-  // REMOVIDO: valor_diaria_padrao
   { key: 'fator_passagens_aereas', label: 'Passagens Aéreas (Fator)', type: 'factor' as const, placeholder: 'Ex: 1.5 (para 150%)' },
   { key: 'fator_servicos_terceiros', label: 'Serviços de Terceiros (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.10 (para 10%)' },
   { key: 'valor_verba_operacional_dia', label: 'Verba Operacional (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 50,00' },
@@ -51,7 +56,6 @@ const OPERATIONAL_FIELDS = [
 // Valores padrão para inicialização (incluindo os novos campos de diária)
 const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   ano_referencia: year,
-  // REMOVIDO: valor_diaria_padrao
   fator_passagens_aereas: 0,
   fator_servicos_terceiros: 0,
   valor_verba_operacional_dia: 0,
@@ -64,8 +68,7 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   fator_concessionaria: 0,
   observacoes: "",
   
-  // NOVOS CAMPOS DE DIÁRIA
-  diaria_referencia_legal: 'Decreto Nº 12.324 de 19DEZ24', // NOVO DECRETO
+  diaria_referencia_legal: 'Decreto Nº 12.324 de 19DEZ24',
   diaria_of_gen_bsb: 600.00,
   diaria_of_gen_capitais: 515.00,
   diaria_of_gen_demais: 455.00,
@@ -79,14 +82,23 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   diaria_demais_pracas_capitais: 315.00,
   diaria_demais_pracas_demais: 280.00,
   
-  // NOVO CAMPO
   taxa_embarque: 95.00,
 });
+
+// Estado inicial para o formulário de Trecho
+const initialTrechoForm: Omit<TrechoPassagem, 'id'> & { rawValor: string } = {
+    origem: '',
+    destino: '',
+    valor: 0,
+    rawValor: numberToRawDigits(0),
+    tipo_transporte: 'AÉREO',
+    is_ida_volta: false,
+};
 
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
   const { user } = useSession();
-  const queryClient = useQueryClient(); // Inicializar queryClient
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   
   const currentYear = new Date().getFullYear();
@@ -96,7 +108,6 @@ const CustosOperacionaisPage = () => {
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   
-  // NOVO HOOK: Carrega o ano padrão operacional
   const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear();
   const defaultYear = defaultYearData?.defaultYear || null;
   
@@ -105,24 +116,38 @@ const CustosOperacionaisPage = () => {
   
   // Estado para controlar a expansão individual de cada campo
   const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => {
-    // Inicializa todos os campos como FECHADOS (false)
     const initialState: Record<string, boolean> = {};
     OPERATIONAL_FIELDS.forEach(field => {
       initialState[field.key as string] = false;
     });
-    // Adiciona o campo de diárias (que não está em OPERATIONAL_FIELDS)
     initialState['diarias_detalhe'] = false; 
+    initialState['passagens_detalhe'] = false; // NOVO: Estado para Passagens
     return initialState;
   });
   
   const { handleEnterToNextField } = useFormNavigation();
-
+  
+  // --- ESTADOS DE DIRETRIZES DE PASSAGENS ---
+  const [diretrizesPassagens, setDiretrizesPassagens] = useState<DiretrizPassagem[]>([]);
+  const [editingPassagemId, setEditingPassagemId] = useState<string | null>(null);
+  const [passagemForm, setPassagemForm] = useState<DiretrizPassagemForm>({
+      om_referencia: '',
+      ug_referencia: '',
+      numero_pregao: '',
+  });
+  const [selectedOmReferenciaId, setSelectedOmReferenciaId] = useState<string | undefined>(undefined);
+  const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
+  
+  // Estado para o formulário de Trecho
+  const [trechoForm, setTrechoForm] = useState<typeof initialTrechoForm>(initialTrechoForm);
+  const [editingTrechoId, setEditingTrechoId] = useState<string | null>(null);
+  
   // Efeito para rolar para o topo na montagem
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // NOVO EFEITO: Carrega anos disponíveis e define o ano selecionado quando o defaultYearData estiver pronto
+  // Efeito para carregar anos disponíveis e definir o ano selecionado
   useEffect(() => {
     if (!isLoadingDefaultYear && defaultYearData) {
         const checkAuthAndLoadYears = async () => {
@@ -133,17 +158,17 @@ const CustosOperacionaisPage = () => {
                 return;
             }
             
-            // 2. Carrega os anos disponíveis e define o ano selecionado
             await loadAvailableYears(defaultYearData.defaultYear);
             setSelectedYear(defaultYearData.year);
         };
         checkAuthAndLoadYears();
     }
-  }, [isLoadingDefaultYear, defaultYearData]); // Depende do hook de query
+  }, [isLoadingDefaultYear, defaultYearData]);
 
   useEffect(() => {
     if (selectedYear) {
       loadDiretrizesForYear(selectedYear);
+      loadDiretrizesPassagens(selectedYear); // NOVO: Carrega diretrizes de passagens
     }
   }, [selectedYear]);
 
@@ -152,62 +177,45 @@ const CustosOperacionaisPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Busca anos disponíveis na nova tabela
-      const { data, error } = await supabase
-        .from("diretrizes_operacionais")
-        .select("ano_referencia")
-        .eq("user_id", user.id)
-        .order("ano_referencia", { ascending: false });
+      // Busca anos disponíveis nas duas tabelas
+      const [
+          { data: opData, error: opError },
+          { data: passagensData, error: passagensError }
+      ] = await Promise.all([
+          supabase.from("diretrizes_operacionais").select("ano_referencia").eq("user_id", user.id),
+          supabase.from("diretrizes_passagens").select("ano_referencia").eq("user_id", user.id),
+      ]);
 
-      if (error) throw error;
+      if (opError || passagensError) throw opError || passagensError;
 
-      const years = data ? data.map(d => d.ano_referencia) : [];
+      const opYears = opData ? opData.map(d => d.ano_referencia) : [];
+      const passagensYears = passagensData ? passagensData.map(d => d.ano_referencia) : [];
       
-      // Lógica de inclusão do ano atual:
-      const yearsToInclude = new Set(years);
+      const yearsToInclude = new Set([...opYears, ...passagensYears]);
       
       if (defaultYearId && !yearsToInclude.has(defaultYearId)) {
           yearsToInclude.add(defaultYearId);
       }
       
-      // Se não houver NENHUM ano salvo (years.length === 0), adiciona o ano atual como fallback
-      if (years.length === 0 && !yearsToInclude.has(currentYear)) {
+      if (yearsToInclude.size === 0) {
           yearsToInclude.add(currentYear);
       }
       
       const uniqueYears = Array.from(yearsToInclude).filter(y => y > 0).sort((a, b) => b - a);
       setAvailableYears(uniqueYears);
 
-      // Determine the year to select: Default year > Most recent available year with data > Current year (fallback)
-      let yearToSelect = currentYear;
-      
-      // Se houver anos salvos, o ano mais recente é o primeiro da lista 'years' (já ordenada)
-      const mostRecentSavedYear = years.length > 0 ? years[0] : null;
-      
-      if (defaultYearId && uniqueYears.includes(defaultYearId)) {
-          yearToSelect = defaultYearId;
-      } else if (mostRecentSavedYear) {
-          yearToSelect = mostRecentSavedYear;
-      }
-      
-      // Only update selectedYear if it's different from the current state to avoid unnecessary re-renders/re-fetches
-      // O setSelectedYear será feito no useEffect que reage ao defaultYearData
-      
     } catch (error: any) {
       console.error("Erro ao carregar anos disponíveis:", error);
       toast.error("Erro ao carregar anos disponíveis");
     }
   };
   
-  // REMOVIDA: checkAuthAndLoadYears (substituída pelo useEffect acima)
-
   const loadDiretrizesForYear = async (year: number) => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Busca dados da nova tabela
       const { data, error } = await supabase
         .from("diretrizes_operacionais")
         .select("*")
@@ -219,16 +227,13 @@ const CustosOperacionaisPage = () => {
 
       const loadedData = data || defaultDiretrizes(year);
       
-      // Mapear todos os campos NUMERIC para Number e atualizar o estado
       const numericData: Partial<DiretrizOperacional> = {
         ...loadedData,
-        // Campos de Fator
         fator_passagens_aereas: Number(loadedData.fator_passagens_aereas || 0),
         fator_servicos_terceiros: Number(loadedData.fator_servicos_terceiros || 0),
         fator_material_consumo: Number(loadedData.fator_material_consumo || 0),
         fator_concessionaria: Number(loadedData.fator_concessionaria || 0),
         
-        // Campos Monetários (R$)
         valor_verba_operacional_dia: Number(loadedData.valor_verba_operacional_dia || 0),
         valor_suprimentos_fundo_dia: Number(loadedData.valor_suprimentos_fundo_dia || 0),
         valor_complemento_alimentacao: Number(loadedData.valor_complemento_alimentacao || 0),
@@ -236,7 +241,6 @@ const CustosOperacionaisPage = () => {
         valor_locacao_estrutura_dia: Number(loadedData.valor_locacao_estrutura_dia || 0),
         valor_locacao_viaturas_dia: Number(loadedData.valor_locacao_viaturas_dia || 0),
         
-        // NOVOS CAMPOS DE DIÁRIA
         diaria_referencia_legal: loadedData.diaria_referencia_legal || defaultDiretrizes(year).diaria_referencia_legal,
         diaria_of_gen_bsb: Number(loadedData.diaria_of_gen_bsb || 0),
         diaria_of_gen_capitais: Number(loadedData.diaria_of_gen_capitais || 0),
@@ -251,7 +255,6 @@ const CustosOperacionaisPage = () => {
         diaria_demais_pracas_capitais: Number(loadedData.diaria_demais_pracas_capitais || 0),
         diaria_demais_pracas_demais: Number(loadedData.diaria_demais_pracas_demais || 0),
         
-        // NOVO CAMPO
         taxa_embarque: Number(loadedData.taxa_embarque || defaultDiretrizes(year).taxa_embarque),
         
         observacoes: loadedData.observacoes || "",
@@ -259,22 +262,18 @@ const CustosOperacionaisPage = () => {
       
       setDiretrizes(numericData);
       
-      // Inicializar raw inputs para campos monetários (incluindo os novos campos de diária e taxa de embarque)
       const initialRawInputs: Record<string, string> = {};
       
-      // Campos da lista OPERATIONAL_FIELDS
       OPERATIONAL_FIELDS.filter(f => f.type === 'currency').forEach(f => {
         initialRawInputs[f.key as string] = numberToRawDigits(numericData[f.key as keyof DiretrizOperacional] as number);
       });
       
-      // Novos campos de Diária
       DIARIA_RANKS_CONFIG.forEach(rank => {
         initialRawInputs[`diaria_${rank.key}_bsb`] = numberToRawDigits(numericData[`diaria_${rank.key}_bsb` as keyof DiretrizOperacional] as number);
         initialRawInputs[`diaria_${rank.key}_capitais`] = numberToRawDigits(numericData[`diaria_${rank.key}_capitais` as keyof DiretrizOperacional] as number);
         initialRawInputs[`diaria_${rank.key}_demais`] = numberToRawDigits(numericData[`diaria_${rank.key}_demais` as keyof DiretrizOperacional] as number);
       });
       
-      // Taxa de Embarque
       initialRawInputs['taxa_embarque'] = numberToRawDigits(numericData.taxa_embarque as number);
       
       setRawInputs(initialRawInputs);
@@ -284,6 +283,28 @@ const CustosOperacionaisPage = () => {
       toast.error("Erro ao carregar diretrizes para o ano selecionado");
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const loadDiretrizesPassagens = async (year: number) => {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        const { data, error } = await supabase
+            .from('diretrizes_passagens')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('ano_referencia', year)
+            .order('om_referencia', { ascending: true });
+            
+        if (error) throw error;
+        
+        setDiretrizesPassagens(data as DiretrizPassagem[]);
+        
+    } catch (error) {
+        console.error("Erro ao carregar diretrizes de passagens:", error);
+        toast.error("Erro ao carregar contratos de passagens.");
     }
   };
 
@@ -300,10 +321,8 @@ const CustosOperacionaisPage = () => {
         return;
       }
       
-      // 1. Preparar dados para validação e salvamento
       const dataToValidate = {
         ...diretrizes,
-        // Garantir que todos os campos numéricos estejam presentes para a validação Zod
         fator_passagens_aereas: diretrizes.fator_passagens_aereas || 0,
         fator_servicos_terceiros: diretrizes.fator_servicos_terceiros || 0,
         valor_verba_operacional_dia: diretrizes.valor_verba_operacional_dia || 0,
@@ -314,7 +333,6 @@ const CustosOperacionaisPage = () => {
         valor_locacao_viaturas_dia: diretrizes.valor_locacao_viaturas_dia || 0,
         fator_material_consumo: diretrizes.fator_material_consumo || 0,
         fator_concessionaria: diretrizes.fator_concessionaria || 0,
-        // NOVOS CAMPOS DE DIÁRIA
         diaria_of_gen_bsb: diretrizes.diaria_of_gen_bsb || 0,
         diaria_of_gen_capitais: diretrizes.diaria_of_gen_capitais || 0,
         diaria_of_gen_demais: diretrizes.diaria_of_gen_demais || 0,
@@ -327,14 +345,11 @@ const CustosOperacionaisPage = () => {
         diaria_demais_pracas_bsb: diretrizes.diaria_demais_pracas_bsb || 0,
         diaria_demais_pracas_capitais: diretrizes.diaria_demais_pracas_capitais || 0,
         diaria_demais_pracas_demais: diretrizes.diaria_demais_pracas_demais || 0,
-        // NOVO CAMPO
         taxa_embarque: diretrizes.taxa_embarque || 0,
       };
       
-      // 2. Validação Zod
       diretrizOperacionalSchema.parse(dataToValidate);
 
-      // 3. Preparar dados para o Supabase
       const diretrizData: TablesInsert<'diretrizes_operacionais'> = {
         user_id: user.id,
         ano_referencia: diretrizes.ano_referencia,
@@ -350,7 +365,6 @@ const CustosOperacionaisPage = () => {
         fator_concessionaria: dataToValidate.fator_concessionaria,
         observacoes: diretrizes.observacoes,
         
-        // NOVOS CAMPOS DE DIÁRIA
         diaria_referencia_legal: diretrizes.diaria_referencia_legal,
         diaria_of_gen_bsb: diretrizes.diaria_of_gen_bsb,
         diaria_of_gen_capitais: diretrizes.diaria_of_gen_capitais,
@@ -365,11 +379,9 @@ const CustosOperacionaisPage = () => {
         diaria_demais_pracas_capitais: diretrizes.diaria_demais_pracas_capitais,
         diaria_demais_pracas_demais: diretrizes.diaria_demais_pracas_demais,
         
-        // NOVO CAMPO
         taxa_embarque: diretrizes.taxa_embarque,
       };
 
-      // 4. Salvar Diretrizes
       if (diretrizes.id) {
         const { error } = await supabase
           .from("diretrizes_operacionais")
@@ -385,7 +397,6 @@ const CustosOperacionaisPage = () => {
         toast.success("Diretrizes Operacionais criadas!");
       }
       
-      // Invalida a query de diretrizes para o ano selecionado
       queryClient.invalidateQueries({ queryKey: ["diretrizesOperacionais", diretrizes.ano_referencia] });
       await loadAvailableYears(defaultYear);
     } catch (error: any) {
@@ -410,7 +421,6 @@ const CustosOperacionaisPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
       
-      // ATUALIZADO: Usando o novo campo default_operacional_year
       const { error } = await supabase
         .from('profiles')
         .update({ default_operacional_year: diretrizes.ano_referencia })
@@ -418,7 +428,6 @@ const CustosOperacionaisPage = () => {
         
       if (error) throw error;
       
-      // Invalida a query do hook useDefaultDiretrizYear para forçar a atualização
       queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
       
       toast.success(`Ano ${diretrizes.ano_referencia} definido como padrão para cálculos!`);
@@ -443,23 +452,47 @@ const CustosOperacionaisPage = () => {
         .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", sourceYear)
-        .single();
+        .maybeSingle();
         
-      if (operacionalError || !sourceOperacional) throw new Error(`Diretriz operacional para o ano ${sourceYear} não encontrada.`);
+      if (operacionalError) throw operacionalError;
       
-      const { id: oldId, created_at, updated_at, ...restOperacional } = sourceOperacional;
-      const newOperacional = { ...restOperacional, ano_referencia: targetYear, user_id: user.id };
+      if (sourceOperacional) {
+          const { id: oldId, created_at, updated_at, ...restOperacional } = sourceOperacional;
+          const newOperacional = { ...restOperacional, ano_referencia: targetYear, user_id: user.id };
+          
+          const { error: insertOperacionalError } = await supabase
+            .from("diretrizes_operacionais")
+            .insert([newOperacional as TablesInsert<'diretrizes_operacionais'>]);
+          if (insertOperacionalError) throw insertOperacionalError;
+      }
       
-      const { error: insertOperacionalError } = await supabase
-        .from("diretrizes_operacionais")
-        .insert([newOperacional as TablesInsert<'diretrizes_operacionais'>]);
-      if (insertOperacionalError) throw insertOperacionalError;
+      // 2. Copiar Diretrizes de Passagens
+      const { data: sourcePassagens, error: passagensError } = await supabase
+        .from("diretrizes_passagens")
+        .select("om_referencia, ug_referencia, numero_pregao, trechos, ativo")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", sourceYear);
+        
+      if (passagensError) throw passagensError;
       
-      toast.success(`Diretrizes operacionais do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
+      if (sourcePassagens && sourcePassagens.length > 0) {
+          const newPassagens = sourcePassagens.map(p => ({
+              ...p,
+              ano_referencia: targetYear,
+              user_id: user.id,
+              trechos: p.trechos, // JSONB é copiado diretamente
+          }));
+          
+          const { error: insertPassagensError } = await supabase
+            .from("diretrizes_passagens")
+            .insert(newPassagens as TablesInsert<'diretrizes_passagens'>[]);
+          if (insertPassagensError) throw insertPassagensError;
+      }
+      
+      toast.success(`Diretrizes operacionais e de passagens do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
       setIsYearManagementDialogOpen(false);
       setSelectedYear(targetYear);
       
-      // Invalida a query de anos disponíveis e o default year
       queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
       await loadAvailableYears(defaultYear);
       
@@ -477,7 +510,7 @@ const CustosOperacionaisPage = () => {
       return;
     }
     
-    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes operacionais para o ano ${year}? Esta ação é irreversível.`)) return;
+    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes operacionais e de passagens para o ano ${year}? Esta ação é irreversível.`)) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -486,18 +519,22 @@ const CustosOperacionaisPage = () => {
       setLoading(true);
       
       // 1. Excluir Diretriz Operacional
-      const { error: operacionalError } = await supabase
+      await supabase
         .from("diretrizes_operacionais")
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
         
-      if (operacionalError) throw operacionalError;
+      // 2. Excluir Diretrizes de Passagens
+      await supabase
+        .from("diretrizes_passagens")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year);
 
-      toast.success(`Diretrizes operacionais do ano ${year} excluídas com sucesso!`);
+      toast.success(`Diretrizes operacionais e de passagens do ano ${year} excluídas com sucesso!`);
       setIsYearManagementDialogOpen(false);
       
-      // Invalida a query de anos disponíveis e o default year
       queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
       await loadAvailableYears(defaultYear);
       
@@ -568,7 +605,7 @@ const CustosOperacionaisPage = () => {
     }
   };
   
-  // NOVO: Função para renderizar a tabela de diárias
+  // Função para renderizar a tabela de diárias
   const renderDiariaTable = () => {
     const handleDiariaChange = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais', rawValue: string) => {
       const fieldKey = `diaria_${rankKey}_${destination}` as keyof DiretrizOperacional;
@@ -576,18 +613,17 @@ const CustosOperacionaisPage = () => {
     };
     
     const getDiariaProps = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais') => {
-      const fieldKey = `diaria_${rankKey}_${destination}` as keyof DiretrizOperacional;
+      const fieldKey = `${DIARIA_RANKS_CONFIG.find(r => r.key === rankKey)?.fieldPrefix}_${destination}` as keyof DiretrizOperacional;
       const value = diretrizes[fieldKey] as number;
-      const rawDigits = rawInputs[fieldKey] || numberToRawDigits(value);
+      const rawDigits = rawInputs[fieldKey as string] || numberToRawDigits(value);
       const { formatted: displayValue } = formatCurrencyInput(rawDigits);
       
       return {
-        value: value === 0 && rawDigits.length === 0 ? "" : displayValue,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleDiariaChange(rankKey, destination, e.target.value),
+        rawDigits: rawDigits,
+        onChange: (digits: string) => handleDiariaChange(rankKey, destination, digits),
         onKeyDown: handleEnterToNextField,
-        type: "text" as const,
-        inputMode: "numeric" as const,
-        className: "text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+        placeholder: "0,00",
+        className: "text-center",
       };
     };
     
@@ -612,7 +648,6 @@ const CustosOperacionaisPage = () => {
               onKeyDown={handleEnterToNextField}
             />
           </div>
-          {/* NOVO CAMPO: Taxa de Embarque */}
           {taxaEmbarqueProps}
         </div>
         
@@ -630,31 +665,19 @@ const CustosOperacionaisPage = () => {
               <TableRow key={rank.key}>
                 <TableCell className="font-medium whitespace-nowrap">{rank.label}</TableCell>
                 <TableCell>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
-                    <Input
-                      {...getDiariaProps(rank.key, 'bsb')}
-                      className="pl-8"
-                    />
-                  </div>
+                  <CurrencyInput
+                    {...getDiariaProps(rank.key, 'bsb')}
+                  />
                 </TableCell>
                 <TableCell>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
-                    <Input
-                      {...getDiariaProps(rank.key, 'capitais')}
-                      className="pl-8"
-                    />
-                  </div>
+                  <CurrencyInput
+                    {...getDiariaProps(rank.key, 'capitais')}
+                  />
                 </TableCell>
                 <TableCell>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
-                    <Input
-                      {...getDiariaProps(rank.key, 'demais')}
-                      className="pl-8"
-                    />
-                  </div>
+                  <CurrencyInput
+                    {...getDiariaProps(rank.key, 'demais')}
+                  />
                 </TableCell>
               </TableRow>
             ))}
@@ -663,9 +686,372 @@ const CustosOperacionaisPage = () => {
       </div>
     );
   };
+  
+  // --- LÓGICA DE PASSAGENS ---
+  
+  const handleOmReferenciaChange = (omData: OMData | undefined) => {
+      if (omData) {
+          setSelectedOmReferenciaId(omData.id);
+          setPassagemForm(prev => ({
+              ...prev,
+              om_referencia: omData.nome_om,
+              ug_referencia: omData.codug_om,
+          }));
+      } else {
+          setSelectedOmReferenciaId(undefined);
+          setPassagemForm(prev => ({
+              ...prev,
+              om_referencia: "",
+              ug_referencia: "",
+          }));
+      }
+  };
+  
+  const handleTrechoCurrencyChange = (rawValue: string) => {
+      const { numericValue, digits } = formatCurrencyInput(rawValue);
+      setTrechoForm(prev => ({
+          ...prev,
+          valor: numericValue,
+          rawValor: digits,
+      }));
+  };
+  
+  const handleAddTrecho = () => {
+      if (!trechoForm.origem || !trechoForm.destino || trechoForm.valor <= 0) {
+          toast.error("Preencha Origem, Destino e Valor do Trecho.");
+          return;
+      }
+      
+      const currentDiretriz = diretrizesPassagens.find(d => d.id === editingPassagemId);
+      if (!currentDiretriz) return;
+      
+      const newTrecho: TrechoPassagem = {
+          id: editingTrechoId || Math.random().toString(36).substring(2, 9),
+          origem: trechoForm.origem,
+          destino: trechoForm.destino,
+          valor: trechoForm.valor,
+          tipo_transporte: trechoForm.tipo_transporte,
+          is_ida_volta: trechoForm.is_ida_volta,
+      };
+      
+      const updatedTrechos = editingTrechoId
+          ? currentDiretriz.trechos.map(t => t.id === editingTrechoId ? newTrecho : t)
+          : [...currentDiretriz.trechos, newTrecho];
+          
+      handleSavePassagem({ ...currentDiretriz, trechos: updatedTrechos });
+      
+      // Resetar formulário de trecho
+      setEditingTrechoId(null);
+      setTrechoForm(initialTrechoForm);
+  };
+  
+  const handleEditTrecho = (trecho: TrechoPassagem) => {
+      setEditingTrechoId(trecho.id);
+      setTrechoForm({
+          origem: trecho.origem,
+          destino: trecho.destino,
+          valor: trecho.valor,
+          rawValor: numberToRawDigits(trecho.valor),
+          tipo_transporte: trecho.tipo_transporte,
+          is_ida_volta: trecho.is_ida_volta,
+      });
+  };
+  
+  const handleDeleteTrecho = (trechoId: string) => {
+      const currentDiretriz = diretrizesPassagens.find(d => d.id === editingPassagemId);
+      if (!currentDiretriz) return;
+      
+      const updatedTrechos = currentDiretriz.trechos.filter(t => t.id !== trechoId);
+      handleSavePassagem({ ...currentDiretriz, trechos: updatedTrechos });
+  };
+  
+  const handleSavePassagem = async (data: Partial<DiretrizPassagem> & { ano_referencia: number, om_referencia: string, ug_referencia: string }) => {
+      try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error("Usuário não autenticado");
+          
+          const dbData: TablesInsert<'diretrizes_passagens'> = {
+              user_id: user.id,
+              ano_referencia: data.ano_referencia,
+              om_referencia: data.om_referencia,
+              ug_referencia: data.ug_referencia,
+              numero_pregao: data.numero_pregao || null,
+              trechos: data.trechos || [],
+              ativo: data.ativo ?? true,
+          } as TablesInsert<'diretrizes_passagens'>;
+          
+          if (data.id) {
+              const { error } = await supabase
+                  .from('diretrizes_passagens')
+                  .update(dbData as TablesUpdate<'diretrizes_passagens'>)
+                  .eq('id', data.id);
+              if (error) throw error;
+              toast.success("Contrato de Passagens atualizado!");
+          } else {
+              const { error } = await supabase
+                  .from('diretrizes_passagens')
+                  .insert([dbData]);
+              if (error) throw error;
+              toast.success("Novo Contrato de Passagens cadastrado!");
+          }
+          
+          loadDiretrizesPassagens(selectedYear);
+          setEditingPassagemId(null);
+          setPassagemForm({ om_referencia: '', ug_referencia: '', numero_pregao: '' });
+          setSelectedOmReferenciaId(undefined);
+          setTrechoForm(initialTrechoForm);
+          setEditingTrechoId(null);
+          
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      }
+  };
+  
+  const handleStartEditPassagem = (diretriz: DiretrizPassagem) => {
+      setEditingPassagemId(diretriz.id);
+      setPassagemForm({
+          om_referencia: diretriz.om_referencia,
+          ug_referencia: diretriz.ug_referencia,
+          numero_pregao: diretriz.numero_pregao || '',
+      });
+      // Tenta encontrar o ID da OM para pré-selecionar no OmSelector
+      const om = oms?.find(o => o.nome_om === diretriz.om_referencia && o.codug_om === diretriz.ug_referencia);
+      setSelectedOmReferenciaId(om?.id);
+      setTrechoForm(initialTrechoForm);
+      setEditingTrechoId(null);
+  };
+  
+  const handleCancelEditPassagem = () => {
+      setEditingPassagemId(null);
+      setPassagemForm({ om_referencia: '', ug_referencia: '', numero_pregao: '' });
+      setSelectedOmReferenciaId(undefined);
+      setTrechoForm(initialTrechoForm);
+      setEditingTrechoId(null);
+  };
+  
+  const handleDeletePassagem = async (id: string, omName: string) => {
+      if (!confirm(`Tem certeza que deseja excluir o contrato de passagens da OM ${omName}?`)) return;
+      
+      try {
+          await supabase.from('diretrizes_passagens').delete().eq('id', id);
+          toast.success("Contrato de Passagens excluído!");
+          loadDiretrizesPassagens(selectedYear);
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      }
+  };
+  
+  const renderPassagensSection = () => {
+      const currentDiretriz = diretrizesPassagens.find(d => d.id === editingPassagemId);
+      const isEditing = !!editingPassagemId;
+      
+      return (
+          <div className="space-y-4">
+              <Card className="p-4">
+                  <CardTitle className="text-base mb-4">
+                      {isEditing ? `Editando Contrato: ${passagemForm.om_referencia}` : "Novo Contrato de Passagens"}
+                  </CardTitle>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                          <Label htmlFor="om_referencia">OM de Referência do Contrato *</Label>
+                          <OmSelector
+                              selectedOmId={selectedOmReferenciaId}
+                              onChange={handleOmReferenciaChange}
+                              placeholder="Selecione a OM"
+                              disabled={isEditing || loading || isLoadingOms}
+                              initialOmName={isEditing ? passagemForm.om_referencia : undefined}
+                              initialOmUg={isEditing ? passagemForm.ug_referencia : undefined}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                              UG: {formatCodug(passagemForm.ug_referencia)}
+                          </p>
+                      </div>
+                      <div className="space-y-2 col-span-2">
+                          <Label htmlFor="numero_pregao">Número do Pregão/Contrato</Label>
+                          <Input
+                              id="numero_pregao"
+                              value={passagemForm.numero_pregao}
+                              onChange={(e) => setPassagemForm({ ...passagemForm, numero_pregao: e.target.value })}
+                              placeholder="Ex: Pregão Eletrônico Nº 01/2024"
+                              disabled={loading}
+                              onKeyDown={handleEnterToNextField}
+                          />
+                      </div>
+                  </div>
+                  
+                  <div className="flex justify-end gap-2 mt-4 border-t pt-4">
+                      {isEditing && (
+                          <Button type="button" variant="outline" onClick={handleCancelEditPassagem} disabled={loading}>
+                              Cancelar Edição
+                          </Button>
+                      )}
+                      <Button 
+                          type="button" 
+                          onClick={() => handleSavePassagem({ ...passagemForm, ano_referencia: selectedYear, id: editingPassagemId || undefined })}
+                          disabled={loading || !passagemForm.om_referencia || !passagemForm.ug_referencia}
+                      >
+                          <Save className="mr-2 h-4 w-4" />
+                          {isEditing ? "Salvar Contrato" : "Cadastrar Contrato"}
+                      </Button>
+                  </div>
+              </Card>
+              
+              {/* Gerenciamento de Trechos (Apenas se estiver editando um contrato) */}
+              {currentDiretriz && (
+                  <Card className="p-4 space-y-4">
+                      <CardTitle className="text-base font-semibold">
+                          Trechos Cadastrados para {currentDiretriz.om_referencia}
+                      </CardTitle>
+                      
+                      {/* Formulário de Trecho */}
+                      <div className="grid grid-cols-1 md:grid-cols-6 gap-4 border p-3 rounded-lg bg-background">
+                          <div className="space-y-2 col-span-2">
+                              <Label htmlFor="trecho-origem">Origem / Destino *</Label>
+                              <div className="flex gap-2">
+                                  <Input
+                                      id="trecho-origem"
+                                      value={trechoForm.origem}
+                                      onChange={(e) => setTrechoForm({ ...trechoForm, origem: e.target.value })}
+                                      placeholder="Origem (Ex: BSB)"
+                                      onKeyDown={handleEnterToNextField}
+                                  />
+                                  <Input
+                                      value={trechoForm.destino}
+                                      onChange={(e) => setTrechoForm({ ...trechoForm, destino: e.target.value })}
+                                      placeholder="Destino (Ex: MAO)"
+                                      onKeyDown={handleEnterToNextField}
+                                  />
+                              </div>
+                          </div>
+                          <div className="space-y-2 col-span-1">
+                              <Label htmlFor="trecho-valor">Valor (R$) *</Label>
+                              <CurrencyInput
+                                  id="trecho-valor"
+                                  rawDigits={trechoForm.rawValor}
+                                  onChange={handleTrechoCurrencyChange}
+                                  placeholder="0,00"
+                                  onKeyDown={handleEnterToNextField}
+                              />
+                          </div>
+                          <div className="space-y-2 col-span-1">
+                              <Label htmlFor="trecho-tipo">Tipo *</Label>
+                              <Select
+                                  value={trechoForm.tipo_transporte}
+                                  onValueChange={(value) => setTrechoForm({ ...trechoForm, tipo_transporte: value as TipoTransporte })}
+                              >
+                                  <SelectTrigger id="trecho-tipo">
+                                      <SelectValue placeholder="Tipo" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                      <SelectItem value="AÉREO">Aéreo</SelectItem>
+                                      <SelectItem value="TERRESTRE">Terrestre</SelectItem>
+                                      <SelectItem value="FLUVIAL">Fluvial</SelectItem>
+                                  </SelectContent>
+                              </Select>
+                          </div>
+                          <div className="space-y-2 col-span-1 flex flex-col justify-end">
+                              <Label htmlFor="trecho-ida-volta" className="text-sm">Ida/Volta</Label>
+                              <Switch
+                                  id="trecho-ida-volta"
+                                  checked={trechoForm.is_ida_volta}
+                                  onCheckedChange={(checked) => setTrechoForm({ ...trechoForm, is_ida_volta: checked })}
+                              />
+                          </div>
+                          <div className="space-y-2 col-span-1 flex flex-col justify-end">
+                              <Button 
+                                  type="button" 
+                                  onClick={handleAddTrecho}
+                                  disabled={!trechoForm.origem || !trechoForm.destino || trechoForm.valor <= 0}
+                              >
+                                  {editingTrechoId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                  {editingTrechoId ? "Atualizar" : "Adicionar"}
+                              </Button>
+                          </div>
+                      </div>
+                      
+                      {/* Tabela de Trechos */}
+                      {currentDiretriz.trechos.length > 0 ? (
+                          <Table>
+                              <TableHeader>
+                                  <TableRow>
+                                      <TableHead>Trecho</TableHead>
+                                      <TableHead className="text-center">Tipo</TableHead>
+                                      <TableHead className="text-right">Valor</TableHead>
+                                      <TableHead className="text-center">Ida/Volta</TableHead>
+                                      <TableHead className="w-[100px] text-right">Ações</TableHead>
+                                  </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                  {currentDiretriz.trechos.map(trecho => (
+                                      <TableRow key={trecho.id}>
+                                          <TableCell className="font-medium">{trecho.origem} &rarr; {trecho.destino}</TableCell>
+                                          <TableCell className="text-center">{trecho.tipo_transporte}</TableCell>
+                                          <TableCell className="text-right font-semibold">{formatCurrency(trecho.valor)}</TableCell>
+                                          <TableCell className="text-center">
+                                              {trecho.is_ida_volta ? "Sim" : "Não"}
+                                          </TableCell>
+                                          <TableCell className="text-right">
+                                              <div className="flex justify-end gap-1">
+                                                  <Button variant="ghost" size="icon" onClick={() => handleEditTrecho(trecho)}>
+                                                      <Pencil className="h-4 w-4" />
+                                                  </Button>
+                                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteTrecho(trecho.id)} className="text-destructive hover:bg-destructive/10">
+                                                      <Trash2 className="h-4 w-4" />
+                                                  </Button>
+                                              </div>
+                                          </TableCell>
+                                      </TableRow>
+                                  ))}
+                              </TableBody>
+                          </Table>
+                      ) : (
+                          <p className="text-muted-foreground text-center py-4">Nenhum trecho cadastrado para este contrato.</p>
+                      )}
+                  </Card>
+              )}
+              
+              {/* Lista de Contratos Existentes */}
+              {diretrizesPassagens.length > 0 && !isEditing && (
+                  <Card className="p-4">
+                      <CardTitle className="text-base font-semibold mb-3">Contratos Cadastrados para {selectedYear}</CardTitle>
+                      <Table>
+                          <TableHeader>
+                              <TableRow>
+                                  <TableHead>OM Referência</TableHead>
+                                  <TableHead>Pregão</TableHead>
+                                  <TableHead className="text-center">Trechos</TableHead>
+                                  <TableHead className="w-[100px] text-right">Ações</TableHead>
+                              </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                              {diretrizesPassagens.map(d => (
+                                  <TableRow key={d.id}>
+                                      <TableCell className="font-medium">{d.om_referencia} ({formatCodug(d.ug_referencia)})</TableCell>
+                                      <TableCell>{d.numero_pregao || 'N/A'}</TableCell>
+                                      <TableCell className="text-center">{d.trechos.length}</TableCell>
+                                      <TableCell className="text-right">
+                                          <div className="flex justify-end gap-1">
+                                              <Button variant="ghost" size="icon" onClick={() => handleStartEditPassagem(d)}>
+                                                  <Pencil className="h-4 w-4" />
+                                              </Button>
+                                              <Button variant="ghost" size="icon" onClick={() => handleDeletePassagem(d.id, d.om_referencia)} className="text-destructive hover:bg-destructive/10">
+                                                  <Trash2 className="h-4 w-4" />
+                                              </Button>
+                                          </div>
+                                      </TableCell>
+                                  </TableRow>
+                              ))}
+                          </TableBody>
+                      </Table>
+                  </Card>
+              )}
+          </div>
+      );
+  };
 
   // Adicionando a verificação de carregamento
-  if (loading || isLoadingDefaultYear) {
+  if (loading || isLoadingDefaultYear || isLoadingOms) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -708,7 +1094,6 @@ const CustosOperacionaisPage = () => {
                   onValueChange={(value) => setSelectedYear(parseInt(value))}
                 >
                   <SelectTrigger>
-                    {/* Revertendo para o padrão shadcn/ui, pois o estado de carregamento agora é gerenciado */}
                     <SelectValue placeholder="Selecione o ano" />
                   </SelectTrigger>
                   <SelectContent>
@@ -752,6 +1137,28 @@ const CustosOperacionaisPage = () => {
                     <CollapsibleContent>
                       <div className="mt-2">
                         {renderDiariaTable()}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                  
+                  {/* NOVO: Diretrizes de Passagens (Contratos/Trechos) */}
+                  <Collapsible 
+                    open={fieldCollapseState['passagens_detalhe']} 
+                    onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['passagens_detalhe']: open }))}
+                    className="border-b pb-4 last:border-b-0 last:pb-0"
+                  >
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center justify-between cursor-pointer py-2">
+                        <h4 className="text-base font-medium flex items-center gap-2">
+                          <Plane className="h-4 w-4" />
+                          Diretrizes de Passagens (Contratos/Trechos)
+                        </h4>
+                        {fieldCollapseState['passagens_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mt-2">
+                        {renderPassagensSection()}
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
