@@ -1,54 +1,51 @@
-import React, { useCallback, useMemo } from 'react';
-import { Input, InputProps } from '@/components/ui/input';
-import { formatCurrencyInput } from '@/lib/formatUtils';
+import React from 'react';
+import { Input } from "@/components/ui/input";
+import { formatCurrencyInput } from "@/lib/formatUtils";
+import { useFormNavigation } from "@/hooks/useFormNavigation";
 
-interface CurrencyInputProps extends Omit<InputProps, 'value' | 'onChange'> {
-  rawDigits: string | null | undefined;
-  onChange: (rawDigits: string) => void;
+interface CurrencyInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  /** A string de dígitos brutos (ex: "123456" para R$ 1.234,56). */
+  rawDigits: string;
+  /** Callback chamado com a nova string de dígitos brutos. */
+  onChange: (digits: string) => void;
 }
 
 const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputProps>(
-  ({ rawDigits, onChange, ...props }, ref) => {
+  ({ rawDigits, onChange, onKeyDown, ...props }, ref) => {
+    const { formatted } = formatCurrencyInput(rawDigits);
+    const { handleEnterToNextField } = useFormNavigation();
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      // Remove tudo que não for dígito
+      const newDigits = e.target.value.replace(/\D/g, '');
+      onChange(newDigits);
+    };
     
-    // Garante que rawDigits é uma string vazia se for null ou undefined
-    const safeRawDigits = rawDigits || '';
-
-    const { formatted } = useMemo(() => {
-      return formatCurrencyInput(safeRawDigits);
-    }, [safeRawDigits]);
-
-    const handleChange = useCallback(
-      (event: React.ChangeEvent<HTMLInputElement>) => {
-        const input = event.target.value;
-        
-        // Remove tudo que não for dígito
-        const newDigits = input.replace(/\D/g, '');
-        
-        // Limita a 15 dígitos para evitar overflow
-        if (newDigits.length > 15) {
-            return;
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            handleEnterToNextField(e);
         }
-
-        onChange(newDigits);
-      },
-      [onChange],
-    );
+        if (onKeyDown) {
+            onKeyDown(e);
+        }
+    };
 
     return (
       <Input
         ref={ref}
         type="text"
         inputMode="numeric"
+        // Exibe o valor formatado, mas usa o rawDigits para controle
         value={formatted}
         onChange={handleChange}
-        placeholder="0,00"
-        className="text-right"
+        onKeyDown={handleKeyDown}
+        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         {...props}
       />
     );
-  },
+  }
 );
 
-CurrencyInput.displayName = 'CurrencyInput';
+CurrencyInput.displayName = "CurrencyInput";
 
 export default CurrencyInput;
