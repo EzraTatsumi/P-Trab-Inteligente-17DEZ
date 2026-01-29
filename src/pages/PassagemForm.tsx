@@ -133,6 +133,80 @@ const compareFormData = (data1: PassagemFormState, data2: PassagemFormState) => 
     return false;
 };
 
+// NOVO: Função auxiliar para realizar o cálculo completo
+const calculatePassagemData = (formData: PassagemFormState, ptrabData: PTrabData | undefined) => {
+    if (!ptrabData || formData.selected_trechos.length === 0) {
+        return {
+            totalGeral: 0,
+            totalND33: 0,
+            memoria: "Selecione pelo menos um trecho e preencha os dados de solicitação.",
+        };
+    }
+    
+    try {
+        let totalGeral = 0;
+        let totalND33 = 0;
+        let memoria = "";
+        
+        formData.selected_trechos.forEach((trecho, index) => {
+            // 1. Calcular o total do trecho
+            const totalTrecho = calculateTrechoTotal(trecho);
+            
+            totalGeral += totalTrecho;
+            totalND33 += totalTrecho; // ND 33.90.33 é o único para passagens
+            
+            // 2. Gerar memória para o trecho
+            const calculatedFormData: PassagemFormType = {
+                om_favorecida: formData.om_favorecida, 
+                ug_favorecida: formData.ug_favorecida, 
+                dias_operacao: formData.dias_operacao,
+                fase_atividade: formData.fase_atividade,
+                
+                // Dados do Trecho Selecionado
+                om_detentora: trecho.om_detentora,
+                ug_detentora: trecho.ug_detentora,
+                diretriz_id: trecho.diretriz_id,
+                trecho_id: trecho.id, // Usar 'id' do trecho
+                origem: trecho.origem,
+                destino: trecho.destino,
+                tipo_transporte: trecho.tipo_transporte,
+                is_ida_volta: trecho.is_ida_volta,
+                valor_unitario: trecho.valor_unitario,
+                
+                // Quantidade
+                quantidade_passagens: trecho.quantidade_passagens,
+                efetivo: formData.efetivo,
+            };
+
+            memoria += `--- Trecho ${index + 1}: ${trecho.origem} -> ${trecho.destino} ---\n`;
+            memoria += generatePassagemMemoriaCalculo({
+                ...calculatedFormData,
+                valor_total: totalTrecho,
+                valor_nd_33: totalTrecho,
+            } as PassagemRegistro);
+            memoria += "\n";
+        });
+        
+        memoria += `\n==================================================\n`;
+        memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalGeral)}\n`;
+        memoria += `Efetivo: ${formData.efetivo} militares\n`;
+        memoria += `==================================================\n`;
+        
+        return {
+            totalGeral,
+            totalND33,
+            memoria,
+        };
+    } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : "Erro desconhecido no cálculo.";
+        return {
+            totalGeral: 0,
+            totalND33: 0,
+            memoria: `Erro ao calcular: ${errorMessage}`,
+        };
+    }
+};
+
 
 const PassagemForm = () => {
     const navigate = useNavigate();
@@ -333,76 +407,7 @@ const PassagemForm = () => {
     // =================================================================
     
     const calculos = useMemo(() => {
-        if (!ptrabData || formData.selected_trechos.length === 0) {
-            return {
-                totalGeral: 0,
-                totalND33: 0,
-                memoria: "Selecione pelo menos um trecho e preencha os dados de solicitação.",
-            };
-        }
-        
-        try {
-            let totalGeral = 0;
-            let totalND33 = 0;
-            let memoria = "";
-            
-            formData.selected_trechos.forEach((trecho, index) => {
-                // 1. Calcular o total do trecho
-                const totalTrecho = calculateTrechoTotal(trecho);
-                
-                totalGeral += totalTrecho;
-                totalND33 += totalTrecho; // ND 33.90.33 é o único para passagens
-                
-                // 2. Gerar memória para o trecho
-                const calculatedFormData: PassagemFormType = {
-                    om_favorecida: formData.om_favorecida, 
-                    ug_favorecida: formData.ug_favorecida, 
-                    dias_operacao: formData.dias_operacao,
-                    fase_atividade: formData.fase_atividade,
-                    
-                    // Dados do Trecho Selecionado
-                    om_detentora: trecho.om_detentora,
-                    ug_detentora: trecho.ug_detentora,
-                    diretriz_id: trecho.diretriz_id,
-                    trecho_id: trecho.id, // Usar 'id' do trecho
-                    origem: trecho.origem,
-                    destino: trecho.destino,
-                    tipo_transporte: trecho.tipo_transporte,
-                    is_ida_volta: trecho.is_ida_volta,
-                    valor_unitario: trecho.valor_unitario,
-                    
-                    // Quantidade
-                    quantidade_passagens: trecho.quantidade_passagens,
-                    efetivo: formData.efetivo,
-                };
-
-                memoria += `--- Trecho ${index + 1}: ${trecho.origem} -> ${trecho.destino} ---\n`;
-                memoria += generatePassagemMemoriaCalculo({
-                    ...calculatedFormData,
-                    valor_total: totalTrecho,
-                    valor_nd_33: totalTrecho,
-                } as PassagemRegistro);
-                memoria += "\n";
-            });
-            
-            memoria += `\n==================================================\n`;
-            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalGeral)}\n`;
-            memoria += `Efetivo: ${formData.efetivo} militares\n`;
-            memoria += `==================================================\n`;
-            
-            return {
-                totalGeral,
-                totalND33,
-                memoria,
-            };
-        } catch (e) {
-            const errorMessage = e instanceof Error ? e.message : "Erro desconhecido no cálculo.";
-            return {
-                totalGeral: 0,
-                totalND33: 0,
-                memoria: `Erro ao calcular: ${errorMessage}`,
-            };
-        }
+        return calculatePassagemData(formData, ptrabData);
     }, [formData, ptrabData]);
     
     // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do stagedUpdate ou lastStagedFormData)
@@ -529,9 +534,8 @@ const PassagemForm = () => {
         };
         setFormData(newFormData);
         
-        // 4. Calculate totals and generate memory (usando a nova lógica de cálculo)
-        // Recalculamos aqui para garantir que o stagedUpdate reflita o estado atual
-        const { totalGeral, totalND33, memoria } = calculos;
+        // 4. Calculate totals and generate memory (USANDO A FUNÇÃO AUXILIAR COM newFormData)
+        const { totalGeral, totalND33, memoria } = calculatePassagemData(newFormData, ptrabData);
         
         // 5. Stage the current record data immediately for display in Section 3
         const stagedData: CalculatedPassagem = {
@@ -854,45 +858,8 @@ const PassagemForm = () => {
             selected_trechos: [trechoFromRecord],
         };
         
-        // Nota: Para registros antigos, o cálculo é feito com base no único trecho salvo.
-        const { memoria: memoriaAutomatica } = useMemo(() => {
-            if (calculatedDataForMemoria.selected_trechos.length === 0) return { memoria: "" };
-            
-            const trecho = calculatedDataForMemoria.selected_trechos[0];
-            const totalTrecho = calculateTrechoTotal(trecho);
-            
-            const calculatedFormData: PassagemFormType = {
-                organizacao: calculatedDataForMemoria.om_favorecida, 
-                ug: calculatedDataForMemoria.ug_favorecida, 
-                dias_operacao: calculatedDataForMemoria.dias_operacao,
-                fase_atividade: calculatedDataForMemoria.fase_atividade,
-                om_detentora: trecho.om_detentora,
-                ug_detentora: trecho.ug_detentora,
-                diretriz_id: trecho.diretriz_id,
-                trecho_id: trecho.id, // Usar id do trecho
-                origem: trecho.origem,
-                destino: trecho.destino,
-                tipo_transporte: trecho.tipo_transporte,
-                is_ida_volta: trecho.is_ida_volta,
-                valor_unitario: trecho.valor_unitario,
-                quantidade_passagens: trecho.quantidade_passagens,
-                efetivo: calculatedDataForMemoria.efetivo,
-            };
-            
-            let memoria = `--- Trecho Único: ${trecho.origem} -> ${trecho.destino} ---\n`;
-            memoria += generatePassagemMemoriaCalculo({
-                ...calculatedFormData,
-                valor_total: totalTrecho,
-                valor_nd_33: totalTrecho,
-            } as PassagemRegistro);
-            memoria += "\n";
-            memoria += `\n==================================================\n`;
-            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalTrecho)}\n`;
-            memoria += `Efetivo: ${calculatedDataForMemoria.efetivo} militares\n`;
-            memoria += `==================================================\n`;
-            
-            return { memoria };
-        }, [calculatedDataForMemoria]);
+        // USAR A FUNÇÃO AUXILIAR PARA CALCULAR A MEMÓRIA AUTOMÁTICA
+        const { memoria: memoriaAutomatica } = calculatePassagemData(calculatedDataForMemoria, ptrabData);
         
         // 3. Usar a customizada se existir, senão usar a automática
         setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
@@ -1494,44 +1461,7 @@ const PassagemForm = () => {
                                         };
                                         
                                         // Nota: Para registros antigos, o cálculo é feito com base no único trecho salvo.
-                                        const { memoria: memoriaAutomatica } = useMemo(() => {
-                                            if (calculatedDataForMemoria.selected_trechos.length === 0) return { memoria: "" };
-                                            
-                                            const trecho = calculatedDataForMemoria.selected_trechos[0];
-                                            const totalTrecho = calculateTrechoTotal(trecho);
-                                            
-                                            const calculatedFormData: PassagemFormType = {
-                                                organizacao: calculatedDataForMemoria.om_favorecida, 
-                                                ug: calculatedDataForMemoria.ug_favorecida, 
-                                                dias_operacao: calculatedDataForMemoria.dias_operacao,
-                                                fase_atividade: calculatedDataForMemoria.fase_atividade,
-                                                om_detentora: trecho.om_detentora,
-                                                ug_detentora: trecho.ug_detentora,
-                                                diretriz_id: trecho.diretriz_id,
-                                                trecho_id: trecho.id, // Usar id do trecho
-                                                origem: trecho.origem,
-                                                destino: trecho.destino,
-                                                tipo_transporte: trecho.tipo_transporte,
-                                                is_ida_volta: trecho.is_ida_volta,
-                                                valor_unitario: trecho.valor_unitario,
-                                                quantidade_passagens: trecho.quantidade_passagens,
-                                                efetivo: calculatedDataForMemoria.efetivo,
-                                            };
-                                            
-                                            let memoria = `--- Trecho Único: ${trecho.origem} -> ${trecho.destino} ---\n`;
-                                            memoria += generatePassagemMemoriaCalculo({
-                                                ...calculatedFormData,
-                                                valor_total: totalTrecho,
-                                                valor_nd_33: totalTrecho,
-                                            } as PassagemRegistro);
-                                            memoria += "\n";
-                                            memoria += `\n==================================================\n`;
-                                            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalTrecho)}\n`;
-                                            memoria += `Efetivo: ${calculatedDataForMemoria.efetivo} militares\n`;
-                                            memoria += `==================================================\n`;
-                                            
-                                            return { memoria };
-                                        }, [calculatedDataForMemoria]);
+                                        const { memoria: memoriaAutomatica } = calculatePassagemData(calculatedDataForMemoria, ptrabData);
                                         
                                         let memoriaExibida = memoriaAutomatica;
                                         if (isEditing) {
