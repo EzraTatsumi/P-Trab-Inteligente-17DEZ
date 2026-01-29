@@ -124,7 +124,7 @@ export const getPreviousWeekRange = (): { start: string, end: string } => {
 export const parseInputToNumber = (inputString: string): number => {
     if (!inputString) return 0;
     // Remove pontos de milhar e substitui vírgula decimal por ponto
-    const cleanedString = inputString.replace(/\./g, '').replace(',', '.');
+    const cleanedString = String(inputString).replace(/\./g, '').replace(',', '.');
     const number = parseFloat(cleanedString);
     return isNaN(number) ? 0 : number;
 };
