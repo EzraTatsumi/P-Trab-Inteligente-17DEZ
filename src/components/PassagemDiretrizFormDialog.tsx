@@ -210,7 +210,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
                         {isEditingContract ? `Editar Contrato de Passagens: ${passagemForm.om_referencia}` : "Novo Contrato de Passagens"}
@@ -288,23 +288,27 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                         
                         {/* Formulário de Trecho */}
                         <div className="grid grid-cols-1 md:grid-cols-6 gap-4 border p-3 rounded-lg bg-muted/50">
-                            <div className="space-y-2 col-span-2">
-                                <Label htmlFor="trecho-origem">Origem / Destino *</Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        id="trecho-origem"
-                                        value={trechoForm.origem}
-                                        onChange={(e) => setTrechoForm({ ...trechoForm, origem: e.target.value })}
-                                        placeholder="Origem (Ex: BSB)"
-                                        onKeyDown={handleEnterToNextField}
-                                    />
-                                    <Input
-                                        value={trechoForm.destino}
-                                        onChange={(e) => setTrechoForm({ ...trechoForm, destino: e.target.value })}
-                                        placeholder="Destino (Ex: MAO)"
-                                        onKeyDown={handleEnterToNextField}
-                                    />
-                                </div>
+                            {/* Campo Origem */}
+                            <div className="space-y-2 col-span-1">
+                                <Label htmlFor="trecho-origem">Origem *</Label>
+                                <Input
+                                    id="trecho-origem"
+                                    value={trechoForm.origem}
+                                    onChange={(e) => setTrechoForm({ ...trechoForm, origem: e.target.value })}
+                                    placeholder="Ex: BSB"
+                                    onKeyDown={handleEnterToNextField}
+                                />
+                            </div>
+                            {/* Campo Destino */}
+                            <div className="space-y-2 col-span-1">
+                                <Label htmlFor="trecho-destino">Destino *</Label>
+                                <Input
+                                    id="trecho-destino"
+                                    value={trechoForm.destino}
+                                    onChange={(e) => setTrechoForm({ ...trechoForm, destino: e.target.value })}
+                                    placeholder="Ex: MAO"
+                                    onKeyDown={handleEnterToNextField}
+                                />
                             </div>
                             <div className="space-y-2 col-span-1">
                                 <Label htmlFor="trecho-valor">Valor (R$) *</Label>
