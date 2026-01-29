@@ -5,7 +5,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox"; // Novo: Checkbox para Ida/Volta
 import { Save, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
@@ -15,14 +15,22 @@ import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodug } f
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DiretrizPassagem, TrechoPassagem, TipoTransporte, DiretrizPassagemForm } from "@/types/diretrizesPassagens";
-import CurrencyInput from "@/components/CurrencyInput"; // <-- IMPORT CORRIGIDO
+import CurrencyInput from "@/components/CurrencyInput";
+import { DatePicker } from "@/components/DatePicker"; // Novo: DatePicker
+import { format, parseISO } from "date-fns"; // Novo: Funções de data
 
 interface PassagemDiretrizFormDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     selectedYear: number;
     diretrizToEdit: DiretrizPassagem | null;
-    onSave: (data: Partial<DiretrizPassagem> & { ano_referencia: number, om_referencia: string, ug_referencia: string }) => Promise<void>;
+    onSave: (data: Partial<DiretrizPassagem> & { 
+        ano_referencia: number, 
+        om_referencia: string, 
+        ug_referencia: string,
+        data_inicio_vigencia?: string | null,
+        data_fim_vigencia?: string | null,
+    }) => Promise<void>;
     loading: boolean;
 }
 
@@ -36,6 +44,14 @@ const initialTrechoForm: Omit<TrechoPassagem, 'id'> & { rawValor: string } = {
     is_ida_volta: false,
 };
 
+// Definindo o tipo interno do formulário para incluir Date objects
+type InternalPassagemForm = DiretrizPassagemForm & { 
+    trechos: TrechoPassagem[], 
+    id?: string,
+    data_inicio_vigencia: Date | null,
+    data_fim_vigencia: Date | null,
+};
+
 const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
     open,
     onOpenChange,
@@ -47,12 +63,14 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
     const { handleEnterToNextField } = useFormNavigation();
 
-    const [passagemForm, setPassagemForm] = useState<DiretrizPassagemForm & { trechos: TrechoPassagem[], id?: string }>(() => ({
+    const [passagemForm, setPassagemForm] = useState<InternalPassagemForm>(() => ({
         om_referencia: diretrizToEdit?.om_referencia || '',
         ug_referencia: diretrizToEdit?.ug_referencia || '',
         numero_pregao: diretrizToEdit?.numero_pregao || '',
         trechos: diretrizToEdit?.trechos || [],
         id: diretrizToEdit?.id,
+        data_inicio_vigencia: null,
+        data_fim_vigencia: null,
     }));
     
     const [selectedOmReferenciaId, setSelectedOmReferenciaId] = useState<string | undefined>(undefined);
@@ -67,11 +85,21 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                 numero_pregao: diretrizToEdit.numero_pregao || '',
                 trechos: diretrizToEdit.trechos,
                 id: diretrizToEdit.id,
+                // Conversão de string ISO (ou null) para Date object (ou null)
+                data_inicio_vigencia: diretrizToEdit.data_inicio_vigencia ? parseISO(diretrizToEdit.data_inicio_vigencia) : null,
+                data_fim_vigencia: diretrizToEdit.data_fim_vigencia ? parseISO(diretrizToEdit.data_fim_vigencia) : null,
             });
             const om = oms?.find(o => o.nome_om === diretrizToEdit.om_referencia && o.codug_om === diretrizToEdit.ug_referencia);
             setSelectedOmReferenciaId(om?.id);
         } else {
-            setPassagemForm({ om_referencia: '', ug_referencia: '', numero_pregao: '', trechos: [] });
+            setPassagemForm({ 
+                om_referencia: '', 
+                ug_referencia: '', 
+                numero_pregao: '', 
+                trechos: [],
+                data_inicio_vigencia: null,
+                data_fim_vigencia: null,
+            });
             setSelectedOmReferenciaId(undefined);
         }
         setTrechoForm(initialTrechoForm);
@@ -158,12 +186,23 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
             toast.error("Adicione pelo menos um trecho ao contrato.");
             return;
         }
+        
+        // Validação de datas
+        if (passagemForm.data_inicio_vigencia && passagemForm.data_fim_vigencia && passagemForm.data_inicio_vigencia > passagemForm.data_fim_vigencia) {
+            toast.error("A data de início da vigência não pode ser posterior à data de fim.");
+            return;
+        }
 
-        await onSave({
+        // Conversão de Date objects para string ISO (formato YYYY-MM-DD) para salvar no Supabase
+        const dataToSave = {
             ...passagemForm,
             ano_referencia: selectedYear,
             id: passagemForm.id,
-        });
+            data_inicio_vigencia: passagemForm.data_inicio_vigencia ? format(passagemForm.data_inicio_vigencia, 'yyyy-MM-dd') : null,
+            data_fim_vigencia: passagemForm.data_fim_vigencia ? format(passagemForm.data_fim_vigencia, 'yyyy-MM-dd') : null,
+        };
+
+        await onSave(dataToSave);
         onOpenChange(false);
     };
 
@@ -177,7 +216,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                         {isEditingContract ? `Editar Contrato de Passagens: ${passagemForm.om_referencia}` : "Novo Contrato de Passagens"}
                     </DialogTitle>
                     <DialogDescription>
-                        Cadastre a OM de referência, o número do pregão e os trechos de custo associados a este contrato para o ano {selectedYear}.
+                        Cadastre a OM de referência, o número do pregão, a vigência e os trechos de custo associados a este contrato para o ano {selectedYear}.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -212,6 +251,30 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                     placeholder="Ex: Pregão Eletrônico Nº 01/2024"
                                     disabled={loading}
                                     onKeyDown={handleEnterToNextField}
+                                />
+                            </div>
+                        </div>
+                        
+                        {/* Novas Datas de Vigência */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="data_inicio_vigencia">Início da Vigência</Label>
+                                <DatePicker
+                                    id="data_inicio_vigencia"
+                                    date={passagemForm.data_inicio_vigencia}
+                                    setDate={(date) => setPassagemForm(prev => ({ ...prev, data_inicio_vigencia: date || null }))}
+                                    placeholder="Selecione a data de início"
+                                    disabled={loading}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="data_fim_vigencia">Fim da Vigência</Label>
+                                <DatePicker
+                                    id="data_fim_vigencia"
+                                    date={passagemForm.data_fim_vigencia}
+                                    setDate={(date) => setPassagemForm(prev => ({ ...prev, data_fim_vigencia: date || null }))}
+                                    placeholder="Selecione a data final"
+                                    disabled={loading}
                                 />
                             </div>
                         </div>
@@ -269,13 +332,16 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-2 col-span-1 flex flex-col justify-end">
-                                <Label htmlFor="trecho-ida-volta" className="text-sm">Ida/Volta</Label>
-                                <Switch
+                            {/* NOVO: Checkbox para Ida/Volta */}
+                            <div className="col-span-1 flex items-center pt-6">
+                                <Checkbox
                                     id="trecho-ida-volta"
                                     checked={trechoForm.is_ida_volta}
-                                    onCheckedChange={(checked) => setTrechoForm({ ...trechoForm, is_ida_volta: checked })}
+                                    onCheckedChange={(checked) => setTrechoForm({ ...trechoForm, is_ida_volta: !!checked })}
                                 />
+                                <Label htmlFor="trecho-ida-volta" className="ml-2 text-sm font-medium cursor-pointer">
+                                    Ida e Volta
+                                </Label>
                             </div>
                             <div className="space-y-2 col-span-1 flex flex-col justify-end">
                                 <Button 
