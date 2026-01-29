@@ -182,10 +182,12 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                                                                 <Checkbox 
                                                                     checked={isTrechoSelected}
                                                                     onCheckedChange={(checked) => handleSelectionChange(trecho.id, checked as boolean, diretriz, trecho)}
-                                                                    // Adicionando classes para garantir que o checkbox seja visível
+                                                                    // Forçando o estilo padrão do shadcn/ui para garantir que o tick apareça
                                                                     className={cn(
-                                                                        "border-gray-400",
-                                                                        isTrechoSelected && "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                                                                        // Garante que seja quadrado e use as cores primárias ao ser checado
+                                                                        "h-4 w-4 shrink-0 rounded border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                                                                        "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
+                                                                        // Se o componente base estiver forçando 'rounded-full', isso pode ser ignorado, mas tentamos garantir o quadrado.
                                                                     )}
                                                                 />
                                                             </TableCell>
