@@ -1214,34 +1214,14 @@ const PassagemForm = () => {
                                                                         <TableRow key={`${trecho.diretriz_id}-${trecho.trecho_id}`}>
                                                                             <TableCell className="font-bold w-[100px]">
                                                                                 <div className="flex items-center gap-1">
-                                                                                    <Button 
-                                                                                        type="button" 
-                                                                                        variant="outline" 
-                                                                                        size="icon" 
-                                                                                        className="h-6 w-6"
-                                                                                        onClick={() => handleTrechoQuantityChange(trecho.diretriz_id, trecho.trecho_id, trecho.quantidade_passagens - 1)}
-                                                                                        disabled={!isPTrabEditable || isSaving}
-                                                                                    >
-                                                                                        <Minus className="h-3 w-3" />
-                                                                                    </Button>
                                                                                     <Input
                                                                                         type="number"
                                                                                         min={0}
                                                                                         value={trecho.quantidade_passagens === 0 ? "" : trecho.quantidade_passagens}
                                                                                         onChange={(e) => handleTrechoQuantityChange(trecho.diretriz_id, trecho.trecho_id, parseInt(e.target.value) || 0)}
-                                                                                        className="w-16 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                        className="w-full text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                                         disabled={!isPTrabEditable || isSaving}
                                                                                     />
-                                                                                    <Button 
-                                                                                        type="button" 
-                                                                                        variant="outline" 
-                                                                                        size="icon" 
-                                                                                        className="h-6 w-6"
-                                                                                        onClick={() => handleTrechoQuantityChange(trecho.diretriz_id, trecho.trecho_id, trecho.quantidade_passagens + 1)}
-                                                                                        disabled={!isPTrabEditable || isSaving}
-                                                                                    >
-                                                                                        <Plus className="h-3 w-3" />
-                                                                                    </Button>
                                                                                 </div>
                                                                             </TableCell>
                                                                             <TableCell>
