@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check, Plane } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check, Plane, Minus } from "lucide-react";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
@@ -90,6 +90,12 @@ const initialFormState: PassagemFormState = {
     selected_trechos: [],
 };
 
+// Função para calcular o valor total de um trecho (considerando ida/volta)
+const calculateTrechoTotal = (trecho: TrechoSelection): number => {
+    const multiplier = trecho.is_ida_volta ? 2 : 1;
+    return trecho.valor_unitario * trecho.quantidade_passagens * multiplier;
+};
+
 // Função para comparar números de ponto flutuante com tolerância
 const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
     return Math.abs(a - b) < tolerance;
@@ -109,7 +115,7 @@ const compareFormData = (data1: PassagemFormState, data2: PassagemFormState) => 
         return true;
     }
     
-    // Comparar detalhes dos trechos (simplificado, apenas IDs e quantidades)
+    // Comparar detalhes dos trechos (IDs e quantidades)
     const trechos1 = data1.selected_trechos.map(t => `${t.trecho_id}-${t.quantidade_passagens}`).sort().join('|');
     const trechos2 = data2.selected_trechos.map(t => `${t.trecho_id}-${t.quantidade_passagens}`).sort().join('|');
     
@@ -205,12 +211,18 @@ const PassagemForm = () => {
         }
         
         try {
-            // O cálculo agora é feito por trecho e somado
             let totalGeral = 0;
             let totalND33 = 0;
             let memoria = "";
             
             formData.selected_trechos.forEach((trecho, index) => {
+                // 1. Calcular o total do trecho
+                const totalTrecho = calculateTrechoTotal(trecho);
+                
+                totalGeral += totalTrecho;
+                totalND33 += totalTrecho; // ND 33.90.33 é o único para passagens
+                
+                // 2. Gerar memória para o trecho
                 const calculatedFormData: PassagemFormType = {
                     organizacao: formData.om_favorecida, 
                     ug: formData.ug_favorecida, 
@@ -232,16 +244,11 @@ const PassagemForm = () => {
                     quantidade_passagens: trecho.quantidade_passagens,
                 };
 
-                const totals = calculatePassagemTotals(calculatedFormData);
-                
-                totalGeral += totals.totalGeral;
-                totalND33 += totals.totalND33;
-                
                 memoria += `--- Trecho ${index + 1}: ${trecho.origem} -> ${trecho.destino} ---\n`;
                 memoria += generatePassagemMemoriaCalculo({
                     ...calculatedFormData,
-                    valor_total: totals.totalGeral,
-                    valor_nd_33: totals.totalND33,
+                    valor_total: totalTrecho,
+                    valor_nd_33: totalTrecho,
                 });
                 memoria += "\n";
             });
@@ -368,6 +375,7 @@ const PassagemForm = () => {
             is_ida_volta: registro.is_ida_volta,
             valor_unitario: Number(registro.valor_unitario || 0),
             quantidade_passagens: registro.quantidade_passagens,
+            valor: Number(registro.valor_unitario || 0), // Adiciona 'valor' para compatibilidade com TrechoPassagem
         };
 
         // 3. Populate formData
@@ -382,6 +390,7 @@ const PassagemForm = () => {
         setFormData(newFormData);
         
         // 4. Calculate totals and generate memory (usando a nova lógica de cálculo)
+        // Recalculamos aqui para garantir que o stagedUpdate reflita o estado atual
         const { totalGeral, totalND33, memoria } = calculos;
         
         // 5. Stage the current record data immediately for display in Section 3
@@ -451,6 +460,12 @@ const PassagemForm = () => {
                 throw new Error("A OM Favorecida é obrigatória.");
             }
             
+            // Validação de quantidade de passagens
+            const totalPassagens = formData.selected_trechos.reduce((sum, t) => sum + t.quantidade_passagens, 0);
+            if (totalPassagens <= 0) {
+                throw new Error("A quantidade total de passagens solicitadas deve ser maior que zero.");
+            }
+            
             // 2. Calcular totais e memória (já feito no useMemo)
             const { totalGeral, totalND33, memoria } = calculos;
             
@@ -460,7 +475,6 @@ const PassagemForm = () => {
             // vamos criar um registro que representa o total da solicitação, usando os dados
             // do PRIMEIRO trecho para preencher os campos obrigatórios de FK/detalhe.
             const firstTrecho = formData.selected_trechos[0];
-            const totalPassagens = formData.selected_trechos.reduce((sum, t) => sum + t.quantidade_passagens, 0);
 
             const calculatedData: CalculatedPassagem = {
                 tempId: editingId || Math.random().toString(36).substring(2, 9), 
@@ -517,11 +531,13 @@ const PassagemForm = () => {
             
             // MODO ADIÇÃO: Adicionar à lista pendente
             
-            const shouldStageNewItem = pendingPassagens.length === 0 || isPassagemDirty;
+            const shouldStageNewItem = pendingPassagens.length === 0 || compareFormData(formData, lastStagedFormData || initialFormState);
 
             if (shouldStageNewItem) {
                 setPendingPassagens(prev => {
-                    if (prev.length > 0) {
+                    // Se estivermos no modo de adição e o formulário mudou, adiciona um novo item.
+                    // Se o formulário não mudou, apenas atualiza o último item (se houver).
+                    if (pendingPassagens.length > 0 && !compareFormData(formData, lastStagedFormData || initialFormState)) {
                         return [...prev.slice(0, -1), calculatedData];
                     }
                     return [...prev, calculatedData];
@@ -616,6 +632,22 @@ const PassagemForm = () => {
         toast.success(`${trechos.length} trecho(s) selecionado(s).`);
     };
     
+    // --- Lógica de Edição de Quantidade de Trecho no Formulário Principal ---
+    const handleTrechoQuantityChange = (trechoId: string, quantity: number) => {
+        if (quantity < 0) return;
+        
+        setFormData(prev => {
+            const newSelections = prev.selected_trechos.map(t => 
+                t.trecho_id === trechoId ? { ...t, quantidade_passagens: quantity } : t
+            ).filter(t => t.quantidade_passagens > 0); // Remove se a quantidade for zero
+            
+            return {
+                ...prev,
+                selected_trechos: newSelections,
+            };
+        });
+    };
+    
     // --- Lógica de Edição de Memória ---
     
     const handleIniciarEdicaoMemoria = (registro: PassagemRegistroDB) => {
@@ -633,6 +665,7 @@ const PassagemForm = () => {
             is_ida_volta: registro.is_ida_volta,
             valor_unitario: Number(registro.valor_unitario || 0),
             quantidade_passagens: registro.quantidade_passagens,
+            valor: Number(registro.valor_unitario || 0), // Adiciona 'valor' para compatibilidade com TrechoPassagem
         };
         
         // 2. Gerar a memória automática (usando a lógica de cálculo de múltiplos trechos, mas com apenas 1 trecho)
@@ -650,6 +683,8 @@ const PassagemForm = () => {
             if (calculatedDataForMemoria.selected_trechos.length === 0) return { memoria: "" };
             
             const trecho = calculatedDataForMemoria.selected_trechos[0];
+            const totalTrecho = calculateTrechoTotal(trecho);
+            
             const calculatedFormData: PassagemFormType = {
                 organizacao: calculatedDataForMemoria.om_favorecida, 
                 ug: calculatedDataForMemoria.ug_favorecida, 
@@ -667,17 +702,15 @@ const PassagemForm = () => {
                 quantidade_passagens: trecho.quantidade_passagens,
             };
             
-            const totals = calculatePassagemTotals(calculatedFormData);
-            
             let memoria = `--- Trecho Único: ${trecho.origem} -> ${trecho.destino} ---\n`;
             memoria += generatePassagemMemoriaCalculo({
                 ...calculatedFormData,
-                valor_total: totals.totalGeral,
-                valor_nd_33: totals.totalND33,
+                valor_total: totalTrecho,
+                valor_nd_33: totalTrecho,
             });
             memoria += "\n";
             memoria += `\n==================================================\n`;
-            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totals.totalGeral)}\n`;
+            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalTrecho)}\n`;
             memoria += `Efetivo Apoiado: ${calculatedDataForMemoria.efetivo} militares\n`;
             memoria += `==================================================\n`;
             
@@ -866,7 +899,8 @@ const PassagemForm = () => {
     // Verifica se os campos numéricos da Solicitação estão preenchidos
     const isSolicitationDataReady = formData.dias_operacao > 0 &&
                                     formData.efetivo > 0 &&
-                                    formData.selected_trechos.length > 0;
+                                    formData.selected_trechos.length > 0 &&
+                                    formData.selected_trechos.every(t => t.quantidade_passagens > 0); // Verifica se há quantidade > 0
 
     const isCalculationReady = isBaseFormReady && isSolicitationDataReady;
     
@@ -1027,10 +1061,42 @@ const PassagemForm = () => {
                                                             </TableHeader>
                                                             <TableBody>
                                                                 {formData.selected_trechos.map((trecho, index) => {
-                                                                    const totalTrecho = trecho.valor_unitario * trecho.quantidade_passagens * (trecho.is_ida_volta ? 2 : 1);
+                                                                    const totalTrecho = calculateTrechoTotal(trecho);
+                                                                    
                                                                     return (
-                                                                        <TableRow key={index}>
-                                                                            <TableCell className="font-bold">{trecho.quantidade_passagens}</TableCell>
+                                                                        <TableRow key={trecho.trecho_id}>
+                                                                            <TableCell className="font-bold w-[100px]">
+                                                                                <div className="flex items-center gap-1">
+                                                                                    <Button 
+                                                                                        type="button" 
+                                                                                        variant="outline" 
+                                                                                        size="icon" 
+                                                                                        className="h-6 w-6"
+                                                                                        onClick={() => handleTrechoQuantityChange(trecho.trecho_id, trecho.quantidade_passagens - 1)}
+                                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                                    >
+                                                                                        <Minus className="h-3 w-3" />
+                                                                                    </Button>
+                                                                                    <Input
+                                                                                        type="number"
+                                                                                        min={0}
+                                                                                        value={trecho.quantidade_passagens === 0 ? "" : trecho.quantidade_passagens}
+                                                                                        onChange={(e) => handleTrechoQuantityChange(trecho.trecho_id, parseInt(e.target.value) || 0)}
+                                                                                        className="w-16 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                                    />
+                                                                                    <Button 
+                                                                                        type="button" 
+                                                                                        variant="outline" 
+                                                                                        size="icon" 
+                                                                                        className="h-6 w-6"
+                                                                                        onClick={() => handleTrechoQuantityChange(trecho.trecho_id, trecho.quantidade_passagens + 1)}
+                                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                                    >
+                                                                                        <Plus className="h-3 w-3" />
+                                                                                    </Button>
+                                                                                </div>
+                                                                            </TableCell>
                                                                             <TableCell>
                                                                                 {trecho.origem} &rarr; {trecho.destino}
                                                                                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -1350,6 +1416,7 @@ const PassagemForm = () => {
                                             is_ida_volta: registro.is_ida_volta,
                                             valor_unitario: Number(registro.valor_unitario || 0),
                                             quantidade_passagens: registro.quantidade_passagens,
+                                            valor: Number(registro.valor_unitario || 0), // Adiciona 'valor' para compatibilidade com TrechoPassagem
                                         };
                                         
                                         // 2. Gerar a memória automática (usando a lógica de cálculo de múltiplos trechos, mas com apenas 1 trecho)
@@ -1367,6 +1434,8 @@ const PassagemForm = () => {
                                             if (calculatedDataForMemoria.selected_trechos.length === 0) return { memoria: "" };
                                             
                                             const trecho = calculatedDataForMemoria.selected_trechos[0];
+                                            const totalTrecho = calculateTrechoTotal(trecho);
+                                            
                                             const calculatedFormData: PassagemFormType = {
                                                 organizacao: calculatedDataForMemoria.om_favorecida, 
                                                 ug: calculatedDataForMemoria.ug_favorecida, 
@@ -1384,17 +1453,15 @@ const PassagemForm = () => {
                                                 quantidade_passagens: trecho.quantidade_passagens,
                                             };
                                             
-                                            const totals = calculatePassagemTotals(calculatedFormData);
-                                            
                                             let memoria = `--- Trecho Único: ${trecho.origem} -> ${trecho.destino} ---\n`;
                                             memoria += generatePassagemMemoriaCalculo({
                                                 ...calculatedFormData,
-                                                valor_total: totals.totalGeral,
-                                                valor_nd_33: totals.totalND33,
+                                                valor_total: totalTrecho,
+                                                valor_nd_33: totalTrecho,
                                             });
                                             memoria += "\n";
                                             memoria += `\n==================================================\n`;
-                                            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totals.totalGeral)}\n`;
+                                            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalTrecho)}\n`;
                                             memoria += `Efetivo Apoiado: ${calculatedDataForMemoria.efetivo} militares\n`;
                                             memoria += `==================================================\n`;
                                             
