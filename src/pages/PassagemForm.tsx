@@ -438,9 +438,9 @@ const PassagemForm = () => {
         return false;
     }, [editingId, stagedUpdate, formData, pendingPassagens.length, lastStagedFormData]);
     
-    // NOVO: Cálculo do total de todos os itens pendentes
+    // CORREÇÃO: Usar item.totalGeral em vez de item.valor_total
     const totalPendingPassagens = useMemo(() => {
-        return pendingPassagens.reduce((sum, item) => sum + item.valor_total, 0);
+        return pendingPassagens.reduce((sum, item) => sum + item.totalGeral, 0);
     }, [pendingPassagens]);
     
     // NOVO MEMO: Agrupa os registros por OM Favorecida (organizacao/ug)
@@ -560,13 +560,13 @@ const PassagemForm = () => {
             valor_unitario: trechoFromRecord.valor_unitario,
             quantidade_passagens: trechoFromRecord.quantidade_passagens,
             
-            valor_total: totalGeral,
+            valor_total: totalGeral, // Este é o campo que será salvo no DB
             valor_nd_33: totalND33,
             
             detalhamento: registro.detalhamento,
             detalhamento_customizado: registro.detalhamento_customizado, 
             
-            totalGeral: totalGeral,
+            totalGeral: totalGeral, // Este é o campo usado para exibição local
             memoria_calculo_display: memoria, 
             om_favorecida: newFormData.om_favorecida,
             ug_favorecida: newFormData.ug_favorecida,
