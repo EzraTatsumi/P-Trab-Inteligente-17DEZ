@@ -1094,15 +1094,13 @@ const PassagemForm = () => {
                                                                 initialOmUg={editingId ? formData.ug_destino : undefined}
                                                             />
                                                             {/* UG DESTINO (Pequeno, abaixo da OM Destino) */}
-                                                            <div className="space-y-1 pt-1">
-                                                                <Label htmlFor="ug_destino" className="text-xs text-muted-foreground">UG Destino</Label>
-                                                                <Input
-                                                                    id="ug_destino"
-                                                                    value={formatCodug(formData.ug_destino)}
-                                                                    disabled
-                                                                    className="bg-muted/50 h-8 text-sm"
-                                                                />
-                                                            </div>
+                                                            {formData.ug_destino && (
+                                                                <div className="pt-1">
+                                                                    <span className="text-xs text-muted-foreground font-medium">
+                                                                        UG Destino: <span className="text-foreground font-semibold">{formatCodug(formData.ug_destino)}</span>
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1413,7 +1411,7 @@ const PassagemForm = () => {
                                                                                 <Badge variant="outline" className="text-xs">
                                                                                     {registro.fase_atividade}
                                                                                 </Badge>
-                                                                            )}
+                                                            )}
                                                                         </div>
                                                                         <p className="text-xs text-muted-foreground mt-0.5">
                                                                             {registro.quantidade_passagens} {passagemText} | {registro.dias_operacao} {diasText} | Efetivo: {registro.efetivo}
