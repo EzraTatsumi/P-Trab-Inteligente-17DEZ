@@ -47,7 +47,7 @@ config.toml
 # =========================
 # SUPABASE (vilão nº 1)
 # =========================
-supabase/migrations/
+# REMOVIDO: supabase/migrations/ (para permitir o rastreamento de arquivos de migração)
 supabase/functions/**/node_modules/
 supabase/.temp/
 supabase/.cache/
