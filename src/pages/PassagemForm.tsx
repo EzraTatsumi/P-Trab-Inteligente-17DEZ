@@ -274,7 +274,7 @@ const PassagemForm = () => {
                 await updatePTrabStatusIfAberto(ptrabId);
                 
             } catch (error) {
-                console.error("Erro ao carregar PTrab:", error);
+                console.error("Erro ao carregar PTrab:", error); // Log detalhado do erro
                 toast.error("Falha ao carregar dados do Plano de Trabalho.");
                 navigate('/ptrab');
             } finally {
@@ -667,7 +667,7 @@ const PassagemForm = () => {
                                             {allDiretrizes.length === 0 ? (
                                                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-yellow-800">
                                                     <AlertTriangle className="h-4 w-4 inline mr-2" />
-                                                    Nenhuma diretriz de passagens encontrada para o ano {ptrabData?.periodo_inicio ? new Date(ptrabData.periodo_inicio).getFullYear() : 'atual'}. Cadastre em Configurações - Custos Operacionais.
+                                                    Nenhuma diretriz de passagens encontrada para o ano {ptrabData?.periodo_inicio ? new Date(ptrabData.periodo_inicio).getFullYear() : 'atual'}. Cadastre em Configurações > Custos Operacionais.
                                                 </div>
                                             ) : (
                                                 <div className="space-y-4">
