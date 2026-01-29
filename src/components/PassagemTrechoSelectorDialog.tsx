@@ -177,11 +177,22 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                                                     const isTrechoSelected = isSelected(trecho.id);
                                                     
                                                     return (
-                                                        <TableRow key={trecho.id} className={cn(isTrechoSelected && "bg-green-500/10 hover:bg-green-500/20")}>
+                                                        <TableRow 
+                                                            key={trecho.id} 
+                                                            className={cn(
+                                                                isTrechoSelected && "bg-green-500/10 hover:bg-green-500/20",
+                                                                "group" // Adiciona group para facilitar o hover
+                                                            )}
+                                                        >
                                                             <TableCell>
                                                                 <Checkbox 
                                                                     checked={isTrechoSelected}
                                                                     onCheckedChange={(checked) => handleSelectionChange(trecho.id, checked as boolean, diretriz, trecho)}
+                                                                    // Adiciona um estilo explícito para garantir que o fundo do checkbox seja branco quando marcado, 
+                                                                    // caso o estilo da linha esteja interferindo.
+                                                                    className={cn(
+                                                                        isTrechoSelected && "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                                                                    )}
                                                                 />
                                                             </TableCell>
                                                             <TableCell className="font-medium">
