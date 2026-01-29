@@ -1153,9 +1153,10 @@ const PassagemForm = () => {
                                                                 onChange={handleOmDestinoChange}
                                                                 placeholder="Selecione a OM Destino"
                                                                 disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingPassagens.length > 0}
-                                                                // Se estiver editando, usa os dados do formulário. Se não, usa os dados da OM Favorecida como padrão inicial.
-                                                                initialOmName={editingId ? formData.om_destino : formData.om_favorecida}
-                                                                initialOmUg={editingId ? formData.ug_destino : formData.ug_favorecida}
+                                                                // AJUSTADO: Usa formData.om_destino/ug_destino se estiverem preenchidos,
+                                                                // garantindo que o valor automático seja exibido imediatamente.
+                                                                initialOmName={formData.om_destino || undefined}
+                                                                initialOmUg={formData.ug_destino || undefined}
                                                             />
                                                             {/* UG DESTINO (Pequeno, abaixo da OM Destino) */}
                                                             {formData.ug_destino && (
