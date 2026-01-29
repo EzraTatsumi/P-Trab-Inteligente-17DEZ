@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -1158,13 +1158,11 @@ const PassagemForm = () => {
                                                                 initialOmUg={editingId ? formData.ug_destino : formData.ug_favorecida}
                                                             />
                                                             {/* UG DESTINO (Pequeno, abaixo da OM Destino) */}
-                                                            {formData.ug_destino && (
-                                                                <div className="pt-1">
-                                                                    <span className="text-xs text-muted-foreground font-medium">
-                                                                        UG Destino: <span className="text-foreground font-semibold">{formatCodug(formData.ug_destino)}</span>
-                                                                    </span>
-                                                                </div>
-                                                            )}
+                                                            <div className="pt-1">
+                                                                <span className="text-xs text-muted-foreground font-medium">
+                                                                    UG Destino: <span className="text-foreground font-semibold">{formatCodug(formData.ug_destino)}</span>
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
