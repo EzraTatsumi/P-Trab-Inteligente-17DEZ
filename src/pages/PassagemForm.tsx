@@ -199,6 +199,7 @@ const calculatePassagemData = (formData: PassagemFormState, ptrabData: PTrabData
         };
     } catch (e) {
         const errorMessage = e instanceof Error ? e.message : "Erro desconhecido no cálculo.";
+        console.error("Erro em calculatePassagemData:", e);
         return {
             totalGeral: 0,
             totalND33: 0,
