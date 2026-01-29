@@ -754,8 +754,9 @@ const CustosOperacionaisPage = () => {
                               <TableRow>
                                   <TableHead>OM Referência</TableHead>
                                   <TableHead>Pregão</TableHead>
+                                  <TableHead className="text-center">Vigência</TableHead>
                                   <TableHead className="text-center">Trechos</TableHead>
-                                  <TableHead className="w-[100px] text-right">Ações</TableHead>
+                                  <TableHead className="w-[100px] text-center">Ações</TableHead>
                               </TableRow>
                           </TableHeader>
                           <TableBody>

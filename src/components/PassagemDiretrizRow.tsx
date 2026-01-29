@@ -6,6 +6,7 @@ import { formatCurrency, formatCodug } from "@/lib/formatUtils";
 import { DiretrizPassagem, TrechoPassagem, TipoTransporte } from "@/types/diretrizesPassagens";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { format } from 'date-fns';
 
 interface PassagemDiretrizRowProps {
     diretriz: DiretrizPassagem;
@@ -26,6 +27,15 @@ const getTransportIcon = (tipo: TipoTransporte) => {
 const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onEdit, onDelete, loading }) => {
     const [isOpen, setIsOpen] = useState(false);
     const hasTrechos = diretriz.trechos.length > 0;
+    
+    const formatDate = (dateString: string | null | undefined) => {
+        if (!dateString) return 'N/A';
+        try {
+            return format(new Date(dateString), 'dd/MM/yyyy');
+        } catch {
+            return 'Inválida';
+        }
+    };
 
     return (
         <React.Fragment>
@@ -33,26 +43,43 @@ const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onE
                 "hover:bg-muted/50 transition-colors",
                 isOpen && "bg-muted/50 border-b-0"
             )}>
+                {/* OM Referência (2 linhas) */}
                 <TableCell className="font-medium">
-                    {diretriz.om_referencia} ({formatCodug(diretriz.ug_referencia)})
+                    <div className="flex flex-col">
+                        <span>{diretriz.om_referencia}</span>
+                        <span className="text-xs text-muted-foreground">{formatCodug(diretriz.ug_referencia)}</span>
+                    </div>
                 </TableCell>
+                
+                {/* Pregão */}
                 <TableCell>{diretriz.numero_pregao || 'N/A'}</TableCell>
-                <TableCell className="text-center">
-                    {diretriz.trechos.length}
+                
+                {/* Vigência (2 linhas) */}
+                <TableCell className="text-center text-xs">
+                    <div className="flex flex-col">
+                        <span className="font-medium text-foreground">Início: {formatDate(diretriz.data_inicio_vigencia)}</span>
+                        <span className="text-muted-foreground">Fim: {formatDate(diretriz.data_fim_vigencia)}</span>
+                    </div>
                 </TableCell>
-                <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                        {/* Botão de Colapsar/Expandir */}
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => hasTrechos && setIsOpen(!isOpen)}
-                            disabled={!hasTrechos}
-                            className={cn("h-8 w-8", !hasTrechos && "opacity-50 cursor-not-allowed")}
-                        >
-                            {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </Button>
-                        
+                
+                {/* Trechos (com botão de colapsar próximo) */}
+                <TableCell className="text-center flex items-center justify-center h-[60px]">
+                    <span className="mr-1">{diretriz.trechos.length}</span>
+                    {/* Botão de Colapsar/Expandir */}
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => hasTrechos && setIsOpen(!isOpen)}
+                        disabled={!hasTrechos}
+                        className={cn("h-8 w-8", !hasTrechos && "opacity-50 cursor-not-allowed")}
+                    >
+                        {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                </TableCell>
+                
+                {/* Ações (Centralizado) */}
+                <TableCell className="text-center">
+                    <div className="flex justify-center gap-1">
                         {/* Botão de Edição */}
                         <Button variant="ghost" size="icon" onClick={() => onEdit(diretriz)}>
                             <Pencil className="h-4 w-4" />
@@ -78,7 +105,7 @@ const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onE
                     "p-0 border-t-0",
                     !isOpen && "hidden"
                 )}>
-                    <TableCell colSpan={4} className="p-0 border-t-0">
+                    <TableCell colSpan={5} className="p-0 border-t-0">
                         <Collapsible open={isOpen}>
                             <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
                                 <div className="p-4 bg-muted/50 border-t border-border">
