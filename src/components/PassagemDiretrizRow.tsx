@@ -47,7 +47,7 @@ const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onE
                 <TableCell className="font-medium">
                     <div className="flex flex-col">
                         <span>{diretriz.om_referencia}</span>
-                        <span className="text-xs text-muted-foreground">{formatCodug(diretriz.ug_referencia)}</span>
+                        <span className="text-xs text-muted-foreground">({formatCodug(diretriz.ug_referencia)})</span>
                     </div>
                 </TableCell>
                 
