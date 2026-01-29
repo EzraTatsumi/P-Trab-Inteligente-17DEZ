@@ -673,35 +673,37 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 const registro = linhaClasseIII.registro;
                 const isCombustivelLinha = linhaClasseIII.tipo_suprimento !== 'LUBRIFICANTE';
                 
-                const omDetentoraEquipamento = registro.organizacao; // OM Detentora do Equipamento (Source)
+                // OM Detentora do Equipamento (OM que usa o material)
+                const omDetentoraEquipamento = registro.organizacao; 
+                
+                // OM Destino do Recurso (OM que recebe o recurso, que é a OM do grupo)
+                const omDestinoRecurso = nomeOM; 
                 
                 // 1. Construir a primeira linha: CLASSE - SUPRIMENTO - CATEGORIA
-                const tipoSuprimentoLabel = isLubrificante ? 'LUBRIFICANTE' : getTipoCombustivelLabel(linhaClasseIII.tipo_suprimento);
+                const tipoSuprimentoLabel = isLubrificante(registro) ? 'LUBRIFICANTE' : getTipoCombustivelLabel(linhaClasseIII.tipo_suprimento);
                 const categoriaEquipamento = getTipoEquipamentoLabel(linhaClasseIII.categoria_equipamento);
                 
-                // CORREÇÃO: Remove o hífen final da primeira linha
                 line1 = `CLASSE III - ${tipoSuprimentoLabel}\n${categoriaEquipamento}`;
                 
-                // 2. Verificar se a OM Detentora do Equipamento é diferente da OM de Destino do Recurso (Col B)
-                const omDestinoRecurso = isCombustivelLinha ? nomeOM : (registro.om_detentora || registro.organizacao);
+                // 2. Se a OM Detentora do Equipamento for diferente da OM Destino do Recurso (Col B), 
+                // adicionamos a OM Detentora do Equipamento na Coluna A (linha 2)
                 const isDifferentOm = omDetentoraEquipamento !== omDestinoRecurso;
                 
                 if (isDifferentOm) {
-                    // Se for diferente, adiciona a OM Detentora do Equipamento na terceira linha
                     line2 = omDetentoraEquipamento;
                 }
                 
-                // OM (UGE) CODUG: OM de Destino do Recurso
-                const ugDestinoRecurso = isCombustivelLinha ? (registro.ug_detentora || '') : (registro.ug_detentora || registro.ug);
+                // OM (UGE) CODUG: OM de Destino do Recurso (OM do grupo)
+                const ugDestinoRecurso = registro.ug_detentora || registro.ug; // Usa UG Detentora se existir, senão a UG do registro
                 const ugDestinoFormatted = formatCodug(ugDestinoRecurso);
                 
-                // CORREÇÃO: Garante OM \n UG na coluna B
                 let omValue = `${omDestinoRecurso}\n(${ugDestinoFormatted})`;
                 
                 rowData.despesasValue = line1 + (line2 ? `\n${line2}` : '');
                 rowData.omValue = omValue;
                 
                 if (isCombustivelLinha) {
+                    // Combustível é sempre ND 30 (material) no relatório logístico, mas o valor vai para a coluna H
                     rowData.valorC = 0;
                     rowData.valorD = 0;
                     rowData.valorE = 0;
@@ -710,7 +712,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     rowData.precoUnitarioG = formatCurrency(linhaClasseIII.preco_litro_linha);
                     rowData.precoTotalH = formatCurrency(linhaClasseIII.valor_total_linha);
                     
-                } else if (isLubrificante) {
+                } else if (isLubrificante(registro)) {
+                    // Lubrificante é ND 30 (material)
                     rowData.valorC = linhaClasseIII.valor_total_linha;
                     rowData.valorD = 0;
                     rowData.valorE = linhaClasseIII.valor_total_linha;
@@ -1148,7 +1151,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   
                   if (!hasRelevantLines) return null;
 
-                  // NOVO: Array de todas as linhas de despesa na ordem correta (I, II, III, V-IX)
+                  // Linhas de Classe III (Lubrificante e Combustível) - Ordenação interna
                   const linhasClasseIIIOrdenadas = grupo.linhasClasseIII.sort((a, b) => {
                       // Ordena Lubrificante antes de Combustível
                       if (a.tipo_suprimento === 'LUBRIFICANTE' && b.tipo_suprimento !== 'LUBRIFICANTE') return -1;
@@ -1227,39 +1230,43 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                                 rowData.valorE = registro.total_qr;
                                 rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
                             }
+                            rowData.despesasValue = line1 + (line2 ? `\n${line2}` : '');
                         } else if (isClasseIII) { // Classe III (Combustível/Lubrificante)
                             const linhaClasseIII = linha as LinhaClasseIII;
                             const registro = linhaClasseIII.registro;
                             const isCombustivelLinha = linhaClasseIII.tipo_suprimento !== 'LUBRIFICANTE';
                             
-                            const omDetentoraEquipamento = registro.organizacao; // OM Detentora do Equipamento (Source)
+                            // OM Detentora do Equipamento (OM que usa o material)
+                            const omDetentoraEquipamento = registro.organizacao; 
                             
-                            // OM de Destino do Recurso (Col B)
-                            const omDestinoRecurso = isCombustivelLinha ? nomeOM : (registro.om_detentora || registro.organizacao);
-                            const isDifferentOm = omDetentoraEquipamento !== omDestinoRecurso;
+                            // OM Destino do Recurso (OM que recebe o recurso, que é a OM do grupo)
+                            const omDestinoRecurso = nomeOM; 
                             
-                            const tipoSuprimentoLabel = isLubrificante ? 'LUBRIFICANTE' : getTipoCombustivelLabel(linhaClasseIII.tipo_suprimento);
+                            // 1. Construir a primeira linha: CLASSE - SUPRIMENTO - CATEGORIA
+                            const tipoSuprimentoLabel = isLubrificante(registro) ? 'LUBRIFICANTE' : getTipoCombustivelLabel(linhaClasseIII.tipo_suprimento);
                             const categoriaEquipamento = getTipoEquipamentoLabel(linhaClasseIII.categoria_equipamento);
                             
-                            // CORREÇÃO: Remove o hífen final da primeira linha e usa \n para a categoria
                             line1 = `CLASSE III - ${tipoSuprimentoLabel}\n${categoriaEquipamento}`;
                             
+                            // 2. Se a OM Detentora do Equipamento for diferente da OM Destino do Recurso (Col B), 
+                            // adicionamos a OM Detentora do Equipamento na Coluna A (linha 2)
+                            const isDifferentOm = omDetentoraEquipamento !== omDestinoRecurso;
+                            
                             if (isDifferentOm) {
-                                // Se for diferente, adiciona a OM Detentora do Equipamento na terceira linha
                                 line2 = omDetentoraEquipamento;
                             }
                             
-                            // OM (UGE) CODUG: OM de Destino do Recurso
-                            const ugDestinoRecurso = isCombustivelLinha ? (registro.ug_detentora || '') : (registro.ug_detentora || registro.ug);
+                            // OM (UGE) CODUG: OM de Destino do Recurso (OM do grupo)
+                            const ugDestinoRecurso = registro.ug_detentora || registro.ug; // Usa UG Detentora se existir, senão a UG do registro
                             const ugDestinoFormatted = formatCodug(ugDestinoRecurso);
                             
-                            // CORREÇÃO: Garante OM \n UG na coluna B
                             let omValue = `${omDestinoRecurso}\n(${ugDestinoFormatted})`;
                             
                             rowData.despesasValue = line1 + (line2 ? `\n${line2}` : '');
                             rowData.omValue = omValue;
                             
                             if (isCombustivelLinha) {
+                                // Combustível é sempre ND 30 (material) no relatório logístico, mas o valor vai para a coluna H
                                 rowData.valorC = 0;
                                 rowData.valorD = 0;
                                 rowData.valorE = 0;
@@ -1268,7 +1275,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                                 rowData.precoUnitarioG = formatCurrency(linhaClasseIII.preco_litro_linha);
                                 rowData.precoTotalH = formatCurrency(linhaClasseIII.valor_total_linha);
                                 
-                            } else if (isLubrificante) {
+                            } else if (isLubrificante(registro)) {
+                                // Lubrificante é ND 30 (material)
                                 rowData.valorC = linhaClasseIII.valor_total_linha;
                                 rowData.valorD = 0;
                                 rowData.valorE = linhaClasseIII.valor_total_linha;
