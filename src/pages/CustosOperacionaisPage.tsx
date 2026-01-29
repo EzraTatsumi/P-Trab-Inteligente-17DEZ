@@ -451,7 +451,7 @@ const CustosOperacionaisPage = () => {
       // 2. Copiar Diretrizes de Passagens
       const { data: sourcePassagens, error: passagensError } = await supabase
         .from("diretrizes_passagens")
-        .select("om_referencia, ug_referencia, numero_pregao, trechos, ativo")
+        .select("om_referencia, ug_referencia, numero_pregao, trechos, ativo, data_inicio_vigencia, data_fim_vigencia")
         .eq("user_id", user.id)
         .eq("ano_referencia", sourceYear);
         
@@ -685,6 +685,8 @@ const CustosOperacionaisPage = () => {
               numero_pregao: data.numero_pregao || null,
               trechos: data.trechos || [],
               ativo: data.ativo ?? true,
+              data_inicio_vigencia: data.data_inicio_vigencia || null,
+              data_fim_vigencia: data.data_fim_vigencia || null,
           } as TablesInsert<'diretrizes_passagens'>;
           
           if (data.id) {
@@ -746,7 +748,7 @@ const CustosOperacionaisPage = () => {
               {/* Lista de Contratos Existentes */}
               {diretrizesPassagens.length > 0 ? (
                   <Card className="p-4">
-                      <CardTitle className="text-base font-semibold mb-3">Contratos Cadastrados para {selectedYear}</CardTitle>
+                      <CardTitle className="text-base font-semibold mb-3">Contratos Cadastrados</CardTitle>
                       <Table>
                           <TableHeader>
                               <TableRow>
