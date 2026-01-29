@@ -123,8 +123,9 @@ const compareFormData = (data1: PassagemFormState, data2: PassagemFormState) => 
     }
     
     // Comparar detalhes dos trechos (IDs e quantidades)
-    const trechos1 = data1.selected_trechos.map(t => `${t.trecho_id}-${t.quantidade_passagens}`).sort().join('|');
-    const trechos2 = data2.selected_trechos.map(t => `${t.trecho_id}-${t.quantidade_passagens}`).sort().join('|');
+    // Usamos a chave composta (diretriz_id + trecho_id) para garantir a unicidade
+    const trechos1 = data1.selected_trechos.map(t => `${t.diretriz_id}-${t.trecho_id}-${t.quantidade_passagens}`).sort().join('|');
+    const trechos2 = data2.selected_trechos.map(t => `${t.diretriz_id}-${t.trecho_id}-${t.quantidade_passagens}`).sort().join('|');
     
     if (trechos1 !== trechos2) {
         return true;
@@ -192,7 +193,7 @@ const PassagemForm = () => {
         if (ptrabData && !editingId) {
             // Modo Novo Registro: Limpar
             setFormData(prev => ({
-                ...prev,
+                ...initialFormState,
                 om_favorecida: "", 
                 ug_favorecida: "", 
                 om_destino: "",
@@ -412,6 +413,8 @@ const PassagemForm = () => {
         setSelectedOmDestinoId(omDestinoToEdit?.id);
         
         // 2. Reconstruir a lista de trechos selecionados a partir dos dados do registro
+        // Nota: O DB armazena apenas 1 trecho por registro, mas o formulário suporta múltiplos.
+        // Ao editar, tratamos o registro salvo como um único trecho.
         const trechoFromRecord: TrechoSelection = {
             om_detentora: registro.om_detentora,
             ug_detentora: registro.ug_detentora,
@@ -708,12 +711,14 @@ const PassagemForm = () => {
     };
     
     // --- Lógica de Edição de Quantidade de Trecho no Formulário Principal ---
-    const handleTrechoQuantityChange = (trechoId: string, quantity: number) => {
+    const handleTrechoQuantityChange = (diretrizId: string, trechoId: string, quantity: number) => {
         if (quantity < 0) return;
         
         setFormData(prev => {
             const newSelections = prev.selected_trechos.map(t => 
-                t.trecho_id === trechoId ? { ...t, quantidade_passagens: quantity } : t
+                (t.diretriz_id === diretrizId && t.trecho_id === trechoId)
+                    ? { ...t, quantidade_passagens: quantity } 
+                    : t
             ).filter(t => t.quantidade_passagens > 0); // Remove se a quantidade for zero
             
             return {
@@ -1206,7 +1211,7 @@ const PassagemForm = () => {
                                                                     const totalTrecho = calculateTrechoTotal(trecho);
                                                                     
                                                                     return (
-                                                                        <TableRow key={trecho.trecho_id}>
+                                                                        <TableRow key={`${trecho.diretriz_id}-${trecho.trecho_id}`}>
                                                                             <TableCell className="font-bold w-[100px]">
                                                                                 <div className="flex items-center gap-1">
                                                                                     <Button 
@@ -1214,7 +1219,7 @@ const PassagemForm = () => {
                                                                                         variant="outline" 
                                                                                         size="icon" 
                                                                                         className="h-6 w-6"
-                                                                                        onClick={() => handleTrechoQuantityChange(trecho.trecho_id, trecho.quantidade_passagens - 1)}
+                                                                                        onClick={() => handleTrechoQuantityChange(trecho.diretriz_id, trecho.trecho_id, trecho.quantidade_passagens - 1)}
                                                                                         disabled={!isPTrabEditable || isSaving}
                                                                                     >
                                                                                         <Minus className="h-3 w-3" />
@@ -1223,7 +1228,7 @@ const PassagemForm = () => {
                                                                                         type="number"
                                                                                         min={0}
                                                                                         value={trecho.quantidade_passagens === 0 ? "" : trecho.quantidade_passagens}
-                                                                                        onChange={(e) => handleTrechoQuantityChange(trecho.trecho_id, parseInt(e.target.value) || 0)}
+                                                                                        onChange={(e) => handleTrechoQuantityChange(trecho.diretriz_id, trecho.trecho_id, parseInt(e.target.value) || 0)}
                                                                                         className="w-16 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                                         disabled={!isPTrabEditable || isSaving}
                                                                                     />
@@ -1232,7 +1237,7 @@ const PassagemForm = () => {
                                                                                         variant="outline" 
                                                                                         size="icon" 
                                                                                         className="h-6 w-6"
-                                                                                        onClick={() => handleTrechoQuantityChange(trecho.trecho_id, trecho.quantidade_passagens + 1)}
+                                                                                        onClick={() => handleTrechoQuantityChange(trecho.diretriz_id, trecho.trecho_id, trecho.quantidade_passagens + 1)}
                                                                                         disabled={!isPTrabEditable || isSaving}
                                                                                     >
                                                                                         <Plus className="h-3 w-3" />
