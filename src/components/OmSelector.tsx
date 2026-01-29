@@ -102,7 +102,7 @@ export function OmSelector({
   // 3. Efeito para garantir que a OM selecionada seja exibida, mesmo que não esteja na lista 'oms' (e.g., inativa)
   useEffect(() => {
     if (!selectedOmId) {
-      // Se não houver ID selecionado, mas houver nome/UG inicial (modo de edição sem ID ativo),
+      // Se não houver ID selecionado, mas houver nome/UG inicial (modo de edição sem ID ativo ou preenchimento automático),
       // criamos um objeto temporário para exibição.
       if (initialOmName && initialOmUg) {
         setDisplayOM({
@@ -177,19 +177,23 @@ export function OmSelector({
       return displayOM.nome_om;
     }
     
-    // 2. Se estiver em modo de edição (selectedOmId existe) E a OM ainda está sendo buscada, 
+    // 2. Se não houver ID selecionado, mas houver um nome inicial (usado para preenchimento automático/fallback), use-o.
+    if (!selectedOmId && initialOmName) {
+        return initialOmName;
+    }
+    
+    // 3. Se estiver em modo de edição (selectedOmId existe) E a OM ainda está sendo buscada, 
     //    ou se o ID não foi encontrado, mas temos o nome inicial (fallback para edição).
-    //    REMOVIDO: A dependência de initialOmName/Ug para o fallback, a menos que selectedOmId esteja presente.
     if (selectedOmId && (isFetchingSelected || initialOmName)) {
         return initialOmName || "Carregando OM...";
     }
     
-    // 3. Se estiver carregando a lista de OMs (loading)
+    // 4. Se estiver carregando a lista de OMs (loading)
     if (loading) {
       return "Carregando...";
     }
     
-    // 4. Caso contrário, mostre o placeholder.
+    // 5. Caso contrário, mostre o placeholder.
     return placeholder;
   }, [loading, displayOM, selectedOmId, isFetchingSelected, initialOmName, placeholder]);
 
@@ -209,50 +213,6 @@ export function OmSelector({
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] max-w-[400px] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Buscar OM..." />
-          <CommandList>
-            <CommandEmpty>Nenhuma OM encontrada.</CommandEmpty>
-            <CommandGroup>
-              {oms.map((om) => (
-                <CommandItem
-                  key={om.id}
-                  // Alterado o valor para incluir nome e CODUG, melhorando a busca do cmdk
-                  value={`${om.nome_om} ${om.codug_om} ${om.rm_vinculacao} ${om.id}`} 
-                  onSelect={() => {
-                    const selected = oms.find(o => o.id === om.id); // Usamos o om.id do loop para garantir a seleção correta
-                    
-                    // Se o item selecionado for o mesmo que já está selecionado, deseleciona (passa undefined)
-                    const newSelection = selected?.id === selectedOmId ? undefined : selected;
-                    
-                    onChange(newSelection); // Passa o objeto completo ou undefined
-                    setDisplayOM(newSelection); // Atualiza o estado de exibição imediatamente
-                    setOpen(false);
-                    
-                    // Se o usuário fizer uma seleção manual, resetamos o initialLoadRef para permitir futuras inicializações
-                    initialLoadRef.current = false; 
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      selectedOmId === om.id ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {/* ESTRUTURA DE DUAS LINHAS RESTAURADA */}
-                  <div className="flex flex-col items-start">
-                    <span className="font-medium">{om.nome_om}</span>
-                    <span className="text-xs text-muted-foreground">
-                      CODUG: {formatCodug(om.codug_om)} | {om.rm_vinculacao}
-                    </span>
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
       </PopoverContent>
     </Popover>
   );
