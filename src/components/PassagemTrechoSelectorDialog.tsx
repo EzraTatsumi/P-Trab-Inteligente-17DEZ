@@ -2,14 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Plane, AlertTriangle, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Plane, AlertTriangle, Check, ChevronDown, ChevronUp, Plus, Minus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { DiretrizPassagem, TrechoPassagem, TipoTransporte } from '@/types/diretrizesPassagens';
 import { formatCurrency, formatDate, formatCodug } from '@/lib/formatUtils';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Checkbox } from '@/components/ui/checkbox';
+// Removendo importação de Checkbox
 
 // Define a estrutura de seleção de trecho que será retornada
 export interface TrechoSelection extends TrechoPassagem {
@@ -83,26 +83,26 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
         return currentSelections.some(t => t.trecho_id === trechoId);
     };
 
-    const handleSelectionChange = (trechoId: string, isChecked: boolean, diretriz: DiretrizPassagem, trecho: TrechoPassagem) => {
+    // Adaptando a função para ser chamada por um clique de botão
+    const handleSelectionToggle = (diretriz: DiretrizPassagem, trecho: TrechoPassagem) => {
+        const trechoId = trecho.id;
+        
         setCurrentSelections(prev => {
             const existingIndex = prev.findIndex(t => t.trecho_id === trechoId);
             
-            if (isChecked) {
-                // Adiciona seleção (quantidade padrão 1)
-                if (existingIndex === -1) {
-                    const newSelection: TrechoSelection = {
-                        ...trecho,
-                        diretriz_id: diretriz.id,
-                        om_detentora: diretriz.om_referencia,
-                        ug_detentora: diretriz.ug_referencia,
-                        quantidade_passagens: 1, // Assumimos 1 passagem ao selecionar
-                        valor_unitario: trecho.valor, // Usar 'valor' do TrechoPassagem como 'valor_unitario'
-                    };
-                    return [...prev, newSelection];
-                }
-                return prev; 
+            if (existingIndex === -1) {
+                // Adiciona seleção (Selecionar -> Selecionado)
+                const newSelection: TrechoSelection = {
+                    ...trecho,
+                    diretriz_id: diretriz.id,
+                    om_detentora: diretriz.om_referencia,
+                    ug_detentora: diretriz.ug_referencia,
+                    quantidade_passagens: 1, // Assumimos 1 passagem ao selecionar
+                    valor_unitario: trecho.valor, // Usar 'valor' do TrechoPassagem como 'valor_unitario'
+                };
+                return [...prev, newSelection];
             } else {
-                // Remove seleção
+                // Remove seleção (Selecionado -> Selecionar)
                 return prev.filter(t => t.trecho_id !== trechoId);
             }
         });
@@ -166,8 +166,8 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                                         <Table>
                                             <TableHeader>
                                                 <TableRow>
-                                                    <TableHead className="w-[5%]"></TableHead> {/* Checkbox */}
-                                                    <TableHead className="w-[45%]">Trecho</TableHead>
+                                                    <TableHead className="w-[15%] text-center">Ação</TableHead> {/* Aumentando a largura para o botão */}
+                                                    <TableHead className="w-[35%]">Trecho</TableHead>
                                                     <TableHead className="w-[25%]">Tipo</TableHead>
                                                     <TableHead className="w-[25%] text-right">Valor Unitário</TableHead>
                                                 </TableRow>
@@ -178,18 +178,28 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                                                     
                                                     return (
                                                         <TableRow key={trecho.id} className={cn(isTrechoSelected && "bg-green-500/10 hover:bg-green-500/20")}>
-                                                            <TableCell>
-                                                                <Checkbox 
-                                                                    checked={isTrechoSelected}
-                                                                    onCheckedChange={(checked) => handleSelectionChange(trecho.id, checked as boolean, diretriz, trecho)}
-                                                                    // Forçando o estilo padrão do shadcn/ui para garantir que o tick apareça
+                                                            <TableCell className="text-center">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant={isTrechoSelected ? "secondary" : "default"}
+                                                                    onClick={() => handleSelectionToggle(diretriz, trecho)}
                                                                     className={cn(
-                                                                        // Garante que seja quadrado e use as cores primárias ao ser checado
-                                                                        "h-4 w-4 shrink-0 rounded border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-                                                                        "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
-                                                                        // Se o componente base estiver forçando 'rounded-full', isso pode ser ignorado, mas tentamos garantir o quadrado.
+                                                                        "w-full",
+                                                                        isTrechoSelected ? "bg-green-600 hover:bg-green-700 text-white" : "bg-primary hover:bg-primary/90"
                                                                     )}
-                                                                />
+                                                                >
+                                                                    {isTrechoSelected ? (
+                                                                        <>
+                                                                            <Check className="mr-2 h-4 w-4" />
+                                                                            Selecionado
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Plus className="mr-2 h-4 w-4" />
+                                                                            Selecionar
+                                                                        </>
+                                                                    )}
+                                                                </Button>
                                                             </TableCell>
                                                             <TableCell className="font-medium">
                                                                 {trecho.origem} &rarr; {trecho.destino}
