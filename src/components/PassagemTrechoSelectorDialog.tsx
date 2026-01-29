@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+' por '>' no texto.">
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -105,7 +106,6 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
   };
   
   // Reset state when dialog opens/closes
-  // CORREÇÃO: Usar useEffect para resetar o estado quando o diálogo fechar
   useEffect(() => {
     if (!open) {
         setSelectedDiretrizId(null);
