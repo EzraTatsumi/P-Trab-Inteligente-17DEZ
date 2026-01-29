@@ -30,6 +30,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage"; // Importar ResetPass
 import DiariaForm from "./pages/DiariaForm"; // Importar DiariaForm
 import VerbaOperacionalForm from "./pages/VerbaOperacionalForm"; // NOVO IMPORT
 import SuprimentoFundosForm from "./pages/SuprimentoFundosForm"; // NOVO IMPORT
+import PassagemForm from "./pages/PassagemForm"; // NOVO IMPORT
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,7 @@ const App = () => (
               <Route path="/ptrab/diaria" element={<DiariaForm />} /> {/* ROTA ADICIONADA */}
               <Route path="/ptrab/verba-operacional" element={<VerbaOperacionalForm />} /> {/* NOVA ROTA */}
               <Route path="/ptrab/suprimento-fundos" element={<SuprimentoFundosForm />} /> {/* NOVA ROTA */}
+              <Route path="/ptrab/passagem-aerea" element={<PassagemForm />} /> {/* NOVA ROTA */}
               <Route path="/config/custos-operacionais" element={<CustosOperacionaisPage />} />
               <Route path="/config/diretrizes" element={<DiretrizesCusteioPage />} />
               <Route path="/config/visualizacao" element={<VisualizacaoConfigPage />} />

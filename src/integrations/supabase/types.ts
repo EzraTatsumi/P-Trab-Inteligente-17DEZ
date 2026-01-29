@@ -778,6 +778,8 @@ export type Database = {
           ativo: boolean
           created_at: string
           updated_at: string
+          data_inicio_vigencia: string | null
+          data_fim_vigencia: string | null
         }
         Insert: {
           id?: string
@@ -790,6 +792,8 @@ export type Database = {
           ativo?: boolean
           created_at?: string
           updated_at?: string
+          data_inicio_vigencia?: string | null
+          data_fim_vigencia?: string | null
         }
         Update: {
           id?: string
@@ -802,6 +806,8 @@ export type Database = {
           ativo?: boolean
           created_at?: string
           updated_at?: string
+          data_inicio_vigencia?: string | null
+          data_fim_vigencia?: string | null
         }
         Relationships: [
           {
@@ -980,6 +986,96 @@ export type Database = {
           },
         ]
       }
+      passagem_registros: {
+        Row: {
+          created_at: string
+          detalhamento: string | null
+          detalhamento_customizado: string | null
+          dias_operacao: number
+          destino: string
+          diretriz_id: string
+          fase_atividade: string | null
+          id: string
+          is_ida_volta: boolean
+          om_detentora: string
+          organizacao: string
+          origem: string
+          p_trab_id: string
+          quantidade_passagens: number
+          tipo_transporte: string
+          trecho_id: string
+          ug: string
+          ug_detentora: string
+          updated_at: string
+          valor_nd_33: number
+          valor_total: number
+          valor_unitario: number
+        }
+        Insert: {
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          destino: string
+          diretriz_id: string
+          fase_atividade?: string | null
+          id?: string
+          is_ida_volta?: boolean
+          om_detentora: string
+          organizacao: string
+          origem: string
+          p_trab_id: string
+          quantidade_passagens?: number
+          tipo_transporte: string
+          trecho_id: string
+          ug: string
+          ug_detentora: string
+          updated_at?: string
+          valor_nd_33?: number
+          valor_total?: number
+          valor_unitario: number
+        }
+        Update: {
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          destino?: string
+          diretriz_id?: string
+          fase_atividade?: string | null
+          id?: string
+          is_ida_volta?: boolean
+          om_detentora?: string
+          organizacao?: string
+          origem?: string
+          p_trab_id?: string
+          quantidade_passagens?: number
+          tipo_transporte?: string
+          trecho_id?: string
+          ug?: string
+          ug_detentora?: string
+          updated_at?: string
+          valor_nd_33?: number
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "passagem_registros_diretriz_id_fkey"
+            columns: ["diretriz_id"]
+            isOneToOne: false
+            referencedRelation: "diretrizes_passagens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "passagem_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1015,6 +1111,89 @@ export type Database = {
           raw_user_meta_data?: Json | null
         }
         Relationships: []
+      }
+      verba_operacional_registros: {
+        Row: {
+          created_at: string
+          detalhamento: string | null
+          detalhamento_customizado: string | null
+          dias_operacao: number
+          fase_atividade: string | null
+          finalidade: string | null
+          id: string
+          local: string | null
+          objeto_aquisicao: string | null
+          objeto_contratacao: string | null
+          om_detentora: string | null
+          organizacao: string
+          p_trab_id: string
+          proposito: string | null
+          quantidade_equipes: number
+          tarefa: string | null
+          ug: string
+          ug_detentora: string | null
+          updated_at: string
+          valor_nd_30: number
+          valor_nd_39: number
+          valor_total_solicitado: number
+        }
+        Insert: {
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          fase_atividade?: string | null
+          finalidade?: string | null
+          id?: string
+          local?: string | null
+          objeto_aquisicao?: string | null
+          objeto_contratacao?: string | null
+          om_detentora?: string | null
+          organizacao: string
+          p_trab_id: string
+          proposito?: string | null
+          quantidade_equipes?: number
+          tarefa?: string | null
+          ug: string
+          ug_detentora?: string | null
+          updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total_solicitado?: number
+        }
+        Update: {
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          fase_atividade?: string | null
+          finalidade?: string | null
+          id?: string
+          local?: string | null
+          objeto_aquisicao?: string | null
+          objeto_contratacao?: string | null
+          om_detentora?: string | null
+          organizacao?: string
+          p_trab_id?: string
+          proposito?: string | null
+          quantidade_equipes?: number
+          tarefa?: string | null
+          ug?: string
+          ug_detentora?: string | null
+          updated_at?: string
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total_solicitado?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verba_operacional_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
