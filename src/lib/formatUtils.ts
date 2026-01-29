@@ -150,9 +150,12 @@ export const formatNumberForInput = (value: number | null | undefined, decimals:
  * @param rawDigits String contendo apenas dígitos (centavos).
  * @returns Objeto com a string formatada e o valor numérico.
  */
-export const formatCurrencyInput = (rawDigits: string): { formatted: string, numericValue: number, digits: string } => {
+export const formatCurrencyInput = (rawDigits: string | null | undefined): { formatted: string, numericValue: number, digits: string } => {
+    // Garante que rawDigits é uma string antes de usar replace
+    const inputString = String(rawDigits || '');
+    
     // Remove tudo que não for dígito
-    const digits = rawDigits.replace(/\D/g, '');
+    const digits = inputString.replace(/\D/g, '');
     
     if (digits.length === 0) {
         return { formatted: '', numericValue: 0, digits: '' };
