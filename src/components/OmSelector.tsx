@@ -213,6 +213,48 @@ export function OmSelector({
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+        <Command>
+          <CommandInput placeholder="Buscar OM..." />
+          <CommandList>
+            {isOverallLoading ? (
+              <CommandItem disabled>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Carregando OMs...
+              </CommandItem>
+            ) : (
+              <>
+                <CommandEmpty>Nenhuma OM encontrada.</CommandEmpty>
+                <CommandGroup>
+                  {oms.map((om) => (
+                    <CommandItem
+                      key={om.id}
+                      value={`${om.nome_om} ${om.codug_om} ${om.rm_vinculacao}`}
+                      onSelect={() => {
+                        onChange(om);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          selectedOmId === om.id ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <div className="flex flex-col">
+                        <span>{om.nome_om}</span>
+                        <span className="text-xs text-muted-foreground">
+                          UG: {formatCodug(om.codug_om)} | RM: {om.rm_vinculacao}
+                        </span>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
       </PopoverContent>
     </Popover>
   );
