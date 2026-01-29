@@ -15,6 +15,7 @@ import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodug } f
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DiretrizPassagem, TrechoPassagem, TipoTransporte, DiretrizPassagemForm } from "@/types/diretrizesPassagens";
+import CurrencyInput from "@/components/CurrencyInput"; // <-- IMPORT CORRIGIDO
 
 interface PassagemDiretrizFormDialogProps {
     open: boolean;
