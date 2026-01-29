@@ -182,6 +182,11 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                                                                 <Checkbox 
                                                                     checked={isTrechoSelected}
                                                                     onCheckedChange={(checked) => handleSelectionChange(trecho.id, checked as boolean, diretriz, trecho)}
+                                                                    // Adicionando classes para garantir que o checkbox seja visível
+                                                                    className={cn(
+                                                                        "border-gray-400",
+                                                                        isTrechoSelected && "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                                                                    )}
                                                                 />
                                                             </TableCell>
                                                             <TableCell className="font-medium">
