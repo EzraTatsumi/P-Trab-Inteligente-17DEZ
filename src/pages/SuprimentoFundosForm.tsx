@@ -1254,17 +1254,14 @@ const SuprimentoFundosForm = () => {
                                                     {/* ND 39 (Serviço) - EDITÁVEL */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="valor_nd_39">ND 33.90.39 (Serviço) *</Label>
-                                                        <div className="relative">
-                                                            <CurrencyInput
-                                                                id="valor_nd_39"
-                                                                rawDigits={rawND39Input}
-                                                                onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
-                                                                placeholder="0,00"
-                                                                disabled={!isPTrabEditable || isSaving}
-                                                                className="pl-12 text-lg h-12"
-                                                            />
-                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
-                                                        </div>
+                                                        <CurrencyInput
+                                                            id="valor_nd_39"
+                                                            rawDigits={rawND39Input}
+                                                            onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
+                                                            placeholder="0,00"
+                                                            disabled={!isPTrabEditable || isSaving}
+                                                            className="text-lg h-12" // CORRIGIDO: Removido pl-12 e div.relative/span R$ duplicados
+                                                        />
                                                         <p className="text-xs text-muted-foreground">
                                                             Valor alocado para contratação de serviço.
                                                         </p>

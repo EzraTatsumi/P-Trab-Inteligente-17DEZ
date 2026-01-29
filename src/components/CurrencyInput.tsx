@@ -43,9 +43,12 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
           onChange={handleInputChange}
           onBlur={handleInputBlur}
           placeholder={placeholder}
-          className={cn("pl-12 text-lg", className)}
+          // Garante que o padding esquerdo e o tamanho da fonte sejam aplicados, 
+          // mas permite que classes externas (como h-12) sejam mescladas.
+          className={cn("pl-12 text-lg", className)} 
           {...props}
         />
+        {/* Prefixo R$ fixo */}
         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
       </div>
     );
