@@ -231,7 +231,7 @@ const PassagemForm = () => {
                     setFormData(prev => ({
                         ...prev,
                         om_destino: omFavorecida,
-                        ug_destino: ugFavorecida,
+                        ug_destino: ugFavorecida, // Corrigido: Garante que a UG Destino seja preenchida
                     }));
                 }
             }
