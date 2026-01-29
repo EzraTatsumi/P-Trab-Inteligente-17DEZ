@@ -97,8 +97,13 @@ const initialFormState: PassagemFormState = {
 // Função para calcular o valor total de um trecho (considerando ida/volta)
 const calculateTrechoTotal = (trecho: TrechoSelection): number => {
     const multiplier = trecho.is_ida_volta ? 2 : 1;
+    
+    // Adicionando verificação defensiva para garantir que os valores são numéricos
+    const valorUnitario = Number(trecho.valor_unitario || 0);
+    const quantidade = Number(trecho.quantidade_passagens || 0);
+    
     // Usa valor_unitario que é o valor do trecho
-    return trecho.valor_unitario * trecho.quantidade_passagens * multiplier; 
+    return valorUnitario * quantidade * multiplier; 
 };
 
 // Função para comparar números de ponto flutuante com tolerância
