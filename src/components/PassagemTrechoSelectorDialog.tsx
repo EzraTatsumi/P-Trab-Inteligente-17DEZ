@@ -1,4 +1,3 @@
-' por '>' no texto.">
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,7 +31,7 @@ interface TrechoSelection {
 
 interface PassagemTrechoSelectorDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (open: (value: boolean) => void) => void;
   onSelect: (trecho: TrechoSelection) => void;
   selectedYear: number;
 }
@@ -139,7 +138,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
             <AlertTriangle className="h-8 w-8 text-destructive mb-2" />
             <p className="text-sm text-muted-foreground">
               Nenhum contrato de passagens ativo encontrado para o ano {selectedYear}. 
-              Cadastre-os em "Configurações > Custos Operacionais".
+              Cadastre-os em "Configurações &gt; Custos Operacionais".
             </p>
           </div>
         ) : (
