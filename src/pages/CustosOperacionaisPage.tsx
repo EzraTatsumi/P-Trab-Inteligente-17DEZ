@@ -28,6 +28,7 @@ import CurrencyInput from "@/components/CurrencyInput";
 import { Switch } from "@/components/ui/switch";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import PassagemDiretrizFormDialog from "@/components/PassagemDiretrizFormDialog";
+import PassagemDiretrizRow from "@/components/PassagemDiretrizRow"; // NOVO IMPORT
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -757,21 +758,13 @@ const CustosOperacionaisPage = () => {
                           </TableHeader>
                           <TableBody>
                               {diretrizesPassagens.map(d => (
-                                  <TableRow key={d.id}>
-                                      <TableCell className="font-medium">{d.om_referencia} ({formatCodug(d.ug_referencia)})</TableCell>
-                                      <TableCell>{d.numero_pregao || 'N/A'}</TableCell>
-                                      <TableCell className="text-center">{d.trechos.length}</TableCell>
-                                      <TableCell className="text-right">
-                                          <div className="flex justify-end gap-1">
-                                              <Button variant="ghost" size="icon" onClick={() => handleStartEditPassagem(d)}>
-                                                  <Pencil className="h-4 w-4" />
-                                              </Button>
-                                              <Button variant="ghost" size="icon" onClick={() => handleDeletePassagem(d.id, d.om_referencia)} disabled={loading} className="text-destructive hover:bg-destructive/10">
-                                                  <Trash2 className="h-4 w-4" />
-                                              </Button>
-                                          </div>
-                                      </TableCell>
-                                  </TableRow>
+                                  <PassagemDiretrizRow
+                                      key={d.id}
+                                      diretriz={d}
+                                      onEdit={handleStartEditPassagem}
+                                      onDelete={handleDeletePassagem}
+                                      loading={loading}
+                                  />
                               ))}
                           </TableBody>
                       </Table>
