@@ -221,9 +221,10 @@ const PassagemForm = () => {
             const omFavorecida = formData.om_favorecida;
             const ugFavorecida = formData.ug_favorecida;
             
-            // Apenas preenche se a OM Destino estiver vazia OU se a OM Destino for diferente da OM Favorecida
-            // (No modo de criação, queremos que a OM Destino espelhe a OM Favorecida por padrão)
-            if (!formData.om_destino || formData.om_destino !== omFavorecida) {
+            // Verifica se a OM Destino está vazia OU se ela não está sincronizada com a OM Favorecida
+            const isOmDestinoUnsynced = formData.om_destino !== omFavorecida || formData.ug_destino !== ugFavorecida;
+
+            if (!formData.om_destino || isOmDestinoUnsynced) {
                 // Encontra o ID da OM Favorecida na lista de OMs
                 const omData = oms?.find(om => om.nome_om === omFavorecida && om.codug_om === ugFavorecida);
                 
@@ -237,7 +238,7 @@ const PassagemForm = () => {
                 }
             }
         }
-    }, [formData.om_favorecida, formData.ug_favorecida, editingId, oms]);
+    }, [formData.om_favorecida, formData.ug_favorecida, editingId, oms, formData.om_destino, formData.ug_destino]);
 
 
     // =================================================================
