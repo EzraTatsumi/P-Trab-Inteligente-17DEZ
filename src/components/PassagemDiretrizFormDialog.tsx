@@ -400,10 +400,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                     </Card>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-4 border-t">
-                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-                        Cancelar
-                    </Button>
+                <div className="flex justify-between gap-2 pt-4 border-t">
                     <Button 
                         type="button" 
                         onClick={handleSave}
@@ -411,6 +408,9 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                     >
                         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         {isEditingContract ? "Salvar Alterações" : "Cadastrar Contrato"}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+                        Cancelar
                     </Button>
                 </div>
             </DialogContent>
