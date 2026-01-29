@@ -231,7 +231,7 @@ const PassagemForm = () => {
                     setFormData(prev => ({
                         ...prev,
                         om_destino: omFavorecida,
-                        ug_destino: ugFavorecida, // Corrigido: Garante que a UG Destino seja preenchida
+                        ug_destino: ugFavorecida,
                     }));
                 }
             }
@@ -1010,18 +1010,13 @@ const PassagemForm = () => {
                             formData.ug_favorecida.length > 0 && 
                             formData.fase_atividade.length > 0;
 
-    // Validações detalhadas para a Seção 2
-    const isDiasValid = formData.dias_operacao > 0;
-    const isEfetivoValid = formData.efetivo > 0;
-    const isOmDestinoValid = formData.om_destino.length > 0 && formData.ug_destino.length > 0;
-    const isTrechosSelected = formData.selected_trechos.length > 0;
-    const isTrechoQuantitiesValid = formData.selected_trechos.every(t => t.quantidade_passagens > 0);
-
-    const isSolicitationDataReady = isDiasValid &&
-                                    isEfetivoValid &&
-                                    isOmDestinoValid &&
-                                    isTrechosSelected &&
-                                    isTrechoQuantitiesValid;
+    // Verifica se os campos numéricos da Solicitação estão preenchidos (incluindo OM Destino, agora na Seção 2)
+    const isSolicitationDataReady = formData.dias_operacao > 0 &&
+                                    formData.efetivo > 0 &&
+                                    formData.om_destino.length > 0 && // Adicionado aqui
+                                    formData.ug_destino.length > 0 && // Adicionado aqui
+                                    formData.selected_trechos.length > 0 &&
+                                    formData.selected_trechos.every(t => t.quantidade_passagens > 0); // Verifica se há quantidade > 0
 
     const isCalculationReady = isBaseFormReady && isSolicitationDataReady;
     
@@ -1105,24 +1100,6 @@ const PassagemForm = () => {
                                     </h3>
                                     
                                     <Card className="mt-6 bg-muted/50 rounded-lg p-4">
-                                        
-                                        {/* Alerta de Validação */}
-                                        {!isCalculationReady && (
-                                            <Alert variant="warning" className="mb-4">
-                                                <AlertCircle className="h-4 w-4" />
-                                                <AlertTitle>Preenchimento Pendente</AlertTitle>
-                                                <AlertDescription>
-                                                    Para calcular e salvar o item, preencha os seguintes campos:
-                                                    <ul className="list-disc list-inside mt-1 space-y-0.5 text-sm">
-                                                        {!isDiasValid && <li>Período (Nr Dias) deve ser maior que zero.</li>}
-                                                        {!isEfetivoValid && <li>Efetivo deve ser maior que zero.</li>}
-                                                        {!isOmDestinoValid && <li>OM Destino do Recurso é obrigatória.</li>}
-                                                        {!isTrechosSelected && <li>Selecione pelo menos um Trecho de Contrato.</li>}
-                                                        {isTrechosSelected && !isTrechoQuantitiesValid && <li>A quantidade de passagens para cada trecho deve ser maior que zero.</li>}
-                                                    </ul>
-                                                </AlertDescription>
-                                            </Alert>
-                                        )}
                                         
                                         {/* Dados da Solicitação (Dias, Efetivo, OM Destino) */}
                                         <Card className="rounded-lg mb-4">
