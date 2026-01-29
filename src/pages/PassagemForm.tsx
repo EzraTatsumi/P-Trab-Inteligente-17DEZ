@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -695,181 +695,18 @@ const PassagemForm = () => {
         });
     };
     
+    // --- Lógica de Geração de Memória Automática (NOVO) ---
+    // Definida acima do componente para ser usada no useCallback
+    
     // --- Lógica de Edição de Memória ---
     
     const handleIniciarEdicaoMemoria = (registro: PassagemRegistroDB) => {
         setEditingMemoriaId(registro.id);
         
-        // 1. Reconstruir o TrechoSelection para gerar a memória automática
-        const trechoFromRecord: TrechoSelection = {
-            om_detentora: registro.om_detentora,
-            ug_detentora: registro.ug_detentora,
-            diretriz_id: registro.diretriz_id,
-            trecho_id: registro.trecho_id,
-            origem: registro.origem,
-            destino: registro.destino,
-            tipo_transporte: registro.tipo_transporte as TipoTransporte,
-            is_ida_volta: registro.is_ida_volta,
-            valor_unitario: Number(registro.valor_unitario || 0),
-            quantidade_passagens: registro.quantidade_passagens,
-            valor: Number(registro.valor_unitario || 0), // Adiciona 'valor' para compatibilidade com TrechoPassagem
-        };
+        const memoriaAutomatica = generateMemoriaAutomatica(registro);
         
-        // 2. Gerar a memória automática (usando a lógica de cálculo de múltiplos trechos, mas com apenas 1 trecho)
-        const calculatedDataForMemoria: PassagemFormState = {
-            om_favorecida: registro.organizacao,
-            ug_favorecida: registro.ug,
-            om_destino: registro.om_detentora,
-            ug_destino: registro.ug_detentora,
-            dias_operacao: registro.dias_operacao,
-            efetivo: registro.efetivo || 0,
-            fase_atividade: registro.fase_atividade || "",
-            selected_trechos: [trechoFromRecord],
-        };
-        
-        // Nota: Para registros antigos, o cálculo é feito com base no único trecho salvo.
-        const { memoria: memoriaAutomatica } = useMemo(() => {
-            if (calculatedDataForMemoria.selected_trechos.length === 0) return { memoria: "" };
-            
-            const trecho = calculatedDataForMemoria.selected_trechos[0];
-            const totalTrecho = calculateTrechoTotal(trecho);
-            
-            const calculatedFormData: PassagemFormType = {
-                organizacao: calculatedDataForMemoria.om_favorecida, 
-                ug: calculatedDataForMemoria.ug_favorecida, 
-                dias_operacao: calculatedDataForMemoria.dias_operacao,
-                fase_atividade: calculatedDataForMemoria.fase_atividade,
-                om_detentora: trecho.om_detentora,
-                ug_detentora: trecho.ug_detentora,
-                diretriz_id: trecho.diretriz_id,
-                trecho_id: trecho.trecho_id,
-                origem: trecho.origem,
-                destino: trecho.destino,
-                tipo_transporte: trecho.tipo_transporte,
-                is_ida_volta: trecho.is_ida_volta,
-                valor_unitario: trecho.valor_unitario,
-                quantidade_passagens: trecho.quantidade_passagens,
-            };
-            
-            let memoria = `--- Trecho Único: ${trecho.origem} -> ${trecho.destino} ---\n`;
-            memoria += generatePassagemMemoriaCalculo({
-                ...calculatedFormData,
-                valor_total: totalTrecho,
-                valor_nd_33: totalTrecho,
-            });
-            memoria += "\n";
-            memoria += `\n==================================================\n`;
-            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalTrecho)}\n`;
-            memoria += `Efetivo: ${calculatedDataForMemoria.efetivo} militares\n`;
-            memoria += `==================================================\n`;
-            
-            return { memoria };
-        }, [calculatedDataForMemoria]);
-        
-        let memoriaExibida = memoriaAutomatica;
-        if (isEditing) {
-            memoriaExibida = memoriaEdit;
-        } else if (hasCustomMemoria) {
-            memoriaExibida = registro.detalhamento_customizado!;
-        }
-        
-        return (
-            <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
-                
-                <div className="flex items-start justify-between gap-4 mb-2">
-                    <div className="flex flex-col flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                            <h4 className="text-base font-semibold text-foreground">
-                                {registro.organizacao} (UG: {formatCodug(registro.ug)}) - {registro.origem} &rarr; {registro.destino}
-                            </h4>
-                            {hasCustomMemoria && !isEditing && (
-                                <Badge variant="outline" className="text-xs">
-                                    Editada manualmente
-                                </Badge>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-1 mt-1">
-                            <Plane className="h-4 w-4 text-primary" />
-                            <span className="text-sm font-medium text-primary">
-                                OM Destino: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-end gap-2 shrink-0">
-                        {!isEditing ? (
-                            <>
-                                <Button
-                                    type="button" 
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleIniciarEdicaoMemoria(registro)}
-                                    disabled={isSaving || !isPTrabEditable}
-                                    className="gap-2"
-                                >
-                                    <Pencil className="h-4 w-4" />
-                                    Editar Memória
-                                </Button>
-                                
-                                {hasCustomMemoria && (
-                                    <Button
-                                        type="button" 
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
-                                        disabled={isSaving || !isPTrabEditable}
-                                        className="gap-2 text-muted-foreground"
-                                    >
-                                        <RefreshCw className="h-4 w-4" />
-                                        Restaurar Automática
-                                    </Button>
-                                )}
-                            </>
-                        ) : (
-                            <>
-                                <Button
-                                    type="button" 
-                                    size="sm"
-                                    variant="default"
-                                    onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
-                                    disabled={isSaving}
-                                    className="gap-2"
-                                >
-                                    <Check className="h-4 w-4" />
-                                    Salvar
-                                </Button>
-                                <Button
-                                    type="button" 
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={handleCancelarEdicaoMemoria}
-                                    disabled={isSaving}
-                                    className="gap-2"
-                                >
-                                    <XCircle className="h-4 w-4" />
-                                    Cancelar
-                                </Button>
-                            </>
-                        )}
-                    </div>
-                </div>
-                
-                <Card className="p-4 bg-background rounded-lg border">
-                    {isEditing ? (
-                        <Textarea
-                            value={memoriaExibida}
-                            onChange={(e) => setMemoriaEdit(e.target.value)}
-                            className="min-h-[300px] font-mono text-sm"
-                            placeholder="Digite a memória de cálculo..."
-                        />
-                    ) : (
-                        <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
-                            {memoriaExibida}
-                        </pre>
-                    )}
-                </Card>
-            </div>
-        );
+        // 2. Usar a customizada se existir, senão usar a automática
+        setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
     };
 
     const handleCancelarEdicaoMemoria = () => {
@@ -1356,7 +1193,7 @@ const PassagemForm = () => {
                                                 >
                                                     <CardContent className="p-4">
                                                         
-                                                        <div className={cn("flex justify-between items-center pb-2 mb-2", "border-b border-secondary/30")}>
+                                                        <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/30">
                                                             <h4 className="font-bold text-base text-foreground">
                                                                 Passagens (Total de {item.selected_trechos.length} Trecho(s))
                                                             </h4>
@@ -1564,6 +1401,140 @@ const PassagemForm = () => {
                                                     })}
                                                 </div>
                                             </Card>
+                                        );
+                                    })}
+                                </section>
+                            )}
+
+                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
+                            {registros && registros.length > 0 && (
+                                <div className="space-y-4 mt-8">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        📋 Memórias de Cálculos Detalhadas
+                                    </h3>
+                                    
+                                    {registros.map(registro => {
+                                        const isEditing = editingMemoriaId === registro.id;
+                                        
+                                        // Verifica se o detalhamento_customizado é um texto customizado
+                                        let hasCustomMemoria = false;
+                                        try {
+                                            JSON.parse(registro.detalhamento_customizado || "");
+                                        } catch (e) {
+                                            hasCustomMemoria = !!registro.detalhamento_customizado;
+                                        }
+                                        
+                                        // 1. Gerar a memória automática
+                                        const memoriaAutomatica = generateMemoriaAutomatica(registro);
+                                        
+                                        let memoriaExibida = memoriaAutomatica;
+                                        if (isEditing) {
+                                            memoriaExibida = memoriaEdit;
+                                        } else if (hasCustomMemoria) {
+                                            memoriaExibida = registro.detalhamento_customizado!;
+                                        }
+                                        
+                                        // Verifica se a OM Detentora é diferente da OM Favorecida
+                                        const isDifferentOmInMemoria = registro.om_detentora !== registro.organizacao;
+
+                                        return (
+                                            <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
+                                                
+                                                <div className="flex items-start justify-between gap-4 mb-2">
+                                                    <div className="flex flex-col flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="text-base font-semibold text-foreground">
+                                                                {registro.organizacao} (UG: {formatCodug(registro.ug)}) - {registro.origem} &rarr; {registro.destino}
+                                                            </h4>
+                                                            {hasCustomMemoria && !isEditing && (
+                                                                <Badge variant="outline" className="text-xs">
+                                                                    Editada manualmente
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        {isDifferentOmInMemoria && (
+                                                            <div className="flex items-center gap-1 mt-1">
+                                                                <Plane className="h-4 w-4 text-red-600" />
+                                                                <span className="text-sm font-medium text-red-600">
+                                                                    Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center justify-end gap-2 shrink-0">
+                                                        {!isEditing ? (
+                                                            <>
+                                                                <Button
+                                                                    type="button" 
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => handleIniciarEdicaoMemoria(registro)}
+                                                                    disabled={isSaving || !isPTrabEditable}
+                                                                    className="gap-2"
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                    Editar Memória
+                                                                </Button>
+                                                                
+                                                                {hasCustomMemoria && (
+                                                                    <Button
+                                                                        type="button" 
+                                                                        size="sm"
+                                                                        variant="ghost"
+                                                                        onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
+                                                                        disabled={isSaving || !isPTrabEditable}
+                                                                        className="gap-2 text-muted-foreground"
+                                                                    >
+                                                                        <RefreshCw className="h-4 w-4" />
+                                                                        Restaurar Automática
+                                                                    </Button>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Button
+                                                                    type="button" 
+                                                                    size="sm"
+                                                                    variant="default"
+                                                                    onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
+                                                                    disabled={isSaving}
+                                                                    className="gap-2"
+                                                                >
+                                                                    <Check className="h-4 w-4" />
+                                                                    Salvar
+                                                                </Button>
+                                                                <Button
+                                                                    type="button" 
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={handleCancelarEdicaoMemoria}
+                                                                    disabled={isSaving}
+                                                                    className="gap-2"
+                                                                >
+                                                                    <XCircle className="h-4 w-4" />
+                                                                    Cancelar
+                                                                </Button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                
+                                                <Card className="p-4 bg-background rounded-lg border">
+                                                    {isEditing ? (
+                                                        <Textarea
+                                                            value={memoriaExibida}
+                                                            onChange={(e) => setMemoriaEdit(e.target.value)}
+                                                            className="min-h-[300px] font-mono text-sm"
+                                                            placeholder="Digite a memória de cálculo..."
+                                                        />
+                                                    ) : (
+                                                        <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
+                                                            {memoriaExibida}
+                                                        </pre>
+                                                    )}
+                                                </Card>
+                                            </div>
                                         );
                                     })}
                                 </div>
