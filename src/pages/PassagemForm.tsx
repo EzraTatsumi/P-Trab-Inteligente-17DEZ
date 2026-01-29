@@ -864,7 +864,7 @@ const PassagemForm = () => {
             selected_trechos: [trechoFromRecord],
         };
         
-        // USAR A FUNÇÃO AUXILIAR PARA CALCULAR A MEMÓRIA AUTOMÁTICA
+        // Nota: Para registros antigos, o cálculo é feito com base no único trecho salvo.
         const { memoria: memoriaAutomatica } = calculatePassagemData(calculatedDataForMemoria, ptrabData);
         
         // 3. Usar a customizada se existir, senão usar a automática
