@@ -941,15 +941,16 @@ const PassagemForm = () => {
     const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
     const isSaving = saveMutation.isPending || updateMutation.isPending;
     
+    // Lógica de abertura da Seção 2: Depende apenas da OM Favorecida e Fase da Atividade
     const isBaseFormReady = formData.om_favorecida.length > 0 && 
                             formData.ug_favorecida.length > 0 && 
-                            formData.om_destino.length > 0 && // Novo campo
-                            formData.ug_destino.length > 0 && // Novo campo
                             formData.fase_atividade.length > 0;
 
-    // Verifica se os campos numéricos da Solicitação estão preenchidos
+    // Verifica se os campos numéricos da Solicitação estão preenchidos (incluindo OM Destino, agora na Seção 2)
     const isSolicitationDataReady = formData.dias_operacao > 0 &&
                                     formData.efetivo > 0 &&
+                                    formData.om_destino.length > 0 && // Adicionado aqui
+                                    formData.ug_destino.length > 0 && // Adicionado aqui
                                     formData.selected_trechos.length > 0 &&
                                     formData.selected_trechos.every(t => t.quantidade_passagens > 0); // Verifica se há quantidade > 0
 
@@ -1022,27 +1023,8 @@ const PassagemForm = () => {
                                         />
                                     </div>
                                     
-                                    {/* OM DESTINO DO RECURSO */}
-                                    <div className="space-y-2 col-span-1">
-                                        <Label htmlFor="om_destino">OM Destino do Recurso *</Label>
-                                        <OmSelector
-                                            selectedOmId={selectedOmDestinoId}
-                                            onChange={handleOmDestinoChange}
-                                            placeholder="Selecione a OM Destino"
-                                            disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingPassagens.length > 0}
-                                            initialOmName={editingId ? formData.om_destino : undefined}
-                                            initialOmUg={editingId ? formData.ug_destino : undefined}
-                                        />
-                                    </div>
-                                    <div className="space-y-2 col-span-1">
-                                        <Label htmlFor="ug_destino">UG Destino</Label>
-                                        <Input
-                                            id="ug_destino"
-                                            value={formatCodug(formData.ug_destino)}
-                                            disabled
-                                            className="bg-muted/50"
-                                        />
-                                    </div>
+                                    {/* OM DESTINO DO RECURSO (REMOVIDO DA SEÇÃO 1) */}
+                                    {/* UG DESTINO (REMOVIDO DA SEÇÃO 1) */}
                                 </div>
                             </section>
 
@@ -1055,14 +1037,38 @@ const PassagemForm = () => {
                                     
                                     <Card className="mt-6 bg-muted/50 rounded-lg p-4">
                                         
-                                        {/* Dados da Solicitação (Dias e Efetivo) */}
+                                        {/* Dados da Solicitação (Dias, Efetivo, OM Destino) */}
                                         <Card className="rounded-lg mb-4">
                                             <CardHeader className="py-3">
-                                                <CardTitle className="text-base font-semibold">Período e Efetivo</CardTitle>
+                                                <CardTitle className="text-base font-semibold">Período, Efetivo e Destino do Recurso</CardTitle>
                                             </CardHeader>
                                             <CardContent className="pt-2">
                                                 <div className="p-4 bg-background rounded-lg border">
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        {/* OM DESTINO DO RECURSO (MOVIDO PARA CÁ) */}
+                                                        <div className="space-y-2 col-span-1">
+                                                            <Label htmlFor="om_destino">OM Destino do Recurso *</Label>
+                                                            <OmSelector
+                                                                selectedOmId={selectedOmDestinoId}
+                                                                onChange={handleOmDestinoChange}
+                                                                placeholder="Selecione a OM Destino"
+                                                                disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingPassagens.length > 0}
+                                                                initialOmName={editingId ? formData.om_destino : undefined}
+                                                                initialOmUg={editingId ? formData.ug_destino : undefined}
+                                                            />
+                                                        </div>
+                                                        {/* UG DESTINO (MOVIDO PARA CÁ) */}
+                                                        <div className="space-y-2 col-span-1">
+                                                            <Label htmlFor="ug_destino">UG Destino</Label>
+                                                            <Input
+                                                                id="ug_destino"
+                                                                value={formatCodug(formData.ug_destino)}
+                                                                disabled
+                                                                className="bg-muted/50"
+                                                            />
+                                                        </div>
+                                                        
+                                                        {/* CAMPO: DIAS OPERAÇÃO */}
                                                         <div className="space-y-2 col-span-1">
                                                             <Label htmlFor="dias_operacao">Período (Nr Dias) *</Label>
                                                             <Input
