@@ -23,10 +23,11 @@ import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
-import { DiretrizPassagem, TrechoPassagem, TipoTransporte } from "@/types/diretrizesPassagens";
+import { DiretrizPassagem, TrechoPassagem, TipoTransporte, DiretrizPassagemForm } from "@/types/diretrizesPassagens";
 import CurrencyInput from "@/components/CurrencyInput";
 import { Switch } from "@/components/ui/switch";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
+import PassagemDiretrizFormDialog from "@/components/PassagemDiretrizFormDialog";
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -85,16 +86,6 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   taxa_embarque: 95.00,
 });
 
-// Estado inicial para o formulário de Trecho
-const initialTrechoForm: Omit<TrechoPassagem, 'id'> & { rawValor: string } = {
-    origem: '',
-    destino: '',
-    valor: 0,
-    rawValor: numberToRawDigits(0),
-    tipo_transporte: 'AÉREO',
-    is_ida_volta: false,
-};
-
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
   const { user } = useSession();
@@ -121,7 +112,7 @@ const CustosOperacionaisPage = () => {
       initialState[field.key as string] = false;
     });
     initialState['diarias_detalhe'] = false; 
-    initialState['passagens_detalhe'] = false; // NOVO: Estado para Passagens
+    initialState['passagens_detalhe'] = false; 
     return initialState;
   });
   
@@ -129,18 +120,8 @@ const CustosOperacionaisPage = () => {
   
   // --- ESTADOS DE DIRETRIZES DE PASSAGENS ---
   const [diretrizesPassagens, setDiretrizesPassagens] = useState<DiretrizPassagem[]>([]);
-  const [editingPassagemId, setEditingPassagemId] = useState<string | null>(null);
-  const [passagemForm, setPassagemForm] = useState<DiretrizPassagemForm>({
-      om_referencia: '',
-      ug_referencia: '',
-      numero_pregao: '',
-  });
-  const [selectedOmReferenciaId, setSelectedOmReferenciaId] = useState<string | undefined>(undefined);
-  const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
-  
-  // Estado para o formulário de Trecho
-  const [trechoForm, setTrechoForm] = useState<typeof initialTrechoForm>(initialTrechoForm);
-  const [editingTrechoId, setEditingTrechoId] = useState<string | null>(null);
+  const [isPassagemFormOpen, setIsPassagemFormOpen] = useState(false);
+  const [diretrizToEdit, setDiretrizToEdit] = useState<DiretrizPassagem | null>(null);
   
   // Efeito para rolar para o topo na montagem
   useEffect(() => {
@@ -168,7 +149,7 @@ const CustosOperacionaisPage = () => {
   useEffect(() => {
     if (selectedYear) {
       loadDiretrizesForYear(selectedYear);
-      loadDiretrizesPassagens(selectedYear); // NOVO: Carrega diretrizes de passagens
+      loadDiretrizesPassagens(selectedYear); 
     }
   }, [selectedYear]);
 
@@ -689,84 +670,9 @@ const CustosOperacionaisPage = () => {
   
   // --- LÓGICA DE PASSAGENS ---
   
-  const handleOmReferenciaChange = (omData: OMData | undefined) => {
-      if (omData) {
-          setSelectedOmReferenciaId(omData.id);
-          setPassagemForm(prev => ({
-              ...prev,
-              om_referencia: omData.nome_om,
-              ug_referencia: omData.codug_om,
-          }));
-      } else {
-          setSelectedOmReferenciaId(undefined);
-          setPassagemForm(prev => ({
-              ...prev,
-              om_referencia: "",
-              ug_referencia: "",
-          }));
-      }
-  };
-  
-  const handleTrechoCurrencyChange = (rawValue: string) => {
-      const { numericValue, digits } = formatCurrencyInput(rawValue);
-      setTrechoForm(prev => ({
-          ...prev,
-          valor: numericValue,
-          rawValor: digits,
-      }));
-  };
-  
-  const handleAddTrecho = () => {
-      if (!trechoForm.origem || !trechoForm.destino || trechoForm.valor <= 0) {
-          toast.error("Preencha Origem, Destino e Valor do Trecho.");
-          return;
-      }
-      
-      const currentDiretriz = diretrizesPassagens.find(d => d.id === editingPassagemId);
-      if (!currentDiretriz) return;
-      
-      const newTrecho: TrechoPassagem = {
-          id: editingTrechoId || Math.random().toString(36).substring(2, 9),
-          origem: trechoForm.origem,
-          destino: trechoForm.destino,
-          valor: trechoForm.valor,
-          tipo_transporte: trechoForm.tipo_transporte,
-          is_ida_volta: trechoForm.is_ida_volta,
-      };
-      
-      const updatedTrechos = editingTrechoId
-          ? currentDiretriz.trechos.map(t => t.id === editingTrechoId ? newTrecho : t)
-          : [...currentDiretriz.trechos, newTrecho];
-          
-      handleSavePassagem({ ...currentDiretriz, trechos: updatedTrechos });
-      
-      // Resetar formulário de trecho
-      setEditingTrechoId(null);
-      setTrechoForm(initialTrechoForm);
-  };
-  
-  const handleEditTrecho = (trecho: TrechoPassagem) => {
-      setEditingTrechoId(trecho.id);
-      setTrechoForm({
-          origem: trecho.origem,
-          destino: trecho.destino,
-          valor: trecho.valor,
-          rawValor: numberToRawDigits(trecho.valor),
-          tipo_transporte: trecho.tipo_transporte,
-          is_ida_volta: trecho.is_ida_volta,
-      });
-  };
-  
-  const handleDeleteTrecho = (trechoId: string) => {
-      const currentDiretriz = diretrizesPassagens.find(d => d.id === editingPassagemId);
-      if (!currentDiretriz) return;
-      
-      const updatedTrechos = currentDiretriz.trechos.filter(t => t.id !== trechoId);
-      handleSavePassagem({ ...currentDiretriz, trechos: updatedTrechos });
-  };
-  
   const handleSavePassagem = async (data: Partial<DiretrizPassagem> & { ano_referencia: number, om_referencia: string, ug_referencia: string }) => {
       try {
+          setLoading(true);
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error("Usuário não autenticado");
           
@@ -795,224 +701,49 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Contrato de Passagens cadastrado!");
           }
           
-          loadDiretrizesPassagens(selectedYear);
-          setEditingPassagemId(null);
-          setPassagemForm({ om_referencia: '', ug_referencia: '', numero_pregao: '' });
-          setSelectedOmReferenciaId(undefined);
-          setTrechoForm(initialTrechoForm);
-          setEditingTrechoId(null);
+          await loadDiretrizesPassagens(selectedYear);
+          setDiretrizToEdit(null);
+          setIsPassagemFormOpen(false);
           
       } catch (error: any) {
           toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
       }
   };
   
   const handleStartEditPassagem = (diretriz: DiretrizPassagem) => {
-      setEditingPassagemId(diretriz.id);
-      setPassagemForm({
-          om_referencia: diretriz.om_referencia,
-          ug_referencia: diretriz.ug_referencia,
-          numero_pregao: diretriz.numero_pregao || '',
-      });
-      // Tenta encontrar o ID da OM para pré-selecionar no OmSelector
-      const om = oms?.find(o => o.nome_om === diretriz.om_referencia && o.codug_om === diretriz.ug_referencia);
-      setSelectedOmReferenciaId(om?.id);
-      setTrechoForm(initialTrechoForm);
-      setEditingTrechoId(null);
+      setDiretrizToEdit(diretriz);
+      setIsPassagemFormOpen(true);
   };
   
-  const handleCancelEditPassagem = () => {
-      setEditingPassagemId(null);
-      setPassagemForm({ om_referencia: '', ug_referencia: '', numero_pregao: '' });
-      setSelectedOmReferenciaId(undefined);
-      setTrechoForm(initialTrechoForm);
-      setEditingTrechoId(null);
+  const handleOpenNewPassagem = () => {
+      setDiretrizToEdit(null);
+      setIsPassagemFormOpen(true);
   };
   
   const handleDeletePassagem = async (id: string, omName: string) => {
       if (!confirm(`Tem certeza que deseja excluir o contrato de passagens da OM ${omName}?`)) return;
       
       try {
+          setLoading(true);
           await supabase.from('diretrizes_passagens').delete().eq('id', id);
           toast.success("Contrato de Passagens excluído!");
-          loadDiretrizesPassagens(selectedYear);
+          await loadDiretrizesPassagens(selectedYear);
       } catch (error) {
           toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
       }
   };
   
   const renderPassagensSection = () => {
-      const currentDiretriz = diretrizesPassagens.find(d => d.id === editingPassagemId);
-      const isEditing = !!editingPassagemId;
       
       return (
           <div className="space-y-4">
-              <Card className="p-4">
-                  <CardTitle className="text-base mb-4">
-                      {isEditing ? `Editando Contrato: ${passagemForm.om_referencia}` : "Novo Contrato de Passagens"}
-                  </CardTitle>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                          <Label htmlFor="om_referencia">OM de Referência do Contrato *</Label>
-                          <OmSelector
-                              selectedOmId={selectedOmReferenciaId}
-                              onChange={handleOmReferenciaChange}
-                              placeholder="Selecione a OM"
-                              disabled={isEditing || loading || isLoadingOms}
-                              initialOmName={isEditing ? passagemForm.om_referencia : undefined}
-                              initialOmUg={isEditing ? passagemForm.ug_referencia : undefined}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                              UG: {formatCodug(passagemForm.ug_referencia)}
-                          </p>
-                      </div>
-                      <div className="space-y-2 col-span-2">
-                          <Label htmlFor="numero_pregao">Número do Pregão/Contrato</Label>
-                          <Input
-                              id="numero_pregao"
-                              value={passagemForm.numero_pregao}
-                              onChange={(e) => setPassagemForm({ ...passagemForm, numero_pregao: e.target.value })}
-                              placeholder="Ex: Pregão Eletrônico Nº 01/2024"
-                              disabled={loading}
-                              onKeyDown={handleEnterToNextField}
-                          />
-                      </div>
-                  </div>
-                  
-                  <div className="flex justify-end gap-2 mt-4 border-t pt-4">
-                      {isEditing && (
-                          <Button type="button" variant="outline" onClick={handleCancelEditPassagem} disabled={loading}>
-                              Cancelar Edição
-                          </Button>
-                      )}
-                      <Button 
-                          type="button" 
-                          onClick={() => handleSavePassagem({ ...passagemForm, ano_referencia: selectedYear, id: editingPassagemId || undefined })}
-                          disabled={loading || !passagemForm.om_referencia || !passagemForm.ug_referencia}
-                      >
-                          <Save className="mr-2 h-4 w-4" />
-                          {isEditing ? "Salvar Contrato" : "Cadastrar Contrato"}
-                      </Button>
-                  </div>
-              </Card>
-              
-              {/* Gerenciamento de Trechos (Apenas se estiver editando um contrato) */}
-              {currentDiretriz && (
-                  <Card className="p-4 space-y-4">
-                      <CardTitle className="text-base font-semibold">
-                          Trechos Cadastrados para {currentDiretriz.om_referencia}
-                      </CardTitle>
-                      
-                      {/* Formulário de Trecho */}
-                      <div className="grid grid-cols-1 md:grid-cols-6 gap-4 border p-3 rounded-lg bg-background">
-                          <div className="space-y-2 col-span-2">
-                              <Label htmlFor="trecho-origem">Origem / Destino *</Label>
-                              <div className="flex gap-2">
-                                  <Input
-                                      id="trecho-origem"
-                                      value={trechoForm.origem}
-                                      onChange={(e) => setTrechoForm({ ...trechoForm, origem: e.target.value })}
-                                      placeholder="Origem (Ex: BSB)"
-                                      onKeyDown={handleEnterToNextField}
-                                  />
-                                  <Input
-                                      value={trechoForm.destino}
-                                      onChange={(e) => setTrechoForm({ ...trechoForm, destino: e.target.value })}
-                                      placeholder="Destino (Ex: MAO)"
-                                      onKeyDown={handleEnterToNextField}
-                                  />
-                              </div>
-                          </div>
-                          <div className="space-y-2 col-span-1">
-                              <Label htmlFor="trecho-valor">Valor (R$) *</Label>
-                              <CurrencyInput
-                                  id="trecho-valor"
-                                  rawDigits={trechoForm.rawValor}
-                                  onChange={handleTrechoCurrencyChange}
-                                  placeholder="0,00"
-                                  onKeyDown={handleEnterToNextField}
-                              />
-                          </div>
-                          <div className="space-y-2 col-span-1">
-                              <Label htmlFor="trecho-tipo">Tipo *</Label>
-                              <Select
-                                  value={trechoForm.tipo_transporte}
-                                  onValueChange={(value) => setTrechoForm({ ...trechoForm, tipo_transporte: value as TipoTransporte })}
-                              >
-                                  <SelectTrigger id="trecho-tipo">
-                                      <SelectValue placeholder="Tipo" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                      <SelectItem value="AÉREO">Aéreo</SelectItem>
-                                      <SelectItem value="TERRESTRE">Terrestre</SelectItem>
-                                      <SelectItem value="FLUVIAL">Fluvial</SelectItem>
-                                  </SelectContent>
-                              </Select>
-                          </div>
-                          <div className="space-y-2 col-span-1 flex flex-col justify-end">
-                              <Label htmlFor="trecho-ida-volta" className="text-sm">Ida/Volta</Label>
-                              <Switch
-                                  id="trecho-ida-volta"
-                                  checked={trechoForm.is_ida_volta}
-                                  onCheckedChange={(checked) => setTrechoForm({ ...trechoForm, is_ida_volta: checked })}
-                              />
-                          </div>
-                          <div className="space-y-2 col-span-1 flex flex-col justify-end">
-                              <Button 
-                                  type="button" 
-                                  onClick={handleAddTrecho}
-                                  disabled={!trechoForm.origem || !trechoForm.destino || trechoForm.valor <= 0}
-                              >
-                                  {editingTrechoId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                                  {editingTrechoId ? "Atualizar" : "Adicionar"}
-                              </Button>
-                          </div>
-                      </div>
-                      
-                      {/* Tabela de Trechos */}
-                      {currentDiretriz.trechos.length > 0 ? (
-                          <Table>
-                              <TableHeader>
-                                  <TableRow>
-                                      <TableHead>Trecho</TableHead>
-                                      <TableHead className="text-center">Tipo</TableHead>
-                                      <TableHead className="text-right">Valor</TableHead>
-                                      <TableHead className="text-center">Ida/Volta</TableHead>
-                                      <TableHead className="w-[100px] text-right">Ações</TableHead>
-                                  </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                  {currentDiretriz.trechos.map(trecho => (
-                                      <TableRow key={trecho.id}>
-                                          <TableCell className="font-medium">{trecho.origem} &rarr; {trecho.destino}</TableCell>
-                                          <TableCell className="text-center">{trecho.tipo_transporte}</TableCell>
-                                          <TableCell className="text-right font-semibold">{formatCurrency(trecho.valor)}</TableCell>
-                                          <TableCell className="text-center">
-                                              {trecho.is_ida_volta ? "Sim" : "Não"}
-                                          </TableCell>
-                                          <TableCell className="text-right">
-                                              <div className="flex justify-end gap-1">
-                                                  <Button variant="ghost" size="icon" onClick={() => handleEditTrecho(trecho)}>
-                                                      <Pencil className="h-4 w-4" />
-                                                  </Button>
-                                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteTrecho(trecho.id)} className="text-destructive hover:bg-destructive/10">
-                                                      <Trash2 className="h-4 w-4" />
-                                                  </Button>
-                                              </div>
-                                          </TableCell>
-                                      </TableRow>
-                                  ))}
-                              </TableBody>
-                          </Table>
-                      ) : (
-                          <p className="text-muted-foreground text-center py-4">Nenhum trecho cadastrado para este contrato.</p>
-                      )}
-                  </Card>
-              )}
               
               {/* Lista de Contratos Existentes */}
-              {diretrizesPassagens.length > 0 && !isEditing && (
+              {diretrizesPassagens.length > 0 ? (
                   <Card className="p-4">
                       <CardTitle className="text-base font-semibold mb-3">Contratos Cadastrados para {selectedYear}</CardTitle>
                       <Table>
@@ -1035,7 +766,7 @@ const CustosOperacionaisPage = () => {
                                               <Button variant="ghost" size="icon" onClick={() => handleStartEditPassagem(d)}>
                                                   <Pencil className="h-4 w-4" />
                                               </Button>
-                                              <Button variant="ghost" size="icon" onClick={() => handleDeletePassagem(d.id, d.om_referencia)} className="text-destructive hover:bg-destructive/10">
+                                              <Button variant="ghost" size="icon" onClick={() => handleDeletePassagem(d.id, d.om_referencia)} disabled={loading} className="text-destructive hover:bg-destructive/10">
                                                   <Trash2 className="h-4 w-4" />
                                               </Button>
                                           </div>
@@ -1045,13 +776,28 @@ const CustosOperacionaisPage = () => {
                           </TableBody>
                       </Table>
                   </Card>
+              ) : (
+                  <Card className="p-4 text-center text-muted-foreground">
+                      Nenhum contrato de passagens cadastrado para o ano {selectedYear}.
+                  </Card>
               )}
+              
+              <div className="flex justify-end">
+                  <Button 
+                      type="button" 
+                      onClick={handleOpenNewPassagem}
+                      disabled={loading}
+                  >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Adicionar Novo Contrato
+                  </Button>
+              </div>
           </div>
       );
   };
 
   // Adicionando a verificação de carregamento
-  if (loading || isLoadingDefaultYear || isLoadingOms) {
+  if (loading || isLoadingDefaultYear) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -1120,7 +866,7 @@ const CustosOperacionaisPage = () => {
               <div className="border-t pt-4 mt-6">
                 <div className="space-y-4">
                   
-                  {/* NOVO: Pagamento de Diárias (Primeiro item) */}
+                  {/* Pagamento de Diárias */}
                   <Collapsible 
                     open={fieldCollapseState['diarias_detalhe']} 
                     onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['diarias_detalhe']: open }))}
@@ -1141,7 +887,7 @@ const CustosOperacionaisPage = () => {
                     </CollapsibleContent>
                   </Collapsible>
                   
-                  {/* NOVO: Diretrizes de Passagens (Contratos/Trechos) */}
+                  {/* Diretrizes de Passagens (Contratos/Trechos) */}
                   <Collapsible 
                     open={fieldCollapseState['passagens_detalhe']} 
                     onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['passagens_detalhe']: open }))}
@@ -1232,6 +978,16 @@ const CustosOperacionaisPage = () => {
         onCopy={handleCopyDiretrizes}
         onDelete={handleDeleteDiretrizes}
         loading={loading}
+      />
+      
+      {/* Diálogo de Formulário de Passagens */}
+      <PassagemDiretrizFormDialog
+          open={isPassagemFormOpen}
+          onOpenChange={setIsPassagemFormOpen}
+          selectedYear={selectedYear}
+          diretrizToEdit={diretrizToEdit}
+          onSave={handleSavePassagem}
+          loading={loading}
       />
     </div>
   );
