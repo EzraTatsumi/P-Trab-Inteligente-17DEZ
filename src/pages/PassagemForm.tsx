@@ -1482,86 +1482,126 @@ const PassagemForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 4: REGISTROS SALVOS */}
+                            {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
                             {registros && registros.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
-                                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        4. Registros Salvos ({registros.length})
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        <Sparkles className="h-5 w-5 text-accent" />
+                                        OMs Cadastradas ({registros.length})
                                     </h3>
                                     
-                                    <div className="space-y-4">
-                                        {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => (
-                                            <Card key={omKey} className="border-2 border-border">
-                                                <CardHeader className="py-3 px-4 bg-muted/50">
-                                                    <CardTitle className="text-sm font-bold text-foreground">
-                                                        OM Favorecida: {omKey}
-                                                    </CardTitle>
-                                                </CardHeader>
-                                                <CardContent className="p-0">
-                                                    <Table>
-                                                        <TableHeader>
-                                                            <TableRow>
-                                                                <TableHead className="w-[150px]">Trecho</TableHead>
-                                                                <TableHead className="w-[100px] text-center">Qtd</TableHead>
-                                                                <TableHead className="w-[150px] text-center">OM Recurso</TableHead>
-                                                                <TableHead className="w-[100px] text-center">Dias</TableHead>
-                                                                <TableHead className="w-[100px] text-center">Efetivo</TableHead>
-                                                                <TableHead className="text-right">Valor (ND 33)</TableHead>
-                                                                <TableHead className="w-[100px] text-center">Ações</TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {omRegistros.map(registro => (
-                                                                <TableRow key={registro.id} className={cn(editingId === registro.id && "bg-yellow-50/50")}>
-                                                                    <TableCell className="text-xs font-medium">
-                                                                        {registro.origem} &rarr; {registro.destino}
-                                                                        <p className="text-muted-foreground text-[10px] mt-0.5">
-                                                                            {registro.tipo_transporte} ({registro.is_ida_volta ? 'I/V' : 'Ida'})
+                                    {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
+                                        // O total da OM é a soma do valor_total
+                                        const totalOM = omRegistros.reduce((sum, r) => Number(r.valor_total) + sum, 0);
+                                        const omName = omKey.split(' (')[0];
+                                        const ug = omKey.split(' (')[1].replace(')', '');
+                                        
+                                        // A fase de atividade é a mesma para todos os registros agrupados (pelo menos o primeiro)
+                                        const faseAtividade = omRegistros[0].fase_atividade || 'Não Definida';
+                                        
+                                        return (
+                                            <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
+                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                        {omName} (UG: {formatCodug(ug)})
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {faseAtividade}
+                                                        </Badge>
+                                                    </h3>
+                                                    <span className="font-extrabold text-xl text-primary">
+                                                        {formatCurrency(totalOM)}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="space-y-3">
+                                                    {omRegistros.map((registro) => {
+                                                        const totalPassagens = registro.quantidade_passagens;
+                                                        const totalND33 = Number(registro.valor_nd_33 || 0);
+                                                        
+                                                        const isDifferentOm = registro.om_detentora !== registro.organizacao || registro.ug_detentora !== registro.ug;
+                                                        
+                                                        const diasText = registro.dias_operacao === 1 ? 'dia' : 'dias';
+                                                        const efetivoText = registro.efetivo === 1 ? 'militar' : 'militares';
+                                                        const passagemText = totalPassagens === 1 ? 'passagem' : 'passagens';
+                                                        
+                                                        return (
+                                                            <Card 
+                                                                key={registro.id} 
+                                                                className={cn(
+                                                                    "p-3 bg-background border",
+                                                                    editingId === registro.id && "border-yellow-500/70 bg-yellow-50/50"
+                                                                )}
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <h4 className="font-semibold text-base text-foreground">
+                                                                                {registro.origem} &rarr; {registro.destino}
+                                                                            </h4>
+                                                                            {registro.fase_atividade !== faseAtividade && (
+                                                                                <Badge variant="outline" className="text-xs">
+                                                                                    {registro.fase_atividade}
+                                                                                </Badge>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            {registro.tipo_transporte} ({registro.is_ida_volta ? 'Ida/Volta' : 'Ida'}) | {registro.dias_operacao} {diasText} | {registro.efetivo} {efetivoText}
                                                                         </p>
-                                                                    </TableCell>
-                                                                    <TableCell className="text-center font-medium">
-                                                                        {registro.quantidade_passagens}
-                                                                    </TableCell>
-                                                                    <TableCell className="text-center text-xs">
-                                                                        {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
-                                                                    </TableCell>
-                                                                    <TableCell className="text-center font-medium">
-                                                                        {registro.dias_operacao}
-                                                                    </TableCell>
-                                                                    <TableCell className="text-center font-medium">
-                                                                        {registro.efetivo}
-                                                                    </TableCell>
-                                                                    <TableCell className="text-right font-bold text-green-600">
-                                                                        {formatCurrency(registro.valor_nd_33)}
-                                                                    </TableCell>
-                                                                    <TableCell className="text-center">
-                                                                        <div className="flex justify-center gap-1">
-                                                                            <Button 
-                                                                                variant="ghost" 
-                                                                                size="icon" 
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-lg text-primary/80">
+                                                                            {formatCurrency(totalND33)}
+                                                                        </span>
+                                                                        <div className="flex gap-1">
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8"
                                                                                 onClick={() => handleEdit(registro)}
-                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                                disabled={!isPTrabEditable || isSaving || pendingPassagens.length > 0}
                                                                             >
-                                                                                <Edit className="h-4 w-4 text-blue-600" />
+                                                                                <Pencil className="h-4 w-4" />
                                                                             </Button>
-                                                                            <Button 
-                                                                                variant="ghost" 
-                                                                                size="icon" 
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
                                                                                 onClick={() => handleConfirmDelete(registro)}
+                                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                                                                 disabled={!isPTrabEditable || isSaving}
                                                                             >
-                                                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                                                                <Trash2 className="h-4 w-4" />
                                                                             </Button>
                                                                         </div>
-                                                                    </TableCell>
-                                                                </TableRow>
-                                                            ))}
-                                                        </TableBody>
-                                                    </Table>
-                                                </CardContent>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                {/* Detalhes da Alocação */}
+                                                                <div className="pt-2 border-t mt-2">
+                                                                    {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
+                                                                    <div className="flex justify-between text-xs mb-1">
+                                                                        <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                        <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
+                                                                            {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">Quantidade de Passagens:</span>
+                                                                        <span className="font-medium text-foreground">{totalPassagens} {passagemText}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs font-bold pt-1">
+                                                                        <span className="text-muted-foreground">Total (ND 33.90.33):</span>
+                                                                        <span className="text-green-600">{formatCurrency(totalND33)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </Card>
+                                                        );
+                                                    })}
+                                                </div>
                                             </Card>
-                                        ))}
-                                    </div>
+                                        );
+                                    })}
                                 </section>
                             )}
 
@@ -1651,6 +1691,9 @@ const PassagemForm = () => {
                                             memoriaExibida = registro.detalhamento_customizado!;
                                         }
                                         
+                                        // Verifica se a OM Detentora é diferente da OM Favorecida
+                                        const isDifferentOmInMemoria = registro.om_detentora !== registro.organizacao || registro.ug_detentora !== registro.ug;
+
                                         return (
                                             <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                                                 
@@ -1666,12 +1709,14 @@ const PassagemForm = () => {
                                                                 </Badge>
                                                             )}
                                                         </div>
-                                                        <div className="flex items-center gap-1 mt-1">
-                                                            <Plane className="h-4 w-4 text-primary" />
-                                                            <span className="text-sm font-medium text-primary">
-                                                                OM Destino: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
-                                                            </span>
-                                                        </div>
+                                                        {isDifferentOmInMemoria && (
+                                                            <div className="flex items-center gap-1 mt-1">
+                                                                <AlertCircle className="h-4 w-4 text-red-600" />
+                                                                <span className="text-sm font-medium text-red-600">
+                                                                    Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     
                                                     <div className="flex items-center justify-end gap-2 shrink-0">
