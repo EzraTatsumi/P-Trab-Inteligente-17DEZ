@@ -929,7 +929,7 @@ const PassagemForm = () => {
             const totalTrecho = calculateTrechoTotal(trecho);
             
             const calculatedFormData: PassagemFormType = {
-                organizacao: calculatedDataForMemoria.om_favorecida, 
+                organizacao: calculatedDataForMemoria.om_favorecida, // <-- CORRIGIDO AQUI
                 ug: calculatedDataForMemoria.ug_favorecida, 
                 dias_operacao: calculatedDataForMemoria.dias_operacao,
                 fase_atividade: calculatedDataForMemoria.fase_atividade,
