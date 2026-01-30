@@ -927,7 +927,7 @@ const PassagemForm = () => {
             const totalTrecho = calculateTrechoTotal(trecho);
             
             const calculatedFormData: PassagemFormType = {
-                organizacao: calculatedDataForMemoria.om_favorecida, // <-- CORRIGIDO AQUI
+                organizacao: calculatedDataForMemoria.om_favorecida, 
                 ug: calculatedDataForMemoria.ug_favorecida, 
                 dias_operacao: calculatedDataForMemoria.dias_operacao,
                 fase_atividade: calculatedDataForMemoria.fase_atividade,
@@ -1516,7 +1516,7 @@ const PassagemForm = () => {
                                                             <div className="flex flex-col">
                                                                 <div className="flex items-center gap-2">
                                                                     <h4 className="font-semibold text-base text-foreground">
-                                                                        Passagens ({group.records.length} trecho(s))
+                                                                        Passagens
                                                                     </h4>
                                                                 </div>
                                                                 {/* P 1556: Quantidade total de passagens, dias e efetivo */}
