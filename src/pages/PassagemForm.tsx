@@ -195,7 +195,12 @@ const PassagemForm = () => {
             // CORREÇÃO: Mapear corretamente os campos de trecho do primeiro item selecionado
             const recordsToInsert: TablesInsert<'passagem_registros'>[] = newRecords.map(r => {
                 // Assumimos que o primeiro trecho na lista 'selected_trechos' representa o registro consolidado
+                // Nota: O formulário atual só suporta um trecho por registro de DB, mas a lógica de cálculo
+                // foi adaptada para múltiplos. Aqui, usamos o primeiro trecho para preencher os campos de FK.
                 const firstTrecho = r.selected_trechos[0];
+                
+                // O campo 'quantidade_passagens' deve ser o total de passagens de TODOS os trechos selecionados
+                const totalPassagens = r.selected_trechos.reduce((sum, t) => sum + t.quantidade_passagens, 0);
                 
                 return {
                     p_trab_id: r.p_trab_id,
@@ -206,7 +211,7 @@ const PassagemForm = () => {
                     dias_operacao: r.dias_operacao,
                     fase_atividade: r.fase_atividade,
                     
-                    // Campos de Trecho (usando o primeiro trecho)
+                    // Campos de Trecho (usando o primeiro trecho para FKs)
                     diretriz_id: firstTrecho.diretriz_id,
                     trecho_id: firstTrecho.id, 
                     origem: firstTrecho.origem,
@@ -216,7 +221,7 @@ const PassagemForm = () => {
                     valor_unitario: firstTrecho.valor_unitario,
                     
                     // Campos consolidados
-                    quantidade_passagens: r.selected_trechos.reduce((sum, t) => sum + t.quantidade_passagens, 0),
+                    quantidade_passagens: totalPassagens,
                     valor_total: r.valor_total,
                     valor_nd_33: r.valor_nd_33,
                     detalhamento: r.detalhamento,
