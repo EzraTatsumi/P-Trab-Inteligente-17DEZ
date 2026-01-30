@@ -1587,8 +1587,14 @@ const PassagemForm = () => {
                                                                         </span>
                                                                     </div>
                                                                     <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">Trecho ({registro.tipo_transporte} - {registro.is_ida_volta ? 'Ida/Volta' : 'Ida'}):</span>
-                                                                        <span className="font-medium text-foreground">{registro.origem} &rarr; {registro.destino} ({totalPassagens} {passagemText})</span>
+                                                                        <span className="text-muted-foreground">Trecho:</span>
+                                                                        <span className="font-medium text-foreground">
+                                                                            {registro.origem} &rarr; {registro.destino} ({registro.tipo_transporte} - {registro.is_ida_volta ? 'Ida/Volta' : 'Ida'})
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">Quantidade de Passagens:</span>
+                                                                        <span className="font-medium text-foreground">{totalPassagens} {passagemText}</span>
                                                                     </div>
                                                                     <div className="flex justify-between text-xs font-bold pt-1">
                                                                         <span className="text-muted-foreground">Total (ND 33.90.33):</span>
