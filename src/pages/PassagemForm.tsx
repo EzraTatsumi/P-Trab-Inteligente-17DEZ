@@ -1547,7 +1547,7 @@ const PassagemForm = () => {
                                                             <div className="flex flex-col">
                                                                 <div className="flex items-center gap-2">
                                                                     <h4 className="font-semibold text-base text-foreground">
-                                                                        Passagens (Consolidado)
+                                                                        Passagens
                                                                     </h4>
                                                                 </div>
                                                                 {/* P 1556: Quantidade total de passagens, dias e efetivo */}
@@ -1604,7 +1604,6 @@ const PassagemForm = () => {
                                                     </Card>
                                                     
                                                     {/* REMOVIDO: Exibir lista de trechos para acesso rápido à edição/exclusão (Div 1586) */}
-                                                    {/* A edição/exclusão agora é feita através do botão no card consolidado, que edita o primeiro registro do grupo. */}
                                                 </div>
                                             </Card>
                                         );
