@@ -25,7 +25,7 @@ interface PassagemRegistro {
 /**
  * Gera a memória de cálculo detalhada para um registro de Passagem.
  */
-export const generateConsolidatedPassagemMemoriaCalculoUtility = (registro: PassagemRegistro): string => {
+export const generatePassagemMemoriaCalculoUtility = (registro: PassagemRegistro): string => {
     const {
         organizacao,
         ug,
