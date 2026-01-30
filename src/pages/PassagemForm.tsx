@@ -595,15 +595,19 @@ const PassagemForm = () => {
                     ug: newFormData.ug_favorecida, 
                     dias_operacao: newFormData.dias_operacao,
                     fase_atividade: newFormData.fase_atividade,
+                    
+                    // Dados do Trecho Selecionado
                     om_detentora: trecho.om_detentora,
                     ug_detentora: trecho.ug_detentora,
                     diretriz_id: trecho.diretriz_id,
-                    trecho_id: trecho.id,
+                    trecho_id: trecho.id, // Usar 'id' do trecho
                     origem: trecho.origem,
                     destino: trecho.destino,
                     tipo_transporte: trecho.tipo_transporte,
                     is_ida_volta: trecho.is_ida_volta,
                     valor_unitario: trecho.valor_unitario,
+                    
+                    // Quantidade
                     quantidade_passagens: trecho.quantidade_passagens,
                     efetivo: newFormData.efetivo,
                 };
@@ -1580,14 +1584,14 @@ const PassagemForm = () => {
                                                                 {/* Detalhes da Alocação */}
                                                                 <div className="pt-2 border-t mt-2">
                                                                     {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
-                                                                    <div className="flex justify-between text-xs mb-1">
+                                                                    <div className="flex justify-between text-xs">
                                                                         <span className="text-muted-foreground">OM Destino Recurso:</span>
                                                                         <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
                                                                             {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
                                                                         </span>
                                                                     </div>
-                                                                    <div className="flex justify-between text-xs font-bold pt-1">
-                                                                        <span className="text-muted-foreground">Total (ND 33.90.33):</span>
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">ND 33.90.33:</span>
                                                                         <span className="text-green-600">{formatCurrency(totalND33)}</span>
                                                                     </div>
                                                                 </div>
