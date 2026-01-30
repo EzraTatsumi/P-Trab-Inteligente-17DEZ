@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -89,6 +89,7 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
 
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
+  const location = useLocation(); // Hook para acessar o estado de navegação
   const { user } = useSession();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
@@ -112,8 +113,12 @@ const CustosOperacionaisPage = () => {
     OPERATIONAL_FIELDS.forEach(field => {
       initialState[field.key as string] = false;
     });
+    
+    // Verifica se o estado de navegação pede para abrir a seção de passagens
+    const shouldOpenPassagens = location.state && (location.state as { openPassagens?: boolean }).openPassagens;
+    
     initialState['diarias_detalhe'] = false; 
-    initialState['passagens_detalhe'] = false; 
+    initialState['passagens_detalhe'] = shouldOpenPassagens || false; // Define o estado inicial
     return initialState;
   });
   

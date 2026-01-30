@@ -1033,8 +1033,8 @@ const PassagemForm = () => {
     
     // --- Handler para Adicionar Contrato ---
     const handleAddContract = () => {
-        // CORREÇÃO: Navegar para a rota correta de Custos Operacionais
-        navigate('/config/custos-operacionais');
+        // CORREÇÃO: Navegar para a rota correta de Custos Operacionais, passando o estado para abrir a seção de passagens
+        navigate('/config/custos-operacionais', { state: { openPassagens: true } });
     };
     
     // =================================================================
