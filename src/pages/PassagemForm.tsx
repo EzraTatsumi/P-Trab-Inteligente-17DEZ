@@ -736,18 +736,15 @@ const PassagemForm = () => {
                 let memoriaCustomizadaTexto: string | null = null;
                 if (groupToReplace) {
                     // Busca o primeiro registro do grupo original para verificar a memória customizada
-                    // Nota: A memória customizada é salva por registro (trecho), mas aqui estamos tratando o lote.
-                    // Para simplificar o fluxo de edição de lote, vamos apenas garantir que o primeiro item
-                    // do novo lote tenha o ID temporário do primeiro item do lote antigo, se necessário.
-                    
-                    // Se o usuário está editando um lote, ele está redefinindo todos os trechos.
-                    // A memória customizada deve ser tratada separadamente na Seção 5.
-                    
-                    // No entanto, para fins de *staging* (revisão na Seção 3), vamos garantir que o primeiro item
-                    // do novo lote tenha o ID temporário do primeiro item do lote antigo.
-                    if (newPendingItems.length > 0 && groupToReplace.records.length > 0) {
-                        newPendingItems[0].tempId = groupToReplace.records[0].id;
+                    const originalRecord = groupToReplace.records.find(r => r.id === editingId);
+                    if (originalRecord) {
+                        memoriaCustomizadaTexto = originalRecord.detalhamento_customizado;
                     }
+                }
+                
+                // Aplicamos a memória customizada ao primeiro item da nova lista (apenas para fins de staging display)
+                if (memoriaCustomizadaTexto && newPendingItems.length > 0) {
+                    newPendingItems[0].detalhamento_customizado = memoriaCustomizadaTexto;
                 }
                 
                 setPendingPassagens(newPendingItems); // Armazena o novo lote completo
@@ -932,7 +929,7 @@ const PassagemForm = () => {
             const totalTrecho = calculateTrechoTotal(trecho);
             
             const calculatedFormData: PassagemFormType = {
-                organizacao: calculatedDataForMemoreia.om_favorecida, 
+                organizacao: calculatedDataForMemoria.om_favorecida, 
                 ug: calculatedDataForMemoria.ug_favorecida, 
                 dias_operacao: calculatedDataForMemoria.dias_operacao,
                 fase_atividade: calculatedDataForMemoria.fase_atividade,
