@@ -1537,7 +1537,7 @@ const PassagemForm = () => {
                                                     </span>
                                                 </div>
                                                 
-                                                {/* NOVO CORPO CONSOLIDADO */}
+                                                {/* CORPO CONSOLIDADO (Card 1537) */}
                                                 <div className="space-y-3">
                                                     <Card 
                                                         key={omKey} 
@@ -1556,12 +1556,33 @@ const PassagemForm = () => {
                                                                 </p>
                                                             </div>
                                                             <div className="flex items-center gap-2">
-                                                                {/* SPAN 1561: Total Geral de Passagens (ND 33.90.33) */}
-                                                                <span className="text-lg text-primary/80">
+                                                                {/* SPAN 1561: Total Geral de Passagens (ND 33.90.33) - Restaurado para font-extrabold text-xl text-foreground */}
+                                                                <span className="font-extrabold text-xl text-foreground">
                                                                     {formatCurrency(totalND33Consolidado)}
                                                                 </span>
-                                                                {/* Botões de Ação (Manter apenas o primeiro registro para edição/exclusão, ou remover se a edição consolidada não for suportada) */}
-                                                                {/* Como a edição é por registro (trecho), vamos manter a lista de trechos para acesso rápido à edição individual */}
+                                                                {/* Botões de Ação (Movidos para cá, usando o primeiro registro para referência de edição/exclusão) */}
+                                                                <div className="flex gap-1 shrink-0">
+                                                                    <Button
+                                                                        type="button" 
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-8 w-8"
+                                                                        onClick={() => handleEdit(omRegistros[0])}
+                                                                        disabled={!isPTrabEditable || isSaving || pendingPassagens.length > 0}
+                                                                    >
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button
+                                                                        type="button" 
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => handleConfirmDelete(omRegistros[0])}
+                                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                         
@@ -1582,56 +1603,8 @@ const PassagemForm = () => {
                                                         </div>
                                                     </Card>
                                                     
-                                                    {/* Exibir lista de trechos para acesso rápido à edição/exclusão */}
-                                                    <div className="space-y-2 pt-2 border-t mt-4">
-                                                        <h5 className="text-sm font-semibold text-muted-foreground">Trechos Individuais:</h5>
-                                                        {omRegistros.map((registro) => {
-                                                            const totalPassagens = registro.quantidade_passagens;
-                                                            const totalND33 = Number(registro.valor_nd_33 || 0);
-                                                            const passagemText = totalPassagens === 1 ? 'passagem' : 'passagens';
-                                                            
-                                                            return (
-                                                                <div 
-                                                                    key={registro.id} 
-                                                                    className={cn(
-                                                                        "flex justify-between items-center p-2 rounded-md border",
-                                                                        editingId === registro.id && "border-yellow-500/70 bg-yellow-50/50"
-                                                                    )}
-                                                                >
-                                                                    <div className="flex flex-col text-sm">
-                                                                        <span className="font-medium">
-                                                                            {registro.origem} &rarr; {registro.destino}
-                                                                        </span>
-                                                                        <span className="text-xs text-muted-foreground">
-                                                                            {totalPassagens} {passagemText} ({formatCurrency(totalND33)})
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="flex gap-1 shrink-0">
-                                                                        <Button
-                                                                            type="button" 
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-8 w-8"
-                                                                            onClick={() => handleEdit(registro)}
-                                                                            disabled={!isPTrabEditable || isSaving || pendingPassagens.length > 0}
-                                                                        >
-                                                                            <Pencil className="h-4 w-4" />
-                                                                        </Button>
-                                                                        <Button
-                                                                            type="button" 
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            onClick={() => handleConfirmDelete(registro)}
-                                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                                            disabled={!isPTrabEditable || isSaving}
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
+                                                    {/* REMOVIDO: Exibir lista de trechos para acesso rápido à edição/exclusão (Div 1586) */}
+                                                    {/* A edição/exclusão agora é feita através do botão no card consolidado, que edita o primeiro registro do grupo. */}
                                                 </div>
                                             </Card>
                                         );
