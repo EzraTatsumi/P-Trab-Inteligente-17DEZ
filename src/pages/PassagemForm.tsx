@@ -615,7 +615,92 @@ const PassagemForm = () => {
         };
         setFormData(newFormData);
         
-        toast.info("Modo Edição ativado. Revise os dados e clique em 'Recalcular/Revisar Lote' na Seção 2.");
+        // 4. Gerar os itens pendentes (staging) imediatamente com os dados originais
+        const newPendingItems: CalculatedPassagem[] = group.records.map(registro => {
+            const trecho: TrechoSelection = {
+                id: registro.trecho_id, 
+                diretriz_id: registro.diretriz_id,
+                om_detentora: registro.om_detentora,
+                ug_detentora: registro.ug_detentora,
+                origem: registro.origem,
+                destino: registro.destino,
+                tipo_transporte: registro.tipo_transporte as TipoTransporte,
+                is_ida_volta: registro.is_ida_volta,
+                valor_unitario: Number(registro.valor_unitario || 0),
+                quantidade_passagens: registro.quantidade_passagens,
+                valor: Number(registro.valor_unitario || 0),
+            };
+            
+            const totalTrecho = calculateTrechoTotal(trecho);
+            
+            const calculatedFormData: PassagemFormType = {
+                organizacao: registro.organizacao, 
+                ug: registro.ug, 
+                dias_operacao: registro.dias_operacao,
+                fase_atividade: registro.fase_atividade || "",
+                om_detentora: registro.om_detentora,
+                ug_detentora: registro.ug_detentora,
+                diretriz_id: trecho.diretriz_id,
+                trecho_id: trecho.id, 
+                origem: trecho.origem,
+                destino: trecho.destino,
+                tipo_transporte: trecho.tipo_transporte,
+                is_ida_volta: trecho.is_ida_volta,
+                valor_unitario: trecho.valor_unitario,
+                quantidade_passagens: trecho.quantidade_passagens,
+                efetivo: registro.efetivo || 0,
+            };
+
+            let memoria = `--- Trecho Único: ${trecho.origem} -> ${trecho.destino} ---\n`;
+            memoria += generatePassagemMemoriaCalculo({
+                ...calculatedFormData,
+                valor_total: totalTrecho,
+                valor_nd_33: totalTrecho,
+            } as PassagemRegistro);
+            memoria += "\n";
+            memoria += `\n==================================================\n`;
+            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalTrecho)}\n`;
+            memoria += `Efetivo: ${registro.efetivo || 0} militares\n`;
+            memoria += `==================================================\n`;
+            
+            return {
+                tempId: registro.id, // Usamos o ID real do DB como tempId para rastreamento
+                p_trab_id: registro.p_trab_id,
+                organizacao: registro.organizacao, 
+                ug: registro.ug, 
+                dias_operacao: registro.dias_operacao,
+                efetivo: registro.efetivo || 0,
+                fase_atividade: registro.fase_atividade || "",
+                
+                om_detentora: registro.om_detentora,
+                ug_detentora: registro.ug_detentora,
+                diretriz_id: trecho.diretriz_id,
+                trecho_id: trecho.id, 
+                origem: trecho.origem,
+                destino: registro.destino,
+                tipo_transporte: registro.tipo_transporte,
+                is_ida_volta: registro.is_ida_volta,
+                valor_unitario: trecho.valor_unitario,
+                quantidade_passagens: registro.quantidade_passagens,
+                
+                valor_total: totalTrecho,
+                valor_nd_33: totalTrecho,
+                
+                detalhamento: registro.detalhamento, 
+                detalhamento_customizado: registro.detalhamento_customizado, 
+                
+                totalGeral: totalTrecho,
+                memoria_calculo_display: memoria, 
+                om_favorecida: registro.organizacao,
+                ug_favorecida: registro.ug,
+                selected_trechos: [trecho], 
+            } as CalculatedPassagem;
+        });
+        
+        setPendingPassagens(newPendingItems);
+        setLastStagedFormData(newFormData); // Marca o formulário como staged (limpo)
+        
+        toast.info("Modo Edição ativado. Altere os dados na Seção 2 e clique em 'Recalcular/Revisar Lote'.");
         
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -744,12 +829,6 @@ const PassagemForm = () => {
                 
                 // Aplicamos a memória customizada ao primeiro item da nova lista (apenas para fins de staging display)
                 if (memoriaCustomizadaTexto && newPendingItems.length > 0) {
-                    // Se o usuário está editando, ele está substituindo o lote.
-                    // A memória customizada deve ser mantida no primeiro item do novo lote,
-                    // ou o usuário pode editá-la na Seção 5 após salvar.
-                    // Por simplicidade, vamos manter a memória customizada apenas se o usuário não a alterou no formulário.
-                    // Como não há campo de detalhamento no formulário principal, apenas mantemos o estado de edição.
-                    
                     // Para garantir que o item em staging tenha o ID do item original para referência,
                     // vamos atribuir o ID do primeiro registro original ao primeiro item do novo lote.
                     newPendingItems[0].tempId = editingId; 
