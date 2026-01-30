@@ -1341,6 +1341,9 @@ const PassagemForm = () => {
                                             const diasText = item.dias_operacao === 1 ? "dia" : "dias";
                                             const totalPassagens = item.selected_trechos.reduce((sum, t) => sum + t.quantidade_passagens, 0);
                                             const passagemText = totalPassagens === 1 ? 'passagem' : 'passagens'; 
+                                            const efetivoText = item.efetivo === 1 ? 'militar' : 'militares';
+                                            
+                                            const isOmDestinoDifferent = item.om_favorecida !== item.om_detentora || item.ug_favorecida !== item.ug_detentora;
 
                                             return (
                                                 <Card 
@@ -1383,8 +1386,10 @@ const PassagemForm = () => {
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
-                                                                <p className="font-medium">{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
-                                                                <p className="font-medium">{item.efetivo} militares</p>
+                                                                <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>
+                                                                    {item.om_detentora} ({formatCodug(item.ug_detentora)})
+                                                                </p>
+                                                                <p className="font-medium">{item.efetivo} {efetivoText}</p>
                                                                 <p className="font-medium">{totalPassagens} {passagemText} / {item.dias_operacao} {diasText}</p>
                                                             </div>
                                                         </div>
