@@ -48,7 +48,7 @@ import {
   generateSuprimentoFundosMemoriaCalculo as generateSuprimentoFundosMemoriaCalculoUtility,
 } from "@/lib/suprimentoFundosUtils"; // NOVO: Importar utilitários de Suprimento de Fundos
 import { 
-  generatePassagemMemoriaCalculoUtility,
+  generatePassagemMemoriaCalculoUtility, // CORRIGIDO: Importando o nome correto
 } from "@/lib/passagemUtils"; // NOVO: Importar utilitários de Passagem
 import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais } from "@/lib/ptrabUtils";
@@ -1197,7 +1197,7 @@ const PTrabReportManager = () => {
                 generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada}
                 generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada}
                 generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada}
-                generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada} // NOVO: Passando função de memória
+                generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada} // CORRIGIDO: Usando o nome local correto
             />
         );
       case 'material_permanente':
