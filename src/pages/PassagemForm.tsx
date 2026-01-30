@@ -96,7 +96,6 @@ const initialFormState: PassagemFormState = {
 
 // Função para calcular o valor total de um trecho (considerando ida/volta)
 const calculateTrechoTotal = (trecho: TrechoSelection): number => {
-    // Removido o multiplicador baseado em trecho.is_ida_volta.
     // Assume-se que o valor_unitario já reflete o custo total do trecho (ida ou ida/volta).
     return trecho.valor_unitario * trecho.quantidade_passagens; 
 };
@@ -1420,16 +1419,14 @@ const PassagemForm = () => {
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
                                                                 <p className="font-medium">OM Destino do Recurso:</p>
-                                                                <p className="font-medium">Efetivo:</p>
-                                                                <p className="font-medium">Total Passagens / Dias:</p>
+                                                                <p className="font-medium">Total Passagens:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
                                                                 <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>
                                                                     {item.om_detentora} ({formatCodug(item.ug_detentora)})
                                                                 </p>
-                                                                <p className="font-medium">{item.efetivo} {efetivoText}</p>
-                                                                <p className="font-medium">{totalPassagens} {passagemText} / {item.dias_operacao} {diasText}</p>
+                                                                <p className="font-medium">{totalPassagens} {passagemText}</p>
                                                             </div>
                                                         </div>
                                                         
