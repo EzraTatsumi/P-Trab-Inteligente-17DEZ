@@ -507,6 +507,18 @@ const PTrabManager = () => {
           else {
               totalVerbaOperacional = (verbaOperacionalData || []).reduce((sum, record) => sum + (record.valor_nd_30 || 0) + (record.valor_nd_39 || 0), 0);
           }
+          
+          // 6. Fetch Passagem totals (33.90.33) - NOVO
+          const { data: passagemData, error: passagemError } = await supabase
+            .from('passagem_registros')
+            .select('valor_nd_33')
+            .eq('p_trab_id', ptrab.id);
+            
+          let totalPassagemND33 = 0;
+          if (passagemError) console.error("Erro ao carregar Passagens para PTrab", ptrab.numero_ptrab, passagemError);
+          else {
+              totalPassagemND33 = (passagemData || []).reduce((sum, record) => sum + (record.valor_nd_33 || 0), 0);
+          }
 
 
           // SOMA TOTAL DA ABA LOGÍSTICA
@@ -514,8 +526,8 @@ const PTrabManager = () => {
           totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII;
           
           // SOMA TOTAL DA ABA OPERACIONAL
-          // Operacional = Diárias (ND 15) + Verba Operacional
-          totalOperacionalCalculado = totalDiariaND15 + totalVerbaOperacional;
+          // Operacional = Diárias (ND 15) + Verba Operacional + Passagens (ND 33)
+          totalOperacionalCalculado = totalDiariaND15 + totalVerbaOperacional + totalPassagemND33;
           
           const isOwner = ptrab.user_id === user.id;
           const isShared = !isOwner && (ptrab.shared_with || []).includes(user.id);
