@@ -531,6 +531,11 @@ const PassagemForm = () => {
             return;
         }
         
+        // FIX: Limpa explicitamente os estados de itens pendentes para evitar que o item editado
+        // caia acidentalmente na lista de inserção (pendingPassagens) se o usuário clicar em Salvar Registros.
+        setPendingPassagens([]);
+        setLastStagedFormData(null);
+        
         setEditingId(registro.id);
         
         // 1. Configurar OM Favorecida e OM Destino
