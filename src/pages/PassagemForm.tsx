@@ -221,13 +221,31 @@ const PassagemForm = () => {
 
             if (error) throw error;
         },
-        onSuccess: () => {
-            toast.success("Registros de Passagens salvos com sucesso!");
+        onSuccess: (newRecords) => {
+            toast.success(`Sucesso! ${pendingPassagens.length} registro(s) de Passagem adicionado(s).`);
             setPendingPassagens([]);
             setLastStagedFormData(null);
             queryClient.invalidateQueries({ queryKey: ['passagemRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
-            resetForm();
+            
+            // Manter campos de contexto e trecho
+            setFormData(prev => ({
+                ...prev,
+                om_favorecida: prev.om_favorecida,
+                ug_favorecida: prev.ug_favorecida,
+                om_destino: prev.om_destino,
+                ug_destino: prev.ug_destino,
+                dias_operacao: prev.dias_operacao,
+                efetivo: prev.efetivo,
+                fase_atividade: prev.fase_atividade,
+                selected_trechos: prev.selected_trechos,
+            }));
+            
+            if (newRecords && newRecords.length > 0) {
+                handleEdit(newRecords[0] as PassagemRegistroDB);
+            } else {
+                resetForm();
+            }
         },
         onError: (error) => { 
             toast.error("Falha ao salvar registros.", { description: sanitizeError(error) });
@@ -326,8 +344,6 @@ const PassagemForm = () => {
         }
     }, [ptrabData, oms, editingId]);
     
-    // REMOVIDO: useEffect de preenchimento automático da OM Destino (substituído pela lógica no handler)
-
     // =================================================================
     // CÁLCULOS E MEMÓRIA (MEMOIZED)
     // =================================================================
@@ -1298,8 +1314,18 @@ const PassagemForm = () => {
                                         3. Itens Adicionados ({itemsToDisplay.length})
                                     </h3>
                                     
-                                    {/* Alerta de Validação Final */}
-                                    {isStagingUpdate && isPassagemDirty && (
+                                    {/* Alerta de Validação Final (Modo Novo Registro) */}
+                                    {!editingId && isPassagemDirty && (
+                                        <Alert variant="destructive">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertDescription className="font-medium">
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados. Clique em "Salvar Item na Lista" na Seção 2 para atualizar o item pendente antes de salvar os registros.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                    
+                                    {/* Alerta de Validação Final (Apenas em modo de edição) */}
+                                    {editingId && isPassagemDirty && (
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertDescription className="font-medium">
