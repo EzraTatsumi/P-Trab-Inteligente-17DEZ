@@ -69,6 +69,21 @@ interface CalculatedPassagem extends TablesInsert<'passagem_registros'> {
     selected_trechos: TrechoSelection[];
 }
 
+// NOVO TIPO: Representa um lote consolidado de registros (vários trechos)
+interface ConsolidatedPassagem {
+    groupKey: string;
+    organizacao: string;
+    ug: string;
+    om_detentora: string;
+    ug_detentora: string;
+    dias_operacao: number;
+    efetivo: number;
+    fase_atividade: string;
+    records: PassagemRegistroDB[]; // Todos os registros DB pertencentes a este grupo
+    totalGeral: number;
+    totalND33: number;
+}
+
 // Estado inicial para o formulário
 interface PassagemFormState {
     om_favorecida: string; 
@@ -145,6 +160,10 @@ const PassagemForm = () => {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [registroToDelete, setRegistroToDelete] = useState<PassagemRegistroDB | null>(null);
     
+    // NOVO ESTADO: Armazena o grupo completo a ser excluído/substituído
+    const [groupToDelete, setGroupToDelete] = useState<ConsolidatedPassagem | null>(null); 
+    const [groupToReplace, setGroupToReplace] = useState<ConsolidatedPassagem | null>(null); 
+    
     // ESTADOS DE EDIÇÃO DE MEMÓRIA
     const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
     const [memoriaEdit, setMemoriaEdit] = useState<string>("");
@@ -185,12 +204,55 @@ const PassagemForm = () => {
         select: (data) => data.sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
     });
     
+    // NOVO MEMO: Consolida os registros por lote de solicitação
+    const consolidatedRegistros = useMemo<ConsolidatedPassagem[]>(() => {
+        if (!registros) return [];
+
+        const groups = registros.reduce((acc, registro) => {
+            // Chave de consolidação: todos os campos que definem o lote de solicitação
+            const key = [
+                registro.organizacao,
+                registro.ug,
+                registro.om_detentora,
+                registro.ug_detentora,
+                registro.dias_operacao,
+                registro.efetivo,
+                registro.fase_atividade,
+            ].join('|');
+
+            if (!acc[key]) {
+                acc[key] = {
+                    groupKey: key,
+                    organizacao: registro.organizacao,
+                    ug: registro.ug,
+                    om_detentora: registro.om_detentora,
+                    ug_detentora: registro.ug_detentora,
+                    dias_operacao: registro.dias_operacao,
+                    efetivo: registro.efetivo || 0,
+                    fase_atividade: registro.fase_atividade || '',
+                    records: [],
+                    totalGeral: 0,
+                    totalND33: 0,
+                };
+            }
+
+            acc[key].records.push(registro);
+            acc[key].totalGeral += Number(registro.valor_total || 0);
+            acc[key].totalND33 += Number(registro.valor_nd_33 || 0);
+
+            return acc;
+        }, {} as Record<string, ConsolidatedPassagem>);
+
+        // Ordenar por OM
+        return Object.values(groups).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
+    }, [registros]);
+    
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
     
     // --- Mutations ---
 
-    // 1. Mutation for saving multiple new records (each record is one trecho)
-    const saveMutation = useMutation({
+    // 1. Mutation for saving multiple new records (INSERT)
+    const insertMutation = useMutation({
         mutationFn: async (newRecords: CalculatedPassagem[]) => {
             // Mapear CalculatedPassagem (que agora representa um único trecho) para TablesInsert
             const recordsToInsert: TablesInsert<'passagem_registros'>[] = newRecords.map(r => {
@@ -233,7 +295,7 @@ const PassagemForm = () => {
             
             return recordsToInsert;
         },
-        onSuccess: (newRecords) => {
+        onSuccess: () => {
             toast.success(`Sucesso! ${pendingPassagens.length} registro(s) de Passagem adicionado(s).`);
             setPendingPassagens([]);
             setLastStagedFormData(null);
@@ -260,80 +322,87 @@ const PassagemForm = () => {
         }
     });
 
-    // 2. Mutation for updating a single existing record
-    const updateMutation = useMutation({
-        mutationFn: async (updatedRecord: CalculatedPassagem) => {
-            if (!updatedRecord.tempId) throw new Error("ID do registro para atualização ausente.");
-            
-            // O registro CalculatedPassagem já contém os dados do trecho no seu array selected_trechos[0]
-            const trecho = updatedRecord.selected_trechos[0];
-
-            const recordToUpdate: TablesUpdate<'passagem_registros'> = {
-                organizacao: updatedRecord.organizacao,
-                ug: updatedRecord.ug,
-                om_detentora: updatedRecord.om_detentora,
-                ug_detentora: updatedRecord.ug_detentora,
-                dias_operacao: updatedRecord.dias_operacao,
-                fase_atividade: updatedRecord.fase_atividade,
-                
-                // Campos de Trecho (diretamente do trecho individual)
-                diretriz_id: trecho.diretriz_id,
-                trecho_id: trecho.id,
-                origem: trecho.origem,
-                destino: trecho.destino,
-                tipo_transporte: trecho.tipo_transporte,
-                is_ida_volta: trecho.is_ida_volta,
-                valor_unitario: trecho.valor_unitario,
-                
-                // Campos consolidados
-                quantidade_passagens: trecho.quantidade_passagens,
-                valor_total: updatedRecord.valor_total,
-                valor_nd_33: updatedRecord.valor_nd_33,
-                detalhamento: updatedRecord.detalhamento,
-                detalhamento_customizado: updatedRecord.detalhamento_customizado,
-                efetivo: updatedRecord.efetivo,
-            };
-
-            const { error } = await supabase
+    // 2. Mutation for replacing an entire group of records (UPDATE/REPLACE)
+    const replaceGroupMutation = useMutation({
+        mutationFn: async ({ oldIds, newRecords }: { oldIds: string[], newRecords: CalculatedPassagem[] }) => {
+            // 1. Delete old records
+            const { error: deleteError } = await supabase
                 .from('passagem_registros')
-                .update(recordToUpdate)
-                .eq('id', updatedRecord.tempId);
+                .delete()
+                .in('id', oldIds);
+            if (deleteError) throw deleteError;
+            
+            // 2. Insert new records
+            const recordsToInsert: TablesInsert<'passagem_registros'>[] = newRecords.map(r => {
+                const trecho = r.selected_trechos[0];
+                return {
+                    p_trab_id: r.p_trab_id,
+                    organizacao: r.organizacao,
+                    ug: r.ug,
+                    om_detentora: r.om_detentora,
+                    ug_detentora: r.ug_detentora,
+                    dias_operacao: r.dias_operacao,
+                    fase_atividade: r.fase_atividade,
+                    diretriz_id: trecho.diretriz_id,
+                    trecho_id: trecho.id,
+                    origem: trecho.origem,
+                    destino: trecho.destino,
+                    tipo_transporte: trecho.tipo_transporte,
+                    is_ida_volta: trecho.is_ida_volta,
+                    valor_unitario: trecho.valor_unitario,
+                    quantidade_passagens: trecho.quantidade_passagens,
+                    valor_total: r.valor_total,
+                    valor_nd_33: r.valor_nd_33,
+                    detalhamento: r.detalhamento,
+                    detalhamento_customizado: r.detalhamento_customizado,
+                    efetivo: r.efetivo,
+                };
+             });
 
-            if (error) throw error;
+            const { error: insertError } = await supabase
+                .from('passagem_registros')
+                .insert(recordsToInsert);
+
+            if (insertError) throw insertError;
         },
         onSuccess: () => {
-            toast.success("Registro de Passagem atualizado com sucesso!");
+            toast.success("Lote de Passagem atualizado com sucesso!");
             setEditingId(null);
             setStagedUpdate(null);
+            setPendingPassagens([]);
+            setGroupToReplace(null);
             queryClient.invalidateQueries({ queryKey: ['passagemRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
             resetForm();
         },
         onError: (error) => {
-            toast.error("Falha ao atualizar registro.", { description: sanitizeError(error) });
+            toast.error("Falha ao atualizar lote.", { description: sanitizeError(error) });
         }
     });
 
-    // 3. Mutation for deleting a record
+    // 3. Mutation for deleting a group of records
     const handleDeleteMutation = useMutation({
-        mutationFn: async (id: string) => {
+        mutationFn: async (recordIds: string[]) => {
             const { error } = await supabase
                 .from('passagem_registros')
                 .delete()
-                .eq('id', id);
+                .in('id', recordIds);
             if (error) throw error;
         },
         onSuccess: () => {
-            toast.success("Registro de Passagem excluído com sucesso!");
+            toast.success("Lote de Passagem excluído com sucesso!");
             queryClient.invalidateQueries({ queryKey: ['passagemRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
             setShowDeleteDialog(false);
             setRegistroToDelete(null);
+            setGroupToDelete(null);
         },
         onError: (error) => {
-            toast.error("Falha ao excluir registro.", { description: sanitizeError(error) });
+            toast.error("Falha ao excluir lote.", { description: sanitizeError(error) });
         }
     });
+    
+    const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
     
     // Efeito de inicialização da OM Favorecida e OM Destino
     useEffect(() => {
@@ -352,6 +421,7 @@ const PassagemForm = () => {
             
         } else if (ptrabData && editingId) {
             // Modo Edição: Preencher
+            // Nota: Em modo edição, formData já deve ter sido preenchido por handleEdit
             const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
             setSelectedOmFavorecidaId(omFavorecida?.id);
             
@@ -394,8 +464,8 @@ const PassagemForm = () => {
                     fase_atividade: formData.fase_atividade,
                     
                     // Dados do Trecho Selecionado
-                    om_detentora: trecho.om_detentora,
-                    ug_detentora: trecho.ug_detentora,
+                    om_detentora: formData.om_destino, // Usar OM Destino do Recurso
+                    ug_detentora: formData.ug_destino, // Usar UG Destino do Recurso
                     diretriz_id: trecho.diretriz_id,
                     trecho_id: trecho.id, // Usar 'id' do trecho
                     origem: trecho.origem,
@@ -440,58 +510,33 @@ const PassagemForm = () => {
     
     // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do stagedUpdate ou lastStagedFormData)
     const isPassagemDirty = useMemo(() => {
-        // MODO EDIÇÃO: Compara com stagedUpdate
-        if (editingId && stagedUpdate) {
-            // Reconstruir o estado do formulário a partir do stagedUpdate
-            const stagedFormData: PassagemFormState = {
-                om_favorecida: stagedUpdate.organizacao,
-                ug_favorecida: stagedUpdate.ug,
-                om_destino: stagedUpdate.om_detentora || '', // Usar om_detentora como om_destino
-                ug_destino: stagedUpdate.ug_detentora || '', // Usar ug_detentora como ug_destino
-                dias_operacao: stagedUpdate.dias_operacao,
-                efetivo: stagedUpdate.efetivo || 0, 
-                fase_atividade: stagedUpdate.fase_atividade || '',
-                selected_trechos: stagedUpdate.selected_trechos,
-            };
-            
-            return compareFormData(formData, stagedFormData);
+        // MODO EDIÇÃO: Compara com o estado que gerou os pendingPassagens (que é o estado que será salvo)
+        if (editingId && pendingPassagens.length > 0 && lastStagedFormData) {
+            return compareFormData(formData, lastStagedFormData);
         }
         
         // MODO NOVO REGISTRO: Compara com lastStagedFormData
-        // Se o formulário mudou desde o último staging, ele é considerado 'dirty'
         if (!editingId && pendingPassagens.length > 0 && lastStagedFormData) {
             return compareFormData(formData, lastStagedFormData);
         }
 
         return false;
-    }, [editingId, stagedUpdate, formData, pendingPassagens.length, lastStagedFormData]);
+    }, [editingId, formData, pendingPassagens.length, lastStagedFormData]);
     
     // NOVO: Cálculo do total de todos os itens pendentes
     const totalPendingPassagens = useMemo(() => {
         return pendingPassagens.reduce((sum, item) => sum + item.valor_total, 0);
     }, [pendingPassagens]);
     
-    // NOVO MEMO: Agrupa os registros por OM Favorecida (organizacao/ug)
-    const registrosAgrupadosPorOM = useMemo(() => {
-        return registros?.reduce((acc, registro) => {
-            const omFavorecida = registro.organizacao; 
-            const ugFavorecida = registro.ug; 
-            const key = `${omFavorecida} (${ugFavorecida})`;
-            
-            if (!acc[key]) {
-                acc[key] = [];
-            }
-            acc[key].push(registro);
-            return acc;
-        }, {} as Record<string, PassagemRegistroDB[]>) || {};
-    }, [registros]);
-
+    // O memo registrosAgrupadosPorOM foi substituído por consolidatedRegistros
+    
     // =================================================================
     // HANDLERS DE AÇÃO
     // =================================================================
 
     const resetForm = () => {
         setEditingId(null);
+        setGroupToReplace(null);
         setFormData(prev => ({
             ...initialFormState,
             // Manter a OM Favorecida (do PTrab) se já estiver definida
@@ -517,10 +562,12 @@ const PassagemForm = () => {
         setPendingPassagens([]);
         setStagedUpdate(null);
         setLastStagedFormData(null); 
+        setEditingId(null);
+        setGroupToReplace(null);
         resetForm();
     };
 
-    const handleEdit = (registro: PassagemRegistroDB) => {
+    const handleEdit = (group: ConsolidatedPassagem) => {
         if (pendingPassagens.length > 0) {
             toast.warning("Salve ou limpe os itens pendentes antes de editar um registro existente.");
             return;
@@ -529,19 +576,20 @@ const PassagemForm = () => {
         // Limpa estados pendentes
         setPendingPassagens([]);
         setLastStagedFormData(null);
+        setStagedUpdate(null); 
         
-        setEditingId(registro.id);
+        setEditingId(group.records[0].id); // Usa o ID do primeiro registro para controle de UI
+        setGroupToReplace(group); // Armazena o grupo original para substituição
         
         // 1. Configurar OM Favorecida e OM Destino
-        const omFavorecidaToEdit = oms?.find(om => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
+        const omFavorecidaToEdit = oms?.find(om => om.nome_om === group.organizacao && om.codug_om === group.ug);
         setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
         
-        const omDestinoToEdit = oms?.find(om => om.nome_om === registro.om_detentora && om.codug_om === registro.ug_detentora);
+        const omDestinoToEdit = oms?.find(om => om.nome_om === group.om_detentora && om.codug_om === group.ug_detentora);
         setSelectedOmDestinoId(omDestinoToEdit?.id);
         
-        // 2. Reconstruir a lista de trechos selecionados a partir dos dados do registro
-        // Agora, cada registro do DB é um trecho individual.
-        const trechoFromRecord: TrechoSelection = {
+        // 2. Reconstruir a lista de trechos selecionados a partir de TODOS os registros do grupo
+        const trechosFromRecords: TrechoSelection[] = group.records.map(registro => ({
             id: registro.trecho_id, // Usar trecho_id como id
             diretriz_id: registro.diretriz_id,
             om_detentora: registro.om_detentora,
@@ -553,114 +601,30 @@ const PassagemForm = () => {
             valor_unitario: Number(registro.valor_unitario || 0),
             quantidade_passagens: registro.quantidade_passagens,
             valor: Number(registro.valor_unitario || 0), // Adiciona 'valor' para compatibilidade com TrechoPassagem
-        };
+        }));
 
         // 3. Populate formData
         const newFormData: PassagemFormState = {
-            om_favorecida: registro.organizacao, 
-            ug_favorecida: registro.ug, 
-            om_destino: registro.om_detentora,
-            ug_destino: registro.ug_detentora,
-            dias_operacao: registro.dias_operacao,
-            efetivo: registro.efetivo || 0, 
-            fase_atividade: registro.fase_atividade || "",
-            selected_trechos: [trechoFromRecord], // Apenas o trecho do registro
+            om_favorecida: group.organizacao, 
+            ug_favorecida: group.ug, 
+            om_destino: group.om_detentora,
+            ug_destino: group.ug_detentora,
+            dias_operacao: group.dias_operacao,
+            efetivo: group.efetivo || 0, 
+            fase_atividade: group.fase_atividade || "",
+            selected_trechos: trechosFromRecords, // TODOS os trechos
         };
         setFormData(newFormData);
         
-        // 4. Calculate totals and generate memory (usando a nova lógica de cálculo)
-        
-        const tempCalculos = (() => {
-            if (newFormData.selected_trechos.length === 0) {
-                return { totalGeral: 0, totalND33: 0, memoria: "" };
-            }
-            
-            // Como é um único trecho, o cálculo é direto
-            const trecho = newFormData.selected_trechos[0];
-            const totalTrecho = calculateTrechoTotal(trecho);
-            
-            const calculatedFormData: PassagemFormType = {
-                organizacao: newFormData.om_favorecida, 
-                ug: newFormData.ug_favorecida, 
-                dias_operacao: newFormData.dias_operacao,
-                fase_atividade: newFormData.fase_atividade,
-                om_detentora: trecho.om_detentora,
-                ug_detentora: trecho.ug_detentora,
-                diretriz_id: trecho.diretriz_id,
-                trecho_id: trecho.id,
-                origem: trecho.origem,
-                destino: trecho.destino,
-                tipo_transporte: trecho.tipo_transporte,
-                is_ida_volta: trecho.is_ida_volta,
-                valor_unitario: trecho.valor_unitario,
-                quantidade_passagens: trecho.quantidade_passagens,
-                efetivo: newFormData.efetivo,
-            };
-
-            let memoria = `--- Trecho Único: ${trecho.origem} -> ${trecho.destino} ---\n`;
-            memoria += generatePassagemMemoriaCalculo({
-                ...calculatedFormData,
-                valor_total: totalTrecho,
-                valor_nd_33: totalTrecho,
-            } as PassagemRegistro);
-            memoria += "\n";
-            memoria += `\n==================================================\n`;
-            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalTrecho)}\n`;
-            memoria += `Efetivo: ${newFormData.efetivo} militares\n`;
-            memoria += `==================================================\n`;
-            
-            return {
-                totalGeral: totalTrecho,
-                totalND33: totalTrecho,
-                memoria,
-            };
-        })();
-        
-        // 5. Stage the current record data immediately for display in Section 3
-        const stagedData: CalculatedPassagem = {
-            tempId: registro.id,
-            p_trab_id: ptrabId!,
-            organizacao: newFormData.om_favorecida, 
-            ug: newFormData.ug_favorecida, 
-            dias_operacao: newFormData.dias_operacao,
-            efetivo: newFormData.efetivo,
-            fase_atividade: newFormData.fase_atividade,
-            
-            // Campos de Trecho (usamos o único trecho)
-            om_detentora: trechoFromRecord.om_detentora,
-            ug_detentora: trechoFromRecord.ug_detentora,
-            diretriz_id: trechoFromRecord.diretriz_id,
-            trecho_id: trechoFromRecord.id, 
-            origem: trechoFromRecord.origem,
-            destino: trechoFromRecord.destino,
-            tipo_transporte: trechoFromRecord.tipo_transporte,
-            is_ida_volta: trechoFromRecord.is_ida_volta,
-            valor_unitario: trechoFromRecord.valor_unitario,
-            quantidade_passagens: trechoFromRecord.quantidade_passagens,
-            
-            valor_total: tempCalculos.totalGeral,
-            valor_nd_33: tempCalculos.totalND33,
-            
-            detalhamento: registro.detalhamento,
-            detalhamento_customizado: registro.detalhamento_customizado, 
-            
-            totalGeral: tempCalculos.totalGeral,
-            memoria_calculo_display: tempCalculos.memoria, 
-            om_favorecida: newFormData.om_favorecida,
-            ug_favorecida: newFormData.ug_favorecida,
-            selected_trechos: newFormData.selected_trechos, // Adiciona a lista de trechos (que tem 1 item)
-        } as CalculatedPassagem;
-        
-        setStagedUpdate(stagedData); 
-
-        setEditingMemoriaId(null); 
-        setMemoriaEdit("");
+        toast.info("Modo Edição ativado. Revise os dados e clique em 'Salvar Item na Lista' para recalcular.");
         
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const handleConfirmDelete = (registro: PassagemRegistroDB) => {
-        setRegistroToDelete(registro);
+    const handleConfirmDelete = (group: ConsolidatedPassagem) => {
+        // Usamos o primeiro registro apenas para exibir o nome da OM no diálogo
+        setRegistroToDelete(group.records[0]); 
+        setGroupToDelete(group); // Armazena o grupo completo para exclusão
         setShowDeleteDialog(true);
     };
 
@@ -766,27 +730,27 @@ const PassagemForm = () => {
             });
             
             if (editingId) {
-                // MODO EDIÇÃO: Apenas um trecho deve estar selecionado no formData.selected_trechos
-                if (newPendingItems.length !== 1) {
-                    throw new Error("Erro interno: A edição deve resultar em exatamente um item calculado.");
-                }
+                // MODO EDIÇÃO: Geramos os novos registros e os colocamos em pendingPassagens
                 
-                const calculatedData = newPendingItems[0];
-                calculatedData.tempId = editingId; // Mantém o ID original
-                
-                const originalRecord = registros?.find(r => r.id === editingId);
-                
-                // Preserva a memória customizada se existir
+                // Preserva a memória customizada do primeiro registro do grupo original, se existir
                 let memoriaCustomizadaTexto: string | null = null;
-                try {
-                    JSON.parse(originalRecord?.detalhamento_customizado || "");
-                } catch (e) {
-                    memoriaCustomizadaTexto = originalRecord?.detalhamento_customizado || null;
+                if (groupToReplace) {
+                    // Busca o primeiro registro do grupo original para verificar a memória customizada
+                    const originalRecord = groupToReplace.records.find(r => r.id === editingId);
+                    if (originalRecord) {
+                        memoriaCustomizadaTexto = originalRecord.detalhamento_customizado;
+                    }
                 }
                 
-                calculatedData.detalhamento_customizado = memoriaCustomizadaTexto;
+                // Aplicamos a memória customizada ao primeiro item da nova lista (apenas para fins de staging display)
+                if (memoriaCustomizadaTexto && newPendingItems.length > 0) {
+                    newPendingItems[0].detalhamento_customizado = memoriaCustomizadaTexto;
+                }
                 
-                setStagedUpdate(calculatedData);
+                setPendingPassagens(newPendingItems); // Armazena o novo lote completo
+                setStagedUpdate(newPendingItems[0]); // Usa o primeiro item para display de revisão
+                setLastStagedFormData(formData); // Marca o formulário como staged
+                
                 toast.info("Cálculo atualizado. Revise e confirme a atualização na Seção 3.");
                 window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); 
                 return;
@@ -803,8 +767,6 @@ const PassagemForm = () => {
             toast.info(`${newPendingItems.length} item(ns) de Passagem adicionado(s) à lista pendente.`);
             
             // Manter campos de contexto. NÃO LIMPAR selected_trechos aqui.
-            // O usuário deve clicar em Limpar Formulário se quiser começar do zero.
-            // Se ele quiser adicionar mais itens, ele pode reabrir o seletor de trechos.
             
         } catch (err: any) {
             toast.error(err.message || "Erro desconhecido ao calcular.");
@@ -818,14 +780,21 @@ const PassagemForm = () => {
             return;
         }
         
-        saveMutation.mutate(pendingPassagens);
+        insertMutation.mutate(pendingPassagens);
     };
     
     // NOVO: Confirma a atualização do item estagiado no DB
     const handleCommitStagedUpdate = () => {
-        if (!editingId || !stagedUpdate) return;
+        if (!editingId || !stagedUpdate || !groupToReplace) {
+            toast.error("Erro: Dados de atualização incompletos.");
+            return;
+        }
         
-        updateMutation.mutate(stagedUpdate);
+        // 1. IDs dos registros antigos para deletar
+        const oldIds = groupToReplace.records.map(r => r.id);
+        
+        // 2. Novos registros (pendingPassagens) para inserir
+        replaceGroupMutation.mutate({ oldIds, newRecords: pendingPassagens });
     };
     
     // Remove item da lista pendente
@@ -1049,7 +1018,7 @@ const PassagemForm = () => {
     // =================================================================
 
     const isGlobalLoading = isLoadingPTrab || isLoadingRegistros || isLoadingOms || isLoadingDefaultYear;
-    const isSaving = saveMutation.isPending || updateMutation.isPending || handleDeleteMutation.isPending;
+    const isSaving = insertMutation.isPending || replaceGroupMutation.isPending || handleDeleteMutation.isPending;
 
     if (isGlobalLoading) {
         return (
@@ -1078,12 +1047,13 @@ const PassagemForm = () => {
     const isCalculationReady = isBaseFormReady && isSolicitationDataReady;
     
     // Lógica para a Seção 3
-    const itemsToDisplay = stagedUpdate ? [stagedUpdate] : pendingPassagens;
-    const isStagingUpdate = !!stagedUpdate;
+    // Em modo edição, pendingPassagens armazena o novo cálculo, e stagedUpdate é o primeiro item para display.
+    const itemsToDisplay = editingId ? pendingPassagens : pendingPassagens;
+    const isStagingUpdate = !!editingId && pendingPassagens.length > 0;
     
     // Trechos iniciais para o diálogo (se estiver editando)
-    const initialTrechosForDialog = editingId && stagedUpdate 
-        ? stagedUpdate.selected_trechos 
+    const initialTrechosForDialog = editingId && groupToReplace 
+        ? formData.selected_trechos // Usa o formData que foi populado pelo handleEdit
         : formData.selected_trechos;
 
     return (
@@ -1332,7 +1302,7 @@ const PassagemForm = () => {
                                                 className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                             >
                                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                Salvar Item na Lista
+                                                {editingId ? "Recalcular/Revisar Lote" : "Salvar Item na Lista"}
                                             </Button>
                                         </div>
                                         
@@ -1345,7 +1315,7 @@ const PassagemForm = () => {
                             {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        3. Itens Adicionados ({itemsToDisplay.length})
+                                        3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({itemsToDisplay.length} trecho(s))
                                     </h3>
                                     
                                     {/* Alerta de Validação Final (Modo Novo Registro) */}
@@ -1363,7 +1333,7 @@ const PassagemForm = () => {
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertDescription className="font-medium">
-                                                Atenção: Os dados do formulário (Seção 2) foram alterados e não correspondem ao registro em revisão. Clique em "Salvar Item na Lista" na Seção 2 para atualizar o cálculo.
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados e não correspondem ao registro em revisão. Clique em "Recalcular/Revisar Lote" na Seção 2 para atualizar o cálculo.
                                             </AlertDescription>
                                         </Alert>
                                     )}
@@ -1446,10 +1416,10 @@ const PassagemForm = () => {
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
                                             <span className="font-bold text-base uppercase">
-                                                VALOR TOTAL DA OM
+                                                VALOR TOTAL DO LOTE
                                             </span>
                                             <span className="font-extrabold text-xl text-foreground">
-                                                {formatCurrency(isStagingUpdate ? stagedUpdate!.totalGeral : totalPendingPassagens)}
+                                                {formatCurrency(totalPendingPassagens)}
                                             </span>
                                         </CardContent>
                                     </Card>
@@ -1457,9 +1427,9 @@ const PassagemForm = () => {
                                     <div className="flex justify-end gap-3 pt-4">
                                         {isStagingUpdate ? (
                                             <>
-                                                <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
+                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
                                                     <XCircle className="mr-2 h-4 w-4" />
-                                                    Limpar Formulário
+                                                    Cancelar Edição
                                                 </Button>
                                                 <Button 
                                                     type="button" 
@@ -1468,7 +1438,7 @@ const PassagemForm = () => {
                                                     className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                                 >
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                                                    Atualizar Registro
+                                                    Atualizar Lote
                                                 </Button>
                                             </>
                                         ) : (
@@ -1495,39 +1465,37 @@ const PassagemForm = () => {
                             )}
 
                             {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
-                            {registros && registros.length > 0 && (
+                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
                                         <Sparkles className="h-5 w-5 text-accent" />
-                                        OMs Cadastradas ({registros.length})
+                                        OMs Cadastradas ({consolidatedRegistros.length})
                                     </h3>
                                     
-                                    {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
-                                        // 1. Calcular Totais Consolidados
-                                        const totalOM = omRegistros.reduce((sum, r) => Number(r.valor_total) + sum, 0);
-                                        const totalPassagensConsolidado = omRegistros.reduce((sum, r) => r.quantidade_passagens + sum, 0);
-                                        const totalND33Consolidado = omRegistros.reduce((sum, r) => Number(r.valor_nd_33 || 0) + sum, 0);
+                                    {consolidatedRegistros.map((group) => {
+                                        // 1. Calcular Totais Consolidados (já estão no objeto group)
+                                        const totalOM = group.totalGeral;
+                                        const totalPassagensConsolidado = group.records.reduce((sum, r) => r.quantidade_passagens + sum, 0);
+                                        const totalND33Consolidado = group.totalND33;
                                         
-                                        // Assumimos que dias_operacao e efetivo são os mesmos para todos os registros agrupados,
-                                        // mas para exibição consolidada, usamos o valor do primeiro registro.
-                                        const diasOperacaoConsolidado = omRegistros[0].dias_operacao;
-                                        const efetivoConsolidado = omRegistros[0].efetivo || 0;
+                                        const diasOperacaoConsolidado = group.dias_operacao;
+                                        const efetivoConsolidado = group.efetivo;
                                         
-                                        const omName = omKey.split(' (')[0];
-                                        const ug = omKey.split(' (')[1].replace(')', '');
-                                        const faseAtividade = omRegistros[0].fase_atividade || 'Não Definida';
+                                        const omName = group.organizacao;
+                                        const ug = group.ug;
+                                        const faseAtividade = group.fase_atividade || 'Não Definida';
                                         
                                         const diasText = diasOperacaoConsolidado === 1 ? 'dia' : 'dias';
                                         const efetivoText = efetivoConsolidado === 1 ? 'militar' : 'militares';
                                         const passagemText = totalPassagensConsolidado === 1 ? 'passagem' : 'passagens';
                                         
-                                        // Verifica se a OM Detentora é diferente da OM Favorecida (usando o primeiro registro como referência)
-                                        const isDifferentOm = omRegistros.some(r => r.om_detentora !== r.organizacao || r.ug_detentora !== r.ug);
-                                        const omDestino = omRegistros[0].om_detentora;
-                                        const ugDestino = omRegistros[0].ug_detentora;
+                                        // Verifica se a OM Detentora é diferente da OM Favorecida
+                                        const isDifferentOm = group.om_detentora !== group.organizacao || group.ug_detentora !== group.ug;
+                                        const omDestino = group.om_detentora;
+                                        const ugDestino = group.ug_detentora;
 
                                         return (
-                                            <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
+                                            <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
                                                 <div className="flex items-center justify-between mb-3 border-b pb-2">
                                                     <h3 className="font-bold text-lg text-primary flex items-center gap-2">
                                                         {omName} (UG: {formatCodug(ug)})
@@ -1543,14 +1511,14 @@ const PassagemForm = () => {
                                                 {/* CORPO CONSOLIDADO (Card 1537) */}
                                                 <div className="space-y-3">
                                                     <Card 
-                                                        key={omKey} 
+                                                        key={group.groupKey} 
                                                         className="p-3 bg-background border"
                                                     >
                                                         <div className="flex items-center justify-between">
                                                             <div className="flex flex-col">
                                                                 <div className="flex items-center gap-2">
                                                                     <h4 className="font-semibold text-base text-foreground">
-                                                                        Passagens
+                                                                        Passagens ({group.records.length} trecho(s))
                                                                     </h4>
                                                                 </div>
                                                                 {/* P 1556: Quantidade total de passagens, dias e efetivo */}
@@ -1563,14 +1531,14 @@ const PassagemForm = () => {
                                                                 <span className="font-extrabold text-xl text-foreground">
                                                                     {formatCurrency(totalND33Consolidado)}
                                                                 </span>
-                                                                {/* Botões de Ação (Movidos para cá, usando o primeiro registro para referência de edição/exclusão) */}
+                                                                {/* Botões de Ação */}
                                                                 <div className="flex gap-1 shrink-0">
                                                                     <Button
                                                                         type="button" 
                                                                         variant="ghost"
                                                                         size="icon"
                                                                         className="h-8 w-8"
-                                                                        onClick={() => handleEdit(omRegistros[0])}
+                                                                        onClick={() => handleEdit(group)} // Passa o grupo consolidado
                                                                         disabled={!isPTrabEditable || isSaving || pendingPassagens.length > 0}
                                                                     >
                                                                         <Pencil className="h-4 w-4" />
@@ -1579,7 +1547,7 @@ const PassagemForm = () => {
                                                                         type="button" 
                                                                         variant="ghost"
                                                                         size="icon"
-                                                                        onClick={() => handleConfirmDelete(omRegistros[0])}
+                                                                        onClick={() => handleConfirmDelete(group)} // Passa o grupo consolidado
                                                                         className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                                                         disabled={!isPTrabEditable || isSaving}
                                                                     >
@@ -1605,8 +1573,6 @@ const PassagemForm = () => {
                                                             </div>
                                                         </div>
                                                     </Card>
-                                                    
-                                                    {/* REMOVIDO: Exibir lista de trechos para acesso rápido à edição/exclusão (Div 1586) */}
                                                 </div>
                                             </Card>
                                         );
@@ -1815,20 +1781,20 @@ const PassagemForm = () => {
                         <AlertDialogHeader>
                             <AlertDialogTitle className="flex items-center gap-2 text-destructive">
                                 <Trash2 className="h-5 w-5" />
-                                Confirmar Exclusão
+                                Confirmar Exclusão de Lote
                             </AlertDialogTitle>
                             <AlertDialogDescription>
-                                Tem certeza que deseja excluir o registro de Passagem para a OM <span className="font-bold">{registroToDelete?.organizacao}</span>? Esta ação é irreversível.
+                                Tem certeza que deseja excluir o lote de Passagem para a OM <span className="font-bold">{groupToDelete?.organizacao}</span>, contendo {groupToDelete?.records.length} trecho(s)? Esta ação é irreversível.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogAction 
-                                onClick={() => registroToDelete && handleDeleteMutation.mutate(registroToDelete.id)}
+                                onClick={() => groupToDelete && handleDeleteMutation.mutate(groupToDelete.records.map(r => r.id))}
                                 disabled={handleDeleteMutation.isPending}
                                 className="bg-destructive hover:bg-destructive/90"
                             >
                                 {handleDeleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                Excluir
+                                Excluir Lote
                             </AlertDialogAction>
                             <AlertDialogCancel disabled={handleDeleteMutation.isPending}>Cancelar</AlertDialogCancel>
                         </AlertDialogFooter>
