@@ -16,7 +16,8 @@ interface ConsolidatedPassagemMemoriaProps {
     editingMemoriaId: string | null;
     memoriaEdit: string;
     setMemoriaEdit: (value: string) => void;
-    handleIniciarEdicaoMemoria: (group: ConsolidatedPassagemRecord) => void;
+    // O handler agora recebe a string da memória completa (automática ou customizada)
+    handleIniciarEdicaoMemoria: (group: ConsolidatedPassagemRecord, memoriaCompleta: string) => void;
     handleCancelarEdicaoMemoria: () => void;
     handleSalvarMemoriaCustomizada: (registroId: string) => Promise<void>;
     handleRestaurarMemoriaAutomatica: (registroId: string) => Promise<void>;
@@ -44,8 +45,8 @@ export const ConsolidatedPassagemMemoria: React.FC<ConsolidatedPassagemMemoriaPr
     // Busca os detalhes da diretriz (Pregão/UASG)
     const { data: diretrizDetails, isLoading: isLoadingDiretriz } = usePassagemDiretrizDetails(diretrizId);
 
-    // 1. Gerar a memória automática consolidada
-    const memoriaAutomatica = useMemo(() => {
+    // 1. Gerar a memória automática consolidada COMPLETA (incluindo Pregão/UASG)
+    const memoriaAutomaticaCompleta = useMemo(() => {
         if (isLoadingDiretriz) return "Carregando detalhes do contrato...";
         
         let memoria = generateConsolidatedPassagemMemoriaCalculo(group);
@@ -60,11 +61,15 @@ export const ConsolidatedPassagemMemoria: React.FC<ConsolidatedPassagemMemoriaPr
         return memoria;
     }, [group, diretrizDetails, isLoadingDiretriz]);
 
-    let memoriaExibida = memoriaAutomatica;
+    // 2. Determinar a memória a ser exibida/editada
+    let memoriaExibida = memoriaAutomaticaCompleta;
+    
+    // Se estiver editando, usa o estado de edição
     if (isEditing) {
         memoriaExibida = memoriaEdit;
-    } else if (hasCustomMemoria) {
-        // Se houver customização, garantimos que a linha do Pregão/UASG seja adicionada ao final
+    } 
+    // Se houver customização (e não estiver editando), usa a customizada, garantindo a linha do Pregão/UASG
+    else if (hasCustomMemoria) {
         let customMemoria = firstRecord.detalhamento_customizado!;
         
         if (diretrizDetails?.numero_pregao && diretrizDetails?.ug_referencia) {
@@ -79,6 +84,17 @@ export const ConsolidatedPassagemMemoria: React.FC<ConsolidatedPassagemMemoriaPr
     
     // Verifica se a OM Detentora é diferente da OM Favorecida
     const isDifferentOmInMemoria = group.om_detentora !== group.organizacao || group.ug_detentora !== group.ug;
+
+    // Handler local para iniciar a edição, passando a memória completa
+    const handleLocalIniciarEdicao = () => {
+        // Se houver customização, passamos a customizada (que já inclui o Pregão/UASG se necessário)
+        // Se não houver customização, passamos a automática completa.
+        const memoriaParaEdicao = hasCustomMemoria 
+            ? memoriaExibida // Usa a versão customizada (que já tem o Pregão/UASG adicionado se não estiver lá)
+            : memoriaAutomaticaCompleta;
+            
+        handleIniciarEdicaoMemoria(group, memoriaParaEdicao);
+    };
 
     return (
         <div className="space-y-4 border p-4 rounded-lg bg-muted/30">
@@ -112,8 +128,8 @@ export const ConsolidatedPassagemMemoria: React.FC<ConsolidatedPassagemMemoriaPr
                                 type="button" 
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleIniciarEdicaoMemoria(group)}
-                                disabled={isSaving || !isPTrabEditable}
+                                onClick={handleLocalIniciarEdicao} // Usando o handler local
+                                disabled={isSaving || !isPTrabEditable || isLoadingDiretriz}
                                 className="gap-2"
                             >
                                 <Pencil className="h-4 w-4" />

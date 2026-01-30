@@ -643,7 +643,7 @@ const PassagemForm = () => {
                 origem: trecho.origem,
                 destino: trecho.destino,
                 tipo_transporte: trecho.tipo_transporte,
-                is_ida_volta: trecho.is_ida_volta,
+                is_ida_volta: registro.is_ida_volta,
                 valor_unitario: trecho.valor_unitario,
                 quantidade_passagens: registro.quantidade_passagens,
                 efetivo: registro.efetivo || 0,
@@ -969,30 +969,16 @@ const PassagemForm = () => {
     
     // --- Lógica de Edição de Memória ---
     
-    // Agora, handleIniciarEdicaoMemoria recebe o grupo consolidado
-    const handleIniciarEdicaoMemoria = (group: ConsolidatedPassagem) => {
+    // Agora, handleIniciarEdicaoMemoria recebe o grupo consolidado E a string da memória completa
+    const handleIniciarEdicaoMemoria = (group: ConsolidatedPassagem, memoriaCompleta: string) => {
         // Usamos o ID do primeiro registro do grupo para rastrear a edição
         const firstRecordId = group.records[0].id;
         setEditingMemoriaId(firstRecordId);
         
-        // 1. Gerar a memória automática consolidada
-        // Nota: A geração automática agora é feita dentro do ConsolidatedPassagemMemoria
-        // Aqui, apenas preenchemos o estado de edição com o valor atual (customizado ou automático)
+        // Preenche o estado de edição com a memória completa (automática ou customizada + Pregão/UASG)
+        setMemoriaEdit(memoriaCompleta || "");
         
-        const customMemoria = group.records[0].detalhamento_customizado;
-        
-        // Se houver customização, usamos ela. Se não, geramos a automática temporariamente para preencher o textarea.
-        if (customMemoria) {
-            setMemoriaEdit(customMemoria);
-        } else {
-            // Para obter a memória automática completa (incluindo Pregão/UASG),
-            // vamos usar a função base, pois o componente ConsolidatedPassagemMemoria
-            // irá adicionar o Pregão/UASG na visualização final.
-            const memoriaAutomaticaBase = generateConsolidatedPassagemMemoriaCalculo(group);
-            setMemoriaEdit(memoriaAutomaticaBase || "");
-        }
-        
-        toast.info("Editando memória de cálculo. Lembre-se de incluir os detalhes do contrato se necessário.");
+        toast.info("Editando memória de cálculo.");
     };
 
     const handleCancelarEdicaoMemoria = () => {
