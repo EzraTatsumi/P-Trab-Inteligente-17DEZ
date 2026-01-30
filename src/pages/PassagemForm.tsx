@@ -21,6 +21,8 @@ import {
     generatePassagemMemoriaCalculo,
     PassagemRegistro,
     PassagemForm as PassagemFormType,
+    generateConsolidatedPassagemMemoriaCalculo, // Importando a nova função
+    ConsolidatedPassagemRecord, // Importando o tipo
 } from "@/lib/passagemUtils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -70,19 +72,7 @@ interface CalculatedPassagem extends TablesInsert<'passagem_registros'> {
 }
 
 // NOVO TIPO: Representa um lote consolidado de registros (vários trechos)
-interface ConsolidatedPassagem {
-    groupKey: string;
-    organizacao: string;
-    ug: string;
-    om_detentora: string;
-    ug_detentora: string;
-    dias_operacao: number;
-    efetivo: number;
-    fase_atividade: string;
-    records: PassagemRegistroDB[]; // Todos os registros DB pertencentes a este grupo
-    totalGeral: number;
-    totalND33: number;
-}
+interface ConsolidatedPassagem extends ConsolidatedPassagemRecord {}
 
 // Estado inicial para o formulário
 interface PassagemFormState {
@@ -165,6 +155,7 @@ const PassagemForm = () => {
     const [groupToReplace, setGroupToReplace] = useState<ConsolidatedPassagem | null>(null); 
     
     // ESTADOS DE EDIÇÃO DE MEMÓRIA
+    // Agora, editingMemoriaId rastreia o ID do PRIMEIRO registro do grupo (group.records[0].id)
     const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
     const [memoriaEdit, setMemoriaEdit] = useState<string>("");
     
@@ -447,49 +438,55 @@ const PassagemForm = () => {
             let totalND33 = 0;
             let memoria = "";
             
-            formData.selected_trechos.forEach((trecho, index) => {
-                // 1. Calcular o total do trecho
+            // Gerar a memória consolidada para o STAGING
+            const tempGroup: ConsolidatedPassagemRecord = {
+                organizacao: formData.om_favorecida,
+                ug: formData.ug_favorecida,
+                om_detentora: formData.om_destino,
+                ug_detentora: formData.ug_destino,
+                dias_operacao: formData.dias_operacao,
+                efetivo: formData.efetivo,
+                fase_atividade: formData.fase_atividade,
+                records: [], // Preenchido abaixo
+                totalGeral: 0, // Preenchido abaixo
+                totalND33: 0, // Preenchido abaixo
+            };
+
+            formData.selected_trechos.forEach((trecho) => {
                 const totalTrecho = calculateTrechoTotal(trecho);
                 
                 totalGeral += totalTrecho;
-                totalND33 += totalTrecho; // ND 33.90.33 é o único para passagens
+                totalND33 += totalTrecho; 
                 
-                // 2. Gerar memória para o trecho (usado apenas para staging/edição)
-                const calculatedFormData: PassagemFormType = {
-                    organizacao: formData.om_favorecida, 
-                    ug: formData.ug_favorecida, 
+                // Criar um registro temporário para a função de memória consolidada
+                tempGroup.records.push({
+                    p_trab_id: ptrabId!,
+                    organizacao: formData.om_favorecida,
+                    ug: formData.ug_favorecida,
+                    om_detentora: formData.om_destino,
+                    ug_detentora: formData.ug_destino,
                     dias_operacao: formData.dias_operacao,
+                    efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
-                    
-                    // Dados do Trecho Selecionado
-                    om_detentora: formData.om_destino, // Usar OM Destino do Recurso
-                    ug_detentora: formData.ug_destino, // Usar UG Destino do Recurso
                     diretriz_id: trecho.diretriz_id,
-                    trecho_id: trecho.id, // Usar 'id' do trecho
+                    trecho_id: trecho.id,
                     origem: trecho.origem,
                     destino: trecho.destino,
                     tipo_transporte: trecho.tipo_transporte,
                     is_ida_volta: trecho.is_ida_volta,
                     valor_unitario: trecho.valor_unitario,
-                    
-                    // Quantidade
                     quantidade_passagens: trecho.quantidade_passagens,
-                    efetivo: formData.efetivo,
-                };
-
-                memoria += `--- Trecho ${index + 1}: ${trecho.origem} -> ${trecho.destino} ---\n`;
-                memoria += generatePassagemMemoriaCalculo({
-                    ...calculatedFormData,
                     valor_total: totalTrecho,
                     valor_nd_33: totalTrecho,
+                    // Campos não usados no cálculo, mas necessários para o tipo
+                    id: '', created_at: '', updated_at: '', detalhamento: '', detalhamento_customizado: null, valor_nd_30: 0,
                 } as PassagemRegistro);
-                memoria += "\n";
             });
             
-            memoria += `\n==================================================\n`;
-            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalGeral)}\n`;
-            memoria += `Efetivo: ${formData.efetivo} militares\n`;
-            memoria += `==================================================\n`;
+            tempGroup.totalGeral = totalGeral;
+            tempGroup.totalND33 = totalND33;
+            
+            memoria = generateConsolidatedPassagemMemoriaCalculo(tempGroup);
             
             return {
                 totalGeral,
@@ -504,7 +501,7 @@ const PassagemForm = () => {
                 memoria: `Erro ao calcular: ${errorMessage}`,
             };
         }
-    }, [formData, ptrabData]);
+    }, [formData, ptrabData, ptrabId]);
     
     // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do stagedUpdate ou lastStagedFormData)
     const isPassagemDirty = useMemo(() => {
@@ -651,17 +648,8 @@ const PassagemForm = () => {
                 efetivo: registro.efetivo || 0,
             };
 
-            let memoria = `--- Trecho Único: ${trecho.origem} -> ${trecho.destino} ---\n`;
-            memoria += generatePassagemMemoriaCalculo({
-                ...calculatedFormData,
-                valor_total: totalTrecho,
-                valor_nd_33: totalTrecho,
-            } as PassagemRegistro);
-            memoria += "\n";
-            memoria += `\n==================================================\n`;
-            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalTrecho)}\n`;
-            memoria += `Efetivo: ${registro.efetivo || 0} militares\n`;
-            memoria += `==================================================\n`;
+            // Usamos a função de memória individual para o staging, pois cada item é um registro de DB
+            let memoria = generatePassagemMemoriaCalculo(registro as PassagemRegistro);
             
             return {
                 tempId: registro.id, // Usamos o ID real do DB como tempId para rastreamento
@@ -745,7 +733,9 @@ const PassagemForm = () => {
                 
                 const totalTrecho = calculateTrechoTotal(trecho);
                 
-                const calculatedFormData: PassagemFormType = {
+                const calculatedFormData: PassagemRegistro = {
+                    id: crypto.randomUUID(), // ID temporário para gerar memória
+                    p_trab_id: ptrabId!,
                     organizacao: formData.om_favorecida, 
                     ug: formData.ug_favorecida, 
                     dias_operacao: formData.dias_operacao,
@@ -765,19 +755,21 @@ const PassagemForm = () => {
                     // Quantidade
                     quantidade_passagens: trecho.quantidade_passagens,
                     efetivo: formData.efetivo,
-                };
-
-                let memoria = `--- Trecho Único: ${trecho.origem} -> ${trecho.destino} ---\n`;
-                memoria += generatePassagemMemoriaCalculo({
-                    ...calculatedFormData,
+                    
                     valor_total: totalTrecho,
                     valor_nd_33: totalTrecho,
-                } as PassagemRegistro);
-                memoria += "\n";
-                memoria += `\n==================================================\n`;
-                memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalTrecho)}\n`;
-                memoria += `Efetivo: ${formData.efetivo} militares\n`;
-                memoria += `==================================================\n`;
+                    
+                    detalhamento: `Passagem: ${trecho.origem} -> ${trecho.destino}`, 
+                    detalhamento_customizado: null, 
+                    
+                    // Campos obrigatórios do tipo DB
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    valor_nd_30: 0,
+                };
+
+                // Usamos a função de memória individual para o staging, pois cada item é um registro de DB
+                let memoria = generatePassagemMemoriaCalculo(calculatedFormData);
                 
                 return {
                     tempId: crypto.randomUUID(), 
@@ -820,7 +812,6 @@ const PassagemForm = () => {
                 let memoriaCustomizadaTexto: string | null = null;
                 if (groupToReplace) {
                     // Busca o primeiro registro do grupo original para verificar a memória customizada
-                    // Usamos o ID do primeiro registro do grupo original, que é o editingId
                     const originalRecord = groupToReplace.records.find(r => r.id === editingId);
                     if (originalRecord) {
                         memoriaCustomizadaTexto = originalRecord.detalhamento_customizado;
@@ -829,8 +820,6 @@ const PassagemForm = () => {
                 
                 // Aplicamos a memória customizada ao primeiro item da nova lista (apenas para fins de staging display)
                 if (memoriaCustomizadaTexto && newPendingItems.length > 0) {
-                    // Para garantir que o item em staging tenha o ID do item original para referência,
-                    // vamos atribuir o ID do primeiro registro original ao primeiro item do novo lote.
                     newPendingItems[0].tempId = editingId; 
                     newPendingItems[0].detalhamento_customizado = memoriaCustomizadaTexto;
                 }
@@ -979,78 +968,18 @@ const PassagemForm = () => {
     
     // --- Lógica de Edição de Memória ---
     
-    const handleIniciarEdicaoMemoria = (registro: PassagemRegistroDB) => {
-        setEditingMemoriaId(registro.id);
+    // Agora, handleIniciarEdicaoMemoria recebe o grupo consolidado
+    const handleIniciarEdicaoMemoria = (group: ConsolidatedPassagem) => {
+        // Usamos o ID do primeiro registro do grupo para rastrear a edição
+        const firstRecordId = group.records[0].id;
+        setEditingMemoriaId(firstRecordId);
         
-        // 1. Reconstruir o TrechoSelection para gerar a memória automática
-        // Como o registro do DB agora é um trecho individual, isso está correto.
-        const trechoFromRecord: TrechoSelection = {
-            id: registro.trecho_id, // Usar trecho_id como id
-            om_detentora: registro.om_detentora,
-            ug_detentora: registro.ug_detentora,
-            diretriz_id: registro.diretriz_id,
-            origem: registro.origem,
-            destino: registro.destino,
-            tipo_transporte: registro.tipo_transporte as TipoTransporte,
-            is_ida_volta: registro.is_ida_volta,
-            valor_unitario: Number(registro.valor_unitario || 0),
-            quantidade_passagens: registro.quantidade_passagens,
-            valor: Number(registro.valor_unitario || 0), // Adiciona 'valor' para compatibilidade com TrechoPassagem
-        };
+        // 1. Gerar a memória automática consolidada
+        const memoriaAutomatica = generateConsolidatedPassagemMemoriaCalculo(group);
         
-        // 2. Gerar a memória automática (usando a lógica de cálculo de um único trecho)
-        const calculatedDataForMemoria: PassagemFormState = {
-            om_favorecida: registro.organizacao,
-            ug_favorecida: registro.ug,
-            om_destino: registro.om_detentora,
-            ug_destino: registro.ug_detentora,
-            dias_operacao: registro.dias_operacao,
-            efetivo: registro.efetivo || 0,
-            fase_atividade: registro.fase_atividade || "",
-            selected_trechos: [trechoFromRecord],
-        };
-        
-        const { memoria: memoriaAutomatica } = (() => {
-            if (calculatedDataForMemoria.selected_trechos.length === 0) return { memoria: "" };
-            
-            const trecho = calculatedDataForMemoria.selected_trechos[0];
-            const totalTrecho = calculateTrechoTotal(trecho);
-            
-            const calculatedFormData: PassagemFormType = {
-                organizacao: calculatedDataForMemoria.om_favorecida, 
-                ug: calculatedDataForMemoria.ug_favorecida, 
-                dias_operacao: calculatedDataForMemoria.dias_operacao,
-                fase_atividade: calculatedDataForMemoria.fase_atividade,
-                om_detentora: trecho.om_detentora,
-                ug_detentora: trecho.ug_detentora,
-                diretriz_id: trecho.diretriz_id,
-                trecho_id: trecho.id,
-                origem: trecho.origem,
-                destino: trecho.destino,
-                tipo_transporte: trecho.tipo_transporte,
-                is_ida_volta: trecho.is_ida_volta,
-                valor_unitario: trecho.valor_unitario,
-                quantidade_passagens: trecho.quantidade_passagens,
-                efetivo: calculatedDataForMemoria.efetivo,
-            };
-            
-            let memoria = `--- Trecho Único: ${trecho.origem} -> ${trecho.destino} ---\n`;
-            memoria += generatePassagemMemoriaCalculo({
-                ...calculatedFormData,
-                valor_total: totalTrecho,
-                valor_nd_33: totalTrecho,
-            } as PassagemRegistro);
-            memoria += "\n";
-            memoria += `\n==================================================\n`;
-            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalTrecho)}\n`;
-            memoria += `Efetivo: ${calculatedDataForMemoria.efetivo} militares\n`;
-            memoria += `==================================================\n`;
-            
-            return { memoria };
-        })();
-        
-        // 3. Usar a customizada se existir, senão usar a automática
-        setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
+        // 2. Usar a customizada do primeiro registro se existir, senão usar a automática
+        const customMemoria = group.records[0].detalhamento_customizado;
+        setMemoriaEdit(customMemoria || memoriaAutomatica || "");
     };
 
     const handleCancelarEdicaoMemoria = () => {
@@ -1060,6 +989,7 @@ const PassagemForm = () => {
 
     const handleSalvarMemoriaCustomizada = async (registroId: string) => {
         try {
+            // A memória customizada é salva APENAS no primeiro registro do grupo.
             const { error } = await supabase
                 .from("passagem_registros")
                 .update({
@@ -1084,6 +1014,7 @@ const PassagemForm = () => {
         }
         
         try {
+            // A memória customizada é removida APENAS do primeiro registro do grupo.
             const { error } = await supabase
                 .from("passagem_registros")
                 .update({
@@ -1669,102 +1600,41 @@ const PassagemForm = () => {
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
-                            {registros && registros.length > 0 && (
+                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
                                 <div className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
                                         📋 Memórias de Cálculos Detalhadas
                                     </h3>
                                     
-                                    {registros.map(registro => {
-                                        const isEditing = editingMemoriaId === registro.id;
+                                    {consolidatedRegistros.map(group => {
+                                        // Usamos o ID do primeiro registro do grupo para rastrear a edição de memória
+                                        const firstRecord = group.records[0];
+                                        const isEditing = editingMemoriaId === firstRecord.id;
                                         
-                                        let hasCustomMemoria = !!registro.detalhamento_customizado;
+                                        // A memória customizada é armazenada no primeiro registro do grupo
+                                        let hasCustomMemoria = !!firstRecord.detalhamento_customizado;
                                         
-                                        // 1. Reconstruir o TrechoSelection para gerar a memória automática
-                                        const trechoFromRecord: TrechoSelection = {
-                                            id: registro.trecho_id, // Usar trecho_id como id
-                                            om_detentora: registro.om_detentora,
-                                            ug_detentora: registro.ug_detentora,
-                                            diretriz_id: registro.diretriz_id,
-                                            origem: registro.origem,
-                                            destino: registro.destino,
-                                            tipo_transporte: registro.tipo_transporte as TipoTransporte,
-                                            is_ida_volta: registro.is_ida_volta,
-                                            valor_unitario: Number(registro.valor_unitario || 0),
-                                            quantidade_passagens: registro.quantidade_passagens,
-                                            valor: Number(registro.valor_unitario || 0), // Adiciona 'valor' para compatibilidade com TrechoPassagem
-                                        };
-                                        
-                                        // 2. Gerar a memória automática (usando a lógica de cálculo de múltiplos trechos, mas com apenas 1 trecho)
-                                        const calculatedDataForMemoria: PassagemFormState = {
-                                            om_favorecida: registro.organizacao,
-                                            ug_favorecida: registro.ug,
-                                            om_destino: registro.om_detentora,
-                                            ug_destino: registro.ug_detentora,
-                                            dias_operacao: registro.dias_operacao,
-                                            efetivo: registro.efetivo || 0,
-                                            fase_atividade: registro.fase_atividade || "",
-                                            selected_trechos: [trechoFromRecord],
-                                        };
-                                        
-                                        // Nota: Para registros antigos, o cálculo é feito com base no único trecho salvo.
-                                        const { memoria: memoriaAutomatica } = (() => {
-                                            if (calculatedDataForMemoria.selected_trechos.length === 0) return { memoria: "" };
-                                            
-                                            const trecho = calculatedDataForMemoria.selected_trechos[0];
-                                            const totalTrecho = calculateTrechoTotal(trecho);
-                                            
-                                            const calculatedFormData: PassagemFormType = {
-                                                organizacao: calculatedDataForMemoria.om_favorecida, 
-                                                ug: calculatedDataForMemoria.ug_favorecida, 
-                                                dias_operacao: calculatedDataForMemoria.dias_operacao,
-                                                fase_atividade: calculatedDataForMemoria.fase_atividade,
-                                                om_detentora: trecho.om_detentora,
-                                                ug_detentora: trecho.ug_detentora,
-                                                diretriz_id: trecho.diretriz_id,
-                                                trecho_id: trecho.id,
-                                                origem: trecho.origem,
-                                                destino: trecho.destino,
-                                                tipo_transporte: trecho.tipo_transporte,
-                                                is_ida_volta: trecho.is_ida_volta,
-                                                valor_unitario: trecho.valor_unitario,
-                                                quantidade_passagens: trecho.quantidade_passagens,
-                                                efetivo: calculatedDataForMemoria.efetivo,
-                                            };
-                                            
-                                            let memoria = `--- Trecho Único: ${trecho.origem} -> ${trecho.destino} ---\n`;
-                                            memoria += generatePassagemMemoriaCalculo({
-                                                ...calculatedFormData,
-                                                valor_total: totalTrecho,
-                                                valor_nd_33: totalTrecho,
-                                            } as PassagemRegistro);
-                                            memoria += "\n";
-                                            memoria += `\n==================================================\n`;
-                                            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalTrecho)}\n`;
-                                            memoria += `Efetivo: ${calculatedDataForMemoria.efetivo} militares\n`;
-                                            memoria += `==================================================\n`;
-                                            
-                                            return { memoria };
-                                        })();
+                                        // 1. Gerar a memória automática consolidada
+                                        const memoriaAutomatica = generateConsolidatedPassagemMemoriaCalculo(group);
                                         
                                         let memoriaExibida = memoriaAutomatica;
                                         if (isEditing) {
                                             memoriaExibida = memoriaEdit;
                                         } else if (hasCustomMemoria) {
-                                            memoriaExibida = registro.detalhamento_customizado!;
+                                            memoriaExibida = firstRecord.detalhamento_customizado!;
                                         }
                                         
                                         // Verifica se a OM Detentora é diferente da OM Favorecida
-                                        const isDifferentOmInMemoria = registro.om_detentora !== registro.organizacao || registro.ug_detentora !== registro.ug;
+                                        const isDifferentOmInMemoria = group.om_detentora !== group.organizacao || group.ug_detentora !== group.ug;
 
                                         return (
-                                            <div key={`memoria-view-${registro.id}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
+                                            <div key={`memoria-view-${group.groupKey}`} className="space-y-4 border p-4 rounded-lg bg-muted/30">
                                                 
                                                 <div className="flex items-start justify-between gap-4 mb-2">
                                                     <div className="flex flex-col flex-1 min-w-0">
                                                         <div className="flex items-center gap-2">
                                                             <h4 className="text-base font-semibold text-foreground">
-                                                                {registro.organizacao} (UG: {formatCodug(registro.ug)}) - {registro.origem} &rarr; {registro.destino}
+                                                                {group.organizacao} (UG: {formatCodug(group.ug)})
                                                             </h4>
                                                             {hasCustomMemoria && !isEditing && (
                                                                 <Badge variant="outline" className="text-xs">
@@ -1776,7 +1646,7 @@ const PassagemForm = () => {
                                                             <div className="flex items-center gap-1 mt-1">
                                                                 <AlertCircle className="h-4 w-4 text-red-600" />
                                                                 <span className="text-sm font-medium text-red-600">
-                                                                    Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                    Destino Recurso: {group.om_detentora} ({formatCodug(group.ug_detentora)})
                                                                 </span>
                                                             </div>
                                                         )}
@@ -1789,7 +1659,7 @@ const PassagemForm = () => {
                                                                     type="button" 
                                                                     size="sm"
                                                                     variant="outline"
-                                                                    onClick={() => handleIniciarEdicaoMemoria(registro)}
+                                                                    onClick={() => handleIniciarEdicaoMemoria(group)}
                                                                     disabled={isSaving || !isPTrabEditable}
                                                                     className="gap-2"
                                                                 >
@@ -1802,7 +1672,7 @@ const PassagemForm = () => {
                                                                         type="button" 
                                                                         size="sm"
                                                                         variant="ghost"
-                                                                        onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
+                                                                        onClick={() => handleRestaurarMemoriaAutomatica(firstRecord.id)}
                                                                         disabled={isSaving || !isPTrabEditable}
                                                                         className="gap-2 text-muted-foreground"
                                                                     >
@@ -1817,7 +1687,7 @@ const PassagemForm = () => {
                                                                     type="button" 
                                                                     size="sm"
                                                                     variant="default"
-                                                                    onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
+                                                                    onClick={() => handleSalvarMemoriaCustomizada(firstRecord.id)}
                                                                     disabled={isSaving}
                                                                     className="gap-2"
                                                                 >

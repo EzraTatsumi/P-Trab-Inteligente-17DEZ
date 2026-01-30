@@ -1,117 +1,119 @@
-import { formatCurrency, formatCodug, formatNumber } from "./formatUtils";
-import { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { Tables, TablesInsert } from "@/integrations/supabase/types";
+import { formatCurrency, formatCodug } from "./formatUtils";
+import { TrechoSelection } from "@/components/PassagemTrechoSelectorDialog";
 
-// Tipo de registro da DB
-export type PassagemRegistro = TablesInsert<'passagem_registros'> & { id?: string };
+// Tipos de dados
+export type PassagemRegistro = Tables<'passagem_registros'>;
+export type PassagemForm = TablesInsert<'passagem_registros'>;
 
-// Tipo de dados para o formulário (inclui campos de display)
-export interface PassagemForm {
-    om_favorecida: string;
-    ug_favorecida: string;
-    dias_operacao: number;
-    fase_atividade: string;
-    
-    // Dados do Trecho Selecionado (OM Detentora é a OM Contratante)
+// Tipo para o registro consolidado (usado na Seção 5)
+export interface ConsolidatedPassagemRecord {
+    organizacao: string;
+    ug: string;
     om_detentora: string;
     ug_detentora: string;
-    diretriz_id: string;
-    trecho_id: string;
-    origem: string;
-    destino: string;
-    tipo_transporte: string;
-    is_ida_volta: boolean;
-    valor_unitario: number;
-    
-    // Quantidade
-    quantidade_passagens: number;
+    dias_operacao: number;
+    efetivo: number;
+    fase_atividade: string;
+    records: PassagemRegistro[];
+    totalGeral: number;
+    totalND33: number;
 }
 
 /**
- * Calcula o custo total de uma solicitação de passagem.
- * @param data Dados da passagem.
- * @returns Objeto com totais calculados.
+ * Calcula os totais de um único registro de passagem (um trecho).
+ * @param data Dados do formulário.
+ * @returns Objeto com valor_total e valor_nd_33.
  */
 export const calculatePassagemTotals = (data: PassagemForm) => {
-    const valorUnitario = data.valor_unitario || 0;
-    const quantidade = data.quantidade_passagens || 0;
+    const valorUnitario = Number(data.valor_unitario || 0);
+    const quantidadePassagens = Number(data.quantidade_passagens || 0);
     
-    // O valor total é o valor unitário do trecho * a quantidade de passagens
-    const valorTotal = valorUnitario * quantidade;
+    const valorTotal = valorUnitario * quantidadePassagens;
     
-    // Passagens são sempre ND 33
-    const valorND33 = valorTotal;
-
     return {
-        totalGeral: valorTotal,
-        totalND33: valorND33,
+        valor_total: valorTotal,
+        valor_nd_33: valorTotal, // Passagens são ND 33.90.33
     };
 };
 
 /**
- * Formats the activity phases from a semicolon-separated string into a readable text format.
+ * Gera a memória de cálculo para um ÚNICO registro de passagem (usado no Staging/Revisão).
+ * O formato é simplificado para focar no cálculo do trecho.
+ * @param data O registro de passagem calculado.
+ * @returns String formatada da memória de cálculo.
  */
-const formatFasesParaTexto = (faseCSV: string | null | undefined): string => {
-  if (!faseCSV) return 'operação';
-  
-  const fases = faseCSV.split(';').map(f => f.trim()).filter(f => f);
-  
-  if (fases.length === 0) return 'operação';
-  if (fases.length === 1) return fases[0];
-  if (fases.length === 2) return `${fases[0]} e ${fases[1]}`;
-  
-  const ultimaFase = fases[fases.length - 1];
-  const demaisFases = fases.slice(0, -1).join(', ');
-  return `${demaisFases} e ${ultimaFase}`;
-};
-
-/**
- * Helper function to determine 'do' or 'da' based on OM name.
- */
-const getOmArticle = (omName: string): string => {
-    if (omName.includes('ª')) {
-        return 'da';
-    }
-    return 'do';
-};
-
-/**
- * Gera a memória de cálculo detalhada para o registro de Passagens.
- */
-export const generatePassagemMemoriaCalculo = (data: PassagemRegistro | PassagemForm): string => {
+export const generatePassagemMemoriaCalculo = (data: PassagemRegistro): string => {
     const { 
-        organizacao, ug, om_detentora, ug_detentora, 
-        dias_operacao, fase_atividade, 
-        origem, destino, tipo_transporte, is_ida_volta, 
-        valor_unitario, quantidade_passagens, valor_total, valor_nd_33
+        organizacao, ug, om_detentora, ug_detentora, dias_operacao, efetivo, fase_atividade,
+        origem, destino, tipo_transporte, is_ida_volta, valor_unitario, quantidade_passagens,
+        valor_total,
     } = data;
+
+    const total = Number(valor_total || 0);
+    const unitario = Number(valor_unitario || 0);
+    const qtd = quantidade_passagens;
     
-    const faseFormatada = formatFasesParaTexto(fase_atividade);
-    const omArticle = getOmArticle(organizacao);
-    const diaPlural = dias_operacao === 1 ? 'dia' : 'dias';
-    const passagemPlural = quantidade_passagens === 1 ? 'passagem' : 'passagens';
-    const idaVoltaText = is_ida_volta ? 'Ida e Volta' : 'Somente Ida';
+    const diasText = dias_operacao === 1 ? "dia" : "dias";
+    const efetivoText = efetivo === 1 ? "militar" : "militares";
+    const idaVoltaText = is_ida_volta ? 'Ida/Volta' : 'Ida';
     
-    // CABEÇALHO
-    const header = `33.90.33 - Aquisição de ${quantidade_passagens} ${passagemPlural} (${tipo_transporte}) para o trecho ${origem} / ${destino} (${idaVoltaText}), para atender a OM ${organizacao}, durante ${dias_operacao} ${diaPlural} de ${faseFormatada}.`;
+    let memoria = "";
+    
+    // Cabeçalho simplificado para o item individual (usado no staging)
+    memoria += `33.90.33 - Aquisição de Passagem para ${efetivo} ${efetivoText} do(a) ${organizacao} (${formatCodug(ug)}), durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n\n`;
+    
+    memoria += `Cálculo:\n`;
+    memoria += `- ${origem} -> ${destino}: ${formatCurrency(unitario)} (${tipo_transporte} - ${idaVoltaText}).\n\n`;
+    
+    memoria += `Fórmula: Qtd Psg x Valor Unitário da Psg.\n`;
+    memoria += `- ${qtd} Psg ${origem}-${destino} (${tipo_transporte}-${idaVoltaText}) x ${formatCurrency(unitario)} = ${formatCurrency(total)}.\n\n`;
+    
+    memoria += `Total: ${formatCurrency(total)}.\n`;
+    
+    return memoria;
+};
 
-    return `${header}
 
-OM Favorecida: ${organizacao} (UG: ${formatCodug(ug)})
-OM Contratante (Detentora do Recurso): ${om_detentora} (UG: ${formatCodug(ug_detentora)})
+/**
+ * Gera a memória de cálculo CONSOLIDADA para um grupo de registros de passagem (usado na Seção 5).
+ * @param group O objeto ConsolidatedPassagemRecord contendo todos os registros do lote.
+ * @returns String formatada da memória de cálculo consolidada.
+ */
+export const generateConsolidatedPassagemMemoriaCalculo = (group: ConsolidatedPassagemRecord): string => {
+    const { organizacao, ug, dias_operacao, efetivo, fase_atividade, records, totalGeral } = group;
 
-Detalhes do Trecho:
-- Origem: ${origem}
-- Destino: ${destino}
-- Tipo de Transporte: ${tipo_transporte}
-- Modalidade: ${idaVoltaText}
-- Valor Unitário: ${formatCurrency(valor_unitario)}
-
-Cálculo:
-Fórmula: Quantidade de Passagens x Valor Unitário do Trecho.
-- ${formatNumber(quantidade_passagens)} x ${formatCurrency(valor_unitario)} = ${formatCurrency(valor_total)}.
-
-Alocação:
-- ND 33.90.33 (Passagens): ${formatCurrency(valor_nd_33)}
-
-Valor Total: ${formatCurrency(valor_total)}.`;
+    const diasText = dias_operacao === 1 ? "dia" : "dias";
+    const efetivoText = efetivo === 1 ? "militar" : "militares";
+    
+    let memoria = "";
+    
+    // 1. Cabeçalho Consolidado
+    memoria += `33.90.33 - Aquisição de Passagem para ${efetivo} ${efetivoText} do(a) ${organizacao} (${formatCodug(ug)}), durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n\n`;
+    
+    // 2. Detalhe dos Trechos (Cálculo)
+    memoria += `Cálculo:\n`;
+    records.forEach(r => {
+        const unitario = Number(r.valor_unitario || 0);
+        const idaVoltaText = r.is_ida_volta ? 'Ida/Volta' : 'Ida';
+        memoria += `- ${r.origem}-${r.destino}: ${formatCurrency(unitario)} (${r.tipo_transporte} - ${idaVoltaText}).\n`;
+    });
+    memoria += "\n";
+    
+    // 3. Aplicação da Fórmula
+    memoria += `Fórmula: Qtd Psg x Valor Unitário da Psg.\n`;
+    records.forEach(r => {
+        const total = Number(r.valor_total || 0);
+        const unitario = Number(r.valor_unitario || 0);
+        const qtd = r.quantidade_passagens;
+        const idaVoltaText = r.is_ida_volta ? 'Ida/Volta' : 'Ida';
+        
+        memoria += `- ${qtd} Psg ${r.origem}-${r.destino} (${r.tipo_transporte}-${idaVoltaText}) x ${formatCurrency(unitario)} = ${formatCurrency(total)}.\n`;
+    });
+    memoria += "\n";
+    
+    // 4. Total
+    memoria += `Total: ${formatCurrency(totalGeral)}.\n`;
+    
+    return memoria;
 };
