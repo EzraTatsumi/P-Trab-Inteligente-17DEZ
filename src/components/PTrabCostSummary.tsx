@@ -97,8 +97,9 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     { data: classeVIIIRemontaData, error: classeVIIIRemontaError },
     { data: classeIXData, error: classeIXError }, // NOVO
     { data: classeIIIData, error: classeIIIError }, // Classe III
-    { data: diariaData, error: diariaError }, // NOVO: Diárias
+    { data: diariaData, error: diariaError }, // Diárias
     { data: verbaOperacionalData, error: verbaOperacionalError }, // Verba Operacional e Suprimento de Fundos
+    { data: passagemData, error: passagemError }, // NOVO: Passagens
   ] = await Promise.all([
     supabase
       .from('classe_ii_registros')
@@ -133,13 +134,17 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .select('valor_total, tipo_combustivel, total_litros, tipo_equipamento')
       .eq('p_trab_id', ptrabId),
     supabase
-      .from('diaria_registros') // NOVO: Diárias
+      .from('diaria_registros') // Diárias
       // CORRIGIDO: Buscando valor_nd_15 (total geral) e valor_taxa_embarque (para detalhamento)
       .select('valor_total, valor_nd_15, valor_taxa_embarque, quantidade, dias_operacao, valor_nd_30') 
       .eq('p_trab_id', ptrabId),
     supabase // Verba Operacional e Suprimento de Fundos
       .from('verba_operacional_registros')
       .select('valor_nd_30, valor_nd_39, valor_total_solicitado, dias_operacao, quantidade_equipes, detalhamento')
+      .eq('p_trab_id', ptrabId),
+    supabase // NOVO: Passagens
+      .from('passagem_registros')
+      .select('valor_total, valor_nd_33, quantidade_passagens, is_ida_volta, origem, destino')
       .eq('p_trab_id', ptrabId),
   ]);
 
@@ -154,6 +159,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   if (classeIIIError) console.error("Erro ao carregar Classe III:", classeIIIError);
   if (diariaError) console.error("Erro ao carregar Diárias:", diariaError);
   if (verbaOperacionalError) console.error("Erro ao carregar Verba Operacional/Suprimento:", verbaOperacionalError);
+  if (passagemError) console.error("Erro ao carregar Passagens:", passagemError); // NOVO
   
   // Usar arrays vazios se o fetch falhou
   const safeClasseIIData = classeIIData || [];
@@ -166,6 +172,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const safeClasseIIIData = classeIIIData || [];
   const safeDiariaData = diariaData || [];
   const safeVerbaOperacionalData = verbaOperacionalData || [];
+  const safePassagemData = passagemData || []; // NOVO
   
   const allClasseItemsData = [
     ...safeClasseIIData,
@@ -435,6 +442,22 @@ const fetchPTrabTotals = async (ptrabId: string) => {
           totalDiasVerba += Number(record.dias_operacao || 0);
       }
   });
+  
+  // 6. Processamento de Passagens (ND 33.90.33)
+  let totalPassagensND33 = 0;
+  let totalQuantidadePassagens = 0;
+  let totalTrechosPassagens = 0;
+  
+  (safePassagemData || []).forEach(record => {
+      const valorND33 = Number(record.valor_nd_33 || 0);
+      const quantidade = Number(record.quantidade_passagens || 0);
+      
+      totalPassagensND33 += valorND33;
+      totalQuantidadePassagens += quantidade;
+      
+      // Cada registro representa um trecho (ida ou ida/volta)
+      totalTrechosPassagens += 1; 
+  });
     
   // Soma de todas as classes diversas (II, V, VI, VII, VIII, IX)
   const totalClassesDiversas = totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX;
@@ -442,9 +465,9 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
   const totalLogisticoGeral = totalClasseI + totalClassesDiversas + totalCombustivel + totalLubrificanteValor; 
   
-  // Total Operacional (Diárias + Verba Operacional + Suprimento de Fundos + Outros Operacionais)
+  // Total Operacional (Diárias + Verba Operacional + Suprimento de Fundos + Passagens + Outros Operacionais)
   const totalOutrosOperacionais = 0; // Placeholder para outros itens operacionais
-  const totalOperacional = totalDiarias + totalVerbaOperacional + totalSuprimentoFundos + totalOutrosOperacionais;
+  const totalOperacional = totalDiarias + totalVerbaOperacional + totalSuprimentoFundos + totalPassagensND33 + totalOutrosOperacionais;
   
   // Novos totais (placeholders)
   const totalMaterialPermanente = 0;
@@ -503,28 +526,33 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalCombustivel,
     totalMaterialPermanente,
     totalAviacaoExercito,
-    totalRacoesOperacionaisGeral, // NOVO: Retorna o total de rações operacionais
+    totalRacoesOperacionaisGeral, // Retorna o total de rações operacionais
     
-    // NOVO: Diárias
+    // Diárias
     totalDiarias,
     totalDiariasND15: totalDiariasND15_TaxaEmbarque, // Taxa de Embarque (ND 15)
     totalDiariasND30: totalDiariasND15_DiariaBase, // Diárias (valor principal)
     totalMilitaresDiarias,
-    totalDiasViagem, // Novo: Total de dias de viagem
+    totalDiasViagem, // Total de dias de viagem
     
-    // NOVO: Verba Operacional
+    // Verba Operacional
     totalVerbaOperacional,
     totalVerbaOperacionalND30,
     totalVerbaOperacionalND39,
-    totalEquipesVerba, // NOVO
-    totalDiasVerba, // NOVO
+    totalEquipesVerba, 
+    totalDiasVerba, 
     
-    // NOVO: Suprimento de Fundos
+    // Suprimento de Fundos
     totalSuprimentoFundos,
     totalSuprimentoFundosND30,
     totalSuprimentoFundosND39,
-    totalEquipesSuprimento, // NOVO (Efetivo)
-    totalDiasSuprimento, // NOVO
+    totalEquipesSuprimento, 
+    totalDiasSuprimento, 
+
+    // NOVO: Passagens
+    totalPassagensND33,
+    totalQuantidadePassagens,
+    totalTrechosPassagens,
   };
 };
 
@@ -604,12 +632,16 @@ export const PTrabCostSummary = ({
       totalVerbaOperacionalND39: 0,
       totalEquipesVerba: 0, 
       totalDiasVerba: 0, 
-      // NOVO: Suprimento de Fundos
+      // Suprimento de Fundos
       totalSuprimentoFundos: 0,
       totalSuprimentoFundosND30: 0,
       totalSuprimentoFundosND39: 0,
       totalEquipesSuprimento: 0,
       totalDiasSuprimento: 0,
+      // NOVO: Passagens
+      totalPassagensND33: 0,
+      totalQuantidadePassagens: 0,
+      totalTrechosPassagens: 0,
     },
   });
   
@@ -1185,6 +1217,60 @@ export const PTrabCostSummary = ({
                     </AccordionItem>
                   </Accordion>
                   
+                  {/* Passagens (ND 33.90.33) - NOVO */}
+                  {totals.totalPassagensND33 > 0 && (
+                    <Accordion type="single" collapsible className="w-full pt-1">
+                        <AccordionItem value="item-passagens" className="border-b-0">
+                            <AccordionTrigger className="p-0 hover:no-underline">
+                                <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                                    <div className="flex items-center gap-1 text-foreground">
+                                        <Plane className="h-3 w-3 text-blue-500" />
+                                        Passagens
+                                    </div>
+                                    <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                                        {formatCurrency(totals.totalPassagensND33)}
+                                    </span>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-1 pb-0">
+                                <div className="space-y-1 pl-4 text-[10px]">
+                                    {/* Detalhe 1: Total de Passagens */}
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span className="w-1/2 text-left">Total de Passagens</span>
+                                        <span className="w-1/4 text-right font-medium">
+                                            {formatNumber(totals.totalQuantidadePassagens)} un.
+                                        </span>
+                                        <span className="w-1/4 text-right font-medium text-background">
+                                            {/* Vazio */}
+                                        </span>
+                                    </div>
+                                    {/* Detalhe 2: Total de Trechos */}
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span className="w-1/2 text-left">Total de Trechos Registrados</span>
+                                        <span className="w-1/4 text-right font-medium">
+                                            {formatNumber(totals.totalTrechosPassagens)}
+                                        </span>
+                                        <span className="w-1/4 text-right font-medium text-background">
+                                            {/* Vazio */}
+                                        </span>
+                                    </div>
+                                    
+                                    {/* Linha de Detalhe Consolidada (ND 33) */}
+                                    <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                        <span className="w-1/2 text-left font-semibold">ND 33 (Passagens)</span>
+                                        <span className="w-1/4 text-right font-medium text-background">
+                                            {/* Vazio */}
+                                        </span>
+                                        <span className="w-1/4 text-right font-medium text-green-600">
+                                            {formatCurrency(totals.totalPassagensND33)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                  )}
+                  
                   {/* Verba Operacional (ND 30/39) */}
                   {totals.totalVerbaOperacional > 0 && (
                     <Accordion type="single" collapsible className="w-full pt-1">
@@ -1294,14 +1380,14 @@ export const PTrabCostSummary = ({
                   )}
                   
                   {/* Outros Operacionais (Placeholder) - Adjusted logic */}
-                  {totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos > 0 && (
+                  {totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33 > 0 && (
                     <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-border/50 mt-1">
                         <span className="w-1/2 text-left">Outros Itens Operacionais</span>
                         <span className="w-1/4 text-right font-medium">
                             {/* Vazio */}
                         </span>
                         <span className="w-1/4 text-right font-medium">
-                            {formatCurrency(totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos)}
+                            {formatCurrency(totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33)}
                         </span>
                     </div>
                   )}
