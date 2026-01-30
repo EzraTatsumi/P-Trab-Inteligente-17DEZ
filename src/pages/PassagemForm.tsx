@@ -347,7 +347,8 @@ const PassagemForm = () => {
         if (ptrabData && !editingId) {
             // Modo Novo Registro: Limpar
             setFormData(prev => ({
-                ...prev,
+                ...initialFormState,
+                // Manter a OM Favorecida (do PTrab) se já estiver definida
                 om_favorecida: "", 
                 ug_favorecida: "", 
                 om_destino: "",
@@ -766,24 +767,24 @@ const PassagemForm = () => {
             
             // MODO ADIÇÃO: Adicionar à lista pendente
             
-            const shouldStageNewItem = pendingPassagens.length === 0 || compareFormData(formData, lastStagedFormData || initialFormState);
+            // A lógica de dirty check para substituição deve ser:
+            // Se a lista não estiver vazia E o formulário não mudou desde o último staging,
+            // então substitua o último item.
+            
+            const isFormUnchangedSinceLastStage = !compareFormData(formData, lastStagedFormData || initialFormState);
 
-            if (shouldStageNewItem) {
-                setPendingPassagens(prev => {
-                    // Se estivermos no modo de adição e o formulário mudou, adiciona um novo item.
-                    // Se o formulário não mudou, apenas atualiza o último item (se houver).
-                    if (pendingPassagens.length > 0 && !compareFormData(formData, lastStagedFormData || initialFormState)) {
-                        return [...prev.slice(0, -1), calculatedData];
-                    }
-                    return [...prev, calculatedData];
-                });
-                
-                setLastStagedFormData(formData);
-                
-                toast.info("Item de Passagem adicionado à lista pendente.");
+            if (pendingPassagens.length > 0 && isFormUnchangedSinceLastStage) {
+                // Substitui o último item
+                setPendingPassagens(prev => [...prev.slice(0, -1), calculatedData]);
+                toast.info("Item pendente atualizado.");
             } else {
-                toast.info("Nenhuma alteração detectada no item pendente.");
+                // Adiciona um novo item (ou o primeiro item)
+                setPendingPassagens(prev => [...prev, calculatedData]);
+                toast.info("Item de Passagem adicionado à lista pendente.");
             }
+            
+            // Atualiza o lastStagedFormData para o estado atual do formulário
+            setLastStagedFormData(formData);
             
             // Manter campos de contexto e trecho
             setFormData(prev => ({
@@ -959,7 +960,7 @@ const PassagemForm = () => {
                 om_detentora: trecho.om_detentora,
                 ug_detentora: trecho.ug_detentora,
                 diretriz_id: trecho.diretriz_id,
-                trecho_id: trecho.id, // Usar id do trecho
+                trecho_id: trecho.id,
                 origem: trecho.origem,
                 destino: trecho.destino,
                 tipo_transporte: trecho.tipo_transporte,
@@ -1616,7 +1617,7 @@ const PassagemForm = () => {
                                                 om_detentora: trecho.om_detentora,
                                                 ug_detentora: trecho.ug_detentora,
                                                 diretriz_id: trecho.diretriz_id,
-                                                trecho_id: trecho.id, // Usar id do trecho
+                                                trecho_id: trecho.id,
                                                 origem: trecho.origem,
                                                 destino: trecho.destino,
                                                 tipo_transporte: trecho.tipo_transporte,
