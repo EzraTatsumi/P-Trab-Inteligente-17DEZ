@@ -460,8 +460,6 @@ const PassagemForm = () => {
         
         // MODO NOVO REGISTRO: Compara com lastStagedFormData
         // Se o formulário mudou desde o último staging, ele é considerado 'dirty'
-        // Nota: No modo de múltiplos registros, lastStagedFormData é limpo após salvar,
-        // mas é usado para verificar se o usuário alterou o formulário antes de adicionar o próximo item.
         if (!editingId && pendingPassagens.length > 0 && lastStagedFormData) {
             return compareFormData(formData, lastStagedFormData);
         }
@@ -805,11 +803,9 @@ const PassagemForm = () => {
             
             toast.info(`${newPendingItems.length} item(ns) de Passagem adicionado(s) à lista pendente.`);
             
-            // Manter campos de contexto e limpar a seleção de trechos para o próximo item
-            setFormData(prev => ({
-                ...prev,
-                selected_trechos: [], // Limpa a seleção de trechos para o próximo item
-            }));
+            // Manter campos de contexto. NÃO LIMPAR selected_trechos aqui.
+            // O usuário deve clicar em Limpar Formulário se quiser começar do zero.
+            // Se ele quiser adicionar mais itens, ele pode reabrir o seletor de trechos.
             
         } catch (err: any) {
             toast.error(err.message || "Erro desconhecido ao calcular.");
@@ -1481,6 +1477,8 @@ const PassagemForm = () => {
                                                 <Button 
                                                     type="button" 
                                                     onClick={handleSavePendingPassagens}
+                                                    // O botão de salvar deve ser desabilitado se houver dirty check,
+                                                    // pois o usuário precisa re-staged o item alterado.
                                                     disabled={isSaving || pendingPassagens.length === 0 || isPassagemDirty}
                                                     className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                                 >
