@@ -355,8 +355,8 @@ const PassagemForm = () => {
                 
                 // 2. Gerar memória para o trecho
                 const calculatedFormData: PassagemFormType = {
-                    om_favorecida: formData.om_favorecida, 
-                    ug_favorecida: formData.ug_favorecida, 
+                    organizacao: formData.om_favorecida, 
+                    ug: formData.ug_favorecida, 
                     dias_operacao: formData.dias_operacao,
                     fase_atividade: formData.fase_atividade,
                     
@@ -531,7 +531,61 @@ const PassagemForm = () => {
         
         // 4. Calculate totals and generate memory (usando a nova lógica de cálculo)
         // Recalculamos aqui para garantir que o stagedUpdate reflita o estado atual
-        const { totalGeral, totalND33, memoria } = calculos;
+        // Nota: O cálculo depende do formData, que acabou de ser setado.
+        // Para garantir que o cálculo use o novo formData imediatamente, podemos forçar o cálculo aqui,
+        // ou confiar que o useMemo será reexecutado antes do setStagedUpdate.
+        // Vamos usar a lógica de cálculo diretamente para garantir a consistência.
+        
+        const tempCalculos = (() => {
+            if (newFormData.selected_trechos.length === 0) {
+                return { totalGeral: 0, totalND33: 0, memoria: "" };
+            }
+            
+            let totalGeral = 0;
+            let memoria = "";
+            
+            newFormData.selected_trechos.forEach((trecho, index) => {
+                const totalTrecho = calculateTrechoTotal(trecho);
+                totalGeral += totalTrecho;
+                
+                const calculatedFormData: PassagemFormType = {
+                    organizacao: newFormData.om_favorecida, 
+                    ug: newFormData.ug_favorecida, 
+                    dias_operacao: newFormData.dias_operacao,
+                    fase_atividade: newFormData.fase_atividade,
+                    om_detentora: trecho.om_detentora,
+                    ug_detentora: trecho.ug_detentora,
+                    diretriz_id: trecho.diretriz_id,
+                    trecho_id: trecho.id,
+                    origem: trecho.origem,
+                    destino: trecho.destino,
+                    tipo_transporte: trecho.tipo_transporte,
+                    is_ida_volta: trecho.is_ida_volta,
+                    valor_unitario: trecho.valor_unitario,
+                    quantidade_passagens: trecho.quantidade_passagens,
+                    efetivo: newFormData.efetivo,
+                };
+
+                memoria += `--- Trecho ${index + 1}: ${trecho.origem} -> ${trecho.destino} ---\n`;
+                memoria += generatePassagemMemoriaCalculo({
+                    ...calculatedFormData,
+                    valor_total: totalTrecho,
+                    valor_nd_33: totalTrecho,
+                } as PassagemRegistro);
+                memoria += "\n";
+            });
+            
+            memoria += `\n==================================================\n`;
+            memoria += `TOTAL GERAL SOLICITADO: ${formatCurrency(totalGeral)}\n`;
+            memoria += `Efetivo: ${newFormData.efetivo} militares\n`;
+            memoria += `==================================================\n`;
+            
+            return {
+                totalGeral,
+                totalND33: totalGeral,
+                memoria,
+            };
+        })();
         
         // 5. Stage the current record data immediately for display in Section 3
         const stagedData: CalculatedPassagem = {
@@ -555,14 +609,14 @@ const PassagemForm = () => {
             valor_unitario: trechoFromRecord.valor_unitario,
             quantidade_passagens: trechoFromRecord.quantidade_passagens,
             
-            valor_total: totalGeral,
-            valor_nd_33: totalND33,
+            valor_total: tempCalculos.totalGeral,
+            valor_nd_33: tempCalculos.totalND33,
             
             detalhamento: registro.detalhamento,
             detalhamento_customizado: registro.detalhamento_customizado, 
             
-            totalGeral: totalGeral,
-            memoria_calculo_display: memoria, 
+            totalGeral: tempCalculos.totalGeral,
+            memoria_calculo_display: tempCalculos.memoria, 
             om_favorecida: newFormData.om_favorecida,
             ug_favorecida: newFormData.ug_favorecida,
             selected_trechos: newFormData.selected_trechos, // Adiciona a lista de trechos
@@ -855,7 +909,7 @@ const PassagemForm = () => {
         };
         
         // Nota: Para registros antigos, o cálculo é feito com base no único trecho salvo.
-        const { memoria: memoriaAutomatica } = useMemo(() => {
+        const { memoria: memoriaAutomatica } = (() => {
             if (calculatedDataForMemoria.selected_trechos.length === 0) return { memoria: "" };
             
             const trecho = calculatedDataForMemoria.selected_trechos[0];
@@ -892,7 +946,7 @@ const PassagemForm = () => {
             memoria += `==================================================\n`;
             
             return { memoria };
-        }, [calculatedDataForMemoria]);
+        })();
         
         // 3. Usar a customizada se existir, senão usar a automática
         setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
@@ -1494,7 +1548,7 @@ const PassagemForm = () => {
                                         };
                                         
                                         // Nota: Para registros antigos, o cálculo é feito com base no único trecho salvo.
-                                        const { memoria: memoriaAutomatica } = useMemo(() => {
+                                        const { memoria: memoriaAutomatica } = (() => {
                                             if (calculatedDataForMemoria.selected_trechos.length === 0) return { memoria: "" };
                                             
                                             const trecho = calculatedDataForMemoria.selected_trechos[0];
@@ -1531,7 +1585,7 @@ const PassagemForm = () => {
                                             memoria += `==================================================\n`;
                                             
                                             return { memoria };
-                                        }, [calculatedDataForMemoria]);
+                                        })();
                                         
                                         let memoriaExibida = memoriaAutomatica;
                                         if (isEditing) {
