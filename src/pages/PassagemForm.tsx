@@ -1536,7 +1536,7 @@ const PassagemForm = () => {
                                                                     <div className="flex flex-col">
                                                                         <div className="flex items-center gap-2">
                                                                             <h4 className="font-semibold text-base text-foreground">
-                                                                                {registro.origem} &rarr; {registro.destino}
+                                                                                Passagem
                                                                             </h4>
                                                                             {registro.fase_atividade !== faseAtividade && (
                                                                                 <Badge variant="outline" className="text-xs">
@@ -1545,7 +1545,7 @@ const PassagemForm = () => {
                                                                             )}
                                                                         </div>
                                                                         <p className="text-xs text-muted-foreground">
-                                                                            {registro.tipo_transporte} ({registro.is_ida_volta ? 'Ida/Volta' : 'Ida'}) | {registro.dias_operacao} {diasText} | {registro.efetivo} {efetivoText}
+                                                                            {totalPassagens} {passagemText} | Período: {registro.dias_operacao} {diasText} | Efetivo: {registro.efetivo} {efetivoText}
                                                                         </p>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
@@ -1587,8 +1587,8 @@ const PassagemForm = () => {
                                                                         </span>
                                                                     </div>
                                                                     <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">Quantidade de Passagens:</span>
-                                                                        <span className="font-medium text-foreground">{totalPassagens} {passagemText}</span>
+                                                                        <span className="text-muted-foreground">Trecho ({registro.tipo_transporte} - {registro.is_ida_volta ? 'Ida/Volta' : 'Ida'}):</span>
+                                                                        <span className="font-medium text-foreground">{registro.origem} &rarr; {registro.destino} ({totalPassagens} {passagemText})</span>
                                                                     </div>
                                                                     <div className="flex justify-between text-xs font-bold pt-1">
                                                                         <span className="text-muted-foreground">Total (ND 33.90.33):</span>
