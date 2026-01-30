@@ -1,5 +1,4 @@
 import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { Tables } from "@/integrations/supabase/types";
 
 // Tipo simplificado para PassagemRegistro (deve ser consistente com o Manager)
 interface PassagemRegistro {
