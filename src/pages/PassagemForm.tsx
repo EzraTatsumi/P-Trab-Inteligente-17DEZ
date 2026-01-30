@@ -576,6 +576,7 @@ const PassagemForm = () => {
         setLastStagedFormData(null);
         setStagedUpdate(null); 
         
+        // Define o modo edição
         setEditingId(group.records[0].id); // Usa o ID do primeiro registro para controle de UI
         setGroupToReplace(group); // Armazena o grupo original para substituição
         
@@ -614,7 +615,7 @@ const PassagemForm = () => {
         };
         setFormData(newFormData);
         
-        toast.info("Modo Edição ativado. Revise os dados e clique em 'Salvar Item na Lista' para recalcular.");
+        toast.info("Modo Edição ativado. Revise os dados e clique em 'Recalcular/Revisar Lote' na Seção 2.");
         
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -734,6 +735,7 @@ const PassagemForm = () => {
                 let memoriaCustomizadaTexto: string | null = null;
                 if (groupToReplace) {
                     // Busca o primeiro registro do grupo original para verificar a memória customizada
+                    // Usamos o ID do primeiro registro do grupo original, que é o editingId
                     const originalRecord = groupToReplace.records.find(r => r.id === editingId);
                     if (originalRecord) {
                         memoriaCustomizadaTexto = originalRecord.detalhamento_customizado;
@@ -742,6 +744,15 @@ const PassagemForm = () => {
                 
                 // Aplicamos a memória customizada ao primeiro item da nova lista (apenas para fins de staging display)
                 if (memoriaCustomizadaTexto && newPendingItems.length > 0) {
+                    // Se o usuário está editando, ele está substituindo o lote.
+                    // A memória customizada deve ser mantida no primeiro item do novo lote,
+                    // ou o usuário pode editá-la na Seção 5 após salvar.
+                    // Por simplicidade, vamos manter a memória customizada apenas se o usuário não a alterou no formulário.
+                    // Como não há campo de detalhamento no formulário principal, apenas mantemos o estado de edição.
+                    
+                    // Para garantir que o item em staging tenha o ID do item original para referência,
+                    // vamos atribuir o ID do primeiro registro original ao primeiro item do novo lote.
+                    newPendingItems[0].tempId = editingId; 
                     newPendingItems[0].detalhamento_customizado = memoriaCustomizadaTexto;
                 }
                 
