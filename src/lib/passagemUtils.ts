@@ -45,7 +45,7 @@ export const calculatePassagemTotals = (data: PassagemForm) => {
  */
 export const generatePassagemMemoriaCalculo = (data: PassagemRegistro): string => {
     const { 
-        organizacao, ug, dias_operacao, efetivo, fase_atividade,
+        organizacao, dias_operacao, efetivo, fase_atividade,
         origem, destino, tipo_transporte, is_ida_volta, valor_unitario, quantidade_passagens,
         valor_total,
     } = data;
@@ -81,6 +81,8 @@ export const generatePassagemMemoriaCalculo = (data: PassagemRegistro): string =
 
 /**
  * Gera a memória de cálculo CONSOLIDADA para um grupo de registros de passagem (usado na Seção 5).
+ * NOTA: A linha do Pregão/UASG é adicionada dinamicamente no componente de renderização (ConsolidatedPassagemMemoria)
+ * após a busca dos detalhes da diretriz.
  * @param group O objeto ConsolidatedPassagemRecord contendo todos os registros do lote.
  * @returns String formatada da memória de cálculo consolidada.
  */
@@ -96,7 +98,7 @@ export const generateConsolidatedPassagemMemoriaCalculo = (group: ConsolidatedPa
     
     let memoria = "";
     
-    // 1. Cabeçalho Consolidado (Removendo CODUG)
+    // 1. Cabeçalho Consolidado
     memoria += `33.90.33 - Aquisição de Passagem para ${efetivo} ${efetivoText} ${concordancia} ${organizacao}, durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n\n`;
     
     // 2. Detalhe dos Trechos (Cálculo)
@@ -120,9 +122,8 @@ export const generateConsolidatedPassagemMemoriaCalculo = (group: ConsolidatedPa
     });
     memoria += "\n";
     
-    // 4. Total e Pregão/UASG
+    // 4. Total
     memoria += `Total: ${formatCurrency(totalGeral)}.\n`;
-    memoria += `(Pregão 90.018/2024 - UASG 160.520)\n`; // Valor fixo de exemplo
     
     return memoria;
 };
