@@ -1500,14 +1500,29 @@ const PassagemForm = () => {
                                     </h3>
                                     
                                     {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
-                                        // O total da OM é a soma do valor_total
+                                        // 1. Calcular Totais Consolidados
                                         const totalOM = omRegistros.reduce((sum, r) => Number(r.valor_total) + sum, 0);
+                                        const totalPassagensConsolidado = omRegistros.reduce((sum, r) => r.quantidade_passagens + sum, 0);
+                                        const totalND33Consolidado = omRegistros.reduce((sum, r) => Number(r.valor_nd_33 || 0) + sum, 0);
+                                        
+                                        // Assumimos que dias_operacao e efetivo são os mesmos para todos os registros agrupados,
+                                        // mas para exibição consolidada, usamos o valor do primeiro registro.
+                                        const diasOperacaoConsolidado = omRegistros[0].dias_operacao;
+                                        const efetivoConsolidado = omRegistros[0].efetivo || 0;
+                                        
                                         const omName = omKey.split(' (')[0];
                                         const ug = omKey.split(' (')[1].replace(')', '');
-                                        
-                                        // A fase de atividade é a mesma para todos os registros agrupados (pelo menos o primeiro)
                                         const faseAtividade = omRegistros[0].fase_atividade || 'Não Definida';
                                         
+                                        const diasText = diasOperacaoConsolidado === 1 ? 'dia' : 'dias';
+                                        const efetivoText = efetivoConsolidado === 1 ? 'militar' : 'militares';
+                                        const passagemText = totalPassagensConsolidado === 1 ? 'passagem' : 'passagens';
+                                        
+                                        // Verifica se a OM Detentora é diferente da OM Favorecida (usando o primeiro registro como referência)
+                                        const isDifferentOm = omRegistros.some(r => r.om_detentora !== r.organizacao || r.ug_detentora !== r.ug);
+                                        const omDestino = omRegistros[0].om_detentora;
+                                        const ugDestino = omRegistros[0].ug_detentora;
+
                                         return (
                                             <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
                                                 <div className="flex items-center justify-between mb-3 border-b pb-2">
@@ -1522,87 +1537,101 @@ const PassagemForm = () => {
                                                     </span>
                                                 </div>
                                                 
+                                                {/* NOVO CORPO CONSOLIDADO */}
                                                 <div className="space-y-3">
-                                                    {omRegistros.map((registro) => {
-                                                        const totalPassagens = registro.quantidade_passagens;
-                                                        const totalND33 = Number(registro.valor_nd_33 || 0);
-                                                        
-                                                        const isDifferentOm = registro.om_detentora !== registro.organizacao || registro.ug_detentora !== registro.ug;
-                                                        
-                                                        const diasText = registro.dias_operacao === 1 ? 'dia' : 'dias';
-                                                        const efetivoText = registro.efetivo === 1 ? 'militar' : 'militares';
-                                                        const passagemText = totalPassagens === 1 ? 'passagem' : 'passagens';
-                                                        
-                                                        return (
-                                                            <Card 
-                                                                key={registro.id} 
-                                                                className={cn(
-                                                                    "p-3 bg-background border",
-                                                                    editingId === registro.id && "border-yellow-500/70 bg-yellow-50/50"
-                                                                )}
-                                                            >
-                                                                <div className="flex items-center justify-between">
-                                                                    <div className="flex flex-col">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <h4 className="font-semibold text-base text-foreground">
-                                                                                Passagem
-                                                                            </h4>
-                                                                            {registro.fase_atividade !== faseAtividade && (
-                                                                                <Badge variant="outline" className="text-xs">
-                                                                                    {registro.fase_atividade}
-                                                                                </Badge>
-                                                                            )}
-                                                                        </div>
-                                                                        <p className="text-xs text-muted-foreground">
-                                                                            {totalPassagens} {passagemText} | Período: {registro.dias_operacao} {diasText} | Efetivo: {registro.efetivo} {efetivoText}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="font-bold text-lg text-primary/80">
-                                                                            {formatCurrency(totalND33)}
-                                                                        </span>
-                                                                        <div className="flex gap-1">
-                                                                            <Button
-                                                                                type="button" 
-                                                                                variant="ghost"
-                                                                                size="icon"
-                                                                                className="h-8 w-8"
-                                                                                onClick={() => handleEdit(registro)}
-                                                                                disabled={!isPTrabEditable || isSaving || pendingPassagens.length > 0}
-                                                                            >
-                                                                                <Pencil className="h-4 w-4" />
-                                                                            </Button>
-                                                                            <Button
-                                                                                type="button" 
-                                                                                variant="ghost"
-                                                                                size="icon"
-                                                                                onClick={() => handleConfirmDelete(registro)}
-                                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                                                disabled={!isPTrabEditable || isSaving}
-                                                                            >
-                                                                                <Trash2 className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </div>
-                                                                    </div>
+                                                    <Card 
+                                                        key={omKey} 
+                                                        className="p-3 bg-background border"
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex flex-col">
+                                                                <div className="flex items-center gap-2">
+                                                                    <h4 className="font-semibold text-base text-foreground">
+                                                                        Passagens (Consolidado)
+                                                                    </h4>
                                                                 </div>
-                                                                
-                                                                {/* Detalhes da Alocação */}
-                                                                <div className="pt-2 border-t mt-2">
-                                                                    {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
-                                                                    <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                                                        <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
-                                                                            {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
+                                                                {/* P 1556: Quantidade total de passagens, dias e efetivo */}
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {totalPassagensConsolidado} {passagemText} | Período: {diasOperacaoConsolidado} {diasText} | Efetivo: {efetivoConsolidado} {efetivoText}
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {/* SPAN 1561: Total Geral de Passagens (ND 33.90.33) */}
+                                                                <span className="text-lg text-primary/80">
+                                                                    {formatCurrency(totalND33Consolidado)}
+                                                                </span>
+                                                                {/* Botões de Ação (Manter apenas o primeiro registro para edição/exclusão, ou remover se a edição consolidada não for suportada) */}
+                                                                {/* Como a edição é por registro (trecho), vamos manter a lista de trechos para acesso rápido à edição individual */}
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Detalhes da Alocação */}
+                                                        <div className="pt-2 border-t mt-2">
+                                                            {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
+                                                                    {omDestino} ({formatCodug(ugDestino)})
+                                                                </span>
+                                                            </div>
+                                                            {/* SPAN 1600: ND 33.90.33 */}
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-muted-foreground">ND 33.90.33:</span>
+                                                                <span className="text-green-600">{formatCurrency(totalND33Consolidado)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </Card>
+                                                    
+                                                    {/* Exibir lista de trechos para acesso rápido à edição/exclusão */}
+                                                    <div className="space-y-2 pt-2 border-t mt-4">
+                                                        <h5 className="text-sm font-semibold text-muted-foreground">Trechos Individuais:</h5>
+                                                        {omRegistros.map((registro) => {
+                                                            const totalPassagens = registro.quantidade_passagens;
+                                                            const totalND33 = Number(registro.valor_nd_33 || 0);
+                                                            const passagemText = totalPassagens === 1 ? 'passagem' : 'passagens';
+                                                            
+                                                            return (
+                                                                <div 
+                                                                    key={registro.id} 
+                                                                    className={cn(
+                                                                        "flex justify-between items-center p-2 rounded-md border",
+                                                                        editingId === registro.id && "border-yellow-500/70 bg-yellow-50/50"
+                                                                    )}
+                                                                >
+                                                                    <div className="flex flex-col text-sm">
+                                                                        <span className="font-medium">
+                                                                            {registro.origem} &rarr; {registro.destino}
+                                                                        </span>
+                                                                        <span className="text-xs text-muted-foreground">
+                                                                            {totalPassagens} {passagemText} ({formatCurrency(totalND33)})
                                                                         </span>
                                                                     </div>
-                                                                    <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">ND 33.90.33:</span>
-                                                                        <span className="text-green-600">{formatCurrency(totalND33)}</span>
+                                                                    <div className="flex gap-1 shrink-0">
+                                                                        <Button
+                                                                            type="button" 
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-8 w-8"
+                                                                            onClick={() => handleEdit(registro)}
+                                                                            disabled={!isPTrabEditable || isSaving || pendingPassagens.length > 0}
+                                                                        >
+                                                                            <Pencil className="h-4 w-4" />
+                                                                        </Button>
+                                                                        <Button
+                                                                            type="button" 
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            onClick={() => handleConfirmDelete(registro)}
+                                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                            disabled={!isPTrabEditable || isSaving}
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
                                                                     </div>
                                                                 </div>
-                                                            </Card>
-                                                        );
-                                                    })}
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </div>
                                             </Card>
                                         );
