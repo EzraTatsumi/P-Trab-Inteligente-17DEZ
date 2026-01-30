@@ -1553,14 +1553,12 @@ const PassagemForm = () => {
                                                                                 </Badge>
                                                                             )}
                                                                         </div>
-                                                                        {/* Ajuste do p 1556: Mostrar quantidade de passagens, período e efetivo */}
                                                                         <p className="text-xs text-muted-foreground">
                                                                             {totalPassagens} {passagemText} | Período: {registro.dias_operacao} {diasText} | Efetivo: {registro.efetivo} {efetivoText}
                                                                         </p>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
-                                                                        {/* Span 1561: Total do Registro (sem negrito) */}
-                                                                        <span className="text-lg text-primary/80">
+                                                                        <span className="font-bold text-lg text-primary/80">
                                                                             {formatCurrency(totalND33)}
                                                                         </span>
                                                                         <div className="flex gap-1">
@@ -1597,7 +1595,6 @@ const PassagemForm = () => {
                                                                             {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
                                                                         </span>
                                                                     </div>
-                                                                    {/* ND 33.90.33 (Sem negrito, sem total, sem parênteses) */}
                                                                     <div className="flex justify-between text-xs">
                                                                         <span className="text-muted-foreground">ND 33.90.33:</span>
                                                                         <span className="text-green-600">{formatCurrency(totalND33)}</span>
