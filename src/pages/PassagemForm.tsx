@@ -437,6 +437,11 @@ const PassagemForm = () => {
         return pendingPassagens.reduce((sum, item) => sum + item.valor_total, 0);
     }, [pendingPassagens]);
     
+    // NOVO: Cálculo do total dos registros já salvos no banco de dados
+    const totalSavedPassagens = useMemo(() => {
+        return registros?.reduce((sum, registro) => sum + (registro.valor_nd_33 || 0), 0) || 0;
+    }, [registros]);
+    
     // NOVO MEMO: Agrupa os registros por OM Favorecida (organizacao/ug)
     const registrosAgrupadosPorOM = useMemo(() => {
         return registros?.reduce((acc, registro) => {
@@ -1321,14 +1326,18 @@ const PassagemForm = () => {
                                         })}
                                     </div>
                                     
-                                    {/* VALOR TOTAL DA OM (PENDENTE / STAGING) */}
+                                    {/* VALOR TOTAL DA OM (PENDENTE / STAGING) - CORRIGIDO */}
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
                                             <span className="font-bold text-base uppercase">
                                                 VALOR TOTAL DA OM
                                             </span>
                                             <span className="font-extrabold text-xl text-foreground">
-                                                {formatCurrency(isStagingUpdate ? stagedUpdate!.totalGeral : totalPendingPassagens)}
+                                                {formatCurrency(
+                                                    isStagingUpdate 
+                                                        ? stagedUpdate!.totalGeral 
+                                                        : (pendingPassagens.length > 0 ? totalPendingPassagens : totalSavedPassagens)
+                                                )}
                                             </span>
                                         </CardContent>
                                     </Card>
