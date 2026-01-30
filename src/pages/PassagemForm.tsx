@@ -641,8 +641,8 @@ const PassagemForm = () => {
                 diretriz_id: trecho.diretriz_id,
                 trecho_id: trecho.id, 
                 origem: trecho.origem,
-                destino: trecho.destino,
-                tipo_transporte: trecho.tipo_transporte,
+                destino: registro.destino,
+                tipo_transporte: registro.tipo_transporte,
                 is_ida_volta: registro.is_ida_volta,
                 valor_unitario: trecho.valor_unitario,
                 quantidade_passagens: registro.quantidade_passagens,
@@ -1033,8 +1033,8 @@ const PassagemForm = () => {
     
     // --- Handler para Adicionar Contrato ---
     const handleAddContract = () => {
-        // CORREÇÃO: Assumindo que a rota base é /configuracoes
-        navigate('/configuracoes?tab=passagens');
+        // CORREÇÃO: Navegar para a rota correta de Custos Operacionais
+        navigate('/config/custos-operacionais');
     };
     
     // =================================================================
