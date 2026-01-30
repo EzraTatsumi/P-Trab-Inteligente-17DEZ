@@ -213,7 +213,7 @@ const PassagemForm = () => {
                     
                     // Campos de Trecho (usando o primeiro trecho para FKs)
                     diretriz_id: firstTrecho.diretriz_id,
-                    trecho_id: firstTrecho.id, 
+                    trecho_id: firstTrecho.id,
                     origem: firstTrecho.origem,
                     destino: firstTrecho.destino,
                     tipo_transporte: firstTrecho.tipo_transporte,
@@ -1364,6 +1364,9 @@ const PassagemForm = () => {
                                             const efetivoText = item.efetivo === 1 ? 'militar' : 'militares';
                                             
                                             const isOmDestinoDifferent = item.om_favorecida !== item.om_detentora || item.ug_favorecida !== item.ug_detentora;
+                                            
+                                            const trechoCount = item.selected_trechos.length;
+                                            const trechoText = trechoCount === 1 ? 'Trecho' : 'Trechos';
 
                                             return (
                                                 <Card 
@@ -1377,7 +1380,7 @@ const PassagemForm = () => {
                                                         
                                                         <div className={cn("flex justify-between items-center pb-2 mb-2", "border-b border-secondary/30")}>
                                                             <h4 className="font-bold text-base text-foreground">
-                                                                Passagens (Total de {item.selected_trechos.length} Trecho(s))
+                                                                Passagens (Total de {trechoCount} {trechoText})
                                                             </h4>
                                                             <div className="flex items-center gap-2">
                                                                 <p className="font-extrabold text-lg text-foreground text-right">
