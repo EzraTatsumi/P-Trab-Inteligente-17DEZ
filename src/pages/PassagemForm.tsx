@@ -464,6 +464,7 @@ const PassagemForm = () => {
         }
         
         // MODO NOVO REGISTRO: Compara com lastStagedFormData
+        // Se o formulário mudou desde o último staging, ele é considerado 'dirty'
         if (!editingId && pendingPassagens.length > 0 && lastStagedFormData) {
             return compareFormData(formData, lastStagedFormData);
         }
@@ -772,18 +773,14 @@ const PassagemForm = () => {
             
             // MODO ADIÇÃO: Adicionar à lista pendente
             
-            // A lógica de dirty check para substituição deve ser:
-            // Se a lista não estiver vazia E o formulário não mudou desde o último staging,
-            // então substitua o último item.
-            
-            const isFormUnchangedSinceLastStage = !compareFormData(formData, lastStagedFormData || initialFormState);
-
-            if (pendingPassagens.length > 0 && isFormUnchangedSinceLastStage) {
-                // Substitui o último item
+            // CORREÇÃO: Se já houver itens pendentes, substitua o último item,
+            // pois o usuário está modificando o cálculo anterior.
+            if (pendingPassagens.length > 0) {
+                // Substitui o último item na lista pendente
                 setPendingPassagens(prev => [...prev.slice(0, -1), calculatedData]);
-                toast.info("Item pendente atualizado.");
+                toast.info("Item pendente atualizado (substituído).");
             } else {
-                // Adiciona um novo item (ou o primeiro item)
+                // Adiciona um novo item (o primeiro item)
                 setPendingPassagens(prev => [...prev, calculatedData]);
                 toast.info("Item de Passagem adicionado à lista pendente.");
             }
