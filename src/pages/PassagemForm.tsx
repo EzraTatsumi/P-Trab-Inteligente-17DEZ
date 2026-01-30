@@ -402,8 +402,6 @@ const PassagemForm = () => {
         }
     });
     
-    const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
-    
     // Efeito de inicialização da OM Favorecida e OM Destino
     useEffect(() => {
         if (ptrabData && !editingId) {
