@@ -192,34 +192,46 @@ const PassagemForm = () => {
     // 1. Mutation for saving multiple new records
     const saveMutation = useMutation({
         mutationFn: async (newRecords: CalculatedPassagem[]) => {
-            const recordsToInsert: TablesInsert<'passagem_registros'>[] = newRecords.map(r => ({
-                p_trab_id: r.p_trab_id,
-                organizacao: r.organizacao,
-                ug: r.ug,
-                om_detentora: r.om_detentora,
-                ug_detentora: r.ug_detentora,
-                dias_operacao: r.dias_operacao,
-                fase_atividade: r.fase_atividade,
-                diretriz_id: r.diretriz_id,
-                trecho_id: r.trecho_id, 
-                origem: r.origem,
-                destino: r.destino,
-                tipo_transporte: r.tipo_transporte,
-                is_ida_volta: r.is_ida_volta,
-                valor_unitario: r.valor_unitario,
-                quantidade_passagens: r.quantidade_passagens,
-                valor_total: r.valor_total,
-                valor_nd_33: r.valor_nd_33,
-                detalhamento: r.detalhamento,
-                detalhamento_customizado: r.detalhamento_customizado,
-                efetivo: r.efetivo,
-             }));
+            // CORREÇÃO: Mapear corretamente os campos de trecho do primeiro item selecionado
+            const recordsToInsert: TablesInsert<'passagem_registros'>[] = newRecords.map(r => {
+                // Assumimos que o primeiro trecho na lista 'selected_trechos' representa o registro consolidado
+                const firstTrecho = r.selected_trechos[0];
+                
+                return {
+                    p_trab_id: r.p_trab_id,
+                    organizacao: r.organizacao,
+                    ug: r.ug,
+                    om_detentora: r.om_detentora,
+                    ug_detentora: r.ug_detentora,
+                    dias_operacao: r.dias_operacao,
+                    fase_atividade: r.fase_atividade,
+                    
+                    // Campos de Trecho (usando o primeiro trecho)
+                    diretriz_id: firstTrecho.diretriz_id,
+                    trecho_id: firstTrecho.id, 
+                    origem: firstTrecho.origem,
+                    destino: firstTrecho.destino,
+                    tipo_transporte: firstTrecho.tipo_transporte,
+                    is_ida_volta: firstTrecho.is_ida_volta,
+                    valor_unitario: firstTrecho.valor_unitario,
+                    
+                    // Campos consolidados
+                    quantidade_passagens: r.selected_trechos.reduce((sum, t) => sum + t.quantidade_passagens, 0),
+                    valor_total: r.valor_total,
+                    valor_nd_33: r.valor_nd_33,
+                    detalhamento: r.detalhamento,
+                    detalhamento_customizado: r.detalhamento_customizado,
+                    efetivo: r.efetivo,
+                };
+             });
 
             const { error } = await supabase
                 .from('passagem_registros')
                 .insert(recordsToInsert);
 
             if (error) throw error;
+            
+            return recordsToInsert; // Retorna os registros inseridos para uso no onSuccess
         },
         onSuccess: (newRecords) => {
             toast.success(`Sucesso! ${pendingPassagens.length} registro(s) de Passagem adicionado(s).`);
@@ -241,11 +253,8 @@ const PassagemForm = () => {
                 selected_trechos: prev.selected_trechos,
             }));
             
-            if (newRecords && newRecords.length > 0) {
-                handleEdit(newRecords[0] as PassagemRegistroDB);
-            } else {
-                resetForm();
-            }
+            // Não precisamos mais do newRecords aqui, pois o resetForm já limpa o editingId
+            resetForm();
         },
         onError: (error) => { 
             toast.error("Falha ao salvar registros.", { description: sanitizeError(error) });
@@ -256,6 +265,10 @@ const PassagemForm = () => {
     const updateMutation = useMutation({
         mutationFn: async (updatedRecord: CalculatedPassagem) => {
             if (!updatedRecord.tempId) throw new Error("ID do registro para atualização ausente.");
+            
+            // Assumimos que o primeiro trecho na lista 'selected_trechos' representa o registro consolidado
+            const firstTrecho = updatedRecord.selected_trechos[0];
+            const totalPassagens = updatedRecord.selected_trechos.reduce((sum, t) => sum + t.quantidade_passagens, 0);
 
             const recordToUpdate: TablesUpdate<'passagem_registros'> = {
                 organizacao: updatedRecord.organizacao,
@@ -264,14 +277,18 @@ const PassagemForm = () => {
                 ug_detentora: updatedRecord.ug_detentora,
                 dias_operacao: updatedRecord.dias_operacao,
                 fase_atividade: updatedRecord.fase_atividade,
-                diretriz_id: updatedRecord.diretriz_id,
-                trecho_id: updatedRecord.trecho_id,
-                origem: updatedRecord.origem,
-                destino: updatedRecord.destino,
-                tipo_transporte: updatedRecord.tipo_transporte,
-                is_ida_volta: updatedRecord.is_ida_volta,
-                valor_unitario: updatedRecord.valor_unitario,
-                quantidade_passagens: updatedRecord.quantidade_passagens,
+                
+                // Campos de Trecho (usando o primeiro trecho)
+                diretriz_id: firstTrecho.diretriz_id,
+                trecho_id: firstTrecho.id,
+                origem: firstTrecho.origem,
+                destino: firstTrecho.destino,
+                tipo_transporte: firstTrecho.tipo_transporte,
+                is_ida_volta: firstTrecho.is_ida_volta,
+                valor_unitario: firstTrecho.valor_unitario,
+                
+                // Campos consolidados
+                quantidade_passagens: totalPassagens,
                 valor_total: updatedRecord.valor_total,
                 valor_nd_33: updatedRecord.valor_nd_33,
                 detalhamento: updatedRecord.detalhamento,
@@ -518,6 +535,8 @@ const PassagemForm = () => {
         setSelectedOmDestinoId(omDestinoToEdit?.id);
         
         // 2. Reconstruir a lista de trechos selecionados a partir dos dados do registro
+        // Nota: O DB armazena apenas UM trecho por registro, mas o formulário suporta múltiplos.
+        // Para edição, tratamos o registro salvo como um único trecho.
         const trechoFromRecord: TrechoSelection = {
             id: registro.trecho_id, // Usar trecho_id como id
             diretriz_id: registro.diretriz_id,
@@ -546,11 +565,6 @@ const PassagemForm = () => {
         setFormData(newFormData);
         
         // 4. Calculate totals and generate memory (usando a nova lógica de cálculo)
-        // Recalculamos aqui para garantir que o stagedUpdate reflita o estado atual
-        // Nota: O cálculo depende do formData, que acabou de ser setado.
-        // Para garantir que o cálculo use o novo formData imediatamente, podemos forçar o cálculo aqui,
-        // ou confiar que o useMemo será reexecutado antes do setStagedUpdate.
-        // Vamos usar a lógica de cálculo diretamente para garantir a consistência.
         
         const tempCalculos = (() => {
             if (newFormData.selected_trechos.length === 0) {
@@ -690,7 +704,8 @@ const PassagemForm = () => {
             const firstTrecho = formData.selected_trechos[0];
 
             const calculatedData: CalculatedPassagem = {
-                tempId: editingId || Math.random().toString(36).substring(2, 9), 
+                // CORREÇÃO: Usar um UUID válido para o tempId, mesmo que seja temporário
+                tempId: editingId || crypto.randomUUID(), 
                 p_trab_id: ptrabId!,
                 organizacao: formData.om_favorecida, 
                 ug: formData.ug_favorecida, 
