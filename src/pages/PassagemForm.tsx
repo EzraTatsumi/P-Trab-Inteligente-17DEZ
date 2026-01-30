@@ -44,7 +44,7 @@ import CurrencyInput from "@/components/CurrencyInput";
 import PassagemTrechoSelectorDialog, { TrechoSelection } from "@/components/PassagemTrechoSelectorDialog";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { TrechoPassagem, TipoTransporte } from "@/types/diretrizesPassagens";
-import { ConsolidatedPassagemMemoria } from "@/components/ConsolidatedPassagemMemoria"; // NOVO IMPORT
+import { ConsolidatedPassagemMemoria } from "@/components/ConsolidatedPassagemMemoria"; 
 
 // Tipos de dados
 type PassagemRegistroDB = Tables<'passagem_registros'>; 
@@ -986,11 +986,8 @@ const PassagemForm = () => {
             setMemoriaEdit(customMemoria);
         } else {
             // Para obter a memória automática completa (incluindo Pregão/UASG),
-            // precisaríamos de um mecanismo mais complexo aqui, mas para fins de UX,
-            // vamos usar a memória automática base (sem Pregão/UASG) e deixar o componente
-            // ConsolidatedPassagemMemoria lidar com a exibição final.
-            // No entanto, para garantir que o usuário veja o que está editando,
-            // vamos gerar a memória automática base aqui.
+            // vamos usar a função base, pois o componente ConsolidatedPassagemMemoria
+            // irá adicionar o Pregão/UASG na visualização final.
             const memoriaAutomaticaBase = generateConsolidatedPassagemMemoriaCalculo(group);
             setMemoriaEdit(memoriaAutomaticaBase || "");
         }
@@ -1046,6 +1043,12 @@ const PassagemForm = () => {
             console.error("Erro ao restaurar memória:", error);
             toast.error(sanitizeError(error));
         }
+    };
+    
+    // --- Handler para Adicionar Contrato ---
+    const handleAddContract = () => {
+        // Redireciona para a página de Custos Operacionais, aba Passagens
+        navigate('/configuracoes/custos-operacionais?tab=passagens');
     };
     
     // =================================================================
@@ -1676,6 +1679,7 @@ const PassagemForm = () => {
                     onSelect={handleTrechoSelected}
                     selectedYear={selectedYear}
                     initialSelections={initialTrechosForDialog}
+                    onAddContract={handleAddContract} // Passando o novo handler
                 />
             </div>
         </div>

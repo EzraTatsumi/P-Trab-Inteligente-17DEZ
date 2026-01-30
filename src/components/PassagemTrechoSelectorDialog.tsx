@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Plane, AlertTriangle, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Plane, AlertTriangle, Check, ChevronDown, ChevronUp, PlusCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { DiretrizPassagem, TrechoPassagem, TipoTransporte } from '@/types/diretrizesPassagens';
@@ -26,6 +26,7 @@ interface PassagemTrechoSelectorDialogProps {
     selectedYear: number;
     onSelect: (trechos: TrechoSelection[]) => void;
     initialSelections: TrechoSelection[];
+    onAddContract: () => void; // Nova prop para lidar com o redirecionamento
 }
 
 const fetchDiretrizesPassagens = async (year: number): Promise<DiretrizPassagem[]> => {
@@ -56,6 +57,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
     selectedYear,
     onSelect,
     initialSelections,
+    onAddContract, // Recebendo a nova prop
 }) => {
     const [currentSelections, setCurrentSelections] = useState<TrechoSelection[]>(initialSelections);
     // Inicializa o estado de colapso para que todos os contratos comecem FECHADOS
@@ -132,6 +134,11 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
             ...prev,
             [diretrizId]: !prev[diretrizId],
         }));
+    };
+    
+    const handleAddContractClick = () => {
+        onOpenChange(false); // Fecha o diálogo
+        onAddContract(); // Chama a função de redirecionamento
     };
 
     return (
@@ -246,20 +253,34 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                 </div>
 
                 <DialogFooter className="mt-4">
-                    <div className="flex items-center justify-end w-full gap-2">
+                    <div className="flex items-center justify-between w-full gap-2">
+                        {/* NOVO BOTÃO: Adicionar Contrato */}
                         <Button 
                             type="button" 
-                            onClick={handleConfirm}
-                            disabled={isLoading || totalTrechosSelecionados === 0}
+                            variant="secondary"
+                            onClick={handleAddContractClick}
+                            className="gap-2"
                         >
-                            <Check className="mr-2 h-4 w-4" />
-                            Confirmar Seleção ({totalTrechosSelecionados})
+                            <PlusCircle className="h-4 w-4" />
+                            Adicionar Contrato/Trecho
                         </Button>
-                        <DialogClose asChild>
-                            <Button type="button" variant="outline">
-                                Cancelar
+                        
+                        {/* Botões de Ação Principal */}
+                        <div className="flex gap-2">
+                            <Button 
+                                type="button" 
+                                onClick={handleConfirm}
+                                disabled={isLoading || totalTrechosSelecionados === 0}
+                            >
+                                <Check className="mr-2 h-4 w-4" />
+                                Confirmar Seleção ({totalTrechosSelecionados})
                             </Button>
-                        </DialogClose>
+                            <DialogClose asChild>
+                                <Button type="button" variant="outline">
+                                    Cancelar
+                                </Button>
+                            </DialogClose>
+                        </div>
                     </div>
                 </DialogFooter>
             </DialogContent>
