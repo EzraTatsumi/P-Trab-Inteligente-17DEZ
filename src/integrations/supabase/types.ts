@@ -67,8 +67,8 @@ export type Database = {
           ug: string
           ug_qs: string
           updated_at?: string
-          valor_qr: number
-          valor_qs: number
+          valor_qr?: number
+          valor_qs?: number
           categoria?: string
           quantidade_r2?: number
           quantidade_r3?: number
@@ -1575,6 +1575,8 @@ export type Database = {
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type TableName = keyof DefaultSchema["Tables"]; // <-- NEW EXPORT
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends

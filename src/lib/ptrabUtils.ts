@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Tables } from "@/integrations/supabase/types";
+import { Tables, TableName } from "@/integrations/supabase/types";
 import { PTrabData } from "@/pages/PTrabReportManager"; // Reutilizando o tipo PTrabData
 
 // Tipo para as diretrizes operacionais (valores unitários)
@@ -61,11 +61,10 @@ export async function fetchPTrabData(ptrabId: string): Promise<PTrabData> {
  * @param tableName O nome da tabela (deve ser uma chave válida de Tables).
  * @param ptrabId O ID do PTrab.
  */
-export async function fetchPTrabRecords<T extends keyof Tables>(tableName: T, ptrabId: string): Promise<Tables<T>[]> {
-    // Correção: Usamos 'tableName as string' para satisfazer a sobrecarga de supabase.from,
-    // e mantemos a restrição genérica T extends keyof Tables para garantir a segurança do tipo de retorno.
+export async function fetchPTrabRecords<T extends TableName>(tableName: T, ptrabId: string): Promise<Tables<T>[]> {
+    // Correção: Usamos 'tableName' diretamente, pois T é restrito a TableName (união de literais de string).
     const { data, error } = await supabase
-        .from(tableName as string) // Type assertion to string to satisfy supabase.from()
+        .from(tableName)
         .select('*')
         .eq('p_trab_id', ptrabId);
 
