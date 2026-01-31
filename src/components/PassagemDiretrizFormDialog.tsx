@@ -18,13 +18,17 @@ import { DiretrizPassagem, TrechoPassagem, TipoTransporte, DiretrizPassagemForm 
 import CurrencyInput from "@/components/CurrencyInput";
 import { DatePicker } from "@/components/DatePicker";
 import { format, parseISO } from "date-fns";
+import { Tables } from "@/integrations/supabase/types"; // Importando Tables
+
+// Definindo o tipo de Diretriz de Passagem como a Row da tabela Supabase
+type DiretrizPassagemRow = Tables<'diretrizes_passagens'>;
 
 interface PassagemDiretrizFormDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     selectedYear: number;
-    diretrizToEdit: DiretrizPassagem | null;
-    onSave: (data: Partial<DiretrizPassagem> & { 
+    diretrizToEdit: DiretrizPassagemRow | null; // Usando o tipo Row do Supabase
+    onSave: (data: Partial<DiretrizPassagemRow> & { 
         ano_referencia: number, 
         om_referencia: string, 
         ug_referencia: string,
@@ -60,14 +64,15 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
     onSave,
     loading,
 }) => {
-    const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
+    // CORREÇÃO: Tipagem explícita para oms
+    const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations() as { data: OMData[] | undefined, isLoading: boolean };
     const { handleEnterToNextField } = useFormNavigation();
 
     const [passagemForm, setPassagemForm] = useState<InternalPassagemForm>(() => ({
         om_referencia: diretrizToEdit?.om_referencia || '',
         ug_referencia: diretrizToEdit?.ug_referencia || '',
         numero_pregao: diretrizToEdit?.numero_pregao || '',
-        trechos: diretrizToEdit?.trechos || [],
+        trechos: (diretrizToEdit?.trechos as TrechoPassagem[]) || [],
         id: diretrizToEdit?.id,
         data_inicio_vigencia: null,
         data_fim_vigencia: null,
@@ -83,12 +88,13 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                 om_referencia: diretrizToEdit.om_referencia,
                 ug_referencia: diretrizToEdit.ug_referencia,
                 numero_pregao: diretrizToEdit.numero_pregao || '',
-                trechos: diretrizToEdit.trechos,
+                trechos: (diretrizToEdit.trechos as TrechoPassagem[]),
                 id: diretrizToEdit.id,
-                // Conversão de string ISO (ou null) para Date object (ou null)
+                // CORREÇÃO: As propriedades agora existem no tipo DiretrizPassagemRow
                 data_inicio_vigencia: diretrizToEdit.data_inicio_vigencia ? parseISO(diretrizToEdit.data_inicio_vigencia) : null,
                 data_fim_vigencia: diretrizToEdit.data_fim_vigencia ? parseISO(diretrizToEdit.data_fim_vigencia) : null,
             });
+            // CORREÇÃO: 'oms' é tipado como OMData[] | undefined
             const om = oms?.find(o => o.nome_om === diretrizToEdit.om_referencia && o.codug_om === diretrizToEdit.ug_referencia);
             setSelectedOmReferenciaId(om?.id);
         } else {
