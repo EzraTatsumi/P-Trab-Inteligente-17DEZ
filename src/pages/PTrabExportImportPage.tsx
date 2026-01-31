@@ -40,7 +40,7 @@ interface ExportData {
     classe_viii_saude_registros: Tables<'classe_viii_saude_registros'>[]; // NOVO
     classe_viii_remonta_registros: Tables<'classe_viii_remonta_registros'>[]; // NOVO
     classe_ix_registros: Tables<'classe_ix_registros'>[]; // NOVO
-    p_trab_ref_lpc: Tables<'p_trab_ref_lpc'> | null;
+    p_trab_ref_lpc: Tables<'p_trab_ref_lpc'>[] | null; // ALTERADO: Agora é um array
     // Global tables only included in full backup
     organizacoes_militares?: Tables<'organizacoes_militares'>[];
     diretrizes_custeio?: Tables<'diretrizes_custeio'>[];
@@ -208,7 +208,8 @@ const PTrabExportImportPage = () => {
           (supabase.from('classe_viii_saude_registros').select('*, itens_saude, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId) as unknown as Promise<SupabaseArrayResponse<Tables<'classe_viii_saude_registros'>>>),
           (supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId) as unknown as Promise<SupabaseArrayResponse<Tables<'classe_viii_remonta_registros'>>>),
           (supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId) as unknown as Promise<SupabaseArrayResponse<Tables<'classe_ix_registros'>>>),
-          (supabase.from('p_trab_ref_lpc').select('*').eq('p_trab_id', selectedPTrabId).maybeSingle() as unknown as Promise<SupabaseSingleResponse<Tables<'p_trab_ref_lpc'>>>),
+          // ALTERADO: Usamos select('*') para retornar um array, mesmo que seja de 0 ou 1 elemento.
+          (supabase.from('p_trab_ref_lpc').select('*').eq('p_trab_id', selectedPTrabId) as unknown as Promise<SupabaseArrayResponse<Tables<'p_trab_ref_lpc'>>>),
         ]);
 
         exportData = {
@@ -222,7 +223,7 @@ const PTrabExportImportPage = () => {
           classe_viii_saude_registros: classeVIIISaude.data || [],
           classe_viii_remonta_registros: classeVIIIRemonta.data || [],
           classe_ix_registros: classeIX.data || [],
-          p_trab_ref_lpc: refLPC.data || null,
+          p_trab_ref_lpc: refLPC.data || [], // ALTERADO: Se for null, retorna array vazio
         };
         fileName = generateExportFileName(pTrab);
         exportTypeFinal = 'single_ptrab';
@@ -272,7 +273,7 @@ const PTrabExportImportPage = () => {
           classe_viii_saude_registros: classeVIIISaude.data || [],
           classe_viii_remonta_registros: classeVIIIRemonta.data || [],
           classe_ix_registros: classeIX.data || [],
-          p_trab_ref_lpc: refLPC.data || null,
+          p_trab_ref_lpc: refLPC.data || [], // ALTERADO: Se for null, retorna array vazio
           organizacoes_militares: omsData.data || [],
           diretrizes_custeio: diretrizesCusteio.data || [],
           diretrizes_equipamentos_classe_iii: diretrizesEquipamentos.data || [],
@@ -738,13 +739,16 @@ const PTrabExportImportPage = () => {
     await insertFilteredRecords('classe_ix_registros', 'p_trab_id');
     
     // 10. LPC
-    if (data.data.p_trab_ref_lpc && (data.data.p_trab_ref_lpc as Tables<'p_trab_ref_lpc'>).p_trab_id === originalPTrabId) {
-        const { id, created_at, updated_at, ...restOfRefLPC } = data.data.p_trab_ref_lpc as Tables<'p_trab_ref_lpc'>;
-        const newRefLPC = { ...restOfRefLPC, p_trab_id: newPTrabId };
-        const { error: insertError } = await supabase.from('p_trab_ref_lpc').insert([newRefLPC as TablesInsert<'p_trab_ref_lpc'>]);
-        if (insertError) {
-            console.error("Erro ao inserir LPC:", insertError);
-            throw new Error("Falha ao importar LPC.");
+    const lpcRecords = data.data.p_trab_ref_lpc || [];
+    for (const originalRefLPC of lpcRecords) {
+        if (originalRefLPC.p_trab_id === originalPTrabId) {
+            const { id, created_at, updated_at, ...restOfRefLPC } = originalRefLPC;
+            const newRefLPC = { ...restOfRefLPC, p_trab_id: newPTrabId };
+            const { error: insertError } = await supabase.from('p_trab_ref_lpc').insert([newRefLPC as TablesInsert<'p_trab_ref_lpc'>]);
+            if (insertError) {
+                console.error("Erro ao inserir LPC:", insertError);
+                throw new Error("Falha ao importar LPC.");
+            }
         }
     }
   };
