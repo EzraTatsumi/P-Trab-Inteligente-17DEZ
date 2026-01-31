@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link, Loader2, User, FileText, Check } from "lucide-react";
+import { Link, Loader2, User, FileText, Check, AlertTriangle } from "lucide-react"; // FIX: Import AlertTriangle
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { fetchSharePreview } from '@/integrations/supabase/api'; // Importar a nova função
 

@@ -95,6 +95,7 @@ const getValorUnitario = (
             return 0;
     }
     
+    // CORREÇÃO: O tipo de diretrizes é Partial<DiretrizOperacional>, então o acesso é seguro.
     const fieldKey = `${rankConfig.fieldPrefix}_${fieldSuffix}` as keyof DiretrizOperacional;
     return Number(diretrizes[fieldKey] || 0);
 };
@@ -145,6 +146,7 @@ export const calculateDiariaTotals = (
     // 2. Cálculo da Taxa de Embarque
     let totalTaxaEmbarque = 0;
     if (is_aereo) { // Apenas calcula se for deslocamento aéreo
+        // CORREÇÃO: Acessando taxa_embarque de forma segura, pois é opcional/nullable
         const taxaEmbarqueUnitario = Number(diretrizes.taxa_embarque || 0);
         totalTaxaEmbarque = totalMilitares * taxaEmbarqueUnitario * nr_viagens;
     }
@@ -172,6 +174,7 @@ export const generateDiariaMemoriaCalculo = (
     const { dias_operacao, destino, nr_viagens, local_atividade, organizacao, ug, is_aereo, fase_atividade } = data;
     const { totalDiariaBase, totalTaxaEmbarque, totalGeral, totalMilitares, calculosPorPosto } = calculos;
     
+    // CORREÇÃO: Acessando diaria_referencia_legal de forma segura
     const referenciaLegal = diretrizes.diaria_referencia_legal || 'Lei/Portaria [NÚMERO]';
     
     // Lógica de singular/plural
@@ -201,6 +204,7 @@ export const generateDiariaMemoriaCalculo = (
     let detalhamentoValores = '';
     let detalhamentoFormulaDiarias = '';
     
+    // CORREÇÃO: Acessando taxa_embarque de forma segura
     const taxaEmbarqueUnitario = Number(diretrizes.taxa_embarque || 0);
     
     // 1. Detalhamento de Valores Unitários (incluindo Taxa de Embarque)
