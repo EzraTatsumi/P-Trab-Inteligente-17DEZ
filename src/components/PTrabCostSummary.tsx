@@ -530,8 +530,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     
     // Diárias
     totalDiarias,
-    totalDiariasND15: totalDiariasND15_TaxaEmbarque, // Taxa de Embarque (ND 15)
-    totalDiariasND30: totalDiariasND15_DiariaBase, // Diárias (valor principal)
+    totalDiariasND15: totalDiariasND15_DiariaBase, // Diárias (valor principal)
+    totalDiariasND30: totalDiariasND30 + totalDiariasND15_TaxaEmbarque, // ND 30 + Taxa de Embarque (que é ND 30)
     totalMilitaresDiarias,
     totalDiasViagem, // Total de dias de viagem
     
@@ -1204,7 +1204,7 @@ export const PTrabCostSummary = ({
                           
                           {/* NOVO: Linha de Detalhe Consolidada */}
                           <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                            <span className="w-1/2 text-left font-semibold">Taxa de Embarque / Diárias (ND 15)</span>
+                            <span className="w-1/2 text-left font-semibold">Diárias (ND 15) / Passagens Aéreas (ND 30)</span>
                             <span className="w-1/4 text-right font-medium text-green-600">
                                 {formatCurrency(totals.totalDiariasND15)}
                             </span>

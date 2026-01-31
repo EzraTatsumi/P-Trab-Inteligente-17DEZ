@@ -12,7 +12,7 @@ import {
   PTrabData,
   DiariaRegistro,
   VerbaOperacionalRegistro, 
-  PassagemRegistro, // NOVO: Importando PassagemRegistro
+  PassagemRegistro, // NOVO: Importando o tipo PassagemRegistro
   calculateDays,
 } from "@/pages/PTrabReportManager"; 
 import { DIARIA_RANKS_CONFIG } from "@/lib/diariaUtils";
@@ -21,14 +21,14 @@ interface PTrabOperacionalReportProps {
   ptrabData: PTrabData;
   registrosDiaria: DiariaRegistro[];
   registrosVerbaOperacional: VerbaOperacionalRegistro[]; 
-  registrosSuprimentoFundos: VerbaOperacionalRegistro[]; 
-  registrosPassagem: PassagemRegistro[]; // NOVO PROP
+  registrosSuprimentoFundos: VerbaOperacionalRegistro[];
+  registrosPassagem: PassagemRegistro[]; // NOVO PROP: Registros de Passagem
   diretrizesOperacionais: Tables<'diretrizes_operacionais'> | null;
   fileSuffix: string;
   generateDiariaMemoriaCalculo: (registro: DiariaRegistro, diretrizesOp: Tables<'diretrizes_operacionais'> | null) => string;
   generateVerbaOperacionalMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; 
-  generateSuprimentoFundosMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; 
-  generatePassagemMemoriaCalculo: (registro: PassagemRegistro) => string; // NOVO PROP
+  generateSuprimentoFundosMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string;
+  generatePassagemMemoriaCalculo: (registro: PassagemRegistro) => string; // NOVO PROP: Memória de cálculo para Passagem
 }
 
 // Função auxiliar para determinar o artigo (DO/DA)
@@ -73,14 +73,14 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   ptrabData,
   registrosDiaria,
   registrosVerbaOperacional, 
-  registrosSuprimentoFundos, 
-  registrosPassagem, // NOVO PROP
+  registrosSuprimentoFundos,
+  registrosPassagem, // NOVO
   diretrizesOperacionais,
   fileSuffix,
   generateDiariaMemoriaCalculo,
   generateVerbaOperacionalMemoriaCalculo, 
-  generateSuprimentoFundosMemoriaCalculo, 
-  generatePassagemMemoriaCalculo, // NOVO PROP
+  generateSuprimentoFundosMemoriaCalculo,
+  generatePassagemMemoriaCalculo, // NOVO
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -107,6 +107,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     
     // 2. Agrupar Verba Operacional (OM Detentora do Recurso)
     registrosVerbaOperacional.forEach(registro => {
+        // A OM Detentora é a OM de destino do recurso (om_detentora/ug_detentora)
         const omDetentora = registro.om_detentora || registro.organizacao;
         const ugDetentora = registro.ug_detentora || registro.ug;
         
@@ -116,6 +117,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     
     // 3. Agrupar Suprimento de Fundos (OM Detentora do Recurso)
     registrosSuprimentoFundos.forEach(registro => {
+        // A OM Detentora é a OM de destino do recurso (om_detentora/ug_detentora)
         const omDetentora = registro.om_detentora || registro.organizacao;
         const ugDetentora = registro.ug_detentora || registro.ug;
         
@@ -123,8 +125,9 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         group.suprimentos.push(registro);
     });
     
-    // 4. Agrupar Passagens (OM Detentora do Recurso)
+    // 4. Agrupar Passagens (OM Detentora do Recurso) - NOVO
     registrosPassagem.forEach(registro => {
+        // A OM Detentora é a OM de destino do recurso (om_detentora/ug_detentora)
         const omDetentora = registro.om_detentora || registro.organizacao;
         const ugDetentora = registro.ug_detentora || registro.ug;
         
@@ -135,7 +138,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     return groups;
   }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem]);
 
-  // Calcula os totais gerais de cada ND com base nos registros
+  // Calcula os totais gerais de cada ND com base nos registros de Diária e Verba Operacional
   const totaisND = useMemo(() => {
     const totals = {
       nd15: 0, // Diárias (33.90.15)
@@ -148,7 +151,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     // 1. Diárias
     registrosDiaria.forEach(r => {
       totals.nd15 += r.valor_nd_15; // Total Diária (Base + Taxa)
-      totals.nd30 += r.valor_nd_30; // Passagens Aéreas (se houver)
+      totals.nd30 += r.valor_nd_30; // Passagens Aéreas (deve ser 0, mas mantido por segurança)
     });
     
     // 2. Verba Operacional
@@ -163,7 +166,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         totals.nd39 += r.valor_nd_39;
     });
     
-    // 4. Passagens (ND 33.90.33)
+    // 4. Passagens (NOVO)
     registrosPassagem.forEach(r => {
         totals.nd33 += r.valor_nd_33;
     });
@@ -251,7 +254,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, totaisND, fileSuffix, diasOperacao, generateDiariaMemoriaCalculo, registrosDiaria, diretrizesOperacionais, toast, registrosVerbaOperacional, generateVerbaOperacionalMemoriaCalculo, registrosSuprimentoFundos, generateSuprimentoFundosMemoriaCalculo, registrosPassagem, generatePassagemMemoriaCalculo]);
+  }, [ptrabData, totaisND, fileSuffix, diasOperacao, generateDiariaMemoriaCalculo, registrosDiaria, diretrizesOperacionais, toast, registrosVerbaOperacional, generateVerbaOperacionalMemoriaCalculo, registrosSuprimentoFundos, generateSuprimentoFundosMemoriaCalculo, registrosPassagem]);
 
   // Função para Imprimir (Abre a caixa de diálogo de impressão)
   const handlePrint = useCallback(() => {
@@ -446,9 +449,9 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         const subtotalOM = group.diarias.reduce((acc, r) => ({
             nd15: acc.nd15 + r.valor_nd_15,
             nd30: acc.nd30 + r.valor_nd_30,
-            nd33: 0, 
-            nd39: 0, 
-            nd00: 0, 
+            nd33: acc.nd33, 
+            nd39: acc.nd39, 
+            nd00: acc.nd00, 
             totalGND3: acc.totalGND3 + r.valor_total,
         }), { nd15: 0, nd30: 0, nd33: 0, nd39: 0, nd00: 0, totalGND3: 0 });
         
@@ -475,7 +478,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         // --- 1. Render Diárias ---
         group.diarias.forEach(registro => {
             const row = worksheet.getRow(currentRow);
-            const totalLinha = registro.valor_nd_15 + registro.valor_nd_30; // ND 15 + ND 30 (Passagens Aéreas)
+            const totalLinha = registro.valor_nd_15 + registro.valor_nd_30; // ND 15 + ND 30 (Passagens)
             
             // A: DESPESAS
             row.getCell('A').value = `DIÁRIAS`; 
@@ -503,14 +506,17 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('E').numFmt = 'R$ #,##0.00';
             row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
-            // F, G: Outras NDs (0 por enquanto)
+            // F: 33.90.39 (0)
             row.getCell('F').value = 0;
+            row.getCell('F').alignment = dataCenterMiddleAlignment;
+            row.getCell('F').numFmt = 'R$ #,##0.00';
+            row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // G: 33.90.00 (0)
             row.getCell('G').value = 0;
-            ['F', 'G'].forEach(col => {
-                row.getCell(col).alignment = dataCenterMiddleAlignment;
-                row.getCell(col).numFmt = 'R$ #,##0.00';
-                row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
-            });
+            row.getCell('G').alignment = dataCenterMiddleAlignment;
+            row.getCell('G').numFmt = 'R$ #,##0.00';
+            row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // H: GND 3 (Total da linha)
             row.getCell('H').value = totalLinha;
@@ -535,84 +541,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             currentRow++;
         });
         
-        // --- 2. Render Passagens (NOVO) ---
-        group.passagens.forEach(registro => {
-            const row = worksheet.getRow(currentRow);
-            const totalLinha = registro.valor_nd_33;
-            
-            // OM Detentora do Recurso
-            const omDetentora = registro.om_detentora || registro.organizacao;
-            const ugDetentora = registro.ug_detentora || registro.ug;
-            
-            // Check if OM Favorecida is different from OM Detentora
-            const isDifferentOm = registro.organizacao !== omDetentora || registro.ug !== ugDetentora;
-            
-            // A: DESPESAS (MODIFICADO)
-            let despesasValue = `PASSAGENS`;
-            if (isDifferentOm) {
-                despesasValue += `\nOM Favorecida: ${registro.organizacao} (${formatCodug(registro.ug)})`;
-            }
-            row.getCell('A').value = despesasValue;
-            row.getCell('A').alignment = leftMiddleAlignment; 
-            
-            // B: OM (UGE) CODUG (OM Detentora do Recurso)
-            row.getCell('B').value = `${omDetentora}\n(${formatCodug(ugDetentora)})`;
-            row.getCell('B').alignment = dataCenterMiddleAlignment; 
-            
-            // C: 33.90.15 (0)
-            row.getCell('C').value = 0;
-            row.getCell('C').alignment = dataCenterMiddleAlignment;
-            row.getCell('C').numFmt = 'R$ #,##0.00';
-            row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
-            
-            // D: 33.90.30 (0)
-            row.getCell('D').value = 0;
-            row.getCell('D').alignment = dataCenterMiddleAlignment;
-            row.getCell('D').numFmt = 'R$ #,##0.00';
-            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
-            
-            // E: 33.90.33 (Passagens ND 33)
-            row.getCell('E').value = registro.valor_nd_33;
-            row.getCell('E').alignment = dataCenterMiddleAlignment;
-            row.getCell('E').numFmt = 'R$ #,##0.00';
-            row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
-            
-            // F: 33.90.39 (0)
-            row.getCell('F').value = 0;
-            row.getCell('F').alignment = dataCenterMiddleAlignment;
-            row.getCell('F').numFmt = 'R$ #,##0.00';
-            row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
-            
-            // G: 33.90.00 (0)
-            row.getCell('G').value = 0;
-            row.getCell('G').alignment = dataCenterMiddleAlignment;
-            row.getCell('G').numFmt = 'R$ #,##0.00';
-            row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
-            
-            // H: GND 3 (Total da linha)
-            row.getCell('H').value = totalLinha;
-            row.getCell('H').alignment = dataCenterMiddleAlignment;
-            row.getCell('H').numFmt = 'R$ #,##0.00';
-            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
-            
-            // I: DETALHAMENTO
-            const memoria = generatePassagemMemoriaCalculo(registro);
-            row.getCell('I').value = memoria;
-            row.getCell('I').alignment = leftTopAlignment; 
-            row.getCell('I').font = { name: 'Arial', size: 6.5 };
-            
-            // Apply base styles
-            ['A', 'B', 'I'].forEach(col => {
-                row.getCell(col).font = baseFontStyle;
-            });
-            
-            ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
-                row.getCell(col).border = cellBorder;
-            });
-            currentRow++;
-        });
-        
-        // --- 3. Render Verba Operacional ---
+        // --- 2. Render Verba Operacional ---
         group.verbas.forEach(registro => {
             const row = worksheet.getRow(currentRow);
             const totalLinha = registro.valor_nd_30 + registro.valor_nd_39;
@@ -682,7 +611,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             currentRow++;
         });
         
-        // --- 4. Render Suprimento de Fundos ---
+        // --- 3. Render Suprimento de Fundos ---
         group.suprimentos.forEach(registro => {
             const row = worksheet.getRow(currentRow);
             const totalLinha = registro.valor_nd_30 + registro.valor_nd_39;
@@ -737,6 +666,76 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             
             // I: DETALHAMENTO
             const memoria = generateSuprimentoFundosMemoriaCalculo(registro);
+            row.getCell('I').value = memoria;
+            row.getCell('I').alignment = leftTopAlignment; 
+            row.getCell('I').font = { name: 'Arial', size: 6.5 };
+            
+            // Apply base styles
+            ['A', 'B', 'I'].forEach(col => {
+                row.getCell(col).font = baseFontStyle;
+            });
+            
+            ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
+                row.getCell(col).border = cellBorder;
+            });
+            currentRow++;
+        });
+        
+        // --- 4. Render Passagens (NOVO) ---
+        group.passagens.forEach(registro => {
+            const row = worksheet.getRow(currentRow);
+            const totalLinha = registro.valor_nd_33;
+            
+            // OM Detentora do Recurso
+            const omDetentora = registro.om_detentora || registro.organizacao;
+            const ugDetentora = registro.ug_detentora || registro.ug;
+            
+            // A: DESPESAS
+            row.getCell('A').value = `PASSAGENS`; 
+            row.getCell('A').alignment = leftMiddleAlignment; 
+            
+            // B: OM (UGE) CODUG (OM Detentora do Recurso)
+            row.getCell('B').value = `${omDetentora}\n(${formatCodug(ugDetentora)})`;
+            row.getCell('B').alignment = dataCenterMiddleAlignment; 
+            
+            // C: 33.90.15 (0)
+            row.getCell('C').value = 0;
+            row.getCell('C').alignment = dataCenterMiddleAlignment;
+            row.getCell('C').numFmt = 'R$ #,##0.00';
+            row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // D: 33.90.30 (0)
+            row.getCell('D').value = 0;
+            row.getCell('D').alignment = dataCenterMiddleAlignment;
+            row.getCell('D').numFmt = 'R$ #,##0.00';
+            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // E: 33.90.33 (Passagens ND 33)
+            row.getCell('E').value = registro.valor_nd_33;
+            row.getCell('E').alignment = dataCenterMiddleAlignment;
+            row.getCell('E').numFmt = 'R$ #,##0.00';
+            row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // F: 33.90.39 (0)
+            row.getCell('F').value = 0;
+            row.getCell('F').alignment = dataCenterMiddleAlignment;
+            row.getCell('F').numFmt = 'R$ #,##0.00';
+            row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // G: 33.90.00 (0)
+            row.getCell('G').value = 0;
+            row.getCell('G').alignment = dataCenterMiddleAlignment;
+            row.getCell('G').numFmt = 'R$ #,##0.00';
+            row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // H: GND 3 (Total da linha)
+            row.getCell('H').value = totalLinha;
+            row.getCell('H').alignment = dataCenterMiddleAlignment;
+            row.getCell('H').numFmt = 'R$ #,##0.00';
+            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            
+            // I: DETALHAMENTO
+            const memoria = generatePassagemMemoriaCalculo(registro);
             row.getCell('I').value = memoria;
             row.getCell('I').alignment = leftTopAlignment; 
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
@@ -938,7 +937,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-muted-foreground">Nenhum registro de Diária, Verba Operacional, Suprimento de Fundos ou Passagens encontrado para este P Trab.</p>
+            <p className="text-muted-foreground">Nenhum registro de Diária, Verba Operacional, Suprimento de Fundos ou Passagem encontrado para este P Trab.</p>
           </div>
         </CardContent>
       </Card>
@@ -1014,9 +1013,9 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 const subtotalOM = group.diarias.reduce((acc, r) => ({
                     nd15: acc.nd15 + r.valor_nd_15,
                     nd30: acc.nd30 + r.valor_nd_30,
-                    nd33: 0, 
-                    nd39: 0, 
-                    nd00: 0, 
+                    nd33: acc.nd33, 
+                    nd39: acc.nd39, 
+                    nd00: acc.nd00, 
                     totalGND3: acc.totalGND3 + r.valor_total,
                 }), { nd15: 0, nd30: 0, nd33: 0, nd39: 0, nd00: 0, totalGND3: 0 });
                 
@@ -1026,7 +1025,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                     subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39;
                 });
                 
-                group.suprimentos.forEach(r => { // Suprimento de Fundos
+                group.suprimentos.forEach(r => {
                     subtotalOM.nd30 += r.valor_nd_30;
                     subtotalOM.nd39 += r.valor_nd_39;
                     subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39;
@@ -1041,7 +1040,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                     <React.Fragment key={omKey}>
                         {/* --- 1. Render Diárias --- */}
                         {group.diarias.map((registro, index) => {
-                            const totalLinha = registro.valor_nd_15 + registro.valor_nd_30; // ND 15 + ND 30 (Passagens Aéreas)
+                            const totalLinha = registro.valor_nd_15 + registro.valor_nd_30;
                             
                             return (
                                 <tr key={`diaria-${registro.id}`} className="expense-row">
@@ -1067,47 +1066,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             );
                         })}
                         
-                        {/* --- 2. Render Passagens (NOVO) --- */}
-                        {group.passagens.map((registro, index) => {
-                            const totalLinha = registro.valor_nd_33;
-                            
-                            // OM Detentora do Recurso
-                            const omDetentora = registro.om_detentora || registro.organizacao;
-                            const ugDetentora = registro.ug_detentora || registro.ug;
-                            
-                            // Check if OM Favorecida is different from OM Detentora
-                            const isDifferentOm = registro.organizacao !== omDetentora || registro.ug !== ugDetentora;
-                            
-                            return (
-                                <tr key={`passagem-${registro.id}`} className="expense-row">
-                                  <td className="col-despesas-op"> 
-                                    PASSAGENS
-                                    {isDifferentOm && (
-                                        <div style={{ fontSize: '7pt', marginTop: '2px' }}>
-                                            OM Favorecida: {registro.organizacao} ({formatCodug(registro.ug)})
-                                        </div>
-                                    )}
-                                  </td>
-                                  <td className="col-om-op">
-                                    <div>{omDetentora}</div>
-                                    <div>({formatCodug(ugDetentora)})</div>
-                                  </td>
-                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.15 */}
-                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.30 */}
-                                  <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_33)}</td> {/* 33.90.33 */}
-                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.39 */}
-                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.00 */}
-                                  <td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
-                                  <td className="col-detalhamento-op">
-                                    <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                                      {generatePassagemMemoriaCalculo(registro)}
-                                    </div>
-                                  </td>
-                                </tr>
-                            );
-                        })}
-                        
-                        {/* --- 3. Render Verba Operacional --- */}
+                        {/* --- 2. Render Verba Operacional --- */}
                         {group.verbas.map((registro, index) => {
                             const totalLinha = registro.valor_nd_30 + registro.valor_nd_39;
                             
@@ -1139,7 +1098,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             );
                         })}
                         
-                        {/* --- 4. Render Suprimento de Fundos --- */}
+                        {/* --- 3. Render Suprimento de Fundos --- */}
                         {group.suprimentos.map((registro, index) => {
                             const totalLinha = registro.valor_nd_30 + registro.valor_nd_39;
                             
@@ -1165,6 +1124,38 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                   <td className="col-detalhamento-op">
                                     <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
                                       {generateSuprimentoFundosMemoriaCalculo(registro)}
+                                    </div>
+                                  </td>
+                                </tr>
+                            );
+                        })}
+                        
+                        {/* --- 4. Render Passagens (NOVO) --- */}
+                        {group.passagens.map((registro, index) => {
+                            const totalLinha = registro.valor_nd_33;
+                            
+                            // OM Detentora do Recurso
+                            const omDetentora = registro.om_detentora || registro.organizacao;
+                            const ugDetentora = registro.ug_detentora || registro.ug;
+                            
+                            return (
+                                <tr key={`passagem-${registro.id}`} className="expense-row">
+                                  <td className="col-despesas-op"> 
+                                    PASSAGENS
+                                  </td>
+                                  <td className="col-om-op">
+                                    <div>{omDetentora}</div>
+                                    <div>({formatCodug(ugDetentora)})</div>
+                                  </td>
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.15 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.30 */}
+                                  <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_33)}</td> {/* 33.90.33 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.39 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.00 */}
+                                  <td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
+                                  <td className="col-detalhamento-op">
+                                    <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                                      {generatePassagemMemoriaCalculo(registro)}
                                     </div>
                                   </td>
                                 </tr>
@@ -1233,7 +1224,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             </table>
           </div>
         ) : (
-          <p className="text-center text-muted-foreground py-8">Nenhum registro de Diária, Verba Operacional, Suprimento de Fundos ou Passagens cadastrado.</p>
+          <p className="text-center text-muted-foreground py-8">Nenhum registro operacional cadastrado.</p>
         )}
 
         <div className="ptrab-footer print-avoid-break">
