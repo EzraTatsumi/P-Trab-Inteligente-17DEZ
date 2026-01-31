@@ -171,24 +171,16 @@ const DiariaRecordForm: React.FC<DiariaRecordFormProps> = ({ ptrabId, onRecordSa
 
         toast.success(`Registro de Diária ${isEditing ? 'atualizado' : 'adicionado'} com sucesso!`);
         
-        // --- FIX: Lógica de Reset Seletivo ---
+        // --- FIX: Lógica de Reset Seletivo para persistir Seções 1 e 2 ---
         if (!isEditing) {
-            // Define os valores a serem resetados (quantidades e detalhamento customizado)
-            const resetFields = {
-                quantidades_por_posto: defaultQuantities,
-                detalhamento_customizado: null,
-                // Resetar campos calculados para evitar que o formulário fique 'sujo'
-                valor_nd_15: 0,
-                valor_nd_30: 0,
-                valor_total: 0,
-            };
-            
-            // Reseta o formulário, mantendo os valores de contexto (Sec 1 & 2) 
-            // e zerando as quantidades e totais (Sec 3).
-            reset({
-                ...data, // Base: Submitted values for Sec 1 & 2 (context fields persist)
-                ...resetFields, // Overwrite quantities and calculated fields
+            // 1. Limpa apenas os campos da Seção 3 (quantidades e detalhamento customizado)
+            DIARIA_RANKS_CONFIG.forEach(rank => {
+                setValue(`quantidades_por_posto.${rank.key}`, 0, { shouldDirty: false });
             });
+            setValue('detalhamento_customizado', null, { shouldDirty: false });
+            
+            // 2. Força o estado de 'sujo' para 'limpo', mantendo os valores atuais no formulário
+            reset(form.getValues());
         }
         // --- FIM FIX ---
         
