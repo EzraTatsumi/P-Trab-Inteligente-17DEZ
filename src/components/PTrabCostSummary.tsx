@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Tables } from "@/integrations/supabase/types";
 
 // Define the category constants
 const CATEGORIAS_CLASSE_II = ["Equipamento Individual", "Proteção Balística", "Material de Estacionamento"];
@@ -232,7 +233,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   
   (allClasseItemsData || []).forEach(record => {
     const category = record.categoria;
-    const items = (record.itens_equipamentos || []) as ItemClasseII[];
+    // FIX: Cast to unknown first to resolve TS2352 error when casting Json to ItemClasseII[]
+    const items = (record.itens_equipamentos || []) as unknown as ItemClasseII[]; 
     // Garante que a quantidade de itens é numérica
     const totalItemsCategory = items.reduce((sum, item) => sum + (Number(item.quantidade) || 0), 0); 
     
@@ -530,8 +532,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     
     // Diárias
     totalDiarias,
-    totalDiariasND15: totalDiariasND15_TaxaEmbarque, // Taxa de Embarque (ND 15)
-    totalDiariasND30: totalDiariasND15_DiariaBase, // Diárias (valor principal)
+    totalDiariasND15: totalDiariasND15_DiariaBase, // Diárias (valor principal)
+    totalDiariasND30: totalDiariasND15_TaxaEmbarque, // Taxa de Embarque (ND 30)
     totalMilitaresDiarias,
     totalDiasViagem, // Total de dias de viagem
     
@@ -547,8 +549,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalSuprimentoFundosND30,
     totalSuprimentoFundosND39,
     totalEquipesSuprimento, 
-    totalDiasSuprimento, 
-
+    totalDiasSuprimento,
+    
     // NOVO: Passagens
     totalPassagensND33,
     totalQuantidadePassagens,
@@ -1204,11 +1206,11 @@ export const PTrabCostSummary = ({
                           
                           {/* NOVO: Linha de Detalhe Consolidada */}
                           <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                            <span className="w-1/2 text-left font-semibold">Taxa de Embarque / Diárias (ND 15)</span>
+                            <span className="w-1/2 text-left font-semibold">Diárias (ND 15) / Taxa Embarque (ND 30)</span>
                             <span className="w-1/4 text-right font-medium text-green-600">
                                 {formatCurrency(totals.totalDiariasND15)}
                             </span>
-                            <span className="w-1/4 text-right font-medium text-green-600">
+                            <span className="w-1/4 text-right font-medium text-blue-600">
                                 {formatCurrency(totals.totalDiariasND30)}
                             </span>
                           </div>
