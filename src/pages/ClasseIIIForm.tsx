@@ -14,7 +14,7 @@ import { getEquipamentosPorTipo, TipoEquipamentoDetalhado } from "@/data/classeI
 import { RefLPC } from "@/types/refLPC";
 import RefLPCFormSection from "@/components/RefLPCFormSection";
 import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatInputWithThousands, formatCurrencyInput, numberToRawDigits, formatCodug } from "@/lib/formatUtils";
-import { TablesInsert } from "@/integrations/supabase/types";
+import { TablesInsert, Tables } from "@/integrations/supabase/types"; // Importando Tables
 import { OmSelector } from "@/components/OmSelector";
 import { RmSelector } from "@/components/RmSelector";
 import { OMData } from "@/lib/omUtils";
@@ -78,35 +78,8 @@ interface LubricantAllocation {
   selectedOmDestinoId?: string;
 }
 
-interface ClasseIIIRegistro {
-  id: string;
-  tipo_equipamento: string; // COMBUSTIVEL_CONSOLIDADO, LUBRIFICANTE_CONSOLIDADO
-  organizacao: string; // OM Detentora do Equipamento (para agrupamento)
-  ug: string; // UG Detentora do Equipamento (para agrupamento)
-  quantidade: number;
-  potencia_hp?: number;
-  horas_dia?: number;
-  dias_operacao: number; // Global days of activity (saved for context)
-  consumo_hora?: number;
-  consumo_km_litro?: number;
-  km_dia?: number;
-  tipo_combustivel: string;
-  preco_litro: number;
-  tipo_equipamento_detalhe?: string;
-  total_litros: number;
-  valor_total: number;
-  detalhamento?: string;
-  detalhamento_customizado?: string | null;
-  itens_equipamentos?: any;
-  fase_atividade?: string;
-  consumo_lubrificante_litro?: number;
-  preco_lubrificante?: number;
-  valor_nd_30: number;
-  valor_nd_39: number;
-  // Campos existentes no DB para OM Detentora do Recurso (Lubrificante)
-  om_detentora?: string | null; 
-  ug_detentora?: string | null;
-}
+// FIX 2: Usando Tables para sincronizar o tipo com o DB
+type ClasseIIIRegistro = Tables<'classe_iii_registros'>;
 
 // NEW INTERFACE FOR GRANULAR DISPLAY
 interface GranularDisplayItem {
@@ -501,7 +474,7 @@ const ClasseIIIForm = () => {
     
     [...combustivelRecords, ...lubricantRecords].forEach(r => {
       if (r.itens_equipamentos && Array.isArray(r.itens_equipamentos)) {
-        (r.itens_equipamentos as any[]).forEach(item => {
+        (r.itens_equipamentos as any[]).forEach((item: any) => {
           const baseCategory = item.categoria as TipoEquipamento;
           const directiveItem = allDiretrizItems[baseCategory]?.find(d => d.nome === item.tipo_equipamento_especifico);
           
@@ -1092,22 +1065,22 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
     const grupos: Record<string, { om: string, ug: string, total: number, suprimentos: ConsolidatedSuprimentoGroup[] }> = {};
     
     registros.forEach(r => {
-      // Chave de agrupamento: OM Detentora do Equipamento
-      const omUgKey = `${r.organizacao}-${r.ug}`;
-      
-      if (!grupos[omUgKey]) {
-        grupos[omUgKey] = {
-          om: r.organizacao,
-          ug: r.ug,
-          total: 0,
-          suprimentos: [],
-        };
-      }
-      
       const isCombustivel = r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
       const isLubrificante = r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
       
       if (isCombustivel || isLubrificante) {
+        // Chave de agrupamento: OM Detentora do Equipamento
+        const omUgKey = `${r.organizacao}-${r.ug}`;
+        
+        if (!grupos[omUgKey]) {
+          grupos[omUgKey] = {
+            om: r.organizacao,
+            ug: r.ug,
+            total: 0,
+            suprimentos: [],
+          };
+        }
+        
         grupos[omUgKey].total += r.valor_total;
         
         // Agrupar itens detalhados por categoria (para exibição)
@@ -1118,7 +1091,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
             MOTOMECANIZACAO: { litros: 0, valor: 0 },
         };
         
-        (r.itens_equipamentos as ItemClasseIII[] || []).forEach(item => {
+        (r.itens_equipamentos as ItemClasseIII[] || []).forEach((item: any) => {
             const categoria = item.categoria as TipoEquipamento;
             const totals = calculateItemTotals(item, refLPC, r.dias_operacao);
             
@@ -1169,7 +1142,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       
       if (isCombustivel) {
         // Combustível: Mantém a lógica granular por item (separado por tipo de combustível)
-        (r.itens_equipamentos as ItemClasseIII[] || []).forEach((item, index) => {
+        (r.itens_equipamentos as ItemClasseIII[] || []).forEach((item: any, index) => {
           const { itemTotal } = calculateItemTotals(item, refLPC, r.dias_operacao);
           if (itemTotal > 0) {
             
@@ -1197,7 +1170,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
         });
       } else if (isLubrificante) {
         // Lubrificante: Agrupa por OM Detentora do Equipamento e Categoria (Gerador/Embarcação)
-        (r.itens_equipamentos as ItemClasseIII[] || []).forEach((item) => {
+        (r.itens_equipamentos as ItemClasseIII[] || []).forEach((item: any) => {
             const { itemTotal } = calculateItemTotals(item, refLPC, r.dias_operacao);
             if (itemTotal > 0) {
                 // Chave de agrupamento: OM_DESTINO_UG_DESTINO-CATEGORIA
@@ -1291,9 +1264,9 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
     // 2. Preparar registros para salvar
     const registrosParaSalvar: TablesInsert<'classe_iii_registros'>[] = [];
     
-    let faseFinalString = [...fasesAtividade];
-    if (customFaseAtividade.trim()) { faseFinalString = [...fasesFinais, customFaseAtividade.trim()]; }
-    const faseFinalStringDB = faseFinalString.filter(f => f).join('; ');
+    let fasesFinais = [...fasesAtividade];
+    if (customFaseAtividade.trim()) { fasesFinais = [...fasesFinais, customFaseAtividade.trim()]; } // FIX 1: Corrigido o uso de fasesFinais
+    const faseFinalStringDB = fasesFinais.filter(f => f).join('; ');
     
     // 3.1. Processar Lubrificante (se houver custo)
     if (totalCustoLubrificante > 0) {
@@ -1521,7 +1494,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
     
     // 1. Encontrar o item detalhado (ItemClasseIII) que contém a memória customizada
     // O item detalhado é sempre o primeiro do array detailed_items, pois o agrupamento é granular
-    const itemComMemoria = granularItem.detailed_items[0];
+    const itemComMemoria = granularItem.detailed_items.find(i => !!i.memoria_customizada) || granularItem.detailed_items[0];
     
     // 2. Priorizar a memória customizada do item, senão gerar a automática
     const memoriaAutomatica = generateGranularMemoriaCalculo(granularItem, refLPC, rmFornecimento, codugRmFornecimento);
@@ -1553,7 +1526,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       const targetCategory = isSavingLubricant ? parts[parts.length - 2] : null; 
       
       // 2. Encontrar o item granular correspondente no array itens_equipamentos
-      const itensEquipamentos = (registroOriginal.itens_equipamentos as ItemClasseIII[] || []).map(item => {
+      const itensEquipamentos = (registroOriginal.itens_equipamentos as ItemClasseIII[] || []).map((item: any) => {
           let currentGranularId = '';
           
           // Lógica para gerar o ID granular do item atual (deve ser idêntica à lógica em getMemoriaRecords)
@@ -1623,7 +1596,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       const targetCategory = isRestoringLubricant ? parts[parts.length - 2] : null; 
       
       // 2. Encontrar o item granular correspondente no array itens_equipamentos e remover a memória customizada
-      const itensEquipamentos = (registroOriginal.itens_equipamentos as ItemClasseIII[] || []).map(item => {
+      const itensEquipamentos = (registroOriginal.itens_equipamentos as ItemClasseIII[] || []).map((item: any) => {
           let currentGranularId = '';
           
           // Lógica para gerar o ID granular do item atual (deve ser idêntica à lógica em getMemoriaRecords)
@@ -1756,7 +1729,11 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <Button variant="ghost" onClick={() => navigate(`/ptrab/form?ptrabId=${ptrabId}`)} className="mb-4">
+        <Button
+          variant="ghost"
+          onClick={() => navigate(`/ptrab/form?ptrabId=${ptrabId}`)}
+          className="mb-4"
+        >
           <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
         </Button>
         
