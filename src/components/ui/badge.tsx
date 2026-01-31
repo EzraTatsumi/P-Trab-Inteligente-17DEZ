@@ -12,6 +12,20 @@ const badgeVariants = cva(
         secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
         destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
         outline: "text-foreground",
+        
+        // NOVOS VARIANTES PARA PTrab Status e Origem
+        "ptrab-aberto": "border-transparent bg-yellow-500 text-white hover:bg-yellow-600",
+        "ptrab-em-andamento": "border-transparent bg-blue-600 text-white hover:bg-blue-700",
+        "ptrab-aprovado": "border-transparent bg-green-600 text-white hover:bg-green-700",
+        "ptrab-arquivado": "border-transparent bg-gray-500 text-white hover:bg-gray-600",
+        
+        "ptrab-importado": "border-transparent bg-purple-500 text-white hover:bg-purple-600",
+        "ptrab-consolidado": "border-transparent bg-teal-500 text-white hover:bg-teal-600",
+        "ptrab-original": "border-transparent bg-blue-600 text-white hover:bg-blue-700",
+        
+        // Variantes de Compartilhamento
+        "ptrab-shared": "border-transparent bg-indigo-600 text-white hover:bg-indigo-700", // Owner management
+        "ptrab-collaborator": "border-transparent bg-purple-600 text-white hover:bg-purple-700", // Shared user
       },
     },
     defaultVariants: {

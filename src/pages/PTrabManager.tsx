@@ -110,6 +110,31 @@ const COMANDOS_MILITARES_AREA = [
   "Comando Militar do Sul",
 ];
 
+// =================================================================
+// REFACTOR: Usar novos variantes de Badge
+// =================================================================
+const statusConfig = {
+  'aberto': { 
+    variant: 'ptrab-aberto' as const, 
+    label: 'Aberto',
+  },
+  'em_andamento': { 
+    variant: 'ptrab-em-andamento' as const, 
+    label: 'Em Andamento',
+  },
+  'aprovado': { 
+    variant: 'ptrab-aprovado' as const, 
+    label: 'Aprovado',
+  },
+  'arquivado': { 
+    variant: 'ptrab-arquivado' as const, 
+    label: 'Arquivado',
+  }
+};
+// =================================================================
+// FIM REFACTOR
+// =================================================================
+
 const PTrabManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -243,17 +268,23 @@ const PTrabManager = () => {
     });
   };
 
+  // =================================================================
+  // REFACTOR: Usar novos variantes de Badge
+  // =================================================================
   const getOriginBadge = (origem: PTrabDB['origem']) => {
     switch (origem) {
         case 'importado':
-            return { label: 'Importado', className: 'bg-purple-500 text-white hover:bg-purple-600' };
+            return { label: 'Importado', variant: 'ptrab-importado' as const };
         case 'consolidado':
-            return { label: 'Consolidado', className: 'bg-teal-500 text-white hover:bg-teal-600' };
+            return { label: 'Consolidado', variant: 'ptrab-consolidado' as const };
         case 'original':
         default:
-            return { label: 'Original', className: 'bg-blue-600 text-white hover:bg-blue-700' }; 
+            return { label: 'Original', variant: 'ptrab-original' as const }; 
     }
   };
+  // =================================================================
+  // FIM REFACTOR
+  // =================================================================
   
   const cleanOperationName = (name: string, origem: PTrabDB['origem']) => {
     if (origem === 'consolidado' && name.startsWith('CONSOLIDADO - ')) {
@@ -607,7 +638,7 @@ const PTrabManager = () => {
       setSuggestedCloneNumber(newSuggestedNumber);
       setCustomCloneNumber(newSuggestedNumber);
     }
-  }, [ptrabToClone, existingPTrabNumbers]);
+  }, [ptrabToClone, existingPTrabs]);
 
   const handleConfirmArchiveStatus = async () => {
     if (!ptrabToArchiveId) return;
@@ -661,29 +692,6 @@ const PTrabManager = () => {
         toast.error("Erro ao arquivar P Trab.");
     } finally {
         setLoading(false);
-    }
-  };
-
-  const statusConfig = {
-    'aberto': { 
-      variant: 'default' as const, 
-      label: 'Aberto',
-      className: 'bg-yellow-500 text-white hover:bg-yellow-600'
-    },
-    'em_andamento': { 
-      variant: 'secondary' as const, 
-      label: 'Em Andamento',
-      className: 'bg-blue-600 text-white hover:bg-blue-700'
-    },
-    'aprovado': { 
-      variant: 'default' as const, 
-      label: 'Aprovado',
-      className: 'bg-green-600 text-white hover:bg-green-700'
-    },
-    'arquivado': { 
-      variant: 'outline' as const, 
-      label: 'Arquivado',
-      className: 'bg-gray-500 text-white hover:bg-gray-600'
     }
   };
 
@@ -955,7 +963,7 @@ const PTrabManager = () => {
       return;
     }
     
-    const isDuplicate = isPTrabNumberDuplicate(newNumber, existingPTrabNumbers);
+    const isDuplicate = isPTrabNumberDuplicate(newNumber, existingPTrabs);
     if (isDuplicate) {
       toast.error("O número sugerido já existe. Tente novamente ou use outro número.");
       return;
@@ -1096,7 +1104,8 @@ const PTrabManager = () => {
         jsonbField: keyof Tables<T> | null, 
         numericFields: string[]
     ) => {
-        // CORREÇÃO: Usar 'as any' no from para permitir o nome dinâmico, mas tipar o retorno
+        // A solução é usar 'as any' no construtor da consulta para contornar a rigidez do TypeScript
+        // com nomes de tabela dinâmicos, mantendo a tipagem forte no retorno.
         const { data: originalRecords, error: fetchError } = await (supabase.from(tableName) as any)
             .select('*')
             .eq("p_trab_id", originalPTrabId);
@@ -1295,7 +1304,7 @@ const PTrabManager = () => {
         return;
     }
     setSelectedPTrabsToConsolidate(selectedPTrabs);
-    const newMinutaNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
+    const newMinutaNumber = generateUniqueMinutaNumber(existingPTrabs);
     setSuggestedConsolidationNumber(newMinutaNumber);
     setShowConsolidationDialog(false);
     setShowConsolidationNumberDialog(true);
@@ -1997,8 +2006,8 @@ const PTrabManager = () => {
                             </span>
                           )}
                           <Badge 
-                            variant="outline" 
-                            className={`mt-1 text-xs font-semibold ${originBadge.className}`}
+                            variant={originBadge.variant} // USANDO NOVO VARIANT
+                            className="mt-1 text-xs font-semibold"
                           >
                             {originBadge.label}
                           </Badge>
@@ -2032,10 +2041,8 @@ const PTrabManager = () => {
                       <TableCell>
                         <div className="flex flex-col items-center">
                           <Badge 
-                            className={cn(
-                              "w-[140px] h-7 text-xs flex items-center justify-center", 
-                              statusConfig[ptrab.status as keyof typeof statusConfig]?.className || 'bg-background'
-                            )}
+                            variant={statusConfig[ptrab.status as keyof typeof statusConfig]?.variant || 'default'} // USANDO NOVO VARIANT
+                            className="w-[140px] h-7 text-xs flex items-center justify-center"
                           >
                             {statusConfig[ptrab.status as keyof typeof statusConfig]?.label || ptrab.status}
                           </Badge>
@@ -2046,8 +2053,8 @@ const PTrabManager = () => {
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Badge 
-                                    variant="outline" 
-                                    className="mt-1 text-xs bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer w-[140px] h-7 flex items-center justify-center"
+                                    variant="ptrab-shared" // USANDO NOVO VARIANT
+                                    className="mt-1 text-xs cursor-pointer w-[140px] h-7 flex items-center justify-center"
                                     onClick={() => handleOpenManageSharingDialog(ptrab)}
                                   >
                                     <Users className="h-3 w-3 mr-1" />
@@ -2067,8 +2074,8 @@ const PTrabManager = () => {
                           {/* NOVO BADGE DE COMPARTILHAMENTO (COMPARTILHADO) */}
                           {isSharedWithCurrentUser && (
                             <Badge 
-                              variant="outline" 
-                              className="mt-1 text-xs bg-purple-600 text-white hover:bg-purple-700 w-[140px] h-7 flex items-center justify-center"
+                              variant="ptrab-collaborator" // USANDO NOVO VARIANT
+                              className="mt-1 text-xs w-[140px] h-7 flex items-center justify-center"
                             >
                               <Share2 className="h-3 w-3 mr-1" />
                               Compartilhado
@@ -2461,7 +2468,7 @@ const PTrabManager = () => {
         open={showConsolidationDialog}
         onOpenChange={setShowConsolidationDialog}
         pTrabsList={pTrabs.filter(p => p.status !== 'arquivado').map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }))}
-        existingPTrabNumbers={existingPTrabNumbers}
+        existingPTrabNumbers={existingPTrabs}
         onConfirm={handleOpenConsolidationNumberDialog}
         loading={loading}
       />
@@ -2471,7 +2478,7 @@ const PTrabManager = () => {
         open={showConsolidationNumberDialog}
         onOpenChange={setShowConsolidationNumberDialog}
         suggestedNumber={suggestedConsolidationNumber}
-        existingNumbers={existingPTrabNumbers}
+        existingNumbers={existingPTrabs}
         selectedPTrabs={simplePTrabsToConsolidate}
         onConfirm={handleConfirmConsolidation}
         loading={loading}
