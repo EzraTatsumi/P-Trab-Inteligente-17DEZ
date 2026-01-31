@@ -364,7 +364,7 @@ const DiariaForm = () => {
                 dias_operacao: formData.dias_operacao,
                 local_atividade: formData.local_atividade, // MANTIDO
                 is_aereo: formData.is_aereo, // MANTIDO
-                quantidades_por_posto: formData.quantidades_por_posto, // MANTIDO
+                quantidades_por_posto: initialFormState.quantidades_por_posto, // Resetar quantidades
             };
             
             setFormData(prev => ({
@@ -621,16 +621,25 @@ const DiariaForm = () => {
             setLastSavedFormData(formData);
             
             // 5. Resetar o formulário para o próximo item.
-            // Mantemos apenas OM, UG e Fase de Atividade. O resto é resetado.
+            // FIX: Mantemos todos os campos de contexto (Seções 1 e 2), exceto as quantidades.
             const keptData = {
                 organizacao: formData.organizacao,
                 ug: formData.ug,
                 fase_atividade: formData.fase_atividade,
+                destino: formData.destino,
+                dias_operacao: formData.dias_operacao,
+                nr_viagens: formData.nr_viagens,
+                local_atividade: formData.local_atividade,
+                is_aereo: formData.is_aereo,
+                om_detentora: formData.om_detentora,
+                ug_detentora: formData.ug_detentora,
             };
             
             setFormData(prev => ({
                 ...initialFormState,
                 ...keptData,
+                // Resetar explicitamente as quantidades para zero
+                quantidades_por_posto: initialFormState.quantidades_por_posto,
             }));
             
             toast.info("Item de Diária adicionado à lista pendente.");
@@ -1277,7 +1286,7 @@ const DiariaForm = () => {
                                                                 <p className="font-medium">Diárias (ND 15):</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
-                                                                <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
+                                                                <p className="font-medium">{registro.organizacao} ({formatCodug(registro.ug)})</p>
                                                                 <p className="font-medium text-green-600">{formatCurrency(totalTaxaEmbarque)}</p>
                                                                 <p className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</p>
                                                             </div>
@@ -1285,175 +1294,6 @@ const DiariaForm = () => {
                                                     </CardContent>
                                                 </Card>
                                             );
-                                        })}
-                                    </div>
-                                    
-                                    {/* VALOR TOTAL DA OM (PENDENTE / STAGING) */}
-                                    <Card className="bg-gray-100 shadow-inner">
-                                        <CardContent className="p-4 flex justify-between items-center">
-                                            <span className="font-bold text-base uppercase">
-                                                VALOR TOTAL DA OM
-                                            </span>
-                                            <span className="font-extrabold text-xl text-foreground">
-                                                {formatCurrency(isStagingUpdate ? stagedUpdate!.valor_total : totalPendingDiarias)}
-                                            </span>
-                                        </CardContent>
-                                    </Card>
-                                    
-                                    <div className="flex justify-end gap-3 pt-4">
-                                        {isStagingUpdate ? (
-                                            <>
-                                                <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
-                                                    <XCircle className="mr-2 h-4 w-4" />
-                                                    Limpar Formulário
-                                                </Button>
-                                                <Button 
-                                                    type="button" 
-                                                    onClick={handleCommitStagedUpdate}
-                                                    disabled={isSaving || isDiariaDirty} // Disable if dirty, force recalculation in Section 2
-                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
-                                                >
-                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                                                    Atualizar Registro
-                                                </Button>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
-                                                    <XCircle className="mr-2 h-4 w-4" />
-                                                    Limpar Lista
-                                                </Button>
-                                                <Button 
-                                                    type="button" 
-                                                    onClick={handleSavePendingDiarias}
-                                                    disabled={isSavePendingDisabled} // NOVO: Usa a condição de desabilitação
-                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
-                                                >
-                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                    Salvar Registros
-                                                </Button>
-                                            </>
-                                        )}
-                                    </div>
-                                </section>
-                            )}
-
-                            {/* SEÇÃO 4: REGISTROS SALVOS (Agrupados por OM) */}
-                            {registros && registros.length > 0 && (
-                                <section className="space-y-4 border-b pb-6">
-                                    <h3 className="text-xl font-bold flex items-center gap-2">
-                                        <Sparkles className="h-5 w-5 text-accent" />
-                                        OMs Cadastradas ({registros.length})
-                                    </h3>
-                                    
-                                    {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
-                                        const totalOM = omRegistros.reduce((sum, r) => r.valor_total + sum, 0);
-                                        const omName = omKey.split(' (')[0];
-                                        const ug = omKey.split(' (')[1].replace(')', '');
-                                        
-                                        return (
-                                            <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
-                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
-                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
-                                                        {omName} (UG: {formatCodug(ug)})
-                                                        {/* Badge de Destino movido para cá */}
-                                                        <Badge 
-                                                            variant="default" 
-                                                            className={cn("text-xs text-white", getDestinoColorClass(omRegistros[0].destino as DestinoDiaria))}
-                                                        >
-                                                            {DESTINO_OPTIONS.find(d => d.value === omRegistros[0].destino)?.label || omRegistros[0].destino}
-                                                        </Badge>
-                                                    </h3>
-                                                    <span className="font-extrabold text-xl text-primary">
-                                                        {formatCurrency(totalOM)}
-                                                    </span>
-                                                </div>
-                                                
-                                                <div className="space-y-3">
-                                                    {omRegistros.map((registro) => {
-                                                        const totalGeral = registro.valor_total;
-                                                        // Para fins de exibição, vamos usar os campos salvos:
-                                                        const totalDiariaBase = totalGeral - (registro.valor_taxa_embarque || 0);
-                                                        const totalTaxaEmbarque = registro.valor_taxa_embarque || 0;
-                                                        
-                                                        const destinoLabel = DESTINO_OPTIONS.find(d => d.value === registro.destino)?.label || registro.destino;
-                                                        const destinoColorClass = getDestinoColorClass(registro.destino as DestinoDiaria);
-                                                        
-                                                        return (
-                                                            <Card 
-                                                                key={registro.id} 
-                                                                className={cn(
-                                                                    "p-3 bg-background border"
-                                                                    // Removido: editingId === registro.id && "border-2 border-primary/50 shadow-lg"
-                                                                )}
-                                                            >
-                                                                <div className="flex items-center justify-between">
-                                                                    <div className="flex flex-col">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <h4 className="font-semibold text-base text-foreground">
-                                                                                Diárias ({registro.local_atividade})
-                                                                            </h4>
-                                                                            {/* NOVO BADGE: Fase da Atividade */}
-                                                                            <Badge variant="outline" className="text-xs">
-                                                                                {registro.fase_atividade}
-                                                                            </Badge>
-                                                                        </div>
-                                                                        <p className="text-xs text-muted-foreground">
-                                                                            Efetivo: {registro.quantidade} | Período: {registro.dias_operacao} {registro.dias_operacao === 1 ? 'dia' : 'dias'} | Viagens: {registro.nr_viagens}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="font-bold text-lg text-primary/80">
-                                                                            {formatCurrency(totalGeral)}
-                                                                        </span>
-                                                                        <div className="flex gap-1">
-                                                                            <Button
-                                                                                type="button" 
-                                                                                variant="ghost"
-                                                                                size="icon"
-                                                                                className="h-8 w-8"
-                                                                                onClick={() => handleEdit(registro)}
-                                                                                disabled={!isPTrabEditable || isSaving || pendingDiarias.length > 0}
-                                                                            >
-                                                                                <Pencil className="h-4 w-4" />
-                                                                            </Button>
-                                                                            <Button
-                                                                                type="button" 
-                                                                                variant="ghost"
-                                                                                size="icon"
-                                                                                onClick={() => handleConfirmDelete(registro)}
-                                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                                                disabled={!isPTrabEditable || isSaving}
-                                                                            >
-                                                                                <Trash2 className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                
-                                                                {/* Detalhes da Alocação */}
-                                                                <div className="pt-2 border-t mt-2">
-                                                                    {/* NOVO: OM Destino */}
-                                                                    <div className="flex justify-between text-xs mb-1">
-                                                                        <span className="text-muted-foreground">OM Destino:</span>
-                                                                        <span className="font-medium text-foreground">{registro.organizacao} ({formatCodug(registro.ug)})</span>
-                                                                                                                                    
-                                                                     </div>
-                                                                    <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">Diária Base:</span>
-                                                                        <span className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">Taxa Embarque:</span>
-                                                                        <span className="font-medium text-green-600">{formatCurrency(totalTaxaEmbarque)}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between text-xs font-bold pt-1">
-                                                                        <span className="text-muted-foreground">Total (ND 15):</span>
-                                                                        <span className="text-foreground">{formatCurrency(registro.valor_nd_15 || 0)}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </Card>
-                                                        );
                                                     })}
                                                 </div>
                                             </Card>
