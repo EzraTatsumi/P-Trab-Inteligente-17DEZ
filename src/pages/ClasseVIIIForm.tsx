@@ -420,24 +420,24 @@ const ClasseVIIIForm = () => {
         if (saudeError) throw saudeError;
         if (remontaError) throw remontaError;
 
-        // Mapeamento para SaudeRecord
+        // Mapeamento para SaudeRecord (Corrigido: usando 'as unknown as' para o cast de Json)
         const newSaudeRecords: SaudeRecord[] = (saudeData || []).map(r => ({
             ...r,
             categoria: 'Saúde', // Normaliza a categoria para exibição
             om_detentora: r.om_detentora || r.organizacao,
             ug_detentora: r.ug_detentora || r.ug,
             // Cast the Json field to the specific array type
-            itens_saude: (r.itens_saude || []) as ItemSaude[], 
+            itens_saude: (r.itens_saude || []) as unknown as ItemSaude[], 
         })) as SaudeRecord[];
 
-        // Mapeamento para RemontaRecord
+        // Mapeamento para RemontaRecord (Corrigido: usando 'as unknown as' para o cast de Json)
         const newRemontaRecords: RemontaRecord[] = (remontaData || []).map(r => ({
             ...r,
             categoria: 'Remonta/Veterinária', // Normaliza a categoria para exibição
             om_detentora: r.om_detentora || r.organizacao,
             ug_detentora: r.ug_detentora || r.ug,
             // Cast the Json field to the specific array type
-            itens_remonta: (r.itens_remonta || []) as ItemRemonta[],
+            itens_remonta: (r.itens_remonta || []) as unknown as ItemRemonta[],
         })) as RemontaRecord[];
 
         setRegistrosSaude(newSaudeRecords);
@@ -679,7 +679,8 @@ const ClasseVIIIForm = () => {
 
   const handleFaseChange = (fase: string, checked: boolean) => {
     if (checked) {
-      setFasesAtividade(prev => Array.from(new Set([...prev, fase]));
+      // CORRIGIDO: Adicionado parêntese de fechamento
+      setFasesAtividade(prev => Array.from(new Set([...prev, fase]))); 
     } else {
       setFasesAtividade(prev => prev.filter(f => f !== fase));
     }
@@ -1142,7 +1143,10 @@ const ClasseVIIIForm = () => {
   const handleDeletarRegistro = async (registro: ClasseVIIIRegistro) => {
     const isSaude = registro.categoria === 'Saúde';
     const tableName = isSaude ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
-    const categoriaLabel = isSaude ? 'Saúde' : `Remonta/Veterinária (${registro.animal_tipo})`;
+    
+    // Acesso seguro a animal_tipo
+    const animalType = isSaude ? null : (registro as RemontaRecord).animal_tipo;
+    const categoriaLabel = isSaude ? 'Saúde' : `Remonta/Veterinária (${animalType})`;
     
     if (!confirm(`Deseja realmente deletar o registro de ${categoriaLabel} para a OM Detentora ${registro.om_detentora}?`)) return;
     
@@ -1185,6 +1189,9 @@ const ClasseVIIIForm = () => {
         ? (registro as SaudeRecord).itens_saude 
         : (registro as RemontaRecord).itens_remonta;
     
+    // Acesso seguro a animal_tipo
+    const animalType = isSaude ? undefined : (registro as RemontaRecord).animal_tipo || undefined;
+
     const memoriaAutomatica = generateCategoryMemoriaCalculo(
         registro.categoria as Categoria, 
         itensParaMemoria as ItemClasseVIII[], 
@@ -1195,7 +1202,7 @@ const ClasseVIIIForm = () => {
         0, 
         registro.valor_nd_30, 
         registro.valor_nd_39,
-        registro.animal_tipo
+        animalType // Corrigido: Passando o tipo de animal como string ou undefined
     );
     
     // 2. Usar a customizada se existir, senão usar a automática recém-gerada
@@ -1841,7 +1848,9 @@ const ClasseVIIIForm = () => {
                                     if (isSaude) {
                                         badgeStyle = { label: 'Saúde', className: 'bg-red-500 text-white' };
                                     } else {
-                                        badgeStyle = getAnimalBadgeStyle((registro as RemontaRecord).animal_tipo || 'Equino');
+                                        // CORRIGIDO: Acesso seguro e cast para o tipo esperado
+                                        const animalType = (registro as RemontaRecord).animal_tipo || 'Equino';
+                                        badgeStyle = getAnimalBadgeStyle(animalType as 'Equino' | 'Canino');
                                     }
                                     
                                     // Verifica se a OM Detentora é diferente da OM de Destino
@@ -1944,6 +1953,9 @@ const ClasseVIIIForm = () => {
                             ? (registro as SaudeRecord).itens_saude 
                             : (registro as RemontaRecord).itens_remonta;
                         
+                        // Acesso seguro a animal_tipo
+                        const animalType = isSaude ? undefined : (registro as RemontaRecord).animal_tipo || undefined;
+
                         const memoriaAutomatica = generateCategoryMemoriaCalculo(
                             registro.categoria as Categoria, 
                             itensParaMemoria as ItemClasseVIII[], 
@@ -1954,7 +1966,7 @@ const ClasseVIIIForm = () => {
                             0, 
                             registro.valor_nd_30, 
                             registro.valor_nd_39,
-                            (registro as RemontaRecord).animal_tipo
+                            animalType // Corrigido: Passando o tipo de animal como string ou undefined
                         );
                         
                         const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
@@ -1963,7 +1975,9 @@ const ClasseVIIIForm = () => {
                         if (isSaude) {
                             badgeStyle = { label: 'Saúde', className: 'bg-red-500 text-white' };
                         } else {
-                            badgeStyle = getAnimalBadgeStyle((registro as RemontaRecord).animal_tipo || 'Equino');
+                            // CORRIGIDO: Acesso seguro e cast para o tipo esperado
+                            const animalTypeForBadge = (registro as RemontaRecord).animal_tipo || 'Equino';
+                            badgeStyle = getAnimalBadgeStyle(animalTypeForBadge as 'Equino' | 'Canino');
                         }
                         
                         return (
