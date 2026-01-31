@@ -14,13 +14,12 @@ import { OMData } from "@/lib/omUtils";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
-import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatCurrencyInput, numberToRawDigits, formatCodug // IMPORTADO } from "@/lib/formatUtils";
-import { DiretrizClasseII } from "@/types/diretrizesClasseII";
+import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatCurrencyInput, numberToRawDigits, formatCodug } from "@/lib/formatUtils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
-import { TablesInsert } from "@/integrations/supabase/types";
+import { Tables, TablesInsert } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -29,6 +28,9 @@ import { defaultClasseVIConfig } from "@/data/classeVIData";
 
 // NOVO: Importar as funções de utilidade da Classe VI
 import { generateCategoryMemoriaCalculo as generateClasseVIMemoriaCalculo, generateDetalhamento as generateClasseVIDetalhamento } from "@/lib/classeVIUtils";
+
+// CORREÇÃO: Definindo o tipo DiretrizClasseII a partir do esquema Supabase
+type DiretrizClasseII = Tables<'diretrizes_classe_ii'>;
 
 type Categoria = 'Gerador' | 'Embarcação' | 'Equipamento de Engenharia'; // Categorias corretas para Classe VI
 
@@ -331,11 +333,11 @@ const ClasseVIForm = () => {
 
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("default_logistica_year") // CORRIGIDO: Usando default_logistica_year
+        .select("default_logistica_year")
         .eq("id", user.id)
         .maybeSingle();
 
-      if (profileData?.default_logistica_year) { // CORRIGIDO: Usando default_logistica_year
+      if (profileData?.default_logistica_year) {
         anoReferencia = profileData.default_logistica_year;
       }
 
@@ -490,7 +492,7 @@ const ClasseVIForm = () => {
 
   const handleFaseChange = (fase: string, checked: boolean) => {
     if (checked) {
-      setFasesAtividade(prev => Array.from(new Set([...prev, fase])));
+      setFasesAtividade(prev => Array.from(new Set([...prev, fase]));
     } else {
       setFasesAtividade(prev => prev.filter(f => f !== fase));
     }
