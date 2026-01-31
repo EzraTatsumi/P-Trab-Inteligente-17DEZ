@@ -28,7 +28,7 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ content, classNa
           th: ({ node, ...props }) => <th className="bg-muted p-2 border border-border text-left font-semibold text-foreground" {...props} />,
           td: ({ node, ...props }) => <td className="p-2 border border-border align-top text-muted-foreground" {...props} />,
           // FIX: Destructure properties correctly from the component props object
-          code: ({ node, inline, ...props }) => {
+          code: ({ node, inline, ...props }: { node: any, inline?: boolean, [key: string]: any }) => {
             if (inline) {
               return <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono text-primary" {...props} />;
             }
