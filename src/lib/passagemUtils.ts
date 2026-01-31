@@ -1,124 +1,144 @@
-import { PassagemRegistro } from "@/pages/PTrabReportManager";
+import { Tables, TablesInsert } from "@/integrations/supabase/types";
 import { formatCurrency, formatNumber, formatCodug } from "./formatUtils";
-import { formatFasesParaTexto } from "@/pages/PTrabReportManager";
+import { TrechoSelection } from "@/components/PassagemTrechoSelectorDialog";
 
-// Tipo para o grupo consolidado de passagens (usado no ConsolidatedPassagemMemoria)
+// Tipos de dados
+export type PassagemRegistro = Tables<'passagem_registros'>;
+export type PassagemForm = TablesInsert<'passagem_registros'>;
+
+// Tipo para o registro consolidado (usado no formulário e relatórios)
 export interface ConsolidatedPassagemRecord {
-    diretriz_id: string;
+    groupKey: string;
     organizacao: string;
     ug: string;
     om_detentora: string;
     ug_detentora: string;
-    total_valor: number;
-    total_nd_33: number;
-    total_quantidade: number;
-    total_efetivo: number;
+    dias_operacao: number;
+    efetivo: number;
+    fase_atividade: string;
     records: PassagemRegistro[];
+    totalGeral: number;
+    totalND33: number;
 }
 
 /**
- * Gera a memória de cálculo para um único registro de passagem.
+ * Calcula os totais de um único registro de passagem.
+ * @param registro O registro de passagem.
+ * @returns Um objeto com os totais calculados.
+ */
+export const calculatePassagemTotals = (registro: PassagemRegistro) => {
+    const valorUnitario = Number(registro.valor_unitario || 0);
+    const quantidadePassagens = Number(registro.quantidade_passagens || 0);
+    
+    const valorTotal = valorUnitario * quantidadePassagens;
+    
+    // Passagens são ND 33.90.33
+    const valorND33 = valorTotal;
+    
+    return {
+        valorTotal,
+        valorND33,
+    };
+};
+
+/**
+ * Gera a memória de cálculo para um ÚNICO registro de passagem (usado no PTrab Operacional Report).
+ * @param registro O registro de passagem.
+ * @returns A string da memória de cálculo.
  */
 export const generatePassagemMemoriaCalculo = (registro: PassagemRegistro): string => {
-    const { 
-        origem, 
-        destino, 
-        tipo_transporte, 
-        is_ida_volta, 
-        valor_unitario, 
-        quantidade_passagens, 
-        efetivo, 
-        valor_nd_33,
-        fase_atividade,
-        organizacao,
-        ug,
-    } = registro;
-
-    const tipoViagem = is_ida_volta ? 'Ida e Volta' : 'Ida';
-    const faseTexto = formatFasesParaTexto(fase_atividade);
-    const omFavorecida = `${organizacao} (${formatCodug(ug)})`;
+    // Prioriza a memória customizada se existir
+    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
+        return registro.detalhamento_customizado;
+    }
     
-    let memoria = `33.90.33 - Aquisição de Passagem para ${efetivo} militar${efetivo > 1 ? 'es' : ''} da ${omFavorecida}, durante ${registro.dias_operacao} dia${registro.dias_operacao > 1 ? 's' : ''} de ${faseTexto}.\n\n`;
+    const valorUnitario = Number(registro.valor_unitario || 0);
+    const quantidadePassagens = Number(registro.quantidade_passagens || 0);
+    const valorTotal = Number(registro.valor_total || 0);
+    const isIdaVolta = registro.is_ida_volta;
+    const tipoTransporte = registro.tipo_transporte;
+    
+    const omFavorecida = `${registro.organizacao} (${formatCodug(registro.ug)})`;
+    const omDetentora = `${registro.om_detentora} (${formatCodug(registro.ug_detentora)})`;
+    
+    let memoria = `SOLICITAÇÃO DE PASSAGENS\n`;
+    memoria += `OM Favorecida: ${omFavorecida}\n`;
+    
+    // Se a OM Detentora for diferente, incluir a linha
+    if (registro.organizacao !== registro.om_detentora || registro.ug !== registro.ug_detentora) {
+        memoria += `OM Destino Recurso: ${omDetentora}\n`;
+    }
+    
+    memoria += `Fase da Atividade: ${registro.fase_atividade || 'Não Informada'}\n`;
+    memoria += `Período: ${registro.dias_operacao} dias\n`;
+    memoria += `Efetivo: ${registro.efetivo} militares\n`;
+    memoria += `\n`;
     
     // Detalhe do Trecho
-    memoria += `Cálculo:\n`;
-    memoria += `- ${origem}-${destino}: ${formatCurrency(valor_unitario)} (${tipo_transporte} - ${tipoViagem}).\n\n`;
+    const tipoViagem = isIdaVolta ? 'Ida/Volta' : 'Ida'; // CORRIGIDO: Usar "Ida/Volta"
+    memoria += `TRECHO: ${registro.origem} -> ${registro.destino} (${tipoTransporte} - ${tipoViagem})\n`;
+    memoria += `Quantidade de Passagens: ${formatNumber(quantidadePassagens)} un.\n`;
+    memoria += `Valor Unitário: ${formatCurrency(valorUnitario)}\n`;
+    memoria += `\n`;
     
-    // Fórmula
-    memoria += `Fórmula: Qtd Psg x Valor Unitário da Psg.\n`;
-    memoria += `- ${formatNumber(quantidade_passagens)} Psg ${origem}-${destino} (${tipo_transporte}-${tipoViagem}) x ${formatCurrency(valor_unitario)} = ${formatCurrency(valor_nd_33)}.\n\n`;
+    memoria += `CÁLCULO:\n`;
+    memoria += `${formatNumber(quantidadePassagens)} un. x ${formatCurrency(valorUnitario)} = ${formatCurrency(valorTotal)}\n`;
+    memoria += `TOTAL ND 33.90.33: ${formatCurrency(valorTotal)}\n`;
     
-    // Total
-    memoria += `Total: ${formatCurrency(valor_nd_33)}.`;
+    // A linha do Pregão/UASG será adicionada dinamicamente no componente ConsolidatedPassagemMemoria.tsx
+    // ou no PTrabOperacionalReport.tsx, pois depende de dados externos (diretrizes).
     
     return memoria;
 };
 
 /**
- * Gera a memória de cálculo consolidada para um grupo de registros de passagem.
- * Esta função é usada no componente ConsolidatedPassagemMemoria.
+ * Gera a memória de cálculo CONSOLIDADA para um grupo de registros de passagem (usado no formulário).
+ * @param group O grupo consolidado de registros.
+ * @returns A string da memória de cálculo.
  */
 export const generateConsolidatedPassagemMemoriaCalculo = (group: ConsolidatedPassagemRecord): string => {
-    const { 
-        organizacao, 
-        ug, 
-        total_valor, 
-        total_quantidade, 
-        total_efetivo, 
-        records 
-    } = group;
-
-    const faseTexto = formatFasesParaTexto(records[0]?.fase_atividade);
-    const diasOperacao = records[0]?.dias_operacao || 0;
-    const omFavorecida = `${organizacao} (UG: ${formatCodug(ug)})`;
-
-    let memoria = `33.90.33 - Aquisição de Passagens para ${total_efetivo} militar${total_efetivo > 1 ? 'es' : ''} da ${omFavorecida}, durante ${diasOperacao} dia${diasOperacao > 1 ? 's' : ''} de ${faseTexto}.\n\n`;
+    const omFavorecida = `${group.organizacao}`; // CORRIGIDO: Removendo UG do cabeçalho
+    const ugFavorecida = formatCodug(group.ug);
+    const omDetentora = `${group.om_detentora} (${formatCodug(group.ug_detentora)})`;
     
-    memoria += `Cálculo Consolidado:\n`;
+    let memoria = `SOLICITAÇÃO DE PASSAGENS\n`;
+    memoria += `OM Favorecida: ${omFavorecida} (UG: ${ugFavorecida})\n`;
     
-    // Agrupar por trecho (origem/destino/tipo_transporte/ida_volta)
-    const trechosAgrupados: Record<string, { 
-        origem: string, 
-        destino: string, 
-        tipo_transporte: string, 
-        is_ida_volta: boolean, 
-        valor_unitario: number, 
-        quantidade_total: number,
-        valor_total_trecho: number,
-    }> = {};
+    // Se a OM Detentora for diferente, incluir a linha
+    if (group.organizacao !== group.om_detentora || group.ug !== group.ug_detentora) {
+        memoria += `OM Destino Recurso: ${omDetentora}\n`;
+    }
     
-    records.forEach(r => {
-        const key = `${r.origem}|${r.destino}|${r.tipo_transporte}|${r.is_ida_volta}|${r.valor_unitario}`;
+    memoria += `Fase da Atividade: ${group.fase_atividade || 'Não Informada'}\n`;
+    memoria += `Período: ${group.dias_operacao} dias\n`;
+    memoria += `Efetivo: ${group.efetivo} militares\n`; // CORRIGIDO: Efetivo agora é um número
+    memoria += `\n`;
+    
+    memoria += `DETALHAMENTO DOS TRECHOS:\n`;
+    
+    let totalGeral = 0;
+    let totalPassagens = 0;
+    
+    group.records.forEach((registro, index) => {
+        const valorUnitario = Number(registro.valor_unitario || 0);
+        const quantidadePassagens = Number(registro.quantidade_passagens || 0);
+        const valorTotal = valorUnitario * quantidadePassagens;
+        const tipoViagem = registro.is_ida_volta ? 'Ida/Volta' : 'Ida'; // CORRIGIDO: Usar "Ida/Volta"
         
-        if (!trechosAgrupados[key]) {
-            trechosAgrupados[key] = {
-                origem: r.origem,
-                destino: r.destino,
-                tipo_transporte: r.tipo_transporte,
-                is_ida_volta: r.is_ida_volta,
-                valor_unitario: r.valor_unitario,
-                quantidade_total: 0,
-                valor_total_trecho: 0,
-            };
-        }
+        totalGeral += valorTotal;
+        totalPassagens += quantidadePassagens;
         
-        trechosAgrupados[key].quantidade_total += r.quantidade_passagens;
-        trechosAgrupados[key].valor_total_trecho += r.valor_total;
+        memoria += `  - ${registro.origem} -> ${registro.destino} (${registro.tipo_transporte} - ${tipoViagem})\n`;
+        memoria += `    Qtd: ${formatNumber(quantidadePassagens)} un. x ${formatCurrency(valorUnitario)} = ${formatCurrency(valorTotal)}\n`;
     });
     
-    Object.values(trechosAgrupados).forEach((trecho) => {
-        const tipoViagem = trecho.is_ida_volta ? 'I/V' : 'Ida';
-        memoria += `- ${trecho.origem}-${trecho.destino}: ${formatCurrency(trecho.valor_unitario)} (${trecho.tipo_transporte} - ${tipoViagem}).\n`;
-    });
+    memoria += `\n`;
+    memoria += `TOTAL CONSOLIDADO:\n`;
+    memoria += `Total de Passagens: ${formatNumber(totalPassagens)} un.\n`;
+    memoria += `VALOR TOTAL ND 33.90.33: ${formatCurrency(totalGeral)}\n`; // CORRIGIDO: Total estava R$ 0,00
     
-    memoria += `\nFórmula: Soma (Qtd Psg x Valor Unitário da Psg).\n`;
+    // A linha do Pregão/UASG será adicionada dinamicamente no componente ConsolidatedPassagemMemoria.tsx
+    // ou no PTrabOperacionalReport.tsx, pois depende de dados externos (diretrizes).
     
-    Object.values(trechosAgrupados).forEach((trecho) => {
-        const tipoViagem = trecho.is_ida_volta ? 'I/V' : 'Ida';
-        memoria += `- ${formatNumber(trecho.quantidade_total)} Psg ${trecho.origem}-${trecho.destino} (${trecho.tipo_transporte}-${tipoViagem}) x ${formatCurrency(trecho.valor_unitario)} = ${formatCurrency(trecho.valor_total_trecho)}.\n`;
-    });
-    
-    memoria += `\nTotal: ${formatCurrency(total_valor)}.`;
-
     return memoria;
 };

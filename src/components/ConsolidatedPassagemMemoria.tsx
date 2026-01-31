@@ -45,18 +45,28 @@ export const ConsolidatedPassagemMemoria: React.FC<ConsolidatedPassagemMemoriaPr
     // Busca os detalhes da diretriz (Pregão/UASG)
     const { data: diretrizDetails, isLoading: isLoadingDiretriz } = usePassagemDiretrizDetails(diretrizId);
 
+    // Função auxiliar para adicionar a linha do Pregão/UASG no final
+    const appendContractDetails = (memoria: string, details: typeof diretrizDetails) => {
+        if (!details?.numero_pregao || !details?.ug_referencia) return memoria;
+        
+        const pregaoLine = `\n(Pregão ${details.numero_pregao} - UASG ${formatCodug(details.ug_referencia)})`;
+        
+        // Remove linhas de Pregão/UASG existentes para evitar duplicação
+        const cleanedMemoria = memoria.split('\n').filter(line => 
+            !line.includes('(Pregão') && !line.includes('UASG')
+        ).join('\n').trim();
+        
+        return cleanedMemoria + pregaoLine;
+    };
+
     // 1. Gerar a memória automática consolidada COMPLETA (incluindo Pregão/UASG)
     const memoriaAutomaticaCompleta = useMemo(() => {
         if (isLoadingDiretriz) return "Carregando detalhes do contrato...";
         
         let memoria = generateConsolidatedPassagemMemoriaCalculo(group);
         
-        // Adicionar Pregão/UASG dinamicamente
-        if (diretrizDetails?.numero_pregao && diretrizDetails?.ug_referencia) {
-            memoria += `(Pregão ${diretrizDetails.numero_pregao} - UASG ${formatCodug(diretrizDetails.ug_referencia)})\n`;
-        } else if (diretrizDetails) {
-            memoria += `(Detalhes do contrato não disponíveis ou incompletos)\n`;
-        }
+        // Adicionar Pregão/UASG na última linha
+        memoria = appendContractDetails(memoria, diretrizDetails);
         
         return memoria;
     }, [group, diretrizDetails, isLoadingDiretriz]);
@@ -72,14 +82,8 @@ export const ConsolidatedPassagemMemoria: React.FC<ConsolidatedPassagemMemoriaPr
     else if (hasCustomMemoria) {
         let customMemoria = firstRecord.detalhamento_customizado!;
         
-        if (diretrizDetails?.numero_pregao && diretrizDetails?.ug_referencia) {
-            const pregaoLine = `(Pregão ${diretrizDetails.numero_pregao} - UASG ${formatCodug(diretrizDetails.ug_referencia)})`;
-            // Evita duplicar a linha se o usuário já a incluiu
-            if (!customMemoria.includes('Pregão')) {
-                customMemoria += `\n${pregaoLine}\n`;
-            }
-        }
-        memoriaExibida = customMemoria;
+        // Adicionar Pregão/UASG na última linha da customizada
+        memoriaExibida = appendContractDetails(customMemoria, diretrizDetails);
     }
     
     // Verifica se a OM Detentora é diferente da OM Favorecida
@@ -87,13 +91,8 @@ export const ConsolidatedPassagemMemoria: React.FC<ConsolidatedPassagemMemoriaPr
 
     // Handler local para iniciar a edição, passando a memória completa
     const handleLocalIniciarEdicao = () => {
-        // Se houver customização, passamos a customizada (que já inclui o Pregão/UASG se necessário)
-        // Se não houver customização, passamos a automática completa.
-        const memoriaParaEdicao = hasCustomMemoria 
-            ? memoriaExibida // Usa a versão customizada (que já tem o Pregão/UASG adicionado se não estiver lá)
-            : memoriaAutomaticaCompleta;
-            
-        handleIniciarEdicaoMemoria(group, memoriaParaEdicao);
+        // Passamos a memóriaExibida atual, que já contém a lógica de customização + Pregão/UASG
+        handleIniciarEdicaoMemoria(group, memoriaExibida);
     };
 
     return (

@@ -195,6 +195,44 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     
     return `${nomeBase}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
   };
+  
+  // Função para buscar detalhes da diretriz de passagem (Pregão/UASG)
+  const fetchPassagemDiretrizDetails = useCallback(async (diretrizId: string) => {
+      const { data, error } = await supabase
+          .from('diretrizes_passagens')
+          .select('numero_pregao, ug_referencia')
+          .eq('id', diretrizId)
+          .single();
+          
+      if (error) {
+          console.error("Erro ao buscar diretriz de passagem:", error);
+          return null;
+      }
+      return data;
+  }, []);
+
+  // Função para gerar a memória de cálculo da Passagem para o relatório (incluindo Pregão/UASG)
+  const generatePassagemMemoriaForReport = useCallback(async (registro: PassagemRegistro) => {
+      let memoria = generatePassagemMemoriaCalculo(registro);
+      
+      // Busca os detalhes do contrato
+      const diretrizDetails = await fetchPassagemDiretrizDetails(registro.diretriz_id);
+      
+      if (diretrizDetails?.numero_pregao && diretrizDetails?.ug_referencia) {
+          const pregaoLine = `(Pregão ${diretrizDetails.numero_pregao} - UASG ${formatCodug(diretrizDetails.ug_referencia)})`;
+          
+          // Remove linhas de Pregão/UASG existentes para evitar duplicação
+          const cleanedMemoria = memoria.split('\n').filter(line => 
+              !line.includes('(Pregão') && !line.includes('UASG')
+          ).join('\n').trim();
+          
+          // Adiciona a linha do Pregão/UASG na última linha
+          memoria = cleanedMemoria + `\n${pregaoLine}`;
+      }
+      
+      return memoria;
+  }, [generatePassagemMemoriaCalculo, fetchPassagemDiretrizDetails]);
+
 
   // Função para exportar PDF (Download)
   const exportPDF = useCallback(() => {
@@ -251,7 +289,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, totaisND, fileSuffix, diasOperacao, generateDiariaMemoriaCalculo, registrosDiaria, diretrizesOperacionais, toast, registrosVerbaOperacional, generateVerbaOperacionalMemoriaCalculo, registrosSuprimentoFundos, generateSuprimentoFundosMemoriaCalculo, registrosPassagem, generatePassagemMemoriaCalculo]);
+  }, [ptrabData, totaisND, fileSuffix, diasOperacao, generateDiariaMemoriaCalculo, registrosDiaria, diretrizesOperacionais, toast, registrosVerbaOperacional, generateVerbaOperacionalMemoriaCalculo, registrosSuprimentoFundos, generateSuprimentoFundosMemoriaCalculo, registrosPassagem, generatePassagemMemoriaForReport]);
 
   // Função para Imprimir (Abre a caixa de diálogo de impressão)
   const handlePrint = useCallback(() => {
@@ -437,7 +475,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     currentRow += 2; // Start data rows after the two header rows
 
     // Dados da Tabela (Agrupados por OM)
-    Object.entries(registrosAgrupadosPorOM).forEach(([omKey, group]) => {
+    for (const [omKey, group] of Object.entries(registrosAgrupadosPorOM)) {
         const omName = omKey.split(' (')[0];
         const ug = omKey.split(' (')[1].replace(')', '');
         const article = getArticleForOM(omName); // Determina DO/DA
@@ -536,7 +574,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         });
         
         // --- 2. Render Passagens (NOVO) ---
-        group.passagens.forEach(registro => {
+        for (const registro of group.passagens) {
             const row = worksheet.getRow(currentRow);
             const totalLinha = registro.valor_nd_33;
             
@@ -596,7 +634,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // I: DETALHAMENTO
-            const memoria = generatePassagemMemoriaCalculo(registro);
+            const memoria = await generatePassagemMemoriaForReport(registro); // Usa a função que inclui Pregão/UASG
             row.getCell('I').value = memoria;
             row.getCell('I').alignment = leftTopAlignment; 
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
@@ -610,7 +648,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 row.getCell(col).border = cellBorder;
             });
             currentRow++;
-        });
+        }
         
         // --- 3. Render Verba Operacional ---
         group.verbas.forEach(registro => {
@@ -816,7 +854,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         subtotalFinalRow.getCell('I').border = cellBorder;
 
         currentRow++;
-    });
+    }
 
     // Linha em branco para espaçamento
     currentRow++;
@@ -924,7 +962,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
       description: "O relatório Operacional foi salvo com sucesso.",
       duration: 3000,
     });
-  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, generatePassagemMemoriaCalculo, diretrizesOperacionais, toast, registrosAgrupadosPorOM]);
+  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, generatePassagemMemoriaForReport, diretrizesOperacionais, toast, registrosAgrupadosPorOM]);
 
 
   if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0 && registrosSuprimentoFundos.length === 0 && registrosPassagem.length === 0) {
@@ -1100,7 +1138,8 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                   <td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
                                   <td className="col-detalhamento-op">
                                     <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                                      {generatePassagemMemoriaCalculo(registro)}
+                                      {/* Usa a função que inclui Pregão/UASG */}
+                                      {generatePassagemMemoriaForReport(registro)}
                                     </div>
                                   </td>
                                 </tr>
