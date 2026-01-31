@@ -321,12 +321,12 @@ const ClasseVForm = () => {
 
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("default_diretriz_year")
+        .select("default_logistica_year") // FIX: Usando default_logistica_year
         .eq("id", user.id)
         .maybeSingle();
         
-      if (profileData?.default_diretriz_year) {
-          anoReferencia = profileData.default_diretriz_year;
+      if (profileData?.default_logistica_year) {
+          anoReferencia = profileData.default_logistica_year;
       }
 
       if (!anoReferencia) {
@@ -398,7 +398,8 @@ const ClasseVForm = () => {
         const key = `${r.om_detentora || r.organizacao}-${r.ug_detentora || r.ug}-${r.categoria}`;
         const record = {
             ...r,
-            itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseV[],
+            // FIX 1: Conversão segura de Json para ItemClasseV[]
+            itens_equipamentos: (r.itens_equipamentos || []) as any as ItemClasseV[],
             valor_nd_30: Number(r.valor_nd_30),
             valor_nd_39: Number(r.valor_nd_39),
             efetivo: r.efetivo || 0, 
@@ -765,7 +766,7 @@ const ClasseVForm = () => {
     for (const r of (allRecords || [])) {
         const category = r.categoria as Categoria;
         // CORREÇÃO: Garantir que itens_equipamentos seja tratado como array de ItemClasseV
-        const items = (r.itens_equipamentos as any[] || []).map(item => ({
+        const items = (r.itens_equipamentos as any[] || []).map((item: any) => ({ // FIX 1: Adicionando 'as any' para mapear o JSONB
             item: item.item,
             quantidade: Number(item.quantidade || 0),
             valor_mnt_dia: Number(item.valor_mnt_dia || 0),
@@ -1409,18 +1410,20 @@ const ClasseVForm = () => {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            onClick={() => {
+                                                            onClick={async () => { // FIX 2: Usando async/await para tratar a Promise
                                                                 if (confirm(`Deseja realmente deletar o registro de Classe V para ${omName} (${registro.categoria})?`)) {
-                                                                    supabase.from("classe_v_registros")
-                                                                        .delete()
-                                                                        .eq("id", registro.id)
-                                                                        .then(() => {
-                                                                            toast.success("Registro excluído!");
-                                                                            fetchRegistros();
-                                                                        })
-                                                                        .catch(err => {
-                                                                            toast.error(sanitizeError(err));
-                                                                        });
+                                                                    try {
+                                                                        const { error: deleteError } = await supabase.from("classe_v_registros")
+                                                                            .delete()
+                                                                            .eq("id", registro.id);
+                                                                        
+                                                                        if (deleteError) throw deleteError;
+                                                                        
+                                                                        toast.success("Registro excluído!");
+                                                                        fetchRegistros();
+                                                                    } catch (err) {
+                                                                        toast.error(sanitizeError(err));
+                                                                    }
                                                                 }
                                                             }}
                                                             className="h-8 w-8 text-destructive hover:bg-destructive/10"
