@@ -638,7 +638,7 @@ const PTrabManager = () => {
       setSuggestedCloneNumber(newSuggestedNumber);
       setCustomCloneNumber(newSuggestedNumber);
     }
-  }, [ptrabToClone, existingPTrabs]);
+  }, [ptrabToClone, existingPTrabNumbers]);
 
   const handleConfirmArchiveStatus = async () => {
     if (!ptrabToArchiveId) return;
@@ -963,7 +963,7 @@ const PTrabManager = () => {
       return;
     }
     
-    const isDuplicate = isPTrabNumberDuplicate(newNumber, existingPTrabs);
+    const isDuplicate = isPTrabNumberDuplicate(newNumber, existingPTrabNumbers);
     if (isDuplicate) {
       toast.error("O número sugerido já existe. Tente novamente ou use outro número.");
       return;
@@ -1304,7 +1304,7 @@ const PTrabManager = () => {
         return;
     }
     setSelectedPTrabsToConsolidate(selectedPTrabs);
-    const newMinutaNumber = generateUniqueMinutaNumber(existingPTrabs);
+    const newMinutaNumber = generateUniqueMinutaNumber(existingPTrabNumbers);
     setSuggestedConsolidationNumber(newMinutaNumber);
     setShowConsolidationDialog(false);
     setShowConsolidationNumberDialog(true);
@@ -2468,7 +2468,7 @@ const PTrabManager = () => {
         open={showConsolidationDialog}
         onOpenChange={setShowConsolidationDialog}
         pTrabsList={pTrabs.filter(p => p.status !== 'arquivado').map(p => ({ id: p.id, numero_ptrab: p.numero_ptrab, nome_operacao: p.nome_operacao }))}
-        existingPTrabNumbers={existingPTrabs}
+        existingPTrabNumbers={existingPTrabNumbers}
         onConfirm={handleOpenConsolidationNumberDialog}
         loading={loading}
       />
@@ -2478,7 +2478,7 @@ const PTrabManager = () => {
         open={showConsolidationNumberDialog}
         onOpenChange={setShowConsolidationNumberDialog}
         suggestedNumber={suggestedConsolidationNumber}
-        existingNumbers={existingPTrabs}
+        existingNumbers={existingPTrabNumbers}
         selectedPTrabs={simplePTrabsToConsolidate}
         onConfirm={handleConfirmConsolidation}
         loading={loading}
