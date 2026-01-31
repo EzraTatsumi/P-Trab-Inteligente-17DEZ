@@ -414,10 +414,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             ...grupo.linhasQR,
             ...grupo.linhasClasseII,
             ...grupo.linhasClasseV,
-            ...grupo.linhasClasseVI,
-            ...grupo.linhasClasseVII,
-            ...grupo.linhasClasseVIII,
-            ...grupo.linhasClasseIX,
+            ...grupo.linhasClasseVI, // INCLUÍDO
+            ...grupo.linhasClasseVII, // INCLUÍDO
+            ...grupo.linhasClasseVIII, // INCLUÍDO
+            ...grupo.linhasClasseIX, // INCLUÍDO
             ...linhasClasseIIIOrdenadas,
         ].sort((a, b) => {
             const getClasseOrder = (linha: any) => {
@@ -565,6 +565,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 let prefixoClasse = '';
                 let generateMemoriaFunc: (r: ClasseIIRegistro) => string;
 
+                // CORREÇÃO: Garantir que a ordem de verificação cubra todas as classes
                 if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
                     prefixoClasse = 'CLASSE V';
                     generateMemoriaFunc = generateClasseVMemoriaCalculo;
@@ -579,8 +580,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     generateMemoriaFunc = generateClasseVIIIMemoriaCalculo;
                 } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                     prefixoClasse = 'CLASSE IX';
-                    generateMemoriaFunc = generateClasseIXMemoriaCalculo; // Usa a função específica da IX
+                    generateMemoriaFunc = generateClasseIXMemoriaCalculo; 
                 } else {
+                    // Deve ser Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
                     prefixoClasse = 'CLASSE II';
                     generateMemoriaFunc = (r) => generateClasseIIMemoriaCalculo(r, true);
                 }
@@ -917,14 +919,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     line2 = omDestino;
                 }
                 
-                rowData.omValue = `${registro.omQS}\n(${ug_qs_formatted})`;
+                rowData.omValue = `${registro.omQS}<br/>(${ug_qs_formatted})`;
                 rowData.valorC = registro.totalQS;
                 rowData.valorE = registro.totalQS;
                 rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                 
             } else {
                 line1 = `CLASSE I - SUBSISTÊNCIA`;
-                rowData.omValue = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
+                rowData.omValue = `${registro.organizacao}<br/>(${formatCodug(registro.ug)})`;
                 rowData.valorC = registro.totalQR;
                 rowData.valorE = registro.totalQR;
                 rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
@@ -994,6 +996,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             let prefixoClasse = '';
             let generateMemoriaFunc: (r: ClasseIIRegistro) => string;
 
+            // Lógica de identificação da classe (garantindo que todas as classes sejam cobertas)
             if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
                 prefixoClasse = 'CLASSE V';
                 generateMemoriaFunc = generateClasseVMemoriaCalculo;
@@ -1010,6 +1013,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 prefixoClasse = 'CLASSE IX';
                 generateMemoriaFunc = generateClasseIXMemoriaCalculo;
             } else {
+                // Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
                 prefixoClasse = 'CLASSE II';
                 generateMemoriaFunc = (r) => generateClasseIIMemoriaCalculo(r, true);
             }
@@ -1153,10 +1157,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       ...grupo.linhasQR,
                       ...grupo.linhasClasseII,
                       ...grupo.linhasClasseV,
-                      ...grupo.linhasClasseVI,
-                      ...grupo.linhasClasseVII,
-                      ...grupo.linhasClasseVIII,
-                      ...grupo.linhasClasseIX,
+                      ...grupo.linhasClasseVI, // INCLUÍDO
+                      ...grupo.linhasClasseVII, // INCLUÍDO
+                      ...grupo.linhasClasseVIII, // INCLUÍDO
+                      ...grupo.linhasClasseIX, // INCLUÍDO
                       ...linhasClasseIIIOrdenadas,
                   ].sort((a, b) => {
                       const getClasseOrder = (linha: any) => {
