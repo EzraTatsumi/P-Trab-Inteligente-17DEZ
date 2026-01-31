@@ -125,6 +125,7 @@ export type Database = {
           updated_at: string
           valor_nd_30: number
           valor_nd_39: number
+          valor_total: number // Adicionado valor_total
         }
         Insert: {
           categoria: string
@@ -639,6 +640,95 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "classe_ix_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diaria_registros: {
+        Row: {
+          created_at: string
+          detalhamento: string | null
+          detalhamento_customizado: string | null
+          dias_operacao: number
+          destino: string
+          fase_atividade: string | null
+          id: string
+          is_aereo: boolean | null
+          local_atividade: string | null
+          nr_viagens: number
+          om_detentora: string | null
+          organizacao: string
+          p_trab_id: string
+          posto_graduacao: string | null
+          quantidade: number
+          quantidades_por_posto: Json | null
+          ug: string
+          ug_detentora: string | null
+          updated_at: string
+          valor_diaria_unitario: number | null
+          valor_nd_15: number
+          valor_nd_30: number
+          valor_taxa_embarque: number | null
+          valor_total: number
+        }
+        Insert: {
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao: number
+          destino: string
+          fase_atividade?: string | null
+          id?: string
+          is_aereo?: boolean | null
+          local_atividade?: string | null
+          nr_viagens?: number
+          om_detentora?: string | null
+          organizacao: string
+          p_trab_id: string
+          posto_graduacao?: string | null
+          quantidade: number
+          quantidades_por_posto?: Json | null
+          ug: string
+          ug_detentora?: string | null
+          updated_at?: string
+          valor_diaria_unitario?: number | null
+          valor_nd_15?: number
+          valor_nd_30?: number
+          valor_taxa_embarque?: number | null
+          valor_total?: number
+        }
+        Update: {
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          destino?: string
+          fase_atividade?: string | null
+          id?: string
+          is_aereo?: boolean | null
+          local_atividade?: string | null
+          nr_viagens?: number
+          om_detentora?: string | null
+          organizacao?: string
+          p_trab_id?: string
+          posto_graduacao?: string | null
+          quantidade?: number
+          quantidades_por_posto?: Json | null
+          ug?: string
+          ug_detentora?: string | null
+          updated_at?: string
+          valor_diaria_unitario?: number | null
+          valor_nd_15?: number
+          valor_nd_30?: number
+          valor_taxa_embarque?: number | null
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diaria_registros_p_trab_id_fkey"
             columns: ["p_trab_id"]
             isOneToOne: false
             referencedRelation: "p_trab"
