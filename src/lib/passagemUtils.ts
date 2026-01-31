@@ -1,14 +1,13 @@
 import { Tables, TablesInsert } from "@/integrations/supabase/types";
-import { formatCurrency, formatNumber, formatCodug } from "./formatUtils";
+import { formatCurrency, formatCodug } from "./formatUtils";
 import { TrechoSelection } from "@/components/PassagemTrechoSelectorDialog";
 
 // Tipos de dados
 export type PassagemRegistro = Tables<'passagem_registros'>;
 export type PassagemForm = TablesInsert<'passagem_registros'>;
 
-// Tipo para o registro consolidado (usado no formulário e relatórios)
+// Tipo para o registro consolidado (usado na Seção 5)
 export interface ConsolidatedPassagemRecord {
-    groupKey: string;
     organizacao: string;
     ug: string;
     om_detentora: string;
@@ -22,123 +21,109 @@ export interface ConsolidatedPassagemRecord {
 }
 
 /**
- * Calcula os totais de um único registro de passagem.
- * @param registro O registro de passagem.
- * @returns Um objeto com os totais calculados.
+ * Calcula os totais de um único registro de passagem (um trecho).
+ * @param data Dados do formulário.
+ * @returns Objeto com valor_total e valor_nd_33.
  */
-export const calculatePassagemTotals = (registro: PassagemRegistro) => {
-    const valorUnitario = Number(registro.valor_unitario || 0);
-    const quantidadePassagens = Number(registro.quantidade_passagens || 0);
+export const calculatePassagemTotals = (data: PassagemForm) => {
+    const valorUnitario = Number(data.valor_unitario || 0);
+    const quantidadePassagens = Number(data.quantidade_passagens || 0);
     
     const valorTotal = valorUnitario * quantidadePassagens;
     
-    // Passagens são ND 33.90.33
-    const valorND33 = valorTotal;
-    
     return {
-        valorTotal,
-        valorND33,
+        valor_total: valorTotal,
+        valor_nd_33: valorTotal, // Passagens são ND 33.90.33
     };
 };
 
 /**
- * Gera a memória de cálculo para um ÚNICO registro de passagem (usado no PTrab Operacional Report).
- * @param registro O registro de passagem.
- * @returns A string da memória de cálculo.
+ * Gera a memória de cálculo para um ÚNICO registro de passagem (usado no Staging/Revisão).
+ * O formato é simplificado para focar no cálculo do trecho.
+ * @param data O registro de passagem calculado.
+ * @returns String formatada da memória de cálculo.
  */
-export const generatePassagemMemoriaCalculo = (registro: PassagemRegistro): string => {
-    // Prioriza a memória customizada se existir
-    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
-        return registro.detalhamento_customizado;
-    }
+export const generatePassagemMemoriaCalculo = (data: PassagemRegistro): string => {
+    const { 
+        organizacao, dias_operacao, efetivo, fase_atividade,
+        origem, destino, tipo_transporte, is_ida_volta, valor_unitario, quantidade_passagens,
+        valor_total,
+    } = data;
+
+    const total = Number(valor_total || 0);
+    const unitario = Number(valor_unitario || 0);
+    const qtd = quantidade_passagens;
     
-    const valorUnitario = Number(registro.valor_unitario || 0);
-    const quantidadePassagens = Number(registro.quantidade_passagens || 0);
-    const valorTotal = Number(registro.valor_total || 0);
-    const isIdaVolta = registro.is_ida_volta;
-    const tipoTransporte = registro.tipo_transporte;
+    const diasText = dias_operacao === 1 ? "dia" : "dias";
+    const efetivoText = efetivo === 1 ? "militar" : "militares";
+    const idaVoltaText = is_ida_volta ? 'Ida/Volta' : 'Ida';
     
-    const omFavorecida = `${registro.organizacao} (${formatCodug(registro.ug)})`;
-    const omDetentora = `${registro.om_detentora} (${formatCodug(registro.ug_detentora)})`;
+    // Lógica de concordância de gênero (do/da)
+    const omNameLower = organizacao.toLowerCase();
+    const concordancia = omNameLower.includes('ª') ? 'da' : 'do';
     
-    let memoria = `SOLICITAÇÃO DE PASSAGENS\n`;
-    memoria += `OM Favorecida: ${omFavorecida}\n`;
+    let memoria = "";
     
-    // Se a OM Detentora for diferente, incluir a linha
-    if (registro.organizacao !== registro.om_detentora || registro.ug !== registro.ug_detentora) {
-        memoria += `OM Destino Recurso: ${omDetentora}\n`;
-    }
+    // Cabeçalho simplificado para o item individual (usado no staging)
+    memoria += `33.90.33 - Aquisição de Passagem para ${efetivo} ${efetivoText} ${concordancia} ${organizacao}, durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n\n`;
     
-    memoria += `Fase da Atividade: ${registro.fase_atividade || 'Não Informada'}\n`;
-    memoria += `Período: ${registro.dias_operacao} dias\n`;
-    memoria += `Efetivo: ${registro.efetivo} militares\n`;
-    memoria += `\n`;
+    memoria += `Cálculo:\n`;
+    memoria += `- ${origem} -> ${destino}: ${formatCurrency(unitario)} (${tipo_transporte} - ${idaVoltaText}).\n\n`;
     
-    // Detalhe do Trecho
-    const tipoViagem = isIdaVolta ? 'Ida/Volta' : 'Ida'; // CORRIGIDO: Usar "Ida/Volta"
-    memoria += `TRECHO: ${registro.origem} -> ${registro.destino} (${tipoTransporte} - ${tipoViagem})\n`;
-    memoria += `Quantidade de Passagens: ${formatNumber(quantidadePassagens)} un.\n`;
-    memoria += `Valor Unitário: ${formatCurrency(valorUnitario)}\n`;
-    memoria += `\n`;
+    memoria += `Fórmula: Qtd Psg x Valor Unitário da Psg.\n`;
+    memoria += `- ${qtd} Psg ${origem}-${destino} (${tipo_transporte}-${idaVoltaText}) x ${formatCurrency(unitario)} = ${formatCurrency(total)}.\n\n`;
     
-    memoria += `CÁLCULO:\n`;
-    memoria += `${formatNumber(quantidadePassagens)} un. x ${formatCurrency(valorUnitario)} = ${formatCurrency(valorTotal)}\n`;
-    memoria += `TOTAL ND 33.90.33: ${formatCurrency(valorTotal)}\n`;
-    
-    // A linha do Pregão/UASG será adicionada dinamicamente no componente ConsolidatedPassagemMemoria.tsx
-    // ou no PTrabOperacionalReport.tsx, pois depende de dados externos (diretrizes).
+    memoria += `Total: ${formatCurrency(total)}.\n`;
     
     return memoria;
 };
 
+
 /**
- * Gera a memória de cálculo CONSOLIDADA para um grupo de registros de passagem (usado no formulário).
- * @param group O grupo consolidado de registros.
- * @returns A string da memória de cálculo.
+ * Gera a memória de cálculo CONSOLIDADA para um grupo de registros de passagem (usado na Seção 5).
+ * NOTA: A linha do Pregão/UASG é adicionada dinamicamente no componente de renderização (ConsolidatedPassagemMemoria)
+ * após a busca dos detalhes da diretriz.
+ * @param group O objeto ConsolidatedPassagemRecord contendo todos os registros do lote.
+ * @returns String formatada da memória de cálculo consolidada.
  */
 export const generateConsolidatedPassagemMemoriaCalculo = (group: ConsolidatedPassagemRecord): string => {
-    const omFavorecida = `${group.organizacao}`; // CORRIGIDO: Removendo UG do cabeçalho
-    const ugFavorecida = formatCodug(group.ug);
-    const omDetentora = `${group.om_detentora} (${formatCodug(group.ug_detentora)})`;
+    const { organizacao, dias_operacao, efetivo, fase_atividade, records, totalGeral } = group;
+
+    const diasText = dias_operacao === 1 ? "dia" : "dias";
+    const efetivoText = efetivo === 1 ? "militar" : "militares";
     
-    let memoria = `SOLICITAÇÃO DE PASSAGENS\n`;
-    memoria += `OM Favorecida: ${omFavorecida} (UG: ${ugFavorecida})\n`;
+    // Lógica de concordância de gênero (do/da)
+    const omNameLower = organizacao.toLowerCase();
+    const concordancia = omNameLower.includes('ª') ? 'da' : 'do';
     
-    // Se a OM Detentora for diferente, incluir a linha
-    if (group.organizacao !== group.om_detentora || group.ug !== group.ug_detentora) {
-        memoria += `OM Destino Recurso: ${omDetentora}\n`;
-    }
+    let memoria = "";
     
-    memoria += `Fase da Atividade: ${group.fase_atividade || 'Não Informada'}\n`;
-    memoria += `Período: ${group.dias_operacao} dias\n`;
-    memoria += `Efetivo: ${group.efetivo} militares\n`; // CORRIGIDO: Efetivo agora é um número
-    memoria += `\n`;
+    // 1. Cabeçalho Consolidado
+    memoria += `33.90.33 - Aquisição de Passagem para ${efetivo} ${efetivoText} ${concordancia} ${organizacao}, durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n\n`;
     
-    memoria += `DETALHAMENTO DOS TRECHOS:\n`;
-    
-    let totalGeral = 0;
-    let totalPassagens = 0;
-    
-    group.records.forEach((registro, index) => {
-        const valorUnitario = Number(registro.valor_unitario || 0);
-        const quantidadePassagens = Number(registro.quantidade_passagens || 0);
-        const valorTotal = valorUnitario * quantidadePassagens;
-        const tipoViagem = registro.is_ida_volta ? 'Ida/Volta' : 'Ida'; // CORRIGIDO: Usar "Ida/Volta"
-        
-        totalGeral += valorTotal;
-        totalPassagens += quantidadePassagens;
-        
-        memoria += `  - ${registro.origem} -> ${registro.destino} (${registro.tipo_transporte} - ${tipoViagem})\n`;
-        memoria += `    Qtd: ${formatNumber(quantidadePassagens)} un. x ${formatCurrency(valorUnitario)} = ${formatCurrency(valorTotal)}\n`;
+    // 2. Detalhe dos Trechos (Cálculo)
+    memoria += `Cálculo:\n`;
+    records.forEach(r => {
+        const unitario = Number(r.valor_unitario || 0);
+        const idaVoltaText = r.is_ida_volta ? 'Ida/Volta' : 'Ida';
+        memoria += `- ${r.origem}-${r.destino}: ${formatCurrency(unitario)} (${r.tipo_transporte} - ${idaVoltaText}).\n`;
     });
+    memoria += "\n";
     
-    memoria += `\n`;
-    memoria += `TOTAL CONSOLIDADO:\n`;
-    memoria += `Total de Passagens: ${formatNumber(totalPassagens)} un.\n`;
-    memoria += `VALOR TOTAL ND 33.90.33: ${formatCurrency(totalGeral)}\n`; // CORRIGIDO: Total estava R$ 0,00
+    // 3. Aplicação da Fórmula
+    memoria += `Fórmula: Qtd Psg x Valor Unitário da Psg.\n`;
+    records.forEach(r => {
+        const total = Number(r.valor_total || 0);
+        const unitario = Number(r.valor_unitario || 0);
+        const qtd = r.quantidade_passagens;
+        const idaVoltaText = r.is_ida_volta ? 'Ida/Volta' : 'Ida';
+        
+        memoria += `- ${qtd} Psg ${r.origem}-${r.destino} (${r.tipo_transporte}-${idaVoltaText}) x ${formatCurrency(unitario)} = ${formatCurrency(total)}.\n`;
+    });
+    memoria += "\n";
     
-    // A linha do Pregão/UASG será adicionada dinamicamente no componente ConsolidatedPassagemMemoria.tsx
-    // ou no PTrabOperacionalReport.tsx, pois depende de dados externos (diretrizes).
+    // 4. Total
+    memoria += `Total: ${formatCurrency(totalGeral)}.\n`;
     
     return memoria;
 };

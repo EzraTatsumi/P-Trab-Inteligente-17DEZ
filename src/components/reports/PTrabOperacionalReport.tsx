@@ -12,7 +12,6 @@ import {
   PTrabData,
   DiariaRegistro,
   VerbaOperacionalRegistro, 
-  PassagemRegistro, // NOVO: Importando PassagemRegistro
   calculateDays,
 } from "@/pages/PTrabReportManager"; 
 import { DIARIA_RANKS_CONFIG } from "@/lib/diariaUtils";
@@ -21,14 +20,12 @@ interface PTrabOperacionalReportProps {
   ptrabData: PTrabData;
   registrosDiaria: DiariaRegistro[];
   registrosVerbaOperacional: VerbaOperacionalRegistro[]; 
-  registrosSuprimentoFundos: VerbaOperacionalRegistro[]; 
-  registrosPassagem: PassagemRegistro[]; // NOVO PROP
+  registrosSuprimentoFundos: VerbaOperacionalRegistro[]; // NOVO PROP
   diretrizesOperacionais: Tables<'diretrizes_operacionais'> | null;
   fileSuffix: string;
   generateDiariaMemoriaCalculo: (registro: DiariaRegistro, diretrizesOp: Tables<'diretrizes_operacionais'> | null) => string;
   generateVerbaOperacionalMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; 
-  generateSuprimentoFundosMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; 
-  generatePassagemMemoriaCalculo: (registro: PassagemRegistro) => string; // NOVO PROP
+  generateSuprimentoFundosMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; // NOVO PROP
 }
 
 // Função auxiliar para determinar o artigo (DO/DA)
@@ -73,28 +70,26 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   ptrabData,
   registrosDiaria,
   registrosVerbaOperacional, 
-  registrosSuprimentoFundos, 
-  registrosPassagem, // NOVO PROP
+  registrosSuprimentoFundos, // NOVO PROP
   diretrizesOperacionais,
   fileSuffix,
   generateDiariaMemoriaCalculo,
   generateVerbaOperacionalMemoriaCalculo, 
-  generateSuprimentoFundosMemoriaCalculo, 
-  generatePassagemMemoriaCalculo, // NOVO PROP
+  generateSuprimentoFundosMemoriaCalculo, // NOVO PROP
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
   
   const diasOperacao = useMemo(() => calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim), [ptrabData]);
   
-  // NOVO: Agrupamento por OM (Diária, Verba Operacional, Suprimento de Fundos e Passagens)
+  // NOVO: Agrupamento por OM (Diária, Verba Operacional e Suprimento de Fundos)
   const registrosAgrupadosPorOM = useMemo(() => {
-    const groups: Record<string, { diarias: DiariaRegistro[], verbas: VerbaOperacionalRegistro[], suprimentos: VerbaOperacionalRegistro[], passagens: PassagemRegistro[] }> = {};
+    const groups: Record<string, { diarias: DiariaRegistro[], verbas: VerbaOperacionalRegistro[], suprimentos: VerbaOperacionalRegistro[] }> = {};
 
     const initializeGroup = (om: string, ug: string) => {
         const omKey = `${om} (${ug})`;
         if (!groups[omKey]) {
-            groups[omKey] = { diarias: [], verbas: [], suprimentos: [], passagens: [] };
+            groups[omKey] = { diarias: [], verbas: [], suprimentos: [] };
         }
         return groups[omKey];
     };
@@ -107,6 +102,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     
     // 2. Agrupar Verba Operacional (OM Detentora do Recurso)
     registrosVerbaOperacional.forEach(registro => {
+        // A OM Detentora é a OM de destino do recurso (om_detentora/ug_detentora)
         const omDetentora = registro.om_detentora || registro.organizacao;
         const ugDetentora = registro.ug_detentora || registro.ug;
         
@@ -116,6 +112,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     
     // 3. Agrupar Suprimento de Fundos (OM Detentora do Recurso)
     registrosSuprimentoFundos.forEach(registro => {
+        // A OM Detentora é a OM de destino do recurso (om_detentora/ug_detentora)
         const omDetentora = registro.om_detentora || registro.organizacao;
         const ugDetentora = registro.ug_detentora || registro.ug;
         
@@ -123,24 +120,15 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         group.suprimentos.push(registro);
     });
     
-    // 4. Agrupar Passagens (OM Detentora do Recurso)
-    registrosPassagem.forEach(registro => {
-        const omDetentora = registro.om_detentora || registro.organizacao;
-        const ugDetentora = registro.ug_detentora || registro.ug;
-        
-        const group = initializeGroup(omDetentora, ugDetentora);
-        group.passagens.push(registro);
-    });
-    
     return groups;
-  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem]);
+  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos]);
 
-  // Calcula os totais gerais de cada ND com base nos registros
+  // Calcula os totais gerais de cada ND com base nos registros de Diária e Verba Operacional
   const totaisND = useMemo(() => {
     const totals = {
       nd15: 0, // Diárias (33.90.15)
       nd30: 0, // 33.90.30 (Passagens Aéreas + Verba Operacional ND 30 + Suprimento ND 30)
-      nd33: 0, // 33.90.33 (Passagens)
+      nd33: 0, // 33.90.33 (Vazio por enquanto)
       nd39: 0, // 33.90.39 (Verba Operacional ND 39 + Suprimento ND 39)
       nd00: 0, // 33.90.00 (Vazio por enquanto)
     };
@@ -148,7 +136,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     // 1. Diárias
     registrosDiaria.forEach(r => {
       totals.nd15 += r.valor_nd_15; // Total Diária (Base + Taxa)
-      totals.nd30 += r.valor_nd_30; // Passagens Aéreas (se houver)
+      totals.nd30 += r.valor_nd_30; // Passagens Aéreas (deve ser 0, mas mantido por segurança)
     });
     
     // 2. Verba Operacional
@@ -157,15 +145,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         totals.nd39 += r.valor_nd_39;
     });
     
-    // 3. Suprimento de Fundos
+    // 3. Suprimento de Fundos (NOVO)
     registrosSuprimentoFundos.forEach(r => {
         totals.nd30 += r.valor_nd_30;
         totals.nd39 += r.valor_nd_39;
-    });
-    
-    // 4. Passagens (ND 33.90.33)
-    registrosPassagem.forEach(r => {
-        totals.nd33 += r.valor_nd_33;
     });
 
     const totalGND3 = totals.nd15 + totals.nd30 + totals.nd33 + totals.nd39 + totals.nd00;
@@ -174,7 +157,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
       ...totals,
       totalGND3,
     };
-  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem]);
+  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos]);
   
   // Função para gerar o nome do arquivo (reutilizada do Logístico)
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
@@ -195,44 +178,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     
     return `${nomeBase}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
   };
-  
-  // Função para buscar detalhes da diretriz de passagem (Pregão/UASG)
-  const fetchPassagemDiretrizDetails = useCallback(async (diretrizId: string) => {
-      const { data, error } = await supabase
-          .from('diretrizes_passagens')
-          .select('numero_pregao, ug_referencia')
-          .eq('id', diretrizId)
-          .single();
-          
-      if (error) {
-          console.error("Erro ao buscar diretriz de passagem:", error);
-          return null;
-      }
-      return data;
-  }, []);
-
-  // Função para gerar a memória de cálculo da Passagem para o relatório (incluindo Pregão/UASG)
-  const generatePassagemMemoriaForReport = useCallback(async (registro: PassagemRegistro) => {
-      let memoria = generatePassagemMemoriaCalculo(registro);
-      
-      // Busca os detalhes do contrato
-      const diretrizDetails = await fetchPassagemDiretrizDetails(registro.diretriz_id);
-      
-      if (diretrizDetails?.numero_pregao && diretrizDetails?.ug_referencia) {
-          const pregaoLine = `(Pregão ${diretrizDetails.numero_pregao} - UASG ${formatCodug(diretrizDetails.ug_referencia)})`;
-          
-          // Remove linhas de Pregão/UASG existentes para evitar duplicação
-          const cleanedMemoria = memoria.split('\n').filter(line => 
-              !line.includes('(Pregão') && !line.includes('UASG')
-          ).join('\n').trim();
-          
-          // Adiciona a linha do Pregão/UASG na última linha
-          memoria = cleanedMemoria + `\n${pregaoLine}`;
-      }
-      
-      return memoria;
-  }, [generatePassagemMemoriaCalculo, fetchPassagemDiretrizDetails]);
-
 
   // Função para exportar PDF (Download)
   const exportPDF = useCallback(() => {
@@ -289,7 +234,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, totaisND, fileSuffix, diasOperacao, generateDiariaMemoriaCalculo, registrosDiaria, diretrizesOperacionais, toast, registrosVerbaOperacional, generateVerbaOperacionalMemoriaCalculo, registrosSuprimentoFundos, generateSuprimentoFundosMemoriaCalculo, registrosPassagem, generatePassagemMemoriaForReport]);
+  }, [ptrabData, totaisND, fileSuffix, diasOperacao, generateDiariaMemoriaCalculo, registrosDiaria, diretrizesOperacionais, toast, registrosVerbaOperacional, generateVerbaOperacionalMemoriaCalculo, registrosSuprimentoFundos, generateSuprimentoFundosMemoriaCalculo]);
 
   // Função para Imprimir (Abre a caixa de diálogo de impressão)
   const handlePrint = useCallback(() => {
@@ -475,7 +420,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     currentRow += 2; // Start data rows after the two header rows
 
     // Dados da Tabela (Agrupados por OM)
-    for (const [omKey, group] of Object.entries(registrosAgrupadosPorOM)) {
+    Object.entries(registrosAgrupadosPorOM).forEach(([omKey, group]) => {
         const omName = omKey.split(' (')[0];
         const ug = omKey.split(' (')[1].replace(')', '');
         const article = getArticleForOM(omName); // Determina DO/DA
@@ -497,23 +442,17 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39;
         });
         
-        // Add Suprimento de Fundos totals to subtotal
+        // Add Suprimento de Fundos totals to subtotal (NOVO)
         group.suprimentos.forEach(r => {
             subtotalOM.nd30 += r.valor_nd_30;
             subtotalOM.nd39 += r.valor_nd_39;
             subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39;
         });
-        
-        // Add Passagens totals to subtotal (NOVO)
-        group.passagens.forEach(r => {
-            subtotalOM.nd33 += r.valor_nd_33;
-            subtotalOM.totalGND3 += r.valor_nd_33;
-        });
 
         // --- 1. Render Diárias ---
         group.diarias.forEach(registro => {
             const row = worksheet.getRow(currentRow);
-            const totalLinha = registro.valor_nd_15 + registro.valor_nd_30; // ND 15 + ND 30 (Passagens Aéreas)
+            const totalLinha = registro.valor_nd_15 + registro.valor_nd_30; // ND 15 + ND 30 (Passagens)
             
             // A: DESPESAS
             row.getCell('A').value = `DIÁRIAS`; 
@@ -535,16 +474,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('D').numFmt = 'R$ #,##0.00';
             row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
-            // E: 33.90.33 (0)
+            // E, F, G: Outras NDs (0 por enquanto)
             row.getCell('E').value = 0;
-            row.getCell('E').alignment = dataCenterMiddleAlignment;
-            row.getCell('E').numFmt = 'R$ #,##0.00';
-            row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
-            
-            // F, G: Outras NDs (0 por enquanto)
             row.getCell('F').value = 0;
             row.getCell('G').value = 0;
-            ['F', 'G'].forEach(col => {
+            ['E', 'F', 'G'].forEach(col => {
                 row.getCell(col).alignment = dataCenterMiddleAlignment;
                 row.getCell(col).numFmt = 'R$ #,##0.00';
                 row.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
@@ -573,84 +507,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             currentRow++;
         });
         
-        // --- 2. Render Passagens (NOVO) ---
-        for (const registro of group.passagens) {
-            const row = worksheet.getRow(currentRow);
-            const totalLinha = registro.valor_nd_33;
-            
-            // OM Detentora do Recurso
-            const omDetentora = registro.om_detentora || registro.organizacao;
-            const ugDetentora = registro.ug_detentora || registro.ug;
-            
-            // Check if OM Favorecida is different from OM Detentora
-            const isDifferentOm = registro.organizacao !== omDetentora || registro.ug !== ugDetentora;
-            
-            // A: DESPESAS (MODIFICADO)
-            let despesasValue = `PASSAGENS`;
-            if (isDifferentOm) {
-                despesasValue += `\nOM Favorecida: ${registro.organizacao} (${formatCodug(registro.ug)})`;
-            }
-            row.getCell('A').value = despesasValue;
-            row.getCell('A').alignment = leftMiddleAlignment; 
-            
-            // B: OM (UGE) CODUG (OM Detentora do Recurso)
-            row.getCell('B').value = `${omDetentora}\n(${formatCodug(ugDetentora)})`;
-            row.getCell('B').alignment = dataCenterMiddleAlignment; 
-            
-            // C: 33.90.15 (0)
-            row.getCell('C').value = 0;
-            row.getCell('C').alignment = dataCenterMiddleAlignment;
-            row.getCell('C').numFmt = 'R$ #,##0.00';
-            row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
-            
-            // D: 33.90.30 (0)
-            row.getCell('D').value = 0;
-            row.getCell('D').alignment = dataCenterMiddleAlignment;
-            row.getCell('D').numFmt = 'R$ #,##0.00';
-            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
-            
-            // E: 33.90.33 (Passagens ND 33)
-            row.getCell('E').value = registro.valor_nd_33;
-            row.getCell('E').alignment = dataCenterMiddleAlignment;
-            row.getCell('E').numFmt = 'R$ #,##0.00';
-            row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
-            
-            // F: 33.90.39 (0)
-            row.getCell('F').value = 0;
-            row.getCell('F').alignment = dataCenterMiddleAlignment;
-            row.getCell('F').numFmt = 'R$ #,##0.00';
-            row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
-            
-            // G: 33.90.00 (0)
-            row.getCell('G').value = 0;
-            row.getCell('G').alignment = dataCenterMiddleAlignment;
-            row.getCell('G').numFmt = 'R$ #,##0.00';
-            row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
-            
-            // H: GND 3 (Total da linha)
-            row.getCell('H').value = totalLinha;
-            row.getCell('H').alignment = dataCenterMiddleAlignment;
-            row.getCell('H').numFmt = 'R$ #,##0.00';
-            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
-            
-            // I: DETALHAMENTO
-            const memoria = await generatePassagemMemoriaForReport(registro); // Usa a função que inclui Pregão/UASG
-            row.getCell('I').value = memoria;
-            row.getCell('I').alignment = leftTopAlignment; 
-            row.getCell('I').font = { name: 'Arial', size: 6.5 };
-            
-            // Apply base styles
-            ['A', 'B', 'I'].forEach(col => {
-                row.getCell(col).font = baseFontStyle;
-            });
-            
-            ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
-                row.getCell(col).border = cellBorder;
-            });
-            currentRow++;
-        }
-        
-        // --- 3. Render Verba Operacional ---
+        // --- 2. Render Verba Operacional ---
         group.verbas.forEach(registro => {
             const row = worksheet.getRow(currentRow);
             const totalLinha = registro.valor_nd_30 + registro.valor_nd_39;
@@ -720,7 +577,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             currentRow++;
         });
         
-        // --- 4. Render Suprimento de Fundos ---
+        // --- 3. Render Suprimento de Fundos (NOVO) ---
         group.suprimentos.forEach(registro => {
             const row = worksheet.getRow(currentRow);
             const totalLinha = registro.valor_nd_30 + registro.valor_nd_39;
@@ -854,7 +711,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         subtotalFinalRow.getCell('I').border = cellBorder;
 
         currentRow++;
-    }
+    });
 
     // Linha em branco para espaçamento
     currentRow++;
@@ -962,10 +819,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
       description: "O relatório Operacional foi salvo com sucesso.",
       duration: 3000,
     });
-  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, generatePassagemMemoriaForReport, diretrizesOperacionais, toast, registrosAgrupadosPorOM]);
+  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, diretrizesOperacionais, toast, registrosAgrupadosPorOM]);
 
 
-  if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0 && registrosSuprimentoFundos.length === 0 && registrosPassagem.length === 0) {
+  if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0 && registrosSuprimentoFundos.length === 0) {
     return (
       <Card className="mt-4">
         <CardHeader>
@@ -976,7 +833,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-muted-foreground">Nenhum registro de Diária, Verba Operacional, Suprimento de Fundos ou Passagens encontrado para este P Trab.</p>
+            <p className="text-muted-foreground">Nenhum registro de Diária, Verba Operacional ou Suprimento de Fundos encontrado para este P Trab.</p>
           </div>
         </CardContent>
       </Card>
@@ -1023,7 +880,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
           <p className="info-item font-bold">5. DESPESAS OPERACIONAIS REALIZADAS OU A REALIZAR:</p>
         </div>
 
-        {registrosDiaria.length > 0 || registrosVerbaOperacional.length > 0 || registrosSuprimentoFundos.length > 0 || registrosPassagem.length > 0 ? (
+        {registrosDiaria.length > 0 || registrosVerbaOperacional.length > 0 || registrosSuprimentoFundos.length > 0 ? (
           <div className="ptrab-table-wrapper">
             <table className="ptrab-table-op">
               <thead>
@@ -1064,22 +921,17 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                     subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39;
                 });
                 
-                group.suprimentos.forEach(r => { // Suprimento de Fundos
+                group.suprimentos.forEach(r => { // NOVO: Suprimento de Fundos
                     subtotalOM.nd30 += r.valor_nd_30;
                     subtotalOM.nd39 += r.valor_nd_39;
                     subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39;
-                });
-                
-                group.passagens.forEach(r => { // NOVO: Passagens
-                    subtotalOM.nd33 += r.valor_nd_33;
-                    subtotalOM.totalGND3 += r.valor_nd_33;
                 });
 
                 return (
                     <React.Fragment key={omKey}>
                         {/* --- 1. Render Diárias --- */}
                         {group.diarias.map((registro, index) => {
-                            const totalLinha = registro.valor_nd_15 + registro.valor_nd_30; // ND 15 + ND 30 (Passagens Aéreas)
+                            const totalLinha = registro.valor_nd_15 + registro.valor_nd_30;
                             
                             return (
                                 <tr key={`diaria-${registro.id}`} className="expense-row">
@@ -1105,48 +957,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             );
                         })}
                         
-                        {/* --- 2. Render Passagens (NOVO) --- */}
-                        {group.passagens.map((registro, index) => {
-                            const totalLinha = registro.valor_nd_33;
-                            
-                            // OM Detentora do Recurso
-                            const omDetentora = registro.om_detentora || registro.organizacao;
-                            const ugDetentora = registro.ug_detentora || registro.ug;
-                            
-                            // Check if OM Favorecida is different from OM Detentora
-                            const isDifferentOm = registro.organizacao !== omDetentora || registro.ug !== ugDetentora;
-                            
-                            return (
-                                <tr key={`passagem-${registro.id}`} className="expense-row">
-                                  <td className="col-despesas-op"> 
-                                    PASSAGENS
-                                    {isDifferentOm && (
-                                        <div style={{ fontSize: '7pt', marginTop: '2px' }}>
-                                            OM Favorecida: {registro.organizacao} ({formatCodug(registro.ug)})
-                                        </div>
-                                    )}
-                                  </td>
-                                  <td className="col-om-op">
-                                    <div>{omDetentora}</div>
-                                    <div>({formatCodug(ugDetentora)})</div>
-                                  </td>
-                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.15 */}
-                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.30 */}
-                                  <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_33)}</td> {/* 33.90.33 */}
-                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.39 */}
-                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.00 */}
-                                  <td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
-                                  <td className="col-detalhamento-op">
-                                    <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                                      {/* Usa a função que inclui Pregão/UASG */}
-                                      {generatePassagemMemoriaForReport(registro)}
-                                    </div>
-                                  </td>
-                                </tr>
-                            );
-                        })}
-                        
-                        {/* --- 3. Render Verba Operacional --- */}
+                        {/* --- 2. Render Verba Operacional --- */}
                         {group.verbas.map((registro, index) => {
                             const totalLinha = registro.valor_nd_30 + registro.valor_nd_39;
                             
@@ -1178,7 +989,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             );
                         })}
                         
-                        {/* --- 4. Render Suprimento de Fundos --- */}
+                        {/* --- 3. Render Suprimento de Fundos (NOVO) --- */}
                         {group.suprimentos.map((registro, index) => {
                             const totalLinha = registro.valor_nd_30 + registro.valor_nd_39;
                             
@@ -1272,7 +1083,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             </table>
           </div>
         ) : (
-          <p className="text-center text-muted-foreground py-8">Nenhum registro de Diária, Verba Operacional, Suprimento de Fundos ou Passagens cadastrado.</p>
+          <p className="text-center text-muted-foreground py-8">Nenhum registro operacional cadastrado.</p>
         )}
 
         <div className="ptrab-footer print-avoid-break">

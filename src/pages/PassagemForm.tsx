@@ -21,8 +21,8 @@ import {
     generatePassagemMemoriaCalculo,
     PassagemRegistro,
     PassagemForm as PassagemFormType,
-    generateConsolidatedPassagemMemoriaCalculo,
-    ConsolidatedPassagemRecord,
+    generateConsolidatedPassagemMemoriaCalculo, // Importando a nova função
+    ConsolidatedPassagemRecord, // Importando o tipo
 } from "@/lib/passagemUtils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -217,8 +217,8 @@ const PassagemForm = () => {
                     groupKey: key,
                     organizacao: registro.organizacao,
                     ug: registro.ug,
-                    om_detentora: registro.om_detentora || registro.organizacao, // Garantir fallback
-                    ug_detentora: registro.ug_detentora || registro.ug, // Garantir fallback
+                    om_detentora: registro.om_detentora,
+                    ug_detentora: registro.ug_detentora,
                     dias_operacao: registro.dias_operacao,
                     efetivo: registro.efetivo || 0,
                     fase_atividade: registro.fase_atividade || '',
@@ -437,10 +437,10 @@ const PassagemForm = () => {
         try {
             let totalGeral = 0;
             let totalND33 = 0;
+            let memoria = "";
             
             // Gerar a memória consolidada para o STAGING
             const tempGroup: ConsolidatedPassagemRecord = {
-                groupKey: 'staging',
                 organizacao: formData.om_favorecida,
                 ug: formData.ug_favorecida,
                 om_detentora: formData.om_destino,
@@ -480,19 +480,14 @@ const PassagemForm = () => {
                     valor_total: totalTrecho,
                     valor_nd_33: totalTrecho,
                     // Campos não usados no cálculo, mas necessários para o tipo
-                    id: crypto.randomUUID(), // ID temporário
-                    created_at: new Date().toISOString(), 
-                    updated_at: new Date().toISOString(), 
-                    detalhamento: '', 
-                    detalhamento_customizado: null, 
-                    valor_nd_30: 0,
+                    id: '', created_at: '', updated_at: '', detalhamento: '', detalhamento_customizado: null, valor_nd_30: 0,
                 } as PassagemRegistro);
             });
             
             tempGroup.totalGeral = totalGeral;
             tempGroup.totalND33 = totalND33;
             
-            const memoria = generateConsolidatedPassagemMemoriaCalculo(tempGroup);
+            memoria = generateConsolidatedPassagemMemoriaCalculo(tempGroup);
             
             return {
                 totalGeral,
@@ -594,8 +589,8 @@ const PassagemForm = () => {
         const trechosFromRecords: TrechoSelection[] = group.records.map(registro => ({
             id: registro.trecho_id, // Usar trecho_id como id
             diretriz_id: registro.diretriz_id,
-            om_detentora: registro.om_detentora || registro.organizacao,
-            ug_detentora: registro.ug_detentora || registro.ug,
+            om_detentora: registro.om_detentora,
+            ug_detentora: registro.ug_detentora,
             origem: registro.origem,
             destino: registro.destino,
             tipo_transporte: registro.tipo_transporte as TipoTransporte,
@@ -612,7 +607,7 @@ const PassagemForm = () => {
             om_destino: group.om_detentora,
             ug_destino: group.ug_detentora,
             dias_operacao: group.dias_operacao,
-            efetivo: group.efetivo || 0, // CORRIGIDO: Garantir que efetivo seja número
+            efetivo: group.efetivo || 0, 
             fase_atividade: group.fase_atividade || "",
             selected_trechos: trechosFromRecords, // TODOS os trechos
         };
@@ -623,8 +618,8 @@ const PassagemForm = () => {
             const trecho: TrechoSelection = {
                 id: registro.trecho_id, 
                 diretriz_id: registro.diretriz_id,
-                om_detentora: registro.om_detentora || registro.organizacao,
-                ug_detentora: registro.ug_detentora || registro.ug,
+                om_detentora: registro.om_detentora,
+                ug_detentora: registro.ug_detentora,
                 origem: registro.origem,
                 destino: registro.destino,
                 tipo_transporte: registro.tipo_transporte as TipoTransporte,
@@ -636,19 +631,26 @@ const PassagemForm = () => {
             
             const totalTrecho = calculateTrechoTotal(trecho);
             
-            // O registro de DB (PassagemRegistro) é usado para gerar a memória individual
-            const dbRecord: PassagemRegistro = {
-                ...registro,
-                valor_unitario: Number(registro.valor_unitario || 0),
-                valor_total: totalTrecho,
-                valor_nd_33: totalTrecho,
-                efetivo: registro.efetivo || 0, // Garantir que efetivo seja número
-                om_detentora: registro.om_detentora || registro.organizacao,
-                ug_detentora: registro.ug_detentora || registro.ug,
-            } as PassagemRegistro;
+            const calculatedFormData: PassagemFormType = {
+                organizacao: registro.organizacao, 
+                ug: registro.ug, 
+                dias_operacao: registro.dias_operacao,
+                fase_atividade: registro.fase_atividade || "",
+                om_detentora: registro.om_detentora,
+                ug_detentora: registro.ug_detentora,
+                diretriz_id: trecho.diretriz_id,
+                trecho_id: trecho.id, 
+                origem: trecho.origem,
+                destino: registro.destino,
+                tipo_transporte: registro.tipo_transporte,
+                is_ida_volta: registro.is_ida_volta,
+                valor_unitario: trecho.valor_unitario,
+                quantidade_passagens: registro.quantidade_passagens,
+                efetivo: registro.efetivo || 0,
+            };
 
             // Usamos a função de memória individual para o staging, pois cada item é um registro de DB
-            let memoria = generatePassagemMemoriaCalculo(dbRecord);
+            let memoria = generatePassagemMemoriaCalculo(registro as PassagemRegistro);
             
             return {
                 tempId: registro.id, // Usamos o ID real do DB como tempId para rastreamento
@@ -659,8 +661,8 @@ const PassagemForm = () => {
                 efetivo: registro.efetivo || 0,
                 fase_atividade: registro.fase_atividade || "",
                 
-                om_detentora: registro.om_detentora || registro.organizacao,
-                ug_detentora: registro.ug_detentora || registro.ug,
+                om_detentora: registro.om_detentora,
+                ug_detentora: registro.ug_detentora,
                 diretriz_id: trecho.diretriz_id,
                 trecho_id: trecho.id, 
                 origem: trecho.origem,
@@ -987,18 +989,10 @@ const PassagemForm = () => {
     const handleSalvarMemoriaCustomizada = async (registroId: string) => {
         try {
             // A memória customizada é salva APENAS no primeiro registro do grupo.
-            // O componente ConsolidatedPassagemMemoria.tsx se encarrega de adicionar a linha do Pregão/UASG
-            // na exibição e na edição, mas o que é salvo no DB é apenas o texto do usuário.
-            
-            // Remove a linha do Pregão/UASG antes de salvar, se ela estiver presente no texto de edição
-            const cleanedMemoria = memoriaEdit.split('\n').filter(line => 
-                !line.includes('(Pregão') && !line.includes('UASG')
-            ).join('\n').trim();
-            
             const { error } = await supabase
                 .from("passagem_registros")
                 .update({
-                    detalhamento_customizado: cleanedMemoria || null, 
+                    detalhamento_customizado: memoriaEdit.trim() || null, 
                 })
                 .eq("id", registroId);
 

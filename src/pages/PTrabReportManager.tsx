@@ -47,9 +47,6 @@ import {
 import { 
   generateSuprimentoFundosMemoriaCalculo as generateSuprimentoFundosMemoriaCalculoUtility,
 } from "@/lib/suprimentoFundosUtils"; // NOVO: Importar utilitários de Suprimento de Fundos
-import { 
-  generatePassagemMemoriaCalculo, // CORRIGIDO: Usando o nome padronizado
-} from "@/lib/passagemUtils"; // NOVO: Importar utilitários de Passagem
 import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais } from "@/lib/ptrabUtils";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
@@ -98,30 +95,6 @@ export interface DiariaRegistro {
   detalhamento_customizado?: string | null;
   fase_atividade: string;
   is_aereo: boolean;
-}
-
-// NOVO TIPO: PassagemRegistro (Adicionado)
-export interface PassagemRegistro {
-  id: string;
-  organizacao: string;
-  ug: string;
-  om_detentora: string | null;
-  ug_detentora: string | null;
-  dias_operacao: number;
-  fase_atividade: string;
-  trecho_id: string;
-  diretriz_id: string;
-  origem: string;
-  destino: string;
-  tipo_transporte: string;
-  is_ida_volta: boolean;
-  valor_unitario: number;
-  quantidade_passagens: number;
-  valor_total: number;
-  valor_nd_33: number;
-  detalhamento: string;
-  detalhamento_customizado?: string | null;
-  efetivo: number;
 }
 
 // NOVO TIPO: VerbaOperacionalRegistro (Usado para Verba Operacional e Suprimento de Fundos)
@@ -603,20 +576,6 @@ export const generateSuprimentoFundosMemoriaCalculada = (
     return generateSuprimentoFundosMemoriaCalculoUtility(registro as any);
 };
 
-/**
- * Função unificada para gerar a memória de cálculo da Passagem, priorizando o customizado.
- */
-export const generatePassagemMemoriaCalculada = (
-    registro: PassagemRegistro
-): string => {
-    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
-        return registro.detalhamento_customizado;
-    }
-    
-    // Usa o utilitário específico para Passagem (agora com o nome padronizado)
-    return generatePassagemMemoriaCalculo(registro as any);
-};
-
 
 // =================================================================
 // FUNÇÕES AUXILIARES DE RÓTULO
@@ -707,7 +666,6 @@ const PTrabReportManager = () => {
   const [registrosDiaria, setRegistrosDiaria] = useState<DiariaRegistro[]>([]); // NOVO: Estado para Diárias
   const [registrosVerbaOperacional, setRegistrosVerbaOperacional] = useState<VerbaOperacionalRegistro[]>([]); 
   const [registrosSuprimentoFundos, setRegistrosSuprimentoFundos] = useState<VerbaOperacionalRegistro[]>([]); // NOVO ESTADO
-  const [registrosPassagem, setRegistrosPassagem] = useState<PassagemRegistro[]>([]); // NOVO ESTADO: Passagens
   const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null); // NOVO: Estado para Diretrizes Operacionais
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
   const [loading, setLoading] = useState(true);
@@ -751,9 +709,8 @@ const PTrabReportManager = () => {
         { data: classeIXData },
         { data: classeIIIData },
         { data: refLPCData },
-        { data: diariaData }, // Diárias
-        { data: verbaOperacionalData }, // Verba Operacional e Suprimento de Fundos
-        { data: passagemData }, // NOVO: Fetch Passagens
+        { data: diariaData }, // NOVO: Fetch Diárias
+        { data: verbaOperacionalData }, // NOVO: Fetch Verba Operacional
       ] = await Promise.all([
         supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
         supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
@@ -764,9 +721,8 @@ const PTrabReportManager = () => {
         supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from('classe_iii_registros').select('*, detalhamento_customizado, itens_equipamentos, fase_atividade, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", ptrabId).maybeSingle(),
-        supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId),
-        supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId),
-        supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId), // NOVO FETCH
+        supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId), // NOVO
+        supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId), // NOVO FETCH (incluindo novos campos)
       ]);
       
       // NOVO: Fetch Diretrizes Operacionais (necessário para gerar a memória de diária)
@@ -815,7 +771,7 @@ const PTrabReportManager = () => {
       setRegistrosClasseIII(classeIIIData || []);
       setRefLPC(refLPCData as RefLPC || null);
       
-      // Processar Diárias
+      // NOVO: Processar Diárias
       setRegistrosDiaria((diariaData || []).map(r => ({
           ...r,
           destino: r.destino as DestinoDiaria,
@@ -827,7 +783,7 @@ const PTrabReportManager = () => {
           is_aereo: r.is_aereo || false,
       })) as DiariaRegistro[]);
       
-      // Processar Verba Operacional e Suprimento de Fundos
+      // NOVO: Processar Verba Operacional e Suprimento de Fundos
       const allVerbaRecords = (verbaOperacionalData || []).map(r => ({
           ...r,
           valor_total_solicitado: Number(r.valor_total_solicitado || 0),
@@ -846,19 +802,6 @@ const PTrabReportManager = () => {
       // Separar Verba Operacional de Suprimento de Fundos
       setRegistrosVerbaOperacional(allVerbaRecords.filter(r => r.detalhamento !== 'Suprimento de Fundos'));
       setRegistrosSuprimentoFundos(allVerbaRecords.filter(r => r.detalhamento === 'Suprimento de Fundos'));
-      
-      // Processar Passagens (NOVO)
-      setRegistrosPassagem((passagemData || []).map(r => ({
-          ...r,
-          valor_unitario: Number(r.valor_unitario || 0),
-          valor_total: Number(r.valor_total || 0),
-          valor_nd_33: Number(r.valor_nd_33 || 0),
-          quantidade_passagens: r.quantidade_passagens || 0,
-          efetivo: r.efetivo || 0,
-          is_ida_volta: r.is_ida_volta || false,
-          om_detentora: r.om_detentora || r.organizacao,
-          ug_detentora: r.ug_detentora || r.ug,
-      })) as PassagemRegistro[]);
       
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
@@ -1189,15 +1132,13 @@ const PTrabReportManager = () => {
             <PTrabOperacionalReport
                 ptrabData={ptrabData}
                 registrosDiaria={registrosDiaria}
-                registrosVerbaOperacional={registrosVerbaOperacional}
-                registrosSuprimentoFundos={registrosSuprimentoFundos}
-                registrosPassagem={registrosPassagem} // NOVO: Passando Passagens
+                registrosVerbaOperacional={registrosVerbaOperacional} // PASSANDO NOVO PROP
+                registrosSuprimentoFundos={registrosSuprimentoFundos} // PASSANDO NOVO PROP
                 diretrizesOperacionais={diretrizesOperacionais}
                 fileSuffix={fileSuffix}
                 generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada}
                 generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada}
-                generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada}
-                generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada} // CORRIGIDO: Usando o nome local correto
+                generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada} // NOVO PROP
             />
         );
       case 'material_permanente':
