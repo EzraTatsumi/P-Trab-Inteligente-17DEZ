@@ -8,6 +8,7 @@ import { FileSpreadsheet, Printer, Download, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tables } from "@/integrations/supabase/types";
+import { supabase } from "@/integrations/supabase/client"; // Importando supabase para buscar detalhes da diretriz
 import {
   PTrabData,
   DiariaRegistro,
@@ -31,6 +32,21 @@ interface PTrabOperacionalReportProps {
   generateSuprimentoFundosMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; 
   generatePassagemMemoriaCalculo: (registro: PassagemRegistro) => string; // ADDED
 }
+
+// Função auxiliar para buscar detalhes da diretriz de passagem (Pregão/UASG)
+const fetchDiretrizDetails = async (diretrizId: string): Promise<{ numero_pregao: string | null, ug_referencia: string | null } | null> => {
+    const { data, error } = await supabase
+        .from('diretrizes_passagens')
+        .select('numero_pregao, ug_referencia')
+        .eq('id', diretrizId)
+        .single();
+
+    if (error || !data) {
+        console.error("Erro ao buscar detalhes da diretriz de passagem:", error);
+        return null;
+    }
+    return data;
+};
 
 // Função auxiliar para determinar o artigo (DO/DA)
 const getArticleForOM = (omName: string): 'DO' | 'DA' => {
@@ -72,6 +88,7 @@ const getArticleForOM = (omName: string): 'DO' | 'DA' => {
 // NOVO TIPO: Representa um lote consolidado de Passagens para o relatório
 interface ConsolidatedPassagemReport extends ConsolidatedPassagemRecord {
     groupKey: string;
+    diretrizDetails?: { numero_pregao: string | null, ug_referencia: string | null } | null;
 }
 
 const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
@@ -92,7 +109,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   
   const diasOperacao = useMemo(() => calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim), [ptrabData]);
   
-  // NOVO: Agrupamento por OM (Diária, Verba Operacional e Suprimento de Fundos, Passagens)
+  // Estado para armazenar os detalhes das diretrizes de passagem
+  const [diretrizDetailsMap, setDiretrizDetailsMap] = useState<Record<string, { numero_pregao: string | null, ug_referencia: string | null } | null>>({});
+  const [isLoadingDiretrizDetails, setIsLoadingDiretrizDetails] = useState(true);
+
+  // 1. Agrupamento e Consolidação dos Registros de Passagem
   const { registrosAgrupadosPorOM, consolidatedPassagens } = useMemo(() => {
     const groups: Record<string, { diarias: DiariaRegistro[], verbas: VerbaOperacionalRegistro[], suprimentos: VerbaOperacionalRegistro[], passagens: PassagemRegistro[] }> = {};
     const consolidatedPassagensMap: Record<string, ConsolidatedPassagemReport> = {};
@@ -105,31 +126,25 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         return groups[omKey];
     };
 
-    // 1. Agrupar Diárias (OM de Destino)
+    // Agrupamento de Diárias, Verbas e Suprimentos (mantido)
     registrosDiaria.forEach(registro => {
         const group = initializeGroup(registro.organizacao, registro.ug);
         group.diarias.push(registro);
     });
-    
-    // 2. Agrupar Verba Operacional (OM Detentora do Recurso)
     registrosVerbaOperacional.forEach(registro => {
         const omDetentora = registro.om_detentora || registro.organizacao;
         const ugDetentora = registro.ug_detentora || registro.ug;
-        
         const group = initializeGroup(omDetentora, ugDetentora);
         group.verbas.push(registro);
     });
-    
-    // 3. Agrupar Suprimento de Fundos (OM Detentora do Recurso)
     registrosSuprimentoFundos.forEach(registro => {
         const omDetentora = registro.om_detentora || registro.organizacao;
         const ugDetentora = registro.ug_detentora || registro.ug;
-        
         const group = initializeGroup(omDetentora, ugDetentora);
         group.suprimentos.push(registro);
     });
     
-    // 4. Agrupar Passagens (Consolidado por Lote de Solicitação)
+    // Agrupamento de Passagens (Consolidado por Lote de Solicitação)
     registrosPassagem.forEach(registro => {
         // Chave de consolidação: OM Favorecida, OM Detentora, Dias, Efetivo, Fase
         const consolidationKey = [
@@ -178,6 +193,58 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
 
     return { registrosAgrupadosPorOM: groups, consolidatedPassagens };
   }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem]);
+  
+  // 2. Efeito para buscar os detalhes das diretrizes de passagem
+  useEffect(() => {
+    const loadDiretrizDetails = async () => {
+        setIsLoadingDiretrizDetails(true);
+        const uniqueDiretrizIds = new Set<string>();
+        
+        // Coleta todos os IDs de diretriz dos registros consolidados
+        consolidatedPassagens.forEach(group => {
+            group.records.forEach(record => {
+                if (record.diretriz_id) {
+                    uniqueDiretrizIds.add(record.diretriz_id);
+                }
+            });
+        });
+
+        const newDetailsMap: Record<string, { numero_pregao: string | null, ug_referencia: string | null } | null> = {};
+        const promises = Array.from(uniqueDiretrizIds).map(async (id) => {
+            const details = await fetchDiretrizDetails(id);
+            newDetailsMap[id] = details;
+        });
+
+        await Promise.all(promises);
+        setDiretrizDetailsMap(newDetailsMap);
+        setIsLoadingDiretrizDetails(false);
+    };
+
+    if (consolidatedPassagens.length > 0) {
+        loadDiretrizDetails();
+    } else if (isLoadingDiretrizDetails) {
+        setIsLoadingDiretrizDetails(false);
+    }
+  }, [consolidatedPassagens]);
+  
+  // 3. Adicionar detalhes da diretriz aos registros consolidados
+  const consolidatedPassagensWithDetails = useMemo(() => {
+    if (isLoadingDiretrizDetails) return [];
+    
+    return consolidatedPassagens.map(group => {
+        // Assumimos que todos os registros no grupo têm o mesmo diretriz_id (do primeiro registro)
+        const firstRecord = group.records[0];
+        const diretrizId = firstRecord?.diretriz_id;
+        
+        const details = diretrizId ? diretrizDetailsMap[diretrizId] : null;
+        
+        return {
+            ...group,
+            diretrizDetails: details,
+        };
+    });
+  }, [consolidatedPassagens, diretrizDetailsMap, isLoadingDiretrizDetails]);
+
 
   // Calcula os totais gerais de cada ND com base nos registros de Diária e Verba Operacional
   const totaisND = useMemo(() => {
@@ -584,7 +651,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         
         // --- 2. Render Passagens (CONSOLIDADO) ---
         // Filtra os registros consolidados que pertencem a esta OM Detentora
-        const passagensConsolidadasDesteGrupo = consolidatedPassagens.filter(c => 
+        const passagensConsolidadasDesteGrupo = consolidatedPassagensWithDetails.filter(c => 
             c.om_detentora === omName && c.ug_detentora === ug
         );
         
@@ -595,10 +662,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             // Verifica se a OM Favorecida é diferente da OM Detentora
             const isDifferentOm = consolidated.organizacao !== consolidated.om_detentora || consolidated.ug !== consolidated.ug_detentora;
             
-            // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente)
+            // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente, SEM PARÊNTESES)
             let despesasLabel = `PASSAGENS`;
             if (isDifferentOm) {
-                despesasLabel += `\n(${consolidated.organizacao})`;
+                despesasLabel += `\n${consolidated.organizacao}`;
             }
             row.getCell('A').value = despesasLabel; 
             row.getCell('A').alignment = leftMiddleAlignment; 
@@ -646,7 +713,19 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             // I: DETALHAMENTO
             // A memória deve ser gerada de forma consolidada, priorizando a customizada do primeiro registro
             const firstRecord = consolidated.records[0];
-            let memoria = firstRecord.detalhamento_customizado || generateConsolidatedPassagemMemoriaCalculo(consolidated);
+            let memoria = firstRecord.detalhamento_customizado;
+            
+            if (!memoria) {
+                // Se não houver customização, gera a automática consolidada
+                memoria = generateConsolidatedPassagemMemoriaCalculo(consolidated);
+                
+                // Adicionar Pregão/UASG dinamicamente
+                if (consolidated.diretrizDetails?.numero_pregao && consolidated.diretrizDetails?.ug_referencia) {
+                    memoria += `(Pregão ${consolidated.diretrizDetails.numero_pregao} - UASG ${formatCodug(consolidated.diretrizDetails.ug_referencia)})\n`;
+                } else if (consolidated.diretrizDetails) {
+                    memoria += `(Detalhes do contrato não disponíveis ou incompletos)\n`;
+                }
+            }
             
             row.getCell('I').value = memoria;
             row.getCell('I').alignment = leftTopAlignment; 
@@ -975,7 +1054,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
       description: "O relatório Operacional foi salvo com sucesso.",
       duration: 3000,
     });
-  }, [consolidatedPassagens, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, diretrizesOperacionais, toast, registrosAgrupadosPorOM]);
+  }, [consolidatedPassagensWithDetails, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, diretrizesOperacionais, toast, registrosAgrupadosPorOM]);
 
 
   if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0 && registrosSuprimentoFundos.length === 0 && registrosPassagem.length === 0) {
@@ -1120,7 +1199,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                         
                         {/* --- 2. Render Passagens (CONSOLIDADO) --- */}
                         {/* Filtra os registros consolidados que pertencem a esta OM Detentora */}
-                        {consolidatedPassagens.filter(c => 
+                        {consolidatedPassagensWithDetails.filter(c => 
                             c.om_detentora === omName && c.ug_detentora === ug
                         ).map((consolidated) => {
                             const totalLinha = consolidated.totalND33;
@@ -1130,12 +1209,24 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             const isDifferentOm = consolidated.organizacao !== consolidated.om_detentora || consolidated.ug !== consolidated.ug_detentora;
                             
                             // A memória deve ser gerada de forma consolidada, priorizando a customizada do primeiro registro
-                            let memoria = firstRecord.detalhamento_customizado || generateConsolidatedPassagemMemoriaCalculo(consolidated);
+                            let memoria = firstRecord.detalhamento_customizado;
                             
-                            // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente)
+                            if (!memoria) {
+                                // Se não houver customização, gera a automática consolidada
+                                memoria = generateConsolidatedPassagemMemoriaCalculo(consolidated);
+                                
+                                // Adicionar Pregão/UASG dinamicamente
+                                if (consolidated.diretrizDetails?.numero_pregao && consolidated.diretrizDetails?.ug_referencia) {
+                                    memoria += `(Pregão ${consolidated.diretrizDetails.numero_pregao} - UASG ${formatCodug(consolidated.diretrizDetails.ug_referencia)})\n`;
+                                } else if (consolidated.diretrizDetails) {
+                                    memoria += `(Detalhes do contrato não disponíveis ou incompletos)\n`;
+                                }
+                            }
+                            
+                            // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente, SEM PARÊNTESES)
                             let despesasLabel = `PASSAGENS`;
                             if (isDifferentOm) {
-                                despesasLabel += `\n(${consolidated.organizacao})`;
+                                despesasLabel += `\n${consolidated.organizacao}`;
                             }
                             
                             return (

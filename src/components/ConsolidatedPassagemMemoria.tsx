@@ -53,9 +53,9 @@ export const ConsolidatedPassagemMemoria: React.FC<ConsolidatedPassagemMemoriaPr
         
         // Adicionar Pregão/UASG dinamicamente
         if (diretrizDetails?.numero_pregao && diretrizDetails?.ug_referencia) {
-            memoria += `(Pregão ${diretrizDetails.numero_pregao} - UASG ${formatCodug(diretrizDetails.ug_referencia)})\n`;
+            memoria += `\n(Pregão ${diretrizDetails.numero_pregao} - UASG ${formatCodug(diretrizDetails.ug_referencia)})`;
         } else if (diretrizDetails) {
-            memoria += `(Detalhes do contrato não disponíveis ou incompletos)\n`;
+            memoria += `\n(Detalhes do contrato não disponíveis ou incompletos)`;
         }
         
         return memoria;
@@ -76,7 +76,7 @@ export const ConsolidatedPassagemMemoria: React.FC<ConsolidatedPassagemMemoriaPr
             const pregaoLine = `(Pregão ${diretrizDetails.numero_pregao} - UASG ${formatCodug(diretrizDetails.ug_referencia)})`;
             // Evita duplicar a linha se o usuário já a incluiu
             if (!customMemoria.includes('Pregão')) {
-                customMemoria += `\n${pregaoLine}\n`;
+                customMemoria += `\n${pregaoLine}`;
             }
         }
         memoriaExibida = customMemoria;
@@ -90,8 +90,8 @@ export const ConsolidatedPassagemMemoria: React.FC<ConsolidatedPassagemMemoriaPr
         // Se houver customização, passamos a customizada (que já inclui o Pregão/UASG se necessário)
         // Se não houver customização, passamos a automática completa.
         const memoriaParaEdicao = hasCustomMemoria 
-            ? memoriaExibida // Usa a versão customizada (que já tem o Pregão/UASG adicionado se não estiver lá)
-            : memoriaAutomaticaCompleta;
+            ? firstRecord.detalhamento_customizado! // Passa APENAS o texto customizado do DB para edição
+            : memoriaAutomaticaCompleta; // Passa a automática completa (com Pregão/UASG)
             
         handleIniciarEdicaoMemoria(group, memoriaParaEdicao);
     };
@@ -122,14 +122,16 @@ export const ConsolidatedPassagemMemoria: React.FC<ConsolidatedPassagemMemoriaPr
                 </div>
                 
                 <div className="flex items-center justify-end gap-2 shrink-0">
-                    {!isEditing ? (
+                    {isLoadingDiretriz ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    ) : !isEditing ? (
                         <>
                             <Button
                                 type="button" 
                                 size="sm"
                                 variant="outline"
                                 onClick={handleLocalIniciarEdicao} // Usando o handler local
-                                disabled={isSaving || !isPTrabEditable || isLoadingDiretriz}
+                                disabled={isSaving || !isPTrabEditable}
                                 className="gap-2"
                             >
                                 <Pencil className="h-4 w-4" />
