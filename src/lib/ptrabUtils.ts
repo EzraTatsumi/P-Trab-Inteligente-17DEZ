@@ -71,12 +71,12 @@ export async function fetchPTrabData(ptrabId: string): Promise<PTrabData> {
  */
 export async function fetchPTrabRecords<T extends PTrabLinkedTableName>(tableName: T, ptrabId: string): Promise<Tables<T>[]> {
     // A coluna 'p_trab_id' é garantida por PTrabLinkedTableName.
-    // Usamos uma asserção de tipo para garantir que o compilador aceite a string literal 'p_trab_id'
-    // como uma chave válida para a tabela T.
+    // Usamos asserções de tipo para satisfazer o compilador, garantindo que 'p_trab_id' é uma chave válida
+    // e que o valor (ptrabId) é compatível com o tipo da coluna (UUID/string).
     const { data, error } = await supabase
         .from(tableName)
         .select('*')
-        .eq('p_trab_id' as keyof Tables<T> & string, ptrabId);
+        .eq('p_trab_id' as keyof Tables<T> & string, ptrabId as Tables<T>['p_trab_id']);
 
     if (error) {
         throw new Error(`Falha ao carregar registros de ${String(tableName)}: ${error.message}`);
