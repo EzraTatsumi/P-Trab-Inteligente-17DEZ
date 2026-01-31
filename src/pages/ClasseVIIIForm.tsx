@@ -54,7 +54,8 @@ interface TempDestination {
     id?: string;
 }
 const initialTempDestinations: Record<Categoria, TempDestination> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: { om: "", ug: "", id: undefined } }), {} as Record<Categoria, TempDestination>);
-const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, TempDestination>);
+// CORRIGIDO: O valor inicial deve ser um Record<Categoria, string>
+const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, string>);
 // --- FIM TIPOS TEMPORÁRIOS ---
 
 interface ItemSaude {
@@ -605,7 +606,8 @@ const ClasseVIIIForm = () => {
             
             // Sincronizar o estado temporário de ND 39
             const savedND39Value = alloc.nd_39_value;
-            const savedDigits = String(Math.round(savedND39Value * 100));
+            // CORRIGIDO: Declarando 'digits' aqui para que esteja no escopo
+            const digits = String(Math.round(savedND39Value * 100)); 
             setTempND39Inputs(prev => ({
                 ...prev,
                 [cat]: digits
