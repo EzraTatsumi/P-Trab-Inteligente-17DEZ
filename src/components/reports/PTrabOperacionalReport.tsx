@@ -544,8 +544,15 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             const omDetentora = registro.om_detentora || registro.organizacao;
             const ugDetentora = registro.ug_detentora || registro.ug;
             
-            // A: DESPESAS
-            row.getCell('A').value = `PASSAGENS`; 
+            // Check if OM Favorecida is different from OM Detentora
+            const isDifferentOm = registro.organizacao !== omDetentora || registro.ug !== ugDetentora;
+            
+            // A: DESPESAS (MODIFICADO)
+            let despesasValue = `PASSAGENS`;
+            if (isDifferentOm) {
+                despesasValue += `\nOM Favorecida: ${registro.organizacao} (${formatCodug(registro.ug)})`;
+            }
+            row.getCell('A').value = despesasValue;
             row.getCell('A').alignment = leftMiddleAlignment; 
             
             // B: OM (UGE) CODUG (OM Detentora do Recurso)
@@ -1034,7 +1041,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                     <React.Fragment key={omKey}>
                         {/* --- 1. Render Diárias --- */}
                         {group.diarias.map((registro, index) => {
-                            const totalLinha = registro.valor_nd_15 + registro.valor_nd_30;
+                            const totalLinha = registro.valor_nd_15 + registro.valor_nd_30; // ND 15 + ND 30 (Passagens Aéreas)
                             
                             return (
                                 <tr key={`diaria-${registro.id}`} className="expense-row">
@@ -1068,10 +1075,18 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             const omDetentora = registro.om_detentora || registro.organizacao;
                             const ugDetentora = registro.ug_detentora || registro.ug;
                             
+                            // Check if OM Favorecida is different from OM Detentora
+                            const isDifferentOm = registro.organizacao !== omDetentora || registro.ug !== ugDetentora;
+                            
                             return (
                                 <tr key={`passagem-${registro.id}`} className="expense-row">
                                   <td className="col-despesas-op"> 
                                     PASSAGENS
+                                    {isDifferentOm && (
+                                        <div style={{ fontSize: '7pt', marginTop: '2px' }}>
+                                            OM Favorecida: {registro.organizacao} ({formatCodug(registro.ug)})
+                                        </div>
+                                    )}
                                   </td>
                                   <td className="col-om-op">
                                     <div>{omDetentora}</div>
@@ -1218,7 +1233,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             </table>
           </div>
         ) : (
-          <p className="text-center text-muted-foreground py-8">Nenhum registro operacional cadastrado.</p>
+          <p className="text-center text-muted-foreground py-8">Nenhum registro de Diária, Verba Operacional, Suprimento de Fundos ou Passagens cadastrado.</p>
         )}
 
         <div className="ptrab-footer print-avoid-break">
