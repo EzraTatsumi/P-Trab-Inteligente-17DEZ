@@ -425,7 +425,8 @@ const ClasseIIForm = () => {
         const key = `${r.organizacao}-${r.ug}-${r.categoria}`; 
         const record = {
             ...r,
-            itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseII[],
+            // FIX 1: Conversão segura de Json para ItemClasseII[]
+            itens_equipamentos: (r.itens_equipamentos || []) as any as ItemClasseII[], 
             valor_nd_30: Number(r.valor_nd_30),
             valor_nd_39: Number(r.valor_nd_39),
             efetivo: r.efetivo || 0, 
@@ -800,7 +801,7 @@ const ClasseIIForm = () => {
         const category = r.categoria as Categoria;
 
         // Mapeamento explícito para garantir a estrutura ItemClasseII
-        const items: ItemClasseII[] = (r.itens_equipamentos as any[] || []).map(item => ({
+        const items: ItemClasseII[] = (r.itens_equipamentos as any[] || []).map((item: any) => ({
             item: item.item,
             quantidade: Number(item.quantidade || 0),
             valor_mnt_dia: Number(item.valor_mnt_dia || 0),
@@ -1468,18 +1469,20 @@ const ClasseIIForm = () => {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            onClick={() => {
+                                                            onClick={async () => { // FIX 2: Usando async/await para tratar a Promise
                                                                 if (confirm(`Deseja realmente deletar o registro de Classe II para ${omName} (${registro.categoria})?`)) {
-                                                                    supabase.from("classe_ii_registros")
-                                                                        .delete()
-                                                                        .eq("id", registro.id)
-                                                                        .then(() => {
-                                                                            toast.success("Registro excluído!");
-                                                                            fetchRegistros();
-                                                                        })
-                                                                        .catch(err => {
-                                                                            toast.error(sanitizeError(err));
-                                                                        });
+                                                                    try {
+                                                                        const { error: deleteError } = await supabase.from("classe_ii_registros")
+                                                                            .delete()
+                                                                            .eq("id", registro.id);
+                                                                        
+                                                                        if (deleteError) throw deleteError;
+                                                                        
+                                                                        toast.success("Registro excluído!");
+                                                                        fetchRegistros();
+                                                                    } catch (err) {
+                                                                        toast.error(sanitizeError(err));
+                                                                    }
                                                                 }
                                                             }}
                                                             className="h-8 w-8 text-destructive hover:bg-destructive/10"
