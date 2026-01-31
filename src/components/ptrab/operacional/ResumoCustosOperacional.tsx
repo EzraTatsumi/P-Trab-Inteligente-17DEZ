@@ -2,10 +2,10 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@/lib/formatUtils"; // CORRIGIDO: Importando de formatUtils
 import { useDiariaResumo } from "@/hooks/useDiariaResumo";
 import { useVerbaOperacionalResumo } from "@/hooks/useVerbaOperacionalResumo";
-import { usePassagemResumo } from "@/hooks/usePassagemResumo"; // Importando o novo hook
+import { usePassagemResumo } from "@/hooks/usePassagemResumo";
 import { Loader2 } from "lucide-react";
 
 interface ResumoCustosOperacionalProps {
