@@ -1,329 +1,242 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+"use client";
+
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Save, Trash2 } from "lucide-react";
+import { useState } from "react";
+
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { Loader2, Plus, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { OMData } from "@/lib/omUtils";
+import { toast } from "sonner";
 import { OmSelector } from "@/components/OmSelector";
 import { usePTrabContext } from "@/pages/ptrab/PTrabContext";
-import { VerbaOperacionalRegistro, VerbaOperacionalInsert } from "@/types/global";
+import { VerbaOperacionalRegistro } from "@/types/global";
 import { formatCurrency, parseCurrency } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { verbaOperacionalSchema, suprimentoFundosSchema } from "@/lib/validationSchemas";
 import { Separator } from "@/components/ui/separator";
 import { FaseAtividadeSelector } from "@/components/FaseAtividadeSelector";
-import { generateDetalhamento } from "@/lib/verbaOperacionalUtils"; // Assuming this utility exists
+
+// --- Schema Definition ---
+const VerbaOperacionalSchema = z.object({
+  id: z.string().optional(),
+  p_trab_id: z.string().uuid(),
+  organizacao: z.string().min(1, "Organização é obrigatória"),
+  ug: z.string().min(1, "UG é obrigatória"),
+  om_detentora: z.string().optional().nullable(),
+  ug_detentora: z.string().optional().nullable(),
+  dias_operacao: z.coerce.number().min(1, "Mínimo 1 dia"),
+  quantidade_equipes: z.coerce.number().min(1, "Mínimo 1 equipe"),
+  valor_total_solicitado: z.string().min(1, "Valor é obrigatório"),
+  fase_atividade: z.string().optional().nullable(),
+  detalhamento: z.string().optional().nullable(),
+  detalhamento_customizado: z.string().optional().nullable(),
+  valor_nd_30: z.string().optional().nullable(),
+  valor_nd_39: z.string().optional().nullable(),
+});
+
+type VerbaOperacionalFormData = z.infer<typeof VerbaOperacionalSchema>;
 
 interface VerbaOperacionalFormProps {
-  registro?: VerbaOperacionalRegistro;
-  onSave: () => void;
-  onCancel: () => void;
-  isSuprimentoDeFundos: boolean;
+  initialData?: VerbaOperacionalRegistro;
+  onSuccess?: () => void;
 }
 
-const VerbaOperacionalForm: React.FC<VerbaOperacionalFormProps> = ({
-  registro,
-  onSave,
-  onCancel,
-  isSuprimentoDeFundos,
-}) => {
-  const { ptrab, ptrabId, loading: contextLoading } = usePTrabContext();
-  const [loading, setLoading] = useState(false);
+export function VerbaOperacionalForm({ initialData, onSuccess }: VerbaOperacionalFormProps) {
+  const queryClient = useQueryClient();
+  const { pTrabId } = usePTrabContext();
 
-  // Usando o esquema correto baseado no tipo de registro
-  const schema = isSuprimentoDeFundos ? suprimentoFundosSchema : verbaOperacionalSchema;
+  const [omName, setOmName] = useState(initialData?.organizacao || "");
+  const [ug, setUg] = useState(initialData?.ug || "");
+  const [omDetentoraName, setOmDetentoraName] = useState(initialData?.om_detentora || "");
+  const [ugDetentora, setUgDetentora] = useState(initialData?.ug_detentora || "");
 
-  const form = useForm<any>({
-    resolver: zodResolver(schema),
+  const form = useForm<VerbaOperacionalFormData>({
+    resolver: zodResolver(VerbaOperacionalSchema),
     defaultValues: {
-      om_favorecida: registro?.organizacao || ptrab?.nome_om || "",
-      ug_favorecida: registro?.ug || ptrab?.codug_om || "",
-      om_detentora: registro?.om_detentora || ptrab?.nome_om || "",
-      ug_detentora: registro?.ug_detentora || ptrab?.codug_om || "",
-      dias_operacao: registro?.dias_operacao || 1,
-      quantidade_equipes: registro?.quantidade_equipes || 1,
-      fase_atividade: registro?.fase_atividade || "",
-      valor_total_solicitado: registro?.valor_total_solicitado || 0,
-      valor_nd_30: registro?.valor_nd_30 || 0,
-      valor_nd_39: registro?.valor_nd_39 || 0,
-      detalhamento_customizado: registro?.detalhamento_customizado || "",
-      
-      // Campos de Suprimento de Fundos
-      objeto_aquisicao: (registro as any)?.objeto_aquisicao || "",
-      objeto_contratacao: (registro as any)?.objeto_contratacao || "",
-      proposito: (registro as any)?.proposito || "",
-      finalidade: (registro as any)?.finalidade || "",
-      local: (registro as any)?.local || "",
-      tarefa: (registro as any)?.tarefa || "",
+      id: initialData?.id,
+      p_trab_id: pTrabId,
+      organizacao: initialData?.organizacao || "",
+      ug: initialData?.ug || "",
+      om_detentora: initialData?.om_detentora || null,
+      ug_detentora: initialData?.ug_detentora || null,
+      dias_operacao: initialData?.dias_operacao || 1,
+      quantidade_equipes: initialData?.quantidade_equipes || 1,
+      valor_total_solicitado: formatCurrency(initialData?.valor_total_solicitado || 0),
+      fase_atividade: initialData?.fase_atividade || null,
+      detalhamento: initialData?.detalhamento || null,
+      detalhamento_customizado: initialData?.detalhamento_customizado || null,
+      valor_nd_30: formatCurrency(initialData?.valor_nd_30 || 0),
+      valor_nd_39: formatCurrency(initialData?.valor_nd_39 || 0),
     },
   });
 
-  const { watch, setValue, handleSubmit, control, formState: { errors } } = form;
-  const watchedValues = watch();
+  const isEditing = !!initialData;
 
-  // Efeito para calcular o detalhamento automático
-  useEffect(() => {
-    // A função generateDetalhamento deve ser capaz de lidar com ambos os tipos (Verba e Suprimento)
-    // Se o detalhamento customizado estiver vazio, gera o detalhamento automático
-    if (!watchedValues.detalhamento_customizado) {
-      try {
-        // Nota: Assumindo que generateDetalhamento existe e aceita os watchedValues
-        const detalhamento = generateDetalhamento(watchedValues);
-        setValue("detalhamento", detalhamento);
-      } catch (e) {
-        // console.error("Erro ao gerar detalhamento:", e);
-        setValue("detalhamento", "Detalhamento automático indisponível.");
-      }
-    } else {
-      setValue("detalhamento", watchedValues.detalhamento_customizado);
-    }
-  }, [watchedValues, isSuprimentoDeFundos, setValue]);
+  const saveMutation = useMutation({
+    mutationFn: async (data: VerbaOperacionalFormData) => {
+      const payload = {
+        ...data,
+        valor_total_solicitado: parseCurrency(data.valor_total_solicitado),
+        valor_nd_30: parseCurrency(data.valor_nd_30 || "0"),
+        valor_nd_39: parseCurrency(data.valor_nd_39 || "0"),
+        organizacao: omName,
+        ug: ug,
+        om_detentora: omDetentoraName,
+        ug_detentora: ugDetentora,
+      };
 
-  // Efeito para garantir que a soma das NDs seja igual ao total solicitado
-  useEffect(() => {
-    const total = watchedValues.valor_total_solicitado;
-    const nd30 = watchedValues.valor_nd_30;
-    const nd39 = watchedValues.valor_nd_39;
-
-    if (total > 0 && nd30 + nd39 === 0) {
-      // Se o total for preenchido, mas as NDs estiverem zeradas, aloca tudo para ND 39 por padrão
-      setValue("valor_nd_39", total);
-    }
-  }, [watchedValues.valor_total_solicitado, watchedValues.valor_nd_30, watchedValues.valor_nd_39, setValue]);
-
-  const onSubmit = async (values: any) => {
-    if (!ptrabId) {
-      toast.error("P Trab ID não encontrado.");
-      return;
-    }
-
-    setLoading(true);
-
-    const payload: VerbaOperacionalInsert = {
-      p_trab_id: ptrabId,
-      organizacao: values.om_favorecida,
-      ug: values.ug_favorecida,
-      om_detentora: values.om_detentora,
-      ug_detentora: values.ug_detentora,
-      dias_operacao: values.dias_operacao,
-      quantidade_equipes: values.quantidade_equipes,
-      fase_atividade: values.fase_atividade,
-      valor_total_solicitado: values.valor_total_solicitado,
-      valor_nd_30: values.valor_nd_30,
-      valor_nd_39: values.valor_nd_39,
-      detalhamento_customizado: values.detalhamento_customizado || null,
-      detalhamento: values.detalhamento || null,
-      
-      // Campos de Suprimento de Fundos (condicionalmente incluídos)
-      objeto_aquisicao: values.objeto_aquisicao || null,
-      objeto_contratacao: values.objeto_contratacao || null,
-      proposito: values.proposito || null,
-      finalidade: values.finalidade || null,
-      local: values.local || null,
-      tarefa: values.tarefa || null,
-    };
-
-    try {
-      if (registro) {
-        // Update
-        const { error } = await supabase
-          .from("verba_operacional_registros")
-          .update(payload)
-          .eq("id", registro.id);
+      if (isEditing) {
+        const { error } = await supabase.from("verba_operacional_registros").update(payload).eq("id", data.id);
         if (error) throw error;
-        toast.success("Registro atualizado com sucesso!");
       } else {
-        // Insert
-        // CORREÇÃO DO ERRO 6: O payload já é do tipo VerbaOperacionalInsert, que é o tipo correto para insert.
-        const { error } = await supabase.from("verba_operacional_registros").insert(payload as VerbaOperacionalInsert);
+        const { error } = await supabase.from("verba_operacional_registros").insert(payload);
         if (error) throw error;
-        toast.success("Registro criado com sucesso!");
-        
-        // NOVO: Lógica de reset para novos registros, preservando o contexto
-        form.reset({
-          om_favorecida: values.om_favorecida,
-          ug_favorecida: values.ug_favorecida,
-          om_detentora: values.om_detentora,
-          ug_detentora: values.ug_detentora,
-          fase_atividade: values.fase_atividade,
-          
-          // Resetar campos de valor e quantidade para o próximo item
-          dias_operacao: 1,
-          quantidade_equipes: 1,
-          valor_total_solicitado: 0,
-          valor_nd_30: 0,
-          valor_nd_39: 0,
-          detalhamento_customizado: "",
-          
-          // Resetar campos de Suprimento de Fundos
-          objeto_aquisicao: "",
-          objeto_contratacao: "",
-          proposito: "",
-          finalidade: "",
-          local: "",
-          tarefa: "",
-        });
       }
-      onSave();
-    } catch (error: any) {
-      console.error("Erro ao salvar registro:", error);
-      toast.error(`Erro ao salvar: ${error.message}`);
-    } finally {
-      setLoading(false);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["verba_operacional_registros", pTrabId] });
+      queryClient.invalidateQueries({ queryKey: ["ptrab_resumo", pTrabId] });
+      toast.success(`Registro de Verba Operacional ${isEditing ? "atualizado" : "criado"} com sucesso.`);
+      onSuccess?.();
+    },
+    onError: (error) => {
+      console.error("Erro ao salvar registro de Verba Operacional:", error);
+      toast.error("Erro ao salvar registro. Tente novamente.");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("verba_operacional_registros").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["verba_operacional_registros", pTrabId] });
+      queryClient.invalidateQueries({ queryKey: ["ptrab_resumo", pTrabId] });
+      toast.success("Registro de Verba Operacional excluído com sucesso.");
+      onSuccess?.();
+    },
+    onError: (error) => {
+      console.error("Erro ao excluir registro de Verba Operacional:", error);
+      toast.error("Erro ao excluir registro. Tente novamente.");
+    },
+  });
+
+  const onSubmit = (data: VerbaOperacionalFormData) => {
+    saveMutation.mutate(data);
+  };
+
+  const handleDelete = () => {
+    if (initialData?.id) {
+      deleteMutation.mutate(initialData.id);
     }
   };
 
-  const title = isSuprimentoDeFundos ? "Suprimento de Fundos" : "Verba Operacional";
-  const subtitle = registro ? "Editar Registro" : "Novo Registro";
-
   return (
-    <Card className="w-full">
+    <Card>
       <CardHeader>
-        <CardTitle>{title} - {subtitle}</CardTitle>
+        <CardTitle>{isEditing ? "Editar Registro" : "Novo Registro"} de Verba Operacional</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            
-            {/* Seção 1: Contexto da OM */}
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* OM Detentora */}
               <FormField
-                control={control}
-                name="om_favorecida"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>OM Favorecida (Destino do Recurso) *</FormLabel>
-                    <FormControl>
-                      <OmSelector
-                        selectedOmId={field.value}
-                        // CORREÇÃO DO ERRO 7: Usar onOmSelect
-                        onOmSelect={(omData: OMData | undefined) => {
-                          if (omData) {
-                            field.onChange(omData.nome_om);
-                            setValue("ug_favorecida", omData.codug_om);
-                          } else {
-                            field.onChange("");
-                            setValue("ug_favorecida", "");
-                          }
-                        }}
-                        initialOmName={field.value}
-                        placeholder="Selecione a OM Favorecida..."
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={control}
-                name="ug_favorecida"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>UG Favorecida (UG Destino) *</FormLabel>
-                    <FormControl>
-                      <Input {...field} disabled />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={control}
+                control={form.control}
                 name="om_detentora"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>OM Detentora (Fonte do Recurso) *</FormLabel>
+                    <FormLabel>OM Detentora (Opcional)</FormLabel>
                     <FormControl>
                       <OmSelector
                         selectedOmId={field.value}
-                        // CORREÇÃO DO ERRO 8: Usar onOmSelect
-                        onOmSelect={(omData: OMData | undefined) => {
-                          if (omData) {
-                            field.onChange(omData.nome_om);
-                            setValue("ug_detentora", omData.codug_om);
-                          } else {
-                            field.onChange("");
-                            setValue("ug_detentora", "");
-                          }
+                        onSelect={(id, name, ug) => {
+                          field.onChange(id);
+                          setOmDetentoraName(name);
+                          setUgDetentora(ug);
                         }}
-                        initialOmName={field.value}
-                        placeholder="Selecione a OM Detentora..."
+                        initialOmName={omDetentoraName}
+                        placeholder="Selecione a OM Detentora"
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              {/* OM Destino */}
               <FormField
-                control={control}
-                name="ug_detentora"
+                control={form.control}
+                name="organizacao"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>UG Detentora (UG Fonte) *</FormLabel>
+                    <FormLabel>OM de Destino</FormLabel>
                     <FormControl>
-                      <Input {...field} disabled />
+                      <OmSelector
+                        selectedOmId={field.value}
+                        onSelect={(id, name, ug) => {
+                          field.onChange(id);
+                          setOmName(name);
+                          setUg(ug);
+                        }}
+                        initialOmName={omName}
+                        placeholder="Selecione a OM de Destino"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
-            
-            <Separator />
 
-            {/* Seção 2: Período e Quantidade */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Dias de Operação */}
               <FormField
-                control={control}
+                control={form.control}
                 name="dias_operacao"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Dias de Operação *</FormLabel>
+                    <FormLabel>Dias de Operação</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                        min={1}
-                      />
+                      <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              {/* Quantidade de Equipes */}
               <FormField
-                control={control}
+                control={form.control}
                 name="quantidade_equipes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Quantidade de Equipes *</FormLabel>
+                    <FormLabel>Quantidade de Equipes</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                        min={1}
-                      />
+                      <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              {/* Fase da Atividade */}
               <FormField
-                control={control}
+                control={form.control}
                 name="fase_atividade"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Fase da Atividade *</FormLabel>
+                    <FormLabel>Fase da Atividade (Opcional)</FormLabel>
                     <FormControl>
                       <FaseAtividadeSelector
-                        value={field.value}
-                        onChange={field.onChange}
+                        selectedFase={field.value || ""}
+                        onSelect={field.onChange}
                       />
                     </FormControl>
                     <FormMessage />
@@ -334,56 +247,57 @@ const VerbaOperacionalForm: React.FC<VerbaOperacionalFormProps> = ({
 
             <Separator />
 
-            {/* Seção 3: Valores e Alocação ND */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Valor Total Solicitado */}
               <FormField
-                control={control}
+                control={form.control}
                 name="valor_total_solicitado"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Valor Total Solicitado (R$) *</FormLabel>
+                    <FormLabel>Valor Total Solicitado (R$)</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        value={formatCurrency(field.value)}
-                        onChange={(e) => field.onChange(parseCurrency(e.target.value))}
-                        placeholder="R$ 0,00"
+                        placeholder="0,00"
+                        onChange={(e) => field.onChange(formatCurrency(parseCurrency(e.target.value)))}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              {/* Valor ND 30 */}
               <FormField
-                control={control}
+                control={form.control}
                 name="valor_nd_30"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Alocação ND 33.90.30 (Material)</FormLabel>
+                    <FormLabel>Valor ND 30 (R$)</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        value={formatCurrency(field.value)}
-                        onChange={(e) => field.onChange(parseCurrency(e.target.value))}
-                        placeholder="R$ 0,00"
+                        placeholder="0,00"
+                        onChange={(e) => field.onChange(formatCurrency(parseCurrency(e.target.value)))}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              {/* Valor ND 39 */}
               <FormField
-                control={control}
+                control={form.control}
                 name="valor_nd_39"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Alocação ND 33.90.39 (Serviço)</FormLabel>
+                    <FormLabel>Valor ND 39 (R$)</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        value={formatCurrency(field.value)}
-                        onChange={(e) => field.onChange(parseCurrency(e.target.value))}
-                        placeholder="R$ 0,00"
+                        placeholder="0,00"
+                        onChange={(e) => field.onChange(formatCurrency(parseCurrency(e.target.value)))}
                       />
                     </FormControl>
                     <FormMessage />
@@ -391,110 +305,31 @@ const VerbaOperacionalForm: React.FC<VerbaOperacionalFormProps> = ({
                 )}
               />
             </div>
-            
-            {/* Seção 4: Detalhamento Suprimento de Fundos (Apenas se for Suprimento) */}
-            {isSuprimentoDeFundos && (
-              <>
-                <Separator />
-                <h4 className="text-lg font-semibold">Detalhamento Específico (Suprimento de Fundos)</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={control}
-                    name="objeto_aquisicao"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Objeto de Aquisição (Material) *</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Ex: Material de expediente, EPIs" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={control}
-                    name="objeto_contratacao"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Objeto de Contratação (Serviço) *</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Ex: Serviço de cópias, manutenção" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={control}
-                    name="proposito"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Propósito *</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Ex: Apoiar a Operação X" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={control}
-                    name="finalidade"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Finalidade *</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Ex: Garantir a continuidade das atividades" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={control}
-                    name="local"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Local *</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Ex: Marabá/PA" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={control}
-                    name="tarefa"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tarefa *</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Ex: Aquisição de material de consumo" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </>
-            )}
 
-            <Separator />
-
-            {/* Seção 5: Detalhamento Customizado */}
+            {/* Detalhamento */}
             <FormField
-              control={control}
+              control={form.control}
+              name="detalhamento"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Detalhamento (Opcional)</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Descreva o detalhamento..." {...field} value={field.value || ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Detalhamento Customizado */}
+            <FormField
+              control={form.control}
               name="detalhamento_customizado"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Memória de Cálculo / Detalhamento Customizado (Opcional)</FormLabel>
+                  <FormLabel>Detalhamento Customizado (Opcional)</FormLabel>
                   <FormControl>
-                    <Textarea
-                      {...field}
-                      rows={6}
-                      placeholder="Deixe em branco para usar o detalhamento automático."
-                    />
+                    <Textarea placeholder="Descreva o detalhamento customizado..." {...field} value={field.value || ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -502,11 +337,26 @@ const VerbaOperacionalForm: React.FC<VerbaOperacionalFormProps> = ({
             />
 
             <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={loading || contextLoading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (registro ? "Atualizar Registro" : "Adicionar Registro")}
+              {isEditing && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={deleteMutation.isPending || saveMutation.isPending}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                </Button>
+              )}
+              <Button type="submit" disabled={saveMutation.isPending || deleteMutation.isPending}>
+                {saveMutation.isPending ? "Salvando..." : isEditing ? (
+                  <>
+                    <Save className="mr-2 h-4 w-4" /> Salvar Alterações
+                  </>
+                ) : (
+                  <>
+                    <Plus className="mr-2 h-4 w-4" /> Adicionar Registro
+                  </>
+                )}
               </Button>
             </div>
           </form>
@@ -514,6 +364,4 @@ const VerbaOperacionalForm: React.FC<VerbaOperacionalFormProps> = ({
       </CardContent>
     </Card>
   );
-};
-
-export default VerbaOperacionalForm;
+}
