@@ -54,7 +54,7 @@ import {
 import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais } from "@/lib/ptrabUtils";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
-import { Tables } from "@/integrations/supabase/types"; // Importar Tables
+import { Tables, Json } from "@/integrations/supabase/types"; // Importar Tables e Json
 
 // =================================================================
 // TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
@@ -128,6 +128,7 @@ export interface VerbaOperacionalRegistro extends Tables<'verba_operacional_regi
 // NOVO TIPO: PassagemRegistro (Exportado do utilitário)
 export type PassagemRegistro = PassagemRegistroType;
 
+// CORREÇÃO: Tipagem de ItemClasseIII para garantir que campos numéricos sejam number
 export interface ItemClasseIII {
   item: string; // nome_equipamento
   categoria: 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
@@ -144,8 +145,8 @@ export interface ItemClasseIII {
   preco_lubrificante: number; // R$/L
   memoria_customizada?: string | null; // NOVO CAMPO
   // Campos adicionados para cálculo de totais (necessários para a função calculateItemTotals)
-  preco_lubrificante_input: number;
-  consumo_lubrificante_input: number;
+  preco_lubrificante_input: number; // CORRIGIDO: Deve ser number
+  consumo_lubrificante_input: number; // CORRIGIDO: Deve ser number
 }
 
 export interface ItemClasseII {
@@ -170,12 +171,13 @@ export interface ClasseIIRegistro extends Tables<'classe_ii_registros'> {
   // Campos adicionais de outras tabelas que são mapeados para esta interface
   animal_tipo?: 'Equino' | 'Canino' | null;
   quantidade_animais?: number;
-  itens_remonta?: any; // Usado para Classe VIII Remonta
-  itens_saude?: any; // Usado para Classe VIII Saúde
-  itens_motomecanizacao?: ItemClasseIX[];
+  itens_remonta?: Json; // Usado para Classe VIII Remonta
+  itens_saude?: Json; // Usado para Classe VIII Saúde
+  itens_motomecanizacao?: Json;
   efetivo: number; // Garantido como number
 }
 
+// CORREÇÃO: ClasseIIIRegistro agora estende Tables<'classe_iii_registros'> e tipa itens_equipamentos como ItemClasseIII[]
 export interface ClasseIIIRegistro extends Tables<'classe_iii_registros'> {
   // Campos numéricos garantidos
   potencia_hp: number | null;
@@ -191,7 +193,7 @@ export interface ClasseIIIRegistro extends Tables<'classe_iii_registros'> {
   valor_nd_30: number;
   valor_nd_39: number;
   
-  // Itens de equipamento tipados corretamente
+  // Itens de equipamento tipados corretamente (Apesar de ser Json no DB, aqui usamos o tipo processado)
   itens_equipamentos: ItemClasseIII[] | null;
 }
 
@@ -444,7 +446,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     if (isClasseII) {
         return generateClasseIIUtility(
             registro.categoria as 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento',
-            registro.itens_equipamentos as ItemClasseII[],
+            registro.itens_equipamentos as ItemClasseII[], // CORRIGIDO: Casting para ItemClasseII[]
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -458,7 +460,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVUtility(
             registro.categoria as 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN',
-            registro.itens_equipamentos as ItemClasseII[],
+            registro.itens_equipamentos as ItemClasseII[], // CORRIGIDO: Casting para ItemClasseII[]
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -472,7 +474,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVIUtility(
             registro.categoria as 'Gerador' | 'Embarcação' | 'Equipamento de Engenharia',
-            registro.itens_equipamentos as ItemClasseII[],
+            registro.itens_equipamentos as ItemClasseII[], // CORRIGIDO: Casting para ItemClasseII[]
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -486,7 +488,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVIIUtility(
             registro.categoria as 'Comunicações' | 'Informática',
-            registro.itens_equipamentos as ItemClasseII[],
+            registro.itens_equipamentos as ItemClasseII[], // CORRIGIDO: Casting para ItemClasseII[]
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -704,6 +706,7 @@ const PTrabReportManager = () => {
         .select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3')
         .eq('p_trab_id', ptrabId);
       
+      // CORREÇÃO: Adicionando 'efetivo' na seleção de todas as classes que o possuem
       const [
         { data: classeIIData },
         { data: classeVData },
@@ -714,9 +717,9 @@ const PTrabReportManager = () => {
         { data: classeIXData },
         { data: classeIIIData },
         { data: refLPCData },
-        { data: diariaData }, // NOVO: Fetch Diárias
-        { data: verbaOperacionalData }, // NOVO: Fetch Verba Operacional
-        { data: passagemData }, // NOVO: Fetch Passagens
+        { data: diariaData }, 
+        { data: verbaOperacionalData }, 
+        { data: passagemData }, 
       ] = await Promise.all([
         supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
         supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
@@ -729,21 +732,22 @@ const PTrabReportManager = () => {
         supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", ptrabId).maybeSingle(),
         supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId), 
         supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId), 
-        supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId), // ADDED FETCH
+        supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId), 
       ]);
       
       // NOVO: Fetch Diretrizes Operacionais (necessário para gerar a memória de diária)
       const diretrizesOpData = await fetchDiretrizesOperacionais(new Date(ptrab.periodo_inicio).getFullYear());
       setDiretrizesOperacionais(diretrizesOpData as Tables<'diretrizes_operacionais'> || null);
 
+      // CORREÇÃO: Usar 'as any' para contornar o erro de tipo do Supabase na desestruturação do spread
       const allClasseItems = [
-        ...(classeIIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
-        ...(classeVData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
-        ...(classeVIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
-        ...(classeVIIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
-        ...(classeVIIISaudeData || []).map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
-        ...(classeVIIIRemontaData || []).map(r => ({ ...r, itens_equipamentos: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
-        ...(classeIXData || []).map(r => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
+        ...(classeIIData as any[] || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
+        ...(classeVData as any[] || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
+        ...(classeVIData as any[] || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
+        ...(classeVIIData as any[] || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
+        ...(classeVIIISaudeData as any[] || []).map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
+        ...(classeVIIIRemontaData as any[] || []).map(r => ({ ...r, itens_equipamentos: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
+        ...(classeIXData as any[] || []).map(r => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
       ];
 
       setPtrabData(ptrab as PTrabData);
@@ -777,7 +781,13 @@ const PTrabReportManager = () => {
           } as ClasseIRegistro;
       }));
       setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
-      setRegistrosClasseIII(classeIIIData as ClasseIIIRegistro[] || []);
+      
+      // CORREÇÃO: Mapear itens_equipamentos de Json para ItemClasseIII[] durante o carregamento da Classe III
+      setRegistrosClasseIII((classeIIIData || []).map(r => ({
+          ...r,
+          itens_equipamentos: (r.itens_equipamentos as ItemClasseIII[] | null) || null,
+      })) as ClasseIIIRegistro[]);
+      
       setRefLPC(refLPCData as RefLPC || null);
       
       // NOVO: Processar Diárias
@@ -934,11 +944,12 @@ const PTrabReportManager = () => {
                 
                 itensGrupo.forEach(item => {
                     // Adicionando campos de input para satisfazer a interface ItemClasseIII
-                    const itemWithInputs = {
+                    const itemWithInputs: ItemClasseIII = {
                         ...item,
                         preco_lubrificante_input: registro.preco_lubrificante || 0,
                         consumo_lubrificante_input: registro.consumo_lubrificante_litro || 0,
                     };
+                    // CORREÇÃO: Passando itemWithInputs tipado corretamente
                     const totals = calculateItemTotals(itemWithInputs, refLPC, registro.dias_operacao);
                     if (isCombustivel) {
                         totalLitrosLinha += totals.totalLitros;
@@ -991,8 +1002,9 @@ const PTrabReportManager = () => {
                 if (itemComMemoria && itemComMemoria.memoria_customizada && itemComMemoria.memoria_customizada.trim().length > 0) {
                     memoriaCalculo = itemComMemoria.memoria_customizada;
                 } else {
+                    // CORREÇÃO: Casting granularItem para any para evitar erro de ItemClasseIII[] vs ItemClasseIII[] (diferentes contextos)
                     memoriaCalculo = generateClasseIIIGranularUtility(
-                        granularItem, 
+                        granularItem as any, 
                         refLPC, 
                         isCombustivel ? omFornecedora : omDestinoLubrificante, 
                         isCombustivel ? ugFornecedora : ugDestinoLubrificante

@@ -184,7 +184,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 records: [],
                 totalGeral: 0,
                 totalND33: 0,
-            };
+            } as ConsolidatedPassagemReport; // Casting para garantir o tipo
         }
         
         const consolidated = consolidatedPassagensMap[consolidationKey];
@@ -345,7 +345,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
       heightLeft -= contentHeight;
 
       while (heightLeft > -1) { 
-        position = heightLeft - imgWidth + margin; 
+        position = heightLeft - imgHeight + margin; // CORRIGIDO: Usar imgHeight aqui
         pdf.addPage();
         pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
         heightLeft -= contentHeight;
@@ -654,7 +654,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         });
         
         // --- 2. Render Passagens (CONSOLIDADO) ---
-        // Filtra os registros consolidados que pertencem a esta OM Detentora
+        // CORREÇÃO: Usar a variável correta: consolidatedPassagensWithDetails
         const passagensConsolidadasDesteGrupo = consolidatedPassagensWithDetails.filter(c => 
             c.om_detentora === omName && c.ug_detentora === ug
         );

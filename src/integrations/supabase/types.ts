@@ -197,7 +197,7 @@ export type Database = {
           fase_atividade: string | null
           horas_dia: number | null
           id: string
-          itens_equipamentos: Json | null
+          itens_equipamentos: Json | null // <-- Mantido como Json
           km_dia: number | null
           om_detentora: string | null
           organizacao: string
