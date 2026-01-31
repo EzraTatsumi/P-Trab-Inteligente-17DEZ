@@ -1,10 +1,10 @@
 import React, { createContext, useContext } from 'react';
 import { Tables } from '@/integrations/supabase/types';
 
-// Define the core PTrab type
+// Define o tipo principal do PTrab
 export type PTrabData = Tables<'p_trab'>;
 
-// Define the context structure (simplified for now)
+// Define a estrutura do contexto (simplificada para agora)
 interface PTrabContextType {
   ptrab: PTrabData | null;
   ptrabId: string | null;
@@ -24,5 +24,4 @@ export const usePTrabContext = () => {
   return context;
 };
 
-// Note: The actual PTrabProvider component implementation is assumed to exist elsewhere 
-// or will be created when needed, but defining the context resolves the import error.
+// Nota: O componente PTrabProvider real é assumido existir em outro lugar.

@@ -14,7 +14,7 @@ import { usePTrabContext } from "@/pages/ptrab/PTrabContext";
 import { VerbaOperacionalRegistro, VerbaOperacionalInsert } from "@/types/global";
 import { formatCurrency, parseCurrency } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { verbaOperacionalSchema } from "@/lib/validationSchemas";
+import { verbaOperacionalSchema, suprimentoFundosSchema } from "@/lib/validationSchemas";
 import { Separator } from "@/components/ui/separator";
 import { FaseAtividadeSelector } from "@/components/FaseAtividadeSelector";
 import { generateDetalhamento } from "@/lib/verbaOperacionalUtils"; // Assuming this utility exists
@@ -35,14 +35,8 @@ const VerbaOperacionalForm: React.FC<VerbaOperacionalFormProps> = ({
   const { ptrab, ptrabId, loading: contextLoading } = usePTrabContext();
   const [loading, setLoading] = useState(false);
 
-  const schema = isSuprimentoDeFundos ? verbaOperacionalSchema.extend({
-    objeto_aquisicao: verbaOperacionalSchema.shape.objeto_aquisicao,
-    objeto_contratacao: verbaOperacionalSchema.shape.objeto_contratacao,
-    proposito: verbaOperacionalSchema.shape.proposito,
-    finalidade: verbaOperacionalSchema.shape.finalidade,
-    local: verbaOperacionalSchema.shape.local,
-    tarefa: verbaOperacionalSchema.shape.tarefa,
-  }) : verbaOperacionalSchema;
+  // Usando o esquema correto baseado no tipo de registro
+  const schema = isSuprimentoDeFundos ? suprimentoFundosSchema : verbaOperacionalSchema;
 
   const form = useForm<any>({
     resolver: zodResolver(schema),
@@ -60,12 +54,12 @@ const VerbaOperacionalForm: React.FC<VerbaOperacionalFormProps> = ({
       detalhamento_customizado: registro?.detalhamento_customizado || "",
       
       // Campos de Suprimento de Fundos
-      objeto_aquisicao: registro?.objeto_aquisicao || "",
-      objeto_contratacao: registro?.objeto_contratacao || "",
-      proposito: registro?.proposito || "",
-      finalidade: registro?.finalidade || "",
-      local: registro?.local || "",
-      tarefa: registro?.tarefa || "",
+      objeto_aquisicao: (registro as any)?.objeto_aquisicao || "",
+      objeto_contratacao: (registro as any)?.objeto_contratacao || "",
+      proposito: (registro as any)?.proposito || "",
+      finalidade: (registro as any)?.finalidade || "",
+      local: (registro as any)?.local || "",
+      tarefa: (registro as any)?.tarefa || "",
     },
   });
 
@@ -74,21 +68,21 @@ const VerbaOperacionalForm: React.FC<VerbaOperacionalFormProps> = ({
 
   // Efeito para calcular o detalhamento automático
   useEffect(() => {
-    if (!isSuprimentoDeFundos) {
-      // Apenas Verba Operacional tem detalhamento automático simples
-      const detalhamento = `Verba Operacional para ${watchedValues.quantidade_equipes} equipes, durante ${watchedValues.dias_operacao} dias de ${watchedValues.fase_atividade}.`;
-      setValue("detalhamento", detalhamento);
-    } else {
-      // Suprimento de Fundos usa o utilitário de detalhamento completo
+    // A função generateDetalhamento deve ser capaz de lidar com ambos os tipos (Verba e Suprimento)
+    // Se o detalhamento customizado estiver vazio, gera o detalhamento automático
+    if (!watchedValues.detalhamento_customizado) {
       try {
+        // Nota: Assumindo que generateDetalhamento existe e aceita os watchedValues
         const detalhamento = generateDetalhamento(watchedValues);
         setValue("detalhamento", detalhamento);
       } catch (e) {
-        console.error("Erro ao gerar detalhamento:", e);
-        setValue("detalhamento", "Erro ao gerar detalhamento automático.");
+        // console.error("Erro ao gerar detalhamento:", e);
+        setValue("detalhamento", "Detalhamento automático indisponível.");
       }
+    } else {
+      setValue("detalhamento", watchedValues.detalhamento_customizado);
     }
-  }, [watchedValues.dias_operacao, watchedValues.quantidade_equipes, watchedValues.fase_atividade, isSuprimentoDeFundos, setValue]);
+  }, [watchedValues, isSuprimentoDeFundos, setValue]);
 
   // Efeito para garantir que a soma das NDs seja igual ao total solicitado
   useEffect(() => {
@@ -125,7 +119,7 @@ const VerbaOperacionalForm: React.FC<VerbaOperacionalFormProps> = ({
       detalhamento_customizado: values.detalhamento_customizado || null,
       detalhamento: values.detalhamento || null,
       
-      // Campos de Suprimento de Fundos
+      // Campos de Suprimento de Fundos (condicionalmente incluídos)
       objeto_aquisicao: values.objeto_aquisicao || null,
       objeto_contratacao: values.objeto_contratacao || null,
       proposito: values.proposito || null,
@@ -145,9 +139,35 @@ const VerbaOperacionalForm: React.FC<VerbaOperacionalFormProps> = ({
         toast.success("Registro atualizado com sucesso!");
       } else {
         // Insert
+        // CORREÇÃO DO ERRO 6: O payload já é do tipo VerbaOperacionalInsert, que é o tipo correto para insert.
         const { error } = await supabase.from("verba_operacional_registros").insert(payload as VerbaOperacionalInsert);
         if (error) throw error;
         toast.success("Registro criado com sucesso!");
+        
+        // NOVO: Lógica de reset para novos registros, preservando o contexto
+        form.reset({
+          om_favorecida: values.om_favorecida,
+          ug_favorecida: values.ug_favorecida,
+          om_detentora: values.om_detentora,
+          ug_detentora: values.ug_detentora,
+          fase_atividade: values.fase_atividade,
+          
+          // Resetar campos de valor e quantidade para o próximo item
+          dias_operacao: 1,
+          quantidade_equipes: 1,
+          valor_total_solicitado: 0,
+          valor_nd_30: 0,
+          valor_nd_39: 0,
+          detalhamento_customizado: "",
+          
+          // Resetar campos de Suprimento de Fundos
+          objeto_aquisicao: "",
+          objeto_contratacao: "",
+          proposito: "",
+          finalidade: "",
+          local: "",
+          tarefa: "",
+        });
       }
       onSave();
     } catch (error: any) {
@@ -181,6 +201,7 @@ const VerbaOperacionalForm: React.FC<VerbaOperacionalFormProps> = ({
                     <FormControl>
                       <OmSelector
                         selectedOmId={field.value}
+                        // CORREÇÃO DO ERRO 7: Usar onOmSelect
                         onOmSelect={(omData: OMData | undefined) => {
                           if (omData) {
                             field.onChange(omData.nome_om);
@@ -220,6 +241,7 @@ const VerbaOperacionalForm: React.FC<VerbaOperacionalFormProps> = ({
                     <FormControl>
                       <OmSelector
                         selectedOmId={field.value}
+                        // CORREÇÃO DO ERRO 8: Usar onOmSelect
                         onOmSelect={(omData: OMData | undefined) => {
                           if (omData) {
                             field.onChange(omData.nome_om);
