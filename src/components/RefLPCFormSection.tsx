@@ -49,9 +49,9 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         data_fim_consulta: refLPC.data_fim_consulta,
         ambito: refLPC.ambito as 'Nacional' | 'Estadual' | 'Municipal',
         nome_local: refLPC.nome_local || "",
-        // Inicializa como string de dígitos brutos, garantindo que o valor seja tratado como number antes de converter
-        preco_diesel: String(numberToRawDigits(Number(refLPC.preco_diesel || 0))),
-        preco_gasolina: String(numberToRawDigits(Number(refLPC.preco_gasolina || 0))),
+        // Inicializa como string de dígitos brutos
+        preco_diesel: numberToRawDigits(Number(refLPC.preco_diesel)),
+        preco_gasolina: numberToRawDigits(Number(refLPC.preco_gasolina)),
         source: refLPC.source || 'Manual',
       });
       setIsLPCFormExpanded(false);
@@ -162,8 +162,8 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         ambito: 'Nacional',
         nome_local: 'ANP - Média Nacional',
         // Salva como string de dígitos brutos
-        preco_diesel: String(numberToRawDigits(dieselResult.price)),
-        preco_gasolina: String(numberToRawDigits(gasolinaResult.price)),
+        preco_diesel: numberToRawDigits(dieselResult.price),
+        preco_gasolina: numberToRawDigits(gasolinaResult.price),
         source: 'API',
       }));
       

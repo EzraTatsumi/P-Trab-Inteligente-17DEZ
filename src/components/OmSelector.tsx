@@ -149,7 +149,7 @@ export function OmSelector({
         const fetchedOM = (data || undefined) as OMData | undefined;
         setDisplayOM(fetchedOM);
         
-        // Notifica o pai após a busca assínrona
+        // Notifica o pai após a busca assíncrona
         if (fetchedOM && !initialLoadRef.current) {
             onChange(fetchedOM);
             initialLoadRef.current = true;
