@@ -65,7 +65,6 @@ const getTipoEquipamentoLabel = (tipo: string) => {
         case 'GERADOR': return 'GERADOR';
         case 'EMBARCACAO': return 'EMBARCAÇÃO';
         case 'EQUIPAMENTO_ENGENHARIA': return 'EQUIPAMENTO DE ENGENHARIA';
-        case 'MOTOMECANIZACAO': return 'MOTOMECANIZAÇÃO';
         default: return tipo;
     }
 };
@@ -880,7 +879,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   if (!ptrabData) return null;
 
   // Função auxiliar para renderizar as linhas de despesa no HTML/PDF
-  const renderExpenseLines = (allExpenseLines: (LinhaTabela | LinhaClasseII | LinhaClasseIII)[]) => {
+  const renderExpenseLines = (allExpenseLines: (LinhaTabela | LinhaClasseII | LinhaClasseIII)[], currentOMName: string) => {
     return allExpenseLines.map((linha, index) => {
         const isClasseI = 'tipo' in linha;
         const isClasseIII = 'categoria_equipamento' in linha;
@@ -937,7 +936,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             const isCombustivelLinha = linhaClasseIII.tipo_suprimento !== 'LUBRIFICANTE';
             
             const omDetentoraEquipamento = registro.organizacao; 
-            const omDestinoRecurso = nomeOM; 
+            const omDestinoRecurso = currentOMName; // USANDO O ARGUMENTO CORRIGIDO
             
             const tipoSuprimentoLabel = isLubrificante(registro) ? 'LUBRIFICANTE' : getTipoCombustivelLabel(linhaClasseIII.tipo_suprimento);
             const categoriaEquipamento = getTipoEquipamentoLabel(linhaClasseIII.categoria_equipamento);
@@ -1036,7 +1035,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         }
 
         return (
-            <tr key={`${nomeOM}-${index}`} className="expense-row">
+            <tr key={`${currentOMName}-${index}`} className="expense-row">
                 <td className="col-despesas">
                     <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: rowData.despesasValue }} />
                 </td>
@@ -1190,7 +1189,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
 
                   return (
                     <React.Fragment key={`${nomeOM}-group`}>
-                      {renderExpenseLines(allExpenseLines)}
+                      {renderExpenseLines(allExpenseLines, nomeOM)}
                       
                       {/* Subtotal Row - SOMA POR ND E GP DE DESPESA */}
                       <tr key={`${nomeOM}-subtotal`} className="subtotal-row">
