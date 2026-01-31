@@ -26,7 +26,7 @@ import {
   generateRacaoQuenteMemoriaCalculo, 
   generateRacaoOperacionalMemoriaCalculo,
   calculateClasseICalculations,
-  ClasseIRegistro as ClasseIRegistroType,
+  ClasseIRegistro as ClasseIRegistroType, // Importando o tipo corrigido
 } from "@/lib/classeIUtils";
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils";
@@ -49,7 +49,7 @@ import {
 } from "@/lib/suprimentoFundosUtils"; // NOVO: Importar utilitários de Suprimento de Fundos
 import { 
   generatePassagemMemoriaCalculo,
-  PassagemRegistro, // Importando o tipo PassagemRegistro
+  PassagemRegistro as PassagemRegistroType, // Importando o tipo PassagemRegistro
 } from "@/lib/passagemUtils"; // Importando utilitários de Passagem
 import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais } from "@/lib/ptrabUtils";
@@ -78,7 +78,7 @@ export interface PTrabData {
   rm_vinculacao: string;
 }
 
-// Usando o tipo importado para garantir consistência
+// Exportando o tipo corrigido
 export type ClasseIRegistro = ClasseIRegistroType;
 
 // NOVO TIPO: DiariaRegistro
@@ -124,6 +124,9 @@ export interface VerbaOperacionalRegistro {
   local: string | null;
   tarefa: string | null;
 }
+
+// Exportando o tipo PassagemRegistro
+export type PassagemRegistro = PassagemRegistroType;
 
 export interface ItemClasseIII {
   item: string; // nome_equipamento
@@ -236,7 +239,7 @@ interface GranularDisplayItem {
   fase_atividade: string;
   valor_nd_30: number;
   valor_nd_39: number;
-  original_registro: ClasseIIIRegistro;
+  original_registro: Tables<'classe_iii_registros'>; // Usando Tables para o tipo original
   detailed_items: ItemClasseIII[];
 }
 
@@ -348,11 +351,11 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
                 id: registro.id,
                 organizacao: registro.organizacao,
                 ug: registro.ug,
-                diasOperacao: registro.dias_operacao,
-                faseAtividade: registro.fase_atividade,
+                diasOperacao: registro.diasOperacao,
+                faseAtividade: registro.faseAtividade,
                 efetivo: registro.efetivo,
-                quantidadeR2: registro.quantidade_r2,
-                quantidadeR3: registro.quantidade_r3,
+                quantidadeR2: registro.quantidadeR2,
+                quantidadeR3: registro.quantidadeR3,
                 omQS: null, ugQS: null, nrRefInt: null, valorQS: null, valorQR: null,
                 calculos: {
                     totalQS: 0, totalQR: 0, nrCiclos: 0, diasEtapaPaga: 0, diasEtapaSolicitada: 0, totalEtapas: 0,
@@ -366,32 +369,32 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
 
     // Lógica para Ração Quente (QS/QR)
     if (tipo === 'QS') {
-        if (registro.memoria_calculo_qs_customizada && registro.memoria_calculo_qs_customizada.trim().length > 0) {
-            return registro.memoria_calculo_qs_customizada;
+        if (registro.memoriaQSCustomizada && registro.memoriaQSCustomizada.trim().length > 0) {
+            return registro.memoriaQSCustomizada;
         }
         const { qs } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
             organizacao: registro.organizacao,
             ug: registro.ug,
-            diasOperacao: registro.dias_operacao,
-            faseAtividade: registro.fase_atividade,
-            omQS: registro.om_qs,
-            ugQS: registro.ug_qs,
+            diasOperacao: registro.diasOperacao,
+            faseAtividade: registro.faseAtividade,
+            omQS: registro.omQS,
+            ugQS: registro.ugQS,
             efetivo: registro.efetivo,
-            nrRefInt: registro.nr_ref_int,
-            valorQS: registro.valor_qs,
-            valorQR: registro.valor_qr,
+            nrRefInt: registro.nrRefInt,
+            valorQS: registro.valorQS,
+            valorQR: registro.valorQR,
             calculos: {
-                totalQS: registro.total_qs,
-                totalQR: registro.total_qr,
-                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int || 0, registro.valor_qs || 0, registro.valor_qr || 0).nrCiclos,
+                totalQS: registro.calculos.totalQS,
+                totalQR: registro.calculos.totalQR,
+                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).nrCiclos,
                 diasEtapaPaga: 0,
-                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int || 0, registro.valor_qs || 0, registro.valor_qr || 0).diasEtapaSolicitada,
+                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).diasEtapaSolicitada,
                 totalEtapas: 0,
-                complementoQS: registro.complemento_qs,
-                etapaQS: registro.etapa_qs,
-                complementoQR: registro.complemento_qr,
-                etapaQR: registro.etapa_qr,
+                complementoQS: registro.calculos.complementoQS,
+                etapaQS: registro.calculos.etapaQS,
+                complementoQR: registro.calculos.complementoQR,
+                etapaQR: registro.calculos.etapaQR,
             },
             quantidadeR2: 0,
             quantidadeR3: 0,
@@ -401,32 +404,32 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
     }
 
     if (tipo === 'QR') {
-        if (registro.memoria_calculo_qr_customizada && registro.memoria_calculo_qr_customizada.trim().length > 0) {
-            return registro.memoria_calculo_qr_customizada;
+        if (registro.memoriaQRCustomizada && registro.memoriaQRCustomizada.trim().length > 0) {
+            return registro.memoriaQRCustomizada;
         }
         const { qr } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
             organizacao: registro.organizacao,
             ug: registro.ug,
-            diasOperacao: registro.dias_operacao,
-            faseAtividade: registro.fase_atividade,
-            omQS: registro.om_qs,
-            ugQS: registro.ug_qs,
+            diasOperacao: registro.diasOperacao,
+            faseAtividade: registro.faseAtividade,
+            omQS: registro.omQS,
+            ugQS: registro.ugQS,
             efetivo: registro.efetivo,
-            nrRefInt: registro.nr_ref_int,
-            valorQS: registro.valor_qs,
-            valorQR: registro.valor_qr,
+            nrRefInt: registro.nrRefInt,
+            valorQS: registro.valorQS,
+            valorQR: registro.valorQR,
             calculos: {
-                totalQS: registro.total_qs,
-                totalQR: registro.total_qr,
-                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int || 0, registro.valor_qs || 0, registro.valor_qr || 0).nrCiclos,
+                totalQS: registro.calculos.totalQS,
+                totalQR: registro.calculos.totalQR,
+                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).nrCiclos,
                 diasEtapaPaga: 0,
-                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int || 0, registro.valor_qs || 0, registro.valor_qr || 0).diasEtapaSolicitada,
+                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).diasEtapaSolicitada,
                 totalEtapas: 0,
-                complementoQS: registro.complemento_qs,
-                etapaQS: registro.etapa_qs,
-                complementoQR: registro.complemento_qr,
-                etapaQR: registro.etapa_qr,
+                complementoQS: registro.calculos.complementoQS,
+                etapaQS: registro.calculos.etapaQS,
+                complementoQR: registro.calculos.complementoQR,
+                etapaQR: registro.calculos.etapaQR,
             },
             quantidadeR2: 0,
             quantidadeR3: 0,
@@ -457,8 +460,8 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     
     if (isClasseII) {
         return generateClasseIIUtility(
-            registro.categoria,
-            registro.itens_equipamentos,
+            registro.categoria as any, // Cast para Categoria Classe II
+            registro.itens_equipamentos as any,
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -471,8 +474,8 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     
     if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVUtility(
-            registro.categoria,
-            registro.itens_equipamentos,
+            registro.categoria as any, // Cast para Categoria Classe V
+            registro.itens_equipamentos as any,
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -485,8 +488,8 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     
     if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVIUtility(
-            registro.categoria,
-            registro.itens_equipamentos,
+            registro.categoria as any, // Cast para Categoria Classe VI
+            registro.itens_equipamentos as any,
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -499,8 +502,8 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     
     if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVIIUtility(
-            registro.categoria,
-            registro.itens_equipamentos,
+            registro.categoria as any, // Cast para Categoria Classe VII
+            registro.itens_equipamentos as any,
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -762,30 +765,29 @@ const PTrabReportManager = () => {
 
       setPtrabData(ptrab as PTrabData);
       setRegistrosClasseI((classeIData || []).map(r => ({
-          ...r,
           id: r.id,
           organizacao: r.organizacao,
           ug: r.ug,
-          diasOperacao: r.dias_operacao,
-          faseAtividade: r.fase_atividade,
-          omQS: r.om_qs,
-          ugQS: r.ug_qs,
+          diasOperacao: r.dias_operacao, // Mapeado de snake_case para camelCase
+          faseAtividade: r.fase_atividade, // Mapeado de snake_case para camelCase
+          omQS: r.om_qs, // Mapeado de snake_case para camelCase
+          ugQS: r.ug_qs, // Mapeado de snake_case para camelCase
           efetivo: r.efetivo,
-          nrRefInt: r.nr_ref_int,
-          valorQS: Number(r.valor_qs),
-          valorQR: Number(r.valor_qr),
-          complemento_qs: Number(r.complemento_qs),
-          etapa_qs: Number(r.etapa_qs),
-          total_qs: Number(r.total_qs),
-          complemento_qr: Number(r.complemento_qr),
-          etapa_qr: Number(r.etapa_qr),
+          nrRefInt: r.nr_ref_int, // Mapeado de snake_case para camelCase
+          valorQS: Number(r.valor_qs), // Mapeado de snake_case para camelCase
+          valorQR: Number(r.valor_qr), // Mapeado de snake_case para camelCase
+          complementoQS: Number(r.complemento_qs), // Mapeado de snake_case para camelCase
+          etapaQS: Number(r.etapa_qs), // Mapeado de snake_case para camelCase
+          totalQS: Number(r.total_qs), // Mapeado de snake_case para camelCase
+          complementoQR: Number(r.complemento_qr), // Mapeado de snake_case para camelCase
+          etapaQR: Number(r.etapa_qr), // Mapeado de snake_case para camelCase
           total_geral: Number(r.total_geral),
-          memoriaQSCustomizada: r.memoria_calculo_qs_customizada,
-          memoriaQRCustomizada: r.memoria_calculo_qr_customizada,
+          memoriaQSCustomizada: r.memoria_calculo_qs_customizada, // Mapeado de snake_case para camelCase
+          memoriaQRCustomizada: r.memoria_calculo_qr_customizada, // Mapeado de snake_case para camelCase
           memoria_calculo_op_customizada: r.memoria_calculo_op_customizada, 
           categoria: (r.categoria || 'RACAO_QUENTE') as 'RACAO_QUENTE' | 'RACAO_OPERACIONAL',
-          quantidade_r2: r.quantidade_r2 || 0,
-          quantidade_r3: r.quantidade_r3 || 0,
+          quantidadeR2: r.quantidade_r2 || 0, // Mapeado de snake_case para camelCase
+          quantidadeR3: r.quantidade_r3 || 0, // Mapeado de snake_case para camelCase
           calculos: calculateClasseICalculations(r.efetivo, r.dias_operacao, r.nr_ref_int || 0, Number(r.valor_qs), Number(r.valor_qr)),
       })) as ClasseIRegistro[]);
       setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
@@ -862,11 +864,11 @@ const PTrabReportManager = () => {
 
     // 1. Processar Classe I (Apenas Ração Quente para a tabela principal)
     registrosClasseI.filter(r => r.categoria === 'RACAO_QUENTE').forEach((registro) => {
-        initializeGroup(registro.om_qs || registro.organizacao);
-        grupos[registro.om_qs || registro.organizacao].linhasQS.push({ 
+        initializeGroup(registro.omQS || registro.organizacao);
+        grupos[registro.omQS || registro.organizacao].linhasQS.push({ 
             registro, 
             tipo: 'QS',
-            valor_nd_30: registro.total_qs,
+            valor_nd_30: registro.totalQS,
             valor_nd_39: 0,
         });
         
@@ -874,7 +876,7 @@ const PTrabReportManager = () => {
         grupos[registro.organizacao].linhasQR.push({ 
             registro, 
             tipo: 'QR',
-            valor_nd_30: registro.total_qr,
+            valor_nd_30: registro.totalQR,
             valor_nd_39: 0,
         });
     });
@@ -984,7 +986,7 @@ const PTrabReportManager = () => {
                     fase_atividade: registro.fase_atividade || '',
                     valor_nd_30: isCombustivel ? valorTotalLinha : (isLubrificante ? valorTotalLinha : 0),
                     valor_nd_39: 0,
-                    original_registro: registro,
+                    original_registro: registro as Tables<'classe_iii_registros'>, // Cast para Tables
                     detailed_items: itensGrupo, // Passa apenas os itens deste grupo granular
                 };
                 
@@ -1069,8 +1071,8 @@ const PTrabReportManager = () => {
 
   const calcularTotaisPorOM = useCallback((grupo: GrupoOM, nomeOM: string) => {
     
-    const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + linha.registro.total_qs, 0);
-    const totalQR = grupo.linhasQR.reduce((acc, linha) => acc + linha.registro.total_qr, 0);
+    const totalQS = grupo.linhasQS.reduce((acc, linha) => acc + (linha.registro.totalQS || 0), 0); // CORRIGIDO: total_qs -> totalQS
+    const totalQR = grupo.linhasQR.reduce((acc, linha) => acc + (linha.registro.totalQR || 0), 0); // CORRIGIDO: total_qr -> totalQR
     
     const totalClasseII_ND30 = grupo.linhasClasseII.reduce((acc, linha) => acc + linha.registro.valor_nd_30, 0);
     const totalClasseII_ND39 = grupo.linhasClasseII.reduce((acc, linha) => acc + linha.registro.valor_nd_39, 0);
