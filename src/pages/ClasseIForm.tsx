@@ -118,7 +118,7 @@ const useClasseIRecords = (ptrabId: string) => {
 };
 
 // Componente principal
-export const ClasseIForm = () => {
+const ClasseIForm = () => {
   const { ptrabId } = useParams<{ ptrabId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -776,3 +776,5 @@ export const ClasseIForm = () => {
     </div>
   );
 };
+
+export default ClasseIForm;
