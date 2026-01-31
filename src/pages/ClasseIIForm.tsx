@@ -347,12 +347,12 @@ const ClasseIIForm = () => {
       // 1. Tentar buscar o ano padrão do perfil do usuário
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("default_diretriz_year")
+        .select("default_logistica_year") // CORRIGIDO: default_diretriz_year -> default_logistica_year
         .eq("id", user.id)
         .maybeSingle();
         
-      if (profileData?.default_diretriz_year) {
-          anoReferencia = profileData.default_diretriz_year;
+      if (profileData?.default_logistica_year) {
+          anoReferencia = profileData.default_logistica_year;
       }
 
       // 2. Se não houver ano padrão, buscar o ano mais recente na tabela de diretrizes
