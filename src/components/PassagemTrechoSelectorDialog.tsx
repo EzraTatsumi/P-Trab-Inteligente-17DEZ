@@ -5,11 +5,27 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader2, Plane, AlertTriangle, Check, ChevronDown, ChevronUp, PlusCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { DiretrizPassagem, TrechoPassagem, TipoTransporte } from '@/types/diretrizesPassagens';
+import { Tables } from '@/integrations/supabase/types'; // Importando Tables
 import { formatCurrency, formatDate, formatCodug } from '@/lib/formatUtils';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
+
+// Re-defining types based on Supabase schema to ensure all fields are present
+type DiretrizPassagemRow = Tables<'diretrizes_passagens'>;
+export type TrechoPassagem = {
+    id: string;
+    origem: string;
+    destino: string;
+    tipo_transporte: string;
+    is_ida_volta: boolean;
+    valor: number;
+};
+
+// Tipo de Diretriz com os trechos tipados corretamente
+export interface DiretrizPassagem extends Omit<DiretrizPassagemRow, 'trechos'> {
+    trechos: TrechoPassagem[];
+}
 
 // Define a estrutura de seleção de trecho que será retornada
 export interface TrechoSelection extends TrechoPassagem {
@@ -17,6 +33,7 @@ export interface TrechoSelection extends TrechoPassagem {
     om_detentora: string;
     ug_detentora: string;
     quantidade_passagens: number; // Quantidade solicitada para este trecho
+    valor_unitario: number; // Adicionado para resolver o erro TS2353
     // Nota: O ID do trecho é herdado de TrechoPassagem (propriedade 'id')
 }
 
@@ -47,6 +64,7 @@ const fetchDiretrizesPassagens = async (year: number): Promise<DiretrizPassagem[
     // Garante que trechos é um array de TrechoPassagem
     return (data || []).map(d => ({
         ...d,
+        // O campo 'trechos' é armazenado como Json (array de TrechoPassagem)
         trechos: (d.trechos as unknown as TrechoPassagem[]) || [],
     })) as DiretrizPassagem[];
 };
@@ -176,6 +194,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                                                     Contrato: {diretriz.om_referencia} (UG: {formatCodug(diretriz.ug_referencia)})
                                                 </h4>
                                                 <p className="text-sm text-muted-foreground">
+                                                    {/* Erros 2 e 3 corrigidos: data_inicio_vigencia e data_fim_vigencia agora existem no tipo DiretrizPassagem */}
                                                     Pregão: {diretriz.numero_pregao || 'N/A'} | Vigência: {formatDate(diretriz.data_inicio_vigencia)} a {formatDate(diretriz.data_fim_vigencia)}
                                                 </p>
                                             </div>
