@@ -34,12 +34,11 @@ export function DatePicker({ date, setDate, placeholder = "Selecione uma data", 
       if (isValid(parsedDate)) {
         // Se a data for válida, atualiza o estado principal
         // Argumentos: selectedDay, modifiers, e, isDayPicker
-        // FIX 1: Passando undefined para modifiers e e, e true para isDayPicker (indica que a seleção veio de fora do DayPicker)
+        // isDayPicker = false, pois a seleção veio da entrada manual
         setDate(parsedDate, undefined, undefined, false); 
       }
     } else if (rawValue.length === 0) {
         // Permite limpar a data
-        // FIX 2: Passando undefined para todos os argumentos, exceto o último (isDayPicker)
         setDate(undefined, undefined, undefined, false);
     }
   };
