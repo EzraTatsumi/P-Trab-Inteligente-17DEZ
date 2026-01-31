@@ -21,6 +21,8 @@ import {
     PassagemRegistro,
     DiariaRegistro,
     VerbaOperacionalRegistro,
+    ItemSaude, // Adicionado
+    ItemRemonta, // Adicionado
 } from "@/types/ptrab"; // Importar tipos do arquivo central
 
 // Define the category constants
@@ -56,6 +58,42 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     console.error("Erro ao carregar Classe I:", classeIError);
     // Continua, mas com dados vazios
   }
+  
+  // Mapeamento dos dados da Classe I para o tipo ClasseIRegistro (camelCase)
+  const safeClasseIData = (classeIData || []).map(r => ({
+      id: r.id, // ID não está no select, mas é necessário para o tipo. Assumindo que o select acima é simplificado.
+      organizacao: r.organizacao,
+      ug: r.ug,
+      diasOperacao: r.dias_operacao,
+      faseAtividade: r.fase_atividade,
+      omQS: r.om_qs,
+      ugQS: r.ug_qs,
+      efetivo: r.efetivo,
+      nrRefInt: r.nr_ref_int,
+      valorQS: Number(r.valor_qs),
+      valorQR: Number(r.valor_qr),
+      complementoQS: Number(r.complemento_qs),
+      etapaQS: Number(r.etapa_qs),
+      totalQS: Number(r.total_qs),
+      complementoQR: Number(r.complemento_qr),
+      etapaQR: Number(r.etapa_qr),
+      totalQR: Number(r.total_qr),
+      totalGeral: Number(r.total_geral),
+      memoriaQSCustomizada: r.memoria_calculo_qs_customizada,
+      memoriaQRCustomizada: r.memoria_calculo_qr_customizada,
+      memoriaOPCustomizada: r.memoria_calculo_op_customizada,
+      categoria: (r.categoria || 'RACAO_QUENTE') as 'RACAO_QUENTE' | 'RACAO_OPERACIONAL',
+      quantidadeR2: r.quantidade_r2 || 0,
+      quantidadeR3: r.quantidade_r3 || 0,
+      calculos: {
+          totalQS: Number(r.total_qs),
+          totalQR: Number(r.total_qr),
+          nrCiclos: 0, diasEtapaPaga: 0, diasEtapaSolicitada: 0, totalEtapas: 0,
+          complementoQS: Number(r.complemento_qs), etapaQS: Number(r.etapa_qs),
+          complementoQR: Number(r.complemento_qr), etapaQR: Number(r.etapa_qr),
+      },
+  })) as ClasseIRegistro[];
+
 
   let totalClasseI = 0;
   let totalComplemento = 0;
@@ -64,18 +102,18 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   let totalRefeicoesIntermediarias = 0;
   let totalRacoesOperacionaisGeral = 0;
 
-  (classeIData || []).forEach(record => {
+  (safeClasseIData || []).forEach(record => {
     if (record.categoria === 'RACAO_QUENTE') {
-        // Garantir que todos os campos numéricos sejam tratados como números
-        const totalQs = Number(record.total_qs || 0);
-        const totalQr = Number(record.total_qr || 0);
-        const complementoQs = Number(record.complemento_qs || 0);
-        const etapaQs = Number(record.etapa_qs || 0);
-        const complementoQr = Number(record.complemento_qr || 0);
-        const etapaQr = Number(record.etapa_qr || 0);
-        const efetivo = Number(record.efetivo || 0);
-        const nrRefInt = Number(record.nr_ref_int || 0);
-        const diasOperacao = Number(record.dias_operacao || 0);
+        // Usando propriedades camelCase
+        const totalQs = record.totalQS;
+        const totalQr = record.totalQR;
+        const complementoQs = record.complementoQS;
+        const etapaQs = record.etapaQS;
+        const complementoQr = record.complementoQR;
+        const etapaQr = record.etapaQR;
+        const efetivo = record.efetivo;
+        const nrRefInt = record.nrRefInt;
+        const diasOperacao = record.diasOperacao;
 
         totalClasseI += totalQs + totalQr;
         totalComplemento += complementoQs + complementoQr;
@@ -86,7 +124,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
         
         totalRefeicoesIntermediarias += efetivo * nrRefInt * diasOperacao;
     } else if (record.categoria === 'RACAO_OPERACIONAL') {
-        totalRacoesOperacionaisGeral += Number(record.quantidade_r2 || 0) + Number(record.quantidade_r3 || 0);
+        totalRacoesOperacionaisGeral += record.quantidadeR2 + record.quantidadeR3;
     }
   });
   
@@ -138,7 +176,6 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .eq('p_trab_id', ptrabId),
     supabase
       .from('diaria_registros') // Diárias
-      // CORRIGIDO: Buscando valor_nd_15 (total geral) e valor_taxa_embarque (para detalhamento)
       .select('valor_total, valor_nd_15, valor_taxa_embarque, quantidade, dias_operacao, valor_nd_30') 
       .eq('p_trab_id', ptrabId),
     supabase // Verba Operacional e Suprimento de Fundos
