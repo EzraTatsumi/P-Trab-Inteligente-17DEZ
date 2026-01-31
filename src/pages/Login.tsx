@@ -26,7 +26,7 @@ import { EmailVerificationDialog } from '@/components/EmailVerificationDialog';
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login: React.FC = () => {
-  const { user, loading: sessionLoading } = useSession();
+  const { user, isLoading: sessionLoading } = useSession();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);

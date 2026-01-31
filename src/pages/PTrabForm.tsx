@@ -32,7 +32,7 @@ const PTrabForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const ptrabId = searchParams.get('ptrabId');
-  const { user, loading: loadingSession } = useSession();
+  const { user, isLoading: loadingSession } = useSession();
   const queryClient = useQueryClient();
   
   const [ptrabData, setPtrabData] = useState<PTrabData | null>(null);
