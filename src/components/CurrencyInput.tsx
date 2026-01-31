@@ -1,9 +1,10 @@
 import React, { useMemo, useCallback } from 'react';
-import { Input, InputProps } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 import { formatCurrencyInput } from "@/lib/formatUtils";
 import { cn } from "@/lib/utils";
 
-interface CurrencyInputProps extends Omit<InputProps, 'value' | 'onChange' | 'onBlur'> {
+// Obtém as propriedades do componente Input diretamente
+interface CurrencyInputProps extends Omit<React.ComponentPropsWithoutRef<typeof Input>, 'value' | 'onChange' | 'onBlur'> {
   rawDigits: string;
   onChange: (digits: string) => void;
   placeholder?: string;

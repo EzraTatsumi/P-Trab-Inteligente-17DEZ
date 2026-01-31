@@ -46,15 +46,16 @@ export const formatCurrency = (value: number | null | undefined): string => {
 /**
  * Formata um número para o padrão brasileiro (X.XXX,XX).
  * @param value O valor numérico.
+ * @param decimals O número máximo de casas decimais (padrão: 2).
  * @returns A string formatada.
  */
-export const formatNumber = (value: number | null | undefined): string => {
+export const formatNumber = (value: number | null | undefined, decimals: number = 2): string => {
     if (value === null || value === undefined) {
         return '0';
     }
     return new Intl.NumberFormat('pt-BR', {
         minimumFractionDigits: 0,
-        maximumFractionDigits: 2,
+        maximumFractionDigits: decimals,
     }).format(value);
 };
 
