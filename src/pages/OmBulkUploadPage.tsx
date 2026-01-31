@@ -76,12 +76,12 @@ const OmBulkUploadPage = () => {
             throw new Error(`Cabeçalhos obrigatórios ausentes: ${missingHeaders.join(', ')}`);
         }
         
-        // Mapeia os dados para o formato RawOMData, usando cellText: true para ler o valor formatado (string)
+        // Mapeia os dados para o formato RawOMData.
+        // Removido 'cellText: true' para resolver o erro de tipagem.
         const rawData = XLSX.utils.sheet_to_json(worksheet, { 
             header: requiredHeaders, 
             range: 1,
             raw: false, // Garante que não tenta inferir tipos brutos
-            cellText: true, // Lê o texto formatado da célula (preserva pontos e zeros à esquerda)
         }) as RawOMData[];
         
         if (rawData.length === 0) {
