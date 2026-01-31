@@ -1,32 +1,56 @@
-import { useCallback } from 'react';
+import React from 'react';
 
-/**
- * Hook para adicionar funcionalidade de navegação de formulário (pressionar Enter para ir para o próximo campo).
- */
 export const useFormNavigation = () => {
-  const handleEnterToNextField = useCallback((event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleEnterToNextField = (event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (event.key === 'Enter') {
-      event.preventDefault();
-      
+      event.preventDefault(); // Previne o comportamento padrão (ex: submissão do formulário)
       const form = event.currentTarget.form;
-      if (!form) return;
+      if (form) {
+        // Se o campo atual for um input de senha, submete o formulário diretamente
+        if (event.currentTarget.type === 'password') {
+          const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+          if (submitButton) {
+            submitButton.click();
+          } else {
+            // Fallback: tenta encontrar o primeiro botão que não seja type="button"
+            const firstDefaultButton = form.querySelector('button:not([type="button"]):not([disabled])') as HTMLButtonElement;
+            if (firstDefaultButton) {
+              firstDefaultButton.click();
+            }
+          }
+          return; // Interrompe a execução para não mover o foco
+        }
 
-      const elements = Array.from(form.elements) as (HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement)[];
-      const index = elements.indexOf(event.currentTarget);
-      
-      // Encontra o próximo elemento de entrada que não está desabilitado
-      for (let i = index + 1; i < elements.length; i++) {
-        const nextElement = elements[i];
-        if (
-          (nextElement instanceof HTMLInputElement || nextElement instanceof HTMLTextAreaElement) &&
-          !nextElement.disabled
-        ) {
-          nextElement.focus();
-          return;
+        // Lógica existente para mover o foco para o próximo campo
+        const focusableElements = Array.from(
+          form.querySelectorAll(
+            'input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), ' +
+            'textarea:not([disabled]):not([tabindex="-1"]), ' +
+            'select:not([disabled]):not([tabindex="-1"]), ' +
+            'button:not([disabled]):not([tabindex="-1"]), ' +
+            'a[href]:not([disabled]):not([tabindex="-1"]), ' +
+            '[tabindex]:not([tabindex="-1"]):not([disabled])'
+          )
+        ) as HTMLElement[];
+        
+        const currentElementIndex = focusableElements.indexOf(event.currentTarget);
+        
+        if (currentElementIndex > -1 && currentElementIndex < focusableElements.length - 1) {
+          focusableElements[currentElementIndex + 1].focus();
+        } else {
+          const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+          if (submitButton) {
+            submitButton.click();
+          } else {
+            const firstDefaultButton = form.querySelector('button:not([type="button"]):not([disabled])') as HTMLButtonElement;
+            if (firstDefaultButton) {
+              firstDefaultButton.click();
+            }
+          }
         }
       }
     }
-  }, []);
+  };
 
   return { handleEnterToNextField };
 };
