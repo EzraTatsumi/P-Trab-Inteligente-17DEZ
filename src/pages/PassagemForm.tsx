@@ -19,7 +19,7 @@ import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/ptrabUtils";
 import { 
     calculatePassagemTotals, 
     generatePassagemMemoriaCalculo,
-    PassagemRegistro,
+    PassagemRegistro, // Importando o tipo PassagemRegistro
     PassagemForm as PassagemFormType,
     generateConsolidatedPassagemMemoriaCalculo, // Importando a nova função
     ConsolidatedPassagemRecord, // Importando o tipo
@@ -631,11 +631,15 @@ const PassagemForm = () => {
             
             const totalTrecho = calculateTrechoTotal(trecho);
             
-            const calculatedFormData: PassagemFormType = {
+            const calculatedFormData: PassagemRegistro = {
+                id: registro.id, // Usamos o ID real do DB
+                p_trab_id: ptrabId!,
                 organizacao: registro.organizacao, 
                 ug: registro.ug, 
                 dias_operacao: registro.dias_operacao,
                 fase_atividade: registro.fase_atividade || "",
+                
+                // Dados do Trecho Selecionado
                 om_detentora: registro.om_detentora,
                 ug_detentora: registro.ug_detentora,
                 diretriz_id: trecho.diretriz_id,
@@ -645,21 +649,34 @@ const PassagemForm = () => {
                 tipo_transporte: registro.tipo_transporte,
                 is_ida_volta: registro.is_ida_volta,
                 valor_unitario: trecho.valor_unitario,
+                
+                // Quantidade
                 quantidade_passagens: registro.quantidade_passagens,
                 efetivo: registro.efetivo || 0,
+                
+                valor_total: totalTrecho,
+                valor_nd_33: totalTrecho,
+                
+                detalhamento: registro.detalhamento, 
+                detalhamento_customizado: registro.detalhamento_customizado, 
+                
+                // Campos obrigatórios do tipo DB
+                created_at: registro.created_at,
+                updated_at: registro.updated_at,
+                valor_nd_30: registro.valor_nd_30,
             };
 
             // Usamos a função de memória individual para o staging, pois cada item é um registro de DB
-            let memoria = generatePassagemMemoriaCalculo(registro as PassagemRegistro);
+            let memoria = generatePassagemMemoriaCalculo(calculatedFormData);
             
             return {
                 tempId: registro.id, // Usamos o ID real do DB como tempId para rastreamento
-                p_trab_id: registro.p_trab_id,
+                p_trab_id: ptrabId!,
                 organizacao: registro.organizacao, 
                 ug: registro.ug, 
                 dias_operacao: registro.dias_operacao,
-                efetivo: registro.efetivo || 0,
-                fase_atividade: registro.fase_atividade || "",
+                efetivo: registro.efetivo,
+                fase_atividade: registro.fase_atividade,
                 
                 om_detentora: registro.om_detentora,
                 ug_detentora: registro.ug_detentora,
@@ -682,7 +699,7 @@ const PassagemForm = () => {
                 memoria_calculo_display: memoria, 
                 om_favorecida: registro.organizacao,
                 ug_favorecida: registro.ug,
-                selected_trechos: [trecho], 
+                selected_trechos: [trecho], // Armazena apenas o trecho relevante
             } as CalculatedPassagem;
         });
         
