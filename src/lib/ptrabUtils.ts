@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, TableName } from "@/integrations/supabase/types";
-import { PTrabData } from "@/pages/PTrabReportManager"; // Reutilizando o tipo PTrabData
+// Reutilizando o tipo PTrabData
 
 // Tipo para as diretrizes operacionais (valores unitários)
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -13,6 +13,11 @@ type PTrabLinkedTableName =
     'classe_viii_saude_registros' | 'classe_viii_remonta_registros' | 
     'classe_ix_registros' | 'p_trab_ref_lpc' | 'passagem_registros' | 
     'diaria_registros' | 'verba_operacional_registros';
+
+/**
+ * Tipo de dados para o PTrab principal.
+ */
+export type PTrabData = Tables<'p_trab'>; // EXPORTANDO O TIPO AQUI
 
 /**
  * Verifica o status de um PTrab e o atualiza para 'em_andamento' se estiver 'aberto'.
