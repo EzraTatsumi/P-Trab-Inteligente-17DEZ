@@ -620,18 +620,12 @@ const DiariaForm = () => {
             // NOVO: Salva o estado atual do formulário como o último salvo
             setLastSavedFormData(formData);
             
-            // 5. Resetar o formulário para o próximo item (mantendo OM, Fase, Dias, Viagens, Destino, Local, Aéreo E QUANTIDADES)
-            // Mantemos os campos de contexto (OM, UG, Fase, Destino, Dias, Viagens, Local, Aéreo, Quantidades)
+            // 5. Resetar o formulário para o próximo item.
+            // Mantemos apenas OM, UG e Fase de Atividade. O resto é resetado.
             const keptData = {
                 organizacao: formData.organizacao,
                 ug: formData.ug,
                 fase_atividade: formData.fase_atividade,
-                destino: formData.destino,
-                nr_viagens: formData.nr_viagens,
-                dias_operacao: formData.dias_operacao,
-                local_atividade: formData.local_atividade, // MANTIDO
-                is_aereo: formData.is_aereo, // MANTIDO
-                quantidades_por_posto: formData.quantidades_por_posto, // MANTIDO
             };
             
             setFormData(prev => ({
@@ -1190,7 +1184,7 @@ const DiariaForm = () => {
                                                 const subtotalFormatted = formatCurrency(subtotal);
                                                 
                                                 // Lógica de pluralização de dias (0.5 = dia, 1 = dia, >1 = dias)
-                                                const diasText = Math.abs(diasPagamento - 0.5) < 0.001 || diasPagamento === 1 ? 'dia' : 'dias';
+                                                const diasText = Math.abs(diasPagamento - 0.001) < 0.001 || diasPagamento === 1 ? 'dia' : 'dias';
                                                 
                                                 const calculationString = `${qty} ${rank.label} x ${unitValueFormatted}/dia x ${formatNumber(diasPagamento, 1)} ${diasText} x ${item.nr_viagens} ${viagemText} = ${subtotalFormatted}`;
                                                 

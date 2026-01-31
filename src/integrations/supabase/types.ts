@@ -125,6 +125,7 @@ export type Database = {
           updated_at: string
           valor_nd_30: number
           valor_nd_39: number
+          valor_total: number // Adicionado valor_total
         }
         Insert: {
           categoria: string
@@ -646,6 +647,95 @@ export type Database = {
           },
         ]
       }
+      diaria_registros: {
+        Row: {
+          created_at: string
+          detalhamento: string | null
+          detalhamento_customizado: string | null
+          dias_operacao: number
+          destino: string
+          fase_atividade: string | null
+          id: string
+          is_aereo: boolean | null
+          local_atividade: string | null
+          nr_viagens: number
+          om_detentora: string | null
+          organizacao: string
+          p_trab_id: string
+          posto_graduacao: string | null
+          quantidade: number
+          quantidades_por_posto: Json | null
+          ug: string
+          ug_detentora: string | null
+          updated_at: string
+          valor_diaria_unitario: number | null
+          valor_nd_15: number
+          valor_nd_30: number
+          valor_taxa_embarque: number | null
+          valor_total: number
+        }
+        Insert: {
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao: number
+          destino: string
+          fase_atividade?: string | null
+          id?: string
+          is_aereo?: boolean | null
+          local_atividade?: string | null
+          nr_viagens?: number
+          om_detentora?: string | null
+          organizacao: string
+          p_trab_id: string
+          posto_graduacao?: string | null
+          quantidade: number
+          quantidades_por_posto?: Json | null
+          ug: string
+          ug_detentora?: string | null
+          updated_at?: string
+          valor_diaria_unitario?: number | null
+          valor_nd_15?: number
+          valor_nd_30?: number
+          valor_taxa_embarque?: number | null
+          valor_total?: number
+        }
+        Update: {
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          destino?: string
+          fase_atividade?: string | null
+          id?: string
+          is_aereo?: boolean | null
+          local_atividade?: string | null
+          nr_viagens?: number
+          om_detentora?: string | null
+          organizacao?: string
+          p_trab_id?: string
+          posto_graduacao?: string | null
+          quantidade?: number
+          quantidades_por_posto?: Json | null
+          ug?: string
+          ug_detentora?: string | null
+          updated_at?: string
+          valor_diaria_unitario?: number | null
+          valor_nd_15?: number
+          valor_nd_30?: number
+          valor_taxa_embarque?: number | null
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diaria_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diretrizes_classe_ii: {
         Row: {
           ano_referencia: number
@@ -1111,6 +1201,51 @@ export type Database = {
           raw_user_meta_data?: Json | null
         }
         Relationships: []
+      }
+      ptrab_share_requests: {
+        Row: {
+          created_at: string
+          id: string
+          ptrab_id: string
+          requester_id: string
+          share_token: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ptrab_id: string
+          requester_id: string
+          share_token: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ptrab_id?: string
+          requester_id?: string
+          share_token?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ptrab_share_requests_ptrab_id_fkey"
+            columns: ["ptrab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ptrab_share_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       verba_operacional_registros: {
         Row: {

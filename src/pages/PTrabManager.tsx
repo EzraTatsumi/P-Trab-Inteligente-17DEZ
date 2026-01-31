@@ -385,12 +385,13 @@ const PTrabManager = () => {
       if (ownedPTrabIds.length > 0) {
           const { data: requestsData, error: requestsError } = await supabase
               .from('ptrab_share_requests')
-              .select('ptrab_id')
+              .select('id, ptrab_id, requester_id, share_token, status, created_at, updated_at') // Selecionar todas as colunas
               .in('ptrab_id', ownedPTrabIds)
               .eq('status', 'pending');
               
           if (requestsError) console.error("Erro ao carregar solicitações pendentes:", requestsError);
-          else pendingRequests = requestsData || [];
+          // FIX 1: requestsData agora é do tipo correto (Tables<'ptrab_share_requests'>[])
+          else pendingRequests = requestsData || []; 
       }
       
       const ptrabsWithPendingRequests = new Set(pendingRequests.map(r => r.ptrab_id));
@@ -419,7 +420,7 @@ const PTrabManager = () => {
           // 2. Fetch Classes II, V, VI, VII, VIII, IX totals (33.90.30 + 33.90.39)
           const { data: classeIIData, error: classeIIError } = await supabase
             .from('classe_ii_registros')
-            .select('valor_total')
+            .select('valor_total') // FIX 2: Selecting valor_total
             .eq('p_trab_id', ptrab.id);
             
           const { data: classeVData, error: classeVError } = await supabase
@@ -483,7 +484,7 @@ const PTrabManager = () => {
           
           // 4. Fetch Diaria totals (33.90.15 and 33.90.30)
           const { data: diariaData, error: diariaError } = await supabase
-            .from('diaria_registros')
+            .from('diaria_registros') // FIX 3: Table name is now recognized
             .select('valor_nd_15, valor_nd_30')
             .eq('p_trab_id', ptrab.id);
 
@@ -492,7 +493,8 @@ const PTrabManager = () => {
           
           if (diariaError) console.error("Erro ao carregar Diárias para PTrab", ptrab.numero_ptrab, diariaError);
           else {
-              totalDiariaND15 = (diariaData || []).reduce((sum, record) => sum + (record.valor_nd_15 || 0), 0);
+              // FIX 4 & 5: Properties are now correctly typed
+              totalDiariaND15 = (diariaData || []).reduce((sum, record) => sum + (record.valor_nd_15 || 0), 0); 
               totalDiariaND30 = (diariaData || []).reduce((sum, record) => sum + (record.valor_nd_30 || 0), 0);
           }
           
@@ -1309,7 +1311,10 @@ const PTrabManager = () => {
         const tablesToConsolidate: (keyof Tables)[] = [
             'classe_i_registros', 'classe_ii_registros', 'classe_iii_registros', 
             'classe_v_registros', 'classe_vi_registros', 'classe_vii_registros', 
-            'classe_viii_saude_registros', 'classe_viii_remonta_registros', 'classe_ix_registros'
+            'classe_viii_saude_registros', 'classe_viii_remonta_registros', 'classe_ix_registros',
+            'diaria_registros', // Incluindo diárias
+            'verba_operacional_registros', // Incluindo verba operacional
+            'passagem_registros', // Incluindo passagens
         ];
         
         for (const tableName of tablesToConsolidate) {

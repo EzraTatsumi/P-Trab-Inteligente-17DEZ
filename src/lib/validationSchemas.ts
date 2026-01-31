@@ -14,6 +14,7 @@ const isEfetivoPresent = (quantidades: Record<string, number>): boolean => {
 export const loginSchema = z.object({
     email: z.string().email("E-mail inválido."),
     password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres."),
+    rememberMe: z.boolean().optional(), // Adicionado rememberMe
 });
 
 // --- Diretriz Operacional Schema (Used in CustosOperacionaisPage) ---
