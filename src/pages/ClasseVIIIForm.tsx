@@ -54,7 +54,7 @@ interface TempDestination {
     id?: string;
 }
 const initialTempDestinations: Record<Categoria, TempDestination> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: { om: "", ug: "", id: undefined } }), {} as Record<Categoria, TempDestination>);
-const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, string>);
+const initialTempND39Inputs: Record<Categoria, string> = CATEGORIAS.reduce((acc, cat) => ({ ...acc, [cat]: "" }), {} as Record<Categoria, TempDestination>);
 // --- FIM TIPOS TEMPORÁRIOS ---
 
 interface ItemSaude {
@@ -550,8 +550,8 @@ const ClasseVIIIForm = () => {
                     categoria: 'Remonta/Veterinária',
                 };
                 
-                // CORRIGIDO: Usando a variável 'baseItems' declarada no escopo da função
-                baseItems.push(baseItem);
+                // CORRIGIDO: Usando a variável 'baseRemontaItems' declarada no escopo da função
+                baseRemontaItems.push(baseItem);
             }
         });
         
@@ -608,7 +608,7 @@ const ClasseVIIIForm = () => {
             const savedDigits = String(Math.round(savedND39Value * 100));
             setTempND39Inputs(prev => ({
                 ...prev,
-                [cat]: savedDigits
+                [cat]: digits
             }));
         }
     }
