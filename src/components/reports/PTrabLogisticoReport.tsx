@@ -654,6 +654,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                     
                 } else { // QR
+                    line1 = `CLASSE I - SUBSISTÊNCIA`;
                     rowData.omValue = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
                     rowData.valorC = registro.totalQR;
                     rowData.valorE = registro.totalQR;
@@ -778,6 +779,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
                     rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
                 }
+                
+                rowData.despesasValue = line1 + (line2 ? `\n${line2}` : '');
             }
             
             // --- Renderização da Linha no Excel ---
@@ -1163,13 +1166,42 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       ...grupo.linhasQS,
                       ...grupo.linhasQR,
                       ...grupo.linhasClasseII,
-                      ...linhasClasseIIIOrdenadas,
                       ...grupo.linhasClasseV,
                       ...grupo.linhasClasseVI,
                       ...grupo.linhasClasseVII,
                       ...grupo.linhasClasseVIII,
                       ...grupo.linhasClasseIX,
-                  ];
+                      ...linhasClasseIIIOrdenadas,
+                  ].sort((a, b) => {
+                      // Ordenação por Classe (I, II, III, V, VI, VII, VIII, IX)
+                      const getClasseOrder = (linha: any) => {
+                          if ('tipo' in linha) return 1; // Classe I
+                          if ('categoria_equipamento' in linha) return 3; // Classe III
+                          
+                          const cat = linha.registro.categoria;
+                          if (CLASSE_V_CATEGORIES.includes(cat)) return 5;
+                          if (CLASSE_VI_CATEGORIES.includes(cat)) return 6;
+                          if (CLASSE_VII_CATEGORIES.includes(cat)) return 7;
+                          if (CLASSE_VIII_CATEGORIES.includes(cat)) return 8;
+                          if (CLASSE_IX_CATEGORIES.includes(cat)) return 9;
+                          return 2; // Classe II (default)
+                      };
+                      
+                      const orderA = getClasseOrder(a);
+                      const orderB = getClasseOrder(b);
+                      
+                      if (orderA !== orderB) return orderA - orderB;
+                      
+                      // Sub-ordenação por categoria/tipo
+                      if ('tipo' in a && 'tipo' in b) {
+                          return a.tipo.localeCompare(b.tipo); // QS antes de QR
+                      }
+                      if ('categoria_equipamento' in a && 'categoria_equipamento' in b) {
+                          return a.tipo_suprimento.localeCompare(b.tipo_suprimento); // Diesel/Gasolina/Lubrificante
+                      }
+                      
+                      return 0;
+                  });
 
                   return (
                     <React.Fragment key={`${nomeOM}-group`}>
@@ -1341,9 +1373,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                                 const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
                                 rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
                             }
+                            
+                            rowData.despesasValue = line1 + (line2 ? `\n${line2}` : '');
                         }
-                        
-                        rowData.despesasValue = line1 + (line2 ? `\n${line2}` : '');
                         
                         return (
                             <tr key={`${nomeOM}-${index}`} className="expense-row">

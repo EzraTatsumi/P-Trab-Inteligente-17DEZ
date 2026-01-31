@@ -933,7 +933,13 @@ const PTrabReportManager = () => {
                 let precoLitroLinha = 0;
                 
                 itensGrupo.forEach(item => {
-                    const totals = calculateItemTotals(item, refLPC, registro.dias_operacao);
+                    // Adicionando campos de input para satisfazer a interface ItemClasseIII
+                    const itemWithInputs = {
+                        ...item,
+                        preco_lubrificante_input: registro.preco_lubrificante || 0,
+                        consumo_lubrificante_input: registro.consumo_lubrificante_litro || 0,
+                    };
+                    const totals = calculateItemTotals(itemWithInputs, refLPC, registro.dias_operacao);
                     if (isCombustivel) {
                         totalLitrosLinha += totals.totalLitros;
                         valorTotalLinha += totals.valorCombustivel;
@@ -974,7 +980,11 @@ const PTrabReportManager = () => {
                     valor_nd_30: isCombustivel ? valorTotalLinha : (isLubrificante ? valorTotalLinha : 0),
                     valor_nd_39: 0,
                     original_registro: registro,
-                    detailed_items: itensGrupo, // Passa apenas os itens deste grupo granular
+                    detailed_items: itensGrupo.map(item => ({
+                        ...item,
+                        preco_lubrificante_input: registro.preco_lubrificante || 0,
+                        consumo_lubrificante_input: registro.consumo_lubrificante_litro || 0,
+                    })),
                 };
                 
                 const itemComMemoria = itensGrupo.find(i => !!i.memoria_customizada) || itensGrupo[0];
