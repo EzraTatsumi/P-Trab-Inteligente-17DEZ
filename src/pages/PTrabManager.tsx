@@ -330,7 +330,14 @@ const PTrabManager = () => {
             }
         }
   };
-// ... (rest of the file)
-}; // <-- Fechando o componente PTrabManager
+
+  // Adicionando um retorno básico para evitar a tela branca
+  return (
+    <div className="flex items-center justify-center h-screen">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <p className="ml-2 text-lg text-muted-foreground">Carregando...</p>
+    </div>
+  );
+};
 
 export default PTrabManager;
