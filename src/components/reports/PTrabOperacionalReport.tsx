@@ -665,6 +665,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente, COM QUEBRA DE LINHA)
             let despesasLabel = `PASSAGENS`;
             if (isDifferentOm) {
+                // Usar \n para quebra de linha no Excel
                 despesasLabel += `\n${consolidated.organizacao}`;
             }
             row.getCell('A').value = despesasLabel; 
@@ -1226,14 +1227,13 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente, COM QUEBRA DE LINHA)
                             let despesasLabel = `PASSAGENS`;
                             if (isDifferentOm) {
-                                despesasLabel += `\n${consolidated.organizacao}`;
+                                despesasLabel += `<br/>${consolidated.organizacao}`;
                             }
                             
                             return (
                                 <tr key={`passagem-consolidada-${consolidated.groupKey}`} className="expense-row">
                                   <td className="col-despesas-op"> 
-                                    {/* Usando o valor com \n para o Excel */}
-                                    {despesasLabel}
+                                    <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: despesasLabel }} />
                                   </td>
                                   <td className="col-om-op">
                                     <div>{consolidated.om_detentora}</div>
