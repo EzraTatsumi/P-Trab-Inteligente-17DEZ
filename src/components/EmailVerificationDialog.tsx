@@ -47,9 +47,8 @@ export const EmailVerificationDialog: React.FC<EmailVerificationDialogProps> = (
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: email,
-        options: { // FIX: Use options object for emailRedirectTo
-          emailRedirectTo: `${window.location.origin}/ptrab`, 
-        },
+        // Adicionado emailRedirectTo para garantir que o link gerado seja consistente
+        emailRedirectTo: `${window.location.origin}/ptrab`, 
       });
 
       if (error) throw error;
