@@ -125,7 +125,8 @@ export async function fetchUserProfile(): Promise<Profile> {
             updated_at: new Date().toISOString(),
             credit_gnd3: 0,
             credit_gnd4: 0,
-            default_diretriz_year: null,
+            default_logistica_year: null, // Adicionado campo logistica
+            default_operacional_year: null, // Adicionado campo operacional
             raw_user_meta_data: null,
             om_details: null, // om_details será null, pois não foi buscado
         } as Profile;
