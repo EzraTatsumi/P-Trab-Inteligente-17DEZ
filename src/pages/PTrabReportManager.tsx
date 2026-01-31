@@ -222,24 +222,7 @@ export interface LinhaClasseIII {
   memoria_calculo: string; // Armazena a memória de cálculo granular
 }
 
-// NOVO TIPO: Estrutura granular para geração de memória da Classe III
-interface GranularDisplayItem {
-  id: string; 
-  om_destino: string; 
-  ug_destino: string; 
-  categoria: 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
-  suprimento_tipo: 'COMBUSTIVEL_GASOLINA' | 'COMBUSTIVEL_DIESEL' | 'LUBRIFICANTE';
-  valor_total: number;
-  total_litros: number;
-  preco_litro: number; 
-  dias_operacao: number;
-  fase_atividade: string;
-  valor_nd_30: number;
-  valor_nd_39: number;
-  original_registro: ClasseIIIRegistro;
-  detailed_items: ItemClasseIII[];
-}
-
+// Exportado para uso em PTrabLogisticoReport.tsx
 export interface LinhaTabela {
   registro: ClasseIRegistro;
   valor_nd_30: number; // Adicionado para consistência
@@ -247,6 +230,7 @@ export interface LinhaTabela {
   tipo: 'QS' | 'QR';
 }
 
+// Exportado para uso em PTrabLogisticoReport.tsx
 export interface LinhaClasseII {
   registro: ClasseIIRegistro;
   valor_nd_30: number; // Adicionado para consistência
@@ -324,9 +308,11 @@ export const getClasseIILabel = (category: string): string => {
 // Exportando a função de cálculo de item da utilidade
 export const calculateItemTotalClasseIX = calculateItemTotalClasseIXUtility;
 
-// Função para gerar a memória de cálculo da Classe IX (agora usando o utilitário)
+/**
+ * Função unificada para gerar a memória de cálculo da Classe IX, priorizando o customizado.
+ */
 export const generateClasseIXMemoriaCalculo = (registro: ClasseIIRegistro): string => {
-    if (registro.detalhamento_customizado) {
+    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
       return registro.detalhamento_customizado;
     }
     
@@ -375,8 +361,8 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
             ug: registro.ug,
             diasOperacao: registro.dias_operacao,
             faseAtividade: registro.fase_atividade,
-            omQS: registro.om_qs,
-            ugQS: registro.ug_qs,
+            omQS: registro.omQS, // CORRIGIDO: Usar omQS
+            ugQS: registro.ugQS, // CORRIGIDO: Usar ugQS
             efetivo: registro.efetivo,
             nrRefInt: registro.nr_ref_int,
             valorQS: registro.valor_qs,
@@ -410,8 +396,8 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
             ug: registro.ug,
             diasOperacao: registro.dias_operacao,
             faseAtividade: registro.fase_atividade,
-            omQS: registro.om_qs,
-            ugQS: registro.ug_qs,
+            omQS: registro.omQS, // CORRIGIDO: Usar omQS
+            ugQS: registro.ugQS, // CORRIGIDO: Usar ugQS
             efetivo: registro.efetivo,
             nrRefInt: registro.nr_ref_int,
             valorQS: registro.valor_qs,
@@ -488,7 +474,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
             registro.categoria,
             registro.itens_equipamentos,
             registro.dias_operacao,
-            registro.om_detentora || registro.organizacao,
+            registro.om_detentora || registro.ug,
             registro.ug_detentora || registro.ug,
             registro.fase_atividade,
             registro.efetivo || 0,
@@ -768,8 +754,8 @@ const PTrabReportManager = () => {
           ug: r.ug,
           diasOperacao: r.dias_operacao,
           faseAtividade: r.fase_atividade,
-          omQS: r.om_qs,
-          ugQS: r.ug_qs,
+          omQS: r.om_qs, // Mapped field
+          ugQS: r.ug_qs, // Mapped field
           efetivo: r.efetivo,
           nrRefInt: r.nr_ref_int,
           valorQS: Number(r.valor_qs),
@@ -777,6 +763,7 @@ const PTrabReportManager = () => {
           complemento_qs: Number(r.complemento_qs),
           etapa_qs: Number(r.etapa_qs),
           total_qs: Number(r.total_qs),
+          total_qr: Number(r.total_qr),
           complemento_qr: Number(r.complemento_qr),
           etapa_qr: Number(r.etapa_qr),
           total_geral: Number(r.total_geral),
@@ -862,8 +849,8 @@ const PTrabReportManager = () => {
 
     // 1. Processar Classe I (Apenas Ração Quente para a tabela principal)
     registrosClasseI.filter(r => r.categoria === 'RACAO_QUENTE').forEach((registro) => {
-        initializeGroup(registro.om_qs || registro.organizacao);
-        grupos[registro.om_qs || registro.organizacao].linhasQS.push({ 
+        initializeGroup(registro.omQS || registro.organizacao);
+        grupos[registro.omQS || registro.organizacao].linhasQS.push({ 
             registro, 
             tipo: 'QS',
             valor_nd_30: registro.total_qs,
