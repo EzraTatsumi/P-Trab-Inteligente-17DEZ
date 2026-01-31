@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tables, TableName } from "@/integrations/supabase/types";
-import { PTrabData } from "@/pages/PTrabReportManager"; // Reutilizando o tipo PTrabData
+import { PTrabData } from "@/types/ptrab"; // Importando o tipo PTrabData do novo arquivo
 
 // Tipo para as diretrizes operacionais (valores unitários)
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -70,9 +70,9 @@ export async function fetchPTrabData(ptrabId: string): Promise<PTrabData> {
  * @param ptrabId O ID do PTrab.
  */
 export async function fetchPTrabRecords<T extends PTrabLinkedTableName>(tableName: T, ptrabId: string): Promise<Tables<T>[]> {
-    // A solução é usar 'as any' no construtor da consulta para contornar a rigidez do TypeScript
-    // com nomes de tabela dinâmicos, mantendo a tipagem forte no retorno.
-    const { data, error } = await (supabase.from(tableName) as any)
+    // O cast para 'TableName' é necessário para satisfazer a tipagem dinâmica do from()
+    const { data, error } = await supabase
+        .from(tableName as TableName)
         .select('*')
         .eq('p_trab_id', ptrabId);
 

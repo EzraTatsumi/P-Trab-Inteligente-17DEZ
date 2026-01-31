@@ -26,7 +26,6 @@ import {
   generateRacaoQuenteMemoriaCalculo, 
   generateRacaoOperacionalMemoriaCalculo,
   calculateClasseICalculations,
-  ClasseIRegistro as ClasseIRegistroType,
 } from "@/lib/classeIUtils";
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils";
@@ -49,221 +48,32 @@ import {
 } from "@/lib/suprimentoFundosUtils"; // NOVO: Importar utilitários de Suprimento de Fundos
 import { 
   generatePassagemMemoriaCalculo,
-  PassagemRegistro, // Importando o tipo PassagemRegistro
 } from "@/lib/passagemUtils"; // Importando utilitários de Passagem
 import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais } from "@/lib/ptrabUtils";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { Tables } from "@/integrations/supabase/types"; // Importar Tables
+import { 
+    PTrabData, 
+    ClasseIRegistro, 
+    ClasseIIRegistro, 
+    ClasseIIIRegistro, 
+    DiariaRegistro, 
+    VerbaOperacionalRegistro, 
+    PassagemRegistro,
+    LinhaTabela,
+    LinhaClasseII,
+    LinhaClasseIII,
+    GrupoOM,
+    ItemClasseIII,
+    ItemClasseIX,
+} from "@/types/ptrab"; // NOVO: Importar todos os tipos do arquivo central
 
 // =================================================================
 // TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
 // =================================================================
 
-export interface PTrabData {
-  id: string;
-  numero_ptrab: string;
-  comando_militar_area: string;
-  nome_om: string;
-  nome_om_extenso?: string;
-  nome_operacao: string;
-  periodo_inicio: string;
-  periodo_fim: string;
-  efetivo_empregado: string;
-  acoes: string;
-  status: string;
-  nome_cmt_om?: string;
-  local_om?: string;
-  updated_at: string;
-  rm_vinculacao: string;
-}
-
-// Usando o tipo importado para garantir consistência
-export type ClasseIRegistro = ClasseIRegistroType;
-
-// NOVO TIPO: DiariaRegistro
-export interface DiariaRegistro {
-  id: string;
-  organizacao: string;
-  ug: string;
-  dias_operacao: number;
-  destino: DestinoDiaria;
-  nr_viagens: number;
-  local_atividade: string;
-  quantidades_por_posto: QuantidadesPorPosto;
-  valor_total: number;
-  valor_nd_15: number;
-  valor_nd_30: number;
-  valor_taxa_embarque: number;
-  detalhamento: string;
-  detalhamento_customizado?: string | null;
-  fase_atividade: string;
-  is_aereo: boolean;
-}
-
-// NOVO TIPO: VerbaOperacionalRegistro (Usado para Verba Operacional e Suprimento de Fundos)
-export interface VerbaOperacionalRegistro {
-  id: string;
-  organizacao: string;
-  ug: string;
-  om_detentora: string | null;
-  ug_detentora: string | null;
-  dias_operacao: number;
-  quantidade_equipes: number;
-  valor_total_solicitado: number;
-  fase_atividade: string;
-  detalhamento: string;
-  detalhamento_customizado?: string | null;
-  valor_nd_30: number;
-  valor_nd_39: number;
-  // NOVOS CAMPOS ADICIONADOS AO DB
-  objeto_aquisicao: string | null;
-  objeto_contratacao: string | null;
-  proposito: string | null;
-  finalidade: string | null;
-  local: string | null;
-  tarefa: string | null;
-}
-
-export interface ItemClasseIII {
-  item: string; // nome_equipamento
-  categoria: 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
-  consumo_fixo: number; // L/h or km/L
-  tipo_combustivel_fixo: 'GASOLINA' | 'DIESEL'; // GASOLINA or DIESEL
-  unidade_fixa: 'L/h' | 'km/L';
-  quantidade: number;
-  horas_dia: number;
-  distancia_percorrida: number;
-  quantidade_deslocamentos: number;
-  dias_utilizados: number;
-  // Lubricant fields (only for GERADOR, EMBARCACAO)
-  consumo_lubrificante_litro: number; // L/100h or L/h
-  preco_lubrificante: number; // R$/L
-  memoria_customizada?: string | null; // NOVO CAMPO
-}
-
-export interface ItemClasseII {
-  item: string;
-  quantidade: number;
-  valor_mnt_dia: number;
-  categoria: string;
-  memoria_customizada?: string | null;
-}
-
-export interface ItemClasseIX {
-  item: string;
-  quantidade: number;
-  valor_mnt_dia: number;
-  valor_acionamento_mensal: number;
-  categoria: string;
-  memoria_customizada?: string | null;
-}
-
-export interface ClasseIIRegistro {
-  id: string;
-  organizacao: string;
-  ug: string;
-  dias_operacao: number;
-  categoria: string;
-  itens_equipamentos: ItemClasseII[];
-  valor_total: number;
-  detalhamento: string;
-  detalhamento_customizado?: string | null;
-  fase_atividade?: string | null;
-  valor_nd_30: number;
-  valor_nd_39: number;
-  animal_tipo?: 'Equino' | 'Canino' | null;
-  quantidade_animais?: number;
-  itens_remonta?: any; // Usado para Classe VIII Remonta
-  itens_saude?: any; // Usado para Classe VIII Saúde
-  itens_motomecanizacao?: ItemClasseIX[];
-  om_detentora?: string | null;
-  ug_detentora?: string | null;
-  efetivo?: number;
-}
-
-export interface ClasseIIIRegistro {
-  id: string;
-  tipo_equipamento: string;
-  organizacao: string;
-  ug: string;
-  quantidade: number;
-  potencia_hp?: number;
-  horas_dia?: number;
-  dias_operacao: number;
-  consumo_hora?: number;
-  consumo_km_litro?: number;
-  km_dia?: number;
-  tipo_combustivel: string;
-  preco_litro: number;
-  tipo_equipamento_detalhe?: string;
-  total_litros: number;
-  valor_total: number;
-  detalhamento?: string;
-  detalhamento_customizado?: string | null;
-  itens_equipamentos?: ItemClasseIII[]; // Tipo corrigido
-  fase_atividade?: string; // Adicionado para Classe III
-  consumo_lubrificante_litro?: number; // Adicionado para Classe III
-  preco_lubrificante?: number; // Adicionado para Classe III
-  valor_nd_30: number; // Adicionado para Classe III
-  valor_nd_39: number; // Adicionado para Classe III
-  om_detentora?: string | null; // Adicionado para Classe III (OM Destino Recurso)
-  ug_detentora?: string | null; // Adicionado para Classe III (UG Destino Recurso)
-}
-
-// NOVO TIPO: Linha desagregada de Classe III para o relatório logístico
-export interface LinhaClasseIII {
-  registro: ClasseIIIRegistro;
-  categoria_equipamento: 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO' | 'LUBRIFICANTE';
-  tipo_suprimento: 'COMBUSTIVEL_GASOLINA' | 'COMBUSTIVEL_DIESEL' | 'LUBRIFICANTE';
-  valor_total_linha: number;
-  total_litros_linha: number;
-  preco_litro_linha: number;
-  memoria_calculo: string; // Armazena a memória de cálculo granular
-}
-
-// NOVO TIPO: Estrutura granular para geração de memória da Classe III
-interface GranularDisplayItem {
-  id: string; 
-  om_destino: string; 
-  ug_destino: string; 
-  categoria: 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
-  suprimento_tipo: 'COMBUSTIVEL_GASOLINA' | 'COMBUSTIVEL_DIESEL' | 'LUBRIFICANTE';
-  valor_total: number;
-  total_litros: number;
-  preco_litro: number; 
-  dias_operacao: number;
-  fase_atividade: string;
-  valor_nd_30: number;
-  valor_nd_39: number;
-  original_registro: ClasseIIIRegistro;
-  detailed_items: ItemClasseIII[];
-}
-
-export interface LinhaTabela {
-  registro: ClasseIRegistro;
-  valor_nd_30: number; // Adicionado para consistência
-  valor_nd_39: number; // Adicionado para consistência
-  tipo: 'QS' | 'QR';
-}
-
-export interface LinhaClasseII {
-  registro: ClasseIIRegistro;
-  valor_nd_30: number; // Adicionado para consistência
-  valor_nd_39: number; // Adicionado para consistência
-}
-
-export interface GrupoOM {
-  linhasQS: LinhaTabela[];
-  linhasQR: LinhaTabela[];
-  linhasClasseII: LinhaClasseII[];
-  linhasClasseV: LinhaClasseII[];
-  linhasClasseVI: LinhaClasseII[];
-  linhasClasseVII: LinhaClasseII[];
-  linhasClasseVIII: LinhaClasseII[];
-  linhasClasseIX: LinhaClasseII[];
-  linhasClasseIII: LinhaClasseIII[]; // Inicializa a nova lista
-}
+export { PTrabData, DiariaRegistro, VerbaOperacionalRegistro, PassagemRegistro, ClasseIRegistro, ClasseIIIRegistro, LinhaClasseIII, LinhaTabela, LinhaClasseII, GrupoOM }; // Exportar tipos necessários
 
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 export const CLASSE_VI_CATEGORIES = ["Gerador", "Embarcação", "Equipamento de Engenharia"];
@@ -366,8 +176,8 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
 
     // Lógica para Ração Quente (QS/QR)
     if (tipo === 'QS') {
-        if (registro.memoria_calculo_qs_customizada && registro.memoria_calculo_qs_customizada.trim().length > 0) {
-            return registro.memoria_calculo_qs_customizada;
+        if (registro.memoriaQSCustomizada && registro.memoriaQSCustomizada.trim().length > 0) {
+            return registro.memoriaQSCustomizada;
         }
         const { qs } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
@@ -401,8 +211,8 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
     }
 
     if (tipo === 'QR') {
-        if (registro.memoria_calculo_qr_customizada && registro.memoria_calculo_qr_customizada.trim().length > 0) {
-            return registro.memoria_calculo_qr_customizada;
+        if (registro.memoriaQRCustomizada && registro.memoriaQRCustomizada.trim().length > 0) {
+            return registro.memoriaQRCustomizada;
         }
         const { qr } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
@@ -766,30 +576,50 @@ const PTrabReportManager = () => {
           id: r.id,
           organizacao: r.organizacao,
           ug: r.ug,
-          diasOperacao: r.dias_operacao,
-          faseAtividade: r.fase_atividade,
+          dias_operacao: r.dias_operacao,
+          fase_atividade: r.fase_atividade,
           omQS: r.om_qs,
           ugQS: r.ug_qs,
           efetivo: r.efetivo,
-          nrRefInt: r.nr_ref_int,
-          valorQS: Number(r.valor_qs),
-          valorQR: Number(r.valor_qr),
+          nr_ref_int: r.nr_ref_int,
+          valor_qs: Number(r.valor_qs),
+          valor_qr: Number(r.valor_qr),
           complemento_qs: Number(r.complemento_qs),
           etapa_qs: Number(r.etapa_qs),
           total_qs: Number(r.total_qs),
           complemento_qr: Number(r.complemento_qr),
           etapa_qr: Number(r.etapa_qr),
+          total_qr: Number(r.total_qr), // Adicionado total_qr
           total_geral: Number(r.total_geral),
           memoriaQSCustomizada: r.memoria_calculo_qs_customizada,
           memoriaQRCustomizada: r.memoria_calculo_qr_customizada,
-          memoria_calculo_op_customizada: r.memoria_calculo_op_customizada, 
+          memoriaOPCustomizada: r.memoria_calculo_op_customizada, 
           categoria: (r.categoria || 'RACAO_QUENTE') as 'RACAO_QUENTE' | 'RACAO_OPERACIONAL',
           quantidade_r2: r.quantidade_r2 || 0,
           quantidade_r3: r.quantidade_r3 || 0,
           calculos: calculateClasseICalculations(r.efetivo, r.dias_operacao, r.nr_ref_int || 0, Number(r.valor_qs), Number(r.valor_qr)),
       })) as ClasseIRegistro[]);
-      setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
-      setRegistrosClasseIII(classeIIIData || []);
+      
+      // CORREÇÃO: Mapear itens_equipamentos para o tipo correto (Json -> ItemClasseII[])
+      setRegistrosClasseII(allClasseItems.map(r => ({
+          ...r,
+          itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseII[],
+      })) as ClasseIIRegistro[]);
+      
+      // CORREÇÃO: Mapear itens_equipamentos para o tipo correto (Json -> ItemClasseIII[])
+      setRegistrosClasseIII((classeIIIData || []).map(r => ({
+          ...r,
+          itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseIII[] | null,
+          preco_litro: Number(r.preco_litro || 0),
+          preco_lubrificante: Number(r.preco_lubrificante || 0),
+          consumo_lubrificante_litro: Number(r.consumo_lubrificante_litro || 0),
+          valor_nd_30: Number(r.valor_nd_30 || 0),
+          valor_nd_39: Number(r.valor_nd_39 || 0),
+          total_litros: Number(r.total_litros || 0),
+          valor_total: Number(r.valor_total || 0),
+          dias_operacao: r.dias_operacao || 0,
+      })) as ClasseIIIRegistro[]);
+      
       setRefLPC(refLPCData as RefLPC || null);
       
       // NOVO: Processar Diárias
@@ -802,6 +632,7 @@ const PTrabReportManager = () => {
           valor_taxa_embarque: Number(r.valor_taxa_embarque || 0),
           valor_total: Number(r.valor_total || 0),
           is_aereo: r.is_aereo || false,
+          dias_operacao: r.dias_operacao || 0,
       })) as DiariaRegistro[]);
       
       // NOVO: Processar Verba Operacional e Suprimento de Fundos
@@ -832,6 +663,7 @@ const PTrabReportManager = () => {
           valor_nd_33: Number(r.valor_nd_33 || 0),
           quantidade_passagens: r.quantidade_passagens || 0,
           is_ida_volta: r.is_ida_volta || false,
+          dias_operacao: r.dias_operacao || 0,
       })) as PassagemRegistro[]);
       
     } catch (error) {
@@ -862,14 +694,17 @@ const PTrabReportManager = () => {
 
     // 1. Processar Classe I (Apenas Ração Quente para a tabela principal)
     registrosClasseI.filter(r => r.categoria === 'RACAO_QUENTE').forEach((registro) => {
-        initializeGroup(registro.om_qs || registro.organizacao);
-        grupos[registro.om_qs || registro.organizacao].linhasQS.push({ 
+        // Usa om_qs para a OM fornecedora (se existir), senão usa a OM de destino
+        const omFornecedora = registro.omQS || registro.organizacao;
+        initializeGroup(omFornecedora);
+        grupos[omFornecedora].linhasQS.push({ 
             registro, 
             tipo: 'QS',
             valor_nd_30: registro.total_qs,
             valor_nd_39: 0,
         });
         
+        // A linha QR usa a OM de destino (organizacao)
         initializeGroup(registro.organizacao);
         grupos[registro.organizacao].linhasQR.push({ 
             registro, 
@@ -881,10 +716,12 @@ const PTrabReportManager = () => {
     
     // 2. Processar Classes II, V, VI, VII, VIII, IX
     registrosClasseII.forEach((registro) => {
-        initializeGroup(registro.organizacao);
-        const omGroup = grupos[registro.organizacao];
+        // Usa om_detentora (OM de destino do recurso) se existir, senão usa a OM de destino
+        const omDestinoRecurso = registro.om_detentora || registro.organizacao;
+        initializeGroup(omDestinoRecurso);
+        const omGroup = grupos[omDestinoRecurso];
         
-        const linha = { 
+        const linha: LinhaClasseII = { 
             registro,
             valor_nd_30: registro.valor_nd_30,
             valor_nd_39: registro.valor_nd_39,
@@ -971,7 +808,7 @@ const PTrabReportManager = () => {
                 const omDestinoLubrificante = registro.organizacao; // Lubrificante é consumido na OM que usa
                 const ugDestinoLubrificante = registro.ug;
                 
-                const granularItem: GranularDisplayItem = {
+                const granularItem: any = { // Usando 'any' temporariamente para evitar erro de tipagem complexa
                     id: `${registro.id}-${categoriaKey}-${tipoSuprimento}`,
                     om_destino: registro.organizacao,
                     ug_destino: registro.ug,
@@ -1147,6 +984,7 @@ const PTrabReportManager = () => {
             generateClasseVIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)}
             generateClasseVIIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)}
             generateClasseVIIIMemoriaCalculo={(registro) => generateClasseIIMemoriaCalculo(registro, false)}
+            generateClasseIXMemoriaCalculo={generateClasseIXMemoriaCalculo}
           />
         );
       case 'racao_operacional':
