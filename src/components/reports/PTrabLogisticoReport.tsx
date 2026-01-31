@@ -882,10 +882,19 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
 
   // Função auxiliar para renderizar as linhas de despesa no HTML/PDF
   const renderExpenseLines = (allExpenseLines: (LinhaTabela | LinhaClasseII | LinhaClasseIII)[], currentOMName: string) => {
+    console.log(`[PTrabLogisticoReport] Rendering ${allExpenseLines.length} expense lines for ${currentOMName}`);
+
     return allExpenseLines.map((linha, index) => {
+        console.log(`[PTrabLogisticoReport] Processing line ${index} for ${currentOMName}:`, linha);
+        
         const isClasseI = 'tipo' in linha;
         const isClasseIII = 'categoria_equipamento' in linha;
         const isClasseII_IX = !isClasseI && !isClasseIII;
+
+        if (isClasseII_IX) {
+          const registro = (linha as LinhaClasseII).registro as ClasseIIRegistro;
+          console.log(`[PTrabLogisticoReport] Line ${index} is Classe II/IX with category:`, registro.categoria);
+        }
 
         if (!linha) return null;
         
@@ -904,7 +913,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         let line1 = '';
         let line2 = '';
 
-        if (isClasseI) {
+        if (isClasseI) { // Classe I (QS/QR)
             const registro = (linha as LinhaTabela).registro as ClasseIRegistro;
             const tipo = (linha as LinhaTabela).tipo;
             const ug_qs_formatted = formatCodug(registro.ugQS);
@@ -924,7 +933,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 rowData.valorE = registro.totalQS;
                 rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                 
-            } else {
+            } else { // QR
                 line1 = `CLASSE I - SUBSISTÊNCIA`;
                 rowData.omValue = `${registro.organizacao}<br/>(${formatCodug(registro.ug)})`;
                 rowData.valorC = registro.totalQR;
@@ -932,7 +941,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
             }
             rowData.despesasValue = line1 + (line2 ? `<br/>${line2}` : '');
-        } else if (isClasseIII) {
+
+        } else if (isClasseIII) { // Classe III (Combustível/Lubrificante)
             const linhaClasseIII = linha as LinhaClasseIII;
             const registro = linhaClasseIII.registro;
             const isCombustivelLinha = linhaClasseIII.tipo_suprimento !== 'LUBRIFICANTE';
@@ -1190,6 +1200,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       
                       return 0;
                   });
+                  
+                  console.log(`[PTrabLogisticoReport] Ordered lines for ${nomeOM}:`, allExpenseLines);
+                  console.log(`[PTrabLogisticoReport] All expense lines for ${nomeOM}:`, allExpenseLines);
+                  console.log(`[PTrabLogisticoReport] Raw grupo data for ${nomeOM}:`, grupo);
+
 
                   return (
                     <React.Fragment key={`${nomeOM}-group`}>
