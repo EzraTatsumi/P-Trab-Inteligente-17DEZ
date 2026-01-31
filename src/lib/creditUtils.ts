@@ -1,58 +1,50 @@
 import { supabase } from "@/integrations/supabase/client";
-import { TablesUpdate } from "@/integrations/supabase/types";
+import { Tables } from "@/integrations/supabase/types";
 
-// Define a type for the profiles table structure needed here
-interface ProfileCredits {
-  credit_gnd3: number;
-  credit_gnd4: number;
-}
+type Profile = Tables<'profiles'>;
 
 /**
- * Busca os valores de crédito GND 3 e GND 4 para o usuário logado.
- * @returns Um objeto com credit_gnd3 e credit_gnd4, ou valores padrão (0) em caso de erro/não encontrado.
+ * Busca os créditos atuais do usuário.
  */
 export async function fetchUserCredits(userId: string): Promise<{ credit_gnd3: number, credit_gnd4: number }> {
-  try {
     const { data, error } = await supabase
-      .from('profiles' as any) // Cast to any to bypass TS error
-      .select('credit_gnd3, credit_gnd4')
-      .eq('id', userId)
-      .single();
+        .from('profiles')
+        .select('credit_gnd3, credit_gnd4')
+        .eq('id', userId)
+        .single();
 
-    if (error && error.code !== 'PGRST116') { // PGRST116: No rows found
-      throw error;
+    if (error) {
+        console.error("Error fetching user credits:", error);
+        throw new Error("Failed to fetch user credits.");
     }
 
-    const profileData = data as unknown as ProfileCredits | null; // Cast data to the expected structure
-
-    // Garante que os valores sejam números, caindo para 0 se forem null/undefined
     return {
-      credit_gnd3: Number(profileData?.credit_gnd3 || 0),
-      credit_gnd4: Number(profileData?.credit_gnd4 || 0),
+        credit_gnd3: data.credit_gnd3,
+        credit_gnd4: data.credit_gnd4,
     };
-  } catch (error) {
-    console.error("Erro ao buscar créditos do usuário:", error);
-    return { credit_gnd3: 0, credit_gnd4: 0 };
-  }
 }
 
 /**
- * Atualiza os valores de crédito GND 3 e GND 4 para o usuário logado.
+ * Atualiza os créditos do usuário.
  */
-export async function updateUserCredits(userId: string, gnd3: number, gnd4: number) {
-  const updateData = { // Removed TablesUpdate<'profiles'> type assertion
-    credit_gnd3: gnd3,
-    credit_gnd4: gnd4,
-    updated_at: new Date().toISOString(),
-  };
+export async function updateUserCredits(userId: string, gnd3Change: number, gnd4Change: number) {
+    // Busca os créditos atuais
+    const currentCredits = await fetchUserCredits(userId);
 
-  const { error } = await supabase
-    .from('profiles' as any) // Cast to any
-    .update(updateData)
-    .eq('id', userId);
+    const newGnd3 = currentCredits.credit_gnd3 + gnd3Change;
+    const newGnd4 = currentCredits.credit_gnd4 + gnd4Change;
 
-  if (error) {
-    console.error("Erro ao atualizar créditos:", error);
-    throw new Error("Falha ao salvar os créditos no banco de dados.");
-  }
+    const { error } = await supabase
+        .from('profiles')
+        .update({ 
+            credit_gnd3: newGnd3, 
+            credit_gnd4: newGnd4,
+            updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+
+    if (error) {
+        console.error("Error updating user credits:", error);
+        throw new Error("Failed to update user credits.");
+    }
 }

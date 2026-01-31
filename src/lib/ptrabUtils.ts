@@ -4,10 +4,10 @@ import { Tables, TableName } from "@/integrations/supabase/types";
 import { PTrabData } from "@/pages/PTrabReportManager"; // Reutilizando o tipo PTrabData
 
 // Tipo para as diretrizes operacionais (valores unitários)
-type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
+export type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
 // Define a união de tabelas que possuem a coluna p_trab_id
-type PTrabLinkedTableName =
+export type PTrabLinkedTableName =
     'classe_i_registros' | 'classe_ii_registros' | 'classe_iii_registros' | 
     'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' | 
     'classe_viii_saude_registros' | 'classe_viii_remonta_registros' | 
