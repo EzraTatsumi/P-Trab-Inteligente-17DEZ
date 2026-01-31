@@ -26,7 +26,8 @@ interface PassagemDiretrizFormDialogProps {
 }
 
 // Tipo interno para o formulário, usando Date | null para as datas
-interface InternalPassagemForm extends Omit<DiretrizPassagem, 'trechos' | 'data_inicio_vigencia' | 'data_fim_vigencia' | 'user_id' | 'created_at' | 'updated_at'> {
+// FIX 1: Usamos Partial<DiretrizPassagem> para garantir que 'id' seja opcional, e depois Omit para remover os campos que estamos substituindo/tratando.
+interface InternalPassagemForm extends Omit<Partial<DiretrizPassagem>, 'trechos' | 'data_inicio_vigencia' | 'data_fim_vigencia' | 'user_id' | 'created_at' | 'updated_at'> {
     id?: string;
     trechos: TrechoPassagem[];
     data_inicio_vigencia: Date | null;
@@ -349,7 +350,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                             <div className="space-y-2">
                                 <Label htmlFor="valor">Valor Unitário *</Label>
                                 <CurrencyInput
-                                    value={trechoForm.rawValor}
+                                    rawDigits={trechoForm.rawValor}
                                     onChange={handleCurrencyChange}
                                     placeholder="0,00"
                                 />
