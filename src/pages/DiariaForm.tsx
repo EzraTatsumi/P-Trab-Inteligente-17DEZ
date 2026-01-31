@@ -476,8 +476,8 @@ const DiariaForm = () => {
             local_atividade: registro.local_atividade || "",
             fase_atividade: registro.fase_atividade || "",
             is_aereo: (registro as any).is_aereo || false,
-            om_detentora: null,
-            ug_detentora: null,
+            om_detentora: registro.om_detentora || null, // CORRIGIDO: Mapear om_detentora
+            ug_detentora: registro.ug_detentora || null, // CORRIGIDO: Mapear ug_detentora
             quantidades_por_posto: (registro.quantidades_por_posto || initialFormState.quantidades_por_posto) as QuantidadesPorPosto,
         };
         setFormData(newFormData);
@@ -495,8 +495,8 @@ const DiariaForm = () => {
             p_trab_id: ptrabId!,
             organizacao: newFormData.organizacao,
             ug: newFormData.ug,
-            om_detentora: null,
-            ug_detentora: null,
+            om_detentora: newFormData.om_detentora, // CORRIGIDO
+            ug_detentora: newFormData.ug_detentora, // CORRIGIDO
             dias_operacao: newFormData.dias_operacao,
             fase_atividade: newFormData.fase_atividade,
             destino: newFormData.destino,
@@ -507,8 +507,8 @@ const DiariaForm = () => {
             quantidade: totals.totalMilitares,
             valor_taxa_embarque: totals.totalTaxaEmbarque,
             valor_total: totals.totalGeral,
-            valor_nd_30: 0, // CORRIGIDO: ND 30 é zero
-            valor_nd_15: totals.totalGeral, // CORRIGIDO: ND 15 é o total geral
+            valor_nd_30: totals.totalTaxaEmbarque, // CORRIGIDO: ND 30 é Taxa de Embarque
+            valor_nd_15: totals.totalDiariaBase, // CORRIGIDO: ND 15 é Diária Base
             
             quantidades_por_posto: newFormData.quantidades_por_posto,
             detalhamento: memoria,
@@ -554,8 +554,8 @@ const DiariaForm = () => {
                 p_trab_id: ptrabId!,
                 organizacao: formData.organizacao,
                 ug: formData.ug,
-                om_detentora: null,
-                ug_detentora: null,
+                om_detentora: formData.om_detentora, // CORRIGIDO
+                ug_detentora: formData.ug_detentora, // CORRIGIDO
                 dias_operacao: formData.dias_operacao,
                 fase_atividade: formData.fase_atividade,
                 destino: formData.destino,
@@ -566,8 +566,8 @@ const DiariaForm = () => {
                 quantidade: calculos.totalMilitares,
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
-                valor_nd_30: 0, // CORRIGIDO: ND 30 é zero
-                valor_nd_15: calculos.totalGeral, // CORRIGIDO: ND 15 é o total geral
+                valor_nd_30: calculos.totalTaxaEmbarque, // CORRIGIDO: ND 30 é Taxa de Embarque
+                valor_nd_15: calculos.totalDiariaBase, // CORRIGIDO: ND 15 é Diária Base
                 
                 quantidades_por_posto: formData.quantidades_por_posto,
                 detalhamento: calculos.memoria,
@@ -668,7 +668,7 @@ const DiariaForm = () => {
         // Mapeia os itens pendentes para o formato de inserção no DB
         const recordsToSave: TablesInsert<'diaria_registros'>[] = pendingDiarias.map(p => {
             // Remove campos de display e temporários
-            const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, valor_nd_39, ...dbRecord } = p as any;
+            const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, ...dbRecord } = p as any;
             return dbRecord as TablesInsert<'diaria_registros'>;
         });
         
@@ -680,7 +680,7 @@ const DiariaForm = () => {
         if (!editingId || !stagedUpdate) return;
         
         // Mapeia o stagedUpdate para o formato de atualização no DB
-        const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, valor_nd_39, ...dbRecord } = stagedUpdate as any;
+        const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, ...dbRecord } = stagedUpdate as any;
         
         // updateMutation espera TablesUpdate, que é o dbRecord sem o ID
         updateMutation.mutate(dbRecord as TablesUpdate<'diaria_registros'>);
@@ -705,6 +705,8 @@ const DiariaForm = () => {
                 ...prev,
                 organizacao: omData.nome_om,
                 ug: omData.codug_om,
+                om_detentora: omData.nome_om, // Assume que a OM de destino do recurso é a mesma
+                ug_detentora: omData.codug_om, // Assume que a UG de destino do recurso é a mesma
             }));
         } else {
             setSelectedOmId(undefined);
@@ -712,6 +714,8 @@ const DiariaForm = () => {
                 ...prev,
                 organizacao: "",
                 ug: "",
+                om_detentora: null,
+                ug_detentora: null,
             }));
         }
     };
@@ -1212,12 +1216,12 @@ const DiariaForm = () => {
                                                 );
                                             }
                                             
-                                            const totalTaxaEmbarque = item.valor_taxa_embarque;
+                                            const totalTaxaEmbarque = item.valor_nd_30; // ND 30 é Taxa de Embarque
                                             const taxaEmbarqueCalculation = item.is_aereo 
                                                 ? `${item.totalMilitares} ${militarText} x ${taxaEmbarqueUnitarioDisplay} x ${item.nr_viagens} ${viagemText} = ${formatCurrency(totalTaxaEmbarque)}`
                                                 : 'Não Aéreo';
 
-                                            const totalDiariaBase = item.valor_total - item.valor_taxa_embarque;
+                                            const totalDiariaBase = item.valor_nd_15; // ND 15 é Diária Base
                                             
                                             const isCurrentlyStaged = editingId && item.tempId === editingId;
 
@@ -1240,7 +1244,18 @@ const DiariaForm = () => {
                                                                 <p className="font-extrabold text-lg text-foreground text-right">
                                                                     {formatCurrency(item.valor_total)}
                                                                 </p>
-                                                                {!isStagingUpdate && (
+                                                                {isStagingUpdate ? (
+                                                                    <Button 
+                                                                        variant="default" 
+                                                                        size="sm" 
+                                                                        onClick={handleCommitStagedUpdate}
+                                                                        disabled={isSaving || isDiariaDirty}
+                                                                        className="gap-1"
+                                                                    >
+                                                                        <Check className="h-4 w-4" />
+                                                                        Atualizar
+                                                                    </Button>
+                                                                ) : (
                                                                     <Button 
                                                                         variant="ghost" 
                                                                         size="icon" 
@@ -1282,11 +1297,11 @@ const DiariaForm = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Destino Recurso:</p>
-                                                                <p className="font-medium">Taxa de Embarque (ND 15):</p>
-                                                                <p className="font-medium">Diárias (ND 15):</p>
+                                                                <p className="font-medium">Taxa de Embarque (ND 33.90.30):</p>
+                                                                <p className="font-medium">Diárias (ND 33.90.15):</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
-                                                                <p className="font-medium">{registro.organizacao} ({formatCodug(registro.ug)})</p>
+                                                                <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
                                                                 <p className="font-medium text-green-600">{formatCurrency(totalTaxaEmbarque)}</p>
                                                                 <p className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</p>
                                                             </div>
@@ -1294,11 +1309,119 @@ const DiariaForm = () => {
                                                     </CardContent>
                                                 </Card>
                                             );
-                                                    })}
-                                                </div>
-                                            </Card>
-                                        );
-                                    })}
+                                        })}
+                                    </div>
+                                    
+                                    {/* Botões de Ação Final (Salvar no DB) */}
+                                    <div className="flex justify-end gap-3 pt-4">
+                                        {isStagingUpdate ? (
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                onClick={resetForm}
+                                                disabled={isSaving}
+                                            >
+                                                <XCircle className="mr-2 h-4 w-4" />
+                                                Cancelar Edição
+                                            </Button>
+                                        ) : (
+                                            <>
+                                                <Button 
+                                                    type="button" 
+                                                    variant="outline" 
+                                                    onClick={handleClearPending}
+                                                    disabled={isSaving}
+                                                >
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Limpar Lista
+                                                </Button>
+                                                <Button 
+                                                    type="button" 
+                                                    onClick={handleSavePendingDiarias}
+                                                    disabled={isSavePendingDisabled}
+                                                    className="bg-green-600 hover:bg-green-700"
+                                                >
+                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                                    Salvar {pendingDiarias.length} Registro(s) no P Trab
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* SEÇÃO 4: REGISTROS SALVOS */}
+                            {registros && registros.length > 0 && (
+                                <section className="space-y-4 border-b pb-6">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                                        4. Registros Salvos ({registros.length})
+                                    </h3>
+                                    
+                                    <div className="rounded-lg border overflow-hidden">
+                                        <Table>
+                                            <TableHeader className="bg-muted/80">
+                                                <TableRow>
+                                                    <TableHead className="w-[20%]">OM Destino</TableHead>
+                                                    <TableHead className="w-[15%] text-center">Local Pagamento</TableHead>
+                                                    <TableHead className="w-[10%] text-center">Efetivo</TableHead>
+                                                    <TableHead className="w-[10%] text-center">Dias/Viagens</TableHead>
+                                                    <TableHead className="w-[15%] text-right">ND 33.90.15</TableHead>
+                                                    <TableHead className="w-[15%] text-right">ND 33.90.30</TableHead>
+                                                    <TableHead className="w-[15%] text-right">Total</TableHead>
+                                                    <TableHead className="w-[100px] text-right">Ações</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {registros.map(registro => {
+                                                    const destinoLabel = DESTINO_OPTIONS.find(d => d.value === registro.destino)?.label || registro.destino;
+                                                    const destinoColorClass = getDestinoColorClass(registro.destino as DestinoDiaria);
+                                                    
+                                                    // ND 15 é a Diária Base, ND 30 é a Taxa de Embarque
+                                                    const totalDiariaBase = registro.valor_nd_15;
+                                                    const totalTaxaEmbarque = registro.valor_nd_30;
+                                                    
+                                                    return (
+                                                        <TableRow key={registro.id} className={cn(editingId === registro.id && "bg-yellow-50/50 hover:bg-yellow-50/50")}>
+                                                            <TableCell className="font-medium">
+                                                                {registro.organizacao} ({formatCodug(registro.ug)})
+                                                            </TableCell>
+                                                            <TableCell className="text-center">
+                                                                <Badge variant="default" className={cn("w-fit mx-auto text-white", destinoColorClass)}>
+                                                                    {destinoLabel}
+                                                                </Badge>
+                                                            </TableCell>
+                                                            <TableCell className="text-center">{registro.quantidade}</TableCell>
+                                                            <TableCell className="text-center">{registro.dias_operacao}d / {registro.nr_viagens}v</TableCell>
+                                                            <TableCell className="text-right text-blue-600 font-medium">{formatCurrency(totalDiariaBase)}</TableCell>
+                                                            <TableCell className="text-right text-green-600 font-medium">{formatCurrency(totalTaxaEmbarque)}</TableCell>
+                                                            <TableCell className="text-right font-bold">{formatCurrency(registro.valor_total)}</TableCell>
+                                                            <TableCell className="text-right">
+                                                                <div className="flex justify-end gap-1">
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="icon" 
+                                                                        onClick={() => handleEdit(registro)}
+                                                                        disabled={!isPTrabEditable || isSaving || editingId !== null}
+                                                                    >
+                                                                        <Edit className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="icon" 
+                                                                        onClick={() => handleConfirmDelete(registro)}
+                                                                        disabled={!isPTrabEditable || isSaving || editingId !== null}
+                                                                        className="text-destructive hover:bg-destructive/10"
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
                                 </section>
                             )}
 
