@@ -1,10 +1,32 @@
 import { DiretrizClasseIIForm } from "@/types/diretrizesClasseII";
 
+// Definindo um tipo mais abrangente para os itens logísticos padrão,
+// incluindo todas as categorias presentes neste arquivo, como 'Gerador'.
+export type DefaultLogisticaItem = {
+    categoria: 
+        | "Embarcação" 
+        | "Equipamento de Engenharia" 
+        | "Gerador" // Adicionado para resolver o erro
+        | "Equipamento Individual" 
+        | "Proteção Balística" 
+        | "Material de Estacionamento" 
+        | "Armt L" 
+        | "Armt P" 
+        | "IODCT" 
+        | "DQBRN" 
+        | "Comunicações" 
+        | "Informática" 
+        | "Saúde" 
+        | "Remonta/Veterinária";
+    item: string;
+    valor_mnt_dia: number;
+};
+
 /**
  * Configuração padrão de itens de Classe VI (Material de Engenharia) para uso quando não há diretrizes personalizadas.
  * Os valores são fictícios e devem ser substituídos por diretrizes reais do usuário.
  */
-export const defaultClasseVIConfig: DiretrizClasseIIForm[] = [
+export const defaultClasseVIConfig: DefaultLogisticaItem[] = [
   // Embarcação
   {
     categoria: "Embarcação",
