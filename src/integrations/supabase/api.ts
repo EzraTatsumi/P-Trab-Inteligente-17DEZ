@@ -104,7 +104,7 @@ export async function fetchUserProfile(): Promise<Profile> {
         throw new Error("Usuário não autenticado.");
     }
 
-    // Busca o perfil. REMOVIDO O JOIN INVÁLIDO.
+    // Busca o perfil.
     const { data: profileData, error } = await supabase
         .from('profiles')
         .select(`*`)
@@ -125,19 +125,17 @@ export async function fetchUserProfile(): Promise<Profile> {
             updated_at: new Date().toISOString(),
             credit_gnd3: 0,
             credit_gnd4: 0,
-            default_logistica_year: null, // Adicionado campo logistica
-            default_operacional_year: null, // Adicionado campo operacional
+            default_logistica_year: null, 
+            default_operacional_year: null, 
             raw_user_meta_data: null,
-            om_details: null, // om_details será null, pois não foi buscado
+            om_details: null, 
         } as Profile;
     }
     
-    // Se o perfil existir, mas não tivermos a OM, precisamos buscá-la separadamente
-    // Se o perfil tiver um campo om_id (que não está no esquema, mas é esperado pelo frontend), 
-    // poderíamos usá-lo aqui. Como não temos, a OM padrão será carregada como null.
-
+    // Se o perfil existir, mas não tivermos a OM, a OM padrão será carregada como null.
+    // O tipo Profile deve ser compatível com profileData + om_details
     return {
         ...profileData,
-        om_details: null, // Força null para evitar erros de tipo, já que o JOIN falhou
+        om_details: null, // Mantido como null, pois não foi buscado via JOIN
     } as Profile;
 }

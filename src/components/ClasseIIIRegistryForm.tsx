@@ -7,10 +7,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { XCircle, Save, Fuel, Droplet } from "lucide-react";
-import { formatCurrency, formatNumber, formatNumberForInput } from "@/lib/formatUtils"; // Importando formatNumberForInput
+import { formatCurrency, formatNumber, formatNumberForInput, numberToRawDigits, formatCurrencyInput } from "@/lib/formatUtils"; // Importando utilitários de moeda
 
 // Tipagem simplificada para o registro
 type ClasseIIIRegistry = Tables<'classe_iii_registros'>;
+
+// Tipo para o estado do formulário (preços como string para manipulação de input)
+interface ClasseIIIRegistryFormState extends Omit<ClasseIIIRegistry, 'id' | 'created_at' | 'updated_at' | 'preco_litro' | 'preco_lubrificante'> {
+    preco_litro: string; // Armazenado como string (dígitos brutos ou formatado)
+    preco_lubrificante: string; // Armazenado como string (dígitos brutos ou formatado)
+}
 
 interface ClasseIIIRegistryFormProps {
   ptrabId: string;
@@ -41,17 +47,35 @@ const ClasseIIIRegistryForm = ({
   onCancel,
   loading,
 }: ClasseIIIRegistryFormProps) => {
-  const [formData, setFormData] = useState<Omit<ClasseIIIRegistry, 'id' | 'created_at' | 'updated_at'>>({
+  const [formData, setFormData] = useState<ClasseIIIRegistryFormState>({
     p_trab_id: ptrabId,
     tipo_combustivel: initialData?.tipo_combustivel || 'gasolina',
     quantidade: initialData?.quantidade || 0,
-    preco_litro: initialData?.preco_litro ? formatDecimalInput(String(initialData.preco_litro)) : '', // Inicializa com string vazia se 0
+    preco_litro: initialData?.preco_litro ? formatDecimalInput(String(initialData.preco_litro)) : '', // Inicializa com string formatada
     total_litros: initialData?.total_litros || 0,
     valor_total: initialData?.valor_total || 0,
     consumo_lubrificante_litro: initialData?.consumo_lubrificante_litro || 0,
-    preco_lubrificante: initialData?.preco_lubrificante ? formatDecimalInput(String(initialData.preco_lubrificante)) : '', // Inicializa com string vazia se 0
+    preco_lubrificante: initialData?.preco_lubrificante ? formatDecimalInput(String(initialData.preco_lubrificante)) : '', // Inicializa com string formatada
     itens_equipamentos: initialData?.itens_equipamentos || null,
     dias_operacao: initialData?.dias_operacao || 0,
+    // Campos obrigatórios do tipo base que precisam de valor inicial
+    organizacao: initialData?.organizacao || '',
+    ug: initialData?.ug || '',
+    tipo_equipamento: initialData?.tipo_equipamento || '',
+    valor_nd_30: initialData?.valor_nd_30 || 0,
+    valor_nd_39: initialData?.valor_nd_39 || 0,
+    // Campos opcionais
+    categoria: initialData?.categoria || null,
+    consumo_hora: initialData?.consumo_hora || null,
+    consumo_km_litro: initialData?.consumo_km_litro || null,
+    horas_dia: initialData?.horas_dia || null,
+    km_dia: initialData?.km_dia || null,
+    tipo_equipamento_detalhe: initialData?.tipo_equipamento_detalhe || null,
+    total_litros_sem_margem: initialData?.total_litros_sem_margem || null,
+    om_detentora: initialData?.om_detentora || null,
+    ug_detentora: initialData?.ug_detentora || null,
+    fase_atividade: initialData?.fase_atividade || null,
+    efetivo: initialData?.efetivo || 0,
   });
 
   useEffect(() => {
@@ -63,17 +87,34 @@ const ClasseIIIRegistryForm = ({
         preco_litro: formatDecimalInput(String(initialData.preco_litro)),
         total_litros: initialData.total_litros,
         valor_total: initialData.valor_total,
-        consumo_lubrificante_litro: initialData.consumo_lubrificante_litro,
-        preco_lubrificante: formatDecimalInput(String(initialData.preco_lubrificante)),
+        consumo_lubrificante_litro: initialData.consumo_lubrificante_litro || 0,
+        preco_lubrificante: formatDecimalInput(String(initialData.preco_lubrificante || 0)),
         itens_equipamentos: initialData.itens_equipamentos,
         dias_operacao: initialData.dias_operacao,
+        // Campos obrigatórios/opcionais do tipo base
+        organizacao: initialData.organizacao,
+        ug: initialData.ug,
+        tipo_equipamento: initialData.tipo_equipamento,
+        valor_nd_30: initialData.valor_nd_30,
+        valor_nd_39: initialData.valor_nd_39,
+        categoria: initialData.categoria,
+        consumo_hora: initialData.consumo_hora,
+        consumo_km_litro: initialData.consumo_km_litro,
+        horas_dia: initialData.horas_dia,
+        km_dia: initialData.km_dia,
+        tipo_equipamento_detalhe: initialData.tipo_equipamento_detalhe,
+        total_litros_sem_margem: initialData.total_litros_sem_margem,
+        om_detentora: initialData.om_detentora,
+        ug_detentora: initialData.ug_detentora,
+        fase_atividade: initialData.fase_atividade,
+        efetivo: initialData.efetivo,
       });
     }
   }, [initialData, ptrabId]);
 
   // Função para calcular totais
   const calculateTotals = useMemo(() => {
-    // Usamos parseInputToNumber para garantir que a string do input (com vírgula) seja lida corretamente
+    // Usamos parseFloat após substituir vírgula por ponto para garantir a leitura correta
     const precoLitro = parseFloat(String(formData.preco_litro).replace(',', '.')) || 0;
     const precoLubrificante = parseFloat(String(formData.preco_lubrificante).replace(',', '.')) || 0;
     const quantidade = formData.quantidade || 0;
@@ -106,7 +147,8 @@ const ClasseIIIRegistryForm = ({
       const numericValue = value.replace(/[^0-9,.]/g, '');
       setFormData(prev => ({ ...prev, [id]: parseFloat(numericValue.replace(',', '.')) || 0 }));
     } else {
-      setFormData(prev => ({ ...prev, [id]: value }));
+      // O cast é necessário porque o tipo de evento é genérico
+      setFormData(prev => ({ ...prev, [id as keyof ClasseIIIRegistryFormState]: value }));
     }
   };
   
@@ -143,8 +185,11 @@ const ClasseIIIRegistryForm = ({
       return;
     }
     
+    // Remove os campos de string de preço e adiciona os campos numéricos
+    const { preco_litro, preco_lubrificante, ...rest } = formData;
+
     const dataToSave: TablesInsert<'classe_iii_registros'> | TablesUpdate<'classe_iii_registros'> = {
-      ...formData,
+      ...rest,
       // Garante que os preços sejam salvos como float no DB
       preco_litro: precoLitroFloat, 
       preco_lubrificante: precoLubrificanteFloat,
