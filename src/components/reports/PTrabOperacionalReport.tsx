@@ -14,7 +14,7 @@ import {
   DiariaRegistro,
   VerbaOperacionalRegistro, 
   calculateDays,
-  PassagemRegistro, // ADDED
+  PassagemRegistro, // ADDED: Agora exportado do Manager
 } from "@/pages/PTrabReportManager"; 
 import { DIARIA_RANKS_CONFIG } from "@/lib/diariaUtils";
 import { generateConsolidatedPassagemMemoriaCalculo, ConsolidatedPassagemRecord } from "@/lib/passagemUtils"; // Importando utilitários de consolidação
@@ -399,10 +399,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const corSomaND = 'FFD9D9D9'; // Cinza para a linha de soma por ND
     
     // NOVOS OBJETOS DE PREENCHIMENTO (FILL)
-    const headerFillGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: corHeader } }; // FFD9D9D9
-    const headerFillAzul = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; // FFB4C7E7
-    const totalOMFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corGrandTotal } }; // FFE8E8E8
-    const totalGeralFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSomaND } }; // FFD9D9D9
+    const headerFillGray = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corHeader } }; // FFD9D9D9
+    const headerFillAzul = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; // FFB4C7E7
+    const totalOMFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corGrandTotal } }; // FFE8E8E8
+    const totalGeralFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corSomaND } }; // FFD9D9D9
     // -------------------------------------------
 
     let currentRow = 1;
@@ -600,37 +600,37 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('C').value = registro.valor_nd_15;
             row.getCell('C').alignment = dataCenterMiddleAlignment;
             row.getCell('C').numFmt = 'R$ #,##0.00';
-            row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('C').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // D: 33.90.30 (Passagens Aéreas)
             row.getCell('D').value = registro.valor_nd_30;
             row.getCell('D').alignment = dataCenterMiddleAlignment;
             row.getCell('D').numFmt = 'R$ #,##0.00';
-            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('D').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // E: 33.90.33 (0)
             row.getCell('E').value = 0;
             row.getCell('E').alignment = dataCenterMiddleAlignment;
             row.getCell('E').numFmt = 'R$ #,##0.00';
-            row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('E').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // F: 33.90.39 (0)
             row.getCell('F').value = 0;
             row.getCell('F').alignment = dataCenterMiddleAlignment;
             row.getCell('F').numFmt = 'R$ #,##0.00';
-            row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('F').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // G: 33.90.00 (0)
             row.getCell('G').value = 0;
             row.getCell('G').alignment = dataCenterMiddleAlignment;
             row.getCell('G').numFmt = 'R$ #,##0.00';
-            row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('G').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // H: GND 3 (Total da linha)
             row.getCell('H').value = totalLinha;
             row.getCell('H').alignment = dataCenterMiddleAlignment;
             row.getCell('H').numFmt = 'R$ #,##0.00';
-            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('H').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // I: DETALHAMENTO
             const memoria = generateDiariaMemoriaCalculo(registro, diretrizesOperacionais);
@@ -651,10 +651,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         
         // --- 2. Render Passagens (CONSOLIDADO) ---
         // Filtra os registros consolidados que pertencem a esta OM Detentora
-        const passagensConsolidadasDesteGrupo = consolidatedPassagensWithDetails.filter(c => 
-            c.om_detentora === omName && c.ug_detentora === ug
-        );
-        
         passagensConsolidadasDesteGrupo.forEach(consolidated => {
             const row = worksheet.getRow(currentRow);
             const totalLinha = consolidated.totalND33;
@@ -679,37 +675,37 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('C').value = 0;
             row.getCell('C').alignment = dataCenterMiddleAlignment;
             row.getCell('C').numFmt = 'R$ #,##0.00';
-            row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('C').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // D: 33.90.30 (0)
             row.getCell('D').value = 0;
             row.getCell('D').alignment = dataCenterMiddleAlignment;
             row.getCell('D').numFmt = 'R$ #,##0.00';
-            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('D').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // E: 33.90.33 (Passagens ND 33)
             row.getCell('E').value = consolidated.totalND33;
             row.getCell('E').alignment = dataCenterMiddleAlignment;
             row.getCell('E').numFmt = 'R$ #,##0.00';
-            row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('E').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // F: 33.90.39 (0)
             row.getCell('F').value = 0;
             row.getCell('F').alignment = dataCenterMiddleAlignment;
             row.getCell('F').numFmt = 'R$ #,##0.00';
-            row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('F').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // G: 33.90.00 (0)
             row.getCell('G').value = 0;
             row.getCell('G').alignment = dataCenterMiddleAlignment;
             row.getCell('G').numFmt = 'R$ #,##0.00';
-            row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('G').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // H: GND 3 (Total da linha)
             row.getCell('H').value = totalLinha;
             row.getCell('H').alignment = dataCenterMiddleAlignment;
             row.getCell('H').numFmt = 'R$ #,##0.00';
-            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('H').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // I: DETALHAMENTO
             // A memória deve ser gerada de forma consolidada, priorizando a customizada do primeiro registro
@@ -764,37 +760,37 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('C').value = 0;
             row.getCell('C').alignment = dataCenterMiddleAlignment;
             row.getCell('C').numFmt = 'R$ #,##0.00';
-            row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('C').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // D: 33.90.30 (Verba ND 30)
             row.getCell('D').value = registro.valor_nd_30;
             row.getCell('D').alignment = dataCenterMiddleAlignment;
             row.getCell('D').numFmt = 'R$ #,##0.00';
-            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('D').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // E: 33.90.33 (0)
             row.getCell('E').value = 0;
             row.getCell('E').alignment = dataCenterMiddleAlignment;
             row.getCell('E').numFmt = 'R$ #,##0.00';
-            row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('E').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // F: 33.90.39 (Verba ND 39)
             row.getCell('F').value = registro.valor_nd_39;
             row.getCell('F').alignment = dataCenterMiddleAlignment;
             row.getCell('F').numFmt = 'R$ #,##0.00';
-            row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('F').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // G: 33.90.00 (0)
             row.getCell('G').value = 0;
             row.getCell('G').alignment = dataCenterMiddleAlignment;
             row.getCell('G').numFmt = 'R$ #,##0.00';
-            row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('G').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // H: GND 3 (Total da linha)
             row.getCell('H').value = totalLinha;
             row.getCell('H').alignment = dataCenterMiddleAlignment;
             row.getCell('H').numFmt = 'R$ #,##0.00';
-            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('H').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // I: DETALHAMENTO
             const memoria = generateVerbaOperacionalMemoriaCalculo(registro);
@@ -834,37 +830,37 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('C').value = 0;
             row.getCell('C').alignment = dataCenterMiddleAlignment;
             row.getCell('C').numFmt = 'R$ #,##0.00';
-            row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('C').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // D: 33.90.30 (Suprimento ND 30)
             row.getCell('D').value = registro.valor_nd_30;
             row.getCell('D').alignment = dataCenterMiddleAlignment;
             row.getCell('D').numFmt = 'R$ #,##0.00';
-            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('D').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // E: 33.90.33 (0)
             row.getCell('E').value = 0;
             row.getCell('E').alignment = dataCenterMiddleAlignment;
             row.getCell('E').numFmt = 'R$ #,##0.00';
-            row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('E').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // F: 33.90.39 (Suprimento ND 39)
             row.getCell('F').value = registro.valor_nd_39;
             row.getCell('F').alignment = dataCenterMiddleAlignment;
             row.getCell('F').numFmt = 'R$ #,##0.00';
-            row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('F').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // G: 33.90.00 (0)
             row.getCell('G').value = 0;
             row.getCell('G').alignment = dataCenterMiddleAlignment;
             row.getCell('G').numFmt = 'R$ #,##0.00';
-            row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('G').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // H: GND 3 (Total da linha)
             row.getCell('H').value = totalLinha;
             row.getCell('H').alignment = dataCenterMiddleAlignment;
             row.getCell('H').numFmt = 'R$ #,##0.00';
-            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
+            row.getCell('H').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // I: DETALHAMENTO
             const memoria = generateSuprimentoFundosMemoriaCalculo(registro);
@@ -891,7 +887,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
         subtotalSomaRow.getCell('A').alignment = rightMiddleAlignment;
         subtotalSomaRow.getCell('A').font = headerFontStyle;
-        subtotalSomaRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotalOM } }; // Cinza
+        subtotalSomaRow.getCell('A').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corSubtotalOM } }; // Cinza
         subtotalSomaRow.getCell('A').border = cellBorder;
         
         // Células C, D, E, F, G, H (NDs - Cinza)
@@ -906,7 +902,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             const cell = subtotalSomaRow.getCell(col);
             cell.alignment = centerMiddleAlignment;
             cell.font = headerFontStyle;
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotalOM } }; // Cinza
+            cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corSubtotalOM } }; // Cinza
             cell.border = cellBorder;
             cell.numFmt = 'R$ #,##0.00';
         });
@@ -915,7 +911,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         subtotalSomaRow.getCell('I').value = '';
         subtotalSomaRow.getCell('I').alignment = centerMiddleAlignment;
         subtotalSomaRow.getCell('I').font = headerFontStyle;
-        subtotalSomaRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotalOM } }; // Cinza
+        subtotalSomaRow.getCell('I').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corSubtotalOM } }; // Cinza
         subtotalSomaRow.getCell('I').border = cellBorder;
 
         currentRow++;
@@ -933,7 +929,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         
         // Célula H: Valor Total GND 3 (Cinza Claro)
         subtotalFinalRow.getCell('H').value = subtotalOM.totalGND3;
-        subtotalFinalRow.getCell('H').alignment = centerMiddleAlignment;
+        subtotalFinalRow.getCell('H').alignment = dataCenterMiddleAlignment;
         subtotalFinalRow.getCell('H').font = headerFontStyle;
         subtotalFinalRow.getCell('H').fill = totalOMFill; // FFE8E8E8
         subtotalFinalRow.getCell('H').border = cellBorder;
@@ -960,7 +956,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
     totalGeralSomaRow.getCell('A').alignment = rightMiddleAlignment;
     totalGeralSomaRow.getCell('A').font = headerFontStyle;
-    totalGeralSomaRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSomaND } }; // Cinza
+    totalGeralSomaRow.getCell('A').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corSomaND } }; // Cinza
     totalGeralSomaRow.getCell('A').border = cellBorder;
 
     // Células C, D, E, F, G, H (NDs - MUDADO PARA CINZA)
@@ -975,7 +971,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         const cell = totalGeralSomaRow.getCell(col);
         cell.alignment = centerMiddleAlignment;
         cell.font = headerFontStyle;
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSomaND } }; // Cinza
+        cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corSomaND } }; // Cinza
         cell.border = cellBorder;
         cell.numFmt = 'R$ #,##0.00';
     });
@@ -984,7 +980,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     totalGeralSomaRow.getCell('I').value = '';
     totalGeralSomaRow.getCell('I').alignment = centerMiddleAlignment;
     totalGeralSomaRow.getCell('I').font = headerFontStyle;
-    totalGeralSomaRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSomaND } }; // Cinza
+    totalGeralSomaRow.getCell('I').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corSomaND } }; // Cinza
     totalGeralSomaRow.getCell('I').border = cellBorder;
 
     currentRow++;
@@ -1002,7 +998,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     
     // Célula H: Valor Total GND 3 (Cinza)
     totalGeralFinalRow.getCell('H').value = totaisND.totalGND3;
-    totalGeralFinalRow.getCell('H').alignment = centerMiddleAlignment;
+    totalGeralFinalRow.getCell('H').alignment = dataCenterMiddleAlignment;
     totalGeralFinalRow.getCell('H').font = headerFontStyle;
     totalGeralFinalRow.getCell('H').fill = totalGeralFill; // FFD9D9D9 (Cinza)
     totalGeralFinalRow.getCell('H').border = cellBorder;
@@ -1038,7 +1034,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     cargoRow.getCell('A').value = `Comandante da ${ptrabData.nome_om_extenso || ptrabData.nome_om}`;
     cargoRow.getCell('A').font = { name: 'Arial', size: 9 };
     cargoRow.getCell('A').alignment = centerMiddleAlignment;
-    worksheet.mergeCells(`A${currentRow}:I${currentRow}`); // Ajustado para 9 colunas
+    worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
 
     // Exportar
     const buffer = await workbook.xlsx.writeBuffer();
@@ -1306,7 +1302,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                   <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.15 */}
                                   <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_30)}</td> {/* 33.90.30 */}
                                   <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.33 */}
-                                  <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_39)}</td> {/* 33.90.39 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.39 */}
                                   <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.00 */}
                                   <td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
                                   <td className="col-detalhamento-op">

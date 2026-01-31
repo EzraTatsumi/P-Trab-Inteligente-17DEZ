@@ -36,6 +36,8 @@ import {
   generateClasseIXMemoriaCalculo,
   calculateItemTotalClasseIX,
   getTipoCombustivelLabel, // Importando a função corrigida do Manager
+  LinhaTabela, // ADDED
+  LinhaClasseII, // ADDED
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
 import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils"; 
@@ -91,7 +93,7 @@ const defaultGenerateClasseIIMemoriaCalculo = (registro: any, isClasseII: boolea
     if (isClasseII && registro.itens_equipamentos && registro.efetivo !== undefined) {
         // Usa a função utilitária detalhada para Classe II
         return generateClasseIIUtility(
-            registro.categoria,
+            registro.categoria as 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento',
             registro.itens_equipamentos,
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
@@ -115,7 +117,7 @@ const defaultGenerateClasseVMemoriaCalculo = (registro: any): string => {
     if (CLASSE_V_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos && registro.efetivo !== undefined) {
         // Usa a função utilitária detalhada para Classe V
         return generateClasseVUtility(
-            registro.categoria,
+            registro.categoria as 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN',
             registro.itens_equipamentos,
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao, // Para Classe V, a OM Detentora é a OM de Destino
@@ -138,7 +140,7 @@ const defaultGenerateClasseVIMemoriaCalculo = (registro: any): string => {
     if (CLASSE_VI_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos) {
         // Usa a função utilitária detalhada para Classe VI
         return generateClasseVIUtility(
-            registro.categoria, // Categoria é o primeiro argumento
+            registro.categoria as 'Gerador' | 'Embarcação' | 'Equipamento de Engenharia', // Categoria é o primeiro argumento
             registro.itens_equipamentos,
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao, // OM Detentora
@@ -161,7 +163,7 @@ const defaultGenerateClasseVIIMemoriaCalculo = (registro: any): string => {
     if (CLASSE_VII_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos) {
         // Usa a função utilitária detalhada para Classe VII
         return generateClasseVIIUtility(
-            registro.categoria,
+            registro.categoria as 'Comunicações' | 'Informática',
             registro.itens_equipamentos,
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
@@ -244,8 +246,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
 
   // 1. Recalcular Totais Gerais (para HTML/PDF)
-  const totalGeral_33_90_30 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '').total_33_90_30, 0), [gruposPorOM, calcularTotaisPorOM]);
-  const totalGeral_33_90_39 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.om_qs || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '').total_33_90_39, 0), [gruposPorOM, calcularTotaisPorOM]);
+  const totalGeral_33_90_30 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.omQS || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '').total_33_90_30, 0), [gruposPorOM, calcularTotaisPorOM]);
+  const totalGeral_33_90_39 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.omQS || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '').total_33_90_39, 0), [gruposPorOM, calcularTotaisPorOM]);
   
   // NOVO: Cálculo dos totais gerais de combustível (litros e valor)
   const { totalDiesel, totalGasolina, totalValorCombustivelFinal } = useMemo(() => {
@@ -406,9 +408,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     // -------------------------------------------
     
     // NOVOS OBJETOS DE PREENCHIMENTO (FILL)
-    const headerFillGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } }; // FFE8E8E8
-    const headerFillAzul = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } }; // FFB4C7E7
-    const headerFillLaranja = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } }; // FFF8CBAD
+    const headerFillGray = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotalOM } }; // FFE8E8E8
+    const headerFillAzul = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corAzul } }; // FFB4C7E7
+    const headerFillLaranja = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corLaranja } }; // FFF8CBAD
 
     try {
       const workbook = new ExcelJS.Workbook();
@@ -634,28 +636,27 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             if (isClasseI) { // Classe I (QS/QR)
                 const registro = (linha as LinhaTabela).registro as ClasseIRegistro;
                 const tipo = (linha as LinhaTabela).tipo;
-                const ug_qs_formatted = formatCodug(registro.ug_qs);
-                const ug_qr_formatted = formatCodug(registro.ug);
+                const ug_qs_formatted = formatCodug(registro.ugQS);
 
                 line1 = `CLASSE I - SUBSISTÊNCIA`;
 
                 if (tipo === 'QS') {
                     const omDestino = registro.organizacao;
-                    const omFornecedora = registro.om_qs;
+                    const omFornecedora = registro.omQS;
                     
                     if (omDestino !== omFornecedora) {
                         line2 = omDestino; // OM Destino do Recurso
                     }
                     
-                    rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`; // OM Fornecedora
-                    rowData.valorC = registro.total_qs;
-                    rowData.valorE = registro.total_qs;
+                    rowData.omValue = `${registro.omQS}\n(${ug_qs_formatted})`; // OM Fornecedora
+                    rowData.valorC = registro.totalQS;
+                    rowData.valorE = registro.totalQS;
                     rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                     
                 } else { // QR
-                    rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
-                    rowData.valorC = registro.total_qr;
-                    rowData.valorE = registro.total_qr;
+                    rowData.omValue = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
+                    rowData.valorC = registro.totalQR;
+                    rowData.valorE = registro.totalQR;
                     rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
                 }
                 rowData.despesasValue = line1 + (line2 ? `\n${line2}` : '');
@@ -853,7 +854,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
         subtotalRow.getCell('A').alignment = rightMiddleAlignment;
         subtotalRow.getCell('A').font = headerFontStyle;
-        subtotalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+        subtotalRow.getCell('A').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corSubtotal } };
         subtotalRow.getCell('A').border = cellBorder;
         
         // Células C, D, E (NDs - Azul)
@@ -865,7 +866,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             const cell = subtotalRow.getCell(col);
             cell.alignment = dataCenterMonetaryAlignment;
             cell.font = headerFontStyle;
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+            cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corAzul } };
             cell.border = cellBorder;
             cell.numFmt = 'R$ #,##0.00';
         });
@@ -879,7 +880,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             const cell = subtotalRow.getCell(col);
             cell.alignment = dataCenterMiddleAlignment;
             cell.font = headerFontStyle;
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+            cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corLaranja } };
             cell.border = cellBorder;
         });
         
@@ -887,7 +888,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         subtotalRow.getCell('I').value = '';
         subtotalRow.getCell('I').alignment = centerMiddleAlignment;
         subtotalRow.getCell('I').font = headerFontStyle;
-        subtotalRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+        subtotalRow.getCell('I').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corSubtotal } };
         subtotalRow.getCell('I').border = cellBorder;
 
         currentRow++;
@@ -900,14 +901,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
         totalOMRow.getCell('A').alignment = rightMiddleAlignment;
         totalOMRow.getCell('A').font = headerFontStyle;
-        totalOMRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+        totalOMRow.getCell('A').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotalOM } };
         totalOMRow.getCell('A').border = cellBorder;
         
         // Célula E (Total GND 3)
         totalOMRow.getCell('E').value = totaisOM.total_gnd3;
         totalOMRow.getCell('E').alignment = dataCenterMonetaryAlignment;
         totalOMRow.getCell('E').font = headerFontStyle;
-        totalOMRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+        totalOMRow.getCell('E').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotalOM } };
         totalOMRow.getCell('E').border = cellBorder;
         totalOMRow.getCell('E').numFmt = 'R$ #,##0.00';
         
@@ -917,7 +918,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             cell.value = '';
             cell.alignment = centerMiddleAlignment;
             cell.font = headerFontStyle;
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+            cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotalOM } };
             cell.border = cellBorder;
         });
 
@@ -935,7 +936,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
       totalGeralSomaRow.getCell('A').alignment = rightMiddleAlignment;
       totalGeralSomaRow.getCell('A').font = headerFontStyle;
-      totalGeralSomaRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+      totalGeralSomaRow.getCell('A').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corSubtotal } };
       totalGeralSomaRow.getCell('A').border = cellBorder;
 
       // Células C, D, E (NDs - Azul)
@@ -947,7 +948,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           const cell = totalGeralSomaRow.getCell(col);
           cell.alignment = dataCenterMonetaryAlignment;
           cell.font = headerFontStyle;
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corAzul } };
+          cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corAzul } };
           cell.border = cellBorder;
           cell.numFmt = 'R$ #,##0.00';
       });
@@ -961,7 +962,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           const cell = totalGeralSomaRow.getCell(col);
           cell.alignment = dataCenterMiddleAlignment;
           cell.font = headerFontStyle;
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corLaranja } };
+          cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corLaranja } };
           cell.border = cellBorder;
       });
       
@@ -969,7 +970,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       totalGeralSomaRow.getCell('I').value = '';
       totalGeralSomaRow.getCell('I').alignment = centerMiddleAlignment;
       totalGeralSomaRow.getCell('I').font = headerFontStyle;
-      totalGeralSomaRow.getCell('I').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSubtotal } };
+      totalGeralSomaRow.getCell('I').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corSubtotal } };
       totalGeralSomaRow.getCell('I').border = cellBorder;
 
       currentRow++;
@@ -982,14 +983,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
       totalGeralFinalRow.getCell('A').alignment = rightMiddleAlignment;
       totalGeralFinalRow.getCell('A').font = headerFontStyle;
-      totalGeralFinalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+      totalGeralFinalRow.getCell('A').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotalOM } };
       totalGeralFinalRow.getCell('A').border = cellBorder;
       
       // Célula E (Total GND 3)
       totalGeralFinalRow.getCell('E').value = valorTotalSolicitado;
       totalGeralFinalRow.getCell('E').alignment = dataCenterMonetaryAlignment;
       totalGeralFinalRow.getCell('E').font = headerFontStyle;
-      totalGeralFinalRow.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+      totalGeralFinalRow.getCell('E').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotalOM } };
       totalGeralFinalRow.getCell('E').border = cellBorder;
       totalGeralFinalRow.getCell('E').numFmt = 'R$ #,##0.00';
       
@@ -999,7 +1000,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             cell.value = '';
             cell.alignment = centerMiddleAlignment;
             cell.font = headerFontStyle;
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalOM } };
+            cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotalOM } };
             cell.border = cellBorder;
       });
 
@@ -1198,29 +1199,28 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                         if (isClasseI) { // Classe I (QS/QR)
                             const registro = (linha as LinhaTabela).registro as ClasseIRegistro;
                             const tipo = (linha as LinhaTabela).tipo;
-                            const ug_qs_formatted = formatCodug(registro.ug_qs);
-                            const ug_qr_formatted = formatCodug(registro.ug);
+                            const ug_qs_formatted = formatCodug(registro.ugQS);
 
                             line1 = `CLASSE I - SUBSISTÊNCIA`;
 
                             if (tipo === 'QS') {
                                 const omDestino = registro.organizacao;
-                                const omFornecedora = registro.om_qs;
+                                const omFornecedora = registro.omQS;
                                 
                                 if (omDestino !== omFornecedora) {
                                     line2 = omDestino; // OM Destino do Recurso
                                 }
                                 
-                                rowData.omValue = `${registro.om_qs}\n(${ug_qs_formatted})`; // OM Fornecedora
-                                rowData.valorC = registro.total_qs;
-                                rowData.valorE = registro.total_qs;
+                                rowData.omValue = `${registro.omQS}\n(${ug_qs_formatted})`; // OM Fornecedora
+                                rowData.valorC = registro.totalQS;
+                                rowData.valorE = registro.totalQS;
                                 rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
                                 
                             } else { // QR
                                 line1 = `CLASSE I - SUBSISTÊNCIA`;
-                                rowData.omValue = `${registro.organizacao}\n(${ug_qr_formatted})`;
-                                rowData.valorC = registro.total_qr;
-                                rowData.valorE = registro.total_qr;
+                                rowData.omValue = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
+                                rowData.valorC = registro.totalQR;
+                                rowData.valorE = registro.totalQR;
                                 rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
                             }
                             rowData.despesasValue = line1 + (line2 ? `\n${line2}` : '');
@@ -1349,9 +1349,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                             <tr key={`${nomeOM}-${index}`} className="expense-row">
                                 <td className="col-despesas">
                                     {/* Usando div para garantir que o white-space: pre-wrap funcione */}
-                                    <div style={{ whiteSpace: 'pre-wrap' }}>
-                                        {rowData.despesasValue}
-                                    </div>
+                                    <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: rowData.despesasValue.replace(/\n/g, '<br/>') }} />
                                 </td>
                                 <td className="col-om">
                                     {/* Usando div para garantir que o white-space: pre-wrap funcione */}

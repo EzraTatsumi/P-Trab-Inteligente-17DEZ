@@ -13,7 +13,7 @@ import {
   calculateDays,
   formatDate,
   formatFasesParaTexto,
-  generateClasseIMemoriaCalculo as generateClasseIMemoriaCalculoImport, // Importar com alias
+  // generateClasseIMemoriaCalculo as generateClasseIMemoriaCalculoImport, // REMOVED: Unused import
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
 
 interface PTrabRacaoOperacionalReportProps {
@@ -53,7 +53,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
   
   const racaoOperacionalConsolidada = useMemo(() => {
     // Filtra apenas registros de Ração Operacional com quantidade > 0
-    const registros = registrosClasseI.filter(r => r.categoria === 'RACAO_OPERACIONAL' && ((r.quantidade_r2 || 0) > 0 || (r.quantidade_r3 || 0) > 0));
+    const registros = registrosClasseI.filter(r => r.categoria === 'RACAO_OPERACIONAL' && ((r.quantidadeR2 || 0) > 0 || (r.quantidadeR3 || 0) > 0));
     
     // Agrupar por OM de destino (organizacao/ug)
     const grupos: Record<string, RacaoOpLinha> = {};
@@ -71,17 +71,17 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
                 r2_quantidade: 0,
                 r3_quantidade: 0,
                 total_unidades: 0,
-                fase_atividade: r.fase_atividade || 'operação',
+                fase_atividade: r.faseAtividade || 'operação',
                 efetivo: r.efetivo || 0,
-                dias_operacao: r.dias_operacao,
+                dias_operacao: r.diasOperacao,
                 registroOriginal: r, // Armazena o registro original
             };
         }
         
         // Consolida as quantidades
-        grupos[key].r2_quantidade += (r.quantidade_r2 || 0);
-        grupos[key].r3_quantidade += (r.quantidade_r3 || 0);
-        grupos[key].total_unidades += (r.quantidade_r2 || 0) + (r.quantidade_r3 || 0);
+        grupos[key].r2_quantidade += (r.quantidadeR2 || 0);
+        grupos[key].r3_quantidade += (r.quantidadeR3 || 0);
+        grupos[key].total_unidades += (r.quantidadeR2 || 0) + (r.quantidadeR3 || 0);
         
         // Lógica de Priorização: Se o registro atual tem memória customizada E o registro já salvo não tem, substitui o registro original.
         const currentSavedRecord = grupos[key].registroOriginal;
@@ -94,8 +94,8 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         
         // Atualiza campos globais (embora em teoria devam ser os mesmos)
         grupos[key].efetivo = r.efetivo || 0;
-        grupos[key].dias_operacao = r.dias_operacao;
-        grupos[key].fase_atividade = r.fase_atividade || 'operação';
+        grupos[key].dias_operacao = r.diasOperacao;
+        grupos[key].fase_atividade = r.faseAtividade || 'operação';
     });
     
     return Object.values(grupos).sort((a, b) => a.om.localeCompare(b.om));
@@ -317,7 +317,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
             font: headerFontStyle,
             alignment: centerMiddleAlignment,
             border: cellBorder,
-            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: corHeader } }
+            fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corHeader } }
         };
     });
     currentRow++;
@@ -359,21 +359,21 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
     totalRow.getCell('A').alignment = centerMiddleAlignment;
     totalRow.getCell('A').font = headerFontStyle;
-    totalRow.getCell('A').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalA } }; // Cinza
+    totalRow.getCell('A').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotalA } }; // Cinza
     totalRow.getCell('A').border = cellBorder;
     
     // Célula C (Azul)
     totalRow.getCell('C').value = totalRacoesGeral;
     totalRow.getCell('C').alignment = centerMiddleAlignment;
     totalRow.getCell('C').font = headerFontStyle;
-    totalRow.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalC } }; // Azul
+    totalRow.getCell('C').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotalC } }; // Azul
     totalRow.getCell('C').border = cellBorder;
     
     // Célula D (Branco)
     totalRow.getCell('D').value = '';
     totalRow.getCell('D').alignment = centerMiddleAlignment;
     totalRow.getCell('D').font = headerFontStyle;
-    totalRow.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corTotalD } }; // Branco
+    totalRow.getCell('D').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotalD } }; // Branco
     totalRow.getCell('D').border = cellBorder;
 
     currentRow++;
