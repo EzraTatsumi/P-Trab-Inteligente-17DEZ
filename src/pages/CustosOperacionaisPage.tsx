@@ -14,7 +14,7 @@ import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { YearManagementDialog } from "@/components/YearManagementDialog";
 import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodug } from "@/lib/formatUtils";
 import { useSession } from "@/components/SessionContextProvider";
-import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { Tables, TablesInsert, TablesUpdate, Json } from "@/integrations/supabase/types";
 import { diretrizOperacionalSchema } from "@/lib/validationSchemas";
 import * as z from "zod";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -287,7 +287,16 @@ const CustosOperacionaisPage = () => {
             
         if (error) throw error;
         
-        setDiretrizesPassagens(data as DiretrizPassagem[]);
+        // CORREÇÃO 1: Mapear os dados do Supabase para o tipo DiretrizPassagem, 
+        // garantindo que 'trechos' seja tratado como TrechoPassagem[]
+        const typedData: DiretrizPassagem[] = (data || []).map(d => ({
+            ...d,
+            trechos: (d.trechos as unknown as TrechoPassagem[]) || [],
+            data_inicio_vigencia: d.data_inicio_vigencia || null,
+            data_fim_vigencia: d.data_fim_vigencia || null,
+        }));
+        
+        setDiretrizesPassagens(typedData);
         
     } catch (error) {
         console.error("Erro ao carregar diretrizes de passagens:", error);
@@ -467,7 +476,8 @@ const CustosOperacionaisPage = () => {
               ...p,
               ano_referencia: targetYear,
               user_id: user.id,
-              trechos: p.trechos, // JSONB é copiado diretamente
+              // O Supabase aceita Json, então passamos o JSONB diretamente
+              trechos: p.trechos, 
           }));
           
           const { error: insertPassagensError } = await supabase
@@ -682,17 +692,19 @@ const CustosOperacionaisPage = () => {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error("Usuário não autenticado");
           
+          // CORREÇÃO 2, 3, 4: O tipo TablesInsert<'diretrizes_passagens'> espera 'Json' para 'trechos' e 'string | null' para as datas.
+          // Usamos 'as Json' para 'trechos' e garantimos que as datas sejam strings ou null.
           const dbData: TablesInsert<'diretrizes_passagens'> = {
               user_id: user.id,
               ano_referencia: data.ano_referencia,
               om_referencia: data.om_referencia,
               ug_referencia: data.ug_referencia,
               numero_pregao: data.numero_pregao || null,
-              trechos: data.trechos || [],
+              trechos: data.trechos as unknown as Json, // Conversão para Json
               ativo: data.ativo ?? true,
               data_inicio_vigencia: data.data_inicio_vigencia || null,
               data_fim_vigencia: data.data_fim_vigencia || null,
-          } as TablesInsert<'diretrizes_passagens'>;
+          };
           
           if (data.id) {
               const { error } = await supabase
@@ -768,7 +780,7 @@ const CustosOperacionaisPage = () => {
                               {diretrizesPassagens.map(d => (
                                   <PassagemDiretrizRow
                                       key={d.id}
-                                      diretriz={d}
+                                      diretriz={d} // CORREÇÃO 5, 6: 'd' agora é do tipo DiretrizPassagem
                                       onEdit={handleStartEditPassagem}
                                       onDelete={handleDeletePassagem}
                                       loading={loading}
@@ -988,8 +1000,8 @@ const CustosOperacionaisPage = () => {
           open={isPassagemFormOpen}
           onOpenChange={setIsPassagemFormOpen}
           selectedYear={selectedYear}
-          diretrizToEdit={diretrizToEdit}
-          onSave={handleSavePassagem}
+          diretrizToEdit={diretrizToEdit} // CORREÇÃO 7: diretrizToEdit é do tipo DiretrizPassagem
+          onSave={handleSavePassagem} // CORREÇÃO 8: onSave espera Partial<DiretrizPassagem>
           loading={loading}
       />
     </div>
