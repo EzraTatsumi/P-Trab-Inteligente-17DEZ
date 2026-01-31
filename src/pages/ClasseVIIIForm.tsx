@@ -517,6 +517,10 @@ const ClasseVIIIForm = () => {
     
     // --- Process Remonta ---
     if (remontaRecords.length > 0) {
+        // Variáveis necessárias no escopo
+        const directives = diretrizesRemonta;
+        const formItems = form.itensRemonta; // Usamos o estado do form para itens de remonta
+        
         // 3.1. Consolidar TODOS os itens de diretriz de Remonta (Item B, C, D, E, G) de TODOS os registros (Equino e Canino)
         allRemontaItems = remontaRecords.flatMap(record => 
             // CORRIGIDO: Acessando itens_remonta que agora é ItemRemonta[]
@@ -527,11 +531,11 @@ const ClasseVIIIForm = () => {
         const animalTypes = ['Equino', 'Canino'];
         
         animalTypes.forEach(animalType => {
+            // CORRIGIDO: Acessando 'directives' do escopo local
             const relatedDirectives = directives.filter(d => d.item.includes(animalType));
             
             if (relatedDirectives.length > 0) {
-                // Ao carregar, formItems contém a lista completa de itens de diretriz (Item B, C, D, etc.)
-                // Precisamos extrair a quantidade e dias do primeiro item relacionado para preencher o input base.
+                // CORRIGIDO: Acessando 'formItems' do escopo local
                 const existingRelatedItems = (formItems as ItemRemonta[]).filter(item => item.item.includes(animalType));
                 
                 // Se houver registros salvos, usamos a quantidade e dias do primeiro item relacionado
@@ -546,6 +550,7 @@ const ClasseVIIIForm = () => {
                     categoria: 'Remonta/Veterinária',
                 };
                 
+                // CORRIGIDO: Usando a variável 'baseItems' declarada no escopo da função
                 baseItems.push(baseItem);
             }
         });
@@ -1213,7 +1218,7 @@ const ClasseVIIIForm = () => {
         0, 
         registro.valor_nd_30, 
         registro.valor_nd_39,
-        animalType // Fix 1: Agora é 'Equino' | 'Canino' | undefined
+        animalType
     );
     
     // 2. Usar a customizada se existir, senão usar a automática recém-gerada
@@ -1981,7 +1986,7 @@ const ClasseVIIIForm = () => {
                             0, 
                             registro.valor_nd_30, 
                             registro.valor_nd_39,
-                            animalType // Fix 2: Agora é 'Equino' | 'Canino' | undefined
+                            animalType
                         );
                         
                         const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
