@@ -38,7 +38,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
   const { handleEnterToNextField } = useFormNavigation();
   const contentRef = useRef<HTMLDivElement>(null);
   
-  // Estado para rastrear o input focado e seus dígitos brutos
+  // Estado para rastrear o input focado e seus dígitos brutos (garantindo que rawDigits é string)
   const [focusedInput, setFocusedInput] = useState<{ field: 'preco_diesel' | 'preco_gasolina', rawDigits: string } | null>(null);
 
 
@@ -49,7 +49,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
         data_fim_consulta: refLPC.data_fim_consulta,
         ambito: refLPC.ambito as 'Nacional' | 'Estadual' | 'Municipal',
         nome_local: refLPC.nome_local || "",
-        // Inicializa como string de dígitos brutos
+        // Inicializa como string de dígitos brutos, garantindo que o valor de entrada seja tratado como number
         preco_diesel: numberToRawDigits(Number(refLPC.preco_diesel)),
         preco_gasolina: numberToRawDigits(Number(refLPC.preco_gasolina)),
         source: refLPC.source || 'Manual',
@@ -91,8 +91,9 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
     }
     
     // Converte os valores de preço (que estão em string de dígitos brutos) para numérico antes de salvar
-    const dieselPrice = formatCurrencyInput(formLPC.preco_diesel).numericValue;
-    const gasolinePrice = formatCurrencyInput(formLPC.preco_gasolina).numericValue;
+    // Garantindo que formLPC.preco_diesel e formLPC.preco_gasolina são strings antes de passar para formatCurrencyInput
+    const dieselPrice = formatCurrencyInput(String(formLPC.preco_diesel)).numericValue;
+    const gasolinePrice = formatCurrencyInput(String(formLPC.preco_gasolina)).numericValue;
 
     if (dieselPrice <= 0 || gasolinePrice <= 0) {
       toast.error("Os preços devem ser maiores que zero");
@@ -178,11 +179,12 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
 
   // Handlers para inputs de preço usando formatCurrencyInput
   const getPriceInputProps = (field: 'preco_diesel' | 'preco_gasolina') => {
-    const rawDigits = formLPC[field];
+    // Garantindo que rawDigits é string
+    const rawDigits = String(formLPC[field]);
     const isFocused = focusedInput?.field === field;
     
     let displayValue = isFocused 
-        ? formatCurrencyInput(focusedInput.rawDigits).formatted
+        ? formatCurrencyInput(String(focusedInput.rawDigits)).formatted
         : formatCurrencyInput(rawDigits).formatted;
         
     if (rawDigits === "0" && !isFocused) {
@@ -192,7 +194,7 @@ export const RefLPCFormSection = ({ ptrabId, refLPC, onUpdate }: RefLPCFormSecti
     const handleFocus = () => {
         setFocusedInput({ 
             field: field, 
-            rawDigits: rawDigits 
+            rawDigits: rawDigits // rawDigits é garantido ser string aqui
         });
     };
 
