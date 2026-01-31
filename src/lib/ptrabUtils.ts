@@ -67,7 +67,7 @@ export async function fetchPTrabRecords<T extends TableName>(tableName: T, ptrab
         .from(tableName)
         .select('*')
         // Asserção de tipo para garantir que 'p_trab_id' é uma coluna válida para a tabela T
-        .eq('p_trab_id' as keyof Tables<T>, ptrabId);
+        .eq('p_trab_id' as string, ptrabId);
 
     if (error) {
         throw new Error(`Falha ao carregar registros de ${String(tableName)}: ${error.message}`);
