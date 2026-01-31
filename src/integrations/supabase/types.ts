@@ -25,7 +25,6 @@ export type Database = {
           etapa_qs: number
           fase_atividade: string | null
           id: string
-          memoria_calculo_op_customizada: string | null // ADDED
           memoria_calculo_qr_customizada: string | null
           memoria_calculo_qs_customizada: string | null
           nr_ref_int: number
@@ -54,14 +53,13 @@ export type Database = {
           etapa_qs?: number
           fase_atividade?: string | null
           id?: string
-          memoria_calculo_op_customizada?: string | null // ADDED
           memoria_calculo_qr_customizada?: string | null
           memoria_calculo_qs_customizada?: string | null
           nr_ref_int: number
           om_qs: string
           organizacao: string
           p_trab_id: string
-          total_geral?: number
+          total_geral: number
           total_qr?: number
           total_qs?: number
           ug: string
@@ -83,7 +81,6 @@ export type Database = {
           etapa_qs?: number
           fase_atividade?: string | null
           id?: string
-          memoria_calculo_op_customizada?: string | null // ADDED
           memoria_calculo_qr_customizada?: string | null
           memoria_calculo_qs_customizada?: string | null
           nr_ref_int?: number
@@ -119,19 +116,15 @@ export type Database = {
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
-          efetivo: number // ADDED
           fase_atividade: string | null
           id: string
           itens_equipamentos: Json
-          om_detentora: string | null // ADDED
           organizacao: string
           p_trab_id: string
           ug: string
-          ug_detentora: string | null // ADDED
           updated_at: string
           valor_nd_30: number
           valor_nd_39: number
-          valor_total: number // ADDED
         }
         Insert: {
           categoria: string
@@ -139,15 +132,12 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
-          efetivo?: number // ADDED
           fase_atividade?: string | null
           id?: string
           itens_equipamentos: Json
-          om_detentora?: string | null // ADDED
           organizacao: string
           p_trab_id: string
           ug: string
-          ug_detentora?: string | null // ADDED
           updated_at?: string
           valor_nd_30?: number
           valor_nd_39?: number
@@ -159,15 +149,12 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
-          efetivo?: number // ADDED
           fase_atividade?: string | null
           id?: string
           itens_equipamentos?: Json
-          om_detentora?: string | null // ADDED
           organizacao?: string
           p_trab_id?: string
           ug?: string
-          ug_detentora?: string | null // ADDED
           updated_at?: string
           valor_nd_30?: number
           valor_nd_39?: number
@@ -185,7 +172,6 @@ export type Database = {
       }
       classe_iii_registros: {
         Row: {
-          categoria: string | null // ADDED
           consumo_hora: number | null
           consumo_km_litro: number | null
           consumo_lubrificante_litro: number | null
@@ -198,12 +184,11 @@ export type Database = {
           id: string
           itens_equipamentos: Json | null
           km_dia: number | null
-          om_detentora: string | null // ADDED
           organizacao: string
           p_trab_id: string
           potencia_hp: number | null
           preco_litro: number
-          preco_lubrificante: number | null // ADDED
+          preco_lubrificante: number | null
           quantidade: number
           tipo_combustivel: string
           tipo_equipamento: string
@@ -211,14 +196,12 @@ export type Database = {
           total_litros: number
           total_litros_sem_margem: number | null
           ug: string
-          ug_detentora: string | null // ADDED
           updated_at: string
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
         }
         Insert: {
-          categoria?: string | null // ADDED
           consumo_hora?: number | null
           consumo_km_litro?: number | null
           consumo_lubrificante_litro?: number | null
@@ -231,12 +214,11 @@ export type Database = {
           id?: string
           itens_equipamentos?: Json | null
           km_dia?: number | null
-          om_detentora?: string | null // ADDED
           organizacao: string
           p_trab_id: string
           potencia_hp?: number | null
           preco_litro: number
-          preco_lubrificante?: number | null // ADDED
+          preco_lubrificante?: number | null
           quantidade: number
           tipo_combustivel: string
           tipo_equipamento: string
@@ -244,14 +226,12 @@ export type Database = {
           total_litros: number
           total_litros_sem_margem?: number | null
           ug: string
-          ug_detentora?: string | null // ADDED
           updated_at?: string
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
         }
         Update: {
-          categoria?: string | null // ADDED
           consumo_hora?: number | null
           consumo_km_litro?: number | null
           consumo_lubrificante_litro?: number | null
@@ -264,12 +244,11 @@ export type Database = {
           id?: string
           itens_equipamentos?: Json | null
           km_dia?: number | null
-          om_detentora?: string | null // ADDED
           organizacao?: string
           p_trab_id?: string
           potencia_hp?: number | null
           preco_litro?: number
-          preco_lubrificante?: number | null // ADDED
+          preco_lubrificante?: number | null
           quantidade?: number
           tipo_combustivel?: string
           tipo_equipamento?: string
@@ -277,7 +256,6 @@ export type Database = {
           total_litros?: number
           total_litros_sem_margem?: number | null
           ug?: string
-          ug_detentora?: string | null // ADDED
           updated_at?: string
           valor_nd_30?: number
           valor_nd_39?: number
@@ -300,15 +278,12 @@ export type Database = {
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
-          efetivo: number // ADDED
           fase_atividade: string | null
           id: string
           itens_equipamentos: Json
-          om_detentora: string | null // ADDED
           organizacao: string
           p_trab_id: string
           ug: string
-          ug_detentora: string | null // ADDED
           updated_at: string
           valor_nd_30: number
           valor_nd_39: number
@@ -320,15 +295,12 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
-          efetivo?: number // ADDED
           fase_atividade?: string | null
           id?: string
           itens_equipamentos: Json
-          om_detentora?: string | null // ADDED
           organizacao: string
           p_trab_id: string
           ug: string
-          ug_detentora?: string | null // ADDED
           updated_at?: string
           valor_nd_30?: number
           valor_nd_39?: number
@@ -340,15 +312,12 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
-          efetivo?: number // ADDED
           fase_atividade?: string | null
           id?: string
           itens_equipamentos?: Json
-          om_detentora?: string | null // ADDED
           organizacao?: string
           p_trab_id?: string
           ug?: string
-          ug_detentora?: string | null // ADDED
           updated_at?: string
           valor_nd_30?: number
           valor_nd_39?: number
@@ -374,11 +343,9 @@ export type Database = {
           fase_atividade: string | null
           id: string
           itens_equipamentos: Json
-          om_detentora: string // ADDED
           organizacao: string
           p_trab_id: string
           ug: string
-          ug_detentora: string // ADDED
           updated_at: string
           valor_nd_30: number
           valor_nd_39: number
@@ -393,11 +360,9 @@ export type Database = {
           fase_atividade?: string | null
           id?: string
           itens_equipamentos: Json
-          om_detentora: string // ADDED
           organizacao: string
           p_trab_id: string
           ug: string
-          ug_detentora: string // ADDED
           updated_at?: string
           valor_nd_30?: number
           valor_nd_39?: number
@@ -412,11 +377,9 @@ export type Database = {
           fase_atividade?: string | null
           id?: string
           itens_equipamentos?: Json
-          om_detentora?: string // ADDED
           organizacao?: string
           p_trab_id?: string
           ug?: string
-          ug_detentora?: string // ADDED
           updated_at?: string
           valor_nd_30?: number
           valor_nd_39?: number
@@ -442,11 +405,9 @@ export type Database = {
           fase_atividade: string | null
           id: string
           itens_equipamentos: Json
-          om_detentora: string | null // ADDED
           organizacao: string
           p_trab_id: string
           ug: string
-          ug_detentora: string | null // ADDED
           updated_at: string
           valor_nd_30: number
           valor_nd_39: number
@@ -461,11 +422,9 @@ export type Database = {
           fase_atividade?: string | null
           id?: string
           itens_equipamentos: Json
-          om_detentora?: string | null // ADDED
           organizacao: string
           p_trab_id: string
           ug: string
-          ug_detentora?: string | null // ADDED
           updated_at?: string
           valor_nd_30?: number
           valor_nd_39?: number
@@ -480,11 +439,9 @@ export type Database = {
           fase_atividade?: string | null
           id?: string
           itens_equipamentos?: Json
-          om_detentora?: string | null // ADDED
           organizacao?: string
           p_trab_id?: string
           ug?: string
-          ug_detentora?: string | null // ADDED
           updated_at?: string
           valor_nd_30?: number
           valor_nd_39?: number
@@ -510,12 +467,10 @@ export type Database = {
           fase_atividade: string | null
           id: string
           itens_remonta: Json
-          om_detentora: string | null // ADDED
           organizacao: string
           p_trab_id: string
           quantidade_animais: number
           ug: string
-          ug_detentora: string | null // ADDED
           updated_at: string
           valor_nd_30: number
           valor_nd_39: number
@@ -530,12 +485,10 @@ export type Database = {
           fase_atividade?: string | null
           id?: string
           itens_remonta: Json
-          om_detentora?: string | null // ADDED
           organizacao: string
           p_trab_id: string
           quantidade_animais: number
           ug: string
-          ug_detentora?: string | null // ADDED
           updated_at?: string
           valor_nd_30?: number
           valor_nd_39?: number
@@ -550,12 +503,10 @@ export type Database = {
           fase_atividade?: string | null
           id?: string
           itens_remonta?: Json
-          om_detentora?: string | null // ADDED
           organizacao?: string
           p_trab_id?: string
           quantidade_animais?: number
           ug?: string
-          ug_detentora?: string | null // ADDED
           updated_at?: string
           valor_nd_30?: number
           valor_nd_39?: number
@@ -581,11 +532,9 @@ export type Database = {
           fase_atividade: string | null
           id: string
           itens_saude: Json
-          om_detentora: string | null // ADDED
           organizacao: string
           p_trab_id: string
           ug: string
-          ug_detentora: string | null // ADDED
           updated_at: string
           valor_nd_30: number
           valor_nd_39: number
@@ -600,11 +549,9 @@ export type Database = {
           fase_atividade?: string | null
           id?: string
           itens_saude: Json
-          om_detentora?: string | null // ADDED
           organizacao: string
           p_trab_id: string
           ug: string
-          ug_detentora?: string | null // ADDED
           updated_at?: string
           valor_nd_30?: number
           valor_nd_39?: number
@@ -619,11 +566,9 @@ export type Database = {
           fase_atividade?: string | null
           id?: string
           itens_saude?: Json
-          om_detentora?: string | null // ADDED
           organizacao?: string
           p_trab_id?: string
           ug?: string
-          ug_detentora?: string | null // ADDED
           updated_at?: string
           valor_nd_30?: number
           valor_nd_39?: number
@@ -646,15 +591,12 @@ export type Database = {
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
-          efetivo: number // ADDED
           fase_atividade: string | null
           id: string
           itens_motomecanizacao: Json
-          om_detentora: string | null // ADDED
           organizacao: string
           p_trab_id: string
           ug: string
-          ug_detentora: string | null // ADDED
           updated_at: string
           valor_nd_30: number
           valor_nd_39: number
@@ -666,15 +608,12 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
-          efetivo?: number // ADDED
           fase_atividade?: string | null
           id?: string
           itens_motomecanizacao: Json
-          om_detentora?: string | null // ADDED
           organizacao: string
           p_trab_id: string
           ug: string
-          ug_detentora?: string | null // ADDED
           updated_at?: string
           valor_nd_30?: number
           valor_nd_39?: number
@@ -686,15 +625,12 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
-          efetivo?: number // ADDED
           fase_atividade?: string | null
           id?: string
           itens_motomecanizacao?: Json
-          om_detentora?: string | null // ADDED
           organizacao?: string
           p_trab_id?: string
           ug?: string
-          ug_detentora?: string | null // ADDED
           updated_at?: string
           valor_nd_30?: number
           valor_nd_39?: number
@@ -706,249 +642,6 @@ export type Database = {
             columns: ["p_trab_id"]
             isOneToOne: false
             referencedRelation: "p_trab"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      diaria_registros: { // ADDED TABLE
-        Row: {
-          created_at: string
-          detalhamento: string | null
-          detalhamento_customizado: string | null
-          dias_operacao: number
-          destino: string
-          fase_atividade: string | null
-          id: string
-          is_aereo: boolean | null
-          local_atividade: string | null
-          nr_viagens: number
-          om_detentora: string | null
-          organizacao: string
-          p_trab_id: string
-          posto_graduacao: string | null
-          quantidade: number
-          quantidades_por_posto: Json | null
-          ug: string
-          ug_detentora: string | null
-          updated_at: string
-          valor_diaria_unitario: number | null
-          valor_nd_15: number
-          valor_nd_30: number
-          valor_taxa_embarque: number | null
-          valor_total: number
-        }
-        Insert: {
-          created_at?: string
-          detalhamento?: string | null
-          detalhamento_customizado?: string | null
-          dias_operacao: number
-          destino: string
-          fase_atividade?: string | null
-          id?: string
-          is_aereo?: boolean | null
-          local_atividade?: string | null
-          nr_viagens?: number
-          om_detentora?: string | null
-          organizacao: string
-          p_trab_id: string
-          posto_graduacao?: string | null
-          quantidade: number
-          quantidades_por_posto?: Json | null
-          ug: string
-          ug_detentora?: string | null
-          updated_at?: string
-          valor_diaria_unitario?: number | null
-          valor_nd_15?: number
-          valor_nd_30?: number
-          valor_taxa_embarque?: number | null
-          valor_total?: number
-        }
-        Update: {
-          created_at?: string
-          detalhamento?: string | null
-          detalhamento_customizado?: string | null
-          dias_operacao?: number
-          destino?: string
-          fase_atividade?: string | null
-          id?: string
-          is_aereo?: boolean | null
-          local_atividade?: string | null
-          nr_viagens?: number
-          om_detentora?: string | null
-          organizacao?: string
-          p_trab_id?: string
-          posto_graduacao?: string | null
-          quantidade?: number
-          quantidades_por_posto?: Json | null
-          ug?: string
-          ug_detentora?: string | null
-          updated_at?: string
-          valor_diaria_unitario?: number | null
-          valor_nd_15?: number
-          valor_nd_30?: number
-          valor_taxa_embarque?: number | null
-          valor_total?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "diaria_registros_p_trab_id_fkey"
-            columns: ["p_trab_id"]
-            isOneToOne: false
-            referencedRelation: "p_trab"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      diretrizes_classe_ix: { // ADDED TABLE
-        Row: {
-          ano_referencia: number
-          ativo: boolean | null
-          categoria: string
-          created_at: string
-          id: string
-          item: string
-          updated_at: string
-          user_id: string
-          valor_acionamento_mensal: number
-          valor_mnt_dia: number
-        }
-        Insert: {
-          ano_referencia: number
-          ativo?: boolean | null
-          categoria: string
-          created_at?: string
-          id?: string
-          item: string
-          updated_at?: string
-          user_id: string
-          valor_acionamento_mensal?: number
-          valor_mnt_dia?: number
-        }
-        Update: {
-          ano_referencia?: number
-          ativo?: boolean | null
-          categoria?: string
-          created_at?: string
-          id?: string
-          item?: string
-          updated_at?: string
-          user_id?: string
-          valor_acionamento_mensal?: number
-          valor_mnt_dia?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "diretrizes_classe_ix_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      diretrizes_operacionais: { // ADDED TABLE
-        Row: {
-          ano_referencia: number
-          created_at: string
-          diaria_demais_pracas_bsb: number | null
-          diaria_demais_pracas_capitais: number | null
-          diaria_demais_pracas_demais: number | null
-          diaria_of_gen_bsb: number | null
-          diaria_of_gen_capitais: number | null
-          diaria_of_gen_demais: number | null
-          diaria_of_int_sgt_bsb: number | null
-          diaria_of_int_sgt_capitais: number | null
-          diaria_of_int_sgt_demais: number | null
-          diaria_of_sup_bsb: number | null
-          diaria_of_sup_capitais: number | null
-          diaria_of_sup_demais: number | null
-          diaria_referencia_legal: string | null
-          fator_concessionaria: number
-          fator_material_consumo: number
-          fator_passagens_aereas: number
-          fator_servicos_terceiros: number
-          id: string
-          observacoes: string | null
-          taxa_embarque: number | null
-          updated_at: string
-          user_id: string
-          valor_complemento_alimentacao: number
-          valor_fretamento_aereo_hora: number
-          valor_locacao_estrutura_dia: number
-          valor_locacao_viaturas_dia: number
-          valor_suprimentos_fundo_dia: number
-          valor_verba_operacional_dia: number
-        }
-        Insert: {
-          ano_referencia: number
-          created_at?: string
-          diaria_demais_pracas_bsb?: number | null
-          diaria_demais_pracas_capitais?: number | null
-          diaria_demais_pracas_demais?: number | null
-          diaria_of_gen_bsb?: number | null
-          diaria_of_gen_capitais?: number | null
-          diaria_of_gen_demais?: number | null
-          diaria_of_int_sgt_bsb?: number | null
-          diaria_of_int_sgt_capitais?: number | null
-          diaria_of_int_sgt_demais?: number | null
-          diaria_of_sup_bsb?: number | null
-          diaria_of_sup_capitais?: number | null
-          diaria_of_sup_demais?: number | null
-          diaria_referencia_legal?: string | null
-          fator_concessionaria?: number
-          fator_material_consumo?: number
-          fator_passagens_aereas?: number
-          fator_servicos_terceiros?: number
-          id?: string
-          observacoes?: string | null
-          taxa_embarque?: number | null
-          updated_at?: string
-          user_id: string
-          valor_complemento_alimentacao?: number
-          valor_fretamento_aereo_hora?: number
-          valor_locacao_estrutura_dia?: number
-          valor_locacao_viaturas_dia?: number
-          valor_suprimentos_fundo_dia?: number
-          valor_verba_operacional_dia?: number
-        }
-        Update: {
-          ano_referencia?: number
-          created_at?: string
-          diaria_demais_pracas_bsb?: number | null
-          diaria_demais_pracas_capitais?: number | null
-          diaria_demais_pracas_demais?: number | null
-          diaria_of_gen_bsb?: number | null
-          diaria_of_gen_capitais?: number | null
-          diaria_of_gen_demais?: number | null
-          diaria_of_int_sgt_bsb?: number | null
-          diaria_of_int_sgt_capitais?: number | null
-          diaria_of_int_sgt_demais?: number | null
-          diaria_of_sup_bsb?: number | null
-          diaria_of_sup_capitais?: number | null
-          diaria_of_sup_demais?: number | null
-          diaria_referencia_legal?: string | null
-          fator_concessionaria?: number
-          fator_material_consumo?: number
-          fator_passagens_aereas?: number
-          fator_servicos_terceiros?: number
-          id?: string
-          observacoes?: string | null
-          taxa_embarque?: number | null
-          updated_at?: string
-          user_id?: string
-          valor_complemento_alimentacao?: number
-          valor_fretamento_aereo_hora?: number
-          valor_locacao_estrutura_dia?: number
-          valor_locacao_viaturas_dia?: number
-          valor_suprimentos_fundo_dia?: number
-          valor_verba_operacional_dia?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "diretrizes_operacionais_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1129,7 +822,6 @@ export type Database = {
       organizacoes_militares: {
         Row: {
           ativo: boolean | null
-          cidade: string | null // ADDED
           codug_om: string
           codug_rm_vinculacao: string
           created_at: string | null
@@ -1141,7 +833,6 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean | null
-          cidade?: string | null // ADDED
           codug_om: string
           codug_rm_vinculacao: string
           created_at?: string | null
@@ -1153,7 +844,6 @@ export type Database = {
         }
         Update: {
           ativo?: boolean | null
-          cidade?: string | null // ADDED
           codug_om?: string
           codug_rm_vinculacao?: string
           created_at?: string | null
@@ -1304,7 +994,6 @@ export type Database = {
           dias_operacao: number
           destino: string
           diretriz_id: string
-          efetivo: number | null // ADDED
           fase_atividade: string | null
           id: string
           is_ida_volta: boolean
@@ -1321,7 +1010,6 @@ export type Database = {
           valor_nd_33: number
           valor_total: number
           valor_unitario: number
-          valor_nd_30: number // ADDED (default 0)
         }
         Insert: {
           created_at?: string
@@ -1330,7 +1018,6 @@ export type Database = {
           dias_operacao?: number
           destino: string
           diretriz_id: string
-          efetivo?: number | null // ADDED
           fase_atividade?: string | null
           id?: string
           is_ida_volta?: boolean
@@ -1347,7 +1034,6 @@ export type Database = {
           valor_nd_33?: number
           valor_total?: number
           valor_unitario: number
-          valor_nd_30?: number // ADDED (default 0)
         }
         Update: {
           created_at?: string
@@ -1356,7 +1042,6 @@ export type Database = {
           dias_operacao?: number
           destino?: string
           diretriz_id?: string
-          efetivo?: number | null // ADDED
           fase_atividade?: string | null
           id?: string
           is_ida_volta?: boolean
@@ -1373,7 +1058,6 @@ export type Database = {
           valor_nd_33?: number
           valor_total?: number
           valor_unitario?: number
-          valor_nd_30?: number // ADDED (default 0)
         }
         Relationships: [
           {
@@ -1398,8 +1082,6 @@ export type Database = {
           credit_gnd3: number
           credit_gnd4: number
           default_diretriz_year: number | null
-          default_logistica_year: number | null // ADDED
-          default_operacional_year: number | null // ADDED
           first_name: string | null
           id: string
           last_name: string | null
@@ -1411,8 +1093,6 @@ export type Database = {
           credit_gnd3?: number
           credit_gnd4?: number
           default_diretriz_year?: number | null
-          default_logistica_year?: number | null // ADDED
-          default_operacional_year?: number | null // ADDED
           first_name?: string | null
           id: string
           last_name?: string | null
@@ -1424,8 +1104,6 @@ export type Database = {
           credit_gnd3?: number
           credit_gnd4?: number
           default_diretriz_year?: number | null
-          default_logistica_year?: number | null // ADDED
-          default_operacional_year?: number | null // ADDED
           first_name?: string | null
           id?: string
           last_name?: string | null
@@ -1433,51 +1111,6 @@ export type Database = {
           raw_user_meta_data?: Json | null
         }
         Relationships: []
-      }
-      ptrab_share_requests: { // ADDED TABLE
-        Row: {
-          created_at: string
-          id: string
-          ptrab_id: string
-          requester_id: string
-          share_token: string
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          ptrab_id: string
-          requester_id: string
-          share_token: string
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          ptrab_id?: string
-          requester_id?: string
-          share_token?: string
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ptrab_share_requests_ptrab_id_fkey"
-            columns: ["ptrab_id"]
-            isOneToOne: false
-            referencedRelation: "p_trab"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ptrab_share_requests_requester_id_fkey"
-            columns: ["requester_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       verba_operacional_registros: {
         Row: {

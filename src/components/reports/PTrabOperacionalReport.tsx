@@ -8,29 +8,29 @@ import { FileSpreadsheet, Printer, Download, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tables } from "@/integrations/supabase/types";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client"; // Importando supabase para buscar detalhes da diretriz
 import {
   PTrabData,
   DiariaRegistro,
   VerbaOperacionalRegistro, 
   calculateDays,
-  PassagemRegistro, // CORRIGIDO: Importado corretamente
+  PassagemRegistro, // ADDED
 } from "@/pages/PTrabReportManager"; 
 import { DIARIA_RANKS_CONFIG } from "@/lib/diariaUtils";
-import { generateConsolidatedPassagemMemoriaCalculo, ConsolidatedPassagemRecord } from "@/lib/passagemUtils";
+import { generateConsolidatedPassagemMemoriaCalculo, ConsolidatedPassagemRecord } from "@/lib/passagemUtils"; // Importando utilitários de consolidação
 
 interface PTrabOperacionalReportProps {
   ptrabData: PTrabData;
   registrosDiaria: DiariaRegistro[];
   registrosVerbaOperacional: VerbaOperacionalRegistro[]; 
   registrosSuprimentoFundos: VerbaOperacionalRegistro[]; 
-  registrosPassagem: PassagemRegistro[];
+  registrosPassagem: PassagemRegistro[]; // ADDED
   diretrizesOperacionais: Tables<'diretrizes_operacionais'> | null;
   fileSuffix: string;
   generateDiariaMemoriaCalculo: (registro: DiariaRegistro, diretrizesOp: Tables<'diretrizes_operacionais'> | null) => string;
   generateVerbaOperacionalMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; 
   generateSuprimentoFundosMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; 
-  generatePassagemMemoriaCalculo: (registro: PassagemRegistro) => string;
+  generatePassagemMemoriaCalculo: (registro: PassagemRegistro) => string; // ADDED
 }
 
 // Função auxiliar para buscar detalhes da diretriz de passagem (Pregão/UASG)
@@ -96,13 +96,13 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   registrosDiaria,
   registrosVerbaOperacional, 
   registrosSuprimentoFundos, 
-  registrosPassagem,
+  registrosPassagem, // ADDED
   diretrizesOperacionais,
   fileSuffix,
   generateDiariaMemoriaCalculo,
   generateVerbaOperacionalMemoriaCalculo, 
   generateSuprimentoFundosMemoriaCalculo, 
-  generatePassagemMemoriaCalculo,
+  generatePassagemMemoriaCalculo, // ADDED
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -179,7 +179,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 records: [],
                 totalGeral: 0,
                 totalND33: 0,
-            } as ConsolidatedPassagemReport; // Adicionado cast para ConsolidatedPassagemReport
+            };
         }
         
         const consolidated = consolidatedPassagensMap[consolidationKey];
@@ -241,7 +241,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         return {
             ...group,
             diretrizDetails: details,
-        } as ConsolidatedPassagemReport;
+        };
     });
   }, [consolidatedPassagens, diretrizDetailsMap, isLoadingDiretrizDetails]);
 
@@ -374,35 +374,35 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const worksheet = workbook.addWorksheet('P Trab Operacional');
 
     // --- Definição de Estilos e Alinhamentos ---
-    const centerMiddleAlignment: Partial<ExcelJS.Alignment> = { horizontal: 'center', vertical: 'middle', wrapText: true };
-    const rightMiddleAlignment: Partial<ExcelJS.Alignment> = { horizontal: 'right', vertical: 'middle', wrapText: true };
-    const leftTopAlignment: Partial<ExcelJS.Alignment> = { horizontal: 'left', vertical: 'top', wrapText: true };
-    const centerTopAlignment: Partial<ExcelJS.Alignment> = { horizontal: 'center', vertical: 'top', wrapText: true };
-    const leftMiddleAlignment: Partial<ExcelJS.Alignment> = { horizontal: 'left', vertical: 'middle', wrapText: true }; 
+    const centerMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
+    const rightMiddleAlignment = { horizontal: 'right' as const, vertical: 'middle' as const, wrapText: true };
+    const leftTopAlignment = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
+    const centerTopAlignment = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
+    const leftMiddleAlignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true }; 
     
-    const dataCenterMiddleAlignment: Partial<ExcelJS.Alignment> = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    const dataCenterMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
     
-    const cellBorder: Partial<ExcelJS.Borders> = {
-      top: { style: 'thin' },
-      left: { style: 'thin' },
-      bottom: { style: 'thin' },
-      right: { style: 'thin' }
+    const cellBorder = {
+      top: { style: 'thin' as const },
+      left: { style: 'thin' as const },
+      bottom: { style: 'thin' as const },
+      right: { style: 'thin' as const }
     };
     
-    const baseFontStyle: Partial<ExcelJS.Font> = { name: 'Arial', size: 8 };
-    const headerFontStyle: Partial<ExcelJS.Font> = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF000000' } };
-    const titleFontStyle: Partial<ExcelJS.Font> = { name: 'Arial', size: 11, bold: true };
+    const baseFontStyle = { name: 'Arial', size: 8 };
+    const headerFontStyle = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF000000' } };
+    const titleFontStyle = { name: 'Arial', size: 11, bold: true };
     const corHeader = 'FFD9D9D9'; // Cinza claro para o cabeçalho da tabela
     const corSubtotalOM = 'FFD9D9D9'; // Cinza para o subtotal OM
     const corGrandTotal = 'FFE8E8E8'; // Cinza claro para o total geral
     const corND = 'FFB4C7E7'; // Azul para as NDs
     const corSomaND = 'FFD9D9D9'; // Cinza para a linha de soma por ND
     
-    // NOVOS OBJETOS DE PREENCHIMENTO (FILL) - CORRIGIDO: Usando FillPattern
-    const headerFillGray: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corHeader } };
-    const headerFillAzul: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } };
-    const totalOMFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corGrandTotal } };
-    const totalGeralFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSomaND } };
+    // NOVOS OBJETOS DE PREENCHIMENTO (FILL)
+    const headerFillGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: corHeader } }; // FFD9D9D9
+    const headerFillAzul = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; // FFB4C7E7
+    const totalOMFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corGrandTotal } }; // FFE8E8E8
+    const totalGeralFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corSomaND } }; // FFD9D9D9
     // -------------------------------------------
 
     let currentRow = 1;
@@ -454,7 +454,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
           ]
         };
         
-        row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+        row.getCell(1).alignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true };
         worksheet.mergeCells(`A${currentRow}:I${currentRow}`); // Ajustado para 9 colunas
         currentRow++;
     };
@@ -500,11 +500,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         { width: 50 }, // I: DETALHAMENTO
     ];
     
-    // Ajustar altura das linhas
+    // 4️⃣ Ajustar altura das linhas (ESSENCIAL p/ texto aparecer)
     headerRow1.height = 45;
     headerRow2.height = 35;
 
-    // Apply styles to header rows
+    // Apply styles to header rows (CORRIGIDO: Aplicando individualmente)
     const headerCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
     
     headerCols.forEach(col => {
@@ -600,37 +600,37 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('C').value = registro.valor_nd_15;
             row.getCell('C').alignment = dataCenterMiddleAlignment;
             row.getCell('C').numFmt = 'R$ #,##0.00';
-            row.getCell('C').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // D: 33.90.30 (Passagens Aéreas)
             row.getCell('D').value = registro.valor_nd_30;
             row.getCell('D').alignment = dataCenterMiddleAlignment;
             row.getCell('D').numFmt = 'R$ #,##0.00';
-            row.getCell('D').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // E: 33.90.33 (0)
             row.getCell('E').value = 0;
             row.getCell('E').alignment = dataCenterMiddleAlignment;
             row.getCell('E').numFmt = 'R$ #,##0.00';
-            row.getCell('E').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // F: 33.90.39 (0)
             row.getCell('F').value = 0;
             row.getCell('F').alignment = dataCenterMiddleAlignment;
             row.getCell('F').numFmt = 'R$ #,##0.00';
-            row.getCell('F').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // G: 33.90.00 (0)
             row.getCell('G').value = 0;
             row.getCell('G').alignment = dataCenterMiddleAlignment;
             row.getCell('G').numFmt = 'R$ #,##0.00';
-            row.getCell('G').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // H: GND 3 (Total da linha)
             row.getCell('H').value = totalLinha;
             row.getCell('H').alignment = dataCenterMiddleAlignment;
             row.getCell('H').numFmt = 'R$ #,##0.00';
-            row.getCell('H').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // I: DETALHAMENTO
             const memoria = generateDiariaMemoriaCalculo(registro, diretrizesOperacionais);
@@ -679,37 +679,37 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('C').value = 0;
             row.getCell('C').alignment = dataCenterMiddleAlignment;
             row.getCell('C').numFmt = 'R$ #,##0.00';
-            row.getCell('C').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // D: 33.90.30 (0)
             row.getCell('D').value = 0;
             row.getCell('D').alignment = dataCenterMiddleAlignment;
             row.getCell('D').numFmt = 'R$ #,##0.00';
-            row.getCell('D').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // E: 33.90.33 (Passagens ND 33)
             row.getCell('E').value = consolidated.totalND33;
             row.getCell('E').alignment = dataCenterMiddleAlignment;
             row.getCell('E').numFmt = 'R$ #,##0.00';
-            row.getCell('E').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // F: 33.90.39 (0)
             row.getCell('F').value = 0;
             row.getCell('F').alignment = dataCenterMiddleAlignment;
             row.getCell('F').numFmt = 'R$ #,##0.00';
-            row.getCell('F').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // G: 33.90.00 (0)
             row.getCell('G').value = 0;
             row.getCell('G').alignment = dataCenterMiddleAlignment;
             row.getCell('G').numFmt = 'R$ #,##0.00';
-            row.getCell('G').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // H: GND 3 (Total da linha)
             row.getCell('H').value = totalLinha;
             row.getCell('H').alignment = dataCenterMiddleAlignment;
             row.getCell('H').numFmt = 'R$ #,##0.00';
-            row.getCell('H').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // I: DETALHAMENTO
             // A memória deve ser gerada de forma consolidada, priorizando a customizada do primeiro registro
@@ -764,37 +764,37 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('C').value = 0;
             row.getCell('C').alignment = dataCenterMiddleAlignment;
             row.getCell('C').numFmt = 'R$ #,##0.00';
-            row.getCell('C').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // D: 33.90.30 (Verba ND 30)
             row.getCell('D').value = registro.valor_nd_30;
             row.getCell('D').alignment = dataCenterMiddleAlignment;
             row.getCell('D').numFmt = 'R$ #,##0.00';
-            row.getCell('D').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // E: 33.90.33 (0)
             row.getCell('E').value = 0;
             row.getCell('E').alignment = dataCenterMiddleAlignment;
             row.getCell('E').numFmt = 'R$ #,##0.00';
-            row.getCell('E').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // F: 33.90.39 (Verba ND 39)
             row.getCell('F').value = registro.valor_nd_39;
             row.getCell('F').alignment = dataCenterMiddleAlignment;
             row.getCell('F').numFmt = 'R$ #,##0.00';
-            row.getCell('F').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // G: 33.90.00 (0)
             row.getCell('G').value = 0;
             row.getCell('G').alignment = dataCenterMiddleAlignment;
             row.getCell('G').numFmt = 'R$ #,##0.00';
-            row.getCell('G').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // H: GND 3 (Total da linha)
             row.getCell('H').value = totalLinha;
             row.getCell('H').alignment = dataCenterMiddleAlignment;
             row.getCell('H').numFmt = 'R$ #,##0.00';
-            row.getCell('H').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // I: DETALHAMENTO
             const memoria = generateVerbaOperacionalMemoriaCalculo(registro);
@@ -834,37 +834,37 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('C').value = 0;
             row.getCell('C').alignment = dataCenterMiddleAlignment;
             row.getCell('C').numFmt = 'R$ #,##0.00';
-            row.getCell('C').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('C').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // D: 33.90.30 (Suprimento ND 30)
             row.getCell('D').value = registro.valor_nd_30;
             row.getCell('D').alignment = dataCenterMiddleAlignment;
             row.getCell('D').numFmt = 'R$ #,##0.00';
-            row.getCell('D').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // E: 33.90.33 (0)
             row.getCell('E').value = 0;
             row.getCell('E').alignment = dataCenterMiddleAlignment;
             row.getCell('E').numFmt = 'R$ #,##0.00';
-            row.getCell('E').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // F: 33.90.39 (Suprimento ND 39)
             row.getCell('F').value = registro.valor_nd_39;
             row.getCell('F').alignment = dataCenterMiddleAlignment;
             row.getCell('F').numFmt = 'R$ #,##0.00';
-            row.getCell('F').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('F').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // G: 33.90.00 (0)
             row.getCell('G').value = 0;
             row.getCell('G').alignment = dataCenterMiddleAlignment;
             row.getCell('G').numFmt = 'R$ #,##0.00';
-            row.getCell('G').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('G').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // H: GND 3 (Total da linha)
             row.getCell('H').value = totalLinha;
             row.getCell('H').alignment = dataCenterMiddleAlignment;
             row.getCell('H').numFmt = 'R$ #,##0.00';
-            row.getCell('H').fill = headerFillAzul; // CORRIGIDO
+            row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // I: DETALHAMENTO
             const memoria = generateSuprimentoFundosMemoriaCalculo(registro);

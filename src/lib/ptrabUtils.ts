@@ -1,92 +1,103 @@
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Tables } from "@/integrations/supabase/types";
+import { PTrabData } from "@/pages/PTrabReportManager"; // Reutilizando o tipo PTrabData
 
-// Exportando PTrabData para ser usado em formulários e relatórios
-export interface PTrabData {
-  id: string;
-  numero_ptrab: string;
-  comando_militar_area: string;
-  nome_om: string;
-  nome_om_extenso?: string;
-  nome_operacao: string;
-  periodo_inicio: string;
-  periodo_fim: string;
-  efetivo_empregado: string;
-  acoes: string;
-  status: string;
-  nome_cmt_om?: string;
-  local_om?: string;
-  updated_at: string;
-  rm_vinculacao: string;
-}
-
-// Tipos de tabela válidos para registros de PTrab
-type PTrabRecordTable = 
-  | 'classe_i_registros'
-  | 'classe_ii_registros'
-  | 'classe_iii_registros'
-  | 'classe_v_registros'
-  | 'classe_vi_registros'
-  | 'classe_vii_registros'
-  | 'classe_viii_saude_registros'
-  | 'classe_viii_remonta_registros'
-  | 'classe_ix_registros'
-  | 'diaria_registros'
-  | 'verba_operacional_registros'
-  | 'passagem_registros';
+// Tipo para as diretrizes operacionais (valores unitários)
+type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
 /**
- * Busca os registros de uma tabela específica associada a um PTrab.
+ * Verifica o status de um PTrab e o atualiza para 'em_andamento' se estiver 'aberto'.
+ * @param ptrabId O ID do Plano de Trabalho.
  */
-export async function fetchPTrabRecords<T extends PTrabRecordTable>(
-  tableName: T,
-  ptrabId: string
-): Promise<Tables<T>[]> {
-  const { data, error } = await supabase
-    .from(tableName)
-    .select('*')
-    .eq('p_trab_id', ptrabId);
+export async function updatePTrabStatusIfAberto(ptrabId: string) {
+  try {
+    const { data: ptrab, error: fetchError } = await supabase
+      .from('p_trab')
+      .select('status')
+      .eq('id', ptrabId)
+      .single();
 
-  if (error) {
-    console.error(`Erro ao buscar registros de ${tableName}:`, error);
-    throw new Error(`Falha ao carregar registros: ${error.message}`);
+    if (fetchError) {
+      console.error("Erro ao buscar status do PTrab:", fetchError);
+      return;
+    }
+
+    if (ptrab.status === 'aberto') {
+      const { error: updateError } = await supabase
+        .from('p_trab')
+        .update({ status: 'em_andamento' })
+        .eq('id', ptrabId);
+
+      if (updateError) {
+        console.error("Erro ao atualizar status do PTrab para 'em_andamento':", updateError);
+        toast.error("Erro ao atualizar status do PTrab.");
+      }
+    }
+  } catch (error) {
+    console.error("Erro inesperado ao atualizar status do PTrab:", error);
   }
-
-  return data as Tables<T>[];
 }
 
 /**
- * Busca os dados principais do PTrab.
+ * Busca os dados principais de um PTrab.
  */
 export async function fetchPTrabData(ptrabId: string): Promise<PTrabData> {
-  const { data, error } = await supabase
-    .from('p_trab')
-    .select('*, rm_vinculacao')
-    .eq('id', ptrabId)
-    .single();
+    const { data, error } = await supabase
+        .from('p_trab')
+        .select('*, updated_at')
+        .eq('id', ptrabId)
+        .single();
 
-  if (error || !data) {
-    console.error("Erro ao buscar dados do P Trab:", error);
-    throw new Error("P Trab não encontrado ou erro de carregamento.");
-  }
-
-  return data as PTrabData;
+    if (error || !data) {
+        throw new Error("Não foi possível carregar o P Trab.");
+    }
+    
+    return data as PTrabData;
 }
 
 /**
- * Busca as diretrizes operacionais para um determinado ano.
+ * Busca todos os registros de uma tabela específica para um dado PTrab.
  */
-export async function fetchDiretrizesOperacionais(ano: number): Promise<Tables<'diretrizes_operacionais'> | null> {
-  const { data, error } = await supabase
-    .from('diretrizes_operacionais')
-    .select('*')
-    .eq('ano_referencia', ano)
-    .maybeSingle();
+export async function fetchPTrabRecords<T extends keyof Tables>(tableName: T, ptrabId: string): Promise<Tables[T][]> {
+    const { data, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .eq('p_trab_id', ptrabId);
 
-  if (error) {
-    console.error("Erro ao buscar diretrizes operacionais:", error);
-    return null;
-  }
+    if (error) {
+        throw new Error(`Falha ao carregar registros de ${tableName}: ${error.message}`);
+    }
+    
+    return data as Tables[T][];
+}
 
-  return data;
+/**
+ * Busca as diretrizes operacionais (custos operacionais e diárias) para o ano de referência fornecido.
+ * @param year O ano de referência para buscar a diretriz.
+ */
+export async function fetchDiretrizesOperacionais(year: number): Promise<DiretrizOperacional> {
+    if (!year) throw new Error("Ano de referência não fornecido.");
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Usuário não autenticado.");
+    
+    // Busca a diretriz diretamente pelo ano e user_id
+    const { data, error } = await supabase
+        .from('diretrizes_operacionais')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('ano_referencia', year)
+        .maybeSingle();
+        
+    if (error) {
+        console.error("Erro ao buscar diretriz operacional:", error);
+        throw new Error(`Falha ao buscar diretrizes operacionais para o ano ${year}.`);
+    }
+    
+    if (!data) {
+        throw new Error(`Diretrizes Operacionais não encontradas para o ano ${year}. Por favor, cadastre-as em 'Configurações > Custos Operacionais'.`);
+    }
+    
+    return data as DiretrizOperacional;
 }

@@ -73,10 +73,7 @@ interface CalculatedPassagem extends TablesInsert<'passagem_registros'> {
 }
 
 // NOVO TIPO: Representa um lote consolidado de registros (vários trechos)
-// CORRIGIDO: Adicionando groupKey para compatibilidade com o useMemo
-interface ConsolidatedPassagem extends ConsolidatedPassagemRecord {
-    groupKey: string;
-}
+interface ConsolidatedPassagem extends ConsolidatedPassagemRecord {}
 
 // Estado inicial para o formulário
 interface PassagemFormState {
@@ -105,8 +102,8 @@ const initialFormState: PassagemFormState = {
 
 // Função para calcular o valor total de um trecho (considerando ida/volta)
 const calculateTrechoTotal = (trecho: TrechoSelection): number => {
-    // CORRIGIDO: Acessando valor_unitario diretamente do TrechoSelection
-    return (trecho.valor_unitario || 0) * trecho.quantidade_passagens; 
+    // Assume-se que o valor_unitario já reflete o custo total do trecho (ida ou ida/volta).
+    return trecho.valor_unitario * trecho.quantidade_passagens; 
 };
 
 // Função para comparar números de ponto flutuante com tolerância
@@ -228,7 +225,7 @@ const PassagemForm = () => {
                     records: [],
                     totalGeral: 0,
                     totalND33: 0,
-                } as ConsolidatedPassagem; // Adicionado cast para ConsolidatedPassagem
+                };
             }
 
             acc[key].records.push(registro);
@@ -415,7 +412,6 @@ const PassagemForm = () => {
         } else if (ptrabData && editingId) {
             // Modo Edição: Preencher
             // Nota: Em modo edição, formData já deve ter sido preenchido por handleEdit
-            // CORRIGIDO: Acessando oms com segurança
             const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
             setSelectedOmFavorecidaId(omFavorecida?.id);
             
@@ -583,7 +579,6 @@ const PassagemForm = () => {
         setGroupToReplace(group); // Armazena o grupo original para substituição
         
         // 1. Configurar OM Favorecida e OM Destino
-        // CORRIGIDO: Acessando oms com segurança
         const omFavorecidaToEdit = oms?.find(om => om.nome_om === group.organizacao && om.codug_om === group.ug);
         setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
         
@@ -600,7 +595,7 @@ const PassagemForm = () => {
             destino: registro.destino,
             tipo_transporte: registro.tipo_transporte as TipoTransporte,
             is_ida_volta: registro.is_ida_volta,
-            valor_unitario: Number(registro.valor_unitario || 0), // CORRIGIDO: Garantindo que valor_unitario exista
+            valor_unitario: Number(registro.valor_unitario || 0),
             quantidade_passagens: registro.quantidade_passagens,
             valor: Number(registro.valor_unitario || 0), // Adiciona 'valor' para compatibilidade com TrechoPassagem
         }));
@@ -629,7 +624,7 @@ const PassagemForm = () => {
                 destino: registro.destino,
                 tipo_transporte: registro.tipo_transporte as TipoTransporte,
                 is_ida_volta: registro.is_ida_volta,
-                valor_unitario: Number(registro.valor_unitario || 0), // CORRIGIDO
+                valor_unitario: Number(registro.valor_unitario || 0),
                 quantidade_passagens: registro.quantidade_passagens,
                 valor: Number(registro.valor_unitario || 0),
             };
@@ -637,7 +632,7 @@ const PassagemForm = () => {
             const totalTrecho = calculateTrechoTotal(trecho);
             
             const calculatedFormData: PassagemRegistro = {
-                id: registro.id, // ID temporário para gerar memória
+                id: registro.id, // Usamos o ID real do DB
                 p_trab_id: ptrabId!,
                 organizacao: registro.organizacao, 
                 ug: registro.ug, 
@@ -1318,7 +1313,6 @@ const PassagemForm = () => {
                                                                                 </div>
                                                                             </TableCell>
                                                                             <TableCell className="text-right text-sm">
-                                                                                {/* CORRIGIDO: Acessando valor_unitario */}
                                                                                 {formatCurrency(trecho.valor_unitario)}
                                                                             </TableCell>
                                                                             <TableCell className="text-right font-semibold text-sm">
@@ -1583,7 +1577,7 @@ const PassagemForm = () => {
                                                                     <Button
                                                                         type="button" 
                                                                         variant="ghost"
-                                                                        size="sm"
+                                                                        size="icon"
                                                                         className="h-8 w-8"
                                                                         onClick={() => handleEdit(group)} // Passa o grupo consolidado
                                                                         disabled={!isPTrabEditable || isSaving || pendingPassagens.length > 0}
@@ -1593,7 +1587,7 @@ const PassagemForm = () => {
                                                                     <Button
                                                                         type="button" 
                                                                         variant="ghost"
-                                                                        size="sm"
+                                                                        size="icon"
                                                                         onClick={() => handleConfirmDelete(group)} // Passa o grupo consolidado
                                                                         className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                                                         disabled={!isPTrabEditable || isSaving}
