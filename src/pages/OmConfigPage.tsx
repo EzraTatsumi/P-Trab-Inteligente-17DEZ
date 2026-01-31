@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import * as z from "zod";
-import { formatNumber } from "@/lib/formatUtils"; // Importar formatNumber
+import { formatCodug } from "@/lib/formatUtils"; // Importar formatCodug (usado para strings de CODUG)
 
 const fetchOMs = async (): Promise<OMData[]> => {
   const { data, error } = await supabase
@@ -385,11 +385,11 @@ const OmConfigPage = () => {
                           <TableCell className="font-medium whitespace-nowrap">{om.nome_om}</TableCell>
                           <TableCell className="break-words">{om.cidade}</TableCell>
                           <TableCell className="whitespace-nowrap">
-                            {formatNumber(om.codug_om)}
+                            {formatCodug(om.codug_om)}
                           </TableCell>
                           <TableCell className="whitespace-nowrap">{om.rm_vinculacao}</TableCell>
                           <TableCell className="whitespace-nowrap">
-                            {formatNumber(om.codug_rm_vinculacao)}
+                            {formatCodug(om.codug_rm_vinculacao)}
                           </TableCell>
                           <TableCell className="text-right space-x-2 whitespace-nowrap">
                             <Button 
