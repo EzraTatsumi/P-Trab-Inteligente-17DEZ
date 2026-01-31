@@ -1111,7 +1111,8 @@ const PTrabManager = () => {
 
         const newRecords = (typedRecords || []).map(record => {
             // CORREÇÃO: Desestruturação segura para remover campos de sistema
-            const { id, created_at, updated_at, ...restOfRecord } = record;
+            // Usamos 'as any' aqui para resolver o erro de desestruturação em tipos complexos/uniões
+            const { id, created_at, updated_at, ...restOfRecord } = record as any; 
             
             const newRecord: Record<string, any> = {
                 ...restOfRecord,
@@ -1372,7 +1373,7 @@ const PTrabManager = () => {
             if (typedRecords && typedRecords.length > 0) {
                 const newRecords = typedRecords.map(record => {
                     // CORREÇÃO: Desestruturação segura para remover campos de sistema
-                    const { id, created_at, updated_at, ...restOfRecord } = record;
+                    const { id, created_at, updated_at, ...restOfRecord } = record as any;
                     
                     // CORREÇÃO: Tipagem do objeto de inserção
                     const newRecord: TablesInsert<typeof tableName> = {
@@ -2363,7 +2364,7 @@ const PTrabManager = () => {
                 <p className="text-sm text-muted-foreground text-center">
                   Cria uma variação do P Trab atual, gerando um novo número de Minuta.
                 </p>
-              </p>
+              </Label>
             </RadioGroup>
           </div>
           <DialogFooter>
