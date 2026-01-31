@@ -1,235 +1,264 @@
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { LogIn, Eye, EyeOff, Loader2 } from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Checkbox } from '@/components/ui/checkbox';
-import { sanitizeAuthError } from '@/lib/errorUtils';
-import { loginSchema } from '@/lib/validationSchemas';
-import { useSession } from '@/components/SessionContextProvider';
-import { useNavigate } from 'react-router-dom';
-import { ForgotPasswordDialog } from '@/components/ForgotPasswordDialog';
-import { EmailVerificationDialog } from '@/components/EmailVerificationDialog';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
+import { sanitizeAuthError } from "@/lib/errorUtils";
+import { loginSchema } from "@/lib/validationSchemas";
+import { Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { useFormNavigation } from "@/hooks/useFormNavigation";
+import { EmailVerificationDialog } from "@/components/EmailVerificationDialog";
+import { SignupDialog } from "@/components/SignupDialog";
+import { SignupSuccessDialog } from "@/components/SignupSuccessDialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ForgotPasswordDialog } from "@/components/ForgotPasswordDialog";
 
-type LoginFormValues = z.infer<typeof loginSchema>;
-
-const Login: React.FC = () => {
-  const { user, loading: sessionLoading } = useSession();
+const Login = () => {
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showEmailVerification, setShowEmailVerification] = useState(false);
-  const [unconfirmedEmail, setUnconfirmedEmail] = useState('');
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-      rememberMe: true, // Default to true for better UX
-    },
-  });
+  const [showEmailVerificationDialog, setShowEmailVerificationDialog] = useState(false);
+  const [showSignupDialog, setShowSignupDialog] = useState(false); 
   
-  // Redirect if already logged in
-  useEffect(() => {
-    if (!sessionLoading && user) {
-      navigate('/ptrab');
-    }
-  }, [user, sessionLoading, navigate]);
+  // NOVO ESTADO: Diálogo de recuperação de senha
+  const [showForgotPasswordDialog, setShowForgotPasswordDialog] = useState(false);
+  
+  // NOVO ESTADO: Mensagem de erro de login no formulário
+  const [loginError, setLoginError] = useState<string | null>(null);
+  
+  // Estado para rastrear tentativas de login falhas para o fluxo de sugestão de cadastro
+  const [loginAttempts, setLoginAttempts] = useState(0); 
+  
+  // NOVO ESTADO: Lembrar de mim
+  const [rememberMe, setRememberMe] = useState(true);
+  
+  // NOVOS ESTADOS PARA O FLUXO DE CADASTRO BEM-SUCEDIDO
+  const [showSignupSuccessDialog, setShowSignupSuccessDialog] = useState(false);
+  const [signupSuccessEmail, setSignupSuccessEmail] = useState("");
+  
+  const { handleEnterToNextField } = useFormNavigation();
 
-  const onSubmit = async (data: LoginFormValues) => {
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
-    setUnconfirmedEmail('');
-    setShowEmailVerification(false);
+    setLoginError(null); // Limpa o erro anterior
 
     try {
-      const rememberMe = data.rememberMe ?? true;
-      
-      // CORREÇÃO: signInWithPassword agora aceita um único objeto que contém credenciais e opções.
-      const { error } = await supabase.auth.signInWithPassword(
-        {
-          email: data.email,
-          password: data.password,
-          options: {
-            // FIX: Casting the options object to 'any' to resolve TS2353 error 
-            // related to 'shouldCreateSession' not existing in the inferred type.
-            // Se for false, a sessão é de curta duração (session cookie).
-            shouldCreateSession: rememberMe,
-          } as any,
-        }
-      );
-
-      if (error) {
-        if (error.message.includes('Email not confirmed')) {
-          setUnconfirmedEmail(data.email);
-          setShowEmailVerification(true);
-          // Do not show toast error here, the dialog handles the next step
-        } else {
-          toast.error(sanitizeAuthError(error));
-        }
-        console.error("Login error:", error);
-      } else {
-        // Success handled by SessionContextProvider redirect
+      const validationResult = loginSchema.safeParse({ email, password });
+      if (!validationResult.success) {
+        setLoginError(validationResult.error.errors[0].message);
+        setLoading(false);
+        return;
       }
-    } catch (e) {
-      toast.error('Ocorreu um erro inesperado ao tentar fazer login.');
+
+      // Implementação da lógica do "Lembrar de mim"
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+        options: {
+          // Se rememberMe for true, a sessão é persistida (padrão Supabase).
+          // Se for false, a sessão é de curta duração (session cookie).
+          shouldCreateSession: rememberMe, 
+        }
+      });
+      
+      if (error) {
+        // Incrementa a contagem de tentativas falhas
+        setLoginAttempts(prev => prev + 1);
+        
+        // --- TRATAMENTO ESPECÍFICO PARA E-MAIL NÃO CONFIRMADO ---
+        if (error.message === "Email not confirmed") {
+            // Apenas abre o diálogo. NÃO define o loginError para evitar o alerta duplicado no formulário.
+            setShowEmailVerificationDialog(true); 
+            setLoading(false); // Garante que o loading seja desativado
+            return; // Sai da função
+        }
+        // --------------------------------------------------------
+        
+        const sanitizedMessage = sanitizeAuthError(error);
+        
+        // Lógica de erro inteligente: Se for credencial inválida e já tentou 3 vezes, sugere cadastro
+        if (error.message === "Invalid login credentials") {
+          if (loginAttempts >= 2) { // 3ª tentativa (0, 1, 2)
+            setLoginError("Credenciais inválidas. Se você não tem uma conta, por favor, crie uma.");
+            setShowSignupDialog(true); // Abre o diálogo de sugestão
+          } else {
+            setLoginError("Email ou senha incorretos. Tente novamente.");
+          }
+          return;
+        }
+        
+        // Para outros erros
+        setLoginError(sanitizedMessage);
+        throw error;
+      }
+      
+      // Se o login for bem-sucedido, reseta as tentativas
+      setLoginAttempts(0);
+      // O SessionContextProvider agora lida com o redirecionamento e o toast de sucesso
+      
+    } catch (error: any) {
+      // Se o erro não foi tratado acima (ex: erro de rede), exibe o toast genérico
+      if (!loginError) {
+        toast.error(sanitizeAuthError(error));
+      }
     } finally {
       setLoading(false);
     }
   };
-  
-  // If session is loading, show a spinner
-  if (sessionLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+
+  const handleSignupSuccess = (newEmail: string) => {
+    setEmail(newEmail); // Preenche o email no formulário de login
+    setPassword(""); // Limpa a senha
+    setShowSignupDialog(false);
+    
+    // NOVO FLUXO: Exibe o diálogo de sucesso simplificado
+    setSignupSuccessEmail(newEmail);
+    setShowSignupSuccessDialog(true);
+  };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-muted/40 p-4">
-      <Card className="w-full max-w-md shadow-xl">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl flex items-center justify-center gap-2">
-            <LogIn className="h-6 w-6 text-primary" />
-            Acesso à Plataforma
-          </CardTitle>
+          <CardTitle>Acesso à Plataforma</CardTitle>
           <CardDescription>
-            Entre com seu e-mail e senha.
+            Entre com seu e-mail e senha
+            <br />
+            para gerenciar seus Planos de Trabalho
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
+          {/* Formulário de Login Único */}
+          <form onSubmit={handleAuth} autoComplete="on" className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email-login">Email</Label>
+              <Input
+                id="email-login"
                 name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>E-mail</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="seu@email.com"
-                        type="email"
-                        autoComplete="email"
-                        {...field}
-                        disabled={loading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                type="email"
+                autoComplete="username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu@email.com"
+                required
+                onKeyDown={handleEnterToNextField}
               />
-
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Senha</FormLabel>
-                    <div className="relative">
-                      <FormControl>
-                        <Input
-                          placeholder="••••••••"
-                          type={showPassword ? "text" : "password"}
-                          autoComplete="current-password"
-                          {...field}
-                          disabled={loading}
-                          className="pr-10"
-                        />
-                      </FormControl>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onMouseDown={() => setShowPassword(true)}
-                        onMouseUp={() => setShowPassword(false)}
-                        tabIndex={-1}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
-                      </Button>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password-login">Senha</Label>
+              <div className="relative">
+                <Input
+                  id="password-login"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                  className="pr-10"
+                  onKeyDown={handleEnterToNextField}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onMouseDown={() => setShowPassword(true)}
+                  onMouseUp={() => setShowPassword(false)}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                </Button>
+              </div>
+            </div>
+            
+            {/* Checkbox Lembrar de Mim - MOVIDO PARA CIMA */}
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="remember-me" 
+                checked={rememberMe} 
+                onCheckedChange={(checked) => setRememberMe(!!checked)} 
               />
-              
-              {/* Checkbox Remember Me (Added to support shouldCreateSession logic) */}
-              <FormField
-                control={form.control}
-                name="rememberMe"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={loading}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel className="text-sm font-medium cursor-pointer">
-                        Manter-me conectado
-                      </FormLabel>
-                    </div>
-                  </FormItem>
-                )}
-              />
-
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Entrar'}
-              </Button>
-            </form>
-          </Form>
+              <Label htmlFor="remember-me" className="text-sm font-normal cursor-pointer">
+                Lembrar de mim
+              </Label>
+            </div>
+            
+            {/* NOVO: Exibição da mensagem de erro */}
+            {loginError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-sm font-medium">
+                  {loginError}
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            <Button type="submit" className="w-full" disabled={loading} variant="default">
+              {loading ? "Aguarde..." : "Entrar"}
+            </Button>
+            
+          </form>
           
-          <div className="mt-4 text-center text-sm space-y-2">
+          {/* Opções Adicionais (Criar Conta e Recuperar Senha) */}
+          <div className="mt-2 flex flex-col items-center space-y-1">
             <Button 
               variant="link" 
-              className="p-0 h-auto text-primary hover:text-primary/80"
-              onClick={() => setShowForgotPassword(true)}
+              className="text-sm text-primary hover:text-primary-light h-auto p-0"
+              onClick={() => setShowSignupDialog(true)}
+              disabled={loading}
+            >
+              Não tem conta? Crie uma agora! Clique aqui.
+            </Button>
+            
+            {/* Botão de Recuperar Senha */}
+            <Button 
+              variant="link" 
+              className="text-sm text-muted-foreground hover:text-primary-light h-auto p-0"
+              onClick={() => setShowForgotPasswordDialog(true)}
+              disabled={loading}
             >
               Esqueceu sua senha?
             </Button>
-            <p className="text-muted-foreground">
-              Não tem uma conta?{' '}
-              <Button 
-                variant="link" 
-                className="p-0 h-auto text-primary hover:text-primary/80"
-                onClick={() => navigate('/signup')}
-              >
-                Cadastre-se
-              </Button>
-            </p>
           </div>
+          
         </CardContent>
       </Card>
-      
-      {/* Diálogo de Verificação de E-mail */}
+
+      {/* Diálogo de Verificação de E-mail (Aparece ao tentar logar com e-mail não confirmado) */}
       <EmailVerificationDialog
-        open={showEmailVerification}
-        onOpenChange={setShowEmailVerification}
-        email={unconfirmedEmail}
+        open={showEmailVerificationDialog}
+        onOpenChange={setShowEmailVerificationDialog}
+        email={email}
+      />
+      
+      {/* Diálogo de Cadastro */}
+      <SignupDialog
+        open={showSignupDialog}
+        onOpenChange={setShowSignupDialog}
+        onSignupSuccess={handleSignupSuccess}
+      />
+      
+      {/* NOVO: Diálogo de Sucesso de Cadastro (Aparece imediatamente após o cadastro) */}
+      <SignupSuccessDialog
+        open={showSignupSuccessDialog}
+        onOpenChange={setShowSignupSuccessDialog}
+        email={signupSuccessEmail}
       />
       
       {/* Diálogo de Recuperação de Senha */}
       <ForgotPasswordDialog
-        open={showForgotPassword}
-        onOpenChange={setShowForgotPassword}
+        open={showForgotPasswordDialog}
+        onOpenChange={setShowForgotPasswordDialog}
       />
     </div>
   );

@@ -188,7 +188,7 @@ const AIChatDrawer = () => {
       </Drawer.Portal>
       
       {/* FIX: Usar tag <style> padrão */}
-      <style>{`
+      <style global>{`
         /* Estilos para o conteúdo Markdown dentro do chat */
         .markdown-content p {
             margin-bottom: 0.5rem;
