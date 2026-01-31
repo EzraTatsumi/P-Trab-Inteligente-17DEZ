@@ -87,10 +87,10 @@ export const ConsolidatedPassagemMemoria: React.FC<ConsolidatedPassagemMemoriaPr
 
     // Handler local para iniciar a edição, passando a memória completa
     const handleLocalIniciarEdicao = () => {
-        // Se houver customização, passamos a customizada (que já inclui o Pregão/UASG se necessário)
+        // Se houver customização, passamos a customizada (que já tem o Pregão/UASG adicionado se necessário)
         // Se não houver customização, passamos a automática completa.
         const memoriaParaEdicao = hasCustomMemoria 
-            ? memoriaExibida // Usa a versão customizada (que já tem o Pregão/UASG adicionado se não estiver lá)
+            ? memoriaExibida // Usa a versão customizada (que já tem o Pregão/UASG adicionado se necessário)
             : memoriaAutomaticaCompleta;
             
         handleIniciarEdicaoMemoria(group, memoriaParaEdicao);
