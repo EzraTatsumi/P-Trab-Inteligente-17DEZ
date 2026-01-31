@@ -147,7 +147,7 @@ const VerbaOperacionalForm = () => {
     const [rawTotalInput, setRawTotalInput] = useState<string>(numberToRawDigits(initialFormState.valor_total_solicitado));
     // ND 30 e ND 39 são inputs manuais (ND 39 é calculada por diferença)
     const [rawND30Input, setRawND30Input] = useState<string>(numberToRawDigits(initialFormState.valor_nd_30));
-    const [rawND39Input, setRawND39Input] = useState<string>(numberToRawDigits(initialFormState.valor_nd_39));
+    // const [rawND39Input, setRawND39Input] = useState<string>(numberToRawDigits(initialFormState.valor_nd_39));
 
 
     // Dados mestres
@@ -181,7 +181,7 @@ const VerbaOperacionalForm = () => {
             setSelectedOmFavorecidaId(undefined); 
             
             // 2. OM Detentora (Padrão CIE)
-            const cieOm = oms?.find(om => om.nome_om === DEFAULT_OM_DETENTORA && om.codug_om === DEFAULT_UG_DETENTORA);
+            const cieOm = oms?.find((om: OMData) => om.nome_om === DEFAULT_OM_DETENTORA && om.codug_om === DEFAULT_UG_DETENTORA);
             if (cieOm) {
                 setSelectedOmDetentoraId(cieOm.id);
                 setFormData(prev => ({
@@ -199,8 +199,9 @@ const VerbaOperacionalForm = () => {
             }
             
         } else if (ptrabData && editingId) {
-            const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
-            const omDetentora = oms?.find(om => om.nome_om === formData.om_detentora && om.codug_om === formData.ug_detentora);
+            // FIX: Explicitamente tipando 'om' no find
+            const omFavorecida = oms?.find((om: OMData) => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
+            const omDetentora = oms?.find((om: OMData) => om.nome_om === formData.om_detentora && om.codug_om === formData.ug_detentora);
             
             setSelectedOmFavorecidaId(omFavorecida?.id);
             setSelectedOmDetentoraId(omDetentora?.id);
@@ -486,7 +487,7 @@ const VerbaOperacionalForm = () => {
         
         setRawTotalInput(numberToRawDigits(0));
         setRawND30Input(numberToRawDigits(0));
-        setRawND39Input(numberToRawDigits(0));
+        // setRawND39Input(numberToRawDigits(0)); // ND 39 is calculated
     };
     
     const handleClearPending = () => {
@@ -505,11 +506,13 @@ const VerbaOperacionalForm = () => {
         setEditingId(registro.id);
         
         // 1. Configurar OM Favorecida (OM do PTrab)
-        const omFavorecidaToEdit = oms?.find(om => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
+        // FIX: Explicitamente tipando 'om' no find
+        const omFavorecidaToEdit = oms?.find((om: OMData) => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
         setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
         
         // 2. Configurar OM Detentora (OM Destino do Recurso)
-        const omDetentoraToEdit = oms?.find(om => om.nome_om === registro.om_detentora && om.codug_om === registro.ug_detentora);
+        // FIX: Explicitamente tipando 'om' no find
+        const omDetentoraToEdit = oms?.find((om: OMData) => om.nome_om === registro.om_detentora && om.codug_om === registro.ug_detentora);
         setSelectedOmDetentoraId(omDetentoraToEdit?.id);
 
         // 3. Populate formData
