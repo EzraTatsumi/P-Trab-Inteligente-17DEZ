@@ -29,6 +29,15 @@ import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/type
 import { useDefaultLogisticaYear } from "@/hooks/useDefaultLogisticaYear"; // NOVO HOOK
 import { useQueryClient } from "@tanstack/react-query"; // Adicionar useQueryClient
 
+// --- Tipos Auxiliares para Carregamento ---
+// Definindo um tipo que engloba todas as categorias de diretrizes_classe_ii
+type AllDiretrizClasseIIICategories = DiretrizClasseIIForm['categoria'] | DiretrizClasseIXForm['categoria'];
+
+// Tipo para os dados carregados da tabela diretrizes_classe_ii
+type LoadedClasseItem = Tables<'diretrizes_classe_ii'>;
+// Tipo para os dados carregados da tabela diretrizes_classe_ix
+type LoadedClasseIXItem = Tables<'diretrizes_classe_ix'>;
+
 // ... (restante das constantes e defaults)
 
 const defaultGeradorConfig: DiretrizEquipamentoForm[] = [
@@ -60,6 +69,7 @@ const defaultEquipamentosEngenhariaConfig: DiretrizEquipamentoForm[] = tipoEquip
   unidade: e.unidade,
 }));
 
+// Tipagem explícita para garantir compatibilidade com DiretrizClasseIIForm
 const defaultClasseIIConfig: DiretrizClasseIIForm[] = [
   { categoria: "Equipamento Individual", item: "Equipamento Individual", valor_mnt_dia: 2.42 },
   { categoria: "Proteção Balística", item: "Colete balístico", valor_mnt_dia: 3.23 },
@@ -74,6 +84,7 @@ const defaultClasseIIConfig: DiretrizClasseIIForm[] = [
   { categoria: "Material de Estacionamento", item: "Colchão", valor_mnt_dia: 0.28 },
 ];
 
+// Tipagem explícita para garantir compatibilidade com DiretrizClasseIIForm
 const defaultClasseVConfig: DiretrizClasseIIForm[] = [
   { categoria: "Armt L", item: "Fuzil 5,56mm IA2 IMBEL", valor_mnt_dia: 1.40 },
   { categoria: "Armt L", item: "Fuzil 7,62mm", valor_mnt_dia: 1.50 },
@@ -157,12 +168,13 @@ const DiretrizesCusteioPage = () => {
   const [motomecanizacaoConfig, setMotomecanizacaoConfig] = useState<DiretrizEquipamentoForm[]>(defaultMotomecanizacaoConfig);
   const [equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig] = useState<DiretrizEquipamentoForm[]>(defaultEquipamentosEngenhariaConfig);
   
+  // CORREÇÃO DE TIPAGEM: Garantir que o estado inicial seja do tipo correto
   const [classeIIConfig, setClasseIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseIIConfig);
   const [classeVConfig, setClasseVConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVConfig);
-  const [classeVIConfig, setClasseVIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIConfig); 
-  const [classeVIIConfig, setClasseVIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIConfig);
-  const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig);
-  const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig);
+  const [classeVIConfig, setClasseVIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIConfig as DiretrizClasseIIForm[]); 
+  const [classeVIIConfig, setClasseVIIConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIConfig as DiretrizClasseIIForm[]);
+  const [classeVIIISaudeConfig, setClasseVIIISaudeConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIISaudeConfig as DiretrizClasseIIForm[]);
+  const [classeVIIIRemontaConfig, setClasseVIIIRemontaConfig] = useState<DiretrizClasseIIForm[]>(defaultClasseVIIIRemontaConfig as DiretrizClasseIIForm[]);
   const [classeIXConfig, setClasseIXConfig] = useState<DiretrizClasseIXForm[]>(defaultClasseIXConfig); // USANDO A IMPORTAÇÃO
   
   const currentYear = new Date().getFullYear();
@@ -303,7 +315,7 @@ const DiretrizesCusteioPage = () => {
         setRawQRInput(numberToRawDigits(defaultValues.classe_i_valor_qr));
       }
       
-      // --- Carregar Classes II, V, VI, VII, VIII e IX (mantido) ---
+      // --- Carregar Classes II, V, VI, VII, VIII (mantido) ---
       const allClasseItemsCategories = [...CATEGORIAS_CLASSE_II, ...CATEGORIAS_CLASSE_V, ...CATEGORIAS_CLASSE_VI, ...CATEGORIAS_CLASSE_VII, ...CATEGORIAS_CLASSE_VIII];
       
       const { data: classeItemsData } = await supabase
@@ -313,7 +325,7 @@ const DiretrizesCusteioPage = () => {
         .eq("ano_referencia", year)
         .in("categoria", allClasseItemsCategories);
 
-      const loadedItems = classeItemsData || [];
+      const loadedItems = classeItemsData as LoadedClasseItem[] || [];
       
       // Filtrar e setar Classe II
       const loadedClasseII = loadedItems.filter(d => CATEGORIAS_CLASSE_II.includes(d.categoria));
@@ -348,7 +360,7 @@ const DiretrizesCusteioPage = () => {
           valor_mnt_dia: Number(d.valor_mnt_dia),
         })));
       } else {
-        setClasseVIConfig(defaultClasseVIConfig);
+        setClasseVIConfig(defaultClasseVIConfig as DiretrizClasseIIForm[]);
       }
       
       // Filtrar e setar Classe VII
@@ -360,7 +372,7 @@ const DiretrizesCusteioPage = () => {
           valor_mnt_dia: Number(d.valor_mnt_dia),
         })));
       } else {
-        setClasseVIIConfig(defaultClasseVIIConfig);
+        setClasseVIIConfig(defaultClasseVIIConfig as DiretrizClasseIIForm[]);
       }
       
       // Filtrar e setar Classe VIII - Saúde
@@ -372,7 +384,7 @@ const DiretrizesCusteioPage = () => {
           valor_mnt_dia: Number(d.valor_mnt_dia),
         })));
       } else {
-        setClasseVIIISaudeConfig(defaultClasseVIIISaudeConfig);
+        setClasseVIIISaudeConfig(defaultClasseVIIISaudeConfig as DiretrizClasseIIForm[]);
       }
       
       // Filtrar e setar Classe VIII - Remonta/Veterinária
@@ -384,7 +396,7 @@ const DiretrizesCusteioPage = () => {
           valor_mnt_dia: Number(d.valor_mnt_dia),
         })));
       } else {
-        setClasseVIIIRemontaConfig(defaultClasseVIIIRemontaConfig);
+        setClasseVIIIRemontaConfig(defaultClasseVIIIRemontaConfig as DiretrizClasseIIForm[]);
       }
       
       // --- Carregar Classe IX (mantido) ---
@@ -396,7 +408,7 @@ const DiretrizesCusteioPage = () => {
         
       if (classeIXError) throw classeIXError;
       
-      const loadedClasseIX = classeIXData || [];
+      const loadedClasseIX = classeIXData as LoadedClasseIXItem[] || [];
       
       if (loadedClasseIX.length > 0) {
         const loadedItemsMap = new Map<string, DiretrizClasseIXForm>();
@@ -410,7 +422,8 @@ const DiretrizesCusteioPage = () => {
         });
         
         // Merge: Adiciona itens padrão que não estão na lista salva
-        const mergedClasseIX: DiretrizClasseIXForm[] = [...loadedItemsMap.values()];
+        // CORREÇÃO: Usar Array.from(loadedItemsMap.values()) para iterar sobre o Map
+        const mergedClasseIX: DiretrizClasseIXForm[] = Array.from(loadedItemsMap.values());
         
         defaultClasseIXConfig.forEach(defaultItem => {
             if (!loadedItemsMap.has(defaultItem.item)) {
@@ -538,12 +551,14 @@ const DiretrizesCusteioPage = () => {
             categoria: categoria,
             nome_equipamento: g.nome_equipamento,
             tipo_combustivel: g.tipo_combustivel,
-            consumo: Number(g.consumo).toFixed(2), // Garantir precisão
+            // CORREÇÃO: Consumo deve ser string (numeric no DB)
+            consumo: Number(g.consumo).toFixed(2), 
             unidade: g.unidade,
             ativo: true, // Garantir que o novo registro seja ativo
           }));
 
         if (equipamentosParaSalvar.length > 0) {
+          // CORREÇÃO: Tipagem para TablesInsert
           const { error: eqError } = await supabase
             .from("diretrizes_equipamentos_classe_iii")
             .insert(equipamentosParaSalvar as TablesInsert<'diretrizes_equipamentos_classe_iii'>[]);
@@ -576,11 +591,13 @@ const DiretrizesCusteioPage = () => {
           ano_referencia: diretrizes.ano_referencia,
           categoria: item.categoria,
           item: item.item,
-          valor_mnt_dia: Number(item.valor_mnt_dia || 0).toFixed(2), // Garantir precisão
+          // CORREÇÃO: valor_mnt_dia deve ser string (numeric no DB)
+          valor_mnt_dia: Number(item.valor_mnt_dia || 0).toFixed(2), 
           ativo: true,
         }));
         
       if (classeItemsParaSalvar.length > 0) {
+        // CORREÇÃO: Tipagem para TablesInsert
         const { error: c2Error } = await supabase
           .from("diretrizes_classe_ii")
           .insert(classeItemsParaSalvar as TablesInsert<'diretrizes_classe_ii'>[]);
@@ -616,6 +633,7 @@ const DiretrizesCusteioPage = () => {
         
       // Inserção individual para maior robustez
       for (const item of classeIXItemsParaSalvar) {
+          // CORREÇÃO: Tipagem para TablesInsert
           const { error: c9Error } = await supabase
             .from("diretrizes_classe_ix")
             .insert([item as TablesInsert<'diretrizes_classe_ix'>]);
@@ -740,6 +758,7 @@ const DiretrizesCusteioPage = () => {
       
       if (sourceClasseIX && sourceClasseIX.length > 0) {
         const newClasseIX = sourceClasseIX.map(c9 => {
+          // CORREÇÃO: Desestruturação segura para remover campos de sistema
           const { id: oldC9Id, created_at: oldC9Created, updated_at: oldC9Updated, ...restC9 } = c9;
           return { ...restC9, ano_referencia: targetYear, user_id: user.id };
         });
@@ -835,6 +854,28 @@ const DiretrizesCusteioPage = () => {
 
   // Função genérica para atualizar item (Classe III)
   const handleUpdateItem = (config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, index: number, field: keyof DiretrizEquipamentoForm, value: any) => {
+    const novosItens = [...config];
+    novosItens[index] = { ...novosItens[index], [field]: value };
+    setConfig(novosItens);
+  };
+  
+  // --- Funções de Gerenciamento da Classe II/V/VI/VII/VIII ---
+  
+  // Função genérica para adicionar item (Classes II, V, VI, VII, VIII)
+  const handleAddClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, categoria: DiretrizClasseIIForm['categoria']) => {
+    setConfig(prev => [
+      ...prev,
+      { categoria: categoria, item: "", valor_mnt_dia: 0 } as DiretrizClasseIIForm
+    ]);
+  };
+
+  // Função genérica para remover item (Classes II, V, VI, VII, VIII)
+  const handleRemoveClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, index: number) => {
+    setConfig(config.filter((_, i) => i !== index));
+  };
+
+  // Função genérica para atualizar item (Classes II, V, VI, VII, VIII)
+  const handleUpdateClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, index: number, field: keyof DiretrizClasseIIForm, value: any) => {
     const novosItens = [...config];
     novosItens[index] = { ...novosItens[index], [field]: value };
     setConfig(novosItens);
@@ -1568,7 +1609,7 @@ const DiretrizesCusteioPage = () => {
         open={isYearManagementDialogOpen}
         onOpenChange={setIsYearManagementDialogOpen}
         availableYears={availableYears}
-        defaultYear={defaultYear} // Passando o defaultYear
+        defaultYear={defaultYear} 
         onCopy={handleCopyDiretrizes}
         onDelete={handleDeleteDiretrizes}
         loading={loading}
