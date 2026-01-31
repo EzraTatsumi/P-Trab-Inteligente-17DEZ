@@ -347,39 +347,17 @@ const DiariaForm = () => {
             if (error) throw error;
             return data;
         },
-        onSuccess: (newRecords) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["diariaRegistros", ptrabId] });
             queryClient.invalidateQueries({ queryKey: ["ptrabTotals", ptrabId] });
             toast.success(`Sucesso! ${pendingDiarias.length} registro(s) de Diária adicionado(s).`);
             setPendingDiarias([]); // Limpa a lista pendente
             setLastSavedFormData(null); // Limpa o lastSavedFormData
             
-            // 1. Resetar o formulário (mantendo OM, Fase, Dias, Viagens, Destino, Local, Aéreo E QUANTIDADES)
-            const keptData = {
-                organizacao: formData.organizacao,
-                ug: formData.ug,
-                fase_atividade: formData.fase_atividade,
-                destino: formData.destino,
-                nr_viagens: formData.nr_viagens,
-                dias_operacao: formData.dias_operacao,
-                local_atividade: formData.local_atividade, // MANTIDO
-                is_aereo: formData.is_aereo, // MANTIDO
-                quantidades_por_posto: formData.quantidades_por_posto, // MANTIDO
-            };
+            // Resetar o formulário completamente para permitir nova inserção
+            resetForm();
             
-            setFormData(prev => ({
-                ...initialFormState,
-                ...keptData,
-            }));
-            
-            // 2. Colocar o último registro salvo em modo de edição para exibir a Seção 5
-            if (newRecords && newRecords.length > 0) {
-                const lastSavedRecord = newRecords[0]; // O primeiro item é o mais recente devido à ordenação
-                // Chamamos handleEdit com o registro recém-salvo
-                handleEdit(lastSavedRecord as DiariaRegistro);
-            }
-            
-            // 3. Scroll para a seção 3 (itens adicionados)
+            // Scroll para a seção 4 (registros salvos)
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
         },
         onError: (err) => {
