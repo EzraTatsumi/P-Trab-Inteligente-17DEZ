@@ -331,3 +331,6 @@ const PTrabManager = () => {
         }
   };
 // ... (rest of the file)
+}; // <-- Fechando o componente PTrabManager
+
+export default PTrabManager;
