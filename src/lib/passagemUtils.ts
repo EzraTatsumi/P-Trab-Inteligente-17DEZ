@@ -3,29 +3,7 @@ import { formatCurrency, formatCodug } from "./formatUtils";
 import { TrechoSelection } from "@/components/PassagemTrechoSelectorDialog";
 
 // Tipos de dados
-// Usamos o tipo Tables do Supabase e o estendemos/redefinimos para usar camelCase onde necessário
-export interface PassagemRegistro extends Tables<'passagem_registros'> {
-    // Sobrescrevemos as propriedades que queremos em camelCase para consistência no frontend
-    diasOperacao: number; // Mapeado de dias_operacao
-    faseAtividade: string | null; // Mapeado de fase_atividade
-    isIdaVolta: boolean; // Mapeado de is_ida_volta
-    quantidadePassagens: number; // Mapeado de quantidade_passagens
-    valorUnitario: number; // Mapeado de valor_unitario
-    valorNd33: number; // Mapeado de valor_nd_33
-    omDetentora: string; // Mapeado de om_detentora
-    ugDetentora: string; // Mapeado de ug_detentora
-    
-    // Mantemos as propriedades originais do DB para compatibilidade com o tipo Tables
-    dias_operacao: number;
-    fase_atividade: string | null;
-    is_ida_volta: boolean;
-    quantidade_passagens: number;
-    valor_unitario: number;
-    valor_nd_33: number;
-    om_detentora: string;
-    ug_detentora: string;
-}
-
+export type PassagemRegistro = Tables<'passagem_registros'>;
 export type PassagemForm = TablesInsert<'passagem_registros'>;
 
 // Tipo para o registro consolidado (usado na Seção 5)
@@ -66,20 +44,19 @@ export const calculatePassagemTotals = (data: PassagemForm) => {
  * @returns String formatada da memória de cálculo.
  */
 export const generatePassagemMemoriaCalculo = (data: PassagemRegistro): string => {
-    // Usando as propriedades em camelCase
     const { 
-        organizacao, diasOperacao, efetivo, faseAtividade,
-        origem, destino, tipo_transporte, isIdaVolta, valorUnitario, quantidadePassagens,
+        organizacao, dias_operacao, efetivo, fase_atividade,
+        origem, destino, tipo_transporte, is_ida_volta, valor_unitario, quantidade_passagens,
         valor_total,
     } = data;
 
     const total = Number(valor_total || 0);
-    const unitario = Number(valorUnitario || 0);
-    const qtd = quantidadePassagens;
+    const unitario = Number(valor_unitario || 0);
+    const qtd = quantidade_passagens;
     
-    const diasText = diasOperacao === 1 ? "dia" : "dias";
+    const diasText = dias_operacao === 1 ? "dia" : "dias";
     const efetivoText = efetivo === 1 ? "militar" : "militares";
-    const idaVoltaText = isIdaVolta ? 'Ida/Volta' : 'Ida';
+    const idaVoltaText = is_ida_volta ? 'Ida/Volta' : 'Ida';
     
     // Lógica de concordância de gênero (do/da)
     const omNameLower = organizacao.toLowerCase();
@@ -88,7 +65,7 @@ export const generatePassagemMemoriaCalculo = (data: PassagemRegistro): string =
     let memoria = "";
     
     // Cabeçalho simplificado para o item individual (usado no staging)
-    memoria += `33.90.33 - Aquisição de Passagem para ${efetivo} ${efetivoText} ${concordancia} ${organizacao}, durante ${diasOperacao} ${diasText} de ${faseAtividade}.\n\n`;
+    memoria += `33.90.33 - Aquisição de Passagem para ${efetivo} ${efetivoText} ${concordancia} ${organizacao}, durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n\n`;
     
     memoria += `Cálculo:\n`;
     memoria += `- ${origem} -> ${destino}: ${formatCurrency(unitario)} (${tipo_transporte} - ${idaVoltaText}).\n\n`;
@@ -127,21 +104,19 @@ export const generateConsolidatedPassagemMemoriaCalculo = (group: ConsolidatedPa
     // 2. Detalhe dos Trechos (Cálculo)
     memoria += `Cálculo:\n`;
     records.forEach(r => {
-        // Usando as propriedades em camelCase
-        const unitario = Number(r.valorUnitario || 0);
-        const idaVoltaText = r.isIdaVolta ? 'Ida/Volta' : 'Ida';
-        memoria += `- ${r.origem} -> ${r.destino}: ${formatCurrency(unitario)} (${r.tipo_transporte} - ${idaVoltaText}).\n`;
+        const unitario = Number(r.valor_unitario || 0);
+        const idaVoltaText = r.is_ida_volta ? 'Ida/Volta' : 'Ida';
+        memoria += `- ${r.origem}-${r.destino}: ${formatCurrency(unitario)} (${r.tipo_transporte} - ${idaVoltaText}).\n`;
     });
     memoria += "\n";
     
     // 3. Aplicação da Fórmula
     memoria += `Fórmula: Qtd Psg x Valor Unitário da Psg.\n`;
     records.forEach(r => {
-        // Usando as propriedades em camelCase
         const total = Number(r.valor_total || 0);
-        const unitario = Number(r.valorUnitario || 0);
-        const qtd = r.quantidadePassagens;
-        const idaVoltaText = r.isIdaVolta ? 'Ida/Volta' : 'Ida';
+        const unitario = Number(r.valor_unitario || 0);
+        const qtd = r.quantidade_passagens;
+        const idaVoltaText = r.is_ida_volta ? 'Ida/Volta' : 'Ida';
         
         memoria += `- ${qtd} Psg ${r.origem}-${r.destino} (${r.tipo_transporte}-${idaVoltaText}) x ${formatCurrency(unitario)} = ${formatCurrency(total)}.\n`;
     });

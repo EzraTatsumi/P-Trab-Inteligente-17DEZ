@@ -34,15 +34,6 @@ export interface ClasseIRegistro {
   quantidadeR2: number | null;
   quantidadeR3: number | null;
   categoria: 'RACAO_QUENTE' | 'RACAO_OPERACIONAL';
-  
-  // Propriedades de total do DB (mantidas em snake_case para consistência com o DB, mas o código deve usar 'calculos')
-  total_qs: number;
-  total_qr: number;
-  complemento_qs: number;
-  etapa_qs: number;
-  complemento_qr: number;
-  etapa_qr: number;
-  total_geral: number;
 }
 
 /**
@@ -197,7 +188,7 @@ export const calculateClasseICalculations = (
  * Gera a memória de cálculo formatada para Ração Quente (QS/QR).
  */
 export const generateRacaoQuenteMemoriaCalculo = (registro: ClasseIRegistro): { qs: string, qr: string } => {
-  const { organizacao, efetivo, diasOperacao, nrRefInt, valorQS, valorQR, calculos, faseAtividade, ug, omQS, ugQS } = registro; // Usando camelCase
+  const { organizacao, efetivo, diasOperacao, nrRefInt, valorQS, valorQR, calculos, faseAtividade, ug, omQS, ugQS } = registro; // Adicionado ug, omQS, ugQS
   
   if (registro.categoria !== 'RACAO_QUENTE' || efetivo === null || valorQS === null || valorQR === null || nrRefInt === null) {
       return { qs: "Memória não aplicável.", qr: "" };
@@ -266,7 +257,7 @@ export const generateRacaoOperacionalMemoriaCalculo = (registro: ClasseIRegistro
         return "Memória não aplicável para Ração Quente.";
     }
     
-    const { organizacao, efetivo, diasOperacao, quantidadeR2, quantidadeR3, faseAtividade, ug } = registro; // Usando camelCase
+    const { organizacao, efetivo, diasOperacao, quantidadeR2, quantidadeR3, faseAtividade, ug } = registro; // Adicionado ug
     
     const E = efetivo || 0;
     const D = diasOperacao || 0;

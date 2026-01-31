@@ -49,7 +49,7 @@ import {
 } from "@/lib/suprimentoFundosUtils"; // NOVO: Importar utilitários de Suprimento de Fundos
 import { 
   generatePassagemMemoriaCalculo,
-  PassagemRegistro as PassagemRegistroType, // Importando o tipo PassagemRegistro
+  PassagemRegistro, // Importando o tipo PassagemRegistro
 } from "@/lib/passagemUtils"; // Importando utilitários de Passagem
 import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais } from "@/lib/ptrabUtils";
@@ -60,45 +60,69 @@ import { Tables } from "@/integrations/supabase/types"; // Importar Tables
 // TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
 // =================================================================
 
-export interface PTrabData extends Tables<'p_trab'> {
-  // Extensão para garantir que updated_at e rm_vinculacao estejam presentes
+export interface PTrabData {
+  id: string;
+  numero_ptrab: string;
+  comando_militar_area: string;
+  nome_om: string;
+  nome_om_extenso?: string;
+  nome_operacao: string;
+  periodo_inicio: string;
+  periodo_fim: string;
+  efetivo_empregado: string;
+  acoes: string;
+  status: string;
+  nome_cmt_om?: string;
+  local_om?: string;
   updated_at: string;
   rm_vinculacao: string;
 }
 
 // Usando o tipo importado para garantir consistência
 export type ClasseIRegistro = ClasseIRegistroType;
-export type PassagemRegistro = PassagemRegistroType; // Exportando o tipo correto
 
-// NOVO TIPO: DiariaRegistro (Usando camelCase para consumo)
-export interface DiariaRegistro extends Tables<'diaria_registros'> {
-  // Sobrescrevemos as propriedades que queremos em camelCase para consistência no frontend
-  diasOperacao: number; // Mapeado de dias_operacao
-  faseAtividade: string | null; // Mapeado de fase_atividade
-  nrViagens: number; // Mapeado de nr_viagens
-  localAtividade: string | null; // Mapeado de local_atividade
-  quantidadesPorPosto: QuantidadesPorPosto; // Mapeado de quantidades_por_posto
-  valorNd15: number; // Mapeado de valor_nd_15
-  valorNd30: number; // Mapeado de valor_nd_30
-  valorTaxaEmbarque: number | null; // Mapeado de valor_taxa_embarque
-  omDetentora: string | null; // Mapeado de om_detentora
-  ugDetentora: string | null; // Mapeado de ug_detentora
-  isAereo: boolean | null; // Mapeado de is_aereo
+// NOVO TIPO: DiariaRegistro
+export interface DiariaRegistro {
+  id: string;
+  organizacao: string;
+  ug: string;
+  dias_operacao: number;
+  destino: DestinoDiaria;
+  nr_viagens: number;
+  local_atividade: string;
+  quantidades_por_posto: QuantidadesPorPosto;
+  valor_total: number;
+  valor_nd_15: number;
+  valor_nd_30: number;
+  valor_taxa_embarque: number;
+  detalhamento: string;
+  detalhamento_customizado?: string | null;
+  fase_atividade: string;
+  is_aereo: boolean;
 }
 
 // NOVO TIPO: VerbaOperacionalRegistro (Usado para Verba Operacional e Suprimento de Fundos)
-export interface VerbaOperacionalRegistro extends Tables<'verba_operacional_registros'> {
-  // Sobrescrevemos as propriedades que queremos em camelCase para consistência no frontend
-  diasOperacao: number; // Mapeado de dias_operacao
-  quantidadeEquipes: number; // Mapeado de quantidade_equipes
-  valorTotalSolicitado: number; // Mapeado de valor_total_solicitado
-  faseAtividade: string | null; // Mapeado de fase_atividade
-  valorNd30: number; // Mapeado de valor_nd_30
-  valorNd39: number; // Mapeado de valor_nd_39
-  omDetentora: string | null; // Mapeado de om_detentora
-  ugDetentora: string | null; // Mapeado de ug_detentora
-  objetoAquisicao: string | null; // Mapeado de objeto_aquisicao
-  objetoContratacao: string | null; // Mapeado de objeto_contratacao
+export interface VerbaOperacionalRegistro {
+  id: string;
+  organizacao: string;
+  ug: string;
+  om_detentora: string | null;
+  ug_detentora: string | null;
+  dias_operacao: number;
+  quantidade_equipes: number;
+  valor_total_solicitado: number;
+  fase_atividade: string;
+  detalhamento: string;
+  detalhamento_customizado?: string | null;
+  valor_nd_30: number;
+  valor_nd_39: number;
+  // NOVOS CAMPOS ADICIONADOS AO DB
+  objeto_aquisicao: string | null;
+  objeto_contratacao: string | null;
+  proposito: string | null;
+  finalidade: string | null;
+  local: string | null;
+  tarefa: string | null;
 }
 
 export interface ItemClasseIII {
@@ -135,34 +159,56 @@ export interface ItemClasseIX {
   memoria_customizada?: string | null;
 }
 
-export interface ClasseIIRegistro extends Tables<'classe_ii_registros'> {
-  // Unificação de tipos para Classes II, V, VI, VII, VIII, IX
-  diasOperacao: number; // Mapeado de dias_operacao
-  faseAtividade: string | null; // Mapeado de fase_atividade
-  valorNd30: number; // Mapeado de valor_nd_30
-  valorNd39: number; // Mapeado de valor_nd_39
-  omDetentora: string | null; // Mapeado de om_detentora
-  ugDetentora: string | null; // Mapeado de ug_detentora
-  
-  // Propriedades específicas (usando o tipo Json do DB)
-  itens_equipamentos: ItemClasseII[]; // Sobrescreve Json para o tipo correto
-  itens_saude?: any; 
-  itens_remonta?: any; 
+export interface ClasseIIRegistro {
+  id: string;
+  organizacao: string;
+  ug: string;
+  dias_operacao: number;
+  categoria: string;
+  itens_equipamentos: ItemClasseII[];
+  valor_total: number;
+  detalhamento: string;
+  detalhamento_customizado?: string | null;
+  fase_atividade?: string | null;
+  valor_nd_30: number;
+  valor_nd_39: number;
+  animal_tipo?: 'Equino' | 'Canino' | null;
+  quantidade_animais?: number;
+  itens_remonta?: any; // Usado para Classe VIII Remonta
+  itens_saude?: any; // Usado para Classe VIII Saúde
   itens_motomecanizacao?: ItemClasseIX[];
+  om_detentora?: string | null;
+  ug_detentora?: string | null;
+  efetivo?: number;
 }
 
-export interface ClasseIIIRegistro extends Tables<'classe_iii_registros'> {
-  // Sobrescrevemos as propriedades que queremos em camelCase para consistência no frontend
-  diasOperacao: number; // Mapeado de dias_operacao
-  faseAtividade: string | null; // Mapeado de fase_atividade
-  consumoLubrificanteLitro: number | null; // Mapeado de consumo_lubrificante_litro
-  precoLubrificante: number | null; // Mapeado de preco_lubrificante
-  valorNd30: number; // Mapeado de valor_nd_30
-  valorNd39: number; // Mapeado de valor_nd_39
-  omDetentora: string | null; // Mapeado de om_detentora
-  ugDetentora: string | null; // Mapeado de ug_detentora
-  
-  itens_equipamentos: ItemClasseIII[] | null; // Sobrescreve Json para o tipo correto
+export interface ClasseIIIRegistro {
+  id: string;
+  tipo_equipamento: string;
+  organizacao: string;
+  ug: string;
+  quantidade: number;
+  potencia_hp?: number;
+  horas_dia?: number;
+  dias_operacao: number;
+  consumo_hora?: number;
+  consumo_km_litro?: number;
+  km_dia?: number;
+  tipo_combustivel: string;
+  preco_litro: number;
+  tipo_equipamento_detalhe?: string;
+  total_litros: number;
+  valor_total: number;
+  detalhamento?: string;
+  detalhamento_customizado?: string | null;
+  itens_equipamentos?: ItemClasseIII[]; // Tipo corrigido
+  fase_atividade?: string; // Adicionado para Classe III
+  consumo_lubrificante_litro?: number; // Adicionado para Classe III
+  preco_lubrificante?: number; // Adicionado para Classe III
+  valor_nd_30: number; // Adicionado para Classe III
+  valor_nd_39: number; // Adicionado para Classe III
+  om_detentora?: string | null; // Adicionado para Classe III (OM Destino Recurso)
+  ug_detentora?: string | null; // Adicionado para Classe III (UG Destino Recurso)
 }
 
 // NOVO TIPO: Linha desagregada de Classe III para o relatório logístico
@@ -190,22 +236,21 @@ interface GranularDisplayItem {
   fase_atividade: string;
   valor_nd_30: number;
   valor_nd_39: number;
-  original_registro: Tables<'classe_iii_registros'>; // Usando Tables para o tipo original
+  original_registro: ClasseIIIRegistro;
   detailed_items: ItemClasseIII[];
 }
 
-// CORRIGIDO: Tipagem de LinhaTabela e LinhaClasseII
 export interface LinhaTabela {
   registro: ClasseIRegistro;
-  valor_nd_30: number; 
-  valor_nd_39: number; 
+  valor_nd_30: number; // Adicionado para consistência
+  valor_nd_39: number; // Adicionado para consistência
   tipo: 'QS' | 'QR';
 }
 
 export interface LinhaClasseII {
   registro: ClasseIIRegistro;
-  valor_nd_30: number; 
-  valor_nd_39: number; 
+  valor_nd_30: number; // Adicionado para consistência
+  valor_nd_39: number; // Adicionado para consistência
 }
 
 export interface GrupoOM {
@@ -303,18 +348,17 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
                 id: registro.id,
                 organizacao: registro.organizacao,
                 ug: registro.ug,
-                diasOperacao: registro.diasOperacao, // Usando camelCase
-                faseAtividade: registro.faseAtividade, // Usando camelCase
+                diasOperacao: registro.dias_operacao,
+                faseAtividade: registro.fase_atividade,
                 efetivo: registro.efetivo,
-                quantidadeR2: registro.quantidadeR2, // Usando camelCase
-                quantidadeR3: registro.quantidadeR3, // Usando camelCase
+                quantidadeR2: registro.quantidade_r2,
+                quantidadeR3: registro.quantidade_r3,
                 omQS: null, ugQS: null, nrRefInt: null, valorQS: null, valorQR: null,
                 calculos: {
                     totalQS: 0, totalQR: 0, nrCiclos: 0, diasEtapaPaga: 0, diasEtapaSolicitada: 0, totalEtapas: 0,
                     complementoQS: 0, etapaQS: 0, complementoQR: 0, etapaQR: 0,
                 },
                 categoria: 'RACAO_OPERACIONAL',
-                total_qs: 0, total_qr: 0, complemento_qs: 0, etapa_qs: 0, complemento_qr: 0, etapa_qr: 0, total_geral: 0,
             });
         }
         return "Memória não aplicável para Ração Operacional.";
@@ -322,27 +366,27 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
 
     // Lógica para Ração Quente (QS/QR)
     if (tipo === 'QS') {
-        if (registro.memoriaQSCustomizada && registro.memoriaQSCustomizada.trim().length > 0) { // Usando camelCase
-            return registro.memoriaQSCustomizada;
+        if (registro.memoria_calculo_qs_customizada && registro.memoria_calculo_qs_customizada.trim().length > 0) {
+            return registro.memoria_calculo_qs_customizada;
         }
         const { qs } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
             organizacao: registro.organizacao,
             ug: registro.ug,
-            diasOperacao: registro.diasOperacao, // Usando camelCase
-            faseAtividade: registro.faseAtividade, // Usando camelCase
-            omQS: registro.omQS, // Usando camelCase
-            ugQS: registro.ugQS, // Usando camelCase
+            diasOperacao: registro.dias_operacao,
+            faseAtividade: registro.fase_atividade,
+            omQS: registro.om_qs,
+            ugQS: registro.ug_qs,
             efetivo: registro.efetivo,
-            nrRefInt: registro.nrRefInt, // Usando camelCase
-            valorQS: registro.valorQS, // Usando camelCase
-            valorQR: registro.valorQR, // Usando camelCase
+            nrRefInt: registro.nr_ref_int,
+            valorQS: registro.valor_qs,
+            valorQR: registro.valor_qr,
             calculos: {
                 totalQS: registro.total_qs,
                 totalQR: registro.total_qr,
-                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).nrCiclos,
+                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int || 0, registro.valor_qs || 0, registro.valor_qr || 0).nrCiclos,
                 diasEtapaPaga: 0,
-                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).diasEtapaSolicitada,
+                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int || 0, registro.valor_qs || 0, registro.valor_qr || 0).diasEtapaSolicitada,
                 totalEtapas: 0,
                 complementoQS: registro.complemento_qs,
                 etapaQS: registro.etapa_qs,
@@ -352,33 +396,32 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
             quantidadeR2: 0,
             quantidadeR3: 0,
             categoria: 'RACAO_QUENTE',
-            total_qs: registro.total_qs, total_qr: registro.total_qr, complemento_qs: registro.complemento_qs, etapa_qs: registro.etapa_qs, complemento_qr: registro.complemento_qr, etapa_qr: registro.etapa_qr, total_geral: registro.total_geral,
         });
         return qs;
     }
 
     if (tipo === 'QR') {
-        if (registro.memoriaQRCustomizada && registro.memoriaQRCustomizada.trim().length > 0) { // Usando camelCase
-            return registro.memoriaQRCustomizada;
+        if (registro.memoria_calculo_qr_customizada && registro.memoria_calculo_qr_customizada.trim().length > 0) {
+            return registro.memoria_calculo_qr_customizada;
         }
         const { qr } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
             organizacao: registro.organizacao,
             ug: registro.ug,
-            diasOperacao: registro.diasOperacao, // Usando camelCase
-            faseAtividade: registro.faseAtividade, // Usando camelCase
-            omQS: registro.omQS, // Usando camelCase
-            ugQS: registro.ugQS, // Usando camelCase
+            diasOperacao: registro.dias_operacao,
+            faseAtividade: registro.fase_atividade,
+            omQS: registro.om_qs,
+            ugQS: registro.ug_qs,
             efetivo: registro.efetivo,
-            nrRefInt: registro.nrRefInt, // Usando camelCase
-            valorQS: registro.valorQS, // Usando camelCase
-            valorQR: registro.valorQR, // Usando camelCase
+            nrRefInt: registro.nr_ref_int,
+            valorQS: registro.valor_qs,
+            valorQR: registro.valor_qr,
             calculos: {
                 totalQS: registro.total_qs,
                 totalQR: registro.total_qr,
-                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).nrCiclos,
+                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int || 0, registro.valor_qs || 0, registro.valor_qr || 0).nrCiclos,
                 diasEtapaPaga: 0,
-                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).diasEtapaSolicitada,
+                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nr_ref_int || 0, registro.valor_qs || 0, registro.valor_qr || 0).diasEtapaSolicitada,
                 totalEtapas: 0,
                 complementoQS: registro.complemento_qs,
                 etapaQS: registro.etapa_qs,
@@ -388,7 +431,6 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
             quantidadeR2: 0,
             quantidadeR3: 0,
             categoria: 'RACAO_QUENTE',
-            total_qs: registro.total_qs, total_qr: registro.total_qr, complemento_qs: registro.complemento_qs, etapa_qs: registro.etapa_qs, complemento_qr: registro.complemento_qr, etapa_qr: registro.etapa_qr, total_geral: registro.total_geral,
         });
         return qr;
     }
@@ -417,13 +459,13 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
         return generateClasseIIUtility(
             registro.categoria,
             registro.itens_equipamentos,
-            registro.diasOperacao, // Usando camelCase
-            registro.omDetentora || registro.organizacao, // Usando camelCase
-            registro.ugDetentora || registro.ug, // Usando camelCase
-            registro.faseAtividade, // Usando camelCase
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
             registro.efetivo || 0,
-            registro.valorNd30, // Usando camelCase
-            registro.valorNd39 // Usando camelCase
+            registro.valor_nd_30,
+            registro.valor_nd_39
         );
     }
     
@@ -431,13 +473,13 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
         return generateClasseVUtility(
             registro.categoria,
             registro.itens_equipamentos,
-            registro.diasOperacao, // Usando camelCase
-            registro.omDetentora || registro.organizacao, // Usando camelCase
-            registro.ugDetentora || registro.ug, // Usando camelCase
-            registro.faseAtividade, // Usando camelCase
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
             registro.efetivo || 0,
-            registro.valorNd30, // Usando camelCase
-            registro.valorNd39 // Usando camelCase
+            registro.valor_nd_30,
+            registro.valor_nd_39
         );
     }
     
@@ -445,13 +487,13 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
         return generateClasseVIUtility(
             registro.categoria,
             registro.itens_equipamentos,
-            registro.diasOperacao, // Usando camelCase
-            registro.omDetentora || registro.organizacao, // Usando camelCase
-            registro.ugDetentora || registro.ug, // Usando camelCase
-            registro.faseAtividade, // Usando camelCase
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
             registro.efetivo || 0,
-            registro.valorNd30, // Usando camelCase
-            registro.valorNd39 // Usando camelCase
+            registro.valor_nd_30,
+            registro.valor_nd_39
         );
     }
     
@@ -459,13 +501,13 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
         return generateClasseVIIUtility(
             registro.categoria,
             registro.itens_equipamentos,
-            registro.diasOperacao, // Usando camelCase
-            registro.omDetentora || registro.organizacao, // Usando camelCase
-            registro.ugDetentora || registro.ug, // Usando camelCase
-            registro.faseAtividade, // Usando camelCase
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
             registro.efetivo || 0,
-            registro.valorNd30, // Usando camelCase
-            registro.valorNd39 // Usando camelCase
+            registro.valor_nd_30,
+            registro.valor_nd_39
         );
     }
     
@@ -475,13 +517,13 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
         return generateClasseVIIIUtility(
             registro.categoria as 'Saúde' | 'Remonta/Veterinária',
             itens,
-            registro.diasOperacao, // Usando camelCase
-            registro.omDetentora || registro.organizacao, // Usando camelCase
-            registro.ugDetentora || registro.ug, // Usando camelCase
-            registro.faseAtividade, // Usando camelCase
+            registro.dias_operacao,
+            registro.om_detentora || registro.organizacao,
+            registro.ug_detentora || registro.ug,
+            registro.fase_atividade,
             registro.efetivo || 0,
-            registro.valorNd30, // Usando camelCase
-            registro.valorNd39, // Usando camelCase
+            registro.valor_nd_30,
+            registro.valor_nd_39,
             registro.animal_tipo
         );
     }
@@ -505,27 +547,9 @@ export const generateDiariaMemoriaCalculoUnificada = (
     }
 
     // Recalcula os totais para garantir que a memória automática esteja atualizada com as diretrizes atuais
-    const totals = calculateDiariaTotals({
-        dias_operacao: registro.diasOperacao, // Usando camelCase
-        destino: registro.destino as DestinoDiaria,
-        nr_viagens: registro.nrViagens, // Usando camelCase
-        local_atividade: registro.localAtividade || '', // Usando camelCase
-        quantidades_por_posto: registro.quantidadesPorPosto, // Usando camelCase
-        organizacao: registro.organizacao,
-        ug: registro.ug,
-        is_aereo: registro.isAereo || false, // Usando camelCase
-        fase_atividade: registro.faseAtividade || '', // Usando camelCase
-    }, diretrizesOp);
+    const totals = calculateDiariaTotals(registro, diretrizesOp);
     
-    return generateDiariaMemoriaCalculoUtility({
-        ...registro,
-        dias_operacao: registro.diasOperacao,
-        nr_viagens: registro.nrViagens,
-        local_atividade: registro.localAtividade,
-        quantidades_por_posto: registro.quantidadesPorPosto,
-        is_aereo: registro.isAereo,
-        fase_atividade: registro.faseAtividade,
-    } as any, diretrizesOp, totals);
+    return generateDiariaMemoriaCalculoUtility(registro, diretrizesOp, totals);
 };
 
 /**
@@ -714,7 +738,7 @@ const PTrabReportManager = () => {
         supabase.from('classe_vii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from('classe_viii_saude_registros').select('*, itens_saude, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
-        supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
+        supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from('classe_iii_registros').select('*, detalhamento_customizado, itens_equipamentos, fase_atividade, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", ptrabId).maybeSingle(),
         supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId), 
@@ -727,92 +751,13 @@ const PTrabReportManager = () => {
       setDiretrizesOperacionais(diretrizesOpData as Tables<'diretrizes_operacionais'> || null);
 
       const allClasseItems = [
-        ...(classeIIData || []).map(r => ({ 
-            ...r, 
-            categoria: r.categoria, 
-            omDetentora: r.om_detentora, 
-            ugDetentora: r.ug_detentora, 
-            efetivo: r.efetivo,
-            diasOperacao: r.dias_operacao,
-            faseAtividade: r.fase_atividade,
-            valorNd30: r.valor_nd_30,
-            valorNd39: r.valor_nd_39,
-            itens_equipamentos: r.itens_equipamentos as ItemClasseII[], // Cast para o tipo correto
-        })),
-        ...(classeVData || []).map(r => ({ 
-            ...r, 
-            categoria: r.categoria, 
-            omDetentora: r.om_detentora, 
-            ugDetentora: r.ug_detentora, 
-            efetivo: r.efetivo,
-            diasOperacao: r.dias_operacao,
-            faseAtividade: r.fase_atividade,
-            valorNd30: r.valor_nd_30,
-            valorNd39: r.valor_nd_39,
-            itens_equipamentos: r.itens_equipamentos as ItemClasseII[], // Cast para o tipo correto
-        })),
-        ...(classeVIData || []).map(r => ({ 
-            ...r, 
-            categoria: r.categoria, 
-            omDetentora: r.om_detentora, 
-            ugDetentora: r.ug_detentora, 
-            efetivo: 0, // Não tem efetivo
-            diasOperacao: r.dias_operacao,
-            faseAtividade: r.fase_atividade,
-            valorNd30: r.valor_nd_30,
-            valorNd39: r.valor_nd_39,
-            itens_equipamentos: r.itens_equipamentos as ItemClasseII[], // Cast para o tipo correto
-        })),
-        ...(classeVIIData || []).map(r => ({ 
-            ...r, 
-            categoria: r.categoria, 
-            omDetentora: r.om_detentora, 
-            ugDetentora: r.ug_detentora, 
-            efetivo: 0, // Não tem efetivo
-            diasOperacao: r.dias_operacao,
-            faseAtividade: r.fase_atividade,
-            valorNd30: r.valor_nd_30,
-            valorNd39: r.valor_nd_39,
-            itens_equipamentos: r.itens_equipamentos as ItemClasseII[], // Cast para o tipo correto
-        })),
-        ...(classeVIIISaudeData || []).map(r => ({ 
-            ...r, 
-            itens_equipamentos: r.itens_saude as ItemClasseII[], // Mapeia itens_saude para itens_equipamentos
-            categoria: 'Saúde', 
-            omDetentora: r.om_detentora, 
-            ugDetentora: r.ug_detentora, 
-            efetivo: 0,
-            diasOperacao: r.dias_operacao,
-            faseAtividade: r.fase_atividade,
-            valorNd30: r.valor_nd_30,
-            valorNd39: r.valor_nd_39,
-        })),
-        ...(classeVIIIRemontaData || []).map(r => ({ 
-            ...r, 
-            itens_equipamentos: r.itens_remonta as ItemClasseII[], // Mapeia itens_remonta para itens_equipamentos
-            categoria: 'Remonta/Veterinária', 
-            animal_tipo: r.animal_tipo, 
-            quantidade_animais: r.quantidade_animais, 
-            omDetentora: r.om_detentora, 
-            ugDetentora: r.ug_detentora, 
-            efetivo: 0,
-            diasOperacao: r.dias_operacao,
-            faseAtividade: r.fase_atividade,
-            valorNd30: r.valor_nd_30,
-            valorNd39: r.valor_nd_39,
-        })),
-        ...(classeIXData || []).map(r => ({ 
-            ...r, 
-            itens_equipamentos: r.itens_motomecanizacao as ItemClasseII[], // Mapeia itens_motomecanizacao para itens_equipamentos
-            categoria: r.categoria, 
-            omDetentora: r.om_detentora, 
-            ugDetentora: r.ug_detentora, 
-            efetivo: r.efetivo,
-            diasOperacao: r.dias_operacao,
-            faseAtividade: r.fase_atividade,
-            valorNd30: r.valor_nd_30,
-            valorNd39: r.valor_nd_39,
-        })),
+        ...(classeIIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
+        ...(classeVData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
+        ...(classeVIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
+        ...(classeVIIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
+        ...(classeVIIISaudeData || []).map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: 0 })),
+        ...(classeVIIIRemontaData || []).map(r => ({ ...r, itens_equipamentos: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: 0 })),
+        ...(classeIXData || []).map(r => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
       ];
 
       setPtrabData(ptrab as PTrabData);
@@ -821,75 +766,58 @@ const PTrabReportManager = () => {
           id: r.id,
           organizacao: r.organizacao,
           ug: r.ug,
-          diasOperacao: r.dias_operacao, // Mapeamento para camelCase
-          faseAtividade: r.fase_atividade, // Mapeamento para camelCase
-          omQS: r.om_qs, // Mapeamento para camelCase
-          ugQS: r.ug_qs, // Mapeamento para camelCase
-          efetivo: r.efetivo,
-          nrRefInt: r.nr_ref_int, // Mapeamento para camelCase
-          valorQS: Number(r.valor_qs), // Mapeamento para camelCase
-          valorQR: Number(r.valor_qr), // Mapeamento para camelCase
-          memoriaQSCustomizada: r.memoria_calculo_qs_customizada, // Mapeamento para camelCase
-          memoriaQRCustomizada: r.memoria_calculo_qr_customizada, // Mapeamento para camelCase
-          memoria_calculo_op_customizada: r.memoria_calculo_op_customizada, 
-          categoria: (r.categoria || 'RACAO_QUENTE') as 'RACAO_QUENTE' | 'RACAO_OPERACIONAL',
-          quantidadeR2: r.quantidade_r2 || 0, // Mapeamento para camelCase
-          quantidadeR3: r.quantidade_r3 || 0, // Mapeamento para camelCase
-          calculos: calculateClasseICalculations(r.efetivo, r.dias_operacao, r.nr_ref_int || 0, Number(r.valor_qs), Number(r.valor_qr)),
-      })) as ClasseIRegistro[]);
-      
-      setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
-      
-      setRegistrosClasseIII((classeIIIData || []).map(r => ({
-          ...r,
           diasOperacao: r.dias_operacao,
           faseAtividade: r.fase_atividade,
-          consumoLubrificanteLitro: r.consumo_lubrificante_litro,
-          precoLubrificante: r.preco_lubrificante,
-          valorNd30: r.valor_nd_30,
-          valorNd39: r.valor_nd_39,
-          omDetentora: r.om_detentora,
-          ugDetentora: r.ug_detentora,
-          itens_equipamentos: r.itens_equipamentos as ItemClasseIII[] | null, // Cast para o tipo correto
-      })) as ClasseIIIRegistro[]);
-      
+          omQS: r.om_qs,
+          ugQS: r.ug_qs,
+          efetivo: r.efetivo,
+          nrRefInt: r.nr_ref_int,
+          valorQS: Number(r.valor_qs),
+          valorQR: Number(r.valor_qr),
+          complemento_qs: Number(r.complemento_qs),
+          etapa_qs: Number(r.etapa_qs),
+          total_qs: Number(r.total_qs),
+          complemento_qr: Number(r.complemento_qr),
+          etapa_qr: Number(r.etapa_qr),
+          total_geral: Number(r.total_geral),
+          memoriaQSCustomizada: r.memoria_calculo_qs_customizada,
+          memoriaQRCustomizada: r.memoria_calculo_qr_customizada,
+          memoria_calculo_op_customizada: r.memoria_calculo_op_customizada, 
+          categoria: (r.categoria || 'RACAO_QUENTE') as 'RACAO_QUENTE' | 'RACAO_OPERACIONAL',
+          quantidade_r2: r.quantidade_r2 || 0,
+          quantidade_r3: r.quantidade_r3 || 0,
+          calculos: calculateClasseICalculations(r.efetivo, r.dias_operacao, r.nr_ref_int || 0, Number(r.valor_qs), Number(r.valor_qr)),
+      })) as ClasseIRegistro[]);
+      setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
+      setRegistrosClasseIII(classeIIIData || []);
       setRefLPC(refLPCData as RefLPC || null);
       
       // NOVO: Processar Diárias
       setRegistrosDiaria((diariaData || []).map(r => ({
           ...r,
           destino: r.destino as DestinoDiaria,
-          quantidadesPorPosto: r.quantidades_por_posto as QuantidadesPorPosto, // Mapeamento para camelCase
-          valorNd15: Number(r.valor_nd_15 || 0), // Mapeamento para camelCase
-          valorNd30: Number(r.valor_nd_30 || 0), // Mapeamento para camelCase
-          valorTaxaEmbarque: Number(r.valor_taxa_embarque || 0), // Mapeamento para camelCase
+          quantidades_por_posto: r.quantidades_por_posto as QuantidadesPorPosto,
+          valor_nd_15: Number(r.valor_nd_15 || 0),
+          valor_nd_30: Number(r.valor_nd_30 || 0),
+          valor_taxa_embarque: Number(r.valor_taxa_embarque || 0),
           valor_total: Number(r.valor_total || 0),
-          isAereo: r.is_aereo || false, // Mapeamento para camelCase
-          diasOperacao: r.dias_operacao, // Mapeamento para camelCase
-          nrViagens: r.nr_viagens, // Mapeamento para camelCase
-          localAtividade: r.local_atividade, // Mapeamento para camelCase
-          omDetentora: r.om_detentora, // Mapeamento para camelCase
-          ugDetentora: r.ug_detentora, // Mapeamento para camelCase
-          faseAtividade: r.fase_atividade, // Mapeamento para camelCase
+          is_aereo: r.is_aereo || false,
       })) as DiariaRegistro[]);
       
       // NOVO: Processar Verba Operacional e Suprimento de Fundos
       const allVerbaRecords = (verbaOperacionalData || []).map(r => ({
           ...r,
-          valorTotalSolicitado: Number(r.valor_total_solicitado || 0), // Mapeamento para camelCase
-          valorNd30: Number(r.valor_nd_30 || 0), // Mapeamento para camelCase
-          valorNd39: Number(r.valor_nd_39 || 0), // Mapeamento para camelCase
-          diasOperacao: r.dias_operacao || 0, // Mapeamento para camelCase
-          quantidadeEquipes: r.quantidade_equipes || 0, // Mapeamento para camelCase
-          objetoAquisicao: r.objeto_aquisicao || null, // Mapeamento para camelCase
-          objetoContratacao: r.objeto_contratacao || null, // Mapeamento para camelCase
+          valor_total_solicitado: Number(r.valor_total_solicitado || 0),
+          valor_nd_30: Number(r.valor_nd_30 || 0),
+          valor_nd_39: Number(r.valor_nd_39 || 0),
+          dias_operacao: r.dias_operacao || 0,
+          quantidade_equipes: r.quantidade_equipes || 0,
+          objeto_aquisicao: r.objeto_aquisicao || null,
+          objeto_contratacao: r.objeto_contratacao || null,
           proposito: r.proposito || null,
           finalidade: r.finalidade || null,
           local: r.local || null,
           tarefa: r.tarefa || null,
-          omDetentora: r.om_detentora, // Mapeamento para camelCase
-          ugDetentora: r.ug_detentora, // Mapeamento para camelCase
-          faseAtividade: r.fase_atividade, // Mapeamento para camelCase
       })) as VerbaOperacionalRegistro[];
       
       // Separar Verba Operacional de Suprimento de Fundos
@@ -899,15 +827,11 @@ const PTrabReportManager = () => {
       // NOVO: Processar Passagens
       setRegistrosPassagem((passagemData || []).map(r => ({
           ...r,
-          valorUnitario: Number(r.valor_unitario || 0), // Mapeamento para camelCase
+          valor_unitario: Number(r.valor_unitario || 0),
           valor_total: Number(r.valor_total || 0),
-          valorNd33: Number(r.valor_nd_33 || 0), // Mapeamento para camelCase
-          quantidadePassagens: r.quantidade_passagens || 0, // Mapeamento para camelCase
-          isIdaVolta: r.is_ida_volta || false, // Mapeamento para camelCase
-          diasOperacao: r.dias_operacao, // Mapeamento para camelCase
-          faseAtividade: r.fase_atividade, // Mapeamento para camelCase
-          omDetentora: r.om_detentora, // Mapeamento para camelCase
-          ugDetentora: r.ug_detentora, // Mapeamento para camelCase
+          valor_nd_33: Number(r.valor_nd_33 || 0),
+          quantidade_passagens: r.quantidade_passagens || 0,
+          is_ida_volta: r.is_ida_volta || false,
       })) as PassagemRegistro[]);
       
     } catch (error) {
@@ -938,8 +862,8 @@ const PTrabReportManager = () => {
 
     // 1. Processar Classe I (Apenas Ração Quente para a tabela principal)
     registrosClasseI.filter(r => r.categoria === 'RACAO_QUENTE').forEach((registro) => {
-        initializeGroup(registro.omQS || registro.organizacao); // Usando camelCase
-        grupos[registro.omQS || registro.organizacao].linhasQS.push({ // Usando camelCase
+        initializeGroup(registro.om_qs || registro.organizacao);
+        grupos[registro.om_qs || registro.organizacao].linhasQS.push({ 
             registro, 
             tipo: 'QS',
             valor_nd_30: registro.total_qs,
@@ -960,7 +884,7 @@ const PTrabReportManager = () => {
         initializeGroup(registro.organizacao);
         const omGroup = grupos[registro.organizacao];
         
-        const linha: LinhaClasseII = { 
+        const linha = { 
             registro,
             valor_nd_30: registro.valor_nd_30,
             valor_nd_39: registro.valor_nd_39,
@@ -991,7 +915,7 @@ const PTrabReportManager = () => {
             let omDestinoRecurso: string;
             if (isCombustivel) {
                 // Para Combustível, o recurso vai para a OM Fornecedora (om_detentora) se for diferente da OM que usa (organizacao)
-                omDestinoRecurso = registro.omDetentora || registro.organizacao; // Usando camelCase
+                omDestinoRecurso = registro.om_detentora || registro.organizacao;
             } else {
                 // Para Lubrificante, o recurso vai para a OM que usa (organizacao)
                 omDestinoRecurso = registro.organizacao;
@@ -1020,7 +944,7 @@ const PTrabReportManager = () => {
                 let precoLitroLinha = 0;
                 
                 itensGrupo.forEach(item => {
-                    const totals = calculateItemTotals(item, refLPC, registro.diasOperacao); // Usando camelCase
+                    const totals = calculateItemTotals(item, refLPC, registro.dias_operacao);
                     if (isCombustivel) {
                         totalLitrosLinha += totals.totalLitros;
                         valorTotalLinha += totals.valorCombustivel;
@@ -1041,8 +965,8 @@ const PTrabReportManager = () => {
                 
                 let memoriaCalculo = "";
                 
-                const omFornecedora = registro.omDetentora || ''; // Usando camelCase
-                const ugFornecedora = registro.ugDetentora || ''; // Usando camelCase
+                const omFornecedora = registro.om_detentora || '';
+                const ugFornecedora = registro.ug_detentora || '';
                 
                 const omDestinoLubrificante = registro.organizacao; // Lubrificante é consumido na OM que usa
                 const ugDestinoLubrificante = registro.ug;
@@ -1056,10 +980,10 @@ const PTrabReportManager = () => {
                     valor_total: valorTotalLinha,
                     total_litros: totalLitrosLinha,
                     preco_litro: precoLitroLinha,
-                    dias_operacao: registro.diasOperacao, // Usando camelCase
-                    fase_atividade: registro.faseAtividade || '', // Usando camelCase
-                    valor_nd_30: registro.valorNd30, // Usando camelCase
-                    valor_nd_39: registro.valorNd39, // Usando camelCase
+                    dias_operacao: registro.dias_operacao,
+                    fase_atividade: registro.fase_atividade || '',
+                    valor_nd_30: isCombustivel ? valorTotalLinha : (isLubrificante ? valorTotalLinha : 0),
+                    valor_nd_39: 0,
                     original_registro: registro,
                     detailed_items: itensGrupo, // Passa apenas os itens deste grupo granular
                 };
