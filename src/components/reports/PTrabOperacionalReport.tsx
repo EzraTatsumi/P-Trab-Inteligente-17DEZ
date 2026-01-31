@@ -662,7 +662,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             // Verifica se a OM Favorecida é diferente da OM Detentora
             const isDifferentOm = consolidated.organizacao !== consolidated.om_detentora || consolidated.ug !== consolidated.ug_detentora;
             
-            // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente, SEM PARÊNTESES)
+            // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente, COM QUEBRA DE LINHA)
             let despesasLabel = `PASSAGENS`;
             if (isDifferentOm) {
                 despesasLabel += `\n${consolidated.organizacao}`;
@@ -1223,7 +1223,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                 }
                             }
                             
-                            // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente, SEM PARÊNTESES)
+                            // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente, COM QUEBRA DE LINHA)
                             let despesasLabel = `PASSAGENS`;
                             if (isDifferentOm) {
                                 despesasLabel += `\n${consolidated.organizacao}`;
@@ -1232,6 +1232,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             return (
                                 <tr key={`passagem-consolidada-${consolidated.groupKey}`} className="expense-row">
                                   <td className="col-despesas-op"> 
+                                    {/* Usando o valor com \n para o Excel */}
                                     {despesasLabel}
                                   </td>
                                   <td className="col-om-op">
@@ -1503,7 +1504,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         
         /* REGRAS ESPECÍFICAS DE IMPRESSÃO */
         @media print {
-          @page { size: landscape; margin: 0.5cm; }
+          @page { size: A4 landscape; margin: 0.5cm; }
           body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
           .ptrab-table-op thead { display: table-row-group; break-inside: avoid; break-after: auto; }
           .ptrab-table-op th, .ptrab-table-op td { border: 0.25pt solid #000 !important; } 
