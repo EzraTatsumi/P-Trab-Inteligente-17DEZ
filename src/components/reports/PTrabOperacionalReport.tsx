@@ -53,7 +53,6 @@ const getArticleForOM = (omName: string): 'DO' | 'DA' => {
     const normalizedOmName = omName.toUpperCase().trim();
 
     // 1. Cmdo Rule: If the name contains "CMDO", it is masculine (DO).
-    // Ex: Cmdo 23ª Bda Inf Sl -> DO
     if (normalizedOmName.includes('CMDO')) {
         return 'DO';
     }
@@ -128,25 +127,30 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
 
     // Agrupamento de Diárias, Verbas e Suprimentos (mantido)
     registrosDiaria.forEach(registro => {
-        const group = initializeGroup(registro.organizacao, registro.ug);
+        const omDetentora = registro.om_detentora || registro.organizacao;
+        const ugDetentora = registro.ug_detentora || registro.ug;
+        const omKey = `${omDetentora} (${ugDetentora})`;
+        const group = initializeGroup(omDetentora, ugDetentora);
         group.diarias.push(registro);
     });
     registrosVerbaOperacional.forEach(registro => {
         const omDetentora = registro.om_detentora || registro.organizacao;
         const ugDetentora = registro.ug_detentora || registro.ug;
+        const omKey = `${omDetentora} (${ugDetentora})`;
         const group = initializeGroup(omDetentora, ugDetentora);
         group.verbas.push(registro);
     });
     registrosSuprimentoFundos.forEach(registro => {
         const omDetentora = registro.om_detentora || registro.organizacao;
         const ugDetentora = registro.ug_detentora || registro.ug;
+        const omKey = `${omDetentora} (${ugDetentora})`;
         const group = initializeGroup(omDetentora, ugDetentora);
         group.suprimentos.push(registro);
     });
     
     // Agrupamento de Passagens (Consolidado por Lote de Solicitação)
     registrosPassagem.forEach(registro => {
-        // Chave de consolidação: OM Favorecida, OM Detentora, Dias, Efetivo, Fase
+        // Chave de consolidação: OM Favorecida, OM Detentora, Dias, Efetivo, Fase, Diretriz ID
         const consolidationKey = [
             registro.organizacao,
             registro.ug,
@@ -155,6 +159,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             registro.dias_operacao,
             registro.efetivo,
             registro.fase_atividade,
+            registro.diretriz_id, // Adicionar diretriz_id para garantir que lotes de contratos diferentes não se misturem
         ].join('|');
         
         // Chave de agrupamento no relatório (OM Detentora do Recurso)
@@ -377,7 +382,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const centerMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
     const rightMiddleAlignment = { horizontal: 'right' as const, vertical: 'middle' as const, wrapText: true };
     const leftTopAlignment = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
-    const centerTopAlignment = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
     const leftMiddleAlignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true }; 
     
     const dataCenterMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
@@ -651,6 +655,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         
         // --- 2. Render Passagens (CONSOLIDADO) ---
         // Filtra os registros consolidados que pertencem a esta OM Detentora
+        const passagensConsolidadasDesteGrupo = consolidatedPassagensWithDetails.filter(c => 
+            c.om_detentora === omName && c.ug_detentora === ug
+        );
+
         passagensConsolidadasDesteGrupo.forEach(consolidated => {
             const row = worksheet.getRow(currentRow);
             const totalLinha = consolidated.totalND33;
@@ -900,7 +908,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         
         ['C', 'D', 'E', 'F', 'G', 'H'].forEach(col => {
             const cell = subtotalSomaRow.getCell(col);
-            cell.alignment = centerMiddleAlignment;
+            cell.alignment = dataCenterMiddleAlignment;
             cell.font = headerFontStyle;
             cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corSubtotalOM } }; // Cinza
             cell.border = cellBorder;
@@ -969,7 +977,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
 
     ['C', 'D', 'E', 'F', 'G', 'H'].forEach(col => {
         const cell = totalGeralSomaRow.getCell(col);
-        cell.alignment = centerMiddleAlignment;
+        cell.alignment = dataCenterMiddleAlignment;
         cell.font = headerFontStyle;
         cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corSomaND } }; // Cinza
         cell.border = cellBorder;

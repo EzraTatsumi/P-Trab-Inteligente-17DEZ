@@ -7,22 +7,11 @@ import { formatCurrency, formatNumber, formatDateDDMMMAA, formatCodug } from "@/
 import { FileSpreadsheet, Printer, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
   PTrabData,
   ClasseIRegistro,
   ClasseIIRegistro,
   ClasseIIIRegistro,
-  LinhaClasseIII, // NOVO: Importando LinhaClasseIII
+  LinhaClasseIII,
   GrupoOM,
   CLASSE_V_CATEGORIES,
   CLASSE_VI_CATEGORIES,
@@ -31,20 +20,12 @@ import {
   CLASSE_IX_CATEGORIES,
   calculateDays,
   formatDate,
-  formatFasesParaTexto,
   getClasseIILabel,
   generateClasseIXMemoriaCalculo,
-  calculateItemTotalClasseIX,
-  getTipoCombustivelLabel, // Importando a função corrigida do Manager
-  LinhaTabela, // ADDED
-  LinhaClasseII, // ADDED
+  getTipoCombustivelLabel,
+  LinhaTabela,
+  LinhaClasseII,
 } from "@/pages/PTrabReportManager"; // Importar tipos e funções auxiliares do Manager
-import { generateClasseIIMemoriaCalculo as generateClasseIIUtility } from "@/lib/classeIIUtils";
-import { generateCategoryMemoriaCalculo as generateClasseVUtility } from "@/lib/classeVUtils"; 
-import { generateCategoryMemoriaCalculo as generateClasseVIUtility } from "@/lib/classeVIUtils"; 
-import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/lib/classeVIIUtils"; 
-import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils"; 
-import { RefLPC } from "@/types/refLPC"; // Importando RefLPC
 
 interface PTrabLogisticoReportProps {
   ptrabData: PTrabData;
@@ -63,146 +44,17 @@ interface PTrabLogisticoReportProps {
     totalDieselLitros: number;
     totalGasolinaLitros: number;
   };
-  fileSuffix: string; // NOVO PROP
-  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe I
+  fileSuffix: string;
   generateClasseIMemoriaCalculo: (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP') => string;
-  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe II/V/VI/VII/VIII/IX
   generateClasseIIMemoriaCalculo: (
     registro: ClasseIIRegistro, 
     isClasseII: boolean
   ) => string;
-  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe V
-  generateClasseVMemoriaCalculo: (registro: any) => string;
-  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe VI
-  generateClasseVIMemoriaCalculo: (registro: any) => string;
-  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe VII
-  generateClasseVIIMemoriaCalculo: (registro: any) => string;
-  // NOVO PROP: Receber a função de geração de memória de cálculo da Classe VIII
-  generateClasseVIIIMemoriaCalculo: (registro: any) => string;
-  // REMOVIDO: generateClasseIIIMemoriaCalculo: (registro: ClasseIIIRegistro) => string;
+  generateClasseVMemoriaCalculo: (registro: ClasseIIRegistro) => string;
+  generateClasseVIMemoriaCalculo: (registro: ClasseIIRegistro) => string;
+  generateClasseVIIMemoriaCalculo: (registro: ClasseIIRegistro) => string;
+  generateClasseVIIIMemoriaCalculo: (registro: ClasseIIRegistro) => string;
 }
-
-// Implementação padrão (fallback) para generateClasseIIMemoriaCalculo
-const defaultGenerateClasseIIMemoriaCalculo = (registro: any, isClasseII: boolean): string => {
-    // Verifica se existe detalhamento customizado primeiro
-    if (registro.detalhamento_customizado) {
-        return registro.detalhamento_customizado;
-    }
-    
-    // Se for Classe II (Equipamento Individual, Proteção Balística, Material de Estacionamento)
-    if (isClasseII && registro.itens_equipamentos && registro.efetivo !== undefined) {
-        // Usa a função utilitária detalhada para Classe II
-        return generateClasseIIUtility(
-            registro.categoria as 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento',
-            registro.itens_equipamentos,
-            registro.dias_operacao,
-            registro.om_detentora || registro.organizacao,
-            registro.ug_detentora || registro.ug,
-            registro.fase_atividade,
-            registro.efetivo,
-            registro.valor_nd_30,
-            registro.valor_nd_39
-        );
-    }
-    // Para outras classes (V, VI, VII, VIII) ou se os dados estiverem incompletos, retorna o detalhamento armazenado
-    return registro.detalhamento || "Memória de cálculo não disponível.";
-};
-
-// Implementação padrão (fallback) para generateClasseVMemoriaCalculo
-const defaultGenerateClasseVMemoriaCalculo = (registro: any): string => {
-    if (registro.detalhamento_customizado) {
-        return registro.detalhamento_customizado;
-    }
-    
-    if (CLASSE_V_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos && registro.efetivo !== undefined) {
-        // Usa a função utilitária detalhada para Classe V
-        return generateClasseVUtility(
-            registro.categoria as 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN',
-            registro.itens_equipamentos,
-            registro.dias_operacao,
-            registro.om_detentora || registro.organizacao, // Para Classe V, a OM Detentora é a OM de Destino
-            registro.ug_detentora || registro.ug,
-            registro.fase_atividade,
-            registro.efetivo,
-            registro.valor_nd_30,
-            registro.valor_nd_39
-        );
-    }
-    return registro.detalhamento || "Memória de cálculo não disponível.";
-};
-
-// Implementação padrão (fallback) para generateClasseVIMemoriaCalculo
-const defaultGenerateClasseVIMemoriaCalculo = (registro: any): string => {
-    if (registro.detalhamento_customizado) {
-        return registro.detalhamento_customizado;
-    }
-    
-    if (CLASSE_VI_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos) {
-        // Usa a função utilitária detalhada para Classe VI
-        return generateClasseVIUtility(
-            registro.categoria as 'Gerador' | 'Embarcação' | 'Equipamento de Engenharia', // Categoria é o primeiro argumento
-            registro.itens_equipamentos,
-            registro.dias_operacao,
-            registro.om_detentora || registro.organizacao, // OM Detentora
-            registro.ug_detentora || registro.ug, // UG Detentora
-            registro.fase_atividade,
-            registro.efetivo || 0, // Efetivo (embora não usado no cálculo, é necessário para a assinatura)
-            registro.valor_nd_30,
-            registro.valor_nd_39
-        );
-    }
-    return registro.detalhamento || "Memória de cálculo não disponível.";
-};
-
-// Implementação padrão (fallback) para generateClasseVIIMemoriaCalculo
-const defaultGenerateClasseVIIMemoriaCalculo = (registro: any): string => {
-    if (registro.detalhamento_customizado) {
-        return registro.detalhamento_customizado;
-    }
-    
-    if (CLASSE_VII_CATEGORIES.includes(registro.categoria) && registro.itens_equipamentos) {
-        // Usa a função utilitária detalhada para Classe VII
-        return generateClasseVIIUtility(
-            registro.categoria as 'Comunicações' | 'Informática',
-            registro.itens_equipamentos,
-            registro.dias_operacao,
-            registro.om_detentora || registro.organizacao,
-            registro.ug_detentora || registro.ug,
-            registro.fase_atividade,
-            registro.efetivo || 0,
-            registro.valor_nd_30,
-            registro.valor_nd_39
-        );
-    }
-    return registro.detalhamento || "Memória de cálculo não disponível.";
-};
-
-// Implementação padrão (fallback) para generateClasseVIIIMemoriaCalculo
-const defaultGenerateClasseVIIIMemoriaCalculo = (registro: any): string => {
-    if (registro.detalhamento_customizado) {
-        return registro.detalhamento_customizado;
-    }
-    
-    if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
-        // Para Classe VIII, os itens estão em itens_saude ou itens_remonta
-        const itens = registro.categoria === 'Saúde' ? registro.itens_saude : registro.itens_remonta;
-        
-        return generateClasseVIIIUtility(
-            registro.categoria as 'Saúde' | 'Remonta/Veterinária',
-            itens,
-            registro.dias_operacao,
-            registro.om_detentora || registro.organizacao,
-            registro.ug_detentora || registro.ug,
-            registro.fase_atividade,
-            registro.efetivo || 0,
-            registro.valor_nd_30,
-            registro.valor_nd_39,
-            registro.animal_tipo
-        );
-    }
-    return registro.detalhamento || "Memória de cálculo não disponível.";
-};
-
 
 // =================================================================
 // FUNÇÕES AUXILIARES DE RÓTULO
@@ -224,26 +76,22 @@ const getTipoEquipamentoLabel = (tipo: string) => {
 
 const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   ptrabData,
-  registrosClasseI,
-  registrosClasseII,
-  registrosClasseIII,
   nomeRM,
   omsOrdenadas,
   gruposPorOM,
   calcularTotaisPorOM,
-  fileSuffix, // NOVO PROP
-  generateClasseIMemoriaCalculo, // DESESTRUTURANDO A FUNÇÃO
-  generateClasseIIMemoriaCalculo = defaultGenerateClasseIIMemoriaCalculo, // CORRIGIDO: Usando o nome correto da função de fallback
-  generateClasseVMemoriaCalculo = defaultGenerateClasseVMemoriaCalculo, // NOVO: DESESTRUTURANDO E USANDO DEFAULT
-  generateClasseVIMemoriaCalculo = defaultGenerateClasseVIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VI
-  generateClasseVIIMemoriaCalculo = defaultGenerateClasseVIIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VII
-  generateClasseVIIIMemoriaCalculo = defaultGenerateClasseVIIIMemoriaCalculo, // NOVO: ADICIONADO CLASSE VIII
+  fileSuffix,
+  generateClasseIMemoriaCalculo,
+  generateClasseIIMemoriaCalculo,
+  generateClasseVMemoriaCalculo,
+  generateClasseVIMemoriaCalculo,
+  generateClasseVIIMemoriaCalculo,
+  generateClasseVIIIMemoriaCalculo,
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
   
   const isLubrificante = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
-  const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
 
   // 1. Recalcular Totais Gerais (para HTML/PDF)
   const totalGeral_33_90_30 = useMemo(() => Object.values(gruposPorOM).reduce((acc, grupo) => acc + calcularTotaisPorOM(grupo, grupo.linhasQS[0]?.registro.omQS || grupo.linhasQR[0]?.registro.organizacao || grupo.linhasClasseII[0]?.registro.organizacao || grupo.linhasClasseIII[0]?.registro.organizacao || '').total_33_90_30, 0), [gruposPorOM, calcularTotaisPorOM]);
@@ -276,37 +124,24 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
   
   // NOVO: Função para gerar o nome do arquivo
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
-    // Usa a função atualizada que retorna DDMMMAA
     const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
-    // Substitui barras por hífens por segurança no nome do arquivo
     const numeroPTrab = ptrabData.numero_ptrab.replace(/\//g, '-'); 
     
     const isMinuta = ptrabData.numero_ptrab.startsWith("Minuta");
     const currentYear = new Date(ptrabData.periodo_inicio).getFullYear();
     
-    // 1. Construir o nome base
     let nomeBase = `P Trab Nr ${numeroPTrab}`;
     
     if (isMinuta) {
-        // Se for Minuta, adiciona o ano e a sigla da OM
         nomeBase += ` - ${currentYear} - ${ptrabData.nome_om}`;
-    } else {
-        // Se for Aprovado, o número já contém o ano e a sigla da OM (ex: 1-2025-23ª Bda Inf Sl)
-        // Apenas adiciona a sigla da OM para clareza, mas sem o separador extra
-        // Ex: P Trab Nr 1-2025-23ª Bda Inf Sl - Op MARAJOARA...
     }
     
-    // 2. Adicionar o nome da operação
     nomeBase += ` - ${ptrabData.nome_operacao}`;
-    
-    // 3. Adicionar a data de atualização e o sufixo da aba
-    // A data já está no formato DDMMMAA (sem barras)
     nomeBase += ` - Atz ${dataAtz} - ${fileSuffix}`;
     
     return `${nomeBase}.${reportType === 'PDF' ? 'pdf' : 'xlsx'}`;
   };
 
-  // RENOMEADO: Função que era handlePrint, agora é exportPDF
   const exportPDF = useCallback(() => {
     if (!contentRef.current) return;
 
@@ -315,20 +150,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       description: "Aguarde enquanto o relatório é processado.",
     });
 
-    // OTIMIZAÇÃO: Forçar a captura do estilo de impressão e aumentar a escala
     html2canvas(contentRef.current, {
-      scale: 3, // Aumenta a escala para maior nitidez
+      scale: 3,
       useCORS: true,
       allowTaint: true,
     }).then((canvas) => {
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
       
-      // A4 em Paisagem: 297mm (largura) x 210mm (altura)
       const pdf = new jsPDF('l', 'mm', 'a4');
-      const pdfWidth = 297; // Largura do A4 em mm (Paisagem)
-      const pdfHeight = 210; // Altura do A4 em mm (Paisagem)
+      const pdfWidth = 297;
+      const pdfHeight = 210;
       
-      // Margem de 0.5cm = 5mm
       const margin = 5;
       const contentWidth = pdfWidth - 2 * margin;
       const contentHeight = pdfHeight - 2 * margin;
@@ -336,21 +168,20 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       const imgWidth = contentWidth;
       const imgHeight = (canvas.height * contentWidth) / canvas.width;
       let heightLeft = imgHeight;
-      let position = margin; // Começa com a margem superior
+      let position = margin;
 
       pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
       heightLeft -= contentHeight;
 
-      while (heightLeft > -1) { // Ajustado para garantir que a última parte seja incluída
-        position = heightLeft - imgHeight + margin; // Calcula a posição para a próxima página
+      while (heightLeft > -1) {
+        position = heightLeft - imgHeight + margin;
         pdf.addPage();
         pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
         heightLeft -= contentHeight;
       }
 
       pdf.save(generateFileName('PDF'));
-      // REMOVIDO: onExportSuccess();
-      pdfToast.dismiss(); // Usa o dismiss do objeto retornado
+      pdfToast.dismiss();
       toast({
         title: "PDF Exportado!",
         description: "O P Trab Logístico foi salvo com sucesso.",
@@ -358,19 +189,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       });
     }).catch(error => {
       console.error("Erro ao gerar PDF:", error);
-      pdfToast.dismiss(); // Usa o dismiss do objeto retornado
+      pdfToast.dismiss();
       toast({
         title: "Erro na Exportação",
         description: "Não foi possível gerar o PDF. Tente novamente.",
         variant: "destructive",
       });
     });
-  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, valorTotalSolicitado, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, generateClasseVIIIMemoriaCalculo, totalDiesel, totalGasolina, totalValorCombustivelFinal]);
+  }, [ptrabData, toast, diasOperacao, totalGeral_GND3_ND, valorTotalSolicitado, totalGeral_33_90_30, totalGeral_33_90_39, nomeRM, omsOrdenadas, gruposPorOM, calcularTotaisPorOM, fileSuffix, totalDiesel, totalGasolina, totalValorCombustivelFinal]);
 
-  // NOVO: Função para abrir o diálogo de impressão do navegador
   const handlePrint = () => {
     window.print();
-    // REMOVIDO: onExportSuccess();
   };
 
   const exportExcel = useCallback(async () => {
@@ -380,14 +209,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     const centerMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
     const rightMiddleAlignment = { horizontal: 'right' as const, vertical: 'middle' as const, wrapText: true };
     const leftTopAlignment = { horizontal: 'left' as const, vertical: 'top' as const, wrapText: true };
-    const centerTopAlignment = { horizontal: 'center' as const, vertical: 'top' as const, wrapText: true };
-    const rightTopAlignment = { horizontal: 'right' as const, vertical: 'top' as const, wrapText: true };
     
-    // NOVOS ALINHAMENTOS PARA DADOS (Verticalmente Centralizado)
+    const dataCenterMonetaryAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true }; 
     const dataLeftMiddleAlignment = { horizontal: 'left' as const, vertical: 'middle' as const, wrapText: true };
     const dataCenterMiddleAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
-    // Alterado para CenterMiddleAlignment para C, D, E e H
-    const dataCenterMonetaryAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true }; 
     
     const cellBorder = {
       top: { style: 'thin' as const },
@@ -397,20 +222,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     };
     
     const baseFontStyle = { name: 'Arial', size: 8 };
-    const headerFontStyle = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF000000' } }; // Cor da fonte preta
+    const headerFontStyle = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF000000' } };
     const titleFontStyle = { name: 'Arial', size: 11, bold: true };
     
-    // Cores padronizadas para o Excel (ARGB)
-    const corAzul = 'FFB4C7E7'; // Natureza de Despesa (33.90.30/39/Total)
-    const corLaranja = 'FFF8CBAD'; // Combustível (Litros/Preço Unitário/Preço Total)
-    const corSubtotal = 'FFD3D3D3'; // SOMA POR ND E GP DE DESPESA (Fundo cinza)
-    const corTotalOM = 'FFE8E8E8'; // VALOR TOTAL DO OM (Fundo cinza muito claro)
-    // -------------------------------------------
+    const corAzul = 'FFB4C7E7';
+    const corLaranja = 'FFF8CBAD';
+    const corSubtotal = 'FFD3D3D3';
+    const corTotalOM = 'FFE8E8E8';
     
-    // NOVOS OBJETOS DE PREENCHIMENTO (FILL)
-    const headerFillGray = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotalOM } }; // FFE8E8E8
-    const headerFillAzul = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corAzul } }; // FFB4C7E7
-    const headerFillLaranja = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corLaranja } }; // FFF8CBAD
+    const headerFillGray = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotalOM } };
+    const headerFillAzul = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corAzul } };
+    const headerFillLaranja = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corLaranja } };
 
     try {
       const workbook = new ExcelJS.Workbook();
@@ -535,7 +357,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           cell2.border = cellBorder;
 
           if (['A', 'B', 'I'].includes(col)) {
-              cell2.value = ''; // Explicitly clear value for merged cells
+              cell2.value = '';
               cell2.fill = headerFillGray;
           } else if (['C', 'D', 'E'].includes(col)) {
               cell2.fill = headerFillAzul;
@@ -546,7 +368,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       
       // 3️⃣ Setar valores APÓS os estilos
       
-      // Âncoras verticais (Linha 1)
       hdr1.getCell('A').value = 'DESPESAS';
       hdr1.getCell('B').value = 'OM (UGE)\nCODUG';
       hdr1.getCell('I').value =
@@ -554,11 +375,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         '(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\n' +
         'OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG';
       
-      // Âncoras horizontais (Linha 1)
       hdr1.getCell('C').value = 'NATUREZA DE DESPESA';
       hdr1.getCell('F').value = 'COMBUSTÍVEL';
       
-      // Âncoras horizontais (Linha 2)
       hdr2.getCell('C').value = '33.90.30';
       hdr2.getCell('D').value = '33.90.39';
       hdr2.getCell('E').value = 'TOTAL';
@@ -568,9 +387,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       
       currentRow = headerRow2 + 1;
 
-      // Reusable alignment styles for data
-      // dataLeftMiddleAlignment e dataCenterMiddleAlignment já estão definidos no escopo superior
-      
       // Iterar sobre as OMs ordenadas
       for (const nomeOM of omsOrdenadas) {
         const grupo = gruposPorOM[nomeOM];
@@ -578,25 +394,22 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         
         const isCombustivelCheck = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
         
-        if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasClasseII.length === 0 && grupo.linhasClasseV.length === 0 && grupo.linhasClasseVI.length === 0 && grupo.linhasClasseVII.length === 0 && grupo.linhasClasseVIII.length === 0 && grupo.linhasClasseIX.length === 0 && grupo.linhasClasseIII.length === 0 && (nomeOM !== nomeRM || registrosClasseIII.filter(isCombustivelCheck).length === 0)) {
+        if (grupo.linhasQS.length === 0 && grupo.linhasQR.length === 0 && grupo.linhasClasseII.length === 0 && grupo.linhasClasseV.length === 0 && grupo.linhasClasseVI.length === 0 && grupo.linhasClasseVII.length === 0 && grupo.linhasClasseVIII.length === 0 && grupo.linhasClasseIX.length === 0 && grupo.linhasClasseIII.length === 0 && (nomeOM !== nomeRM || grupo.linhasClasseIII.filter(l => l.tipo_suprimento !== 'LUBRIFICANTE').length === 0)) {
           continue;
         }
         
         // Linhas de Classe III (Lubrificante e Combustível) - Ordenação interna
         const linhasClasseIIIOrdenadas = grupo.linhasClasseIII.sort((a, b) => {
-            // Ordena Lubrificante antes de Combustível
             if (a.tipo_suprimento === 'LUBRIFICANTE' && b.tipo_suprimento !== 'LUBRIFICANTE') return -1;
             if (a.tipo_suprimento !== 'LUBRIFICANTE' && b.tipo_suprimento === 'LUBRIFICANTE') return 1;
             
-            // Dentro de Combustível, ordena Diesel antes de Gasolina
             if (a.tipo_suprimento === 'COMBUSTIVEL_DIESEL' && b.tipo_suprimento === 'COMBUSTIVEL_GASOLINA') return -1;
             if (a.tipo_suprimento === 'COMBUSTIVEL_GASOLINA' && b.tipo_suprimento === 'COMBUSTIVEL_DIESEL') return 1;
             
-            // Ordena por categoria de equipamento
             return a.categoria_equipamento.localeCompare(b.categoria_equipamento);
         });
         
-        // NOVO: Array de todas as linhas de despesa na ordem correta (I, II, V, VI, VII, VIII, IX, III)
+        // Array de todas as linhas de despesa na ordem correta (I, II, V, VI, VII, VIII, IX, III)
         const allExpenseLines = [
             ...grupo.linhasQS,
             ...grupo.linhasQR,
@@ -608,7 +421,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             ...grupo.linhasClasseIX,
             ...linhasClasseIIIOrdenadas,
         ].sort((a, b) => {
-            // Ordenação por Classe (I, II, III, V, VI, VII, VIII, IX)
             const getClasseOrder = (linha: any) => {
                 if ('tipo' in linha) return 1; // Classe I
                 if ('categoria_equipamento' in linha) return 3; // Classe III
@@ -627,12 +439,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             
             if (orderA !== orderB) return orderA - orderB;
             
-            // Sub-ordenação por categoria/tipo
             if ('tipo' in a && 'tipo' in b) {
-                return a.tipo.localeCompare(b.tipo); // QS antes de QR
+                return a.tipo.localeCompare(b.tipo);
             }
             if ('categoria_equipamento' in a && 'categoria_equipamento' in b) {
-                return a.tipo_suprimento.localeCompare(b.tipo_suprimento); // Diesel/Gasolina/Lubrificante
+                return a.tipo_suprimento.localeCompare(b.tipo_suprimento);
             }
             
             return 0;
@@ -640,10 +451,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
 
         // Renderizar todas as linhas de despesa (I, II, III, V-IX)
         for (const linha of allExpenseLines) {
-            // Type guards to determine the type of line
             const isClasseI = 'tipo' in linha;
             const isClasseIII = 'categoria_equipamento' in linha;
-            const isClasseII_IX = !isClasseI && !isClasseIII; // Must be LinhaClasseII
+            const isClasseII_IX = !isClasseI && !isClasseIII;
 
             if (!linha) continue;
             
@@ -674,10 +484,10 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     const omFornecedora = registro.omQS;
                     
                     if (omDestino !== omFornecedora) {
-                        line2 = omDestino; // OM Destino do Recurso
+                        line2 = omDestino;
                     }
                     
-                    rowData.omValue = `${registro.omQS}\n(${ug_qs_formatted})`; // OM Fornecedora
+                    rowData.omValue = `${registro.omQS}\n(${ug_qs_formatted})`;
                     rowData.valorC = registro.totalQS;
                     rowData.valorE = registro.totalQS;
                     rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
@@ -696,28 +506,21 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 const registro = linhaClasseIII.registro;
                 const isCombustivelLinha = linhaClasseIII.tipo_suprimento !== 'LUBRIFICANTE';
                 
-                // OM Detentora do Equipamento (OM que usa o material)
                 const omDetentoraEquipamento = registro.organizacao; 
-                
-                // OM Destino do Recurso (OM que recebe o recurso, que é a OM do grupo)
                 const omDestinoRecurso = nomeOM; 
                 
-                // 1. Construir a primeira linha: CLASSE - SUPRIMENTO - CATEGORIA
                 const tipoSuprimentoLabel = isLubrificante(registro) ? 'LUBRIFICANTE' : getTipoCombustivelLabel(linhaClasseIII.tipo_suprimento);
                 const categoriaEquipamento = getTipoEquipamentoLabel(linhaClasseIII.categoria_equipamento);
                 
                 line1 = `CLASSE III - ${tipoSuprimentoLabel}\n${categoriaEquipamento}`;
                 
-                // 2. Se a OM Detentora do Equipamento for diferente da OM Destino do Recurso (Col B), 
-                // adicionamos a OM Detentora do Equipamento na Coluna A (linha 2)
                 const isDifferentOm = omDetentoraEquipamento !== omDestinoRecurso;
                 
                 if (isDifferentOm) {
                     line2 = omDetentoraEquipamento;
                 }
                 
-                // OM (UGE) CODUG: OM de Destino do Recurso (OM do grupo)
-                const ugDestinoRecurso = registro.ug_detentora || registro.ug; // Usa UG Detentora se existir, senão a UG do registro
+                const ugDestinoRecurso = registro.ug_detentora || registro.ug;
                 const ugDestinoFormatted = formatCodug(ugDestinoRecurso);
                 
                 let omValue = `${omDestinoRecurso}\n(${ugDestinoFormatted})`;
@@ -726,7 +529,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 rowData.omValue = omValue;
                 
                 if (isCombustivelLinha) {
-                    // Combustível é sempre ND 30 (material) no relatório logístico, mas o valor vai para a coluna H
                     rowData.valorC = 0;
                     rowData.valorD = 0;
                     rowData.valorE = 0;
@@ -736,7 +538,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     rowData.precoTotalH = formatCurrency(linhaClasseIII.valor_total_linha);
                     
                 } else if (isLubrificante(registro)) {
-                    // Lubrificante é ND 30 (material)
                     rowData.valorC = linhaClasseIII.valor_total_linha;
                     rowData.valorD = 0;
                     rowData.valorE = linhaClasseIII.valor_total_linha;
@@ -746,7 +547,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                     rowData.precoTotalH = '';
                 }
                 
-                // *** MUDANÇA CRÍTICA: Usar a memória pré-calculada granular ***
                 rowData.detalhamentoValue = linhaClasseIII.memoria_calculo;
                 
             } else if (isClasseII_IX) { // Classes II, V, VI, VII, VIII, IX
@@ -764,29 +564,34 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 const isDifferentOm = omDetentora !== omDestinoRecurso;
                 
                 let prefixoClasse = '';
+                let generateMemoriaFunc: (r: ClasseIIRegistro) => string;
+
                 if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
                     prefixoClasse = 'CLASSE V';
+                    generateMemoriaFunc = generateClasseVMemoriaCalculo;
                 } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
                     prefixoClasse = 'CLASSE VI';
+                    generateMemoriaFunc = generateClasseVIMemoriaCalculo;
                 } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
                     prefixoClasse = 'CLASSE VII';
+                    generateMemoriaFunc = generateClasseVIIMemoriaCalculo;
                 } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
                     prefixoClasse = 'CLASSE VIII';
+                    generateMemoriaFunc = generateClasseVIIIMemoriaCalculo;
                 } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
                     prefixoClasse = 'CLASSE IX';
+                    generateMemoriaFunc = generateClasseIXMemoriaCalculo; // Usa a função específica da IX
                 } else {
                     prefixoClasse = 'CLASSE II';
+                    generateMemoriaFunc = (r) => generateClasseIIMemoriaCalculo(r, true);
                 }
                 
-                // Line 1: Class - Category
                 line1 = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
                 
                 if (isDifferentOm) {
-                    // Line 2: OM Detentora
                     line2 = omDetentora;
                 }
                 
-                // CORREÇÃO: Garante OM \n UG na coluna B
                 rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
                 rowData.valorC = registro.valor_nd_30;
                 rowData.valorD = registro.valor_nd_39;
@@ -794,19 +599,8 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                 
                 if (registro.detalhamento_customizado) {
                     rowData.detalhamentoValue = registro.detalhamento_customizado;
-                } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                    rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
-                } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                    rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
-                } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
-                    rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
-                } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
-                    rowData.detalhamentoValue = generateClasseVIIMemoriaCalculo(registro);
-                } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
-                    rowData.detalhamentoValue = generateClasseVIIIMemoriaCalculo(registro);
                 } else {
-                    const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
-                    rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
+                    rowData.detalhamentoValue = generateMemoriaFunc(registro);
                 }
                 
                 rowData.despesasValue = line1 + (line2 ? `\n${line2}` : '');
@@ -815,61 +609,52 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             // --- Renderização da Linha no Excel ---
             const row = worksheet.getRow(currentRow);
             
-            // A: DESPESAS
             row.getCell('A').value = rowData.despesasValue;
             row.getCell('A').alignment = dataLeftMiddleAlignment;
             row.getCell('A').font = baseFontStyle;
             row.getCell('A').border = cellBorder;
             
-            // B: OM (UGE) CODUG
             row.getCell('B').value = rowData.omValue;
             row.getCell('B').alignment = dataCenterMiddleAlignment;
             row.getCell('B').font = baseFontStyle;
             row.getCell('B').border = cellBorder;
             
-            // C: 33.90.30
             row.getCell('C').value = rowData.valorC;
             row.getCell('C').alignment = dataCenterMonetaryAlignment;
             row.getCell('C').numFmt = 'R$ #,##0.00';
             row.getCell('C').fill = headerFillAzul;
             row.getCell('C').border = cellBorder;
             
-            // D: 33.90.39
             row.getCell('D').value = rowData.valorD;
             row.getCell('D').alignment = dataCenterMonetaryAlignment;
             row.getCell('D').numFmt = 'R$ #,##0.00';
             row.getCell('D').fill = headerFillAzul;
             row.getCell('D').border = cellBorder;
             
-            // E: TOTAL ND
             row.getCell('E').value = rowData.valorE;
             row.getCell('E').alignment = dataCenterMonetaryAlignment;
             row.getCell('E').numFmt = 'R$ #,##0.00';
             row.getCell('E').fill = headerFillAzul;
             row.getCell('E').border = cellBorder;
             
-            // F: LITROS
             row.getCell('F').value = rowData.litrosF;
             row.getCell('F').alignment = dataCenterMiddleAlignment;
             row.getCell('F').font = baseFontStyle;
             row.getCell('F').fill = headerFillLaranja;
             row.getCell('F').border = cellBorder;
             
-            // G: PREÇO UNITÁRIO
             row.getCell('G').value = rowData.precoUnitarioG;
             row.getCell('G').alignment = dataCenterMiddleAlignment;
             row.getCell('G').font = baseFontStyle;
             row.getCell('G').fill = headerFillLaranja;
             row.getCell('G').border = cellBorder;
             
-            // H: PREÇO TOTAL
             row.getCell('H').value = rowData.precoTotalH;
             row.getCell('H').alignment = dataCenterMiddleAlignment;
             row.getCell('H').font = baseFontStyle;
             row.getCell('H').fill = headerFillLaranja;
             row.getCell('H').border = cellBorder;
             
-            // I: DETALHAMENTO
             row.getCell('I').value = rowData.detalhamentoValue;
             row.getCell('I').alignment = leftTopAlignment;
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
@@ -881,7 +666,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         // Subtotal Row for OM
         const subtotalRow = worksheet.getRow(currentRow);
         
-        // Célula A+B (SOMA POR ND E GP DE DESPESA)
         subtotalRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
         worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
         subtotalRow.getCell('A').alignment = rightMiddleAlignment;
@@ -889,7 +673,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         subtotalRow.getCell('A').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corSubtotal } };
         subtotalRow.getCell('A').border = cellBorder;
         
-        // Células C, D, E (NDs - Azul)
         subtotalRow.getCell('C').value = totaisOM.total_33_90_30;
         subtotalRow.getCell('D').value = totaisOM.total_33_90_39;
         subtotalRow.getCell('E').value = totaisOM.total_parte_azul;
@@ -903,7 +686,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             cell.numFmt = 'R$ #,##0.00';
         });
         
-        // Células F, G, H (Combustível - Laranja)
         subtotalRow.getCell('F').value = totaisOM.totalDieselLitros > 0 ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` : '';
         subtotalRow.getCell('G').value = totaisOM.totalGasolinaLitros > 0 ? `${formatNumber(totaisOM.totalGasolinaLitros)} L GAS` : '';
         subtotalRow.getCell('H').value = totaisOM.total_combustivel > 0 ? formatCurrency(totaisOM.total_combustivel) : '';
@@ -916,7 +698,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             cell.border = cellBorder;
         });
         
-        // Célula I (Detalhamento - Cinza)
         subtotalRow.getCell('I').value = '';
         subtotalRow.getCell('I').alignment = centerMiddleAlignment;
         subtotalRow.getCell('I').font = headerFontStyle;
@@ -928,7 +709,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         // Total Row for OM
         const totalOMRow = worksheet.getRow(currentRow);
         
-        // Célula A+B+C+D (VALOR TOTAL DO OM)
         totalOMRow.getCell('A').value = `VALOR TOTAL DO ${nomeOM}`;
         worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
         totalOMRow.getCell('A').alignment = rightMiddleAlignment;
@@ -936,7 +716,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         totalOMRow.getCell('A').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotalOM } };
         totalOMRow.getCell('A').border = cellBorder;
         
-        // Célula E (Total GND 3)
         totalOMRow.getCell('E').value = totaisOM.total_gnd3;
         totalOMRow.getCell('E').alignment = dataCenterMonetaryAlignment;
         totalOMRow.getCell('E').font = headerFontStyle;
@@ -944,7 +723,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         totalOMRow.getCell('E').border = cellBorder;
         totalOMRow.getCell('E').numFmt = 'R$ #,##0.00';
         
-        // Células F, G, H, I (Vazias - Cinza Claro)
         ['F', 'G', 'H', 'I'].forEach(col => {
             const cell = totalOMRow.getCell(col);
             cell.value = '';
@@ -957,12 +735,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         currentRow++;
       }
       
-      // Linha em branco para espaçamento
       currentRow++;
       
       // ========== TOTAL GERAL ==========
       
-      // Linha 1: SOMA POR ND E GP DE DESPESA (Total Geral)
+      // Linha 1: Soma detalhada por ND e GP de Despesa
       const totalGeralSomaRow = worksheet.getRow(currentRow);
       totalGeralSomaRow.getCell('A').value = 'SOMA POR ND E GP DE DESPESA';
       worksheet.mergeCells(`A${currentRow}:B${currentRow}`);
@@ -971,7 +748,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       totalGeralSomaRow.getCell('A').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corSubtotal } };
       totalGeralSomaRow.getCell('A').border = cellBorder;
 
-      // Células C, D, E (NDs - Azul)
       totalGeralSomaRow.getCell('C').value = totalGeral_33_90_30;
       totalGeralSomaRow.getCell('D').value = totalGeral_33_90_39;
       totalGeralSomaRow.getCell('E').value = totalGeral_GND3_ND;
@@ -985,7 +761,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           cell.numFmt = 'R$ #,##0.00';
       });
       
-      // Células F, G, H (Combustível - Laranja)
       totalGeralSomaRow.getCell('F').value = totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : '';
       totalGeralSomaRow.getCell('G').value = totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : '';
       totalGeralSomaRow.getCell('H').value = totalValorCombustivelFinal > 0 ? formatCurrency(totalValorCombustivelFinal) : '';
@@ -998,7 +773,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           cell.border = cellBorder;
       });
       
-      // Célula I (Detalhamento - Cinza)
       totalGeralSomaRow.getCell('I').value = '';
       totalGeralSomaRow.getCell('I').alignment = centerMiddleAlignment;
       totalGeralSomaRow.getCell('I').font = headerFontStyle;
@@ -1010,7 +784,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       // Linha 2: VALOR TOTAL
       const totalGeralFinalRow = worksheet.getRow(currentRow);
       
-      // Mescla A até D (VALOR TOTAL)
       totalGeralFinalRow.getCell('A').value = 'VALOR TOTAL';
       worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
       totalGeralFinalRow.getCell('A').alignment = rightMiddleAlignment;
@@ -1018,7 +791,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       totalGeralFinalRow.getCell('A').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotalOM } };
       totalGeralFinalRow.getCell('A').border = cellBorder;
       
-      // Célula E (Total GND 3)
       totalGeralFinalRow.getCell('E').value = valorTotalSolicitado;
       totalGeralFinalRow.getCell('E').alignment = dataCenterMonetaryAlignment;
       totalGeralFinalRow.getCell('E').font = headerFontStyle;
@@ -1026,7 +798,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       totalGeralFinalRow.getCell('E').border = cellBorder;
       totalGeralFinalRow.getCell('E').numFmt = 'R$ #,##0.00';
       
-      // Células F, G, H, I (Vazias - Cinza Claro)
       ['F', 'G', 'H', 'I'].forEach(col => {
             const cell = totalGeralFinalRow.getCell(col);
             cell.value = '';
@@ -1040,7 +811,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       
       // Linha 3: GND - 3 (dividida em 2 subdivisões)
       const gnd3Row1 = worksheet.getRow(currentRow);
-      gnd3Row1.getCell('E').value = 'GND - 3'; // MOVIDO PARA COLUNA E
+      gnd3Row1.getCell('E').value = 'GND - 3';
       gnd3Row1.getCell('E').alignment = centerMiddleAlignment;
       gnd3Row1.getCell('E').font = headerFontStyle;
       gnd3Row1.getCell('E').border = { top: cellBorder.top, left: cellBorder.left, right: cellBorder.right };
@@ -1049,7 +820,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
       
       // Segunda subdivisão: Valor Total
       const gnd3Row2 = worksheet.getRow(currentRow);
-      gnd3Row2.getCell('E').value = valorTotalSolicitado; // MOVIDO PARA COLUNA E
+      gnd3Row2.getCell('E').value = valorTotalSolicitado;
       gnd3Row2.getCell('E').alignment = centerMiddleAlignment;
       gnd3Row2.getCell('E').font = headerFontStyle;
       gnd3Row2.getCell('E').border = { bottom: cellBorder.bottom, left: cellBorder.left, right: cellBorder.right };
@@ -1107,6 +878,198 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
 
 
   if (!ptrabData) return null;
+
+  // Função auxiliar para renderizar as linhas de despesa no HTML/PDF
+  const renderExpenseLines = (allExpenseLines: (LinhaTabela | LinhaClasseII | LinhaClasseIII)[]) => {
+    return allExpenseLines.map((linha, index) => {
+        const isClasseI = 'tipo' in linha;
+        const isClasseIII = 'categoria_equipamento' in linha;
+        const isClasseII_IX = !isClasseI && !isClasseIII;
+
+        if (!linha) return null;
+        
+        let rowData = {
+            despesasValue: '',
+            omValue: '',
+            detalhamentoValue: '',
+            valorC: 0,
+            valorD: 0,
+            valorE: 0,
+            litrosF: '',
+            precoUnitarioG: '',
+            precoTotalH: '',
+        };
+        
+        let line1 = '';
+        let line2 = '';
+
+        if (isClasseI) {
+            const registro = (linha as LinhaTabela).registro as ClasseIRegistro;
+            const tipo = (linha as LinhaTabela).tipo;
+            const ug_qs_formatted = formatCodug(registro.ugQS);
+
+            line1 = `CLASSE I - SUBSISTÊNCIA`;
+
+            if (tipo === 'QS') {
+                const omDestino = registro.organizacao;
+                const omFornecedora = registro.omQS;
+                
+                if (omDestino !== omFornecedora) {
+                    line2 = omDestino;
+                }
+                
+                rowData.omValue = `${registro.omQS}\n(${ug_qs_formatted})`;
+                rowData.valorC = registro.totalQS;
+                rowData.valorE = registro.totalQS;
+                rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
+                
+            } else {
+                line1 = `CLASSE I - SUBSISTÊNCIA`;
+                rowData.omValue = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
+                rowData.valorC = registro.totalQR;
+                rowData.valorE = registro.totalQR;
+                rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
+            }
+            rowData.despesasValue = line1 + (line2 ? `<br/>${line2}` : '');
+        } else if (isClasseIII) {
+            const linhaClasseIII = linha as LinhaClasseIII;
+            const registro = linhaClasseIII.registro;
+            const isCombustivelLinha = linhaClasseIII.tipo_suprimento !== 'LUBRIFICANTE';
+            
+            const omDetentoraEquipamento = registro.organizacao; 
+            const omDestinoRecurso = nomeOM; 
+            
+            const tipoSuprimentoLabel = isLubrificante(registro) ? 'LUBRIFICANTE' : getTipoCombustivelLabel(linhaClasseIII.tipo_suprimento);
+            const categoriaEquipamento = getTipoEquipamentoLabel(linhaClasseIII.categoria_equipamento);
+            
+            line1 = `CLASSE III - ${tipoSuprimentoLabel}<br/>${categoriaEquipamento}`;
+            
+            const isDifferentOm = omDetentoraEquipamento !== omDestinoRecurso;
+            
+            if (isDifferentOm) {
+                line2 = omDetentoraEquipamento;
+            }
+            
+            const ugDestinoRecurso = registro.ug_detentora || registro.ug;
+            const ugDestinoFormatted = formatCodug(ugDestinoRecurso);
+            
+            let omValue = `${omDestinoRecurso}<br/>(${ugDestinoFormatted})`;
+            
+            rowData.despesasValue = line1 + (line2 ? `<br/>${line2}` : '');
+            rowData.omValue = omValue;
+            
+            if (isCombustivelLinha) {
+                rowData.valorC = 0;
+                rowData.valorD = 0;
+                rowData.valorE = 0;
+                
+                rowData.litrosF = `${formatNumber(linhaClasseIII.total_litros_linha)} L`;
+                rowData.precoUnitarioG = formatCurrency(linhaClasseIII.preco_litro_linha);
+                rowData.precoTotalH = formatCurrency(linhaClasseIII.valor_total_linha);
+                
+            } else if (isLubrificante(registro)) {
+                rowData.valorC = linhaClasseIII.valor_total_linha;
+                rowData.valorD = 0;
+                rowData.valorE = linhaClasseIII.valor_total_linha;
+                
+                rowData.litrosF = '';
+                rowData.precoUnitarioG = '';
+                rowData.precoTotalH = '';
+            }
+            
+            rowData.detalhamentoValue = linhaClasseIII.memoria_calculo;
+        } else if (isClasseII_IX) {
+            const registro = (linha as LinhaClasseII).registro as ClasseIIRegistro;
+            const omDestinoRecurso = registro.organizacao;
+            const ugDestinoRecurso = formatCodug(registro.ug);
+            
+            let categoriaDetalhe = getClasseIILabel(registro.categoria);
+            
+            if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
+                categoriaDetalhe = registro.animal_tipo;
+            }
+                            
+            const omDetentora = registro.om_detentora || omDestinoRecurso;
+            const isDifferentOm = omDetentora !== omDestinoRecurso;
+            
+            let prefixoClasse = '';
+            let generateMemoriaFunc: (r: ClasseIIRegistro) => string;
+
+            if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
+                prefixoClasse = 'CLASSE V';
+                generateMemoriaFunc = generateClasseVMemoriaCalculo;
+            } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
+                prefixoClasse = 'CLASSE VI';
+                generateMemoriaFunc = generateClasseVIMemoriaCalculo;
+            } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
+                prefixoClasse = 'CLASSE VII';
+                generateMemoriaFunc = generateClasseVIIMemoriaCalculo;
+            } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
+                prefixoClasse = 'CLASSE VIII';
+                generateMemoriaFunc = generateClasseVIIIMemoriaCalculo;
+            } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
+                prefixoClasse = 'CLASSE IX';
+                generateMemoriaFunc = generateClasseIXMemoriaCalculo;
+            } else {
+                prefixoClasse = 'CLASSE II';
+                generateMemoriaFunc = (r) => generateClasseIIMemoriaCalculo(r, true);
+            }
+            
+            line1 = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
+            
+            if (isDifferentOm) {
+                line2 = omDetentora;
+            }
+            
+            rowData.omValue = `${omDestinoRecurso}<br/>(${ugDestinoRecurso})`;
+            rowData.valorC = registro.valor_nd_30;
+            rowData.valorD = registro.valor_nd_39;
+            rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
+            
+            if (registro.detalhamento_customizado) {
+                rowData.detalhamentoValue = registro.detalhamento_customizado;
+            } else {
+                rowData.detalhamentoValue = generateMemoriaFunc(registro);
+            }
+            
+            rowData.despesasValue = line1 + (line2 ? `<br/>${line2}` : '');
+        }
+
+        return (
+            <tr key={`${nomeOM}-${index}`} className="expense-row">
+                <td className="col-despesas">
+                    <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: rowData.despesasValue }} />
+                </td>
+                <td className="col-om">
+                    <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: rowData.omValue.replace(/\n/g, '<br/>') }} />
+                </td>
+                <td className="col-nd col-valor-natureza">
+                    {rowData.valorC > 0 ? formatCurrency(rowData.valorC) : ''}
+                </td>
+                <td className="col-nd col-valor-natureza">
+                    {rowData.valorD > 0 ? formatCurrency(rowData.valorD) : ''}
+                </td>
+                <td className="col-nd col-valor-natureza">
+                    {rowData.valorE > 0 ? formatCurrency(rowData.valorE) : ''}
+                </td>
+                <td className="col-combustivel-data-filled">
+                    {rowData.litrosF}
+                </td>
+                <td className="col-combustivel-data-filled">
+                    {rowData.precoUnitarioG}
+                </td>
+                <td className="col-combustivel-data-filled">
+                    {rowData.precoTotalH}
+                </td>
+                <td className="col-detalhamento">
+                    <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                        {rowData.detalhamentoValue}
+                    </div>
+                </td>
+            </tr>
+        );
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -1172,22 +1135,17 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   const grupo = gruposPorOM[nomeOM];
                   const totaisOM = calcularTotaisPorOM(grupo, nomeOM);
                   
-                  // Verifica se o grupo tem alguma linha de despesa relevante para o relatório logístico
                   const hasRelevantLines = grupo.linhasQS.length > 0 || grupo.linhasQR.length > 0 || grupo.linhasClasseII.length > 0 || grupo.linhasClasseV.length > 0 || grupo.linhasClasseVI.length > 0 || grupo.linhasClasseVII.length > 0 || grupo.linhasClasseVIII.length > 0 || grupo.linhasClasseIX.length > 0 || grupo.linhasClasseIII.length > 0;
                   
                   if (!hasRelevantLines) return null;
 
-                  // Linhas de Classe III (Lubrificante e Combustível) - Ordenação interna
                   const linhasClasseIIIOrdenadas = grupo.linhasClasseIII.sort((a, b) => {
-                      // Ordena Lubrificante antes de Combustível
                       if (a.tipo_suprimento === 'LUBRIFICANTE' && b.tipo_suprimento !== 'LUBRIFICANTE') return -1;
                       if (a.tipo_suprimento !== 'LUBRIFICANTE' && b.tipo_suprimento === 'LUBRIFICANTE') return 1;
                       
-                      // Dentro de Combustível, ordena Diesel antes de Gasolina
                       if (a.tipo_suprimento === 'COMBUSTIVEL_DIESEL' && b.tipo_suprimento === 'COMBUSTIVEL_GASOLINA') return -1;
                       if (a.tipo_suprimento === 'COMBUSTIVEL_GASOLINA' && b.tipo_suprimento === 'COMBUSTIVEL_DIESEL') return 1;
                       
-                      // Ordena por categoria de equipamento
                       return a.categoria_equipamento.localeCompare(b.categoria_equipamento);
                   });
                   
@@ -1202,10 +1160,9 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       ...grupo.linhasClasseIX,
                       ...linhasClasseIIIOrdenadas,
                   ].sort((a, b) => {
-                      // Ordenação por Classe (I, II, III, V, VI, VII, VIII, IX)
                       const getClasseOrder = (linha: any) => {
-                          if ('tipo' in linha) return 1; // Classe I
-                          if ('categoria_equipamento' in linha) return 3; // Classe III
+                          if ('tipo' in linha) return 1;
+                          if ('categoria_equipamento' in linha) return 3;
                           
                           const cat = linha.registro.categoria;
                           if (CLASSE_V_CATEGORIES.includes(cat)) return 5;
@@ -1213,7 +1170,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                           if (CLASSE_VII_CATEGORIES.includes(cat)) return 7;
                           if (CLASSE_VIII_CATEGORIES.includes(cat)) return 8;
                           if (CLASSE_IX_CATEGORIES.includes(cat)) return 9;
-                          return 2; // Classe II (default)
+                          return 2;
                       };
                       
                       const orderA = getClasseOrder(a);
@@ -1221,12 +1178,11 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       
                       if (orderA !== orderB) return orderA - orderB;
                       
-                      // Sub-ordenação por categoria/tipo
                       if ('tipo' in a && 'tipo' in b) {
-                          return a.tipo.localeCompare(b.tipo); // QS antes de QR
+                          return a.tipo.localeCompare(b.tipo);
                       }
                       if ('categoria_equipamento' in a && 'categoria_equipamento' in b) {
-                          return a.tipo_suprimento.localeCompare(b.tipo_suprimento); // Diesel/Gasolina/Lubrificante
+                          return a.tipo_suprimento.localeCompare(b.tipo_suprimento);
                       }
                       
                       return 0;
@@ -1234,225 +1190,14 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
 
                   return (
                     <React.Fragment key={`${nomeOM}-group`}>
-                      {allExpenseLines.map((linha, index) => {
-                        // Type guards to determine the type of line
-                        const isClasseI = 'tipo' in linha;
-                        const isClasseIII = 'categoria_equipamento' in linha;
-                        const isClasseII_IX = !isClasseI && !isClasseIII; // Must be LinhaClasseII
-
-                        if (!linha) return null;
-                        
-                        let rowData = {
-                            despesasValue: '',
-                            omValue: '',
-                            detalhamentoValue: '',
-                            valorC: 0,
-                            valorD: 0,
-                            valorE: 0,
-                            litrosF: '',
-                            precoUnitarioG: '',
-                            precoTotalH: '',
-                        };
-                        
-                        let line1 = '';
-                        let line2 = '';
-
-                        if (isClasseI) { // Classe I (QS/QR)
-                            const registro = (linha as LinhaTabela).registro as ClasseIRegistro;
-                            const tipo = (linha as LinhaTabela).tipo;
-                            const ug_qs_formatted = formatCodug(registro.ugQS);
-
-                            line1 = `CLASSE I - SUBSISTÊNCIA`;
-
-                            if (tipo === 'QS') {
-                                const omDestino = registro.organizacao;
-                                const omFornecedora = registro.omQS;
-                                
-                                if (omDestino !== omFornecedora) {
-                                    line2 = omDestino; // OM Destino do Recurso
-                                }
-                                
-                                rowData.omValue = `${registro.omQS}\n(${ug_qs_formatted})`; // OM Fornecedora
-                                rowData.valorC = registro.totalQS;
-                                rowData.valorE = registro.totalQS;
-                                rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QS');
-                                
-                            } else { // QR
-                                line1 = `CLASSE I - SUBSISTÊNCIA`;
-                                rowData.omValue = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
-                                rowData.valorC = registro.totalQR;
-                                rowData.valorE = registro.totalQR;
-                                rowData.detalhamentoValue = generateClasseIMemoriaCalculo(registro, 'QR');
-                            }
-                            rowData.despesasValue = line1 + (line2 ? `\n${line2}` : '');
-                        } else if (isClasseIII) { // Classe III (Combustível/Lubrificante)
-                            const linhaClasseIII = linha as LinhaClasseIII;
-                            const registro = linhaClasseIII.registro;
-                            const isCombustivelLinha = linhaClasseIII.tipo_suprimento !== 'LUBRIFICANTE';
-                            
-                            // OM Detentora do Equipamento (OM que usa o material)
-                            const omDetentoraEquipamento = registro.organizacao; 
-                            
-                            // OM Destino do Recurso (OM que recebe o recurso, que é a OM do grupo)
-                            const omDestinoRecurso = nomeOM; 
-                            
-                            // 1. Construir a primeira linha: CLASSE - SUPRIMENTO - CATEGORIA
-                            const tipoSuprimentoLabel = isLubrificante(registro) ? 'LUBRIFICANTE' : getTipoCombustivelLabel(linhaClasseIII.tipo_suprimento);
-                            const categoriaEquipamento = getTipoEquipamentoLabel(linhaClasseIII.categoria_equipamento);
-                            
-                            line1 = `CLASSE III - ${tipoSuprimentoLabel}\n${categoriaEquipamento}`;
-                            
-                            // 2. Se a OM Detentora do Equipamento for diferente da OM Destino do Recurso (Col B), 
-                            // adicionamos a OM Detentora do Equipamento na Coluna A (linha 2)
-                            const isDifferentOm = omDetentoraEquipamento !== omDestinoRecurso;
-                            
-                            if (isDifferentOm) {
-                                line2 = omDetentoraEquipamento;
-                            }
-                            
-                            // OM (UGE) CODUG: OM de Destino do Recurso (OM do grupo)
-                            const ugDestinoRecurso = registro.ug_detentora || registro.ug; // Usa UG Detentora se existir, senão a UG do registro
-                            const ugDestinoFormatted = formatCodug(ugDestinoRecurso);
-                            
-                            let omValue = `${omDestinoRecurso}\n(${ugDestinoFormatted})`;
-                            
-                            rowData.despesasValue = line1 + (line2 ? `\n${line2}` : '');
-                            rowData.omValue = omValue;
-                            
-                            if (isCombustivelLinha) {
-                                // Combustível é sempre ND 30 (material) no relatório logístico, mas o valor vai para a coluna H
-                                rowData.valorC = 0;
-                                rowData.valorD = 0;
-                                rowData.valorE = 0;
-                                
-                                rowData.litrosF = `${formatNumber(linhaClasseIII.total_litros_linha)} L`;
-                                rowData.precoUnitarioG = formatCurrency(linhaClasseIII.preco_litro_linha);
-                                rowData.precoTotalH = formatCurrency(linhaClasseIII.valor_total_linha);
-                                
-                            } else if (isLubrificante(registro)) {
-                                // Lubrificante é ND 30 (material)
-                                rowData.valorC = linhaClasseIII.valor_total_linha;
-                                rowData.valorD = 0;
-                                rowData.valorE = linhaClasseIII.valor_total_linha;
-                                
-                                rowData.litrosF = '';
-                                rowData.precoUnitarioG = '';
-                                rowData.precoTotalH = '';
-                            }
-                            
-                            // *** MUDANÇA CRÍTICA: Usar a memória pré-calculada granular ***
-                            rowData.detalhamentoValue = linhaClasseIII.memoria_calculo;
-                            
-                        } else if (isClasseII_IX) { // Classes II, V, VI, VII, VIII, IX
-                            const registro = (linha as LinhaClasseII).registro as ClasseIIRegistro;
-                            const omDestinoRecurso = registro.organizacao;
-                            const ugDestinoRecurso = formatCodug(registro.ug);
-                            
-                            let categoriaDetalhe = getClasseIILabel(registro.categoria);
-                            
-                            if (registro.categoria === 'Remonta/Veterinária' && registro.animal_tipo) {
-                                categoriaDetalhe = registro.animal_tipo;
-                            }
-                                            
-                            const omDetentora = registro.om_detentora || omDestinoRecurso;
-                            const isDifferentOm = omDetentora !== omDestinoRecurso;
-                            
-                            let prefixoClasse = '';
-                            if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                                prefixoClasse = 'CLASSE V';
-                            } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
-                                prefixoClasse = 'CLASSE VI';
-                            } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
-                                prefixoClasse = 'CLASSE VII';
-                            } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
-                                prefixoClasse = 'CLASSE VIII';
-                            } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                                prefixoClasse = 'CLASSE IX';
-                            } else {
-                                prefixoClasse = 'CLASSE II';
-                            }
-                            
-                            // Line 1: Class - Category
-                            line1 = `${prefixoClasse} - ${categoriaDetalhe.toUpperCase()}`;
-                            
-                            if (isDifferentOm) {
-                                // Line 2: OM Detentora
-                                line2 = omDetentora;
-                            }
-                            
-                            // CORREÇÃO: Garante OM \n UG na coluna B
-                            rowData.omValue = `${omDestinoRecurso}\n(${ugDestinoRecurso})`;
-                            rowData.valorC = registro.valor_nd_30;
-                            rowData.valorD = registro.valor_nd_39;
-                            rowData.valorE = registro.valor_nd_30 + registro.valor_nd_39;
-                            
-                            if (registro.detalhamento_customizado) {
-                                rowData.detalhamentoValue = registro.detalhamento_customizado;
-                            } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
-                                rowData.detalhamentoValue = generateClasseIXMemoriaCalculo(registro);
-                            } else if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
-                                rowData.detalhamentoValue = generateClasseVMemoriaCalculo(registro);
-                            } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
-                                rowData.detalhamentoValue = generateClasseVIMemoriaCalculo(registro);
-                            } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
-                                rowData.detalhamentoValue = generateClasseVIIMemoriaCalculo(registro);
-                            } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
-                                rowData.detalhamentoValue = generateClasseVIIIMemoriaCalculo(registro);
-                            } else {
-                                const isClasseII = ['Equipamento Individual', 'Proteção Balística', 'Material de Estacionamento'].includes(registro.categoria);
-                                rowData.detalhamentoValue = generateClasseIIMemoriaCalculo(registro, isClasseII);
-                            }
-                            
-                            rowData.despesasValue = line1 + (line2 ? `\n${line2}` : '');
-                        }
-                        
-                        return (
-                            <tr key={`${nomeOM}-${index}`} className="expense-row">
-                                <td className="col-despesas">
-                                    {/* Usando div para garantir que o white-space: pre-wrap funcione */}
-                                    <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: rowData.despesasValue.replace(/\n/g, '<br/>') }} />
-                                </td>
-                                <td className="col-om">
-                                    {/* Usando div para garantir que o white-space: pre-wrap funcione */}
-                                    <div style={{ whiteSpace: 'pre-wrap' }}>
-                                        {rowData.omValue}
-                                    </div>
-                                </td>
-                                <td className="col-nd col-valor-natureza">
-                                    {rowData.valorC > 0 ? formatCurrency(rowData.valorC) : ''}
-                                </td>
-                                <td className="col-nd col-valor-natureza">
-                                    {rowData.valorD > 0 ? formatCurrency(rowData.valorD) : ''}
-                                </td>
-                                <td className="col-nd col-valor-natureza">
-                                    {rowData.valorE > 0 ? formatCurrency(rowData.valorE) : ''}
-                                </td>
-                                <td className="col-combustivel-data-filled">
-                                    {rowData.litrosF}
-                                </td>
-                                <td className="col-combustivel-data-filled">
-                                    {rowData.precoUnitarioG}
-                                </td>
-                                <td className="col-combustivel-data-filled">
-                                    {rowData.precoTotalH}
-                                </td>
-                                <td className="col-detalhamento">
-                                    <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                                        {rowData.detalhamentoValue}
-                                    </div>
-                                </td>
-                            </tr>
-                        );
-                      })}
+                      {renderExpenseLines(allExpenseLines)}
                       
                       {/* Subtotal Row - SOMA POR ND E GP DE DESPESA */}
                       <tr key={`${nomeOM}-subtotal`} className="subtotal-row">
                         <td colSpan={2} className="text-right font-bold">SOMA POR ND E GP DE DESPESA</td>
-                        {/* Parte Azul (Natureza de Despesa) */}
                         <td className="col-valor-natureza text-center font-bold">{formatCurrency(totaisOM.total_33_90_30)}</td>
                         <td className="col-valor-natureza text-center font-bold">{formatCurrency(totaisOM.total_33_90_39)}</td>
-                        <td className="col-valor-natureza text-center font-bold">{formatCurrency(totaisOM.total_parte_azul)}</td> {/* TOTAL ND (C+D) */}
-                        {/* Parte Laranja (Combustivel) */}
+                        <td className="col-valor-natureza text-center font-bold">{formatCurrency(totaisOM.total_parte_azul)}</td>
                         <td className="col-combustivel-data-filled text-center font-bold border border-black">
                           {totaisOM.totalDieselLitros > 0 
                             ? `${formatNumber(totaisOM.totalDieselLitros)} L OD` 
@@ -1497,15 +1242,12 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                   <td className="col-valor-natureza text-center font-bold">{formatCurrency(totalGeral_33_90_30)}</td>
                   <td className="col-valor-natureza text-center font-bold">{formatCurrency(totalGeral_33_90_39)}</td>
                   <td className="col-valor-natureza text-center font-bold">{formatCurrency(totalGeral_GND3_ND)}</td>
-                  {/* F: LITROS DIESEL */}
                   <td className="col-combustivel-data-filled text-center font-bold border border-black">
                     {totalDiesel > 0 ? `${formatNumber(totalDiesel)} L OD` : ''}
                   </td>
-                  {/* G: LITROS GASOLINA */}
                   <td className="col-combustivel-data-filled text-center font-bold border border-black">
                     {totalGasolina > 0 ? `${formatNumber(totalGasolina)} L GAS` : ''}
                   </td>
-                  {/* H: PREÇO TOTAL COMBUSTÍVEL */}
                   <td className="col-combustivel-data-filled text-center font-bold border border-black">
                     {totalValorCombustivelFinal > 0 ? formatCurrency(totalValorCombustivelFinal) : ''}
                   </td>
@@ -1568,7 +1310,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         .ptrab-table thead th { background-color: #E8E8E8; font-weight: bold; text-align: center; font-size: 9pt; }
         
         /* LARGURAS DE COLUNA FIXAS */
-        .col-despesas { width: 14%; text-align: left; white-space: pre-wrap; } /* CORRIGIDO: Adicionado white-space: pre-wrap */
+        .col-despesas { width: 14%; text-align: left; white-space: pre-wrap; }
         .col-om { width: 9%; text-align: center; }
         .col-natureza-header { background-color: #B4C7E7 !important; text-align: center; font-weight: bold; }
         .col-natureza { background-color: #B4C7E7 !important; width: 8%; text-align: center; }
@@ -1582,7 +1324,7 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
         
         .subtotal-row, .subtotal-om-row, .total-geral-soma-row, .total-geral-final-row { 
             font-weight: bold; 
-            page-break-inside: avoid; /* Previne quebra */
+            page-break-inside: avoid;
         } 
         .subtotal-row { background-color: #D3D3D3; }
         .subtotal-om-row { background-color: #E8E8E8; }
@@ -1598,18 +1340,18 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
           .ptrab-print-container { padding: 0 !important; margin: 0 !important; }
           .ptrab-table thead { display: table-row-group; break-inside: avoid; break-after: auto; }
-          .ptrab-table th, .ptrab-table td { border: 0.25pt solid #000 !important; } /* Borda mais fina para impressão */
+          .ptrab-table th, .ptrab-table td { border: 0.25pt solid #000 !important; }
           .ptrab-table { border: 0.25pt solid #000 !important; }
           
           /* CORREÇÃO CRÍTICA: Força alinhamento vertical middle para as colunas de dados A a H */
-          .expense-row td:nth-child(1), /* Coluna A: DESPESAS */
-          .expense-row td:nth-child(2), /* Coluna B: OM/CODUG */
-          .expense-row td:nth-child(3), /* Coluna C: 33.90.30 */
-          .expense-row td:nth-child(4), /* Coluna D: 33.90.39 */
-          .expense-row td:nth-child(5), /* Coluna E: TOTAL ND */
-          .expense-row td:nth-child(6), /* Coluna F: LITROS */
-          .expense-row td:nth-child(7), /* Coluna G: PREÇO UNITÁRIO */
-          .expense-row td:nth-child(8) { /* Coluna H: PREÇO TOTAL */
+          .expense-row td:nth-child(1),
+          .expense-row td:nth-child(2),
+          .expense-row td:nth-child(3),
+          .expense-row td:nth-child(4),
+          .expense-row td:nth-child(5),
+          .expense-row td:nth-child(6),
+          .expense-row td:nth-child(7),
+          .expense-row td:nth-child(8) {
               vertical-align: middle !important;
           }
           
@@ -1631,8 +1373,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
           }
         }
       `}</style>
-
-      {/* REMOVIDO: AlertDialog */}
     </div>
   );
 };
