@@ -33,12 +33,12 @@ export function DatePicker({ date, setDate, placeholder = "Selecione uma data", 
       const parsedDate = parse(rawValue, "dd/MM/yyyy", new Date());
       if (isValid(parsedDate)) {
         // Se a data for válida, atualiza o estado principal
-        // Passamos apenas 3 argumentos (day, modifiers, event)
-        setDate(parsedDate, undefined, undefined); 
+        // Passamos 4 argumentos: day, modifiers (undefined), event (undefined), isDayPicker (false)
+        setDate(parsedDate, undefined, undefined, false); 
       }
     } else if (rawValue.length === 0) {
         // Permite limpar a data
-        setDate(undefined, undefined, undefined);
+        setDate(undefined, undefined, undefined, false);
     }
   };
 
