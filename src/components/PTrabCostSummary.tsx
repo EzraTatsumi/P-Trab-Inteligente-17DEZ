@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Tables } from "@/integrations/supabase/types"; // Importar Tables
+import { Tables, Json } from "@/integrations/supabase/types"; // Importar Tables e Json
 
 // Define the category constants
 const CATEGORIAS_CLASSE_II = ["Equipamento Individual", "Proteção Balística", "Material de Estacionamento"];
@@ -175,7 +175,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   if (classeIIIError) console.error("Erro ao carregar Classe III:", classeIIIError);
   if (diariaError) console.error("Erro ao carregar Diárias:", diariaError);
   if (verbaOperacionalError) console.error("Erro ao carregar Verba Operacional/Suprimento:", verbaOperacionalError);
-  if (passagemError) console.error("Erro ao carregar Passagens:", passagemError); // NOVO
+  if (passagemError) console.error("Erro ao carregar Passagens:", passagemError);
   
   // Usar arrays vazios se o fetch falhou e garantir a tipagem correta
   const safeClasseIIData = classeIIData as ClasseIIRow[] || [];
@@ -188,7 +188,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const safeClasseIIIData = classeIIIData as ClasseIIIRow[] || [];
   const safeDiariaData = diariaData as DiariaRow[] || [];
   const safeVerbaOperacionalData = verbaOperacionalData as VerbaOperacionalRow[] || [];
-  const safePassagemData = passagemData as PassagemRow[] || []; // NOVO
+  const safePassagemData = passagemData as PassagemRow[] || [];
   
   const allClasseItemsData = [
     ...safeClasseIIData,
@@ -550,8 +550,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     
     // Diárias
     totalDiarias,
-    totalDiariasND15: totalDiariasND15_TaxaEmbarque, // Taxa de Embarque (ND 15)
-    totalDiariasND30: totalDiariasND15_DiariaBase, // Diárias (valor principal)
+    totalDiariasND15: totalDiariasND15_DiariaBase, // Diárias (valor principal)
+    totalDiariasND30: totalDiariasND30 + totalDiariasND15_TaxaEmbarque, // ND 30 (Passagens Aéreas) + Taxa de Embarque (ND 15)
     totalMilitaresDiarias,
     totalDiasViagem, // Total de dias de viagem
     
@@ -1224,7 +1224,7 @@ export const PTrabCostSummary = ({
                           
                           {/* NOVO: Linha de Detalhe Consolidada */}
                           <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                            <span className="w-1/2 text-left font-semibold">Taxa de Embarque / Diárias (ND 15)</span>
+                            <span className="w-1/2 text-left font-semibold">Diárias Base / Taxa Embarque (ND 15/30)</span>
                             <span className="w-1/4 text-right font-medium text-green-600">
                                 {formatCurrency(totals.totalDiariasND15)}
                             </span>
