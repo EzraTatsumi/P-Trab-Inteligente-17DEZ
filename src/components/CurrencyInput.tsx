@@ -1,10 +1,7 @@
 import React, { useMemo, useCallback } from 'react';
-import { Input } from "@/components/ui/input";
+import { Input, InputProps } from "@/components/ui/input";
 import { formatCurrencyInput } from "@/lib/formatUtils";
 import { cn } from "@/lib/utils";
-
-// Definindo InputProps com base nas propriedades de um input HTML padrão
-interface InputProps extends React.ComponentPropsWithoutRef<"input"> {}
 
 interface CurrencyInputProps extends Omit<InputProps, 'value' | 'onChange' | 'onBlur'> {
   rawDigits: string;

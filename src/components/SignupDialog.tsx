@@ -47,7 +47,7 @@ const signupSchema = z.object({
   email: z.string().email("E-mail inválido."),
   nome_completo: z.string().min(5, "Nome completo é obrigatório."),
   nome_guerra: z.string().min(2, "Nome de Guerra é obrigatório."),
-  posto_graduacao: z.enum(MILITARY_RANKS, { message: "Posto/Graduação é obrigatório." }),
+  posto_graduacao: z.enum(MILITARY_RANKS as [string, ...string[]], { message: "Posto/Graduação é obrigatório." }),
   // Sigla da OM agora é apenas um campo de texto obrigatório
   sigla_om: z.string().min(2, "Sigla da OM é obrigatória."),
   funcao_om: z.string().min(2, "Função na OM é obrigatória."),
@@ -88,8 +88,9 @@ const DOMAIN_CORRECTIONS: Record<string, string> = {
     // Hotmail/Outlook/Live
     "hotmai.com": "hotmail.com",
     "hotmal.com": "hotmail.com",
+    "outlok.com": "outlook.com",
     "outloock.com": "outlook.com",
-    "outlok.com": "outlook.com", // Removido o duplicado
+    "outlok.com": "outlook.com",
     "outlookcom": "outlook.com", 
     "live.com.br": "live.com",
     "live.com": "live.com",

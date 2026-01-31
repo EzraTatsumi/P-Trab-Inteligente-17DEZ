@@ -125,10 +125,6 @@ export type Database = {
           updated_at: string
           valor_nd_30: number
           valor_nd_39: number
-          valor_total: number
-          efetivo: number
-          om_detentora: string | null
-          ug_detentora: string | null
         }
         Insert: {
           categoria: string
@@ -146,9 +142,6 @@ export type Database = {
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
-          efetivo?: number
-          om_detentora?: string | null
-          ug_detentora?: string | null
         }
         Update: {
           categoria?: string
@@ -166,9 +159,6 @@ export type Database = {
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
-          efetivo?: number
-          om_detentora?: string | null
-          ug_detentora?: string | null
         }
         Relationships: [
           {
@@ -210,9 +200,6 @@ export type Database = {
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
-          om_detentora: string | null
-          ug_detentora: string | null
-          categoria: string | null
         }
         Insert: {
           consumo_hora?: number | null
@@ -243,9 +230,6 @@ export type Database = {
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
-          om_detentora?: string | null
-          ug_detentora?: string | null
-          categoria?: string | null
         }
         Update: {
           consumo_hora?: number | null
@@ -276,9 +260,6 @@ export type Database = {
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
-          om_detentora?: string | null
-          ug_detentora?: string | null
-          categoria?: string | null
         }
         Relationships: [
           {
@@ -307,9 +288,6 @@ export type Database = {
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
-          efetivo: number
-          om_detentora: string | null
-          ug_detentora: string | null
         }
         Insert: {
           categoria: string
@@ -327,9 +305,6 @@ export type Database = {
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
-          efetivo?: number
-          om_detentora?: string | null
-          ug_detentora?: string | null
         }
         Update: {
           categoria?: string
@@ -347,9 +322,6 @@ export type Database = {
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
-          efetivo?: number
-          om_detentora?: string | null
-          ug_detentora?: string | null
         }
         Relationships: [
           {
@@ -378,8 +350,6 @@ export type Database = {
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
-          om_detentora: string
-          ug_detentora: string
         }
         Insert: {
           categoria: string
@@ -397,8 +367,6 @@ export type Database = {
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
-          om_detentora: string
-          ug_detentora: string
         }
         Update: {
           categoria?: string
@@ -416,8 +384,6 @@ export type Database = {
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
-          om_detentora?: string
-          ug_detentora?: string
         }
         Relationships: [
           {
@@ -446,8 +412,6 @@ export type Database = {
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
-          om_detentora: string | null
-          ug_detentora: string | null
         }
         Insert: {
           categoria: string
@@ -465,8 +429,6 @@ export type Database = {
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
-          om_detentora?: string | null
-          ug_detentora?: string | null
         }
         Update: {
           categoria?: string
@@ -484,8 +446,6 @@ export type Database = {
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
-          om_detentora?: string | null
-          ug_detentora?: string | null
         }
         Relationships: [
           {
@@ -515,8 +475,6 @@ export type Database = {
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
-          om_detentora: string | null
-          ug_detentora: string | null
         }
         Insert: {
           animal_tipo: string
@@ -535,8 +493,6 @@ export type Database = {
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
-          om_detentora?: string | null
-          ug_detentora?: string | null
         }
         Update: {
           animal_tipo?: string
@@ -555,8 +511,6 @@ export type Database = {
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
-          om_detentora?: string | null
-          ug_detentora?: string | null
         }
         Relationships: [
           {
@@ -585,8 +539,6 @@ export type Database = {
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
-          om_detentora: string | null
-          ug_detentora: string | null
         }
         Insert: {
           categoria?: string
@@ -604,8 +556,6 @@ export type Database = {
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
-          om_detentora?: string | null
-          ug_detentora?: string | null
         }
         Update: {
           categoria?: string
@@ -623,8 +573,6 @@ export type Database = {
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
-          om_detentora?: string | null
-          ug_detentora?: string | null
         }
         Relationships: [
           {
@@ -653,8 +601,6 @@ export type Database = {
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
-          om_detentora: string | null
-          ug_detentora: string | null
         }
         Insert: {
           categoria: string
@@ -672,8 +618,6 @@ export type Database = {
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
-          om_detentora?: string | null
-          ug_detentora?: string | null
         }
         Update: {
           categoria?: string
@@ -691,101 +635,10 @@ export type Database = {
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
-          om_detentora?: string | null
-          ug_detentora?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "classe_ix_registros_p_trab_id_fkey"
-            columns: ["p_trab_id"]
-            isOneToOne: false
-            referencedRelation: "p_trab"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      diaria_registros: {
-        Row: {
-          created_at: string
-          detalhamento: string | null
-          detalhamento_customizado: string | null
-          dias_operacao: number
-          destino: string
-          fase_atividade: string | null
-          id: string
-          is_aereo: boolean | null
-          local_atividade: string | null
-          nr_viagens: number
-          om_detentora: string | null
-          organizacao: string
-          p_trab_id: string
-          posto_graduacao: string | null
-          quantidade: number
-          quantidades_por_posto: Json | null
-          ug: string
-          ug_detentora: string | null
-          updated_at: string
-          valor_diaria_unitario: number | null
-          valor_nd_15: number
-          valor_nd_30: number
-          valor_taxa_embarque: number | null
-          valor_total: number
-        }
-        Insert: {
-          created_at?: string
-          detalhamento?: string | null
-          detalhamento_customizado?: string | null
-          dias_operacao: number
-          destino: string
-          fase_atividade?: string | null
-          id?: string
-          is_aereo?: boolean | null
-          local_atividade?: string | null
-          nr_viagens?: number
-          om_detentora?: string | null
-          organizacao: string
-          p_trab_id: string
-          posto_graduacao?: string | null
-          quantidade: number
-          quantidades_por_posto?: Json | null
-          ug: string
-          ug_detentora?: string | null
-          updated_at?: string
-          valor_diaria_unitario?: number | null
-          valor_nd_15?: number
-          valor_nd_30?: number
-          valor_taxa_embarque?: number | null
-          valor_total?: number
-        }
-        Update: {
-          created_at?: string
-          detalhamento?: string | null
-          detalhamento_customizado?: string | null
-          dias_operacao?: number
-          destino?: string
-          fase_atividade?: string | null
-          id?: string
-          is_aereo?: boolean | null
-          local_atividade?: string | null
-          nr_viagens?: number
-          om_detentora?: string | null
-          organizacao?: string
-          p_trab_id?: string
-          posto_graduacao?: string | null
-          quantidade?: number
-          quantidades_por_posto?: Json | null
-          ug?: string
-          ug_detentora?: string | null
-          updated_at?: string
-          valor_diaria_unitario?: number | null
-          valor_nd_15?: number
-          valor_nd_30?: number
-          valor_taxa_embarque?: number | null
-          valor_total?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "diaria_registros_p_trab_id_fkey"
             columns: ["p_trab_id"]
             isOneToOne: false
             referencedRelation: "p_trab"
@@ -961,109 +814,10 @@ export type Database = {
             foreignKeyName: "diretrizes_passagens_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
-      }
-      diretrizes_operacionais: {
-        Row: {
-          ano_referencia: number
-          created_at: string
-          diaria_demais_pracas_bsb: number | null
-          diaria_demais_pracas_capitais: number | null
-          diaria_demais_pracas_demais: number | null
-          diaria_of_gen_bsb: number | null
-          diaria_of_gen_capitais: number | null
-          diaria_of_gen_demais: number | null
-          diaria_of_int_sgt_bsb: number | null
-          diaria_of_int_sgt_capitais: number | null
-          diaria_of_int_sgt_demais: number | null
-          diaria_of_sup_bsb: number | null
-          diaria_of_sup_capitais: number | null
-          diaria_of_sup_demais: number | null
-          diaria_referencia_legal: string | null
-          fator_concessionaria: number
-          fator_material_consumo: number
-          fator_passagens_aereas: number
-          fator_servicos_terceiros: number
-          id: string
-          observacoes: string | null
-          taxa_embarque: number | null
-          updated_at: string
-          user_id: string
-          valor_complemento_alimentacao: number
-          valor_fretamento_aereo_hora: number
-          valor_locacao_estrutura_dia: number
-          valor_locacao_viaturas_dia: number
-          valor_suprimentos_fundo_dia: number
-          valor_verba_operacional_dia: number
-        }
-        Insert: {
-          ano_referencia: number
-          created_at?: string
-          diaria_demais_pracas_bsb?: number | null
-          diaria_demais_pracas_capitais?: number | null
-          diaria_demais_pracas_demais?: number | null
-          diaria_of_gen_bsb?: number | null
-          diaria_of_gen_capitais?: number | null
-          diaria_of_gen_demais?: number | null
-          diaria_of_int_sgt_bsb?: number | null
-          diaria_of_int_sgt_capitais?: number | null
-          diaria_of_int_sgt_demais?: number | null
-          diaria_of_sup_bsb?: number | null
-          diaria_of_sup_capitais?: number | null
-          diaria_of_sup_demais?: number | null
-          diaria_referencia_legal?: string | null
-          fator_concessionaria?: number
-          fator_material_consumo?: number
-          fator_passagens_aereas?: number
-          fator_servicos_terceiros?: number
-          id?: string
-          observacoes?: string | null
-          taxa_embarque?: number | null
-          updated_at?: string
-          user_id: string
-          valor_complemento_alimentacao?: number
-          valor_fretamento_aereo_hora?: number
-          valor_locacao_estrutura_dia?: number
-          valor_locacao_viaturas_dia?: number
-          valor_suprimentos_fundo_dia?: number
-          valor_verba_operacional_dia?: number
-        }
-        Update: {
-          ano_referencia?: number
-          created_at?: string
-          diaria_demais_pracas_bsb?: number | null
-          diaria_demais_pracas_capitais?: number | null
-          diaria_demais_pracas_demais?: number | null
-          diaria_of_gen_bsb?: number | null
-          diaria_of_gen_capitais?: number | null
-          diaria_of_gen_demais?: number | null
-          diaria_of_int_sgt_bsb?: number | null
-          diaria_of_int_sgt_capitais?: number | null
-          diaria_of_int_sgt_demais?: number | null
-          diaria_of_sup_bsb?: number | null
-          diaria_of_sup_capitais?: number | null
-          diaria_of_sup_demais?: number | null
-          diaria_referencia_legal?: string | null
-          fator_concessionaria?: number
-          fator_material_consumo?: number
-          fator_passagens_aereas?: number
-          fator_servicos_terceiros?: number
-          id?: string
-          observacoes?: string | null
-          taxa_embarque?: number | null
-          updated_at?: string
-          user_id?: string
-          valor_complemento_alimentacao?: number
-          valor_fretamento_aereo_hora?: number
-          valor_locacao_estrutura_dia?: number
-          valor_locacao_viaturas_dia?: number
-          valor_suprimentos_fundo_dia?: number
-          valor_verba_operacional_dia?: number
-        }
-        Relationships: []
       }
       organizacoes_militares: {
         Row: {
@@ -1075,8 +829,7 @@ export type Database = {
           nome_om: string
           rm_vinculacao: string
           updated_at: string | null
-          user_id: string | null
-          cidade: string | null
+          user_id: string
         }
         Insert: {
           ativo?: boolean | null
@@ -1087,8 +840,7 @@ export type Database = {
           nome_om: string
           rm_vinculacao: string
           updated_at?: string | null
-          user_id?: string | null
-          cidade?: string | null
+          user_id: string
         }
         Update: {
           ativo?: boolean | null
@@ -1099,8 +851,7 @@ export type Database = {
           nome_om?: string
           rm_vinculacao?: string
           updated_at?: string | null
-          user_id?: string | null
-          cidade?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -1259,7 +1010,6 @@ export type Database = {
           valor_nd_33: number
           valor_total: number
           valor_unitario: number
-          efetivo: number | null
         }
         Insert: {
           created_at?: string
@@ -1284,7 +1034,6 @@ export type Database = {
           valor_nd_33?: number
           valor_total?: number
           valor_unitario: number
-          efetivo?: number | null
         }
         Update: {
           created_at?: string
@@ -1309,7 +1058,6 @@ export type Database = {
           valor_nd_33?: number
           valor_total?: number
           valor_unitario?: number
-          efetivo?: number | null
         }
         Relationships: [
           {
@@ -1333,8 +1081,7 @@ export type Database = {
           avatar_url: string | null
           credit_gnd3: number
           credit_gnd4: number
-          default_logistica_year: number | null
-          default_operacional_year: number | null
+          default_diretriz_year: number | null
           first_name: string | null
           id: string
           last_name: string | null
@@ -1345,8 +1092,7 @@ export type Database = {
           avatar_url?: string | null
           credit_gnd3?: number
           credit_gnd4?: number
-          default_logistica_year?: number | null
-          default_operacional_year?: number | null
+          default_diretriz_year?: number | null
           first_name?: string | null
           id: string
           last_name?: string | null
@@ -1357,8 +1103,7 @@ export type Database = {
           avatar_url?: string | null
           credit_gnd3?: number
           credit_gnd4?: number
-          default_logistica_year?: number | null
-          default_operacional_year?: number | null
+          default_diretriz_year?: number | null
           first_name?: string | null
           id?: string
           last_name?: string | null
@@ -1366,51 +1111,6 @@ export type Database = {
           raw_user_meta_data?: Json | null
         }
         Relationships: []
-      }
-      ptrab_share_requests: {
-        Row: {
-          created_at: string | null
-          id: string
-          ptrab_id: string
-          requester_id: string
-          share_token: string
-          status: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          ptrab_id: string
-          requester_id: string
-          share_token: string
-          status?: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          ptrab_id?: string
-          requester_id?: string
-          share_token?: string
-          status?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ptrab_share_requests_ptrab_id_fkey"
-            columns: ["ptrab_id"]
-            isOneToOne: false
-            referencedRelation: "p_trab"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ptrab_share_requests_requester_id_fkey"
-            columns: ["requester_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       verba_operacional_registros: {
         Row: {
@@ -1500,59 +1200,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      approve_ptrab_share: {
-        Args: {
-          p_request_id: string
-        }
-        Returns: boolean
-      }
-      update_ptrab_timestamp: {
-        Args: Record<PropertyKey, never>
-        Returns: unknown
-      }
-      add_user_to_shared_with: {
-        Args: {
-          p_ptrab_id: string
-          p_share_token: string
-          p_user_id: string
-        }
-        Returns: boolean
-      }
-      is_ptrab_owner_or_shared: {
-        Args: {
-          ptrab_id_in: string
-        }
-        Returns: boolean
-      }
-      request_ptrab_share: {
-        Args: {
-          p_ptrab_id: string
-          p_share_token: string
-          p_user_id: string
-        }
-        Returns: boolean
-      }
-      set_updated_at: {
-        Args: Record<PropertyKey, never>
-        Returns: unknown
-      }
-      reject_ptrab_share: {
-        Args: {
-          p_request_id: string
-        }
-        Returns: boolean
-      }
-      remove_user_from_shared_with: {
-        Args: {
-          p_ptrab_id: string
-          p_user_to_remove_id: string
-        }
-        Returns: boolean
-      }
-      handle_new_user: {
-        Args: Record<PropertyKey, never>
-        Returns: unknown
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
@@ -1568,28 +1216,28 @@ type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-  PublicTableNameOrOptions extends
+  DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends PublicTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[PublicTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[PublicTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = PublicTableNameOrOptions extends {
+> = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[PublicTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : PublicTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
         DefaultSchema["Views"])
     ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[PublicTableNameOrOptions] extends {
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -1597,24 +1245,24 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  PublicTableNameOrOptions extends
+  DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends PublicTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends {
+> = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : PublicTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -1622,24 +1270,24 @@ export type TablesInsert<
     : never
 
 export type TablesUpdate<
-  PublicTableNameOrOptions extends
+  DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends PublicTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends {
+> = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : PublicTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -1647,20 +1295,20 @@ export type TablesUpdate<
     : never
 
 export type Enums<
-  PublicEnumNameOrOptions extends
+  DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends PublicEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = PublicEnumNameOrOptions extends {
+> = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][PublicEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<

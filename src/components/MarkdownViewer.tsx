@@ -31,7 +31,6 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ content, classNa
             if (inline) {
               return <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono text-primary" {...props} />;
             }
-            // Corrigido: Usando 'pre' como o elemento de retorno para o bloco de código
             return <pre className="bg-muted p-3 rounded-md overflow-x-auto text-xs font-mono" {...props} />;
           },
           a: ({ node, ...props }) => <a className="text-primary hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,

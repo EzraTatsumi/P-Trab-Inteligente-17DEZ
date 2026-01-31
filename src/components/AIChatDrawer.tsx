@@ -23,7 +23,7 @@ const AIChatDrawer = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // Ref para o viewport da ScrollArea (mantido, mas não usado diretamente no componente ScrollArea)
+  // Ref para o viewport da ScrollArea (necessário para acessar o elemento DOM)
   const scrollViewportRef = useRef<HTMLDivElement>(null);
   // Ref para a âncora no final da lista de mensagens
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -120,8 +120,8 @@ const AIChatDrawer = () => {
             </div>
           </div>
           
-          {/* Removido viewportRef, pois não é suportado pelo shadcn ScrollArea */}
-          <ScrollArea className="flex-1 p-4 overflow-y-auto">
+          {/* Adicionado viewportRef para ScrollArea */}
+          <ScrollArea className="flex-1 p-4 overflow-y-auto" viewportRef={scrollViewportRef}>
             <div className="space-y-4">
               {messages.length === 0 && (
                 <div className="text-center text-muted-foreground mt-10">
@@ -187,8 +187,7 @@ const AIChatDrawer = () => {
         </Drawer.Content>
       </Drawer.Portal>
       
-      {/* Corrigido: Usando tag style padrão */}
-      <style global>{`
+      <style jsx global>{`
         /* Estilos para o conteúdo Markdown dentro do chat */
         .markdown-content p {
             margin-bottom: 0.5rem;
