@@ -58,18 +58,22 @@ export async function fetchPTrabData(ptrabId: string): Promise<PTrabData> {
 
 /**
  * Busca todos os registros de uma tabela específica para um dado PTrab.
+ * @param tableName O nome da tabela (deve ser uma chave válida de Tables).
+ * @param ptrabId O ID do PTrab.
  */
-export async function fetchPTrabRecords<T extends keyof Tables>(tableName: T, ptrabId: string): Promise<Tables[T][]> {
+export async function fetchPTrabRecords<T extends keyof Tables>(tableName: T, ptrabId: string): Promise<Tables<T>[]> {
+    // Correção: Usar 'as any' ou 'as T' para contornar a restrição de literal de string do Postgrest
     const { data, error } = await supabase
-        .from(tableName)
+        .from(tableName as any) // Usando 'as any' para resolver o erro de sobrecarga
         .select('*')
         .eq('p_trab_id', ptrabId);
 
     if (error) {
-        throw new Error(`Falha ao carregar registros de ${tableName}: ${error.message}`);
+        throw new Error(`Falha ao carregar registros de ${String(tableName)}: ${error.message}`);
     }
     
-    return data as Tables[T][];
+    // Correção: O retorno é um array de Rows da tabela T
+    return data as Tables<T>[];
 }
 
 /**

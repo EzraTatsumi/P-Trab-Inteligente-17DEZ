@@ -1,6 +1,7 @@
 import { formatCurrency, formatCodug, formatNumber } from "./formatUtils";
 import { getClasseIIICategoryLabel } from "./classeIIIBadgeUtils";
 import { RefLPC } from "@/types/refLPC";
+import { Tables } from "@/integrations/supabase/types"; // Importando Tables
 
 // Tipos necessários (copiados do formulário)
 type TipoEquipamento = 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
@@ -25,6 +26,21 @@ interface ItemClasseIII {
   // NEW: Internal state for raw decimal input (string)
   consumo_lubrificante_input: string;
   memoria_customizada?: string | null; // NOVO CAMPO
+}
+
+// NOVO TIPO: Estrutura esperada pela função generateGranularMemoriaCalculo
+interface GranularDisplayItem {
+    om_destino: string;
+    ug_destino: string;
+    categoria: TipoEquipamento;
+    suprimento_tipo: 'COMBUSTIVEL_GASOLINA' | 'COMBUSTIVEL_DIESEL' | 'LUBRIFICANTE';
+    valor_total: number;
+    total_litros: number;
+    preco_litro: number;
+    dias_operacao: number;
+    fase_atividade: string;
+    detailed_items: ItemClasseIII[];
+    original_registro: Tables<'classe_iii_registros'>;
 }
 
 // Função auxiliar para pluralizar 'dia' ou 'dias'.
@@ -280,7 +296,7 @@ Total: ${formatNumber(totalLitros, 2)} L x ${formatCurrency(precoMedio)} = ${for
         
         const dataInicioFormatada = refLPC ? formatarData(refLPC.data_inicio_consulta) : '';
         const dataFimFormatada = refLPC ? formatarData(refLPC.data_fim_consulta) : '';
-        const localConsultaDisplay = refLPC.ambito === 'Nacional' ? '' : refLPC.nome_local ? ` (${refLPC.nome_local})` : '';
+        const localConsultaDisplay = refLPC?.ambito === 'Nacional' ? '' : refLPC?.nome_local ? ` (${refLPC.nome_local})` : '';
         
         // REMOVIDO: OM Detentora Equipamento e Recurso fornecido pela RM
         return `${header}
