@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
-  }
   public: {
     Tables: {
       classe_i_registros: {
@@ -25,12 +20,15 @@ export type Database = {
           etapa_qs: number
           fase_atividade: string | null
           id: string
+          memoria_calculo_op_customizada: string | null
           memoria_calculo_qr_customizada: string | null
           memoria_calculo_qs_customizada: string | null
           nr_ref_int: number
           om_qs: string
           organizacao: string
           p_trab_id: string
+          quantidade_r2: number
+          quantidade_r3: number
           total_geral: number
           total_qr: number
           total_qs: number
@@ -39,9 +37,7 @@ export type Database = {
           updated_at: string
           valor_qr: number
           valor_qs: number
-          categoria: string
-          quantidade_r2: number
-          quantidade_r3: number
+          categoria: 'RACAO_QUENTE' | 'RACAO_OPERACIONAL'
         }
         Insert: {
           complemento_qr?: number
@@ -53,13 +49,16 @@ export type Database = {
           etapa_qs?: number
           fase_atividade?: string | null
           id?: string
+          memoria_calculo_op_customizada?: string | null
           memoria_calculo_qr_customizada?: string | null
           memoria_calculo_qs_customizada?: string | null
           nr_ref_int: number
           om_qs: string
           organizacao: string
           p_trab_id: string
-          total_geral: number
+          quantidade_r2?: number
+          quantidade_r3?: number
+          total_geral?: number
           total_qr?: number
           total_qs?: number
           ug: string
@@ -67,9 +66,7 @@ export type Database = {
           updated_at?: string
           valor_qr: number
           valor_qs: number
-          categoria?: string
-          quantidade_r2?: number
-          quantidade_r3?: number
+          categoria?: 'RACAO_QUENTE' | 'RACAO_OPERACIONAL'
         }
         Update: {
           complemento_qr?: number
@@ -81,12 +78,15 @@ export type Database = {
           etapa_qs?: number
           fase_atividade?: string | null
           id?: string
+          memoria_calculo_op_customizada?: string | null
           memoria_calculo_qr_customizada?: string | null
           memoria_calculo_qs_customizada?: string | null
           nr_ref_int?: number
           om_qs?: string
           organizacao?: string
           p_trab_id?: string
+          quantidade_r2?: number
+          quantidade_r3?: number
           total_geral?: number
           total_qr?: number
           total_qs?: number
@@ -95,9 +95,7 @@ export type Database = {
           updated_at?: string
           valor_qr?: number
           valor_qs?: number
-          categoria?: string
-          quantidade_r2?: number
-          quantidade_r3?: number
+          categoria?: 'RACAO_QUENTE' | 'RACAO_OPERACIONAL'
         }
         Relationships: [
           {
@@ -112,50 +110,60 @@ export type Database = {
       classe_ii_registros: {
         Row: {
           categoria: string
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
+          efetivo: number
           fase_atividade: string | null
           id: string
           itens_equipamentos: Json
+          om_detentora: string | null
           organizacao: string
           p_trab_id: string
           ug: string
-          updated_at: string
+          ug_detentora: string | null
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
+          valor_total: number
         }
         Insert: {
           categoria: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
+          efetivo?: number
           fase_atividade?: string | null
           id?: string
           itens_equipamentos: Json
+          om_detentora?: string | null
           organizacao: string
           p_trab_id: string
           ug: string
-          updated_at?: string
+          ug_detentora?: string | null
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
         }
         Update: {
           categoria?: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
+          efetivo?: number
           fase_atividade?: string | null
           id?: string
           itens_equipamentos?: Json
+          om_detentora?: string | null
           organizacao?: string
           p_trab_id?: string
           ug?: string
-          updated_at?: string
+          ug_detentora?: string | null
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
@@ -172,18 +180,19 @@ export type Database = {
       }
       classe_iii_registros: {
         Row: {
+          categoria: string | null
           consumo_hora: number | null
           consumo_km_litro: number | null
           consumo_lubrificante_litro: number | null
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
           fase_atividade: string | null
-          horas_dia: number | null
           id: string
           itens_equipamentos: Json | null
           km_dia: number | null
+          om_detentora: string | null
           organizacao: string
           p_trab_id: string
           potencia_hp: number | null
@@ -196,24 +205,26 @@ export type Database = {
           total_litros: number
           total_litros_sem_margem: number | null
           ug: string
-          updated_at: string
+          ug_detentora: string | null
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
         }
         Insert: {
+          categoria?: string | null
           consumo_hora?: number | null
           consumo_km_litro?: number | null
           consumo_lubrificante_litro?: number | null
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
           fase_atividade?: string | null
-          horas_dia?: number | null
           id?: string
           itens_equipamentos?: Json | null
           km_dia?: number | null
+          om_detentora?: string | null
           organizacao: string
           p_trab_id: string
           potencia_hp?: number | null
@@ -223,27 +234,29 @@ export type Database = {
           tipo_combustivel: string
           tipo_equipamento: string
           tipo_equipamento_detalhe?: string | null
-          total_litros: number
+          total_litros?: number
           total_litros_sem_margem?: number | null
           ug: string
-          updated_at?: string
+          ug_detentora?: string | null
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
-          valor_total: number
+          valor_total?: number
         }
         Update: {
+          categoria?: string | null
           consumo_hora?: number | null
           consumo_km_litro?: number | null
           consumo_lubrificante_litro?: number | null
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
           fase_atividade?: string | null
-          horas_dia?: number | null
           id?: string
           itens_equipamentos?: Json | null
           km_dia?: number | null
+          om_detentora?: string | null
           organizacao?: string
           p_trab_id?: string
           potencia_hp?: number | null
@@ -256,7 +269,8 @@ export type Database = {
           total_litros?: number
           total_litros_sem_margem?: number | null
           ug?: string
-          updated_at?: string
+          ug_detentora?: string | null
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
@@ -274,51 +288,60 @@ export type Database = {
       classe_v_registros: {
         Row: {
           categoria: string
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
+          efetivo: number
           fase_atividade: string | null
           id: string
           itens_equipamentos: Json
+          om_detentora: string | null
           organizacao: string
           p_trab_id: string
           ug: string
-          updated_at: string
+          ug_detentora: string | null
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
         }
         Insert: {
           categoria: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
+          efetivo?: number
           fase_atividade?: string | null
           id?: string
           itens_equipamentos: Json
+          om_detentora?: string | null
           organizacao: string
           p_trab_id: string
           ug: string
-          updated_at?: string
+          ug_detentora?: string | null
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
-          valor_total: number
+          valor_total?: number
         }
         Update: {
           categoria?: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
+          efetivo?: number
           fase_atividade?: string | null
           id?: string
           itens_equipamentos?: Json
+          om_detentora?: string | null
           organizacao?: string
           p_trab_id?: string
           ug?: string
-          updated_at?: string
+          ug_detentora?: string | null
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
@@ -336,51 +359,57 @@ export type Database = {
       classe_vi_registros: {
         Row: {
           categoria: string
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
           fase_atividade: string | null
           id: string
           itens_equipamentos: Json
+          om_detentora: string
           organizacao: string
           p_trab_id: string
           ug: string
-          updated_at: string
+          ug_detentora: string
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
         }
         Insert: {
           categoria: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
           fase_atividade?: string | null
           id?: string
           itens_equipamentos: Json
+          om_detentora: string
           organizacao: string
           p_trab_id: string
           ug: string
-          updated_at?: string
+          ug_detentora: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
-          valor_total: number
+          valor_total?: number
         }
         Update: {
           categoria?: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
           fase_atividade?: string | null
           id?: string
           itens_equipamentos?: Json
+          om_detentora?: string
           organizacao?: string
           p_trab_id?: string
           ug?: string
-          updated_at?: string
+          ug_detentora?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
@@ -398,51 +427,57 @@ export type Database = {
       classe_vii_registros: {
         Row: {
           categoria: string
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
           fase_atividade: string | null
           id: string
           itens_equipamentos: Json
+          om_detentora: string | null
           organizacao: string
           p_trab_id: string
           ug: string
-          updated_at: string
+          ug_detentora: string | null
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
         }
         Insert: {
           categoria: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
           fase_atividade?: string | null
           id?: string
           itens_equipamentos: Json
+          om_detentora?: string | null
           organizacao: string
           p_trab_id: string
           ug: string
-          updated_at?: string
+          ug_detentora?: string | null
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
-          valor_total: number
+          valor_total?: number
         }
         Update: {
           categoria?: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
           fase_atividade?: string | null
           id?: string
           itens_equipamentos?: Json
+          om_detentora?: string | null
           organizacao?: string
           p_trab_id?: string
           ug?: string
-          updated_at?: string
+          ug_detentora?: string | null
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
@@ -460,54 +495,60 @@ export type Database = {
       classe_viii_remonta_registros: {
         Row: {
           animal_tipo: string
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
           fase_atividade: string | null
           id: string
           itens_remonta: Json
+          om_detentora: string | null
           organizacao: string
           p_trab_id: string
           quantidade_animais: number
           ug: string
-          updated_at: string
+          ug_detentora: string | null
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
         }
         Insert: {
           animal_tipo: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
           fase_atividade?: string | null
           id?: string
           itens_remonta: Json
+          om_detentora?: string | null
           organizacao: string
           p_trab_id: string
           quantidade_animais: number
           ug: string
-          updated_at?: string
+          ug_detentora?: string | null
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
-          valor_total: number
+          valor_total?: number
         }
         Update: {
           animal_tipo?: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
           fase_atividade?: string | null
           id?: string
           itens_remonta?: Json
+          om_detentora?: string | null
           organizacao?: string
           p_trab_id?: string
           quantidade_animais?: number
           ug?: string
-          updated_at?: string
+          ug_detentora?: string | null
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
@@ -525,51 +566,57 @@ export type Database = {
       classe_viii_saude_registros: {
         Row: {
           categoria: string
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
           fase_atividade: string | null
           id: string
           itens_saude: Json
+          om_detentora: string | null
           organizacao: string
           p_trab_id: string
           ug: string
-          updated_at: string
+          ug_detentora: string | null
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
         }
         Insert: {
           categoria?: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
           fase_atividade?: string | null
           id?: string
           itens_saude: Json
+          om_detentora?: string | null
           organizacao: string
           p_trab_id: string
           ug: string
-          updated_at?: string
+          ug_detentora?: string | null
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
-          valor_total: number
+          valor_total?: number
         }
         Update: {
           categoria?: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
           fase_atividade?: string | null
           id?: string
           itens_saude?: Json
+          om_detentora?: string | null
           organizacao?: string
           p_trab_id?: string
           ug?: string
-          updated_at?: string
+          ug_detentora?: string | null
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
@@ -587,51 +634,57 @@ export type Database = {
       classe_ix_registros: {
         Row: {
           categoria: string
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
           fase_atividade: string | null
           id: string
           itens_motomecanizacao: Json
+          om_detentora: string | null
           organizacao: string
           p_trab_id: string
           ug: string
-          updated_at: string
+          ug_detentora: string | null
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
         }
         Insert: {
           categoria: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
           fase_atividade?: string | null
           id?: string
           itens_motomecanizacao: Json
+          om_detentora?: string | null
           organizacao: string
           p_trab_id: string
           ug: string
-          updated_at?: string
+          ug_detentora?: string | null
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
-          valor_total: number
+          valor_total?: number
         }
         Update: {
           categoria?: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
           fase_atividade?: string | null
           id?: string
           itens_motomecanizacao?: Json
+          om_detentora?: string | null
           organizacao?: string
           p_trab_id?: string
           ug?: string
-          updated_at?: string
+          ug_detentora?: string | null
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
@@ -646,172 +699,135 @@ export type Database = {
           },
         ]
       }
-      diretrizes_classe_ii: {
+      diaria_registros: {
+        Row: {
+          created_at: string | null
+          detalhamento: string | null
+          detalhamento_customizado: string | null
+          dias_operacao: number
+          destino: string
+          fase_atividade: string | null
+          id: string
+          is_aereo: boolean | null
+          local_atividade: string | null
+          nr_viagens: number
+          om_detentora: string | null
+          organizacao: string
+          p_trab_id: string
+          posto_graduacao: string | null
+          quantidade: number
+          quantidades_por_posto: Json | null
+          ug: string
+          ug_detentora: string | null
+          updated_at: string | null
+          valor_diaria_unitario: number | null
+          valor_nd_15: number
+          valor_nd_30: number
+          valor_taxa_embarque: number | null
+          valor_total: number
+        }
+        Insert: {
+          created_at?: string | null
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao: number
+          destino: string
+          fase_atividade?: string | null
+          id?: string
+          is_aereo?: boolean | null
+          local_atividade?: string | null
+          nr_viagens?: number
+          om_detentora?: string | null
+          organizacao: string
+          p_trab_id: string
+          posto_graduacao?: string | null
+          quantidade: number
+          quantidades_por_posto?: Json | null
+          ug: string
+          ug_detentora?: string | null
+          updated_at?: string | null
+          valor_diaria_unitario?: number | null
+          valor_nd_15?: number
+          valor_nd_30?: number
+          valor_taxa_embarque?: number | null
+          valor_total?: number
+        }
+        Update: {
+          created_at?: string | null
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          destino?: string
+          fase_atividade?: string | null
+          id?: string
+          is_aereo?: boolean | null
+          local_atividade?: string | null
+          nr_viagens?: number
+          om_detentora?: string | null
+          organizacao?: string
+          p_trab_id?: string
+          posto_graduacao?: string | null
+          quantidade?: number
+          quantidades_por_posto?: Json | null
+          ug?: string
+          ug_detentora?: string | null
+          updated_at?: string | null
+          valor_diaria_unitario?: number | null
+          valor_nd_15?: number
+          valor_nd_30?: number
+          valor_taxa_embarque?: number | null
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diaria_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diretrizes_classe_ix: {
         Row: {
           ano_referencia: number
           ativo: boolean | null
           categoria: string
-          created_at: string
+          created_at: string | null
           id: string
           item: string
-          updated_at: string
+          updated_at: string | null
           user_id: string
+          valor_acionamento_mensal: number
           valor_mnt_dia: number
         }
         Insert: {
           ano_referencia: number
           ativo?: boolean | null
           categoria: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           item: string
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
-          valor_mnt_dia: number
-        }
-        Update: {
-          ano_referencia?: number
-          ativo?: boolean | null
-          categoria?: string
-          created_at?: string
-          id?: string
-          item?: string
-          updated_at?: string
-          user_id?: string
+          valor_acionamento_mensal?: number
           valor_mnt_dia?: number
         }
-        Relationships: []
-      }
-      diretrizes_custeio: {
-        Row: {
-          ano_referencia: number
-          classe_i_valor_qr: number
-          classe_i_valor_qs: number
-          classe_iii_fator_embarcacao: number
-          classe_iii_fator_equip_engenharia: number
-          classe_iii_fator_gerador: number
-          created_at: string
-          id: string
-          observacoes: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          ano_referencia: number
-          classe_i_valor_qr?: number
-          classe_i_valor_qs?: number
-          classe_iii_fator_embarcacao?: number
-          classe_iii_fator_equip_engenharia?: number
-          classe_iii_fator_gerador?: number
-          created_at?: string
-          id?: string
-          observacoes?: string | null
-          updated_at?: string
-          user_id: string
-        }
         Update: {
           ano_referencia?: number
-          classe_i_valor_qr?: number
-          classe_i_valor_qs?: number
-          classe_iii_fator_embarcacao?: number
-          classe_iii_fator_equip_engenharia?: number
-          classe_iii_fator_gerador?: number
-          created_at?: string
-          id?: string
-          observacoes?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      diretrizes_equipamentos_classe_iii: {
-        Row: {
-          ano_referencia: number
-          ativo: boolean
-          categoria: string
-          consumo: number
-          created_at: string
-          id: string
-          nome_equipamento: string
-          tipo_combustivel: string
-          unidade: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          ano_referencia: number
-          ativo?: boolean
-          categoria: string
-          consumo: number
-          created_at?: string
-          id?: string
-          nome_equipamento: string
-          tipo_combustivel: string
-          unidade: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          ano_referencia?: number
-          ativo?: boolean
+          ativo?: boolean | null
           categoria?: string
-          consumo?: number
-          created_at?: string
+          created_at?: string | null
           id?: string
-          nome_equipamento?: string
-          tipo_combustivel?: string
-          unidade?: string
-          updated_at?: string
+          item?: string
+          updated_at?: string | null
           user_id?: string
-        }
-        Relationships: []
-      }
-      diretrizes_passagens: {
-        Row: {
-          id: string
-          user_id: string
-          ano_referencia: number
-          om_referencia: string
-          ug_referencia: string
-          numero_pregao: string | null
-          trechos: Json
-          ativo: boolean
-          created_at: string
-          updated_at: string
-          data_inicio_vigencia: string | null
-          data_fim_vigencia: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          ano_referencia: number
-          om_referencia: string
-          ug_referencia: string
-          numero_pregao?: string | null
-          trechos?: Json
-          ativo?: boolean
-          created_at?: string
-          updated_at?: string
-          data_inicio_vigencia?: string | null
-          data_fim_vigencia?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          ano_referencia?: number
-          om_referencia?: string
-          ug_referencia?: string
-          numero_pregao?: string | null
-          trechos?: Json
-          ativo?: boolean
-          created_at?: string
-          updated_at?: string
-          data_inicio_vigencia?: string | null
-          data_fim_vigencia?: string | null
+          valor_acionamento_mensal?: number
+          valor_mnt_dia?: number
         }
         Relationships: [
           {
-            foreignKeyName: "diretrizes_passagens_user_id_fkey"
+            foreignKeyName: "diretrizes_classe_ix_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -819,41 +835,112 @@ export type Database = {
           },
         ]
       }
-      organizacoes_militares: {
+      diretrizes_operacionais: {
         Row: {
-          ativo: boolean | null
-          codug_om: string
-          codug_rm_vinculacao: string
+          ano_referencia: number
           created_at: string | null
+          diaria_demais_pracas_bsb: number | null
+          diaria_demais_pracas_capitais: number | null
+          diaria_demais_pracas_demais: number | null
+          diaria_of_gen_bsb: number | null
+          diaria_of_gen_capitais: number | null
+          diaria_of_gen_demais: number | null
+          diaria_of_int_sgt_bsb: number | null
+          diaria_of_int_sgt_capitais: number | null
+          diaria_of_int_sgt_demais: number | null
+          diaria_of_sup_bsb: number | null
+          diaria_of_sup_capitais: number | null
+          diaria_of_sup_demais: number | null
+          diaria_referencia_legal: string | null
+          fator_concessionaria: number
+          fator_material_consumo: number
+          fator_passagens_aereas: number
+          fator_servicos_terceiros: number
           id: string
-          nome_om: string
-          rm_vinculacao: string
+          observacoes: string | null
+          taxa_embarque: number | null
           updated_at: string | null
           user_id: string
+          valor_complemento_alimentacao: number
+          valor_fretamento_aereo_hora: number
+          valor_locacao_estrutura_dia: number
+          valor_locacao_viaturas_dia: number
+          valor_suprimentos_fundo_dia: number
+          valor_verba_operacional_dia: number
         }
         Insert: {
-          ativo?: boolean | null
-          codug_om: string
-          codug_rm_vinculacao: string
+          ano_referencia: number
           created_at?: string | null
+          diaria_demais_pracas_bsb?: number | null
+          diaria_demais_pracas_capitais?: number | null
+          diaria_demais_pracas_demais?: number | null
+          diaria_of_gen_bsb?: number | null
+          diaria_of_gen_capitais?: number | null
+          diaria_of_gen_demais?: number | null
+          diaria_of_int_sgt_bsb?: number | null
+          diaria_of_int_sgt_capitais?: number | null
+          diaria_of_int_sgt_demais?: number | null
+          diaria_of_sup_bsb?: number | null
+          diaria_of_sup_capitais?: number | null
+          diaria_of_sup_demais?: number | null
+          diaria_referencia_legal?: string | null
+          fator_concessionaria?: number
+          fator_material_consumo?: number
+          fator_passagens_aereas?: number
+          fator_servicos_terceiros?: number
           id?: string
-          nome_om: string
-          rm_vinculacao: string
+          observacoes?: string | null
+          taxa_embarque?: number | null
           updated_at?: string | null
           user_id: string
+          valor_complemento_alimentacao?: number
+          valor_fretamento_aereo_hora?: number
+          valor_locacao_estrutura_dia?: number
+          valor_locacao_viaturas_dia?: number
+          valor_suprimentos_fundo_dia?: number
+          valor_verba_operacional_dia?: number
         }
         Update: {
-          ativo?: boolean | null
-          codug_om?: string
-          codug_rm_vinculacao?: string
+          ano_referencia?: number
           created_at?: string | null
+          diaria_demais_pracas_bsb?: number | null
+          diaria_demais_pracas_capitais?: number | null
+          diaria_demais_pracas_demais?: number | null
+          diaria_of_gen_bsb?: number | null
+          diaria_of_gen_capitais?: number | null
+          diaria_of_gen_demais?: number | null
+          diaria_of_int_sgt_bsb?: number | null
+          diaria_of_int_sgt_capitais?: number | null
+          diaria_of_int_sgt_demais?: number | null
+          diaria_of_sup_bsb?: number | null
+          diaria_of_sup_capitais?: number | null
+          diaria_of_sup_demais?: number | null
+          diaria_referencia_legal?: string | null
+          fator_concessionaria?: number
+          fator_material_consumo?: number
+          fator_passagens_aereas?: number
+          fator_servicos_terceiros?: number
           id?: string
-          nome_om?: string
-          rm_vinculacao?: string
+          observacoes?: string | null
+          taxa_embarque?: number | null
           updated_at?: string | null
           user_id?: string
+          valor_complemento_alimentacao?: number
+          valor_fretamento_aereo_hora?: number
+          valor_locacao_estrutura_dia?: number
+          valor_locacao_viaturas_dia?: number
+          valor_suprimentos_fundo_dia?: number
+          valor_verba_operacional_dia?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "diretrizes_operacionais_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       p_trab: {
         Row: {
@@ -862,7 +949,7 @@ export type Database = {
           codug_rm_vinculacao: string | null
           comando_militar_area: string
           comentario: string | null
-          created_at: string
+          created_at: string | null
           efetivo_empregado: string
           id: string
           local_om: string | null
@@ -870,17 +957,17 @@ export type Database = {
           nome_om: string
           nome_om_extenso: string | null
           nome_operacao: string
-          numero_ptrab: string
+          numero_ptrab: string | null
+          origem: string
           periodo_fim: string
           periodo_inicio: string
           rm_vinculacao: string | null
           rotulo_versao: string | null
-          status: string
-          updated_at: string
-          user_id: string
           share_token: string
           shared_with: string[] | null
-          origem: string
+          status: string
+          updated_at: string | null
+          user_id: string
         }
         Insert: {
           acoes?: string | null
@@ -888,7 +975,7 @@ export type Database = {
           codug_rm_vinculacao?: string | null
           comando_militar_area: string
           comentario?: string | null
-          created_at?: string
+          created_at?: string | null
           efetivo_empregado: string
           id?: string
           local_om?: string | null
@@ -896,17 +983,17 @@ export type Database = {
           nome_om: string
           nome_om_extenso?: string | null
           nome_operacao: string
-          numero_ptrab: string
+          numero_ptrab?: string | null
+          origem?: string
           periodo_fim: string
           periodo_inicio: string
           rm_vinculacao?: string | null
           rotulo_versao?: string | null
-          status?: string
-          updated_at?: string
-          user_id: string
           share_token?: string
           shared_with?: string[] | null
-          origem?: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
         }
         Update: {
           acoes?: string | null
@@ -914,7 +1001,7 @@ export type Database = {
           codug_rm_vinculacao?: string | null
           comando_militar_area?: string
           comentario?: string | null
-          created_at?: string
+          created_at?: string | null
           efetivo_empregado?: string
           id?: string
           local_om?: string | null
@@ -922,151 +1009,105 @@ export type Database = {
           nome_om?: string
           nome_om_extenso?: string | null
           nome_operacao?: string
-          numero_ptrab?: string
+          numero_ptrab?: string | null
+          origem?: string
           periodo_fim?: string
           periodo_inicio?: string
           rm_vinculacao?: string | null
           rotulo_versao?: string | null
-          status?: string
-          updated_at?: string
-          user_id?: string
           share_token?: string
           shared_with?: string[] | null
-          origem?: string
-        }
-        Relationships: []
-      }
-      p_trab_ref_lpc: {
-        Row: {
-          ambito: string
-          created_at: string
-          data_fim_consulta: string
-          data_inicio_consulta: string
-          id: string
-          nome_local: string | null
-          p_trab_id: string
-          preco_diesel: number
-          preco_gasolina: number
-          updated_at: string
-          source: string
-        }
-        Insert: {
-          ambito: string
-          created_at?: string
-          data_fim_consulta: string
-          data_inicio_consulta: string
-          id?: string
-          nome_local?: string | null
-          p_trab_id: string
-          preco_diesel: number
-          preco_gasolina: number
-          updated_at?: string
-          source?: string
-        }
-        Update: {
-          ambito?: string
-          created_at?: string
-          data_fim_consulta?: string
-          data_inicio_consulta?: string
-          id?: string
-          nome_local?: string | null
-          p_trab_id?: string
-          preco_diesel?: number
-          preco_gasolina?: number
-          updated_at?: string
-          source?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "p_trab_ref_lpc_p_trab_id_fkey"
-            columns: ["p_trab_id"]
-            isOneToOne: true
-            referencedRelation: "p_trab"
+            foreignKeyName: "p_trab_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
       }
       passagem_registros: {
         Row: {
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
           destino: string
           diretriz_id: string
+          efetivo: number | null
           fase_atividade: string | null
           id: string
           is_ida_volta: boolean
           om_detentora: string
           organizacao: string
-          origem: string
           p_trab_id: string
           quantidade_passagens: number
           tipo_transporte: string
           trecho_id: string
           ug: string
           ug_detentora: string
-          updated_at: string
+          updated_at: string | null
           valor_nd_33: number
           valor_total: number
           valor_unitario: number
+          valor_nd_30: number // Adicionado para consistência, embora seja 0
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
-          dias_operacao?: number
+          dias_operacao: number
           destino: string
           diretriz_id: string
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           is_ida_volta?: boolean
           om_detentora: string
           organizacao: string
-          origem: string
           p_trab_id: string
           quantidade_passagens?: number
           tipo_transporte: string
           trecho_id: string
           ug: string
           ug_detentora: string
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_33?: number
           valor_total?: number
           valor_unitario: number
+          valor_nd_30?: number
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
           destino?: string
           diretriz_id?: string
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           is_ida_volta?: boolean
           om_detentora?: string
           organizacao?: string
-          origem?: string
           p_trab_id?: string
           quantidade_passagens?: number
           tipo_transporte?: string
           trecho_id?: string
           ug?: string
           ug_detentora?: string
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_33?: number
           valor_total?: number
           valor_unitario?: number
+          valor_nd_30?: number
         }
         Relationships: [
-          {
-            foreignKeyName: "passagem_registros_diretriz_id_fkey"
-            columns: ["diretriz_id"]
-            isOneToOne: false
-            referencedRelation: "diretrizes_passagens"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "passagem_registros_p_trab_id_fkey"
             columns: ["p_trab_id"]
@@ -1079,42 +1120,101 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          created_at: string | null
           credit_gnd3: number
           credit_gnd4: number
-          default_diretriz_year: number | null
+          default_logistica_year: number | null
+          default_operacional_year: number | null
           first_name: string | null
           id: string
           last_name: string | null
-          updated_at: string | null
           raw_user_meta_data: Json | null
+          updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
+          created_at?: string | null
           credit_gnd3?: number
           credit_gnd4?: number
-          default_diretriz_year?: number | null
+          default_logistica_year?: number | null
+          default_operacional_year?: number | null
           first_name?: string | null
           id: string
           last_name?: string | null
-          updated_at?: string | null
           raw_user_meta_data?: Json | null
+          updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
+          created_at?: string | null
           credit_gnd3?: number
           credit_gnd4?: number
-          default_diretriz_year?: number | null
+          default_logistica_year?: number | null
+          default_operacional_year?: number | null
           first_name?: string | null
           id?: string
           last_name?: string | null
-          updated_at?: string | null
           raw_user_meta_data?: Json | null
+          updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ptrab_share_requests: {
+        Row: {
+          created_at: string | null
+          id: string
+          ptrab_id: string
+          requester_id: string
+          share_token: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          ptrab_id: string
+          requester_id: string
+          share_token: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          ptrab_id?: string
+          requester_id?: string
+          share_token?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ptrab_share_requests_ptrab_id_fkey"
+            columns: ["ptrab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ptrab_share_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       verba_operacional_registros: {
         Row: {
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
@@ -1132,13 +1232,13 @@ export type Database = {
           tarefa: string | null
           ug: string
           ug_detentora: string | null
-          updated_at: string
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total_solicitado: number
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
@@ -1156,13 +1256,13 @@ export type Database = {
           tarefa?: string | null
           ug: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total_solicitado?: number
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
@@ -1180,7 +1280,7 @@ export type Database = {
           tarefa?: string | null
           ug?: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total_solicitado?: number
@@ -1191,6 +1291,107 @@ export type Database = {
             columns: ["p_trab_id"]
             isOneToOne: false
             referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      // Adicione outras tabelas conforme necessário (diretrizes_passagens, organizacoes_militares, etc.)
+      diretrizes_passagens: {
+        Row: {
+          ano_referencia: number
+          ativo: boolean | null
+          created_at: string | null
+          data_fim_vigencia: string | null
+          data_inicio_vigencia: string | null
+          id: string
+          numero_pregao: string | null
+          om_referencia: string
+          trechos: Json
+          ug_referencia: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ano_referencia: number
+          ativo?: boolean | null
+          created_at?: string | null
+          data_fim_vigencia?: string | null
+          data_inicio_vigencia?: string | null
+          id?: string
+          numero_pregao?: string | null
+          om_referencia: string
+          trechos?: Json
+          ug_referencia: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          ano_referencia?: number
+          ativo?: boolean | null
+          created_at?: string | null
+          data_fim_vigencia?: string | null
+          data_inicio_vigencia?: string | null
+          id?: string
+          numero_pregao?: string | null
+          om_referencia?: string
+          trechos?: Json
+          ug_referencia?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diretrizes_passagens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizacoes_militares: {
+        Row: {
+          ativo: boolean | null
+          cidade: string | null
+          codug_om: string
+          codug_rm_vinculacao: string
+          created_at: string | null
+          id: string
+          nome_om: string
+          rm_vinculacao: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          cidade?: string | null
+          codug_om: string
+          codug_rm_vinculacao: string
+          created_at?: string | null
+          id?: string
+          nome_om: string
+          rm_vinculacao: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          cidade?: string | null
+          codug_om?: string
+          codug_rm_vinculacao?: string
+          created_at?: string | null
+          id?: string
+          nome_om?: string
+          rm_vinculacao?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizacoes_militares_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1211,33 +1412,27 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
-
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type PublicSchema = Database[Extract<keyof Database, "public">]
 
 export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+  PublicTableNameOrOptions extends
+    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
+        PublicSchema["Views"])
+    ? (PublicSchema["Tables"] &
+        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -1245,91 +1440,56 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  PublicTableNameOrOptions extends
+    | keyof PublicSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
-      : never
     : never
+  : never
 
 export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  PublicTableNameOrOptions extends
+    | keyof PublicSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
-      : never
     : never
+  : never
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+  PublicEnumNameOrOptions extends
+    | keyof PublicSchema["Enums"]
+    | { schema: keyof Database },
+  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
+    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
     : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
-
-export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const

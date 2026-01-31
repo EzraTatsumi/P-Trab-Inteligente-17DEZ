@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Tables } from "@/integrations/supabase/types"; // Importar Tables
 
 // Define the category constants
 const CATEGORIAS_CLASSE_II = ["Equipamento Individual", "Proteção Balística", "Material de Estacionamento"];
@@ -42,6 +43,21 @@ const calculateDiasEtapaSolicitada = (diasOperacao: number): number => {
   }
 };
 
+// Tipos de retorno simplificados para o fetch
+type ClasseIRow = Tables<'classe_i_registros'>;
+type ClasseIIRow = Tables<'classe_ii_registros'>;
+type ClasseVRow = Tables<'classe_v_registros'>;
+type ClasseVIRow = Tables<'classe_vi_registros'>;
+type ClasseVIIRow = Tables<'classe_vii_registros'>;
+type ClasseVIIISaudeRow = Tables<'classe_viii_saude_registros'>;
+type ClasseVIIIRemontaRow = Tables<'classe_viii_remonta_registros'>;
+type ClasseIXRow = Tables<'classe_ix_registros'>;
+type ClasseIIIRow = Tables<'classe_iii_registros'>;
+type DiariaRow = Tables<'diaria_registros'>;
+type VerbaOperacionalRow = Tables<'verba_operacional_registros'>;
+type PassagemRow = Tables<'passagem_registros'>;
+
+
 const fetchPTrabTotals = async (ptrabId: string) => {
   // 1. Fetch Classe I totals (33.90.30)
   const { data: classeIData, error: classeIError } = await supabase
@@ -61,7 +77,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   let totalRefeicoesIntermediarias = 0;
   let totalRacoesOperacionaisGeral = 0;
 
-  (classeIData || []).forEach(record => {
+  (classeIData as ClasseIRow[] || []).forEach(record => {
     if (record.categoria === 'RACAO_QUENTE') {
         // Garantir que todos os campos numéricos sejam tratados como números
         const totalQs = Number(record.total_qs || 0);
@@ -161,18 +177,18 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   if (verbaOperacionalError) console.error("Erro ao carregar Verba Operacional/Suprimento:", verbaOperacionalError);
   if (passagemError) console.error("Erro ao carregar Passagens:", passagemError); // NOVO
   
-  // Usar arrays vazios se o fetch falhou
-  const safeClasseIIData = classeIIData || [];
-  const safeClasseVData = classeVData || [];
-  const safeClasseVIData = classeVIData || [];
-  const safeClasseVIIData = classeVIIData || [];
-  const safeClasseVIIISaudeData = classeVIIISaudeData || [];
-  const safeClasseVIIIRemontaData = classeVIIIRemontaData || [];
-  const safeClasseIXData = classeIXData || [];
-  const safeClasseIIIData = classeIIIData || [];
-  const safeDiariaData = diariaData || [];
-  const safeVerbaOperacionalData = verbaOperacionalData || [];
-  const safePassagemData = passagemData || []; // NOVO
+  // Usar arrays vazios se o fetch falhou e garantir a tipagem correta
+  const safeClasseIIData = classeIIData as ClasseIIRow[] || [];
+  const safeClasseVData = classeVData as ClasseVRow[] || [];
+  const safeClasseVIData = classeVIData as ClasseVIRow[] || [];
+  const safeClasseVIIData = classeVIIData as ClasseVIIRow[] || [];
+  const safeClasseVIIISaudeData = classeVIIISaudeData as ClasseVIIISaudeRow[] || [];
+  const safeClasseVIIIRemontaData = classeVIIIRemontaData as ClasseVIIIRemontaRow[] || [];
+  const safeClasseIXData = classeIXData as ClasseIXRow[] || [];
+  const safeClasseIIIData = classeIIIData as ClasseIIIRow[] || [];
+  const safeDiariaData = diariaData as DiariaRow[] || [];
+  const safeVerbaOperacionalData = verbaOperacionalData as VerbaOperacionalRow[] || [];
+  const safePassagemData = passagemData as PassagemRow[] || []; // NOVO
   
   const allClasseItemsData = [
     ...safeClasseIIData,
@@ -231,15 +247,17 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const groupedClasseIXCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {}; // NOVO
   
   (allClasseItemsData || []).forEach(record => {
-    const category = record.categoria;
-    const items = (record.itens_equipamentos || []) as ItemClasseII[];
+    // CORREÇÃO: Garantir que 'categoria' e 'itens_equipamentos' existam no tipo mesclado
+    const category = (record as any).categoria;
+    const items = ((record as any).itens_equipamentos || []) as ItemClasseII[];
+    
     // Garante que a quantidade de itens é numérica
     const totalItemsCategory = items.reduce((sum, item) => sum + (Number(item.quantidade) || 0), 0); 
     
     // Garante que valor_total é numérico
-    const valorTotal = Number(record.valor_total || 0);
-    const valorND30 = Number(record.valor_nd_30 || 0);
-    const valorND39 = Number(record.valor_nd_39 || 0);
+    const valorTotal = Number((record as any).valor_total || 0);
+    const valorND30 = Number((record as any).valor_nd_30 || 0);
+    const valorND39 = Number((record as any).valor_nd_39 || 0);
 
     if (CATEGORIAS_CLASSE_II.includes(category)) {
         // CLASSE II
@@ -393,6 +411,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
 
   (safeDiariaData || []).forEach(record => {
       // ND 15 é o total geral (Diária Base + Taxa de Embarque)
+      // CORREÇÃO: Acessar propriedades com snake_case
       const totalGeral = Number(record.valor_nd_15 || 0);
       const taxaEmbarque = Number(record.valor_taxa_embarque || 0);
       
@@ -449,6 +468,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   let totalTrechosPassagens = 0;
   
   (safePassagemData || []).forEach(record => {
+      // CORREÇÃO: Acessar propriedades com snake_case
       const valorND33 = Number(record.valor_nd_33 || 0);
       const quantidade = Number(record.quantidade_passagens || 0);
       
