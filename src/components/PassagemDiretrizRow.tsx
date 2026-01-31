@@ -13,15 +13,15 @@ import { Tables } from "@/integrations/supabase/types"; // Importando Tables
 type DiretrizPassagemRow = Tables<'diretrizes_passagens'>;
 
 interface PassagemDiretrizRowProps {
-    diretriz: DiretrizPassagemRow; // Usando o tipo corrigido
-    onEdit: (diretriz: DiretrizPassagemRow) => void;
+    diretriz: DiretrizPassagem; // Usando o tipo corrigido
+    onEdit: (diretriz: DiretrizPassagem) => void;
     onDelete: (id: string, omName: string) => void;
     loading: boolean;
 }
 
 const getTransportIcon = (tipo: TipoTransporte) => {
     switch (tipo) {
-        case 'AÉREO': return <Plane className="h-4 w-4 text-blue-600" />;
+        case 'AEREO': return <Plane className="h-4 w-4 text-blue-600" />;
         case 'TERRESTRE': return <Bus className="h-4 w-4 text-green-600" />;
         case 'FLUVIAL': return <Ship className="h-4 w-4 text-cyan-600" />;
         default: return null;
@@ -30,8 +30,8 @@ const getTransportIcon = (tipo: TipoTransporte) => {
 
 const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onEdit, onDelete, loading }) => {
     const [isOpen, setIsOpen] = useState(false);
-    // CORREÇÃO: O campo trechos é Json, mas sabemos que é TrechoPassagem[]
-    const trechos = diretriz.trechos as unknown as TrechoPassagem[];
+    // CORREÇÃO: O campo trechos é TrechoPassagem[] no tipo DiretrizPassagem
+    const trechos = diretriz.trechos;
     const hasTrechos = trechos.length > 0;
     
     const formatDate = (dateString: string | null | undefined) => {
@@ -126,7 +126,7 @@ const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onE
                                                 </div>
                                                 <div className="flex items-center gap-4 text-right">
                                                     <span className="text-xs text-muted-foreground">
-                                                        {trecho.is_ida_volta ? 'Ida/Volta' : 'Somente Ida'}
+                                                        {trecho.is_ida_volta ? 'Ida/Volta' : 'Somente Ida'} ({trecho.quantidade_passagens}x)
                                                     </span>
                                                     <span className="font-bold text-primary">
                                                         {formatCurrency(trecho.valor)}

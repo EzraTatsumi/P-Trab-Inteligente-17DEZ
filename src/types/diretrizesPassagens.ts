@@ -1,5 +1,6 @@
 import { Tables } from "@/integrations/supabase/types";
 
+// Corrigido para AEREO sem acento
 export type TipoTransporte = 'AEREO' | 'TERRESTRE' | 'FLUVIAL';
 
 export interface TrechoPassagem {
@@ -9,7 +10,7 @@ export interface TrechoPassagem {
     tipo_transporte: TipoTransporte;
     valor: number;
     is_ida_volta: boolean;
-    quantidade_passagens: number;
+    quantidade_passagens: number; // Adicionado
 }
 
 // Estende o tipo gerado pelo Supabase, mas sobrescreve 'trechos' para o tipo correto
