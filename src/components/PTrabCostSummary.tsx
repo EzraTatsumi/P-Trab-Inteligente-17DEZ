@@ -232,8 +232,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   
   (allClasseItemsData || []).forEach(record => {
     const category = record.categoria;
-    // CORRIGIDO: Cast para ItemClasseII[] (que é a estrutura base para itens de classe)
-    const items = (record.itens_equipamentos || []) as ItemClasseII[]; 
+    const items = (record.itens_equipamentos || []) as ItemClasseII[];
     // Garante que a quantidade de itens é numérica
     const totalItemsCategory = items.reduce((sum, item) => sum + (Number(item.quantidade) || 0), 0); 
     
