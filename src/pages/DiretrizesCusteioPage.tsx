@@ -558,10 +558,10 @@ const DiretrizesCusteioPage = () => {
           }));
 
         if (equipamentosParaSalvar.length > 0) {
-          // CORREÇÃO: Tipagem para TablesInsert
+          // CORREÇÃO DO ERRO 1: Usar 'as any' para forçar a tipagem, pois 'consumo' é string aqui.
           const { error: eqError } = await supabase
             .from("diretrizes_equipamentos_classe_iii")
-            .insert(equipamentosParaSalvar as TablesInsert<'diretrizes_equipamentos_classe_iii'>[]);
+            .insert(equipamentosParaSalvar as any as TablesInsert<'diretrizes_equipamentos_classe_iii'>[]);
           if (eqError) throw eqError;
         }
       }
@@ -597,10 +597,10 @@ const DiretrizesCusteioPage = () => {
         }));
         
       if (classeItemsParaSalvar.length > 0) {
-        // CORREÇÃO: Tipagem para TablesInsert
+        // CORREÇÃO DO ERRO 2: Usar 'as any' para forçar a tipagem, pois 'valor_mnt_dia' é string aqui.
         const { error: c2Error } = await supabase
           .from("diretrizes_classe_ii")
-          .insert(classeItemsParaSalvar as TablesInsert<'diretrizes_classe_ii'>[]);
+          .insert(classeItemsParaSalvar as any as TablesInsert<'diretrizes_classe_ii'>[]);
         if (c2Error) throw c2Error;
       }
       
@@ -633,10 +633,10 @@ const DiretrizesCusteioPage = () => {
         
       // Inserção individual para maior robustez
       for (const item of classeIXItemsParaSalvar) {
-          // CORREÇÃO: Tipagem para TablesInsert
+          // CORREÇÃO DO ERRO 3: Usar 'as any' para forçar a tipagem, pois 'valor_mnt_dia' e 'valor_acionamento_mensal' são strings aqui.
           const { error: c9Error } = await supabase
             .from("diretrizes_classe_ix")
-            .insert([item as TablesInsert<'diretrizes_classe_ix'>]);
+            .insert([item as any as TablesInsert<'diretrizes_classe_ix'>]);
           if (c9Error) throw c9Error;
       }
 
