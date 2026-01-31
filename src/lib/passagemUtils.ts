@@ -19,7 +19,7 @@ export interface ConsolidatedPassagemRecord {
 /**
  * Gera a memória de cálculo para um único registro de passagem.
  */
-export const generatePassagemMemoriaCalculoUtility = (registro: PassagemRegistro): string => {
+export const generatePassagemMemoriaCalculo = (registro: PassagemRegistro): string => {
     const { 
         origem, 
         destino, 

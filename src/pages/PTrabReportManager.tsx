@@ -48,7 +48,7 @@ import {
   generateSuprimentoFundosMemoriaCalculo as generateSuprimentoFundosMemoriaCalculoUtility,
 } from "@/lib/suprimentoFundosUtils"; // NOVO: Importar utilitários de Suprimento de Fundos
 import { 
-  generatePassagemMemoriaCalculoUtility, // CORRIGIDO: Importando o nome correto
+  generatePassagemMemoriaCalculo, // CORRIGIDO: Usando o nome padronizado
 } from "@/lib/passagemUtils"; // NOVO: Importar utilitários de Passagem
 import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais } from "@/lib/ptrabUtils";
@@ -613,8 +613,8 @@ export const generatePassagemMemoriaCalculada = (
         return registro.detalhamento_customizado;
     }
     
-    // Usa o utilitário específico para Passagem
-    return generatePassagemMemoriaCalculoUtility(registro as any);
+    // Usa o utilitário específico para Passagem (agora com o nome padronizado)
+    return generatePassagemMemoriaCalculo(registro as any);
 };
 
 
