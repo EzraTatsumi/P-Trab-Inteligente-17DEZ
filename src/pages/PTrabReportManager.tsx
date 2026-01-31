@@ -145,8 +145,8 @@ export interface ItemClasseIII {
   preco_lubrificante: number; // R$/L
   memoria_customizada?: string | null; // NOVO CAMPO
   // Campos adicionados para cálculo de totais (necessários para a função calculateItemTotals)
-  preco_lubrificante_input: number; // CORRIGIDO: Deve ser number
-  consumo_lubrificante_input: number; // CORRIGIDO: Deve ser number
+  preco_lubrificante_input: string; // CORRIGIDO: Alterado para string para compatibilidade com calculateItemTotals
+  consumo_lubrificante_input: string; // CORRIGIDO: Alterado para string para compatibilidade com calculateItemTotals
 }
 
 export interface ItemClasseII {
@@ -178,8 +178,6 @@ export interface ClasseIIRegistro extends Tables<'classe_ii_registros'> {
 }
 
 // CORREÇÃO: ClasseIIIRegistro agora estende Tables<'classe_iii_registros'> e tipa itens_equipamentos como ItemClasseIII[]
-// Para resolver o TS2430, precisamos usar Omit para remover a propriedade 'itens_equipamentos' da base Tables<'classe_iii_registros'>
-// e redefini-la com o tipo correto ItemClasseIII[].
 export interface ClasseIIIRegistro extends Omit<Tables<'classe_iii_registros'>, 'itens_equipamentos'> {
   // Campos numéricos garantidos
   potencia_hp: number | null;
@@ -948,8 +946,9 @@ const PTrabReportManager = () => {
                     // Adicionando campos de input para satisfazer a interface ItemClasseIII
                     const itemWithInputs: ItemClasseIII = {
                         ...item,
-                        preco_lubrificante_input: registro.preco_lubrificante || 0,
-                        consumo_lubrificante_input: registro.consumo_lubrificante_litro || 0,
+                        // CORREÇÃO: Convertendo para string para satisfazer a tipagem externa
+                        preco_lubrificante_input: String(registro.preco_lubrificante || 0), 
+                        consumo_lubrificante_input: String(registro.consumo_lubrificante_litro || 0),
                     };
                     // CORREÇÃO: Passando itemWithInputs tipado corretamente
                     const totals = calculateItemTotals(itemWithInputs, refLPC, registro.dias_operacao);
@@ -995,8 +994,8 @@ const PTrabReportManager = () => {
                     original_registro: registro,
                     detailed_items: itensGrupo.map(item => ({
                         ...item,
-                        preco_lubrificante_input: registro.preco_lubrificante || 0,
-                        consumo_lubrificante_input: registro.consumo_lubrificante_litro || 0,
+                        preco_lubrificante_input: String(registro.preco_lubrificante || 0),
+                        consumo_lubrificante_input: String(registro.consumo_lubrificante_litro || 0),
                     })),
                 };
                 
