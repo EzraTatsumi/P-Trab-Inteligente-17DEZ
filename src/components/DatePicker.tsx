@@ -32,19 +32,19 @@ export function DatePicker({ date, setDate, placeholder = "Selecione uma data", 
     if (rawValue.length === 10) {
       const parsedDate = parse(rawValue, "dd/MM/yyyy", new Date());
       if (isValid(parsedDate)) {
-        // Se a data for válida, atualiza o estado principal
-        // SelectSingleEventHandler espera 3 argumentos: day, modifiers, event
-        setDate(parsedDate, undefined, undefined); 
+        // Passando 4 argumentos (o 4º é undefined para input manual)
+        setDate(parsedDate, undefined, undefined, undefined); 
       }
     } else if (rawValue.length === 0) {
-        // Permite limpar a data
-        setDate(undefined, undefined, undefined);
+        // Passando 4 argumentos (o 4º é undefined para limpar)
+        setDate(undefined, undefined, undefined, undefined);
     }
   };
 
-  const handleSelectDate: SelectSingleEventHandler = (selectedDate, modifiers, e) => {
-    // handleSelectDate é chamado pelo DayPicker (3 argumentos) e chama o prop setDate (3 argumentos)
-    setDate(selectedDate, modifiers, e); 
+  // Redefinindo handleSelectDate para aceitar 4 argumentos, conforme a tipagem de setDate exige.
+  const handleSelectDate: SelectSingleEventHandler = (selectedDate, modifiers, e, isDayPicker) => {
+    // Passando 4 argumentos.
+    setDate(selectedDate, modifiers, e, isDayPicker); 
     if (selectedDate) {
       setInputValue(format(selectedDate, "dd/MM/yyyy"));
     } else {
