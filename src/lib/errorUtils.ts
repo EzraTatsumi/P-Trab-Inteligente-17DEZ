@@ -1,67 +1,50 @@
+import { AuthApiError } from '@supabase/supabase-js';
+
 /**
- * Error sanitization utility to prevent information leakage
- * Maps technical errors to user-friendly messages
+ * Sanitiza e traduz mensagens de erro comuns do Supabase Auth.
+ * @param error O objeto de erro.
+ * @returns Uma string de erro amigável.
  */
-
-const isDev = import.meta.env.DEV;
-
-export const sanitizeError = (error: any): string => {
-  // In development, show full errors for debugging
-  if (isDev) {
-    console.error('Full error (dev only):', error);
-    return error.message || 'Ocorreu um erro';
+export const sanitizeAuthError = (error: any): string => {
+  if (error instanceof AuthApiError) {
+    const message = error.message.toLowerCase();
+    
+    if (message.includes('invalid login credentials')) {
+      return 'Credenciais inválidas. Verifique seu e-mail e senha.';
+    }
+    if (message.includes('email not confirmed')) {
+      return 'E-mail não confirmado. Verifique sua caixa de entrada.';
+    }
+    if (message.includes('user already registered')) {
+      return 'Este e-mail já está cadastrado.';
+    }
+    if (message.includes('password should be at least 6 characters')) {
+      return 'A senha deve ter no mínimo 8 caracteres.';
+    }
+    if (message.includes('rate limit exceeded')) {
+      return 'Limite de tentativas excedido. Tente novamente mais tarde.';
+    }
+    
+    // Fallback para erros de API
+    return error.message;
   }
-
-  // Log full error server-side for debugging (only shown in browser console)
-  console.error('Error details:', error.code, error.message);
-
-  // PostgreSQL error codes
-  if (error.code === '23505') return 'Este registro já existe';
-  if (error.code === '23503') return 'Dados relacionados não encontrados';
-  if (error.code === '23502') return 'Campos obrigatórios não preenchidos';
-  if (error.code === '22001') return 'Texto muito longo para o campo';
-  if (error.code === '22003') return 'Valor numérico fora do intervalo permitido';
-
-  // Supabase/Postgres common patterns
-  if (error.message?.includes('policy')) return 'Acesso negado';
-  if (error.message?.includes('duplicate key')) return 'Este registro já existe';
-  if (error.message?.includes('foreign key')) return 'Dados relacionados não encontrados';
-  if (error.message?.includes('violates')) return 'Dados inválidos';
-  if (error.message?.includes('not found')) return 'Registro não encontrado';
-  if (error.message?.includes('permission')) return 'Permissão negada';
-
-  // Generic fallback
-  return 'Ocorreu um erro. Tente novamente.';
+  
+  // Fallback para erros genéricos
+  if (error && typeof error.message === 'string') {
+    return error.message;
+  }
+  
+  return 'Ocorreu um erro desconhecido.';
 };
 
 /**
- * Sanitize authentication errors specifically
+ * Sanitiza e traduz mensagens de erro genéricas.
+ * @param error O objeto de erro.
+ * @returns Uma string de erro amigável.
  */
-export const sanitizeAuthError = (error: any): string => {
-  const message = error.message || '';
-
-  // Common auth error patterns (Always translated for better UX)
-  if (message.includes('Invalid login')) return 'Email ou senha incorretos';
-  if (message.includes('Email not confirmed')) return 'Confirme seu email antes de fazer login';
-  
-  // Verificação robusta para 'already registered' (Caso 2)
-  if (message.includes('already registered') || message.includes('A user with this email address has already been registered')) {
-      return 'Este email já está cadastrado';
+export const sanitizeError = (error: any): string => {
+  if (error && typeof error.message === 'string') {
+    return error.message;
   }
-  
-  if (message.includes('Password')) return 'Senha inválida ou muito fraca';
-  if (message.includes('rate limit')) return 'Muitas tentativas. Aguarde alguns minutos';
-  if (message.includes('network')) return 'Erro de conexão. Verifique sua internet';
-  
-  // Tradução para erro de e-mail inválido
-  if (message.includes('Email address') && message.includes('is invalid')) return 'O endereço de e-mail fornecido é inválido.';
-
-  // Fallback: If in dev mode, return the raw message for debugging. Otherwise, return generic.
-  if (isDev) {
-    console.error('Auth error (dev only):', error);
-    return message || 'Erro ao autenticar (Dev Fallback)';
-  }
-
-  // Production fallback
-  return 'Erro ao autenticar. Tente novamente.';
+  return 'Ocorreu um erro desconhecido.';
 };
