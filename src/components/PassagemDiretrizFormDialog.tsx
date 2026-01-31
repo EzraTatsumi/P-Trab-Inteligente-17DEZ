@@ -26,8 +26,9 @@ interface PassagemDiretrizFormDialogProps {
 }
 
 // Tipo interno para o formulário, usando Date | null para as datas
-// FIX 1: Usamos Partial<DiretrizPassagem> para garantir que 'id' seja opcional, e depois Omit para remover os campos que estamos substituindo/tratando.
-interface InternalPassagemForm extends Omit<Partial<DiretrizPassagem>, 'trechos' | 'data_inicio_vigencia' | 'data_fim_vigencia' | 'user_id' | 'created_at' | 'updated_at'> {
+// CORREÇÃO: Removemos Partial para garantir que om_referencia e ug_referencia sejam obrigatórios,
+// satisfazendo o tipo DiretrizPassagemForm.
+interface InternalPassagemForm extends Omit<DiretrizPassagem, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'trechos' | 'data_inicio_vigencia' | 'data_fim_vigencia'> {
     id?: string;
     trechos: TrechoPassagem[];
     data_inicio_vigencia: Date | null;
