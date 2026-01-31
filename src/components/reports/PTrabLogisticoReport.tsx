@@ -596,18 +596,47 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
             return a.categoria_equipamento.localeCompare(b.categoria_equipamento);
         });
         
-        // NOVO: Array de todas as linhas de despesa na ordem correta (I, II, III, V-IX)
+        // NOVO: Array de todas as linhas de despesa na ordem correta (I, II, V, VI, VII, VIII, IX, III)
         const allExpenseLines = [
             ...grupo.linhasQS,
             ...grupo.linhasQR,
             ...grupo.linhasClasseII,
-            ...linhasClasseIIIOrdenadas, // CLASSE III INSERIDA AQUI
             ...grupo.linhasClasseV,
             ...grupo.linhasClasseVI,
             ...grupo.linhasClasseVII,
             ...grupo.linhasClasseVIII,
             ...grupo.linhasClasseIX,
-        ];
+            ...linhasClasseIIIOrdenadas,
+        ].sort((a, b) => {
+            // Ordenação por Classe (I, II, III, V, VI, VII, VIII, IX)
+            const getClasseOrder = (linha: any) => {
+                if ('tipo' in linha) return 1; // Classe I
+                if ('categoria_equipamento' in linha) return 3; // Classe III
+                
+                const cat = linha.registro.categoria;
+                if (CLASSE_V_CATEGORIES.includes(cat)) return 5;
+                if (CLASSE_VI_CATEGORIES.includes(cat)) return 6;
+                if (CLASSE_VII_CATEGORIES.includes(cat)) return 7;
+                if (CLASSE_VIII_CATEGORIES.includes(cat)) return 8;
+                if (CLASSE_IX_CATEGORIES.includes(cat)) return 9;
+                return 2; // Classe II (default)
+            };
+            
+            const orderA = getClasseOrder(a);
+            const orderB = getClasseOrder(b);
+            
+            if (orderA !== orderB) return orderA - orderB;
+            
+            // Sub-ordenação por categoria/tipo
+            if ('tipo' in a && 'tipo' in b) {
+                return a.tipo.localeCompare(b.tipo); // QS antes de QR
+            }
+            if ('categoria_equipamento' in a && 'categoria_equipamento' in b) {
+                return a.tipo_suprimento.localeCompare(b.tipo_suprimento); // Diesel/Gasolina/Lubrificante
+            }
+            
+            return 0;
+        });
 
         // Renderizar todas as linhas de despesa (I, II, III, V-IX)
         for (const linha of allExpenseLines) {
