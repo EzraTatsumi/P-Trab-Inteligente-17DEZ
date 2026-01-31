@@ -14,7 +14,6 @@ const isEfetivoPresent = (quantidades: Record<string, number>): boolean => {
 export const loginSchema = z.object({
     email: z.string().email("E-mail inválido."),
     password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres."),
-    rememberMe: z.boolean().optional(), // Adicionado rememberMe
 });
 
 // --- Diretriz Operacional Schema (Used in CustosOperacionaisPage) ---
@@ -124,11 +123,6 @@ export const diariaSchema = z.object({
     // Flags
     is_aereo: z.boolean(),
     
-    // Calculated fields (not part of the form input, but needed for submission)
-    valor_nd_15: z.number().optional(),
-    valor_nd_30: z.number().optional(),
-    valor_total: z.number().optional(),
-    
     // Optional fields
     detalhamento_customizado: z.string().optional().nullable(),
 }).refine(data => {
@@ -138,6 +132,3 @@ export const diariaSchema = z.object({
     message: "Informe a quantidade de militares por posto/graduação.",
     path: ["quantidades_por_posto"],
 });
-
-// Export the type for use in the form component
-export type DiariaFormType = z.infer<typeof diariaSchema>;
