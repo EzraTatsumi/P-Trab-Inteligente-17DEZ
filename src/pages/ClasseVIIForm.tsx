@@ -15,12 +15,11 @@ import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
 import { formatCurrency, formatNumber, parseInputToNumber, formatNumberForInput, formatCurrencyInput, numberToRawDigits, formatCodug } from "@/lib/formatUtils";
-import { DiretrizClasseII } from "@/types/diretrizesClasseII";
+import { Tables, TablesInsert } from "@/integrations/supabase/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
-import { TablesInsert } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -31,6 +30,9 @@ import {
     generateDetalhamento as generateClasseVIIDetalhamento,
     formatFasesParaTexto,
 } from "@/lib/classeVIIUtils"; // Importando utilitários da Classe VII
+
+// Definindo o tipo DiretrizClasseII a partir do esquema Supabase
+type DiretrizClasseII = Tables<'diretrizes_classe_ii'>;
 
 type Categoria = 'Comunicações' | 'Informática'; // Categorias corretas para Classe VII
 
@@ -287,10 +289,10 @@ const ClasseVIIForm = () => {
 
   const itensAgrupadosPorCategoria = useMemo(() => {
     return form.itens.reduce((acc, item) => {
-      if (!acc[item.categoria]) {
-        acc[item.categoria] = [];
+      if (!acc[item.categoria as Categoria]) {
+        acc[item.categoria as Categoria] = [];
       }
-      acc[item.categoria].push(item);
+      acc[item.categoria as Categoria].push(item);
       return acc;
     }, {} as Record<Categoria, ItemClasseVII[]>);
   }, [form.itens]);
@@ -305,12 +307,12 @@ const ClasseVIIForm = () => {
 
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("default_diretriz_year")
+        .select("default_logistica_year") // CORRIGIDO
         .eq("id", user.id)
         .maybeSingle();
         
-      if (profileData?.default_diretriz_year) {
-          anoReferencia = profileData.default_diretriz_year;
+      if (profileData?.default_logistica_year) { // CORRIGIDO
+          anoReferencia = profileData.default_logistica_year;
       }
 
       if (!anoReferencia) {
@@ -382,7 +384,7 @@ const ClasseVIIForm = () => {
         
         const record = {
             ...r,
-            itens_equipamentos: (r.itens_equipamentos || []) as ItemClasseVII[],
+            itens_equipamentos: (r.itens_equipamentos || []) as any as ItemClasseVII[], // CORRIGIDO
             valor_nd_30: Number(r.valor_nd_30),
             valor_nd_39: Number(r.valor_nd_39),
             om_detentora: omDetentora,
@@ -591,10 +593,10 @@ const ClasseVIIForm = () => {
     
     const itemsByActiveCategory = form.itens.reduce((acc, item) => {
         if (item.quantidade > 0 && CATEGORIAS.includes(item.categoria as Categoria)) {
-            if (!acc[item.categoria]) {
-                acc[item.categoria] = [];
+            if (!acc[item.categoria as Categoria]) {
+                acc[item.categoria as Categoria] = [];
             }
-            acc[item.categoria].push(item);
+            acc[item.categoria as Categoria].push(item);
         }
         return acc;
     }, {} as Record<Categoria, ItemClasseVII[]>);
@@ -1368,18 +1370,20 @@ const ClasseVIIForm = () => {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            onClick={() => {
+                                                            onClick={async () => { // CORRIGIDO: Usando async/await
                                                                 if (confirm(`Deseja realmente deletar o registro de Classe VII para ${omName} (${registro.categoria})?`)) {
-                                                                    supabase.from("classe_vii_registros")
-                                                                        .delete()
-                                                                        .eq("id", registro.id)
-                                                                        .then(() => {
-                                                                            toast.success("Registro excluído!");
-                                                                            fetchRegistros();
-                                                                        })
-                                                                        .catch(err => {
-                                                                            toast.error(sanitizeError(err));
-                                                                        });
+                                                                    try {
+                                                                        const { error } = await supabase.from("classe_vii_registros")
+                                                                            .delete()
+                                                                            .eq("id", registro.id);
+                                                                        
+                                                                        if (error) throw error;
+                                                                        
+                                                                        toast.success("Registro excluído!");
+                                                                        fetchRegistros();
+                                                                    } catch (err) {
+                                                                        toast.error(sanitizeError(err));
+                                                                    }
                                                                 }
                                                             }}
                                                             className="h-8 w-8 text-destructive hover:bg-destructive/10"

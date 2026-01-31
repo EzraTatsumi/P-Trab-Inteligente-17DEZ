@@ -15,12 +15,11 @@ import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
 import { formatCurrency, parseInputToNumber, formatNumberForInput, formatCurrencyInput, numberToRawDigits, formatCodug } from "@/lib/formatUtils";
-import { DiretrizClasseII } from "@/types/diretrizesClasseII";
+import { Tables, TablesInsert } from "@/integrations/supabase/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
-import { TablesInsert } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -34,6 +33,9 @@ import {
     generateDetalhamento,
     formatFasesParaTexto,
 } from "@/lib/classeVIIIUtils"; // Importando utilitários da Classe VIII
+
+// Definindo o tipo DiretrizClasseII a partir do esquema Supabase
+type DiretrizClasseII = Tables<'diretrizes_classe_ii'>;
 
 type Categoria = 'Saúde' | 'Remonta/Veterinária';
 
@@ -96,10 +98,10 @@ interface ClasseVIIIRegistro {
   fase_atividade?: string;
   valor_nd_30: number;
   valor_nd_39: number;
-  itens_saude?: ItemSaude[];
+  itens_saude?: Tables<'classe_viii_saude_registros'>['itens_saude']; // Usando tipo JSON do DB
   animal_tipo?: 'Equino' | 'Canino';
   quantidade_animais?: number;
-  itens_remonta?: ItemRemonta[];
+  itens_remonta?: Tables<'classe_viii_remonta_registros'>['itens_remonta']; // Usando tipo JSON do DB
 }
 
 interface CategoryAllocation {
@@ -160,6 +162,7 @@ const ClasseVIIIForm = () => {
   // NOVOS ESTADOS: Rastreia a OM de destino temporária por categoria
   const [tempDestinations, setTempDestinations] = useState<Record<Categoria, TempDestination>>(initialTempDestinations);
   
+  // CORRIGIDO: O estado deve ser capaz de armazenar ItemSaude[] ou ItemRemonta[]
   const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemSaude[] | ItemRemonta[]>([]);
   const [remontaValidationWarning, setRemontaValidationWarning] = useState<string | null>(null); // Novo estado para aviso de validação
   
@@ -345,12 +348,12 @@ const ClasseVIIIForm = () => {
 
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("default_diretriz_year")
+        .select("default_logistica_year") // CORRIGIDO
         .eq("id", user.id)
         .maybeSingle();
         
-      if (profileData?.default_diretriz_year) {
-          anoReferencia = profileData.default_diretriz_year;
+      if (profileData?.default_logistica_year) { // CORRIGIDO
+          anoReferencia = profileData.default_logistica_year;
       }
 
       if (!anoReferencia) {
@@ -424,12 +427,17 @@ const ClasseVIIIForm = () => {
             categoria: 'Saúde', // Normaliza a categoria para exibição
             om_detentora: r.om_detentora || r.organizacao,
             ug_detentora: r.ug_detentora || r.ug,
+            // CORRIGIDO: Tipagem JSONB
+            itens_saude: (r.itens_saude || []) as any as ItemSaude[],
         })) as ClasseVIIIRegistro[];
+        
         const newRemontaRecords = (remontaData || []).map(r => ({
             ...r,
             categoria: 'Remonta/Veterinária', // Normaliza a categoria para exibição
             om_detentora: r.om_detentora || r.organizacao,
             ug_detentora: r.ug_detentora || r.ug,
+            // CORRIGIDO: Tipagem JSONB
+            itens_remonta: (r.itens_remonta || []) as any as ItemRemonta[],
         })) as ClasseVIIIRegistro[];
 
         setRegistrosSaude(newSaudeRecords);
@@ -489,11 +497,9 @@ const ClasseVIIIForm = () => {
     // --- Process Saúde ---
     if (saudeRecords.length > 0) {
         const r = saudeRecords[0]; // Apenas um registro por OM Detentora/UG Detentora/Categoria é esperado
-        const sanitizedItems = (r.itens_saude || []).map(item => ({
-            ...item,
-            quantidade: Number((item as ItemSaude).quantidade || 0),
-            valor_mnt_dia: Number((item as ItemSaude).valor_mnt_dia || 0),
-        })) as ItemSaude[];
+        
+        // CORRIGIDO: Acessando itens_saude que já foi tipado em fetchRegistros
+        const sanitizedItems = (r.itens_saude || []) as ItemSaude[];
         
         consolidatedSaude = sanitizedItems;
         
@@ -513,12 +519,8 @@ const ClasseVIIIForm = () => {
     if (remontaRecords.length > 0) {
         // 3.1. Consolidar TODOS os itens de diretriz de Remonta (Item B, C, D, E, G) de TODOS os registros (Equino e Canino)
         allRemontaItems = remontaRecords.flatMap(record => 
-            (record.itens_remonta || []).map(item => ({
-                ...item,
-                quantidade_animais: Number(item.quantidade_animais || 0),
-                dias_operacao_item: Number(item.dias_operacao_item || 0),
-                valor_mnt_dia: Number(item.valor_mnt_dia || 0),
-            }))
+            // CORRIGIDO: Acessando itens_remonta que já foi tipado em fetchRegistros
+            (record.itens_remonta || []) as ItemRemonta[]
         );
         
         // 3.2. Extrair os dados de quantidade/dias para os itens base (Equino e Canino)
@@ -685,6 +687,7 @@ const ClasseVIIIForm = () => {
 
   // --- Item Quantity Handlers ---
   const handleQuantityChange = (itemIndex: number, rawQuantity: string) => {
+    // CORRIGIDO: Clonando o array antes de modificar
     const newItems = [...currentCategoryItems];
     const quantity = parseInt(rawQuantity) || 0;
     
@@ -702,12 +705,14 @@ const ClasseVIIIForm = () => {
             setRemontaValidationWarning(null);
         }
     }
+    // CORRIGIDO: Definindo o novo estado com o array clonado e modificado
     setCurrentCategoryItems(newItems);
   };
   
   const handleQuantityBlur = (itemIndex: number) => {
     if (selectedTab !== 'Remonta/Veterinária') return;
     
+    // CORRIGIDO: Clonando o array antes de modificar
     const newItems = [...currentCategoryItems];
     const item = (newItems as ItemRemonta[])[itemIndex];
     let finalQuantity = item.quantidade_animais;
@@ -722,16 +727,19 @@ const ClasseVIIIForm = () => {
     }
     
     item.quantidade_animais = finalQuantity;
+    // CORRIGIDO: Definindo o novo estado com o array clonado e modificado
     setCurrentCategoryItems(newItems);
   };
   
   const handleDiasOperacaoChange = (itemIndex: number, days: number) => {
     if (selectedTab !== 'Remonta/Veterinária') return;
     
+    // CORRIGIDO: Clonando o array antes de modificar
     const newItems = [...currentCategoryItems];
     const item = (newItems as ItemRemonta[])[itemIndex];
     item.dias_operacao_item = Math.max(0, days);
     
+    // CORRIGIDO: Definindo o novo estado com o array clonado e modificado
     setCurrentCategoryItems(newItems);
   };
 
@@ -987,16 +995,16 @@ const ClasseVIIIForm = () => {
         // Agrupar itens por tipo de animal (Equino e Canino)
         const remontaItemsGrouped = form.itensRemonta.reduce((acc, item) => {
             const type = item.item.includes('Equino') ? 'Equino' : 'Canino';
-            if (!acc[type]) acc[type] = [];
-            acc[type].push(item);
+            if (!acc[type as 'Equino' | 'Canino']) acc[type as 'Equino' | 'Canino'] = [];
+            acc[type as 'Equino' | 'Canino'].push(item);
             return acc;
-        }, {} as Record<string, ItemRemonta[]>);
+        }, {} as Record<'Equino' | 'Canino', ItemRemonta[]>);
         
         const registrosParaInserir: TablesInsert<'classe_viii_remonta_registros'>[] = [];
         
         // Calcular totais individuais para Equino e Canino
-        const valorEquino = (remontaItemsGrouped['Equino'] || []).reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
-        const valorCanino = (remontaItemsGrouped['Canino'] || []).reduce((sum, item) => sum + calculateRemontaItemTotal(item), 0);
+        const valorEquino = (remontaItemsGrouped['Equino'] || []).reduce((sum, item) => calculateRemontaItemTotal(item) + sum, 0);
+        const valorCanino = (remontaItemsGrouped['Canino'] || []).reduce((sum, item) => calculateRemontaItemTotal(item) + sum, 0);
         
         const totalGeralRemonta = valorEquino + valorCanino;
         
@@ -1168,6 +1176,7 @@ const ClasseVIIIForm = () => {
     
     // 1. Gerar a memória automática mais recente
     const isSaude = registro.categoria === 'Saúde';
+    // CORRIGIDO: Usando a tipagem correta que foi feita em fetchRegistros
     const itensParaMemoria = isSaude ? registro.itens_saude as ItemSaude[] : registro.itens_remonta as ItemRemonta[];
     
     const memoriaAutomatica = generateCategoryMemoriaCalculo(
@@ -1322,6 +1331,7 @@ const ClasseVIIIForm = () => {
             <div className="space-y-3 border-b pb-4">
               <h3 className="text-lg font-semibold">1. Dados da Organização</h3>
               
+              {/* PRIMEIRA LINHA: OM Detentora, UG Detentora, Dias de Atividade */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>OM Detentora do Equipamento *</Label>
@@ -1452,7 +1462,7 @@ const ClasseVIIIForm = () => {
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        currentCategoryItems.map((item, index) => {
+                                        (currentCategoryItems as (ItemSaude | ItemRemonta)[]).map((item, index) => {
                                             const isSaude = cat === 'Saúde';
                                             const itemSaude = item as ItemSaude;
                                             const itemRemonta = item as ItemRemonta;
