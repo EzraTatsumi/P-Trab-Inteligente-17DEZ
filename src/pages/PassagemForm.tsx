@@ -45,13 +45,20 @@ import PassagemTrechoSelectorDialog, { TrechoSelection } from "@/components/Pass
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { TrechoPassagem, TipoTransporte } from "@/types/diretrizesPassagens";
 import { ConsolidatedPassagemMemoria } from "@/components/ConsolidatedPassagemMemoria"; 
-import { OMData } from "@/lib/omUtils"; // IMPORTANDO OMData
 
 // Tipos de dados
 type PassagemRegistroDB = Tables<'passagem_registros'>; 
 
-// NOVO TIPO: Representa um lote consolidado de registros (vários trechos)
-interface ConsolidatedPassagem extends ConsolidatedPassagemRecord {}
+// Tipo de dados para OmSelector
+interface OMData {
+    id: string;
+    nome_om: string;
+    codug_om: string;
+    rm_vinculacao: string;
+    codug_rm_vinculacao: string;
+    cidade: string | null;
+    ativo: boolean;
+}
 
 // Tipo para o registro calculado antes de salvar (inclui campos de display)
 interface CalculatedPassagem extends TablesInsert<'passagem_registros'> {
@@ -64,6 +71,9 @@ interface CalculatedPassagem extends TablesInsert<'passagem_registros'> {
     // Novo: Armazena o trecho selecionado (agora é sempre um array de 1 para registros individuais)
     selected_trechos: TrechoSelection[];
 }
+
+// NOVO TIPO: Representa um lote consolidado de registros (vários trechos)
+interface ConsolidatedPassagem extends ConsolidatedPassagemRecord {}
 
 // Estado inicial para o formulário
 interface PassagemFormState {
@@ -229,8 +239,7 @@ const PassagemForm = () => {
         return Object.values(groups).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
     }, [registros]);
     
-    // Tipando oms com OMData[]
-    const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations<OMData[]>();
+    const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
     
     // --- Mutations ---
 
@@ -403,10 +412,10 @@ const PassagemForm = () => {
         } else if (ptrabData && editingId) {
             // Modo Edição: Preencher
             // Nota: Em modo edição, formData já deve ter sido preenchido por handleEdit
-            const omFavorecida = oms?.find((om: OMData) => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
+            const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
             setSelectedOmFavorecidaId(omFavorecida?.id);
             
-            const omDestino = oms?.find((om: OMData) => om.nome_om === formData.om_destino && om.codug_om === formData.ug_destino);
+            const omDestino = oms?.find(om => om.nome_om === formData.om_destino && om.codug_om === formData.ug_destino);
             setSelectedOmDestinoId(omDestino?.id);
         }
     }, [ptrabData, oms, editingId]);
@@ -570,10 +579,10 @@ const PassagemForm = () => {
         setGroupToReplace(group); // Armazena o grupo original para substituição
         
         // 1. Configurar OM Favorecida e OM Destino
-        const omFavorecidaToEdit = oms?.find((om: OMData) => om.nome_om === group.organizacao && om.codug_om === group.ug);
+        const omFavorecidaToEdit = oms?.find(om => om.nome_om === group.organizacao && om.codug_om === group.ug);
         setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
         
-        const omDestinoToEdit = oms?.find((om: OMData) => om.nome_om === group.om_detentora && om.codug_om === group.ug_detentora);
+        const omDestinoToEdit = oms?.find(om => om.nome_om === group.om_detentora && om.codug_om === group.ug_detentora);
         setSelectedOmDestinoId(omDestinoToEdit?.id);
         
         // 2. Reconstruir a lista de trechos selecionados a partir de TODOS os registros do grupo
@@ -676,7 +685,7 @@ const PassagemForm = () => {
                 origem: trecho.origem,
                 destino: registro.destino,
                 tipo_transporte: registro.tipo_transporte,
-                is_ida_volta: trecho.is_ida_volta,
+                is_ida_volta: registro.is_ida_volta,
                 valor_unitario: trecho.valor_unitario,
                 quantidade_passagens: registro.quantidade_passagens,
                 

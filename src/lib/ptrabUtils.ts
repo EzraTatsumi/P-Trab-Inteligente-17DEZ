@@ -3,9 +3,6 @@ import { toast } from "sonner";
 import { Tables, TableName } from "@/integrations/supabase/types";
 import { PTrabData } from "@/pages/PTrabReportManager"; // Reutilizando o tipo PTrabData
 
-// Export PTrabData so it can be imported by VerbaOperacionalForm.tsx and others
-export type { PTrabData };
-
 // Tipo para as diretrizes operacionais (valores unitários)
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
