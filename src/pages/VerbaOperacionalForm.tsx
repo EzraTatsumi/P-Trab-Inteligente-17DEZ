@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import MainLayout from "@/components/MainLayout";
+import MainLayout from "../components/MainLayout"; // Caminho corrigido
 import VerbaOperacionalFormContent from "@/components/ptrab/forms/VerbaOperacionalFormContent";
 
 const VerbaOperacionalForm = () => {
