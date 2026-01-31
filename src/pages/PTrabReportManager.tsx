@@ -178,7 +178,9 @@ export interface ClasseIIRegistro extends Tables<'classe_ii_registros'> {
 }
 
 // CORREÇÃO: ClasseIIIRegistro agora estende Tables<'classe_iii_registros'> e tipa itens_equipamentos como ItemClasseIII[]
-export interface ClasseIIIRegistro extends Tables<'classe_iii_registros'> {
+// Para resolver o TS2430, precisamos usar Omit para remover a propriedade 'itens_equipamentos' da base Tables<'classe_iii_registros'>
+// e redefini-la com o tipo correto ItemClasseIII[].
+export interface ClasseIIIRegistro extends Omit<Tables<'classe_iii_registros'>, 'itens_equipamentos'> {
   // Campos numéricos garantidos
   potencia_hp: number | null;
   horas_dia: number | null;
@@ -193,7 +195,7 @@ export interface ClasseIIIRegistro extends Tables<'classe_iii_registros'> {
   valor_nd_30: number;
   valor_nd_39: number;
   
-  // Itens de equipamento tipados corretamente (Apesar de ser Json no DB, aqui usamos o tipo processado)
+  // Itens de equipamento tipados corretamente (Substituindo o tipo Json do Supabase)
   itens_equipamentos: ItemClasseIII[] | null;
 }
 
@@ -374,7 +376,7 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
                 totalQR: registro.totalQR,
                 nrCiclos: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).nrCiclos,
                 diasEtapaPaga: 0,
-                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).diasEtapaSolicitada,
+                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).diasEtapaSolicitada,
                 totalEtapas: 0,
                 complementoQS: registro.complementoQS,
                 etapaQS: registro.etapaQS,
@@ -409,7 +411,7 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
                 totalQR: registro.totalQR,
                 nrCiclos: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).nrCiclos,
                 diasEtapaPaga: 0,
-                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).diasEtapaSolicitada,
+                diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).diasEtapaSolicitada,
                 totalEtapas: 0,
                 complementoQS: registro.complementoQS,
                 etapaQS: registro.etapaQS,
@@ -446,7 +448,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     if (isClasseII) {
         return generateClasseIIUtility(
             registro.categoria as 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento',
-            registro.itens_equipamentos as ItemClasseII[], // CORRIGIDO: Casting para ItemClasseII[]
+            registro.itens_equipamentos as any as ItemClasseII[], // CORREÇÃO: Usar 'as any as' para forçar o cast
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -460,7 +462,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVUtility(
             registro.categoria as 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN',
-            registro.itens_equipamentos as ItemClasseII[], // CORRIGIDO: Casting para ItemClasseII[]
+            registro.itens_equipamentos as any as ItemClasseII[], // CORREÇÃO: Usar 'as any as' para forçar o cast
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -474,7 +476,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVIUtility(
             registro.categoria as 'Gerador' | 'Embarcação' | 'Equipamento de Engenharia',
-            registro.itens_equipamentos as ItemClasseII[], // CORRIGIDO: Casting para ItemClasseII[]
+            registro.itens_equipamentos as any as ItemClasseII[], // CORREÇÃO: Usar 'as any as' para forçar o cast
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -488,7 +490,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVIIUtility(
             registro.categoria as 'Comunicações' | 'Informática',
-            registro.itens_equipamentos as ItemClasseII[], // CORRIGIDO: Casting para ItemClasseII[]
+            registro.itens_equipamentos as any as ItemClasseII[], // CORREÇÃO: Usar 'as any as' para forçar o cast
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -504,7 +506,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
         
         return generateClasseVIIIUtility(
             registro.categoria as 'Saúde' | 'Remonta/Veterinária',
-            itens,
+            itens as any, // CORREÇÃO: Cast para any para resolver o conflito Json
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -741,13 +743,13 @@ const PTrabReportManager = () => {
 
       // CORREÇÃO: Usar 'as any' para contornar o erro de tipo do Supabase na desestruturação do spread
       const allClasseItems = [
-        ...(classeIIData as any[] || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
-        ...(classeVData as any[] || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
-        ...(classeVIData as any[] || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
-        ...(classeVIIData as any[] || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
-        ...(classeVIIISaudeData as any[] || []).map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
-        ...(classeVIIIRemontaData as any[] || []).map(r => ({ ...r, itens_equipamentos: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
-        ...(classeIXData as any[] || []).map(r => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
+        ...(classeIIData as any[] || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
+        ...(classeVData as any[] || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
+        ...(classeVIData as any[] || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
+        ...(classeVIIData as any[] || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
+        ...(classeVIIISaudeData as any[] || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
+        ...(classeVIIIRemontaData as any[] || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
+        ...(classeIXData as any[] || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
       ];
 
       setPtrabData(ptrab as PTrabData);
@@ -785,7 +787,7 @@ const PTrabReportManager = () => {
       // CORREÇÃO: Mapear itens_equipamentos de Json para ItemClasseIII[] durante o carregamento da Classe III
       setRegistrosClasseIII((classeIIIData || []).map(r => ({
           ...r,
-          itens_equipamentos: (r.itens_equipamentos as ItemClasseIII[] | null) || null,
+          itens_equipamentos: (r.itens_equipamentos as any as ItemClasseIII[] | null) || null, // Usando as any as
       })) as ClasseIIIRegistro[]);
       
       setRefLPC(refLPCData as RefLPC || null);
