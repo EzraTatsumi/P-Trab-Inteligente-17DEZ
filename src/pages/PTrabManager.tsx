@@ -41,7 +41,7 @@ import { formatCurrency } from "@/lib/formatUtils";
 import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate, generateApprovalPTrabNumber, generateUniqueMinutaNumber } from "@/lib/ptrabNumberUtils";
 import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
 import { ConsolidationNumberDialog } from "@/components/ConsolidationNumberDialog";
-import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { Tables, TablesInsert, TablesUpdate, TableName } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { HelpDialog } from "@/components/HelpDialog";
 import { CloneVariationDialog } from "@/components/CloneVariationDialog";
@@ -88,6 +88,15 @@ interface ShareRequest extends Tables<'ptrab_share_requests'> {
     raw_user_meta_data: { posto_graduacao?: string, nome_om?: string } | null;
   } | null;
 }
+
+// Tipo de união para as tabelas que podem ser clonadas/consolidadas
+type PTrabLinkedTableName =
+    'classe_i_registros' | 'classe_ii_registros' | 'classe_iii_registros' | 
+    'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' | 
+    'classe_viii_saude_registros' | 'classe_viii_remonta_registros' | 
+    'classe_ix_registros' | 'p_trab_ref_lpc' | 'passagem_registros' | 
+    'diaria_registros' | 'verba_operacional_registros';
+
 
 // Lista de Comandos Militares de Área (CMA)
 const COMANDOS_MILITARES_AREA = [
@@ -1081,10 +1090,10 @@ const PTrabManager = () => {
 
   const cloneRelatedRecords = async (originalPTrabId: string, newPTrabId: string) => {
     
-    const cloneClassRecords = async (tableName: keyof Tables, jsonbField: string, numericFields: string[]) => {
-        const { data: originalRecords, error: fetchError } = await supabase
-            .from(tableName)
-            .select(`*, ${jsonbField}`)
+    const cloneClassRecords = async (tableName: PTrabLinkedTableName, jsonbField: keyof Tables<PTrabLinkedTableName> | null, numericFields: string[]) => {
+        // CORREÇÃO: Usar 'as any' no from para permitir o nome dinâmico, mas tipar o retorno
+        const { data: originalRecords, error: fetchError } = await (supabase.from(tableName) as any)
+            .select('*')
             .eq("p_trab_id", originalPTrabId);
 
         if (fetchError) {
@@ -1092,14 +1101,22 @@ const PTrabManager = () => {
             return 0;
         }
 
-        const newRecords = (originalRecords || []).map(record => {
+        // CORREÇÃO: Garantir que originalRecords é um array de objetos com as propriedades esperadas
+        const typedRecords = originalRecords as Tables<typeof tableName>[];
+
+        const newRecords = (typedRecords || []).map(record => {
+            // CORREÇÃO: Desestruturação segura para remover campos de sistema
             const { id, created_at, updated_at, ...restOfRecord } = record;
             
             const newRecord: Record<string, any> = {
                 ...restOfRecord,
                 p_trab_id: newPTrabId,
-                [jsonbField]: record[jsonbField] ? JSON.parse(JSON.stringify(record[jsonbField])) : null,
             };
+            
+            // Clonar campos JSONB se existirem
+            if (jsonbField && newRecord[jsonbField]) {
+                newRecord[jsonbField] = JSON.parse(JSON.stringify(newRecord[jsonbField]));
+            }
             
             numericFields.forEach(field => {
                 if (newRecord[field] === null || newRecord[field] === undefined) {
@@ -1111,8 +1128,8 @@ const PTrabManager = () => {
         });
 
         if (newRecords.length > 0) {
-            const { error: insertError } = await supabase
-                .from(tableName)
+            // CORREÇÃO: Usar 'as any' no insert para permitir o nome dinâmico
+            const { error: insertError } = await (supabase.from(tableName) as any)
                 .insert(newRecords as TablesInsert<typeof tableName>[]);
             
             if (insertError) {
@@ -1129,6 +1146,7 @@ const PTrabManager = () => {
         'quantidade_r2', 'quantidade_r3'
     ];
     
+    // CLASSE I (Tratamento especial devido à estrutura de campos)
     const { data: originalClasseIRecords, error: fetchClasseIError } = await supabase
       .from("classe_i_registros")
       .select("*")
@@ -1165,7 +1183,7 @@ const PTrabManager = () => {
       }
     }
     
-    const genericNumericFields = ['dias_operacao', 'valor_total', 'valor_nd_30', 'valor_nd_39'];
+    const genericNumericFields = ['dias_operacao', 'valor_total', 'valor_nd_30', 'valor_nd_39', 'efetivo'];
 
     await cloneClassRecords('classe_ii_registros', 'itens_equipamentos', genericNumericFields);
 
@@ -1174,6 +1192,7 @@ const PTrabManager = () => {
         'consumo_lubrificante_litro', 'preco_lubrificante', 'valor_nd_30', 'valor_nd_39'
     ];
     
+    // CLASSE III (Tratamento especial devido à estrutura de campos)
     const { data: originalClasseIIIRecords, error: fetchClasseIIIError } = await supabase
       .from("classe_iii_registros")
       .select("*")
@@ -1188,6 +1207,7 @@ const PTrabManager = () => {
         const newRecord: Record<string, any> = {
             ...restOfRecord,
             p_trab_id: newPTrabId,
+            // CORREÇÃO: Clonar JSONB
             itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null,
         };
         
@@ -1218,6 +1238,7 @@ const PTrabManager = () => {
     await cloneClassRecords('classe_viii_remonta_registros', 'itens_remonta', [...genericNumericFields, 'quantidade_animais']);
     await cloneClassRecords('classe_ix_registros', 'itens_motomecanizacao', genericNumericFields);
 
+    // CLONAGEM DE REFERÊNCIA LPC
     const { data: originalRefLPC, error: fetchRefLPCError } = await supabase
       .from("p_trab_ref_lpc")
       .select("*")
@@ -1242,6 +1263,15 @@ const PTrabManager = () => {
         toast.error(`Erro ao clonar referência LPC: ${sanitizeError(insertRefLPCError)}`);
       }
     }
+    
+    // CLONAGEM DE DIÁRIAS
+    await cloneClassRecords('diaria_registros', 'quantidades_por_posto', ['dias_operacao', 'quantidade', 'nr_viagens', 'valor_nd_15', 'valor_nd_30', 'valor_total']);
+    
+    // CLONAGEM DE VERBA OPERACIONAL
+    await cloneClassRecords('verba_operacional_registros', null, ['dias_operacao', 'quantidade_equipes', 'valor_total_solicitado', 'valor_nd_30', 'valor_nd_39']);
+    
+    // CLONAGEM DE PASSAGENS
+    await cloneClassRecords('passagem_registros', null, ['dias_operacao', 'efetivo', 'quantidade_passagens', 'valor_nd_33', 'valor_total', 'valor_unitario']);
   };
 
   const needsNumbering = (ptrab: PTrab) => {
@@ -1282,8 +1312,9 @@ const PTrabManager = () => {
         
         const basePTrab = selectedPTrabsData[0];
         
+        // CORREÇÃO: Desestruturação segura para remover campos de sistema
         const { 
-            id, created_at, updated_at, share_token, 
+            id, created_at, updated_at, share_token, shared_with, user_id,
             ...restOfBasePTrab 
         } = basePTrab;
         
@@ -1308,18 +1339,18 @@ const PTrabManager = () => {
         
         const newPTrabId = newPTrab.id;
         
-        const tablesToConsolidate: (keyof Tables)[] = [
+        const tablesToConsolidate: PTrabLinkedTableName[] = [
             'classe_i_registros', 'classe_ii_registros', 'classe_iii_registros', 
             'classe_v_registros', 'classe_vi_registros', 'classe_vii_registros', 
             'classe_viii_saude_registros', 'classe_viii_remonta_registros', 'classe_ix_registros',
-            'diaria_registros', // Incluindo diárias
-            'verba_operacional_registros', // Incluindo verba operacional
-            'passagem_registros', // Incluindo passagens
+            'diaria_registros', 
+            'verba_operacional_registros', 
+            'passagem_registros', 
         ];
         
         for (const tableName of tablesToConsolidate) {
-            const { data: records, error: recordsError } = await supabase
-                .from(tableName)
+            // CORREÇÃO: Usar 'as any' para permitir o nome dinâmico
+            const { data: records, error: recordsError } = await (supabase.from(tableName) as any)
                 .select('*')
                 .in('p_trab_id', selectedPTrabsToConsolidate);
                 
@@ -1329,24 +1360,31 @@ const PTrabManager = () => {
                 continue;
             }
             
-            if (records && records.length > 0) {
-                const newRecords = records.map(record => {
+            // CORREÇÃO: Tipagem segura para o array de registros
+            const typedRecords = records as Tables<typeof tableName>[];
+            
+            if (typedRecords && typedRecords.length > 0) {
+                const newRecords = typedRecords.map(record => {
+                    // CORREÇÃO: Desestruturação segura para remover campos de sistema
                     const { id, created_at, updated_at, ...restOfRecord } = record;
                     
+                    // CORREÇÃO: Tipagem do objeto de inserção
                     const newRecord: TablesInsert<typeof tableName> = {
                         ...restOfRecord,
                         p_trab_id: newPTrabId,
-                        ...(record.itens_equipamentos ? { itens_equipamentos: JSON.parse(JSON.stringify(record.itens_equipamentos)) } : {}),
-                        ...(record.itens_saude ? { itens_saude: JSON.parse(JSON.stringify(record.itens_saude)) } : {}),
-                        ...(record.itens_remonta ? { itens_remonta: JSON.parse(JSON.stringify(record.itens_remonta)) } : {}),
-                        ...(record.itens_motomecanizacao ? { itens_motomecanizacao: JSON.parse(JSON.stringify(record.itens_motomecanizacao)) } : {}),
+                        // CORREÇÃO: Clonar JSONB de forma segura, verificando a existência da propriedade
+                        ...(record.hasOwnProperty('itens_equipamentos') && { itens_equipamentos: JSON.parse(JSON.stringify((record as any).itens_equipamentos)) }),
+                        ...(record.hasOwnProperty('itens_saude') && { itens_saude: JSON.parse(JSON.stringify((record as any).itens_saude)) }),
+                        ...(record.hasOwnProperty('itens_remonta') && { itens_remonta: JSON.parse(JSON.stringify((record as any).itens_remonta)) }),
+                        ...(record.hasOwnProperty('itens_motomecanizacao') && { itens_motomecanizacao: JSON.parse(JSON.stringify((record as any).itens_motomecanizacao)) }),
+                        ...(record.hasOwnProperty('quantidades_por_posto') && { quantidades_por_posto: JSON.parse(JSON.stringify((record as any).quantidades_por_posto)) }),
                     } as TablesInsert<typeof tableName>;
                     
                     return newRecord;
                 });
                 
-                const { error: insertRecordsError } = await supabase
-                    .from(tableName)
+                // CORREÇÃO: Usar 'as any' no insert para permitir o nome dinâmico
+                const { error: insertRecordsError } = await (supabase.from(tableName) as any)
                     .insert(newRecords);
                     
                 if (insertRecordsError) {
