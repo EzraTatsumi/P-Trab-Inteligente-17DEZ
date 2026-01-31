@@ -27,11 +27,13 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ content, classNa
           ),
           th: ({ node, ...props }) => <th className="bg-muted p-2 border border-border text-left font-semibold text-foreground" {...props} />,
           td: ({ node, ...props }) => <td className="p-2 border border-border align-top text-muted-foreground" {...props} />,
+          // FIX: Destructure properties correctly from the component props object
           code: ({ node, inline, ...props }) => {
             if (inline) {
               return <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono text-primary" {...props} />;
             }
-            return <pre className="bg-muted p-3 rounded-md overflow-x-auto text-xs font-mono" {...props} />;
+            // FIX: Cast props to the correct type for <pre> element
+            return <pre className="bg-muted p-3 rounded-md overflow-x-auto text-xs font-mono" {...props as React.HTMLProps<HTMLPreElement>} />;
           },
           a: ({ node, ...props }) => <a className="text-primary hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
         }}

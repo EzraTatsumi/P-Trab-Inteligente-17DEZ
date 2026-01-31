@@ -1112,6 +1112,51 @@ export type Database = {
         }
         Relationships: []
       }
+      ptrab_share_requests: {
+        Row: {
+          created_at: string
+          id: string
+          ptrab_id: string
+          requester_id: string
+          share_token: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ptrab_id: string
+          requester_id: string
+          share_token: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ptrab_id?: string
+          requester_id?: string
+          share_token?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ptrab_share_requests_ptrab_id_fkey"
+            columns: ["ptrab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ptrab_share_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       verba_operacional_registros: {
         Row: {
           created_at: string
