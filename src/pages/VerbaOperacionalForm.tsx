@@ -393,29 +393,8 @@ const VerbaOperacionalForm = () => {
             setPendingVerbas([]); 
             setLastStagedFormData(null); 
             
-            // Manter campos de contexto, detalhes E valores
-            setFormData(prev => ({
-                ...prev,
-                // Manter campos de contexto
-                om_favorecida: prev.om_favorecida,
-                ug_favorecida: prev.ug_favorecida,
-                om_detentora: prev.om_detentora,
-                ug_detentora: prev.ug_detentora,
-                fase_atividade: prev.fase_atividade,
-                
-                // Manter campos de valor (não resetar)
-                valor_total_solicitado: prev.valor_total_solicitado,
-                valor_nd_30: prev.valor_nd_30,
-                valor_nd_39: prev.valor_nd_39,
-            }));
-            
-            // NOVO: Carregar o primeiro registro recém-salvo em modo de edição
-            if (newRecords && newRecords.length > 0) {
-                handleEdit(newRecords[0] as VerbaOperacionalRegistro);
-            } else {
-                // Se por algum motivo não houver newRecords, apenas reseta o formulário
-                resetForm();
-            }
+            // Após salvar o lote, resetamos o formulário para uma nova entrada.
+            resetForm();
         },
         onError: (err) => {
             toast.error(sanitizeError(err));
@@ -706,27 +685,10 @@ const VerbaOperacionalForm = () => {
                 toast.info("Nenhuma alteração detectada no item pendente.");
             }
             
-            // CORREÇÃO: Manter campos de contexto e manter campos de valor
-            setFormData(prev => ({
-                ...prev,
-                // Manter campos de contexto
-                om_favorecida: prev.om_favorecida,
-                ug_favorecida: prev.ug_favorecida,
-                om_detentora: prev.om_detentora,
-                ug_detentora: prev.ug_detentora,
-                fase_atividade: prev.fase_atividade,
-                
-                // Resetar apenas os campos de valor e numéricos
-                dias_operacao: 0,
-                quantidade_equipes: 0,
-                valor_total_solicitado: 0,
-                valor_nd_30: 0,
-                valor_nd_39: 0,
-            }));
-            
-            setRawTotalInput(numberToRawDigits(0));
-            setRawND30Input(numberToRawDigits(0));
-            setRawND39Input(numberToRawDigits(0));
+            // REMOVEMOS O BLOCO DE RESET PREMATURO AQUI.
+            // Os dados do formulário (formData e raw inputs) devem permanecer preenchidos
+            // para que o dirty check (isVerbaDirty) seja falso e o botão "Salvar Registros"
+            // fique habilitado.
             
         } catch (err) {
             if (err instanceof z.ZodError) {
@@ -1429,7 +1391,7 @@ const VerbaOperacionalForm = () => {
                                             </Card>
                                         );
                                     })}
-                                </section>
+                                </div>
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
