@@ -176,12 +176,12 @@ export default function ClasseIForm() {
 
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("default_diretriz_year")
+        .select("default_logistica_year") // CORRIGIDO: Usando o nome correto da coluna
         .eq("id", userId)
         .maybeSingle();
         
-      if (profileData?.default_diretriz_year) {
-          anoReferencia = profileData.default_diretriz_year;
+      if (profileData?.default_logistica_year) { // CORRIGIDO: Usando o nome correto da propriedade
+          anoReferencia = profileData.default_logistica_year; // CORRIGIDO: Usando o nome correto da propriedade
       }
 
       if (!anoReferencia) {
