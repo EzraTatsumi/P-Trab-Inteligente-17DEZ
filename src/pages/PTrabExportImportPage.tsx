@@ -203,21 +203,22 @@ const PTrabExportImportPage = () => {
           supabase.from('classe_viii_saude_registros').select('*, itens_saude, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId),
           supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId),
           supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, valor_nd_30, valor_nd_39').eq('p_trab_id', selectedPTrabId),
-          supabase.from('p_trab_ref_lpc').select('*').eq('p_trab_id', selectedPTrabId).maybeSingle(),
+          // CORREÇÃO DO ERRO 1: Tipagem explícita para maybeSingle
+          supabase.from('p_trab_ref_lpc').select('*').eq('p_trab_id', selectedPTrabId).maybeSingle() as Promise<{ data: Tables<'p_trab_ref_lpc'> | null, error: any }>,
         ]);
 
         exportData = {
           p_trab: pTrab,
-          classe_i_registros: classeI || [],
-          classe_ii_registros: classeII || [],
-          classe_iii_registros: classeIII || [],
-          classe_v_registros: classeV || [],
-          classe_vi_registros: classeVI || [],
-          classe_vii_registros: classeVII || [],
-          classe_viii_saude_registros: classeVIIISaude || [],
-          classe_viii_remonta_registros: classeVIIIRemonta || [],
-          classe_ix_registros: classeIX || [],
-          p_trab_ref_lpc: refLPC || null,
+          classe_i_registros: classeI?.data || [],
+          classe_ii_registros: classeII?.data || [],
+          classe_iii_registros: classeIII?.data || [],
+          classe_v_registros: classeV?.data || [],
+          classe_vi_registros: classeVI?.data || [],
+          classe_vii_registros: classeVII?.data || [],
+          classe_viii_saude_registros: classeVIIISaude?.data || [],
+          classe_viii_remonta_registros: classeVIIIRemonta?.data || [],
+          classe_ix_registros: classeIX?.data || [],
+          p_trab_ref_lpc: refLPC?.data || null,
         };
         fileName = generateExportFileName(pTrab);
         exportTypeFinal = 'single_ptrab';
@@ -258,16 +259,16 @@ const PTrabExportImportPage = () => {
 
         exportData = {
           p_trab: pTrabsData || [],
-          classe_i_registros: classeI || [],
-          classe_ii_registros: classeII || [],
-          classe_iii_registros: classeIII || [],
-          classe_v_registros: classeV || [],
-          classe_vi_registros: classeVI || [],
-          classe_vii_registros: classeVII || [],
-          classe_viii_saude_registros: classeVIIISaude || [],
-          classe_viii_remonta_registros: classeVIIIRemonta || [],
-          classe_ix_registros: classeIX || [],
-          p_trab_ref_lpc: refLPC || null,
+          classe_i_registros: classeI?.data || [],
+          classe_ii_registros: classeII?.data || [],
+          classe_iii_registros: classeIII?.data || [],
+          classe_v_registros: classeV?.data || [],
+          classe_vi_registros: classeVI?.data || [],
+          classe_vii_registros: classeVII?.data || [],
+          classe_viii_saude_registros: classeVIIISaude?.data || [],
+          classe_viii_remonta_registros: classeVIIIRemonta?.data || [],
+          classe_ix_registros: classeIX?.data || [],
+          p_trab_ref_lpc: refLPC?.data || null,
           organizacoes_militares: omsData || [],
           diretrizes_custeio: diretrizesCusteio || [],
           diretrizes_equipamentos_classe_iii: diretrizesEquipamentos || [],
@@ -549,32 +550,41 @@ const PTrabExportImportPage = () => {
     }
     
     // 3. Importar P Trabs (com lógica de conflito simplificada: se o número já existe, ele é ignorado)
-    const pTrabsToInsert = (p_trab as Tables<'p_trab'>[]).map(p => {
-        const { id, share_token, shared_with, ...rest } = p; // FIX: Exclui id, share_token E shared_with
-        return { ...rest, user_id: currentUserId, shared_with: [] }; // Garante que shared_with é resetado
-    });
+    const pTrabsOriginal = p_trab as Tables<'p_trab'>[];
     
-    for (const ptrab of pTrabsToInsert) {
-        const isDuplicate = isPTrabNumberDuplicate(ptrab.numero_ptrab, existingPTrabNumbers);
+    for (const originalPTrab of pTrabsOriginal) {
+        const isDuplicate = isPTrabNumberDuplicate(originalPTrab.numero_ptrab, existingPTrabNumbers);
+        
         if (!isDuplicate) {
-            // Insere o PTrab e seus registros relacionados
+            // Prepara o PTrab para inserção (removendo campos de sistema)
+            const { id: originalId, share_token, shared_with, created_at, updated_at, ...rest } = originalPTrab; 
+            
+            const ptrabToInsert: TablesInsert<'p_trab'> = { 
+                ...rest, 
+                user_id: currentUserId, 
+                shared_with: [], // Garante que shared_with é resetado
+                origem: 'importado',
+            } as TablesInsert<'p_trab'>;
+            
+            // Insere o PTrab
             const { data: newPTrab, error: insertPTrabError } = await supabase
                 .from('p_trab')
-                .insert([ptrab as TablesInsert<'p_trab'>])
+                .insert([ptrabToInsert])
                 .select('id')
                 .single();
                 
             if (insertPTrabError || !newPTrab) {
-                console.error(`Erro ao inserir PTrab ${ptrab.numero_ptrab}:`, insertPTrabError);
+                console.error(`Erro ao inserir PTrab ${originalPTrab.numero_ptrab}:`, insertPTrabError);
                 continue;
             }
             
             // Clonar registros relacionados (Classe I, II, III, LPC)
-            await cloneImportedRecords(data, ptrab.id!, newPTrab.id);
+            // CORREÇÃO DO ERRO 2: Usar o ID original (originalId) e o novo ID (newPTrab.id)
+            await cloneImportedRecords(data, originalId, newPTrab.id);
         }
     }
     
-    toast.success(`Backup completo importado! ${pTrabsToInsert.length} P Trabs processados.`);
+    toast.success(`Backup completo importado! ${pTrabsOriginal.length} P Trabs processados.`);
   };
   
   // Helper para importação de P Trab único
