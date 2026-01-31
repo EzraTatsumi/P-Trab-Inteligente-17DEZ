@@ -107,47 +107,22 @@ export interface ClasseIRegistro {
 }
 
 // NOVO TIPO: DiariaRegistro
-export interface DiariaRegistro {
-  id: string;
-  organizacao: string;
-  ug: string;
-  dias_operacao: number;
+export interface DiariaRegistro extends Tables<'diaria_registros'> {
+  // Sobrescreve tipos para garantir que Json/string sejam tratados como objetos/enums locais
   destino: DestinoDiaria;
-  nr_viagens: number;
-  local_atividade: string | null;
   quantidades_por_posto: QuantidadesPorPosto | null;
-  valor_total: number;
   valor_nd_15: number;
   valor_nd_30: number;
   valor_taxa_embarque: number;
-  detalhamento: string | null;
-  detalhamento_customizado?: string | null;
-  fase_atividade: string | null;
+  valor_total: number;
   is_aereo: boolean;
 }
 
 // NOVO TIPO: VerbaOperacionalRegistro (Usado para Verba Operacional e Suprimento de Fundos)
-export interface VerbaOperacionalRegistro {
-  id: string;
-  organizacao: string;
-  ug: string;
-  om_detentora: string | null;
-  ug_detentora: string | null;
-  dias_operacao: number;
-  quantidade_equipes: number;
+export interface VerbaOperacionalRegistro extends Tables<'verba_operacional_registros'> {
   valor_total_solicitado: number;
-  fase_atividade: string | null;
-  detalhamento: string | null;
-  detalhamento_customizado?: string | null;
   valor_nd_30: number;
   valor_nd_39: number;
-  // NOVOS CAMPOS ADICIONADOS AO DB
-  objeto_aquisicao: string | null;
-  objeto_contratacao: string | null;
-  proposito: string | null;
-  finalidade: string | null;
-  local: string | null;
-  tarefa: string | null;
 }
 
 export interface ItemClasseIII {
@@ -725,14 +700,14 @@ const PTrabReportManager = () => {
         { data: verbaOperacionalData }, // NOVO: Fetch Verba Operacional
         { data: passagemData }, // NOVO: Fetch Passagens
       ] = await Promise.all([
-        supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
-        supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
-        supabase.from('classe_vi_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
-        supabase.from('classe_vii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
-        supabase.from('classe_viii_saude_registros').select('*, itens_saude, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
-        supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
-        supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
-        supabase.from('classe_iii_registros').select('*, detalhamento_customizado, itens_equipamentos, fase_atividade, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
+        supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo, valor_total').eq('p_trab_id', ptrabId),
+        supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo, valor_total').eq('p_trab_id', ptrabId),
+        supabase.from('classe_vi_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, valor_total').eq('p_trab_id', ptrabId),
+        supabase.from('classe_vii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, valor_total').eq('p_trab_id', ptrabId),
+        supabase.from('classe_viii_saude_registros').select('*, itens_saude, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, valor_total').eq('p_trab_id', ptrabId),
+        supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais, om_detentora, ug_detentora, valor_total').eq('p_trab_id', ptrabId),
+        supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo, valor_total').eq('p_trab_id', ptrabId),
+        supabase.from('classe_iii_registros').select('*, detalhamento_customizado, itens_equipamentos, fase_atividade, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, categoria').eq('p_trab_id', ptrabId),
         supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", ptrabId).maybeSingle(),
         supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId), 
         supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId), 
@@ -745,13 +720,13 @@ const PTrabReportManager = () => {
 
       // CORREÇÃO: Mapeamento de dados do DB (snake_case) para a interface local (camelCase)
       const allClasseItems = [
-        ...(classeIIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
-        ...(classeVData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
-        ...(classeVIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
-        ...(classeVIIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
-        ...(classeVIIISaudeData || []).map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: 0 })),
-        ...(classeVIIIRemontaData || []).map(r => ({ ...r, itens_equipamentos: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: 0 })),
-        ...(classeIXData || []).map(r => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
+        ...(classeIIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo, valor_total: r.valor_total })),
+        ...(classeVData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo, valor_total: r.valor_total })),
+        ...(classeVIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: 0, valor_total: r.valor_total })),
+        ...(classeVIIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: 0, valor_total: r.valor_total })),
+        ...(classeVIIISaudeData || []).map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: 0, valor_total: r.valor_total })),
+        ...(classeVIIIRemontaData || []).map(r => ({ ...r, itens_equipamentos: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: 0, valor_total: r.valor_total })),
+        ...(classeIXData || []).map(r => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo, valor_total: r.valor_total })),
       ] as ClasseIIRegistro[];
 
       setPtrabData(ptrab as PTrabData);
@@ -802,6 +777,12 @@ const PTrabReportManager = () => {
           fase_atividade: r.fase_atividade || null,
           detalhamento: r.detalhamento || null,
           detalhamento_customizado: r.detalhamento_customizado || null,
+          // Garantir que campos obrigatórios do DB estejam presentes
+          nr_viagens: r.nr_viagens || 1,
+          quantidade: r.quantidade || 0,
+          organizacao: r.organizacao,
+          ug: r.ug,
+          dias_operacao: r.dias_operacao,
       })) as DiariaRegistro[]);
       
       // NOVO: Processar Verba Operacional e Suprimento de Fundos
@@ -839,6 +820,7 @@ const PTrabReportManager = () => {
           fase_atividade: r.fase_atividade || null,
           detalhamento: r.detalhamento || null,
           detalhamento_customizado: r.detalhamento_customizado || null,
+          valor_nd_30: r.valor_nd_30 || 0, // Adicionado
       })) as PassagemRegistro[]);
       
     } catch (error) {
