@@ -52,7 +52,7 @@ const App = () => (
                 <Route path="/ptrab" element={<PTrabManager />} />
                 <Route path="/ptrab/form" element={<PTrabForm />} />
                 <Route path="/ptrab/print" element={<PTrabReportManager />} />
-                <Route path="/ptrab/classe-i" element={<ClasseIForm />} />
+                <Route path="/ptrab/classe-i/:ptrabId" element={<ClasseIForm />} /> {/* Rota corrigida */}
                 <Route path="/ptrab/classe-ii" element={<ClasseIIForm />} />
                 <Route path="/ptrab/classe-v" element={<ClasseVForm />} />
                 <Route path="/ptrab/classe-vi" element={<ClasseVIForm />} />

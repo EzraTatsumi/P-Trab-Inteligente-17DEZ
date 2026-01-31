@@ -101,10 +101,14 @@ const useDiretrizesCusteio = (year: number | null) => {
 };
 
 // Hook para buscar registros existentes
-const useClasseIRecords = (ptrabId: string) => {
+const useClasseIRecords = (ptrabId: string | undefined) => {
   return useQuery<ClasseIRegistro[], Error>({
     queryKey: ['classeIRecords', ptrabId],
+    // Adiciona 'enabled' para garantir que a query só rode se ptrabId for uma string válida
+    enabled: !!ptrabId, 
     queryFn: async () => {
+      if (!ptrabId) return []; // Deve ser pego pelo 'enabled', mas é um bom fallback
+      
       const { data, error } = await supabase
         .from('classe_i_registros')
         .select('*')
@@ -164,7 +168,8 @@ const ClasseIForm = () => {
   }, []);
 
   const { data: diretrizData, isLoading: isLoadingDiretriz } = useDiretrizesCusteio(anoReferencia);
-  const { data: records, isLoading: isLoadingRecords } = useClasseIRecords(ptrabId || "");
+  // Passa ptrabId diretamente (pode ser string ou undefined)
+  const { data: records, isLoading: isLoadingRecords } = useClasseIRecords(ptrabId); 
 
   const isLoading = isLoadingRecords || isLoadingDiretriz || isFetchingYear;
 
@@ -187,7 +192,8 @@ const ClasseIForm = () => {
   });
 
   useEffect(() => {
-    if (records && records.length > 0) {
+    // Verifica se records existe e tem dados, e se ptrabId está presente
+    if (records && records.length > 0 && ptrabId) {
       const formattedRecords: ClasseIFormValues['registros'] = records.map(record => ({
         ...record,
         // O tipo 'categoria' do Supabase é 'string', mas o Zod espera a união.
@@ -205,8 +211,8 @@ const ClasseIForm = () => {
         total_geral: numberToRawDigits(record.total_geral),
       }));
       form.reset({ registros: formattedRecords });
-    } else if (!isLoadingRecords && !ptrabId) {
-      // Adiciona um registro vazio se não houver registros e não estiver carregando
+    } else if (!isLoadingRecords && ptrabId) {
+      // Se não houver registros, mas o ptrabId estiver presente, inicia com um registro vazio
       append({
         ...defaultClasseIConfig.registro_vazio,
         valor_qs: numberToRawDigits(valorQs),
@@ -442,6 +448,10 @@ const ClasseIForm = () => {
   };
   
   const handleAdd = () => {
+    if (!ptrabId) {
+        toast.error("É necessário um ID de PTrab para adicionar registros.");
+        return;
+    }
     append({
       ...defaultClasseIConfig.registro_vazio,
       valor_qs: numberToRawDigits(valorQs),
@@ -456,6 +466,24 @@ const ClasseIForm = () => {
       return sum + numericValue;
     }, 0);
   }, [fields, form.watch('registros')]); // Re-calcula quando os registros mudam
+
+  if (!ptrabId) {
+    return (
+        <div className="p-6 space-y-4">
+            <h1 className="text-2xl font-bold">Classe I - Suprimento</h1>
+            <Alert variant="destructive">
+                <AlertTitle>P Trab não selecionado</AlertTitle>
+                <AlertDescription>
+                    Por favor, selecione ou crie um Plano de Trabalho antes de acessar este formulário.
+                </AlertDescription>
+            </Alert>
+            <Button onClick={() => navigate('/ptrab')} className="gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Voltar para Gerenciador de P Trab
+            </Button>
+        </div>
+    );
+  }
 
   if (isLoading) {
     return (
