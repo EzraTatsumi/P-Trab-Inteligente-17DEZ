@@ -14,11 +14,11 @@ import { OMData } from "@/lib/omUtils";
 import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodug } from "@/lib/formatUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DiretrizPassagem, TrechoPassagem, TipoTransporte, DiretrizPassagemForm } from "@/types/diretrizesPassagens";
+import { TrechoPassagem, TipoTransporte, DiretrizPassagemForm } from "@/types/diretrizesPassagens";
 import CurrencyInput from "@/components/CurrencyInput";
 import { DatePicker } from "@/components/DatePicker";
 import { format, parseISO } from "date-fns";
-import { Tables } from "@/integrations/supabase/types"; // Importando Tables
+import { Tables, Json } from "@/integrations/supabase/types"; // Importando Tables e Json
 
 // Definindo o tipo de Diretriz de Passagem como a Row da tabela Supabase
 type DiretrizPassagemRow = Tables<'diretrizes_passagens'>;
@@ -72,7 +72,8 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
         om_referencia: diretrizToEdit?.om_referencia || '',
         ug_referencia: diretrizToEdit?.ug_referencia || '',
         numero_pregao: diretrizToEdit?.numero_pregao || '',
-        trechos: (diretrizToEdit?.trechos as TrechoPassagem[]) || [],
+        // CORREÇÃO 1: Usar 'as unknown as TrechoPassagem[]'
+        trechos: (diretrizToEdit?.trechos as unknown as TrechoPassagem[]) || [], 
         id: diretrizToEdit?.id,
         data_inicio_vigencia: null,
         data_fim_vigencia: null,
@@ -88,9 +89,9 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                 om_referencia: diretrizToEdit.om_referencia,
                 ug_referencia: diretrizToEdit.ug_referencia,
                 numero_pregao: diretrizToEdit.numero_pregao || '',
-                trechos: (diretrizToEdit.trechos as TrechoPassagem[]),
+                // CORREÇÃO 2: Usar 'as unknown as TrechoPassagem[]'
+                trechos: (diretrizToEdit.trechos as unknown as TrechoPassagem[]),
                 id: diretrizToEdit.id,
-                // CORREÇÃO: As propriedades agora existem no tipo DiretrizPassagemRow
                 data_inicio_vigencia: diretrizToEdit.data_inicio_vigencia ? parseISO(diretrizToEdit.data_inicio_vigencia) : null,
                 data_fim_vigencia: diretrizToEdit.data_fim_vigencia ? parseISO(diretrizToEdit.data_fim_vigencia) : null,
             });
@@ -206,6 +207,8 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
             id: passagemForm.id,
             data_inicio_vigencia: passagemForm.data_inicio_vigencia ? format(passagemForm.data_inicio_vigencia, 'yyyy-MM-dd') : null,
             data_fim_vigencia: passagemForm.data_fim_vigencia ? format(passagemForm.data_fim_vigencia, 'yyyy-MM-dd') : null,
+            // CORREÇÃO 3: Converter TrechoPassagem[] para Json (JSONB)
+            trechos: passagemForm.trechos as unknown as Json,
         };
 
         await onSave(dataToSave);
