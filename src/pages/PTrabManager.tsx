@@ -1090,7 +1090,12 @@ const PTrabManager = () => {
 
   const cloneRelatedRecords = async (originalPTrabId: string, newPTrabId: string) => {
     
-    const cloneClassRecords = async (tableName: PTrabLinkedTableName, jsonbField: keyof Tables<PTrabLinkedTableName> | null, numericFields: string[]) => {
+    // Refatoração da função cloneClassRecords para aceitar o tipo T genérico
+    const cloneClassRecords = async <T extends PTrabLinkedTableName>(
+        tableName: T, 
+        jsonbField: keyof Tables<T> | null, 
+        numericFields: string[]
+    ) => {
         // CORREÇÃO: Usar 'as any' no from para permitir o nome dinâmico, mas tipar o retorno
         const { data: originalRecords, error: fetchError } = await (supabase.from(tableName) as any)
             .select('*')
@@ -1102,7 +1107,7 @@ const PTrabManager = () => {
         }
 
         // CORREÇÃO: Garantir que originalRecords é um array de objetos com as propriedades esperadas
-        const typedRecords = originalRecords as Tables<typeof tableName>[];
+        const typedRecords = originalRecords as Tables<T>[];
 
         const newRecords = (typedRecords || []).map(record => {
             // CORREÇÃO: Desestruturação segura para remover campos de sistema
@@ -1114,8 +1119,8 @@ const PTrabManager = () => {
             };
             
             // Clonar campos JSONB se existirem
-            if (jsonbField && newRecord[jsonbField]) {
-                newRecord[jsonbField] = JSON.parse(JSON.stringify(newRecord[jsonbField]));
+            if (jsonbField && newRecord[jsonbField as string]) {
+                newRecord[jsonbField as string] = JSON.parse(JSON.stringify(newRecord[jsonbField as string]));
             }
             
             numericFields.forEach(field => {
@@ -1130,7 +1135,7 @@ const PTrabManager = () => {
         if (newRecords.length > 0) {
             // CORREÇÃO: Usar 'as any' no insert para permitir o nome dinâmico
             const { error: insertError } = await (supabase.from(tableName) as any)
-                .insert(newRecords as TablesInsert<typeof tableName>[]);
+                .insert(newRecords as TablesInsert<T>[]);
             
             if (insertError) {
                 console.error(`ERRO DE INSERÇÃO ${tableName}:`, insertError);
@@ -1185,6 +1190,7 @@ const PTrabManager = () => {
     
     const genericNumericFields = ['dias_operacao', 'valor_total', 'valor_nd_30', 'valor_nd_39', 'efetivo'];
 
+    // CORREÇÕES APLICADAS AQUI (Linhas 1188, 1234-1239, 1268)
     await cloneClassRecords('classe_ii_registros', 'itens_equipamentos', genericNumericFields);
 
     const classeIIINumericFields = [
@@ -2357,7 +2363,7 @@ const PTrabManager = () => {
                 <p className="text-sm text-muted-foreground text-center">
                   Cria uma variação do P Trab atual, gerando um novo número de Minuta.
                 </p>
-              </Label>
+              </p>
             </RadioGroup>
           </div>
           <DialogFooter>
