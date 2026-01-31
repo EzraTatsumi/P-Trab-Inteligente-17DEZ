@@ -16,6 +16,7 @@ import {
   PassagemRegistro, // ADDED
 } from "@/pages/PTrabReportManager"; 
 import { DIARIA_RANKS_CONFIG } from "@/lib/diariaUtils";
+import { generateConsolidatedPassagemMemoriaCalculo, ConsolidatedPassagemRecord } from "@/lib/passagemUtils"; // Importando utilitários de consolidação
 
 interface PTrabOperacionalReportProps {
   ptrabData: PTrabData;
@@ -68,6 +69,10 @@ const getArticleForOM = (omName: string): 'DO' | 'DA' => {
     return 'DA';
 };
 
+// NOVO TIPO: Representa um lote consolidado de Passagens para o relatório
+interface ConsolidatedPassagemReport extends ConsolidatedPassagemRecord {
+    groupKey: string;
+}
 
 const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   ptrabData,
@@ -88,8 +93,9 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   const diasOperacao = useMemo(() => calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim), [ptrabData]);
   
   // NOVO: Agrupamento por OM (Diária, Verba Operacional e Suprimento de Fundos, Passagens)
-  const registrosAgrupadosPorOM = useMemo(() => {
+  const { registrosAgrupadosPorOM, consolidatedPassagens } = useMemo(() => {
     const groups: Record<string, { diarias: DiariaRegistro[], verbas: VerbaOperacionalRegistro[], suprimentos: VerbaOperacionalRegistro[], passagens: PassagemRegistro[] }> = {};
+    const consolidatedPassagensMap: Record<string, ConsolidatedPassagemReport> = {};
 
     const initializeGroup = (om: string, ug: string) => {
         const omKey = `${om} (${ug})`;
@@ -107,7 +113,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     
     // 2. Agrupar Verba Operacional (OM Detentora do Recurso)
     registrosVerbaOperacional.forEach(registro => {
-        // A OM Detentora é a OM de destino do recurso (om_detentora/ug_detentora)
         const omDetentora = registro.om_detentora || registro.organizacao;
         const ugDetentora = registro.ug_detentora || registro.ug;
         
@@ -117,7 +122,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     
     // 3. Agrupar Suprimento de Fundos (OM Detentora do Recurso)
     registrosSuprimentoFundos.forEach(registro => {
-        // A OM Detentora é a OM de destino do recurso (om_detentora/ug_detentora)
         const omDetentora = registro.om_detentora || registro.organizacao;
         const ugDetentora = registro.ug_detentora || registro.ug;
         
@@ -125,17 +129,54 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         group.suprimentos.push(registro);
     });
     
-    // 4. Agrupar Passagens (OM Detentora do Recurso)
+    // 4. Agrupar Passagens (Consolidado por Lote de Solicitação)
     registrosPassagem.forEach(registro => {
-        // A OM Detentora é a OM de destino do recurso (om_detentora/ug_detentora)
+        // Chave de consolidação: OM Favorecida, OM Detentora, Dias, Efetivo, Fase
+        const consolidationKey = [
+            registro.organizacao,
+            registro.ug,
+            registro.om_detentora,
+            registro.ug_detentora,
+            registro.dias_operacao,
+            registro.efetivo,
+            registro.fase_atividade,
+        ].join('|');
+        
+        // Chave de agrupamento no relatório (OM Detentora do Recurso)
         const omDetentora = registro.om_detentora || registro.organizacao;
         const ugDetentora = registro.ug_detentora || registro.ug;
+        const omKey = `${omDetentora} (${ugDetentora})`;
         
-        const group = initializeGroup(omDetentora, ugDetentora);
-        group.passagens.push(registro);
+        const reportGroup = initializeGroup(omDetentora, ugDetentora);
+        reportGroup.passagens.push(registro); // Adiciona ao grupo de relatório (apenas para cálculo de subtotal)
+        
+        // Cria ou atualiza o registro consolidado
+        if (!consolidatedPassagensMap[consolidationKey]) {
+            consolidatedPassagensMap[consolidationKey] = {
+                groupKey: consolidationKey,
+                organizacao: registro.organizacao,
+                ug: registro.ug,
+                om_detentora: omDetentora,
+                ug_detentora: ugDetentora,
+                dias_operacao: registro.dias_operacao,
+                efetivo: registro.efetivo || 0,
+                fase_atividade: registro.fase_atividade || '',
+                records: [],
+                totalGeral: 0,
+                totalND33: 0,
+            };
+        }
+        
+        const consolidated = consolidatedPassagensMap[consolidationKey];
+        consolidated.records.push(registro);
+        consolidated.totalGeral += Number(registro.valor_total || 0);
+        consolidated.totalND33 += Number(registro.valor_nd_33 || 0);
     });
     
-    return groups;
+    // Ordenar os grupos consolidados para exibição
+    const consolidatedPassagens = Object.values(consolidatedPassagensMap).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
+
+    return { registrosAgrupadosPorOM: groups, consolidatedPassagens };
   }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem]);
 
   // Calcula os totais gerais de cada ND com base nos registros de Diária e Verba Operacional
@@ -254,7 +295,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, totaisND, fileSuffix, diasOperacao, generateDiariaMemoriaCalculo, registrosDiaria, diretrizesOperacionais, toast, registrosVerbaOperacional, generateVerbaOperacionalMemoriaCalculo, registrosSuprimentoFundos, generateSuprimentoFundosMemoriaCalculo, registrosPassagem, generatePassagemMemoriaCalculo]);
+  }, [ptrabData, totaisND, fileSuffix, diasOperacao, generateDiariaMemoriaCalculo, diretrizesOperacionais, toast, registrosAgrupadosPorOM]);
 
   // Função para Imprimir (Abre a caixa de diálogo de impressão)
   const handlePrint = useCallback(() => {
@@ -541,21 +582,29 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             currentRow++;
         });
         
-        // --- 2. Render Passagens --- (NOVO)
-        group.passagens.forEach(registro => {
+        // --- 2. Render Passagens (CONSOLIDADO) ---
+        // Filtra os registros consolidados que pertencem a esta OM Detentora
+        const passagensConsolidadasDesteGrupo = consolidatedPassagens.filter(c => 
+            c.om_detentora === omName && c.ug_detentora === ug
+        );
+        
+        passagensConsolidadasDesteGrupo.forEach(consolidated => {
             const row = worksheet.getRow(currentRow);
-            const totalLinha = registro.valor_nd_33;
+            const totalLinha = consolidated.totalND33;
             
-            // OM Detentora do Recurso
-            const omDetentora = registro.om_detentora || registro.organizacao;
-            const ugDetentora = registro.ug_detentora || registro.ug;
+            // Verifica se a OM Favorecida é diferente da OM Detentora
+            const isDifferentOm = consolidated.organizacao !== consolidated.om_detentora || consolidated.ug !== consolidated.ug_detentora;
             
-            // A: DESPESAS
-            row.getCell('A').value = `PASSAGENS`; 
+            // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente)
+            let despesasLabel = `PASSAGENS`;
+            if (isDifferentOm) {
+                despesasLabel += `\n(${consolidated.organizacao})`;
+            }
+            row.getCell('A').value = despesasLabel; 
             row.getCell('A').alignment = leftMiddleAlignment; 
             
             // B: OM (UGE) CODUG (OM Detentora do Recurso)
-            row.getCell('B').value = `${omDetentora}\n(${formatCodug(ugDetentora)})`;
+            row.getCell('B').value = `${consolidated.om_detentora}\n(${formatCodug(consolidated.ug_detentora)})`;
             row.getCell('B').alignment = dataCenterMiddleAlignment; 
             
             // C: 33.90.15 (0)
@@ -571,7 +620,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('D').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // E: 33.90.33 (Passagens ND 33)
-            row.getCell('E').value = registro.valor_nd_33;
+            row.getCell('E').value = consolidated.totalND33;
             row.getCell('E').alignment = dataCenterMiddleAlignment;
             row.getCell('E').numFmt = 'R$ #,##0.00';
             row.getCell('E').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
@@ -595,7 +644,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('H').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: corND } }; 
             
             // I: DETALHAMENTO
-            const memoria = generatePassagemMemoriaCalculo(registro);
+            // A memória deve ser gerada de forma consolidada, priorizando a customizada do primeiro registro
+            const firstRecord = consolidated.records[0];
+            let memoria = firstRecord.detalhamento_customizado || generateConsolidatedPassagemMemoriaCalculo(consolidated);
+            
             row.getCell('I').value = memoria;
             row.getCell('I').alignment = leftTopAlignment; 
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
@@ -923,7 +975,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
       description: "O relatório Operacional foi salvo com sucesso.",
       duration: 3000,
     });
-  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, generatePassagemMemoriaCalculo, diretrizesOperacionais, toast, registrosAgrupadosPorOM]);
+  }, [consolidatedPassagens, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, diretrizesOperacionais, toast, registrosAgrupadosPorOM]);
 
 
   if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0 && registrosSuprimentoFundos.length === 0 && registrosPassagem.length === 0) {
@@ -1066,32 +1118,44 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             );
                         })}
                         
-                        {/* --- 2. Render Passagens --- (NOVO) */}
-                        {group.passagens.map((registro, index) => {
-                            const totalLinha = registro.valor_nd_33;
+                        {/* --- 2. Render Passagens (CONSOLIDADO) --- */}
+                        {/* Filtra os registros consolidados que pertencem a esta OM Detentora */}
+                        {consolidatedPassagens.filter(c => 
+                            c.om_detentora === omName && c.ug_detentora === ug
+                        ).map((consolidated) => {
+                            const totalLinha = consolidated.totalND33;
+                            const firstRecord = consolidated.records[0];
                             
-                            // OM Detentora do Recurso
-                            const omDetentora = registro.om_detentora || registro.organizacao;
-                            const ugDetentora = registro.ug_detentora || registro.ug;
+                            // Verifica se a OM Favorecida é diferente da OM Detentora
+                            const isDifferentOm = consolidated.organizacao !== consolidated.om_detentora || consolidated.ug !== consolidated.ug_detentora;
+                            
+                            // A memória deve ser gerada de forma consolidada, priorizando a customizada do primeiro registro
+                            let memoria = firstRecord.detalhamento_customizado || generateConsolidatedPassagemMemoriaCalculo(consolidated);
+                            
+                            // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente)
+                            let despesasLabel = `PASSAGENS`;
+                            if (isDifferentOm) {
+                                despesasLabel += `\n(${consolidated.organizacao})`;
+                            }
                             
                             return (
-                                <tr key={`passagem-${registro.id}`} className="expense-row">
+                                <tr key={`passagem-consolidada-${consolidated.groupKey}`} className="expense-row">
                                   <td className="col-despesas-op"> 
-                                    PASSAGENS
+                                    {despesasLabel}
                                   </td>
                                   <td className="col-om-op">
-                                    <div>{omDetentora}</div>
-                                    <div>({formatCodug(ugDetentora)})</div>
+                                    <div>{consolidated.om_detentora}</div>
+                                    <div>({formatCodug(consolidated.ug_detentora)})</div>
                                   </td>
                                   <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.15 */}
                                   <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.30 */}
-                                  <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_33)}</td> {/* 33.90.33 */}
+                                  <td className="col-nd-op-small">{formatCurrency(consolidated.totalND33)}</td> {/* 33.90.33 */}
                                   <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.39 */}
                                   <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.00 */}
                                   <td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
                                   <td className="col-detalhamento-op">
                                     <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
-                                      {generatePassagemMemoriaCalculo(registro)}
+                                      {memoria}
                                     </div>
                                   </td>
                                 </tr>
