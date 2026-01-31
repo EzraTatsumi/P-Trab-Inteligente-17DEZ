@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 const SharePage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, loading: loadingSession } = useSession();
+  const { user, isLoading: loadingSession } = useSession();
   const [status, setStatus] = useState<'loading' | 'processing' | 'error' | 'success'>('loading');
 
   const ptrabId = searchParams.get('ptrabId');
