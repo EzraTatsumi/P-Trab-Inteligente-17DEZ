@@ -1091,7 +1091,7 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
             MOTOMECANIZACAO: { litros: 0, valor: 0 },
         };
         
-        (r.itens_equipamentos as ItemClasseIII[] || []).forEach((item: any) => {
+        (r.itens_equipamentos as any as ItemClasseIII[] || []).forEach((item: any) => {
             const categoria = item.categoria as TipoEquipamento;
             const totals = calculateItemTotals(item, refLPC, r.dias_operacao);
             
@@ -1142,7 +1142,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       
       if (isCombustivel) {
         // Combustível: Mantém a lógica granular por item (separado por tipo de combustível)
-        (r.itens_equipamentos as ItemClasseIII[] || []).forEach((item: any, index) => {
+        // FIX 2: Corrigindo a conversão de tipo
+        (r.itens_equipamentos as any as ItemClasseIII[] || []).forEach((item: any, index) => {
           const { itemTotal } = calculateItemTotals(item, refLPC, r.dias_operacao);
           if (itemTotal > 0) {
             
@@ -1170,7 +1171,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
         });
       } else if (isLubrificante) {
         // Lubrificante: Agrupa por OM Detentora do Equipamento e Categoria (Gerador/Embarcação)
-        (r.itens_equipamentos as ItemClasseIII[] || []).forEach((item: any) => {
+        // FIX 3: Corrigindo a conversão de tipo
+        (r.itens_equipamentos as any as ItemClasseIII[] || []).forEach((item: any) => {
             const { itemTotal } = calculateItemTotals(item, refLPC, r.dias_operacao);
             if (itemTotal > 0) {
                 // Chave de agrupamento: OM_DESTINO_UG_DESTINO-CATEGORIA
@@ -1526,7 +1528,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       const targetCategory = isSavingLubricant ? parts[parts.length - 2] : null; 
       
       // 2. Encontrar o item granular correspondente no array itens_equipamentos
-      const itensEquipamentos = (registroOriginal.itens_equipamentos as ItemClasseIII[] || []).map((item: any) => {
+      // FIX 4: Corrigindo a conversão de tipo
+      const itensEquipamentos = (registroOriginal.itens_equipamentos as any as ItemClasseIII[] || []).map((item: any) => {
           let currentGranularId = '';
           
           // Lógica para gerar o ID granular do item atual (deve ser idêntica à lógica em getMemoriaRecords)
@@ -1596,7 +1599,8 @@ Valor: ${formatNumber(totalLitros)} L ${unidadeLabel} x ${formatCurrency(precoLi
       const targetCategory = isRestoringLubricant ? parts[parts.length - 2] : null; 
       
       // 2. Encontrar o item granular correspondente no array itens_equipamentos e remover a memória customizada
-      const itensEquipamentos = (registroOriginal.itens_equipamentos as ItemClasseIII[] || []).map((item: any) => {
+      // FIX 5: Corrigindo a conversão de tipo
+      const itensEquipamentos = (registroOriginal.itens_equipamentos as any as ItemClasseIII[] || []).map((item: any) => {
           let currentGranularId = '';
           
           // Lógica para gerar o ID granular do item atual (deve ser idêntica à lógica em getMemoriaRecords)
