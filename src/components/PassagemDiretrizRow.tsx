@@ -7,10 +7,14 @@ import { DiretrizPassagem, TrechoPassagem, TipoTransporte } from "@/types/diretr
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { format } from 'date-fns';
+import { Tables } from "@/integrations/supabase/types"; // Importando Tables
+
+// Usando o tipo de Row do Supabase para garantir que as propriedades de data existam
+type DiretrizPassagemRow = Tables<'diretrizes_passagens'>;
 
 interface PassagemDiretrizRowProps {
-    diretriz: DiretrizPassagem;
-    onEdit: (diretriz: DiretrizPassagem) => void;
+    diretriz: DiretrizPassagemRow; // Usando o tipo corrigido
+    onEdit: (diretriz: DiretrizPassagemRow) => void;
     onDelete: (id: string, omName: string) => void;
     loading: boolean;
 }
@@ -26,11 +30,14 @@ const getTransportIcon = (tipo: TipoTransporte) => {
 
 const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onEdit, onDelete, loading }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const hasTrechos = diretriz.trechos.length > 0;
+    // CORREÇÃO: O campo trechos é Json, mas sabemos que é TrechoPassagem[]
+    const trechos = diretriz.trechos as unknown as TrechoPassagem[];
+    const hasTrechos = trechos.length > 0;
     
     const formatDate = (dateString: string | null | undefined) => {
         if (!dateString) return 'N/A';
         try {
+            // O campo de data do Supabase é string (ISO 8601)
             return format(new Date(dateString), 'dd/MM/yyyy');
         } catch {
             return 'Inválida';
@@ -64,7 +71,7 @@ const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onE
                 
                 {/* Trechos (com botão de colapsar próximo) */}
                 <TableCell className="text-center flex items-center justify-center h-[60px]">
-                    <span className="mr-1">{diretriz.trechos.length}</span>
+                    <span className="mr-1">{trechos.length}</span>
                     {/* Botão de Colapsar/Expandir */}
                     <Button 
                         variant="ghost" 
@@ -109,9 +116,9 @@ const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onE
                         <Collapsible open={isOpen}>
                             <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
                                 <div className="p-4 bg-muted/50 border-t border-border">
-                                    <h5 className="text-sm font-semibold mb-2">Trechos Cadastrados ({diretriz.trechos.length})</h5>
+                                    <h5 className="text-sm font-semibold mb-2">Trechos Cadastrados ({trechos.length})</h5>
                                     <div className="space-y-2">
-                                        {diretriz.trechos.map((trecho, index) => (
+                                        {trechos.map((trecho, index) => (
                                             <div key={trecho.id} className="flex items-center justify-between text-sm p-2 bg-background rounded-md shadow-sm border">
                                                 <div className="flex items-center gap-3 font-medium">
                                                     {getTransportIcon(trecho.tipo_transporte)}
