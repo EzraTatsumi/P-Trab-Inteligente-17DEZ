@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Tables } from "@/integrations/supabase/types"; // Importar Tables
 
 // Define the category constants
 const CATEGORIAS_CLASSE_II = ["Equipamento Individual", "Proteção Balística", "Material de Estacionamento"];
@@ -63,7 +64,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
 
   (classeIData || []).forEach(record => {
     if (record.categoria === 'RACAO_QUENTE') {
-        // Garantir que todos os campos numéricos sejam tratados como números
+        // Usando snake_case (formato do DB)
         const totalQs = Number(record.total_qs || 0);
         const totalQr = Number(record.total_qr || 0);
         const complementoQs = Number(record.complemento_qs || 0);
@@ -83,6 +84,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
         
         totalRefeicoesIntermediarias += efetivo * nrRefInt * diasOperacao;
     } else if (record.categoria === 'RACAO_OPERACIONAL') {
+        // Usando snake_case (formato do DB)
         totalRacoesOperacionaisGeral += Number(record.quantidade_r2 || 0) + Number(record.quantidade_r3 || 0);
     }
   });
@@ -175,21 +177,21 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const safePassagemData = passagemData || []; // NOVO
   
   const allClasseItemsData = [
-    ...safeClasseIIData,
-    ...safeClasseVData,
-    ...safeClasseVIData,
-    ...safeClasseVIIData,
-    ...safeClasseVIIISaudeData.map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde' })),
+    ...safeClasseIIData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos as ItemClasseII[] })),
+    ...safeClasseVData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos as ItemClasseII[] })),
+    ...safeClasseVIData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos as ItemClasseII[] })),
+    ...safeClasseVIIData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos as ItemClasseII[] })),
+    ...safeClasseVIIISaudeData.map(r => ({ ...r, itens_equipamentos: r.itens_saude as ItemClasseII[], categoria: 'Saúde' })),
     ...safeClasseVIIIRemontaData.map(r => ({ 
         ...r, 
-        itens_equipamentos: r.itens_remonta, 
+        itens_equipamentos: r.itens_remonta as ItemClasseII[], 
         categoria: 'Remonta/Veterinária',
         animal_tipo: r.animal_tipo,
         quantidade_animais: r.quantidade_animais,
     })),
     ...safeClasseIXData.map(r => ({ // NOVO
         ...r, 
-        itens_equipamentos: r.itens_motomecanizacao, 
+        itens_equipamentos: r.itens_motomecanizacao as ItemClasseII[], 
         categoria: r.categoria,
     })),
   ];
@@ -232,7 +234,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   
   (allClasseItemsData || []).forEach(record => {
     const category = record.categoria;
-    const items = (record.itens_equipamentos || []) as ItemClasseII[];
+    // O cast para ItemClasseII[] é feito acima, mas precisamos garantir que o tipo seja tratado como array
+    const items = (record.itens_equipamentos || []) as ItemClasseII[]; 
     // Garante que a quantidade de itens é numérica
     const totalItemsCategory = items.reduce((sum, item) => sum + (Number(item.quantidade) || 0), 0); 
     
@@ -530,8 +533,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     
     // Diárias
     totalDiarias,
-    totalDiariasND15: totalDiariasND15_TaxaEmbarque, // Taxa de Embarque (ND 15)
-    totalDiariasND30: totalDiariasND15_DiariaBase, // Diárias (valor principal)
+    totalDiariasND15: totalDiariasND15_DiariaBase, // Diárias (valor principal)
+    totalDiariasND30: totalDiariasND15_TaxaEmbarque, // Taxa de Embarque (ND 30) - CORRIGIDO: Taxa de Embarque é ND 30
     totalMilitaresDiarias,
     totalDiasViagem, // Total de dias de viagem
     
@@ -1204,11 +1207,11 @@ export const PTrabCostSummary = ({
                           
                           {/* NOVO: Linha de Detalhe Consolidada */}
                           <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                            <span className="w-1/2 text-left font-semibold">Taxa de Embarque / Diárias (ND 15)</span>
+                            <span className="w-1/2 text-left font-semibold">Diárias Base / Taxa Embarque (ND 30)</span>
                             <span className="w-1/4 text-right font-medium text-green-600">
                                 {formatCurrency(totals.totalDiariasND15)}
                             </span>
-                            <span className="w-1/4 text-right font-medium text-green-600">
+                            <span className="w-1/4 text-right font-medium text-blue-600">
                                 {formatCurrency(totals.totalDiariasND30)}
                             </span>
                           </div>

@@ -16,7 +16,8 @@ export interface TrechoSelection extends TrechoPassagem {
     diretriz_id: string;
     om_detentora: string;
     ug_detentora: string;
-    quantidade_passagens: number; // Quantidade solicitada para este trecho
+    quantidade_passagens: number; // Quantidade solicitada para este trecho (snake_case para consistência com o DB)
+    valor_unitario: number; // Valor unitário (snake_case para consistência com o DB)
     // Nota: O ID do trecho é herdado de TrechoPassagem (propriedade 'id')
 }
 
