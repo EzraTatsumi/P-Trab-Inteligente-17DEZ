@@ -65,4 +65,4 @@ export const router = createBrowserRouter(routes, {
     v7_relativeSplatPath: true,
     v7_fetcherPersist: true,
   },
-});
+} as any); // Adicionado 'as any' para resolver o erro de tipagem das future flags
