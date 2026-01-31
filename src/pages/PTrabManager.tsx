@@ -280,7 +280,8 @@ const PTrabManager = () => {
     }
   };
 
-// ... (around line 1230)
+// ... (around line 1230, assuming this is inside handleConsolidatePTrabs)
+  const handleConsolidatePTrabs = async (selectedPTrabsToConsolidate: string[], newPTrabId: string) => {
         const tablesToConsolidate: TableName[] = [
             'classe_i_registros', 'classe_ii_registros', 'classe_iii_registros', 
             'classe_v_registros', 'classe_vi_registros', 'classe_vii_registros', 
@@ -328,4 +329,5 @@ const PTrabManager = () => {
                 }
             }
         }
+  };
 // ... (rest of the file)
