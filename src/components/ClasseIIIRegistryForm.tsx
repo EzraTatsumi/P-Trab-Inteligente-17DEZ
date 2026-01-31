@@ -12,6 +12,12 @@ import { formatCurrency, formatNumber, formatNumberForInput } from "@/lib/format
 // Tipagem simplificada para o registro
 type ClasseIIIRegistry = Tables<'classe_iii_registros'>;
 
+// Tipo auxiliar para o estado local, onde os campos de preço são strings para manipulação de input
+type LocalClasseIIIRegistryForm = Omit<ClasseIIIRegistry, 'id' | 'created_at' | 'updated_at' | 'preco_litro' | 'preco_lubrificante'> & {
+    preco_litro: string;
+    preco_lubrificante: string;
+};
+
 interface ClasseIIIRegistryFormProps {
   ptrabId: string;
   initialData?: ClasseIIIRegistry | null;
@@ -41,7 +47,7 @@ const ClasseIIIRegistryForm = ({
   onCancel,
   loading,
 }: ClasseIIIRegistryFormProps) => {
-  const [formData, setFormData] = useState<Omit<ClasseIIIRegistry, 'id' | 'created_at' | 'updated_at'>>({
+  const [formData, setFormData] = useState<LocalClasseIIIRegistryForm>({
     p_trab_id: ptrabId,
     tipo_combustivel: initialData?.tipo_combustivel || 'gasolina',
     quantidade: initialData?.quantidade || 0,
@@ -52,11 +58,33 @@ const ClasseIIIRegistryForm = ({
     preco_lubrificante: initialData?.preco_lubrificante ? formatDecimalInput(String(initialData.preco_lubrificante)) : '', // Inicializa com string vazia se 0
     itens_equipamentos: initialData?.itens_equipamentos || null,
     dias_operacao: initialData?.dias_operacao || 0,
+    
+    // Campos adicionais obrigatórios que não estão sendo usados no formulário, mas são necessários para a tipagem completa
+    tipo_equipamento: initialData?.tipo_equipamento || '',
+    tipo_equipamento_detalhe: initialData?.tipo_equipamento_detalhe || null,
+    potencia_hp: initialData?.potencia_hp || null,
+    horas_dia: initialData?.horas_dia || null,
+    consumo_hora: initialData?.consumo_hora || null,
+    consumo_km_litro: initialData?.consumo_km_litro || null,
+    km_dia: initialData?.km_dia || null,
+    total_litros_sem_margem: initialData?.total_litros_sem_margem || null,
+    detalhamento: initialData?.detalhamento || null,
+    detalhamento_customizado: initialData?.detalhamento_customizado || null,
+    fase_atividade: initialData?.fase_atividade || null,
+    valor_nd_30: initialData?.valor_nd_30 || 0,
+    valor_nd_39: initialData?.valor_nd_39 || 0,
+    om_detentora: initialData?.om_detentora || null,
+    ug_detentora: initialData?.ug_detentora || null,
+    organizacao: initialData?.organizacao || '',
+    ug: initialData?.ug || '',
+    categoria: initialData?.categoria || null,
+    efetivo: initialData?.efetivo || 0,
   });
 
   useEffect(() => {
     if (initialData) {
-      setFormData({
+      setFormData(prev => ({
+        ...prev,
         p_trab_id: ptrabId,
         tipo_combustivel: initialData.tipo_combustivel,
         quantidade: initialData.quantidade,
@@ -67,7 +95,28 @@ const ClasseIIIRegistryForm = ({
         preco_lubrificante: formatDecimalInput(String(initialData.preco_lubrificante)),
         itens_equipamentos: initialData.itens_equipamentos,
         dias_operacao: initialData.dias_operacao,
-      });
+        
+        // Mapeamento de campos não exibidos, mas necessários para o tipo
+        tipo_equipamento: initialData.tipo_equipamento,
+        tipo_equipamento_detalhe: initialData.tipo_equipamento_detalhe,
+        potencia_hp: initialData.potencia_hp,
+        horas_dia: initialData.horas_dia,
+        consumo_hora: initialData.consumo_hora,
+        consumo_km_litro: initialData.consumo_km_litro,
+        km_dia: initialData.km_dia,
+        total_litros_sem_margem: initialData.total_litros_sem_margem,
+        detalhamento: initialData.detalhamento,
+        detalhamento_customizado: initialData.detalhamento_customizado,
+        fase_atividade: initialData.fase_atividade,
+        valor_nd_30: initialData.valor_nd_30,
+        valor_nd_39: initialData.valor_nd_39,
+        om_detentora: initialData.om_detentora,
+        ug_detentora: initialData.ug_detentora,
+        organizacao: initialData.organizacao,
+        ug: initialData.ug,
+        categoria: initialData.categoria,
+        efetivo: initialData.efetivo,
+      }));
     }
   }, [initialData, ptrabId]);
 
@@ -143,6 +192,7 @@ const ClasseIIIRegistryForm = ({
       return;
     }
     
+    // Prepara os dados para salvar, convertendo os campos de string de volta para number
     const dataToSave: TablesInsert<'classe_iii_registros'> | TablesUpdate<'classe_iii_registros'> = {
       ...formData,
       // Garante que os preços sejam salvos como float no DB
@@ -151,7 +201,7 @@ const ClasseIIIRegistryForm = ({
       // Garante que os totais calculados sejam salvos
       total_litros: calculateTotals.totalLitros,
       valor_total: calculateTotals.valorTotal,
-    };
+    } as TablesInsert<'classe_iii_registros'> | TablesUpdate<'classe_iii_registros'>; // Força a tipagem final
 
     await onSave(dataToSave);
   };
