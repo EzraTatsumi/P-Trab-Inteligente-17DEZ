@@ -15,7 +15,7 @@ import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { updatePTrabStatusIfAberto } from "@/lib/ptrabUtils";
 import { formatCurrency, parseInputToNumber, formatNumberForInput, formatCurrencyInput, numberToRawDigits, formatCodug } from "@/lib/formatUtils";
-import { Tables, TablesInsert } from "@/integrations/supabase/types";
+import { Tables, TablesInsert, Json } from "@/integrations/supabase/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
@@ -98,10 +98,12 @@ interface ClasseVIIIRegistro {
   fase_atividade?: string;
   valor_nd_30: number;
   valor_nd_39: number;
-  itens_saude?: Tables<'classe_viii_saude_registros'>['itens_saude']; // Usando tipo JSON do DB
+  // CORRIGIDO: Usar Json para compatibilidade com o tipo Tables do Supabase
+  itens_saude?: Json; 
   animal_tipo?: 'Equino' | 'Canino';
   quantidade_animais?: number;
-  itens_remonta?: Tables<'classe_viii_remonta_registros'>['itens_remonta']; // Usando tipo JSON do DB
+  // CORRIGIDO: Usar Json para compatibilidade com o tipo Tables do Supabase
+  itens_remonta?: Json; 
 }
 
 interface CategoryAllocation {
@@ -162,8 +164,8 @@ const ClasseVIIIForm = () => {
   // NOVOS ESTADOS: Rastreia a OM de destino temporária por categoria
   const [tempDestinations, setTempDestinations] = useState<Record<Categoria, TempDestination>>(initialTempDestinations);
   
-  // CORRIGIDO: O estado deve ser capaz de armazenar ItemSaude[] ou ItemRemonta[]
-  const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemSaude[] | ItemRemonta[]>([]);
+  // CORRIGIDO: Tipagem para aceitar a união de tipos
+  const [currentCategoryItems, setCurrentCategoryItems] = useState<ItemClasseVIII[]>([]);
   const [remontaValidationWarning, setRemontaValidationWarning] = useState<string | null>(null); // Novo estado para aviso de validação
   
   const [fasesAtividade, setFasesAtividade] = useState<string[]>(["Execução"]);
@@ -422,21 +424,21 @@ const ClasseVIIIForm = () => {
         if (saudeError) throw saudeError;
         if (remontaError) throw remontaError;
 
+        // CORRIGIDO: Usando 'as any' para forçar a tipagem do objeto completo
         const newSaudeRecords = (saudeData || []).map(r => ({
             ...r,
             categoria: 'Saúde', // Normaliza a categoria para exibição
             om_detentora: r.om_detentora || r.organizacao,
             ug_detentora: r.ug_detentora || r.ug,
-            // CORRIGIDO: Tipagem JSONB
             itens_saude: (r.itens_saude || []) as any as ItemSaude[],
         })) as ClasseVIIIRegistro[];
         
+        // CORRIGIDO: Usando 'as any' para forçar a tipagem do objeto completo
         const newRemontaRecords = (remontaData || []).map(r => ({
             ...r,
             categoria: 'Remonta/Veterinária', // Normaliza a categoria para exibição
             om_detentora: r.om_detentora || r.organizacao,
             ug_detentora: r.ug_detentora || r.ug,
-            // CORRIGIDO: Tipagem JSONB
             itens_remonta: (r.itens_remonta || []) as any as ItemRemonta[],
         })) as ClasseVIIIRegistro[];
 
@@ -499,7 +501,7 @@ const ClasseVIIIForm = () => {
         const r = saudeRecords[0]; // Apenas um registro por OM Detentora/UG Detentora/Categoria é esperado
         
         // CORRIGIDO: Acessando itens_saude que já foi tipado em fetchRegistros
-        const sanitizedItems = (r.itens_saude || []) as ItemSaude[];
+        const sanitizedItems = (r.itens_saude || []) as any as ItemSaude[];
         
         consolidatedSaude = sanitizedItems;
         
@@ -520,7 +522,7 @@ const ClasseVIIIForm = () => {
         // 3.1. Consolidar TODOS os itens de diretriz de Remonta (Item B, C, D, E, G) de TODOS os registros (Equino e Canino)
         allRemontaItems = remontaRecords.flatMap(record => 
             // CORRIGIDO: Acessando itens_remonta que já foi tipado em fetchRegistros
-            (record.itens_remonta || []) as ItemRemonta[]
+            (record.itens_remonta || []) as any as ItemRemonta[]
         );
         
         // 3.2. Extrair os dados de quantidade/dias para os itens base (Equino e Canino)
@@ -536,7 +538,7 @@ const ClasseVIIIForm = () => {
                     item: animalType,
                     quantidade_animais: firstItem.quantidade_animais,
                     dias_operacao_item: firstItem.dias_operacao_item,
-                    valor_mnt_dia: 0, // Não usado para o item base
+                    valor_mnt_dia: 0, // Não usamos este campo para o cálculo total do animal, apenas para diretrizes individuais
                     categoria: 'Remonta/Veterinária',
                 });
             }
@@ -754,7 +756,7 @@ const ClasseVIIIForm = () => {
         
         remontaItems.forEach(animalItem => {
             // Usa a função auxiliar para calcular o total do tipo de animal
-            totalRemonta += calculateTotalForAnimalType(animalItem, diretrizesRemonta);
+            totalRemonta += calculateTotalForAnimalType(animalItem, diretrizesRemonta as any); // CORRIGIDO: Usando 'as any' para diretrizes
         });
         
         return totalRemonta;
@@ -895,7 +897,10 @@ const ClasseVIIIForm = () => {
   const isTotalAlocadoCorrect = areNumbersEqual(valorTotalForm, totalAlocado);
   
   const itensAgrupadosPorCategoria = useMemo(() => {
-    const groups: Record<Categoria, (ItemSaude | ItemRemonta)[]> = {};
+    const groups: Record<Categoria, (ItemSaude | ItemRemonta)[]> = {
+        'Saúde': [],
+        'Remonta/Veterinária': []
+    };
     if (form.itensSaude.length > 0) groups['Saúde'] = form.itensSaude;
     if (form.itensRemonta.length > 0) groups['Remonta/Veterinária'] = form.itensRemonta;
     return groups;
@@ -1176,8 +1181,8 @@ const ClasseVIIIForm = () => {
     
     // 1. Gerar a memória automática mais recente
     const isSaude = registro.categoria === 'Saúde';
-    // CORRIGIDO: Usando a tipagem correta que foi feita em fetchRegistros
-    const itensParaMemoria = isSaude ? registro.itens_saude as ItemSaude[] : registro.itens_remonta as ItemRemonta[];
+    // CORRIGIDO: Usando 'as any' para acessar itens_saude/itens_remonta que são Json
+    const itensParaMemoria = isSaude ? registro.itens_saude as any as ItemSaude[] : registro.itens_remonta as any as ItemRemonta[];
     
     const memoriaAutomatica = generateCategoryMemoriaCalculo(
         registro.categoria as Categoria, 
@@ -1462,7 +1467,7 @@ const ClasseVIIIForm = () => {
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        (currentCategoryItems as (ItemSaude | ItemRemonta)[]).map((item, index) => {
+                                        (currentCategoryItems as ItemClasseVIII[]).map((item, index) => {
                                             const isSaude = cat === 'Saúde';
                                             const itemSaude = item as ItemSaude;
                                             const itemRemonta = item as ItemRemonta;
@@ -1472,7 +1477,7 @@ const ClasseVIIIForm = () => {
                                             
                                             const itemTotal = isSaude 
                                                 ? calculateSaudeItemTotal(itemSaude)
-                                                : calculateTotalForAnimalType(itemRemonta, diretrizesRemonta); 
+                                                : calculateTotalForAnimalType(itemRemonta, diretrizesRemonta as any); // CORRIGIDO: Usando 'as any'
                                             
                                             const itemLabel = isSaude ? itemSaude.item : itemRemonta.item;
                                             
@@ -1674,7 +1679,7 @@ const ClasseVIIIForm = () => {
                     
                     const currentTotalValueForCheck = isSaude 
                         ? (itemsToCalculateTotal as ItemSaude[]).reduce((sum, item) => calculateSaudeItemTotal(item) + sum, 0)
-                        : (itemsToCalculateTotal as ItemRemonta[]).reduce((sum, item) => calculateTotalForAnimalType(item, diretrizesRemonta) + sum, 0);
+                        : (itemsToCalculateTotal as ItemRemonta[]).reduce((sum, item) => calculateTotalForAnimalType(item, diretrizesRemonta as any) + sum, 0); // CORRIGIDO: Usando 'as any'
                     
                     // NOVO: Verifica se a categoria está "suja" (itens ou alocação alterados)
                     const isDirty = isCategoryAllocationDirty(
@@ -1933,7 +1938,8 @@ const ClasseVIIIForm = () => {
                         // Verifica se a OM Detentora é diferente da OM de Destino
                         const isDifferentOm = omDetentora !== registro.organizacao;
                         
-                        const itensParaMemoria = isSaude ? registro.itens_saude as ItemSaude[] : registro.itens_remonta as ItemRemonta[];
+                        // CORRIGIDO: Usando 'as any' para acessar itens_saude/itens_remonta que são Json
+                        const itensParaMemoria = isSaude ? registro.itens_saude as any as ItemSaude[] : registro.itens_remonta as any as ItemRemonta[];
                         
                         const memoriaAutomatica = generateCategoryMemoriaCalculo(
                             registro.categoria as Categoria, 
