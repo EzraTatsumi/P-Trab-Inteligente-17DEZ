@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Tables, TablesUpdate, Json } from "@/integrations/supabase/types";
+import { Tables, TablesInsert, Json } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { useSession } from "@/components/SessionContextProvider";
 import { Button } from "@/components/ui/button";
@@ -76,10 +76,8 @@ async function fetchUserProfileData(authUser: AuthUser): Promise<UserProfileData
   
   // Se o perfil existir (profileData é ProfileRow)
   
-  // Linha 95 (metaData)
   const metaData = profileData.raw_user_meta_data as any; 
   
-  // Linhas 97-104 (Retorno corrigido)
   return {
       id: profileData.id, 
       first_name: profileData.first_name || '', 
@@ -87,7 +85,7 @@ async function fetchUserProfileData(authUser: AuthUser): Promise<UserProfileData
       posto_graduacao: metaData?.posto_graduacao || '',
       nome_om: metaData?.nome_om || '',
       telefone: metaData?.telefone || '', 
-      default_logistica_year: profileData.default_logistica_year, // FIX: default_diretriz_year -> default_logistica_year
+      default_logistica_year: profileData.default_logistica_year,
       default_operacional_year: profileData.default_operacional_year,
   };
 }
@@ -165,7 +163,9 @@ const UserProfilePage = () => {
       if (authError) throw authError;
 
       // 2. Update public.profiles table (for custom fields and defaults)
-      const profileUpdate: TablesUpdate<'profiles'> = {
+      // Usamos TablesInsert para garantir que o 'id' seja incluído, o que é necessário para o upsert.
+      const profileUpdate: TablesInsert<'profiles'> = {
+        id: user.id, // REQUIRED for upsert on primary key
         first_name: data.first_name,
         last_name: data.last_name,
         default_logistica_year: data.default_logistica_year,
@@ -180,8 +180,7 @@ const UserProfilePage = () => {
       
       const { error: profileError } = await supabase
         .from('profiles')
-        .upsert(profileUpdate)
-        .eq('id', user.id);
+        .upsert([profileUpdate]); // Usar array para upsert
 
       if (profileError) throw profileError;
 
