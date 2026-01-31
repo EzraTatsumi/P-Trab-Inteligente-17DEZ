@@ -171,16 +171,37 @@ const DiariaRecordForm: React.FC<DiariaRecordFormProps> = ({ ptrabId, onRecordSa
 
         toast.success(`Registro de Diária ${isEditing ? 'atualizado' : 'adicionado'} com sucesso!`);
         
-        // --- FIX: Lógica de Reset Seletivo para persistir Seções 1 e 2 ---
+        // --- FIX: Lógica de Reset Seletivo ---
         if (!isEditing) {
-            // 1. Limpa apenas os campos da Seção 3 (quantidades e detalhamento customizado)
-            DIARIA_RANKS_CONFIG.forEach(rank => {
-                setValue(`quantidades_por_posto.${rank.key}`, 0, { shouldDirty: false });
-            });
-            setValue('detalhamento_customizado', null, { shouldDirty: false });
+            // 1. Captura os valores dos campos de contexto (Seções 1 e 2)
+            const contextValues = {
+                om_favorecida: data.om_favorecida,
+                ug_favorecida: data.ug_favorecida,
+                om_detentora: data.om_detentora,
+                ug_detentora: data.ug_detentora,
+                dias_operacao: data.dias_operacao,
+                nr_viagens: data.nr_viagens,
+                destino: data.destino,
+                local_atividade: data.local_atividade,
+                fase_atividade: data.fase_atividade,
+                is_aereo: data.is_aereo,
+            };
             
-            // 2. Força o estado de 'sujo' para 'limpo', mantendo os valores atuais no formulário
-            reset(form.getValues());
+            // 2. Define os valores a serem resetados (quantidades e detalhamento customizado)
+            const resetQuantities = {
+                quantidades_por_posto: defaultQuantities,
+                detalhamento_customizado: null,
+                // Resetar campos calculados para evitar que o formulário fique 'sujo'
+                valor_nd_15: 0,
+                valor_nd_30: 0,
+                valor_total: 0,
+            };
+            
+            // 3. Reseta o formulário, mantendo os valores de contexto e zerando as quantidades
+            reset({
+                ...contextValues,
+                ...resetQuantities,
+            });
         }
         // --- FIM FIX ---
         
@@ -192,6 +213,10 @@ const DiariaRecordForm: React.FC<DiariaRecordFormProps> = ({ ptrabId, onRecordSa
     }
   };
 
+  if (isLoadingDiretrizes) {
+    return <div className="flex justify-center items-center h-40"><Loader2 className="h-6 w-6 animate-spin mr-2" /> Carregando diretrizes...</div>;
+  }
+  
   // Assuming OmSelector handles the OM/UG selection and updates om_favorecida/ug_favorecida
   const handleOmFavorecidaChange = (omData: any | undefined) => {
     if (omData) {
@@ -228,9 +253,8 @@ const DiariaRecordForm: React.FC<DiariaRecordFormProps> = ({ ptrabId, onRecordSa
                     <FormItem>
                         <FormLabel>OM Favorecida (Destino do Militar) *</FormLabel>
                         <OmSelector
-                            selectedOmId={undefined} // Removido o uso incorreto de field.value como ID
+                            selectedOmId={field.value}
                             initialOmName={field.value}
-                            initialOmUg={watchedFields.ug_favorecida} // Passa UG para contexto de exibição
                             onChange={handleOmFavorecidaChange}
                             placeholder="Selecione a OM Favorecida"
                         />
@@ -246,9 +270,8 @@ const DiariaRecordForm: React.FC<DiariaRecordFormProps> = ({ ptrabId, onRecordSa
                     <FormItem>
                         <FormLabel>OM Destino do Recurso (ND 30/15) *</FormLabel>
                         <OmSelector
-                            selectedOmId={undefined} // Removido o uso incorreto de field.value como ID
+                            selectedOmId={field.value}
                             initialOmName={field.value}
-                            initialOmUg={watchedFields.ug_detentora} // Passa UG para contexto de exibição
                             onChange={handleOmDetentoraChange}
                             placeholder="Selecione a OM Detentora do Recurso"
                         />

@@ -364,7 +364,7 @@ const DiariaForm = () => {
                 dias_operacao: formData.dias_operacao,
                 local_atividade: formData.local_atividade, // MANTIDO
                 is_aereo: formData.is_aereo, // MANTIDO
-                quantidades_por_posto: initialFormState.quantidades_por_posto, // Resetar quantidades
+                quantidades_por_posto: formData.quantidades_por_posto, // MANTIDO
             };
             
             setFormData(prev => ({
@@ -476,8 +476,8 @@ const DiariaForm = () => {
             local_atividade: registro.local_atividade || "",
             fase_atividade: registro.fase_atividade || "",
             is_aereo: (registro as any).is_aereo || false,
-            om_detentora: registro.om_detentora || null, // CORRIGIDO: Mapear om_detentora
-            ug_detentora: registro.ug_detentora || null, // CORRIGIDO: Mapear ug_detentora
+            om_detentora: null,
+            ug_detentora: null,
             quantidades_por_posto: (registro.quantidades_por_posto || initialFormState.quantidades_por_posto) as QuantidadesPorPosto,
         };
         setFormData(newFormData);
@@ -495,8 +495,8 @@ const DiariaForm = () => {
             p_trab_id: ptrabId!,
             organizacao: newFormData.organizacao,
             ug: newFormData.ug,
-            om_detentora: newFormData.om_detentora, // CORRIGIDO
-            ug_detentora: newFormData.ug_detentora, // CORRIGIDO
+            om_detentora: null,
+            ug_detentora: null,
             dias_operacao: newFormData.dias_operacao,
             fase_atividade: newFormData.fase_atividade,
             destino: newFormData.destino,
@@ -507,8 +507,8 @@ const DiariaForm = () => {
             quantidade: totals.totalMilitares,
             valor_taxa_embarque: totals.totalTaxaEmbarque,
             valor_total: totals.totalGeral,
-            valor_nd_30: totals.totalTaxaEmbarque, // CORRIGIDO: ND 30 é Taxa de Embarque
-            valor_nd_15: totals.totalDiariaBase, // CORRIGIDO: ND 15 é Diária Base
+            valor_nd_30: 0, // CORRIGIDO: ND 30 é zero
+            valor_nd_15: totals.totalGeral, // CORRIGIDO: ND 15 é o total geral
             
             quantidades_por_posto: newFormData.quantidades_por_posto,
             detalhamento: memoria,
@@ -554,8 +554,8 @@ const DiariaForm = () => {
                 p_trab_id: ptrabId!,
                 organizacao: formData.organizacao,
                 ug: formData.ug,
-                om_detentora: formData.om_detentora, // CORRIGIDO
-                ug_detentora: formData.ug_detentora, // CORRIGIDO
+                om_detentora: null,
+                ug_detentora: null,
                 dias_operacao: formData.dias_operacao,
                 fase_atividade: formData.fase_atividade,
                 destino: formData.destino,
@@ -566,8 +566,8 @@ const DiariaForm = () => {
                 quantidade: calculos.totalMilitares,
                 valor_taxa_embarque: calculos.totalTaxaEmbarque,
                 valor_total: calculos.totalGeral,
-                valor_nd_30: calculos.totalTaxaEmbarque, // CORRIGIDO: ND 30 é Taxa de Embarque
-                valor_nd_15: calculos.totalDiariaBase, // CORRIGIDO: ND 15 é Diária Base
+                valor_nd_30: 0, // CORRIGIDO: ND 30 é zero
+                valor_nd_15: calculos.totalGeral, // CORRIGIDO: ND 15 é o total geral
                 
                 quantidades_por_posto: formData.quantidades_por_posto,
                 detalhamento: calculos.memoria,
@@ -621,25 +621,16 @@ const DiariaForm = () => {
             setLastSavedFormData(formData);
             
             // 5. Resetar o formulário para o próximo item.
-            // FIX: Mantemos todos os campos de contexto (Seções 1 e 2), exceto as quantidades.
+            // Mantemos apenas OM, UG e Fase de Atividade. O resto é resetado.
             const keptData = {
                 organizacao: formData.organizacao,
                 ug: formData.ug,
                 fase_atividade: formData.fase_atividade,
-                destino: formData.destino,
-                dias_operacao: formData.dias_operacao,
-                nr_viagens: formData.nr_viagens,
-                local_atividade: formData.local_atividade,
-                is_aereo: formData.is_aereo,
-                om_detentora: formData.om_detentora,
-                ug_detentora: formData.ug_detentora,
             };
             
             setFormData(prev => ({
                 ...initialFormState,
                 ...keptData,
-                // Resetar explicitamente as quantidades para zero
-                quantidades_por_posto: initialFormState.quantidades_por_posto,
             }));
             
             toast.info("Item de Diária adicionado à lista pendente.");
@@ -668,7 +659,7 @@ const DiariaForm = () => {
         // Mapeia os itens pendentes para o formato de inserção no DB
         const recordsToSave: TablesInsert<'diaria_registros'>[] = pendingDiarias.map(p => {
             // Remove campos de display e temporários
-            const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, ...dbRecord } = p as any;
+            const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, valor_nd_39, ...dbRecord } = p as any;
             return dbRecord as TablesInsert<'diaria_registros'>;
         });
         
@@ -680,7 +671,7 @@ const DiariaForm = () => {
         if (!editingId || !stagedUpdate) return;
         
         // Mapeia o stagedUpdate para o formato de atualização no DB
-        const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, ...dbRecord } = stagedUpdate as any;
+        const { tempId, memoria_calculo_display, destinoLabel, totalMilitares, valor_nd_39, ...dbRecord } = stagedUpdate as any;
         
         // updateMutation espera TablesUpdate, que é o dbRecord sem o ID
         updateMutation.mutate(dbRecord as TablesUpdate<'diaria_registros'>);
@@ -705,8 +696,6 @@ const DiariaForm = () => {
                 ...prev,
                 organizacao: omData.nome_om,
                 ug: omData.codug_om,
-                om_detentora: omData.nome_om, // Assume que a OM de destino do recurso é a mesma
-                ug_detentora: omData.codug_om, // Assume que a UG de destino do recurso é a mesma
             }));
         } else {
             setSelectedOmId(undefined);
@@ -714,8 +703,6 @@ const DiariaForm = () => {
                 ...prev,
                 organizacao: "",
                 ug: "",
-                om_detentora: null,
-                ug_detentora: null,
             }));
         }
     };
@@ -1216,12 +1203,12 @@ const DiariaForm = () => {
                                                 );
                                             }
                                             
-                                            const totalTaxaEmbarque = item.valor_nd_30; // ND 30 é Taxa de Embarque
+                                            const totalTaxaEmbarque = item.valor_taxa_embarque;
                                             const taxaEmbarqueCalculation = item.is_aereo 
                                                 ? `${item.totalMilitares} ${militarText} x ${taxaEmbarqueUnitarioDisplay} x ${item.nr_viagens} ${viagemText} = ${formatCurrency(totalTaxaEmbarque)}`
                                                 : 'Não Aéreo';
 
-                                            const totalDiariaBase = item.valor_nd_15; // ND 15 é Diária Base
+                                            const totalDiariaBase = item.valor_total - item.valor_taxa_embarque;
                                             
                                             const isCurrentlyStaged = editingId && item.tempId === editingId;
 
@@ -1244,18 +1231,7 @@ const DiariaForm = () => {
                                                                 <p className="font-extrabold text-lg text-foreground text-right">
                                                                     {formatCurrency(item.valor_total)}
                                                                 </p>
-                                                                {isStagingUpdate ? (
-                                                                    <Button 
-                                                                        variant="default" 
-                                                                        size="sm" 
-                                                                        onClick={handleCommitStagedUpdate}
-                                                                        disabled={isSaving || isDiariaDirty}
-                                                                        className="gap-1"
-                                                                    >
-                                                                        <Check className="h-4 w-4" />
-                                                                        Atualizar
-                                                                    </Button>
-                                                                ) : (
+                                                                {!isStagingUpdate && (
                                                                     <Button 
                                                                         variant="ghost" 
                                                                         size="icon" 
@@ -1297,8 +1273,8 @@ const DiariaForm = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Destino Recurso:</p>
-                                                                <p className="font-medium">Taxa de Embarque (ND 33.90.30):</p>
-                                                                <p className="font-medium">Diárias (ND 33.90.15):</p>
+                                                                <p className="font-medium">Taxa de Embarque (ND 15):</p>
+                                                                <p className="font-medium">Diárias (ND 15):</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
@@ -1312,37 +1288,49 @@ const DiariaForm = () => {
                                         })}
                                     </div>
                                     
-                                    {/* Botões de Ação Final (Salvar no DB) */}
+                                    {/* VALOR TOTAL DA OM (PENDENTE / STAGING) */}
+                                    <Card className="bg-gray-100 shadow-inner">
+                                        <CardContent className="p-4 flex justify-between items-center">
+                                            <span className="font-bold text-base uppercase">
+                                                VALOR TOTAL DA OM
+                                            </span>
+                                            <span className="font-extrabold text-xl text-foreground">
+                                                {formatCurrency(isStagingUpdate ? stagedUpdate!.valor_total : totalPendingDiarias)}
+                                            </span>
+                                        </CardContent>
+                                    </Card>
+                                    
                                     <div className="flex justify-end gap-3 pt-4">
                                         {isStagingUpdate ? (
-                                            <Button 
-                                                type="button" 
-                                                variant="outline" 
-                                                onClick={resetForm}
-                                                disabled={isSaving}
-                                            >
-                                                <XCircle className="mr-2 h-4 w-4" />
-                                                Cancelar Edição
-                                            </Button>
-                                        ) : (
                                             <>
+                                                <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>
+                                                    <XCircle className="mr-2 h-4 w-4" />
+                                                    Limpar Formulário
+                                                </Button>
                                                 <Button 
                                                     type="button" 
-                                                    variant="outline" 
-                                                    onClick={handleClearPending}
-                                                    disabled={isSaving}
+                                                    onClick={handleCommitStagedUpdate}
+                                                    disabled={isSaving || isDiariaDirty} // Disable if dirty, force recalculation in Section 2
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                                 >
-                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                                    Atualizar Registro
+                                                </Button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
+                                                    <XCircle className="mr-2 h-4 w-4" />
                                                     Limpar Lista
                                                 </Button>
                                                 <Button 
                                                     type="button" 
                                                     onClick={handleSavePendingDiarias}
-                                                    disabled={isSavePendingDisabled}
-                                                    className="bg-green-600 hover:bg-green-700"
+                                                    disabled={isSavePendingDisabled} // NOVO: Usa a condição de desabilitação
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                                 >
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                    Salvar {pendingDiarias.length} Registro(s) no P Trab
+                                                    Salvar Registros
                                                 </Button>
                                             </>
                                         )}
@@ -1350,78 +1338,127 @@ const DiariaForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 4: REGISTROS SALVOS */}
+                            {/* SEÇÃO 4: REGISTROS SALVOS (Agrupados por OM) */}
                             {registros && registros.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
-                                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        4. Registros Salvos ({registros.length})
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        <Sparkles className="h-5 w-5 text-accent" />
+                                        OMs Cadastradas ({registros.length})
                                     </h3>
                                     
-                                    <div className="rounded-lg border overflow-hidden">
-                                        <Table>
-                                            <TableHeader className="bg-muted/80">
-                                                <TableRow>
-                                                    <TableHead className="w-[20%]">OM Destino</TableHead>
-                                                    <TableHead className="w-[15%] text-center">Local Pagamento</TableHead>
-                                                    <TableHead className="w-[10%] text-center">Efetivo</TableHead>
-                                                    <TableHead className="w-[10%] text-center">Dias/Viagens</TableHead>
-                                                    <TableHead className="w-[15%] text-right">ND 33.90.15</TableHead>
-                                                    <TableHead className="w-[15%] text-right">ND 33.90.30</TableHead>
-                                                    <TableHead className="w-[15%] text-right">Total</TableHead>
-                                                    <TableHead className="w-[100px] text-right">Ações</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {registros.map(registro => {
-                                                    const destinoLabel = DESTINO_OPTIONS.find(d => d.value === registro.destino)?.label || registro.destino;
-                                                    const destinoColorClass = getDestinoColorClass(registro.destino as DestinoDiaria);
-                                                    
-                                                    // ND 15 é a Diária Base, ND 30 é a Taxa de Embarque
-                                                    const totalDiariaBase = registro.valor_nd_15;
-                                                    const totalTaxaEmbarque = registro.valor_nd_30;
-                                                    
-                                                    return (
-                                                        <TableRow key={registro.id} className={cn(editingId === registro.id && "bg-yellow-50/50 hover:bg-yellow-50/50")}>
-                                                            <TableCell className="font-medium">
-                                                                {registro.organizacao} ({formatCodug(registro.ug)})
-                                                            </TableCell>
-                                                            <TableCell className="text-center">
-                                                                <Badge variant="default" className={cn("w-fit mx-auto text-white", destinoColorClass)}>
-                                                                    {destinoLabel}
-                                                                </Badge>
-                                                            </TableCell>
-                                                            <TableCell className="text-center">{registro.quantidade}</TableCell>
-                                                            <TableCell className="text-center">{registro.dias_operacao}d / {registro.nr_viagens}v</TableCell>
-                                                            <TableCell className="text-right text-blue-600 font-medium">{formatCurrency(totalDiariaBase)}</TableCell>
-                                                            <TableCell className="text-right text-green-600 font-medium">{formatCurrency(totalTaxaEmbarque)}</TableCell>
-                                                            <TableCell className="text-right font-bold">{formatCurrency(registro.valor_total)}</TableCell>
-                                                            <TableCell className="text-right">
-                                                                <div className="flex justify-end gap-1">
-                                                                    <Button 
-                                                                        variant="ghost" 
-                                                                        size="icon" 
-                                                                        onClick={() => handleEdit(registro)}
-                                                                        disabled={!isPTrabEditable || isSaving || editingId !== null}
-                                                                    >
-                                                                        <Edit className="h-4 w-4" />
-                                                                    </Button>
-                                                                    <Button 
-                                                                        variant="ghost" 
-                                                                        size="icon" 
-                                                                        onClick={() => handleConfirmDelete(registro)}
-                                                                        disabled={!isPTrabEditable || isSaving || editingId !== null}
-                                                                        className="text-destructive hover:bg-destructive/10"
-                                                                    >
-                                                                        <Trash2 className="h-4 w-4" />
-                                                                    </Button>
+                                    {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
+                                        const totalOM = omRegistros.reduce((sum, r) => r.valor_total + sum, 0);
+                                        const omName = omKey.split(' (')[0];
+                                        const ug = omKey.split(' (')[1].replace(')', '');
+                                        
+                                        return (
+                                            <Card key={omKey} className="p-4 bg-primary/5 border-primary/20">
+                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                        {omName} (UG: {formatCodug(ug)})
+                                                        {/* Badge de Destino movido para cá */}
+                                                        <Badge 
+                                                            variant="default" 
+                                                            className={cn("text-xs text-white", getDestinoColorClass(omRegistros[0].destino as DestinoDiaria))}
+                                                        >
+                                                            {DESTINO_OPTIONS.find(d => d.value === omRegistros[0].destino)?.label || omRegistros[0].destino}
+                                                        </Badge>
+                                                    </h3>
+                                                    <span className="font-extrabold text-xl text-primary">
+                                                        {formatCurrency(totalOM)}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="space-y-3">
+                                                    {omRegistros.map((registro) => {
+                                                        const totalGeral = registro.valor_total;
+                                                        // Para fins de exibição, vamos usar os campos salvos:
+                                                        const totalDiariaBase = totalGeral - (registro.valor_taxa_embarque || 0);
+                                                        const totalTaxaEmbarque = registro.valor_taxa_embarque || 0;
+                                                        
+                                                        const destinoLabel = DESTINO_OPTIONS.find(d => d.value === registro.destino)?.label || registro.destino;
+                                                        const destinoColorClass = getDestinoColorClass(registro.destino as DestinoDiaria);
+                                                        
+                                                        return (
+                                                            <Card 
+                                                                key={registro.id} 
+                                                                className={cn(
+                                                                    "p-3 bg-background border"
+                                                                    // Removido: editingId === registro.id && "border-2 border-primary/50 shadow-lg"
+                                                                )}
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <h4 className="font-semibold text-base text-foreground">
+                                                                                Diárias ({registro.local_atividade})
+                                                                            </h4>
+                                                                            {/* NOVO BADGE: Fase da Atividade */}
+                                                                            <Badge variant="outline" className="text-xs">
+                                                                                {registro.fase_atividade}
+                                                                            </Badge>
+                                                                        </div>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            Efetivo: {registro.quantidade} | Período: {registro.dias_operacao} {registro.dias_operacao === 1 ? 'dia' : 'dias'} | Viagens: {registro.nr_viagens}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-lg text-primary/80">
+                                                                            {formatCurrency(totalGeral)}
+                                                                        </span>
+                                                                        <div className="flex gap-1">
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8"
+                                                                                onClick={() => handleEdit(registro)}
+                                                                                disabled={!isPTrabEditable || isSaving || pendingDiarias.length > 0}
+                                                                            >
+                                                                                <Pencil className="h-4 w-4" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                onClick={() => handleConfirmDelete(registro)}
+                                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    );
-                                                })}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
+                                                                
+                                                                {/* Detalhes da Alocação */}
+                                                                <div className="pt-2 border-t mt-2">
+                                                                    {/* NOVO: OM Destino */}
+                                                                    <div className="flex justify-between text-xs mb-1">
+                                                                        <span className="text-muted-foreground">OM Destino:</span>
+                                                                        <span className="font-medium text-foreground">{registro.organizacao} ({formatCodug(registro.ug)})</span>
+                                                                                                                                    
+                                                                     </div>
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">Diária Base:</span>
+                                                                        <span className="font-medium text-blue-600">{formatCurrency(totalDiariaBase)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">Taxa Embarque:</span>
+                                                                        <span className="font-medium text-green-600">{formatCurrency(totalTaxaEmbarque)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs font-bold pt-1">
+                                                                        <span className="text-muted-foreground">Total (ND 15):</span>
+                                                                        <span className="text-foreground">{formatCurrency(registro.valor_nd_15 || 0)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </Card>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
                                 </section>
                             )}
 
