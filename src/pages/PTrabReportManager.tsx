@@ -337,7 +337,7 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
                 organizacao: registro.organizacao,
                 ug: registro.ug,
                 diasOperacao: registro.diasOperacao,
-                faseAtividade: registro.faseAtividade,
+                faseAtividade: registro.fase_atividade,
                 efetivo: registro.efetivo,
                 quantidadeR2: registro.quantidadeR2,
                 quantidadeR3: registro.quantidadeR3,
@@ -889,18 +889,27 @@ const PTrabReportManager = () => {
             valor_nd_39: registro.valor_nd_39,
         };
         
+        // --- DEBUG LOG CRÍTICO ---
+        console.log(`[PTrabManager:Grouping] Processing Classe II/V/VI/VII/VIII/IX record. Category: ${registro.categoria}, OM: ${registro.organizacao}, ID: ${registro.id}`);
+        
         if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
             omGroup.linhasClasseV.push(linha);
+            console.log(`[PTrabManager:Grouping] -> Pushed to Classe V`);
         } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
             omGroup.linhasClasseVI.push(linha);
+            console.log(`[PTrabManager:Grouping] -> Pushed to Classe VI`);
         } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
             omGroup.linhasClasseVII.push(linha);
+            console.log(`[PTrabManager:Grouping] -> Pushed to Classe VII`);
         } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
             omGroup.linhasClasseVIII.push(linha);
+            console.log(`[PTrabManager:Grouping] -> Pushed to Classe VIII`);
         } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
             omGroup.linhasClasseIX.push(linha);
+            console.log(`[PTrabManager:Grouping] -> Pushed to Classe IX`);
         } else {
             omGroup.linhasClasseII.push(linha);
+            console.log(`[PTrabManager:Grouping] -> Pushed to Classe II (Default)`);
         }
     });
 
@@ -1024,6 +1033,8 @@ const PTrabReportManager = () => {
             });
         }
     });
+    
+    console.log("[PTrabManager] Final Grouping Result:", grupos); // Log final do agrupamento
     
     return grupos;
   }, [registrosClasseI, registrosClasseII, registrosClasseIII, refLPC]);
