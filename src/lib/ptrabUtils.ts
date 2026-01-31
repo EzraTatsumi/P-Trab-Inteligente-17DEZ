@@ -113,3 +113,25 @@ export async function fetchDiretrizesOperacionais(year: number): Promise<Diretri
     
     return data as DiretrizOperacional;
 }
+
+/**
+ * Busca o ano padrão de logística (default_logistica_year) do perfil do usuário.
+ */
+export async function fetchDefaultLogisticaYear(): Promise<number | null> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('default_logistica_year')
+        .eq('id', user.id)
+        .single();
+
+    if (error) {
+        console.error("Erro ao buscar default_logistica_year:", error);
+        // Não lança erro fatal, apenas retorna null para que o app possa usar o ano atual como fallback
+        return null;
+    }
+
+    return data?.default_logistica_year ?? null;
+}
