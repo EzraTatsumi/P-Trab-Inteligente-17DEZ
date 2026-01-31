@@ -1,10 +1,24 @@
-import { Database } from "@/types/supabase";
+import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
-export type PassagemRegistro = Database['public']['Tables']['passagem_registros']['Row'];
-export type PassagemRegistroInsert = Database['public']['Tables']['passagem_registros']['Insert'];
-export type PassagemRegistroUpdate = Database['public']['Tables']['passagem_registros']['Update'];
+/**
+ * Tipo completo para um registro de passagem (Row da tabela passagem_registros).
+ */
+export type PassagemRegistro = Tables<'passagem_registros'>;
 
+/**
+ * Tipo para inserção de um registro de passagem.
+ */
+export type PassagemRegistroInsert = TablesInsert<'passagem_registros'>;
+
+/**
+ * Tipo para atualização de um registro de passagem.
+ */
+export type PassagemRegistroUpdate = TablesUpdate<'passagem_registros'>;
+
+/**
+ * Tipo para o resumo de totais de passagens.
+ */
 export interface PassagemResumo {
-  total_passagens: number;
-  total_nd_33: number;
+    total_passagens: number;
+    total_nd_33: number;
 }

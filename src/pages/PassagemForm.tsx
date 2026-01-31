@@ -73,7 +73,9 @@ interface CalculatedPassagem extends TablesInsert<'passagem_registros'> {
 }
 
 // NOVO TIPO: Representa um lote consolidado de registros (vários trechos)
-interface ConsolidatedPassagem extends ConsolidatedPassagemRecord {}
+interface ConsolidatedPassagem extends ConsolidatedPassagemRecord {
+    groupKey: string; // Adicionado para resolver o erro TS2353 e TS2339
+}
 
 // Estado inicial para o formulário
 interface PassagemFormState {
@@ -214,7 +216,7 @@ const PassagemForm = () => {
 
             if (!acc[key]) {
                 acc[key] = {
-                    groupKey: key,
+                    groupKey: key, // Adicionado para resolver o erro
                     organizacao: registro.organizacao,
                     ug: registro.ug,
                     om_detentora: registro.om_detentora,
@@ -663,8 +665,9 @@ const PassagemForm = () => {
                 // Campos obrigatórios do tipo DB
                 created_at: registro.created_at,
                 updated_at: registro.updated_at,
-                valor_nd_30: registro.valor_nd_30,
-            };
+                // CORREÇÃO: Removendo valor_nd_30 que não existe em passagem_registros
+                // valor_nd_30: registro.valor_nd_30, 
+            } as PassagemRegistro;
 
             // Usamos a função de memória individual para o staging, pois cada item é um registro de DB
             let memoria = generatePassagemMemoriaCalculo(calculatedFormData);
@@ -783,8 +786,9 @@ const PassagemForm = () => {
                     // Campos obrigatórios do tipo DB
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
-                    valor_nd_30: 0,
-                };
+                    // CORREÇÃO: Removendo valor_nd_30
+                    // valor_nd_30: 0, 
+                } as PassagemRegistro;
 
                 // Usamos a função de memória individual para o staging, pois cada item é um registro de DB
                 let memoria = generatePassagemMemoriaCalculo(calculatedFormData);
@@ -838,6 +842,7 @@ const PassagemForm = () => {
                 
                 // Aplicamos a memória customizada ao primeiro item da nova lista (apenas para fins de staging display)
                 if (memoriaCustomizadaTexto && newPendingItems.length > 0) {
+                    // O tempId do primeiro item deve ser o ID do registro original para rastreamento
                     newPendingItems[0].tempId = editingId; 
                     newPendingItems[0].detalhamento_customizado = memoriaCustomizadaTexto;
                 }

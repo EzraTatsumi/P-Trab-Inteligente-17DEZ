@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { PassagemRegistro, PassagemResumo } from "@/types/passagem";
+import { PassagemRegistro, PassagemResumo, PassagemRegistroInsert, PassagemRegistroUpdate } from "@/types/passagem";
 
 const TABLE_NAME = 'passagem_registros';
 

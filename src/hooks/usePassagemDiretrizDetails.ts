@@ -10,7 +10,7 @@ const fetchDiretrizDetails = async (diretrizId: string): Promise<DiretrizPassage
 
     const { data, error } = await supabase
         .from('diretrizes_passagens')
-        .select('numero_pregao, ug_referencia')
+        .select('*') // Selecting all fields to satisfy the DiretrizPassagem type
         .eq('id', diretrizId)
         .single();
 
