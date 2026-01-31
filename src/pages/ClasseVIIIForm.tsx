@@ -527,18 +527,26 @@ const ClasseVIIIForm = () => {
         const animalTypes = ['Equino', 'Canino'];
         
         animalTypes.forEach(animalType => {
-            // Filtra os itens de diretriz que pertencem a este tipo de animal
-            const relatedItems = allRemontaItems.filter(item => item.item.includes(animalType));
-            if (relatedItems.length > 0) {
-                // Pega o primeiro item para extrair a quantidade e dias (que devem ser consistentes)
-                const firstItem = relatedItems[0];
-                baseRemontaItems.push({
+            const relatedDirectives = directives.filter(d => d.item.includes(animalType));
+            
+            if (relatedDirectives.length > 0) {
+                // Ao carregar, formItems contém a lista completa de itens de diretriz (Item B, C, D, etc.)
+                // Precisamos extrair a quantidade e dias do primeiro item relacionado para preencher o input base.
+                const existingRelatedItems = (formItems as ItemRemonta[]).filter(item => item.item.includes(animalType));
+                
+                // Se houver registros salvos, usamos a quantidade e dias do primeiro item relacionado
+                const nrAnimaisSalvos = existingRelatedItems[0]?.quantidade_animais || 0;
+                const diasOperacaoSalvos = existingRelatedItems[0]?.dias_operacao_item || 0;
+                
+                const baseItem: ItemRemonta = {
                     item: animalType,
-                    quantidade_animais: firstItem.quantidade_animais,
-                    dias_operacao_item: firstItem.dias_operacao_item,
+                    quantidade_animais: nrAnimaisSalvos,
+                    dias_operacao_item: diasOperacaoSalvos,
                     valor_mnt_dia: 0, // Não usamos este campo para o cálculo total do animal, apenas para diretrizes individuais
                     categoria: 'Remonta/Veterinária',
-                });
+                };
+                
+                baseItems.push(baseItem);
             }
         });
         
@@ -1145,7 +1153,8 @@ const ClasseVIIIForm = () => {
     const tableName = isSaude ? 'classe_viii_saude_registros' : 'classe_viii_remonta_registros';
     
     // Acesso seguro a animal_tipo
-    const animalType = isSaude ? null : (registro as RemontaRecord).animal_tipo;
+    const animalTypeRaw = isSaude ? null : (registro as RemontaRecord).animal_tipo;
+    const animalType = (animalTypeRaw === 'Equino' || animalTypeRaw === 'Canino') ? animalTypeRaw : 'Equino';
     const categoriaLabel = isSaude ? 'Saúde' : `Remonta/Veterinária (${animalType})`;
     
     if (!confirm(`Deseja realmente deletar o registro de ${categoriaLabel} para a OM Detentora ${registro.om_detentora}?`)) return;
@@ -1189,8 +1198,10 @@ const ClasseVIIIForm = () => {
         ? (registro as SaudeRecord).itens_saude 
         : (registro as RemontaRecord).itens_remonta;
     
-    // Acesso seguro a animal_tipo
-    const animalType = isSaude ? undefined : (registro as RemontaRecord).animal_tipo || undefined;
+    // Acesso seguro a animal_tipo e estreitamento de tipo
+    const animalTypeRaw = isSaude ? null : (registro as RemontaRecord).animal_tipo;
+    const animalType: 'Equino' | 'Canino' | undefined = 
+        (animalTypeRaw === 'Equino' || animalTypeRaw === 'Canino') ? animalTypeRaw : undefined;
 
     const memoriaAutomatica = generateCategoryMemoriaCalculo(
         registro.categoria as Categoria, 
@@ -1202,7 +1213,7 @@ const ClasseVIIIForm = () => {
         0, 
         registro.valor_nd_30, 
         registro.valor_nd_39,
-        animalType // Corrigido: Passando o tipo de animal como string ou undefined
+        animalType // Fix 1: Agora é 'Equino' | 'Canino' | undefined
     );
     
     // 2. Usar a customizada se existir, senão usar a automática recém-gerada
@@ -1848,9 +1859,11 @@ const ClasseVIIIForm = () => {
                                     if (isSaude) {
                                         badgeStyle = { label: 'Saúde', className: 'bg-red-500 text-white' };
                                     } else {
-                                        // CORRIGIDO: Acesso seguro e cast para o tipo esperado
-                                        const animalType = (registro as RemontaRecord).animal_tipo || 'Equino';
-                                        badgeStyle = getAnimalBadgeStyle(animalType as 'Equino' | 'Canino');
+                                        // CORRIGIDO: Acesso seguro e estreitamento de tipo para o badge
+                                        const animalTypeRaw = (registro as RemontaRecord).animal_tipo;
+                                        const animalTypeForBadge: 'Equino' | 'Canino' = 
+                                            (animalTypeRaw === 'Equino' || animalTypeRaw === 'Canino') ? animalTypeRaw : 'Equino';
+                                        badgeStyle = getAnimalBadgeStyle(animalTypeForBadge);
                                     }
                                     
                                     // Verifica se a OM Detentora é diferente da OM de Destino
@@ -1953,8 +1966,10 @@ const ClasseVIIIForm = () => {
                             ? (registro as SaudeRecord).itens_saude 
                             : (registro as RemontaRecord).itens_remonta;
                         
-                        // Acesso seguro a animal_tipo
-                        const animalType = isSaude ? undefined : (registro as RemontaRecord).animal_tipo || undefined;
+                        // Acesso seguro a animal_tipo e estreitamento de tipo
+                        const animalTypeRaw = isSaude ? null : (registro as RemontaRecord).animal_tipo;
+                        const animalType: 'Equino' | 'Canino' | undefined = 
+                            (animalTypeRaw === 'Equino' || animalTypeRaw === 'Canino') ? animalTypeRaw : undefined;
 
                         const memoriaAutomatica = generateCategoryMemoriaCalculo(
                             registro.categoria as Categoria, 
@@ -1966,7 +1981,7 @@ const ClasseVIIIForm = () => {
                             0, 
                             registro.valor_nd_30, 
                             registro.valor_nd_39,
-                            animalType // Corrigido: Passando o tipo de animal como string ou undefined
+                            animalType // Fix 2: Agora é 'Equino' | 'Canino' | undefined
                         );
                         
                         const memoriaExibida = isEditing ? memoriaEdit : (registro.detalhamento_customizado || memoriaAutomatica);
@@ -1975,9 +1990,11 @@ const ClasseVIIIForm = () => {
                         if (isSaude) {
                             badgeStyle = { label: 'Saúde', className: 'bg-red-500 text-white' };
                         } else {
-                            // CORRIGIDO: Acesso seguro e cast para o tipo esperado
-                            const animalTypeForBadge = (registro as RemontaRecord).animal_tipo || 'Equino';
-                            badgeStyle = getAnimalBadgeStyle(animalTypeForBadge as 'Equino' | 'Canino');
+                            // CORRIGIDO: Acesso seguro e estreitamento de tipo para o badge
+                            const animalTypeRaw = (registro as RemontaRecord).animal_tipo;
+                            const animalTypeForBadge: 'Equino' | 'Canino' = 
+                                (animalTypeRaw === 'Equino' || animalTypeRaw === 'Canino') ? animalTypeRaw : 'Equino';
+                            badgeStyle = getAnimalBadgeStyle(animalTypeForBadge);
                         }
                         
                         return (
