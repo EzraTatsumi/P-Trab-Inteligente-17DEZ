@@ -7,7 +7,7 @@ import { PTrabData } from "@/pages/PTrabReportManager"; // Reutilizando o tipo P
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
 // Define a união de tabelas que possuem a coluna p_trab_id
-type PTrabLinkedTableName = 
+type PTrabLinkedTableName =
     'classe_i_registros' | 'classe_ii_registros' | 'classe_iii_registros' | 
     'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' | 
     'classe_viii_saude_registros' | 'classe_viii_remonta_registros' | 
@@ -70,13 +70,11 @@ export async function fetchPTrabData(ptrabId: string): Promise<PTrabData> {
  * @param ptrabId O ID do PTrab.
  */
 export async function fetchPTrabRecords<T extends PTrabLinkedTableName>(tableName: T, ptrabId: string): Promise<Tables<T>[]> {
-    // A coluna 'p_trab_id' é garantida por PTrabLinkedTableName.
-    // Usamos asserções de tipo para satisfazer o compilador, garantindo que 'p_trab_id' é uma chave válida
-    // e que o valor (ptrabId) é compatível com o tipo da coluna (UUID/string).
-    const { data, error } = await supabase
-        .from(tableName)
+    // A solução é usar 'as any' no construtor da consulta para contornar a rigidez do TypeScript
+    // com nomes de tabela dinâmicos, mantendo a tipagem forte no retorno.
+    const { data, error } = await (supabase.from(tableName) as any)
         .select('*')
-        .eq('p_trab_id' as keyof Tables<T> & string, ptrabId as Tables<T>['p_trab_id']);
+        .eq('p_trab_id', ptrabId);
 
     if (error) {
         throw new Error(`Falha ao carregar registros de ${String(tableName)}: ${error.message}`);
