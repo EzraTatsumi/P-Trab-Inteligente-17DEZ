@@ -30,20 +30,26 @@ export const generatePassagemMemoriaCalculo = (registro: PassagemRegistro): stri
         efetivo, 
         valor_nd_33,
         fase_atividade,
+        organizacao,
+        ug,
     } = registro;
 
-    const tipoViagem = is_ida_volta ? 'IDA E VOLTA' : 'SOMENTE IDA';
+    const tipoViagem = is_ida_volta ? 'Ida e Volta' : 'Ida';
     const faseTexto = formatFasesParaTexto(fase_atividade);
+    const omFavorecida = `${organizacao} (${formatCodug(ug)})`;
     
-    let memoria = `Passagem para ${efetivo} militares, no trecho ${origem} / ${destino} (${tipoViagem}), para a fase de ${faseTexto}.\n`;
-    memoria += `Tipo de Transporte: ${tipo_transporte}.\n`;
-    memoria += `Quantidade de passagens: ${formatNumber(quantidade_passagens)} un.\n`;
-    memoria += `Valor Unitário: ${formatCurrency(valor_unitario)}.\n`;
-    memoria += `Valor Total (ND 33.90.33): ${formatCurrency(valor_nd_33)}.\n`;
+    let memoria = `33.90.33 - Aquisição de Passagem para ${efetivo} militar${efetivo > 1 ? 'es' : ''} da ${omFavorecida}, durante ${registro.dias_operacao} dia${registro.dias_operacao > 1 ? 's' : ''} de ${faseTexto}.\n\n`;
     
-    if (registro.detalhamento) {
-        memoria += `Detalhamento: ${registro.detalhamento}\n`;
-    }
+    // Detalhe do Trecho
+    memoria += `Cálculo:\n`;
+    memoria += `- ${origem}-${destino}: ${formatCurrency(valor_unitario)} (${tipo_transporte} - ${tipoViagem}).\n\n`;
+    
+    // Fórmula
+    memoria += `Fórmula: Qtd Psg x Valor Unitário da Psg.\n`;
+    memoria += `- ${formatNumber(quantidade_passagens)} Psg ${origem}-${destino} (${tipo_transporte}-${tipoViagem}) x ${formatCurrency(valor_unitario)} = ${formatCurrency(valor_nd_33)}.\n\n`;
+    
+    // Total
+    memoria += `Total: ${formatCurrency(valor_nd_33)}.`;
     
     return memoria;
 };
@@ -62,13 +68,13 @@ export const generateConsolidatedPassagemMemoriaCalculo = (group: ConsolidatedPa
         records 
     } = group;
 
-    let memoria = `SOLICITAÇÃO CONSOLIDADA DE PASSAGENS (ND 33.90.33)\n`;
-    memoria += `OM Favorecida: ${organizacao} (UG: ${formatCodug(ug)})\n`;
-    memoria += `Total de Militares Envolvidos: ${formatNumber(total_efetivo)}\n`;
-    memoria += `Total de Passagens Solicitadas: ${formatNumber(total_quantidade)} un.\n`;
-    memoria += `Valor Total Solicitado: ${formatCurrency(total_valor)}\n\n`;
+    const faseTexto = formatFasesParaTexto(records[0]?.fase_atividade);
+    const diasOperacao = records[0]?.dias_operacao || 0;
+    const omFavorecida = `${organizacao} (UG: ${formatCodug(ug)})`;
+
+    let memoria = `33.90.33 - Aquisição de Passagens para ${total_efetivo} militar${total_efetivo > 1 ? 'es' : ''} da ${omFavorecida}, durante ${diasOperacao} dia${diasOperacao > 1 ? 's' : ''} de ${faseTexto}.\n\n`;
     
-    memoria += "DETALHAMENTO DOS TRECHOS:\n";
+    memoria += `Cálculo Consolidado:\n`;
     
     // Agrupar por trecho (origem/destino/tipo_transporte/ida_volta)
     const trechosAgrupados: Record<string, { 
@@ -78,7 +84,7 @@ export const generateConsolidatedPassagemMemoriaCalculo = (group: ConsolidatedPa
         is_ida_volta: boolean, 
         valor_unitario: number, 
         quantidade_total: number,
-        fases: Set<string>,
+        valor_total_trecho: number,
     }> = {};
     
     records.forEach(r => {
@@ -92,25 +98,27 @@ export const generateConsolidatedPassagemMemoriaCalculo = (group: ConsolidatedPa
                 is_ida_volta: r.is_ida_volta,
                 valor_unitario: r.valor_unitario,
                 quantidade_total: 0,
-                fases: new Set<string>(),
+                valor_total_trecho: 0,
             };
         }
         
         trechosAgrupados[key].quantidade_total += r.quantidade_passagens;
-        if (r.fase_atividade) {
-            r.fase_atividade.split(';').forEach(f => trechosAgrupados[key].fases.add(f.trim()));
-        }
+        trechosAgrupados[key].valor_total_trecho += r.valor_total;
     });
     
-    Object.values(trechosAgrupados).forEach((trecho, index) => {
-        const tipoViagem = trecho.is_ida_volta ? 'I/V' : 'IDA';
-        const fasesTexto = Array.from(trecho.fases).filter(f => f).join(', ') || 'operação';
-        
-        memoria += `\n${index + 1}. Trecho: ${trecho.origem} / ${trecho.destino} (${tipoViagem})\n`;
-        memoria += `   - Transporte: ${trecho.tipo_transporte}\n`;
-        memoria += `   - Quantidade: ${formatNumber(trecho.quantidade_total)} un. (R$ ${formatNumber(trecho.valor_unitario)} un.)\n`;
-        memoria += `   - Fases: ${fasesTexto}\n`;
+    Object.values(trechosAgrupados).forEach((trecho) => {
+        const tipoViagem = trecho.is_ida_volta ? 'I/V' : 'Ida';
+        memoria += `- ${trecho.origem}-${trecho.destino}: ${formatCurrency(trecho.valor_unitario)} (${trecho.tipo_transporte} - ${tipoViagem}).\n`;
     });
+    
+    memoria += `\nFórmula: Soma (Qtd Psg x Valor Unitário da Psg).\n`;
+    
+    Object.values(trechosAgrupados).forEach((trecho) => {
+        const tipoViagem = trecho.is_ida_volta ? 'I/V' : 'Ida';
+        memoria += `- ${formatNumber(trecho.quantidade_total)} Psg ${trecho.origem}-${trecho.destino} (${trecho.tipo_transporte}-${tipoViagem}) x ${formatCurrency(trecho.valor_unitario)} = ${formatCurrency(trecho.valor_total_trecho)}.\n`;
+    });
+    
+    memoria += `\nTotal: ${formatCurrency(total_valor)}.`;
 
     return memoria;
 };
