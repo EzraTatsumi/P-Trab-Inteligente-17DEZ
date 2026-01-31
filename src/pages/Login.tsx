@@ -58,17 +58,18 @@ const Login: React.FC = () => {
     try {
       const rememberMe = data.rememberMe ?? true;
       
+      // CORREÇÃO: signInWithPassword agora aceita um único objeto que contém credenciais e opções.
       const { error } = await supabase.auth.signInWithPassword(
         {
           email: data.email,
           password: data.password,
-        },
-        {
-          // FIX: Casting the options object to 'any' to resolve TS2353 error 
-          // related to 'shouldCreateSession' not existing in the inferred type.
-          // Se for false, a sessão é de curta duração (session cookie).
-          shouldCreateSession: rememberMe,
-        } as any
+          options: {
+            // FIX: Casting the options object to 'any' to resolve TS2353 error 
+            // related to 'shouldCreateSession' not existing in the inferred type.
+            // Se for false, a sessão é de curta duração (session cookie).
+            shouldCreateSession: rememberMe,
+          } as any,
+        }
       );
 
       if (error) {
