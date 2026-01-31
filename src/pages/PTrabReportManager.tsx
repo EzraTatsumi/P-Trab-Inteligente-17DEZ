@@ -49,7 +49,7 @@ import {
 } from "@/lib/suprimentoFundosUtils"; // NOVO: Importar utilitários de Suprimento de Fundos
 import { 
   generatePassagemMemoriaCalculo,
-  PassagemRegistro, // Importando o tipo PassagemRegistro
+  PassagemRegistro as PassagemRegistroType, // Importando o tipo PassagemRegistro
 } from "@/lib/passagemUtils"; // Importando utilitários de Passagem
 import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais } from "@/lib/ptrabUtils";
@@ -99,6 +99,15 @@ export interface DiariaRegistro {
   detalhamento_customizado?: string | null;
   fase_atividade: string;
   is_aereo: boolean;
+  om_detentora: string | null;
+  ug_detentora: string | null;
+  posto_graduacao: string | null;
+  quantidade: number;
+}
+
+// NOVO TIPO: PassagemRegistro
+export interface PassagemRegistro extends PassagemRegistroType {
+    efetivo: number | null; // Adicionado o campo 'efetivo'
 }
 
 // NOVO TIPO: VerbaOperacionalRegistro (Usado para Verba Operacional e Suprimento de Fundos)
@@ -753,8 +762,8 @@ const PTrabReportManager = () => {
       const allClasseItems = [
         ...(classeIIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
         ...(classeVData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
-        ...(classeVIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
-        ...(classeVIIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
+        ...(classeVIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: 0 })),
+        ...(classeVIIData || []).map(r => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: 0 })),
         ...(classeVIIISaudeData || []).map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: 0 })),
         ...(classeVIIIRemontaData || []).map(r => ({ ...r, itens_equipamentos: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: 0 })),
         ...(classeIXData || []).map(r => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo })),
@@ -802,6 +811,11 @@ const PTrabReportManager = () => {
           valor_taxa_embarque: Number(r.valor_taxa_embarque || 0),
           valor_total: Number(r.valor_total || 0),
           is_aereo: r.is_aereo || false,
+          // Campos adicionais
+          om_detentora: r.om_detentora || null,
+          ug_detentora: r.ug_detentora || null,
+          posto_graduacao: r.posto_graduacao || null,
+          quantidade: r.quantidade || 0,
       })) as DiariaRegistro[]);
       
       // NOVO: Processar Verba Operacional e Suprimento de Fundos
@@ -832,6 +846,7 @@ const PTrabReportManager = () => {
           valor_nd_33: Number(r.valor_nd_33 || 0),
           quantidade_passagens: r.quantidade_passagens || 0,
           is_ida_volta: r.is_ida_volta || false,
+          efetivo: r.efetivo || 0, // Incluindo efetivo
       })) as PassagemRegistro[]);
       
     } catch (error) {
@@ -928,7 +943,7 @@ const PTrabReportManager = () => {
             // Agrupa os itens granulares por Categoria (GERADOR, EMBARCACAO, etc.)
             const gruposGranulares: Record<string, ItemClasseIII[]> = {};
             
-            itens.forEach(item => {
+            (itens as ItemClasseIII[]).forEach(item => {
                 const key = item.categoria;
                 if (!gruposGranulares[key]) gruposGranulares[key] = [];
                 gruposGranulares[key].push(item);

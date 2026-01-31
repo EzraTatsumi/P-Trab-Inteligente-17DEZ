@@ -41,7 +41,7 @@ import { formatCurrency } from "@/lib/formatUtils";
 import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate, generateApprovalPTrabNumber, generateUniqueMinutaNumber } from "@/lib/ptrabNumberUtils";
 import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
 import { ConsolidationNumberDialog } from "@/components/ConsolidationNumberDialog";
-import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { Tables, TablesInsert, TablesUpdate, Database } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { HelpDialog } from "@/components/HelpDialog";
 import { CloneVariationDialog } from "@/components/CloneVariationDialog";
@@ -88,6 +88,12 @@ interface ShareRequest extends Tables<'ptrab_share_requests'> {
     raw_user_meta_data: { posto_graduacao?: string, nome_om?: string } | null;
   } | null;
 }
+
+// Tipos para as tabelas que podem ser clonadas/consolidadas
+type GenericClonableTable = 
+    'classe_i_registros' | 'classe_ii_registros' | 'classe_iii_registros' | 
+    'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' | 
+    'classe_viii_saude_registros' | 'classe_viii_remonta_registros' | 'classe_ix_registros';
 
 // Lista de Comandos Militares de Área (CMA)
 const COMANDOS_MILITARES_AREA = [
@@ -412,7 +418,7 @@ const PTrabManager = () => {
           let totalClasseI = 0;
           if (classeIError) console.error("Erro ao carregar Classe I para PTrab", ptrab.numero_ptrab, classeIError);
           else {
-            totalClasseI = (classeIData || []).reduce((sum, record) => sum + record.total_qs + record.total_qr, 0);
+            totalClasseI = (classeIData || []).reduce((sum, record) => sum + (record.total_qs || 0) + (record.total_qr || 0), 0);
             quantidadeRacaoOpCalculada = (classeIData || []).reduce((sum, record) => sum + (record.quantidade_r2 || 0) + (record.quantidade_r3 || 0), 0);
           }
           
@@ -454,19 +460,19 @@ const PTrabManager = () => {
 
           let totalClassesDiversas = 0;
           if (classeIIError) console.error("Erro ao carregar Classe II para PTrab", ptrab.numero_ptrab, classeIIError);
-          else totalClassesDiversas += (classeIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          else totalClassesDiversas += (classeIIData || []).reduce((sum, record) => sum + (record.valor_total || 0), 0);
           if (classeVError) console.error("Erro ao carregar Classe V para PTrab", ptrab.numero_ptrab, classeVError);
-          else totalClassesDiversas += (classeVData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          else totalClassesDiversas += (classeVData || []).reduce((sum, record) => sum + (record.valor_total || 0), 0);
           if (classeVIError) console.error("Erro ao carregar Classe VI para PTrab", ptrab.numero_ptrab, classeVIError);
-          else totalClassesDiversas += (classeVIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          else totalClassesDiversas += (classeVIData || []).reduce((sum, record) => sum + (record.valor_total || 0), 0);
           if (classeVIIError) console.error("Erro ao carregar Classe VII para PTrab", ptrab.numero_ptrab, classeVIIError);
-          else totalClassesDiversas += (classeVIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          else totalClassesDiversas += (classeVIIData || []).reduce((sum, record) => sum + (record.valor_total || 0), 0);
           if (classeVIIISaudeError) console.error("Erro ao carregar Classe VIII Saúde para PTrab", ptrab.numero_ptrab, classeVIIISaudeError);
-          else totalClassesDiversas += (classeVIIISaudeData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          else totalClassesDiversas += (classeVIIISaudeData || []).reduce((sum, record) => sum + (record.valor_total || 0), 0);
           if (classeVIIIRemontaError) console.error("Erro ao carregar Classe VIII Remonta para PTrab", ptrab.numero_ptrab, classeVIIIRemontaError);
-          else totalClassesDiversas += (classeVIIIRemontaData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          else totalClassesDiversas += (classeVIIIRemontaData || []).reduce((sum, record) => sum + (record.valor_total || 0), 0);
           if (classeIXError) console.error("Erro ao carregar Classe IX para PTrab", ptrab.numero_ptrab, classeIXError);
-          else totalClassesDiversas += (classeIXData || []).reduce((sum, record) => sum + record.valor_total, 0);
+          else totalClassesDiversas += (classeIXData || []).reduce((sum, record) => sum + (record.valor_total || 0), 0);
 
 
           // 3. Fetch Classe III totals (Combustível e Lubrificante)
@@ -478,7 +484,7 @@ const PTrabManager = () => {
           let totalClasseIII = 0;
           if (classeIIIError) console.error("Erro ao carregar Classe III para PTrab", ptrab.numero_ptrab, classeIIIError);
           else {
-            totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + record.valor_total, 0);
+            totalClasseIII = (classeIIIData || []).reduce((sum, record) => sum + (record.valor_total || 0), 0);
           }
           
           // 4. Fetch Diaria totals (33.90.15 and 33.90.30)
@@ -1077,12 +1083,24 @@ const PTrabManager = () => {
     }
   };
 
+  // Tipo auxiliar para as tabelas que podem ser clonadas e têm um campo JSONB
+  type ClonableTable = {
+    tableName: GenericClonableTable;
+    jsonbField: 'itens_equipamentos' | 'itens_saude' | 'itens_remonta' | 'itens_motomecanizacao' | 'itens_equipamentos' | 'quantidades_por_posto' | null;
+    numericFields: string[];
+  };
+
   const cloneRelatedRecords = async (originalPTrabId: string, newPTrabId: string) => {
     
-    const cloneClassRecords = async (tableName: keyof Tables, jsonbField: string, numericFields: string[]) => {
+    const cloneClassRecords = async <T extends GenericClonableTable>(
+        tableName: T, 
+        jsonbField: keyof Tables<T> | null, 
+        numericFields: (keyof Tables<T>)[]
+    ) => {
+        // Fetch records
         const { data: originalRecords, error: fetchError } = await supabase
             .from(tableName)
-            .select(`*, ${jsonbField}`)
+            .select('*')
             .eq("p_trab_id", originalPTrabId);
 
         if (fetchError) {
@@ -1091,17 +1109,24 @@ const PTrabManager = () => {
         }
 
         const newRecords = (originalRecords || []).map(record => {
-            const { id, created_at, updated_at, ...restOfRecord } = record;
+            // Usar type assertion para garantir que 'record' tem as propriedades esperadas
+            const { id, created_at, updated_at, ...restOfRecord } = record as Tables<T>;
             
-            const newRecord: Record<string, any> = {
+            const newRecord: TablesInsert<T> = {
                 ...restOfRecord,
                 p_trab_id: newPTrabId,
-                [jsonbField]: record[jsonbField] ? JSON.parse(JSON.stringify(record[jsonbField])) : null,
-            };
+            } as TablesInsert<T>; // Cast inicial para TablesInsert<T>
             
+            // Clonar campo JSONB se existir
+            if (jsonbField && record[jsonbField as keyof typeof record]) {
+                (newRecord as any)[jsonbField] = JSON.parse(JSON.stringify(record[jsonbField as keyof typeof record]));
+            }
+            
+            // Garantir que campos numéricos sejam 0 se forem null/undefined
             numericFields.forEach(field => {
-                if (newRecord[field] === null || newRecord[field] === undefined) {
-                    newRecord[field] = 0;
+                const key = field as keyof TablesInsert<T>;
+                if (newRecord[key] === null || newRecord[key] === undefined) {
+                    (newRecord as any)[key] = 0;
                 }
             });
             
@@ -1111,7 +1136,7 @@ const PTrabManager = () => {
         if (newRecords.length > 0) {
             const { error: insertError } = await supabase
                 .from(tableName)
-                .insert(newRecords as TablesInsert<typeof tableName>[]);
+                .insert(newRecords as TablesInsert<T>[]);
             
             if (insertError) {
                 console.error(`ERRO DE INSERÇÃO ${tableName}:`, insertError);
@@ -1121,101 +1146,63 @@ const PTrabManager = () => {
         return newRecords.length;
     };
 
-    const classeINumericFields = [
+    // Definições de campos numéricos para cada tabela
+    const classeINumericFields: (keyof Tables<'classe_i_registros'>)[] = [
         'complemento_qr', 'complemento_qs', 'dias_operacao', 'efetivo', 'etapa_qr', 'etapa_qs', 
         'nr_ref_int', 'total_geral', 'total_qr', 'total_qs', 'valor_qr', 'valor_qs', 
         'quantidade_r2', 'quantidade_r3'
     ];
     
-    const { data: originalClasseIRecords, error: fetchClasseIError } = await supabase
-      .from("classe_i_registros")
-      .select("*")
-      .eq("p_trab_id", originalPTrabId);
-
-    if (fetchClasseIError) {
-      console.error("Erro ao carregar registros da Classe I:", fetchClasseIError);
-    } else {
-      const newClasseIRecords = (originalClasseIRecords || []).map(record => {
-        const { id, created_at, updated_at, ...restOfRecord } = record;
-        
-        const newRecord: Record<string, any> = {
-            ...restOfRecord,
-            p_trab_id: newPTrabId,
-        };
-        
-        classeINumericFields.forEach(field => {
-            if (newRecord[field] === null || newRecord[field] === undefined) {
-                newRecord[field] = 0;
-            }
-        });
-        
-        return newRecord;
-      });
-
-      if (newClasseIRecords.length > 0) {
-        const { error: insertClasseIError } = await supabase
-          .from("classe_i_registros")
-          .insert(newClasseIRecords as TablesInsert<'classe_i_registros'>[]);
-        if (insertClasseIError) {
-          console.error("ERRO DE INSERÇÃO CLASSE I:", insertClasseIError);
-          toast.error(`Erro ao clonar registros da Classe I: ${sanitizeError(insertClasseIError)}`);
-        }
-      }
-    }
+    const genericNumericFields: (keyof Tables<'classe_ii_registros'>)[] = [
+        'dias_operacao', 'valor_total', 'valor_nd_30', 'valor_nd_39', 'efetivo'
+    ];
     
-    const genericNumericFields = ['dias_operacao', 'valor_total', 'valor_nd_30', 'valor_nd_39'];
-
-    await cloneClassRecords('classe_ii_registros', 'itens_equipamentos', genericNumericFields);
-
-    const classeIIINumericFields = [
+    const classeIIINumericFields: (keyof Tables<'classe_iii_registros'>)[] = [
         'dias_operacao', 'preco_litro', 'quantidade', 'total_litros', 'valor_total', 
         'consumo_lubrificante_litro', 'preco_lubrificante', 'valor_nd_30', 'valor_nd_39'
     ];
     
-    const { data: originalClasseIIIRecords, error: fetchClasseIIIError } = await supabase
-      .from("classe_iii_registros")
-      .select("*")
-      .eq("p_trab_id", originalPTrabId);
-
-    if (fetchClasseIIIError) {
-      console.error("Erro ao carregar registros da Classe III:", fetchClasseIIIError);
-    } else {
-      const newClasseIIIRecords = (originalClasseIIIRecords || []).map(record => {
-        const { id, created_at, updated_at, ...restOfRecord } = record;
-        
-        const newRecord: Record<string, any> = {
-            ...restOfRecord,
-            p_trab_id: newPTrabId,
-            itens_equipamentos: record.itens_equipamentos ? JSON.parse(JSON.stringify(record.itens_equipamentos)) : null,
-        };
-        
-        classeIIINumericFields.forEach(field => {
-            if (newRecord[field] === null || newRecord[field] === undefined) {
-                newRecord[field] = 0;
-            }
-        });
-        
-        return newRecord;
-      });
-
-      if (newClasseIIIRecords.length > 0) {
-        const { error: insertClasseIIIError } = await supabase
-          .from("classe_iii_registros")
-          .insert(newClasseIIIRecords as TablesInsert<'classe_iii_registros'>[]);
-        if (insertClasseIIIError) {
-          console.error("ERRO DE INSERÇÃO CLASSE III:", insertClasseIIIError);
-          toast.error(`Erro ao clonar registros da Classe III: ${sanitizeError(insertClasseIIIError)}`);
-        }
-      }
-    }
+    const remontaNumericFields: (keyof Tables<'classe_viii_remonta_registros'>)[] = [
+        'dias_operacao', 'valor_total', 'valor_nd_30', 'valor_nd_39', 'quantidade_animais'
+    ];
     
-    await cloneClassRecords('classe_v_registros', 'itens_equipamentos', genericNumericFields);
-    await cloneClassRecords('classe_vi_registros', 'itens_equipamentos', genericNumericFields);
-    await cloneClassRecords('classe_vii_registros', 'itens_equipamentos', genericNumericFields);
-    await cloneClassRecords('classe_viii_saude_registros', 'itens_saude', genericNumericFields);
-    await cloneClassRecords('classe_viii_remonta_registros', 'itens_remonta', [...genericNumericFields, 'quantidade_animais']);
-    await cloneClassRecords('classe_ix_registros', 'itens_motomecanizacao', genericNumericFields);
+    const diariaNumericFields: (keyof Tables<'diaria_registros'>)[] = [
+        'dias_operacao', 'nr_viagens', 'quantidade', 'valor_nd_15', 'valor_nd_30', 'valor_taxa_embarque', 'valor_total'
+    ];
+    
+    const passagemNumericFields: (keyof Tables<'passagem_registros'>)[] = [
+        'dias_operacao', 'quantidade_passagens', 'valor_nd_33', 'valor_total', 'valor_unitario', 'efetivo'
+    ];
+    
+    const verbaNumericFields: (keyof Tables<'verba_operacional_registros'>)[] = [
+        'dias_operacao', 'quantidade_equipes', 'valor_total_solicitado', 'valor_nd_30', 'valor_nd_39'
+    ];
 
+    // 1. Classe I (Tratamento especial devido à estrutura)
+    await cloneClassRecords('classe_i_registros', null, classeINumericFields as any);
+
+    // 2. Classes Diversas (Usando a função genérica)
+    await cloneClassRecords('classe_ii_registros', 'itens_equipamentos', genericNumericFields as any);
+    await cloneClassRecords('classe_v_registros', 'itens_equipamentos', genericNumericFields as any);
+    await cloneClassRecords('classe_vi_registros', 'itens_equipamentos', genericNumericFields as any);
+    await cloneClassRecords('classe_vii_registros', 'itens_equipamentos', genericNumericFields as any);
+    await cloneClassRecords('classe_viii_saude_registros', 'itens_saude', genericNumericFields as any);
+    await cloneClassRecords('classe_viii_remonta_registros', 'itens_remonta', remontaNumericFields as any);
+    await cloneClassRecords('classe_ix_registros', 'itens_motomecanizacao', genericNumericFields as any);
+    
+    // 3. Classe III (Combustível/Lubrificante)
+    await cloneClassRecords('classe_iii_registros', 'itens_equipamentos', classeIIINumericFields as any);
+    
+    // 4. Diárias
+    await cloneClassRecords('diaria_registros', 'quantidades_por_posto', diariaNumericFields as any);
+    
+    // 5. Passagens
+    await cloneClassRecords('passagem_registros', null, passagemNumericFields as any);
+    
+    // 6. Verba Operacional / Suprimento de Fundos
+    await cloneClassRecords('verba_operacional_registros', null, verbaNumericFields as any);
+
+    // 7. Referência LPC (Tratamento especial por ser OneToOne)
     const { data: originalRefLPC, error: fetchRefLPCError } = await supabase
       .from("p_trab_ref_lpc")
       .select("*")
@@ -1226,7 +1213,7 @@ const PTrabManager = () => {
       console.error("Erro ao carregar referência LPC:", fetchRefLPCError);
     } else if (originalRefLPC) {
       const { id, created_at, updated_at, ...restOfRefLPC } = originalRefLPC;
-      const newRefLPCData = {
+      const newRefLPCData: TablesInsert<'p_trab_ref_lpc'> = {
         ...restOfRefLPC,
         p_trab_id: newPTrabId,
         preco_diesel: restOfRefLPC.preco_diesel ?? 0,
@@ -1234,7 +1221,7 @@ const PTrabManager = () => {
       };
       const { error: insertRefLPCError } = await supabase
         .from("p_trab_ref_lpc")
-        .insert([newRefLPCData as TablesInsert<'p_trab_ref_lpc'>]);
+        .insert([newRefLPCData]);
       if (insertRefLPCError) {
         console.error("ERRO DE INSERÇÃO REF LPC:", insertRefLPCError);
         toast.error(`Erro ao clonar referência LPC: ${sanitizeError(insertRefLPCError)}`);
@@ -1306,7 +1293,7 @@ const PTrabManager = () => {
         
         const newPTrabId = newPTrab.id;
         
-        const tablesToConsolidate: (keyof Tables)[] = [
+        const tablesToConsolidate: GenericClonableTable[] = [
             'classe_i_registros', 'classe_ii_registros', 'classe_iii_registros', 
             'classe_v_registros', 'classe_vi_registros', 'classe_vii_registros', 
             'classe_viii_saude_registros', 'classe_viii_remonta_registros', 'classe_ix_registros'
@@ -1326,16 +1313,27 @@ const PTrabManager = () => {
             
             if (records && records.length > 0) {
                 const newRecords = records.map(record => {
-                    const { id, created_at, updated_at, ...restOfRecord } = record;
+                    // Usar type assertion para garantir que 'record' tem as propriedades esperadas
+                    const { id, created_at, updated_at, ...restOfRecord } = record as Tables<typeof tableName>;
                     
                     const newRecord: TablesInsert<typeof tableName> = {
                         ...restOfRecord,
                         p_trab_id: newPTrabId,
-                        ...(record.itens_equipamentos ? { itens_equipamentos: JSON.parse(JSON.stringify(record.itens_equipamentos)) } : {}),
-                        ...(record.itens_saude ? { itens_saude: JSON.parse(JSON.stringify(record.itens_saude)) } : {}),
-                        ...(record.itens_remonta ? { itens_remonta: JSON.parse(JSON.stringify(record.itens_remonta)) } : {}),
-                        ...(record.itens_motomecanizacao ? { itens_motomecanizacao: JSON.parse(JSON.stringify(record.itens_motomecanizacao)) } : {}),
                     } as TablesInsert<typeof tableName>;
+                    
+                    // Clonar campos JSONB com type guards
+                    if ('itens_equipamentos' in record && record.itens_equipamentos) {
+                        (newRecord as any).itens_equipamentos = JSON.parse(JSON.stringify(record.itens_equipamentos));
+                    }
+                    if ('itens_saude' in record && record.itens_saude) {
+                        (newRecord as any).itens_saude = JSON.parse(JSON.stringify(record.itens_saude));
+                    }
+                    if ('itens_remonta' in record && record.itens_remonta) {
+                        (newRecord as any).itens_remonta = JSON.parse(JSON.stringify(record.itens_remonta));
+                    }
+                    if ('itens_motomecanizacao' in record && record.itens_motomecanizacao) {
+                        (newRecord as any).itens_motomecanizacao = JSON.parse(JSON.stringify(record.itens_motomecanizacao));
+                    }
                     
                     return newRecord;
                 });
