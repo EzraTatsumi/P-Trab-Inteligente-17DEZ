@@ -33,16 +33,21 @@ export function DatePicker({ date, setDate, placeholder = "Selecione uma data", 
       const parsedDate = parse(rawValue, "dd/MM/yyyy", new Date());
       if (isValid(parsedDate)) {
         // Se a data for válida, atualiza o estado principal
-        setDate(parsedDate);
+        // FIX 1: Passa os 4 argumentos esperados (os últimos 3 são mockados para entrada manual)
+        setDate(parsedDate, undefined, undefined, true); 
       }
     } else if (rawValue.length === 0) {
         // Permite limpar a data
-        setDate(undefined);
+        // FIX 2: Passa os 4 argumentos esperados (os últimos 3 são mockados para entrada manual)
+        setDate(undefined, undefined, undefined, true);
     }
   };
 
-  const handleSelectDate: SelectSingleEventHandler = (selectedDate, modifiers, e) => {
-    setDate(selectedDate, modifiers, e);
+  const handleSelectDate: SelectSingleEventHandler = (selectedDate, modifiers, e, isDayPicker) => {
+    // FIX 3: A chamada original já estava correta dentro do handler, mas a assinatura do handler
+    // precisa incluir o quarto argumento (isDayPicker) para ser compatível com SelectSingleEventHandler.
+    // A chamada interna é mantida, mas a assinatura do handler foi corrigida acima.
+    setDate(selectedDate, modifiers, e, isDayPicker); 
     if (selectedDate) {
       setInputValue(format(selectedDate, "dd/MM/yyyy"));
     } else {
