@@ -685,11 +685,6 @@ const VerbaOperacionalForm = () => {
                 toast.info("Nenhuma alteração detectada no item pendente.");
             }
             
-            // REMOVEMOS O BLOCO DE RESET PREMATURO AQUI.
-            // Os dados do formulário (formData e raw inputs) devem permanecer preenchidos
-            // para que o dirty check (isVerbaDirty) seja falso e o botão "Salvar Registros"
-            // fique habilitado.
-            
         } catch (err) {
             if (err instanceof z.ZodError) {
                 toast.error(err.errors[0].message);
@@ -1391,7 +1386,7 @@ const VerbaOperacionalForm = () => {
                                             </Card>
                                         );
                                     })}
-                                </div>
+                                </section>
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
