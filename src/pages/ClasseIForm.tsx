@@ -27,6 +27,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 type ClasseIRegistro = Tables<'classe_i_registros'>;
 type ClasseIInsert = TablesInsert<'classe_i_registros'>;
 type DiretrizCusteio = Tables<'diretrizes_custeio'>;
+type RacaoCategoria = 'RACAO_QUENTE' | 'RACAO_OPERACIONAL';
 
 // Esquema Zod para um item de Classe I
 const ClasseIItemSchema = z.object({
@@ -135,21 +136,23 @@ export const ClasseIForm = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
+        let determinedYear: number;
+
         // Tenta buscar o ano padrão de logística do perfil
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("default_logistica_year") // Corrigido para default_logistica_year
+          .select("default_logistica_year")
           .eq("id", user.id)
           .maybeSingle();
 
         if (profileData?.default_logistica_year) {
-          anoReferencia = profileData.default_logistica_year;
+          determinedYear = profileData.default_logistica_year;
         } else {
           // Se não houver, usa o ano atual como fallback
-          anoReferencia = new Date().getFullYear();
+          determinedYear = new Date().getFullYear();
         }
         
-        setAnoReferencia(anoReferencia);
+        setAnoReferencia(determinedYear);
       } catch (error) {
         console.error("Erro ao buscar ano de referência:", error);
         setAnoReferencia(new Date().getFullYear()); // Fallback
@@ -187,6 +190,9 @@ export const ClasseIForm = () => {
     if (records && records.length > 0) {
       const formattedRecords: ClasseIFormValues['registros'] = records.map(record => ({
         ...record,
+        // O tipo 'categoria' do Supabase é 'string', mas o Zod espera a união.
+        // Fazemos o cast explícito aqui.
+        categoria: record.categoria as RacaoCategoria, 
         // Converte números para strings de dígitos brutos para o formulário
         valor_qs: numberToRawDigits(record.valor_qs),
         valor_qr: numberToRawDigits(record.valor_qr),
@@ -387,6 +393,7 @@ export const ClasseIForm = () => {
       // Atualiza o formulário com os IDs retornados (se houver novos inserts)
       const formattedRecords: ClasseIFormValues['registros'] = data.map(record => ({
         ...record,
+        categoria: record.categoria as RacaoCategoria, // Cast explícito
         valor_qs: numberToRawDigits(record.valor_qs),
         valor_qr: numberToRawDigits(record.valor_qr),
         complemento_qs: numberToRawDigits(record.complemento_qs),
