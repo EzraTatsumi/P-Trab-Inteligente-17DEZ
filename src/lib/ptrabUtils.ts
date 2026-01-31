@@ -6,6 +6,14 @@ import { PTrabData } from "@/pages/PTrabReportManager"; // Reutilizando o tipo P
 // Tipo para as diretrizes operacionais (valores unitários)
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
+// Define a união de tabelas que possuem a coluna p_trab_id
+type PTrabLinkedTableName = 
+    'classe_i_registros' | 'classe_ii_registros' | 'classe_iii_registros' | 
+    'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' | 
+    'classe_viii_saude_registros' | 'classe_viii_remonta_registros' | 
+    'classe_ix_registros' | 'p_trab_ref_lpc' | 'passagem_registros' | 
+    'diaria_registros' | 'verba_operacional_registros';
+
 /**
  * Verifica o status de um PTrab e o atualiza para 'em_andamento' se estiver 'aberto'.
  * @param ptrabId O ID do Plano de Trabalho.
@@ -61,13 +69,12 @@ export async function fetchPTrabData(ptrabId: string): Promise<PTrabData> {
  * @param tableName O nome da tabela (deve ser uma chave válida de Tables).
  * @param ptrabId O ID do PTrab.
  */
-export async function fetchPTrabRecords<T extends TableName>(tableName: T, ptrabId: string): Promise<Tables<T>[]> {
-    // Correção: Usamos 'tableName' diretamente, pois T é restrito a TableName (união de literais de string).
+export async function fetchPTrabRecords<T extends PTrabLinkedTableName>(tableName: T, ptrabId: string): Promise<Tables<T>[]> {
+    // Agora, 'p_trab_id' é garantido como uma chave válida para Tables<T>
     const { data, error } = await supabase
         .from(tableName)
         .select('*')
-        // Asserção de tipo para garantir que 'p_trab_id' é uma coluna válida para a tabela T
-        .eq('p_trab_id' as string, ptrabId);
+        .eq('p_trab_id', ptrabId);
 
     if (error) {
         throw new Error(`Falha ao carregar registros de ${String(tableName)}: ${error.message}`);
