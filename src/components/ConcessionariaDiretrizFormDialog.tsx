@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,12 +37,12 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
     loading,
     initialCategory,
 }) => {
-    // Usamos 'undefined' para que o campo numérico comece vazio no input HTML
+    // Definindo 0 como valor inicial limpo para RHF
     const defaultValues: DiretrizConcessionariaForm = {
         ano_referencia: selectedYear,
         categoria: initialCategory,
         nome_concessionaria: "",
-        consumo_pessoa_dia: undefined as any, 
+        consumo_pessoa_dia: 0, 
         fonte_consumo: "",
         custo_unitario: 0,
         fonte_custo: "",
@@ -56,24 +56,33 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
     
     const watchedCategoria = watch('categoria');
     const watchedCustoUnitario = watch('custo_unitario');
+    
+    // Estado para gerenciar a string de input de consumo com vírgula (para exibição)
+    const [rawConsumoInput, setRawConsumoInput] = useState('');
 
     useEffect(() => {
         if (open) {
             if (diretrizToEdit) {
+                // 1. Carrega o valor numérico e formata para string com vírgula para exibição
+                const numericValue = Number(diretrizToEdit.consumo_pessoa_dia);
+                const formattedString = numericValue === 0 ? '' : String(numericValue).replace('.', ',');
+                setRawConsumoInput(formattedString);
+                
+                // 2. Reseta o RHF com o número limpo
                 reset({
                     ...diretrizToEdit,
                     ano_referencia: diretrizToEdit.ano_referencia,
-                    // Garante que 0 seja passado como número, mas se for null/undefined, o RHF deve lidar
-                    consumo_pessoa_dia: Number(diretrizToEdit.consumo_pessoa_dia),
+                    consumo_pessoa_dia: numericValue, 
                     custo_unitario: Number(diretrizToEdit.custo_unitario),
                 });
             } else {
-                // Ao criar novo, resetamos para os valores padrão, usando undefined para campo vazio
+                // Ao criar novo
+                setRawConsumoInput('');
                 reset({
                     ...defaultValues,
                     categoria: initialCategory,
                     unidade_custo: initialCategory === 'Água/Esgoto' ? 'm³' : 'kWh',
-                    consumo_pessoa_dia: undefined as any,
+                    consumo_pessoa_dia: 0,
                 });
             }
         }
@@ -87,13 +96,28 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
             setValue('unidade_custo', 'kWh');
         }
     }, [watchedCategoria, setValue]);
+    
+    const handleConsumoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value;
+        
+        // 1. Limpa a string: permite apenas dígitos, vírgula e ponto
+        value = value.replace(/[^0-9,.]/g, '');
+        
+        // 2. Normaliza a vírgula para ponto para conversão numérica
+        const numericString = value.replace(',', '.');
+        const numericValue = parseFloat(numericString) || 0;
+        
+        // 3. Atualiza o estado de exibição (mantém a vírgula)
+        setRawConsumoInput(value);
+        
+        // 4. Atualiza o estado do RHF com o número limpo
+        setValue('consumo_pessoa_dia', numericValue, { shouldValidate: true });
+    };
 
     const onSubmit = async (data: DiretrizConcessionariaForm) => {
         try {
-            // Garante que consumo_pessoa_dia seja 0 se for NaN (campo vazio) ou null
-            const consumo = isNaN(data.consumo_pessoa_dia as number) || data.consumo_pessoa_dia === null 
-                ? 0 
-                : Number(data.consumo_pessoa_dia);
+            // O valor já está limpo e validado pelo RHF/Zod
+            const consumo = Number(data.consumo_pessoa_dia) || 0; 
 
             const dataToSave = {
                 ...data,
@@ -181,9 +205,9 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                             <Label htmlFor="consumo_pessoa_dia">Consumo/pessoa/dia ({watchedCategoria === 'Água/Esgoto' ? 'm³' : 'kWh'})</Label>
                             <Input
                                 id="consumo_pessoa_dia"
-                                type="number"
-                                step="0.01"
-                                {...register("consumo_pessoa_dia", { valueAsNumber: true })}
+                                type="text" // Alterado para type="text"
+                                value={rawConsumoInput}
+                                onChange={handleConsumoChange}
                                 placeholder="Ex: 0,2"
                                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
