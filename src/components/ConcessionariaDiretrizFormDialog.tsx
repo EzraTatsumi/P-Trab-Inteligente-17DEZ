@@ -55,24 +55,28 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
     
     const watchedCategoria = watch('categoria');
     const watchedCustoUnitario = watch('custo_unitario');
+    // watchedConsumoPessoaDia agora será uma string (o valor bruto do input)
     const watchedConsumoPessoaDia = watch('consumo_pessoa_dia');
 
     useEffect(() => {
         if (open) {
             if (diretrizToEdit) {
+                // Ao editar, converte o número para string com vírgula para o input
+                const consumoString = String(diretrizToEdit.consumo_pessoa_dia).replace('.', ',');
+                
                 reset({
                     ...diretrizToEdit,
                     ano_referencia: diretrizToEdit.ano_referencia,
-                    consumo_pessoa_dia: Number(diretrizToEdit.consumo_pessoa_dia),
+                    consumo_pessoa_dia: consumoString as any, // Armazena como string
                     custo_unitario: Number(diretrizToEdit.custo_unitario),
                 });
             } else {
-                // Ao criar novo, resetamos para os valores padrão, mas definimos consumo como 0 para que o input apareça vazio
+                // Ao criar novo, resetamos para os valores padrão, definindo consumo como string vazia
                 reset({
                     ...defaultValues,
                     categoria: initialCategory,
                     unidade_custo: initialCategory === 'Água/Esgoto' ? 'm3' : 'kWh',
-                    consumo_pessoa_dia: 0, // Mantemos 0 no estado do hook form, mas o input será renderizado como vazio
+                    consumo_pessoa_dia: "" as any, // Armazena como string vazia
                 });
             }
         }
@@ -89,11 +93,15 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
 
     const onSubmit = async (data: DiretrizConcessionariaForm) => {
         try {
+            // 1. Converte a string de consumo (com vírgula) para número (com ponto) antes de salvar
+            const consumoString = String(data.consumo_pessoa_dia).replace(',', '.');
+            const parsedConsumo = parseFloat(consumoString) || 0;
+            
             const dataToSave = {
                 ...data,
                 id: diretrizToEdit?.id,
                 user_id: undefined, // Supabase handles user_id insertion
-                consumo_pessoa_dia: Number(data.consumo_pessoa_dia),
+                consumo_pessoa_dia: parsedConsumo,
                 custo_unitario: Number(data.custo_unitario),
             };
             await onSave(dataToSave);
@@ -175,13 +183,10 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                             <Label htmlFor="consumo_pessoa_dia">Consumo/pessoa/dia ({watchedCategoria === 'Água/Esgoto' ? 'm³' : 'kWh'})</Label>
                             <Input
                                 id="consumo_pessoa_dia"
-                                type="number"
-                                step="0.01"
-                                {...register("consumo_pessoa_dia", { valueAsNumber: true })}
-                                placeholder="Ex: 0.2 (m³)"
+                                type="text" // Alterado para 'text' para permitir vírgula
+                                {...register("consumo_pessoa_dia")} // Removido valueAsNumber
+                                placeholder="Ex: 0,2" // Placeholder atualizado
                                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                // Renderiza como string vazia se for 0 e não estiver sendo editado
-                                value={diretrizToEdit ? watchedConsumoPessoaDia : (watchedConsumoPessoaDia === 0 ? "" : watchedConsumoPessoaDia)}
                             />
                             {errors.consumo_pessoa_dia && <p className="text-xs text-red-500">{errors.consumo_pessoa_dia.message}</p>}
                         </div>
