@@ -88,15 +88,21 @@ const OmConfigPage = () => {
     }
   }, [editingId]);
 
+  // Tipo de dados para a mutação (inclui o ID opcional)
+  type OmMutationData = (TablesInsert<'organizacoes_militares'> | TablesUpdate<'organizacoes_militares'>) & { id?: string };
+
   const mutation = useMutation({
-    mutationFn: async (data: TablesInsert<'organizacoes_militares'> | TablesUpdate<'organizacoes_militares'>) => {
-      if (editingId) {
+    mutationFn: async (data: OmMutationData) => {
+      if (data.id) {
+        // Modo Edição
+        const { id, ...updateData } = data;
         const { error } = await supabase
           .from("organizacoes_militares")
-          .update(data as TablesUpdate<'organizacoes_militares'>)
-          .eq("id", editingId);
+          .update(updateData as TablesUpdate<'organizacoes_militares'>)
+          .eq("id", id);
         if (error) throw error;
       } else {
+        // Modo Inserção
         const { error } = await supabase
           .from("organizacoes_militares")
           .insert(data as TablesInsert<'organizacoes_militares'>[]);
@@ -167,7 +173,13 @@ const OmConfigPage = () => {
     e.preventDefault();
     try {
       omSchema.parse(formData);
-      mutation.mutate(formData);
+      
+      // Adiciona o ID ao objeto de dados se estiver em modo de edição
+      const dataToMutate: OmMutationData = editingId 
+        ? { ...formData, id: editingId } 
+        : formData;
+        
+      mutation.mutate(dataToMutate);
     } catch (err) {
       if (err instanceof z.ZodError) {
         toast.error(err.errors[0].message);
@@ -178,7 +190,8 @@ const OmConfigPage = () => {
   };
 
   const handleToggleActive = (om: OMData) => {
-    mutation.mutate({ ...om, ativo: !om.ativo });
+    // Usamos o ID da OM para a mutação de toggle
+    mutation.mutate({ ...om, id: om.id, ativo: !om.ativo });
   };
 
   // Função para alternar o formulário e resetar se estiver fechando
