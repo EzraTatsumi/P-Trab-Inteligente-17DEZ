@@ -750,7 +750,7 @@ const DiretrizesCusteioPage = () => {
       // 4. Copiar Diretrizes de Classe IX
       const { data: sourceClasseIX, error: classeIXError } = await supabase
         .from("diretrizes_classe_ix")
-        .select("*")
+        .select("categoria, item, valor_mnt_dia, valor_acionamento_mensal")
         .eq("user_id", user.id)
         .eq("ano_referencia", sourceYear);
         

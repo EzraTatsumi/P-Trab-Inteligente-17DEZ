@@ -865,7 +865,6 @@ const CustosOperacionaisPage = () => {
     const custoLabel = `Custo Unitário (R$/${unidade})`;
     
     // Lógica de Masking para Custo Unitário
-    // O estado de foco foi movido para o componente pai (CustosOperacionaisPage)
     
     const getCustoUnitarioProps = (item: DiretrizConcessionariaForm, indexInMainArray: number) => {
         const fieldName = 'custo_unitario';
@@ -914,16 +913,7 @@ const CustosOperacionaisPage = () => {
 
           return (
             <Card key={index} className="p-4 border-l-4 border-primary/50">
-              <div className="flex justify-end mb-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleRemoveConcessionariaItem(config, setConfig, indexInMainArray)}
-                  type="button"
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
+              {/* REMOVIDO: Botão de exclusão (Button 918) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-xs">Concessionária</Label>
@@ -975,16 +965,7 @@ const CustosOperacionaisPage = () => {
           );
         })}
 
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => handleAddConcessionariaItem(config, setConfig, selectedTab, unidade)} 
-          className="w-full"
-          type="button"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Adicionar Concessionária
-        </Button>
+        {/* REMOVIDO: Botão de adição (Button 978) */}
       </div>
     );
   };
@@ -1241,24 +1222,20 @@ const CustosOperacionaisPage = () => {
                         {fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </div>
                     </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <Card className="mt-2">
-                        <CardContent className="pt-4">
-                          <Tabs value={selectedConcessionariaTab} onValueChange={(value) => setSelectedConcessionariaTab(value as 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA')}>
-                            <TabsList className="grid w-full grid-cols-2">
-                              {CATEGORIAS_CONCESSIONARIA.map(cat => (
-                                <TabsTrigger key={cat.key} value={cat.key}>{cat.label}</TabsTrigger>
-                              ))}
-                            </TabsList>
-                            
-                            {CATEGORIAS_CONCESSIONARIA.map(cat => (
-                              <TabsContent key={cat.key} value={cat.key}>
-                                {renderConcessionariaList(concessionariaConfig, setConcessionariaConfig, cat.key as 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA')}
-                              </TabsContent>
-                            ))}
-                          </Tabs>
-                        </CardContent>
-                      </Card>
+                    <CollapsibleContent className="pt-4"> {/* Adicionado pt-4 aqui para manter o espaçamento */}
+                      <Tabs value={selectedConcessionariaTab} onValueChange={(value) => setSelectedConcessionariaTab(value as 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA')}>
+                        <TabsList className="grid w-full grid-cols-2">
+                          {CATEGORIAS_CONCESSIONARIA.map(cat => (
+                            <TabsTrigger key={cat.key} value={cat.key}>{cat.label}</TabsTrigger>
+                          ))}
+                        </TabsList>
+                        
+                        {CATEGORIAS_CONCESSIONARIA.map(cat => (
+                          <TabsContent key={cat.key} value={cat.key}>
+                            {renderConcessionariaList(concessionariaConfig, setConcessionariaConfig, cat.key as 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA')}
+                          </TabsContent>
+                        ))}
+                      </Tabs>
                     </CollapsibleContent>
                   </Collapsible>
                   
