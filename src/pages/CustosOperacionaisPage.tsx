@@ -189,7 +189,7 @@ const CustosOperacionaisPage = () => {
           { data: concessionariaData, error: concessionariaError } 
       ] = await Promise.all([
           supabase.from("diretrizes_operacionais").select("ano_referencia").eq("user_id", user.id),
-          supabase.from("diretrizes_passagens").select("ano_referencia").eq("user.id", user.id),
+          supabase.from("diretrizes_passagens").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_concessionaria").select("ano_referencia").eq("user_id", user.id), 
       ]);
 
@@ -418,6 +418,9 @@ const CustosOperacionaisPage = () => {
         diaria_of_gen_bsb: diretrizes.diaria_of_gen_bsb,
         diaria_of_gen_capitais: diretrizes.diaria_of_gen_capitais,
         diaria_of_gen_demais: diretrizes.diaria_of_gen_demais,
+        diaria_of_sup_bsb: diretrizes.diaria_of_sup_bsb,
+        diaria_of_sup_capitais: diretrizes.diaria_of_sup_capitais,
+        diaria_of_sup_demais: diretrizes.diaria_of_sup_demais,
         diaria_of_int_sgt_bsb: diretrizes.diaria_of_int_sgt_bsb,
         diaria_of_int_sgt_capitais: diretrizes.diaria_of_int_sgt_capitais,
         diaria_of_int_sgt_demais: diretrizes.diaria_of_int_sgt_demais,
@@ -723,7 +726,7 @@ const CustosOperacionaisPage = () => {
             <Label htmlFor="diaria_referencia_legal">Referência Legal (Lei/Portaria)</Label>
             <Input
               id="diaria_referencia_legal"
-              value={diretrizes.diaria_referencia_legal || ''}
+              value={diretrizes.diaria_referencia_legal || ""}
               onChange={(e) => setDiretrizes({ ...diretrizes, diaria_referencia_legal: e.target.value })}
               placeholder="Decreto Nº 12.324 de 19DEZ24"
               onKeyDown={handleEnterToNextField}
