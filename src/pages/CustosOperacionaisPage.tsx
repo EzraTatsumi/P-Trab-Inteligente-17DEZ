@@ -190,16 +190,14 @@ const CustosOperacionaisPage = () => {
       ] = await Promise.all([
           supabase.from("diretrizes_operacionais").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_passagens").select("ano_referencia").eq("user_id", user.id),
-          // Fix 10, 11: Use correct table name
-          supabase.from("diretrizes_concessionaria").select("ano_referencia").eq("user_id", user.id), 
+          supabase.from("diretrizes_concessionaria").select("ano_referencia").eq("user_id", user.id), // NEW FETCH
       ]);
 
       if (opError || passagensError || concessionariaError) throw opError || passagensError || concessionariaError;
 
       const opYears = opData ? opData.map(d => d.ano_referencia) : [];
       const passagensYears = passagensData ? passagensData.map(d => d.ano_referencia) : [];
-      // Fix 12: Use correct table name and access property
-      const concessionariaYears = concessionariaData ? concessionariaData.map(d => d.ano_referencia) : []; 
+      const concessionariaYears = concessionariaData ? concessionariaData.map(d => d.ano_referencia) : []; // NEW
 
       const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears]); // UPDATED
       
@@ -332,7 +330,6 @@ const CustosOperacionaisPage = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         
-        // Fix 13, 14: Use correct table name
         const { data, error } = await supabase
             .from('diretrizes_concessionaria')
             .select('*')
@@ -343,7 +340,7 @@ const CustosOperacionaisPage = () => {
             
         if (error) throw error;
         
-        // Fix 15, 16, 17: Ensure numeric types are correct and map data to the correct type
+        // Ensure numeric types are correct
         const typedData: DiretrizConcessionaria[] = (data || []).map(d => ({
             ...d,
             consumo_pessoa_dia: Number(d.consumo_pessoa_dia),
@@ -541,7 +538,6 @@ const CustosOperacionaisPage = () => {
       }
       
       // 3. Copiar Diretrizes de Concessionária (NEW LOGIC)
-      // Fix 18: Use correct table name
       const { data: sourceConcessionaria, error: concessionariaError } = await supabase
         .from("diretrizes_concessionaria")
         .select("categoria, nome_concessionaria, consumo_pessoa_dia, fonte_consumo, custo_unitario, fonte_custo, unidade_custo")
@@ -551,14 +547,12 @@ const CustosOperacionaisPage = () => {
       if (concessionariaError) throw concessionariaError;
       
       if (sourceConcessionaria && sourceConcessionaria.length > 0) {
-          // Fix 19: Spread types are now correct due to updated types.ts
           const newConcessionaria = sourceConcessionaria.map(c => ({
               ...c,
               ano_referencia: targetYear,
               user_id: user.id,
           }));
           
-          // Fix 20, 21: Use correct table name
           const { error: insertConcessionariaError } = await supabase
             .from("diretrizes_concessionaria")
             .insert(newConcessionaria as TablesInsert<'diretrizes_concessionaria'>[]);
@@ -609,7 +603,6 @@ const CustosOperacionaisPage = () => {
         .eq("ano_referencia", year);
         
       // 3. Excluir Diretrizes de Concessionária (NEW LOGIC)
-      // Fix 22: Use correct table name
       await supabase
         .from("diretrizes_concessionaria")
         .delete()
@@ -907,7 +900,6 @@ const CustosOperacionaisPage = () => {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error("Usuário não autenticado");
           
-          // Fix 23, 24: Use correct table name
           const dbData: TablesInsert<'diretrizes_concessionaria'> = {
               user_id: user.id,
               ano_referencia: selectedYear,
@@ -921,7 +913,6 @@ const CustosOperacionaisPage = () => {
           };
           
           if (data.id) {
-              // Fix 25, 26: Use correct table name
               const { error } = await supabase
                   .from('diretrizes_concessionaria')
                   .update(dbData as TablesUpdate<'diretrizes_concessionaria'>)
@@ -929,7 +920,6 @@ const CustosOperacionaisPage = () => {
               if (error) throw error;
               toast.success("Diretriz de Concessionária atualizada!");
           } else {
-              // Fix 27: Use correct table name
               const { error } = await supabase
                   .from('diretrizes_concessionaria')
                   .insert([dbData]);
@@ -964,7 +954,6 @@ const CustosOperacionaisPage = () => {
       
       try {
           setLoading(true);
-          // Fix 28: Use correct table name
           await supabase.from('diretrizes_concessionaria').delete().eq('id', id);
           toast.success("Diretriz de Concessionária excluída!");
           await loadDiretrizesConcessionaria(selectedYear);
@@ -976,7 +965,6 @@ const CustosOperacionaisPage = () => {
   };
   
   const renderConcessionariaList = (category: CategoriaConcessionaria) => {
-      // Fix 29: diretrizesConcessionaria is now correctly typed
       const filteredDiretrizes = diretrizesConcessionaria.filter(d => d.categoria === category);
       
       return (
@@ -996,7 +984,7 @@ const CustosOperacionaisPage = () => {
                           <TableBody>
                               {filteredDiretrizes.map(d => (
                                   <ConcessionariaDiretrizRow
-                                      key={d.id} // Fix 30: d.id is now correctly typed
+                                      key={d.id}
                                       diretriz={d}
                                       onEdit={handleStartEditConcessionaria}
                                       onDelete={handleDeleteConcessionaria}

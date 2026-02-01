@@ -1,17 +1,30 @@
+import * as z from "zod";
 import { Tables } from "@/integrations/supabase/types";
 
-// Tipos literais específicos para Categoria e Unidade de Custo
-export type CategoriaConcessionaria = "Água/Esgoto" | "Energia Elétrica";
-export const CATEGORIAS_CONCESSIONARIA: CategoriaConcessionaria[] = ["Água/Esgoto", "Energia Elétrica"];
+export type DiretrizConcessionaria = Tables<'diretrizes_concessionaria'>;
 
-export type UnidadeCustoConcessionaria = "m3" | "kWh";
-export const UNIDADES_CUSTO_CONCESSIONARIA: UnidadeCustoConcessionaria[] = ["m3", "kWh"];
+export const CATEGORIAS_CONCESSIONARIA = [
+    'Água/Esgoto',
+    'Energia Elétrica',
+] as const;
 
-// Sobrescreve o tipo genérico do Supabase para impor os tipos literais
-export interface DiretrizConcessionaria extends Omit<Tables<'diretrizes_concessionaria'>, 'categoria' | 'unidade_custo'> {
-    categoria: CategoriaConcessionaria;
-    unidade_custo: UnidadeCustoConcessionaria;
-}
+export type CategoriaConcessionaria = typeof CATEGORIAS_CONCESSIONARIA[number];
 
-// Tipo de formulário para inserção/edição
-export type DiretrizConcessionariaForm = Omit<DiretrizConcessionaria, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export const UNIDADES_CUSTO = [
+    'm3',
+    'kWh',
+] as const;
+
+export const diretrizConcessionariaSchema = z.object({
+    id: z.string().uuid().optional(),
+    ano_referencia: z.number().int().positive(),
+    categoria: z.enum(CATEGORIAS_CONCESSIONARIA),
+    nome_concessionaria: z.string().min(1, "O nome da concessionária é obrigatório."),
+    consumo_pessoa_dia: z.number().min(0, "O consumo deve ser um valor positivo."),
+    fonte_consumo: z.string().optional().nullable(),
+    custo_unitario: z.number().min(0, "O custo unitário deve ser um valor positivo."),
+    fonte_custo: z.string().optional().nullable(),
+    unidade_custo: z.enum(UNIDADES_CUSTO),
+});
+
+export type DiretrizConcessionariaForm = z.infer<typeof diretrizConcessionariaSchema>;
