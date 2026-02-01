@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Save, Trash2, XCircle, Pencil, Sparkles, AlertCircle, Droplet, Zap } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, XCircle, Pencil, Sparkles, AlertCircle, Droplet, Zap, Check } from "lucide-react"; // ADDED CHECK
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";

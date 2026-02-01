@@ -284,7 +284,7 @@ const ConcessionariaDiretrizSelectorDialog: React.FC<ConcessionariaDiretrizSelec
                                                                     {isManual && (
                                                                         <Button 
                                                                             variant="link" 
-                                                                            size="xs" 
+                                                                            size="sm" // Corrected size
                                                                             onClick={() => handleRestoreAutomatic(diretriz)}
                                                                             className="h-auto p-0 text-xs text-muted-foreground hover:text-primary"
                                                                         >

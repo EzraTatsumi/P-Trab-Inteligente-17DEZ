@@ -1,42 +1,25 @@
 import * as z from "zod";
 
-// Helper function for currency comparison
-const areNumbersEqual = (a: number, b: number, tolerance = 0.01): boolean => {
-    return Math.abs(a - b) < tolerance;
-};
-
-// Helper to check if any military personnel count is greater than zero
-const isEfetivoPresent = (quantidades: Record<string, number>): boolean => {
-    return Object.values(quantidades).some(q => q > 0);
-};
-
-// --- Login Schema ---
-export const loginSchema = z.object({
-    email: z.string().email("E-mail inválido."),
-    password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres."),
-    rememberMe: z.boolean().optional(), // Adicionado rememberMe
-});
-
-// --- Diretriz Operacional Schema (Used in CustosOperacionaisPage) ---
+// Esquema para validação de Diretrizes Operacionais (já existente, mas garantindo que está aqui)
 export const diretrizOperacionalSchema = z.object({
-    ano_referencia: z.number().int().min(2020, "Ano inválido."),
+    id: z.string().optional(),
+    user_id: z.string().optional(),
+    ano_referencia: z.number().int().min(2020, "O ano deve ser 2020 ou posterior."),
     
-    // Fatores (0 to 10)
     fator_passagens_aereas: z.number().min(0).max(10, "Fator deve ser entre 0 e 10."),
     fator_servicos_terceiros: z.number().min(0).max(10, "Fator deve ser entre 0 e 10."),
+    valor_verba_operacional_dia: z.number().min(0, "Valor deve ser positivo."),
+    valor_suprimentos_fundo_dia: z.number().min(0, "Valor deve ser positivo."),
+    valor_complemento_alimentacao: z.number().min(0, "Valor deve ser positivo."),
+    valor_fretamento_aereo_hora: z.number().min(0, "Valor deve ser positivo."),
+    valor_locacao_estrutura_dia: z.number().min(0, "Valor deve ser positivo."),
+    valor_locacao_viaturas_dia: z.number().min(0, "Valor deve ser positivo."),
     fator_material_consumo: z.number().min(0).max(10, "Fator deve ser entre 0 e 10."),
     fator_concessionaria: z.number().min(0).max(10, "Fator deve ser entre 0 e 10."),
+    observacoes: z.string().nullable().optional(),
     
-    // Valores Monetários (R$)
-    valor_verba_operacional_dia: z.number().min(0),
-    valor_suprimentos_fundo_dia: z.number().min(0),
-    valor_complemento_alimentacao: z.number().min(0),
-    valor_fretamento_aereo_hora: z.number().min(0),
-    valor_locacao_estrutura_dia: z.number().min(0),
-    valor_locacao_viaturas_dia: z.number().min(0),
-    
-    // Diárias e Taxa de Embarque
-    diaria_referencia_legal: z.string().optional().nullable(),
+    // Campos de Diárias
+    diaria_referencia_legal: z.string().nullable().optional(),
     diaria_of_gen_bsb: z.number().min(0),
     diaria_of_gen_capitais: z.number().min(0),
     diaria_of_gen_demais: z.number().min(0),
@@ -50,86 +33,17 @@ export const diretrizOperacionalSchema = z.object({
     diaria_demais_pracas_capitais: z.number().min(0),
     diaria_demais_pracas_demais: z.number().min(0),
     taxa_embarque: z.number().min(0),
-    
-    observacoes: z.string().optional().nullable(),
 });
 
-// --- Verba Operacional Base Schema (Sem Refinamento) ---
-const verbaOperacionalBase = z.object({
-    // Campos de contexto (OMs)
-    om_favorecida: z.string().min(1, "A OM Favorecida é obrigatória."),
-    ug_favorecida: z.string().min(1, "A UG Favorecida é obrigatória."),
-    om_detentora: z.string().min(1, "A OM Destino do Recurso é obrigatória."),
-    ug_detentora: z.string().min(1, "A UG Destino do Recurso é obrigatória."),
-    
-    // Campos de quantidade/período
-    dias_operacao: z.number().int().min(1, "O número de dias deve ser maior que zero."),
-    quantidade_equipes: z.number().int().min(1, "A quantidade de equipes deve ser maior que zero."),
-    fase_atividade: z.string().min(1, "A fase da atividade é obrigatória."),
-    
-    // Valores
-    valor_total_solicitado: z.number().min(0.01, "O valor total solicitado deve ser maior que zero."),
-    valor_nd_30: z.number().min(0, "ND 30 não pode ser negativa."),
-    valor_nd_39: z.number().min(0, "ND 39 não pode ser negativa."),
-});
-
-// --- Verba Operacional Schema (Com Refinamento) ---
-export const verbaOperacionalSchema = verbaOperacionalBase.refine(data => {
-    // A soma das NDs deve ser igual ao valor total solicitado (com pequena tolerância)
-    const totalAlocado = data.valor_nd_30 + data.valor_nd_39;
-    return areNumbersEqual(totalAlocado, data.valor_total_solicitado);
-}, {
-    message: "A soma das NDs (30 e 39) deve ser igual ao Valor Total Solicitado.",
-    path: ["valor_nd_39"], // Aponta para o campo de ND 39 para exibir o erro
-});
-
-// --- Suprimento de Fundos Schema (Com Extensão e Refinamento) ---
-export const suprimentoFundosSchema = verbaOperacionalBase.extend({
-    // Campos de detalhamento específicos para Suprimento de Fundos
-    objeto_aquisicao: z.string().min(1, "O Objeto de Aquisição (Material) é obrigatório."),
-    objeto_contratacao: z.string().min(1, "O Objeto de Contratação (Serviço) é obrigatório."),
-    proposito: z.string().min(1, "O Propósito é obrigatório."),
-    finalidade: z.string().min(1, "A Finalidade é obrigatória."),
-    local: z.string().min(1, "O Local é obrigatório."),
-    tarefa: z.string().min(1, "A Tarefa é obrigatória."),
-}).refine(data => {
-    // Re-aplica a validação de alocação total
-    const totalAlocado = data.valor_nd_30 + data.valor_nd_39;
-    return areNumbersEqual(totalAlocado, data.valor_total_solicitado);
-}, {
-    message: "A soma das NDs (30 e 39) deve ser igual ao Valor Total Solicitado.",
-    path: ["valor_nd_39"], // Aponta para o campo de ND 39 para exibir o erro
-});
-
-// --- Diaria Schema (NOVO) ---
-export const diariaSchema = z.object({
-    // Context fields (OMs)
-    om_favorecida: z.string().min(1, "A OM Favorecida é obrigatória."),
-    ug_favorecida: z.string().min(1, "A UG Favorecida é obrigatória."),
-    om_detentora: z.string().min(1, "A OM Destino do Recurso é obrigatória."),
-    ug_detentora: z.string().min(1, "A UG Destino do Recurso é obrigatória."),
-    
-    // Period and Location
-    dias_operacao: z.number().int().min(1, "O número de dias deve ser maior que zero."),
-    nr_viagens: z.number().int().min(1, "O número de viagens deve ser maior que zero."),
-    destino: z.enum(['bsb_capitais_especiais', 'demais_capitais', 'demais_dslc'], {
-        required_error: "O destino é obrigatório.",
-    }),
-    local_atividade: z.string().min(1, "O local da atividade é obrigatório."),
-    fase_atividade: z.string().min(1, "A fase da atividade é obrigatória."),
-    
-    // Efetivo
-    quantidades_por_posto: z.record(z.string(), z.number().int().min(0)),
-    
-    // Flags
-    is_aereo: z.boolean(),
-    
-    // Optional fields
-    detalhamento_customizado: z.string().optional().nullable(),
-}).refine(data => {
-    // Validation: At least one military member must be present
-    return isEfetivoPresent(data.quantidades_por_posto);
-}, {
-    message: "Informe a quantidade de militares por posto/graduação.",
-    path: ["quantidades_por_posto"],
+// Esquema para validação de Diretrizes de Concessionária
+export const diretrizConcessionariaSchema = z.object({
+    id: z.string().optional(),
+    ano_referencia: z.number().int().min(2020, "O ano deve ser 2020 ou posterior."),
+    categoria: z.enum(["Água/Esgoto", "Energia Elétrica"], { required_error: "A categoria é obrigatória." }),
+    nome_concessionaria: z.string().min(1, "O nome da concessionária é obrigatório."),
+    consumo_pessoa_dia: z.number().min(0.01, "O consumo deve ser maior que zero."),
+    fonte_consumo: z.string().nullable().optional(),
+    custo_unitario: z.number().min(0.01, "O custo unitário deve ser maior que zero."),
+    fonte_custo: z.string().nullable().optional(),
+    unidade_custo: z.string().min(1, "A unidade de custo (m³ ou kWh) é obrigatória."),
 });

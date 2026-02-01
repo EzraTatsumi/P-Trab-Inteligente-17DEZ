@@ -4,7 +4,7 @@ import LoginPage from "./pages/Login";
 import PTrabListPage from "./pages/PTrabList";
 import PTrabFormPage from "./pages/PTrabForm";
 import PassagemFormPage from "./pages/PassagemForm";
-import ConcessionariaFormPage from "./pages/ConcessionariaForm"; // NEW
+import ConcessionariaFormPage from "./pages/ConcessionariaForm";
 import CustosOperacionaisPage from "./pages/CustosOperacionaisPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 

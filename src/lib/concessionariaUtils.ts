@@ -59,7 +59,7 @@ export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaReg
     
     memoria += `1. Cálculo do Consumo Total:\n`;
     memoria += `   - Consumo por Pessoa/Dia: ${consumo_pessoa_dia} ${unidadeCusto}/dia\n`;
-    memedia += `   - Total de Unidades (m³ ou kWh) = Efetivo (${efetivo}) x Dias (${dias_operacao}) x Consumo/Pessoa/Dia (${consumo_pessoa_dia})\n`;
+    memoria += `   - Total de Unidades (m³ ou kWh) = Efetivo (${efetivo}) x Dias (${dias_operacao}) x Consumo/Pessoa/Dia (${consumo_pessoa_dia})\n`;
     memoria += `   - Total de Unidades Solicitadas: ${totalUnidades.toFixed(2)} ${unidadeCusto}\n\n`;
     
     memoria += `2. Cálculo do Custo Total:\n`;

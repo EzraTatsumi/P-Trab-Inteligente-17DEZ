@@ -123,12 +123,13 @@ const CustosOperacionaisPage = () => {
       initialState[field.key as string] = false;
     });
     
-    // Verifica se o estado de navegação pede para abrir a seção de passagens
+    // Verifica se o estado de navegação pede para abrir a seção de passagens ou concessionária
     const shouldOpenPassagens = location.state && (location.state as { openPassagens?: boolean }).openPassagens;
+    const shouldOpenConcessionaria = location.state && (location.state as { openConcessionaria?: boolean }).openConcessionaria;
     
     initialState['diarias_detalhe'] = false; 
     initialState['passagens_detalhe'] = shouldOpenPassagens || false; 
-    initialState['concessionaria_detalhe'] = false; // NEW: Concessionaria detail state
+    initialState['concessionaria_detalhe'] = shouldOpenConcessionaria || false; // NEW: Concessionaria detail state
     return initialState;
   });
   
@@ -909,7 +910,7 @@ const CustosOperacionaisPage = () => {
           
           // CORREÇÃO: Converte o consumo (que pode ser string do formulário) para number
           const consumoValue = typeof data.consumo_pessoa_dia === 'string'
-            ? parseFloat(data.consumo_pessoa_dia.replace(',', '.')) || 0
+            ? parseFloat(data.consumo_pessoa_dia.replace(',', '.')) || 0 // SAFE REPLACE
             : data.consumo_pessoa_dia;
 
           const dbData: TablesInsert<'diretrizes_concessionaria'> = {
