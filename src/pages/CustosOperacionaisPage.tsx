@@ -218,7 +218,7 @@ const CustosOperacionaisPage = () => {
       const opYears = opData ? opData.map(d => d.ano_referencia) : [];
       const passagensYears = passagensData ? passagensData.map(d => d.ano_referencia) : [];
       // CORREÇÃO TS: Acessar 'ano_referencia' de forma segura
-      const concessionariaYears = concessionariaData ? (concessionariaData as { ano_referencia: number }[]).map(d => d.ano_referencia) : []; 
+      const concessionariaYears = concessionariaData ? (concessionariaData as any[]).map(d => d.ano_referencia) : []; 
 
       const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears]); // INCLUINDO CONCESSIONÁRIA
       
