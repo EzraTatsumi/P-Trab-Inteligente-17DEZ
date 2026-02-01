@@ -81,7 +81,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
     // Efeito para sincronizar a unidade de custo com a categoria
     useEffect(() => {
         if (watchedCategoria === 'Água/Esgoto') {
-            setValue('unidade_custo', 'm3');
+            setValue('unidade_custo', 'm³');
         } else if (watchedCategoria === 'Energia Elétrica') {
             setValue('unidade_custo', 'kWh');
         }
