@@ -251,7 +251,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
                         {isEditingContract ? `Editar Contrato de Passagens: ${passagemForm.om_referencia}` : "Novo Contrato de Passagens"}
@@ -328,8 +328,9 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                         </CardTitle>
                         
                         {/* Formulário de Trecho */}
-                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 border p-3 rounded-lg bg-muted/50">
-                            {/* Campo Origem */}
+                        {/* Alterado de grid-cols-6 para grid-cols-7 para dar mais espaço */}
+                        <div className="grid grid-cols-1 md:grid-cols-7 gap-4 border p-3 rounded-lg bg-muted/50">
+                            {/* Campo Origem (1 coluna) */}
                             <div className="space-y-2 col-span-1">
                                 <Label htmlFor="trecho-origem">Origem *</Label>
                                 <Input
@@ -340,7 +341,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                     onKeyDown={handleEnterToNextField}
                                 />
                             </div>
-                            {/* Campo Destino */}
+                            {/* Campo Destino (1 coluna) */}
                             <div className="space-y-2 col-span-1">
                                 <Label htmlFor="trecho-destino">Destino *</Label>
                                 <Input
@@ -351,6 +352,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                     onKeyDown={handleEnterToNextField}
                                 />
                             </div>
+                            {/* Campo Valor (1.5 colunas) */}
                             <div className="space-y-2 col-span-1">
                                 <Label htmlFor="trecho-valor">Valor (R$) *</Label>
                                 <CurrencyInput
@@ -361,6 +363,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                     onKeyDown={handleEnterToNextField}
                                 />
                             </div>
+                            {/* Campo Tipo (1.5 colunas) */}
                             <div className="space-y-2 col-span-1">
                                 <Label htmlFor="trecho-tipo">Tipo *</Label>
                                 <Select
@@ -377,8 +380,8 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                     </SelectContent>
                                 </Select>
                             </div>
-                            {/* Switch para Ida/Volta com rótulo dinâmico */}
-                            <div className="col-span-1 flex items-center pt-6">
+                            {/* Switch para Ida/Volta (1 coluna) */}
+                            <div className="col-span-2 flex items-center pt-6">
                                 <Switch
                                     id="trecho-ida-volta"
                                     checked={trechoForm.is_ida_volta}
@@ -388,6 +391,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                     {trechoForm.is_ida_volta ? "Ida e Volta" : "Somente Ida"}
                                 </Label>
                             </div>
+                            {/* Botão Adicionar (1 coluna) */}
                             <div className="space-y-2 col-span-1 flex flex-col justify-end">
                                 <Button 
                                     type="button" 
