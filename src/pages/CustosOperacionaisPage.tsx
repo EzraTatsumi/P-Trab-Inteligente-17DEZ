@@ -120,30 +120,33 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
 
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
-  const location = useLocation(); // Hook para acessar o estado de navegação
-  const { user } = useSession();
-  const queryClient = useQueryClient();
-  const [loading, setLoading] = useState(true);
+  const location = useLocation(); // Hook 1
+  const { user } = useSession(); // Hook 2
+  const queryClient = useQueryClient(); // Hook 3
+  const [loading, setLoading] = useState(true); // Hook 4
   
   const currentYear = new Date().getFullYear();
-  const [diretrizes, setDiretrizes] = useState<Partial<DiretrizOperacional>>(defaultDiretrizes(currentYear));
+  const [diretrizes, setDiretrizes] = useState<Partial<DiretrizOperacional>>(defaultDiretrizes(currentYear)); // Hook 5
   
-  const [availableYears, setAvailableYears] = useState<number[]>([]);
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
-  const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
+  const [availableYears, setAvailableYears] = useState<number[]>([]); // Hook 6
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear); // Hook 7
+  const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false); // Hook 8
   
-  const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear();
+  const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear(); // Hook 9
   const defaultYear = defaultYearData?.defaultYear || null;
   
   // Estado para armazenar os inputs brutos (apenas dígitos) para campos monetários
-  const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
+  const [rawInputs, setRawInputs] = useState<Record<string, string>>({}); // Hook 10
   
   // --- ESTADOS DE CONCESSIONÁRIA ---
-  const [concessionariaConfig, setConcessionariaConfig] = useState<DiretrizConcessionariaForm[]>(defaultConcessionariaConfig);
-  const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<'AGUA_ESGOTO' | 'ENERGIA_ELETRICA'>('AGUA_ESGOTO');
+  const [concessionariaConfig, setConcessionariaConfig] = useState<DiretrizConcessionariaForm[]>(defaultConcessionariaConfig); // Hook 11
+  const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<'AGUA_ESGOTO' | 'ENERGIA_ELETRICA'>('AGUA_ESGOTO'); // Hook 12
+  
+  // NOVO ESTADO GLOBAL PARA MÁSCARA DE CONCESSIONÁRIA (CORRIGIDO)
+  const [focusedInputConcessionaria, setFocusedInputConcessionaria] = useState<{ index: number, rawDigits: string } | null>(null); // Hook 13
   
   // Estado para controlar a expansão individual de cada campo
-  const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => {
+  const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => { // Hook 14
     const initialState: Record<string, boolean> = {};
     OPERATIONAL_FIELDS.forEach(field => {
       initialState[field.key as string] = false;
@@ -158,20 +161,20 @@ const CustosOperacionaisPage = () => {
     return initialState;
   });
   
-  const { handleEnterToNextField } = useFormNavigation();
+  const { handleEnterToNextField } = useFormNavigation(); // Hook 15
   
   // --- ESTADOS DE DIRETRIZES DE PASSAGENS ---
-  const [diretrizesPassagens, setDiretrizesPassagens] = useState<DiretrizPassagem[]>([]);
-  const [isPassagemFormOpen, setIsPassagemFormOpen] = useState(false);
-  const [diretrizToEdit, setDiretrizToEdit] = useState<DiretrizPassagem | null>(null);
+  const [diretrizesPassagens, setDiretrizesPassagens] = useState<DiretrizPassagem[]>([]); // Hook 16
+  const [isPassagemFormOpen, setIsPassagemFormOpen] = useState(false); // Hook 17
+  const [diretrizToEdit, setDiretrizToEdit] = useState<DiretrizPassagem | null>(null); // Hook 18
   
   // Efeito para rolar para o topo na montagem
-  useEffect(() => {
+  useEffect(() => { // Hook 19
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   // Efeito para carregar anos disponíveis e definir o ano selecionado
-  useEffect(() => {
+  useEffect(() => { // Hook 20
     if (!isLoadingDefaultYear && defaultYearData) {
         const checkAuthAndLoadYears = async () => {
             const { data: { session } = { session: null } } = await supabase.auth.getSession();
@@ -188,7 +191,7 @@ const CustosOperacionaisPage = () => {
     }
   }, [isLoadingDefaultYear, defaultYearData]);
 
-  useEffect(() => {
+  useEffect(() => { // Hook 21
     if (selectedYear) {
       loadDiretrizesForYear(selectedYear);
       loadDiretrizesPassagens(selectedYear); 
@@ -858,11 +861,11 @@ const CustosOperacionaisPage = () => {
     selectedTab: 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA'
   ) => {
     const filteredItems = config.filter(item => item.categoria === selectedTab);
-    const { label, unidade } = CATEGORIAS_CONCESSIONARIA.find(c => c.key === selectedTab)!;
+    const { unidade } = CATEGORIAS_CONCESSIONARIA.find(c => c.key === selectedTab)!;
     const custoLabel = `Custo Unitário (R$/${unidade})`;
     
     // Lógica de Masking para Custo Unitário
-    const [focusedInputConcessionaria, setFocusedInputConcessionaria] = useState<{ index: number, rawDigits: string } | null>(null);
+    // O estado de foco foi movido para o componente pai (CustosOperacionaisPage)
     
     const getCustoUnitarioProps = (item: DiretrizConcessionariaForm, indexInMainArray: number) => {
         const fieldName = 'custo_unitario';
