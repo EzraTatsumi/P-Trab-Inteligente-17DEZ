@@ -34,7 +34,8 @@ import { DiretrizConcessionariaForm } from "@/types/diretrizesConcessionaria"; /
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
-type DiretrizConcessionariaDB = Tables<'diretrizes_concessionaria'>;
+// Usando 'any' temporariamente para evitar erro de TS até que 'diretrizes_concessionaria' seja reconhecida
+type DiretrizConcessionariaDB = any; 
 
 // Estrutura de dados para a tabela de diárias
 const DIARIA_RANKS_CONFIG = [
@@ -60,8 +61,8 @@ const OPERATIONAL_FIELDS = [
 
 // NOVAS CONSTANTES PARA CONCESSIONÁRIA
 const CATEGORIAS_CONCESSIONARIA = [
-  { key: 'AGUA_ESGOTO', label: 'Água/Esgoto', unidade: 'm3' },
-  { key: 'ENERGIA_ELETRICA', label: 'Energia Elétrica', unidade: 'kWh' },
+  { key: 'AGUA_ESGOTO', label: 'Água/Esgoto', unidade: 'm3' as const },
+  { key: 'ENERGIA_ELETRICA', label: 'Energia Elétrica', unidade: 'kWh' as const },
 ];
 
 const defaultConcessionariaConfig: DiretrizConcessionariaForm[] = [
@@ -207,14 +208,16 @@ const CustosOperacionaisPage = () => {
       ] = await Promise.all([
           supabase.from("diretrizes_operacionais").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_passagens").select("ano_referencia").eq("user_id", user.id),
-          supabase.from("diretrizes_concessionaria").select("ano_referencia").eq("user_id", user.id), // NOVO FETCH
+          // CORREÇÃO TS: Usar 'as any' para a nova tabela até que o types.ts seja atualizado
+          (supabase.from("diretrizes_concessionaria") as any).select("ano_referencia").eq("user_id", user.id), 
       ]);
 
       if (opError || passagensError || concessionariaError) throw opError || passagensError || concessionariaError;
 
       const opYears = opData ? opData.map(d => d.ano_referencia) : [];
       const passagensYears = passagensData ? passagensData.map(d => d.ano_referencia) : [];
-      const concessionariaYears = concessionariaData ? concessionariaData.map(d => d.ano_referencia) : []; // NOVO
+      // CORREÇÃO TS: Acessar 'ano_referencia' de forma segura
+      const concessionariaYears = concessionariaData ? (concessionariaData as { ano_referencia: number }[]).map(d => d.ano_referencia) : []; 
 
       const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears]); // INCLUINDO CONCESSIONÁRIA
       
@@ -305,8 +308,8 @@ const CustosOperacionaisPage = () => {
       setRawInputs(initialRawInputs);
       
       // 2. Carregar Diretrizes de Concessionária
-      const { data: concessionariaData, error: concessionariaError } = await supabase
-        .from("diretrizes_concessionaria")
+      const { data: concessionariaData, error: concessionariaError } = await (supabase
+        .from("diretrizes_concessionaria") as any) // CORREÇÃO TS
         .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
@@ -314,15 +317,15 @@ const CustosOperacionaisPage = () => {
       if (concessionariaError) throw concessionariaError;
       
       if (concessionariaData && concessionariaData.length > 0) {
-        setConcessionariaConfig(concessionariaData.map(d => ({
+        setConcessionariaConfig((concessionariaData as DiretrizConcessionariaDB[]).map(d => ({ // CORREÇÃO TS
           id: d.id,
-          categoria: d.categoria as 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA',
-          nome_concessionaria: d.nome_concessionaria,
-          consumo_pessoa_dia: Number(d.consumo_pessoa_dia),
-          fonte_consumo: d.fonte_consumo || '',
-          custo_unitario: Number(d.custo_unitario),
-          fonte_custo: d.fonte_custo || '',
-          unidade_custo: d.unidade_custo as 'm3' | 'kWh',
+          categoria: d.categoria as 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA', // CORREÇÃO TS
+          nome_concessionaria: d.nome_concessionaria, // CORREÇÃO TS
+          consumo_pessoa_dia: Number(d.consumo_pessoa_dia), // CORREÇÃO TS
+          fonte_consumo: d.fonte_consumo || '', // CORREÇÃO TS
+          custo_unitario: Number(d.custo_unitario), // CORREÇÃO TS
+          fonte_custo: d.fonte_custo || '', // CORREÇÃO TS
+          unidade_custo: d.unidade_custo as 'm3' | 'kWh', // CORREÇÃO TS
         })));
       } else {
         setConcessionariaConfig(defaultConcessionariaConfig);
@@ -457,8 +460,8 @@ const CustosOperacionaisPage = () => {
       // 2. Salvar Diretrizes de Concessionária
       
       // Deletar registros antigos de Concessionária
-      await supabase
-        .from("diretrizes_concessionaria")
+      await (supabase
+        .from("diretrizes_concessionaria") as any) // CORREÇÃO TS
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", diretrizes.ano_referencia!);
@@ -470,18 +473,18 @@ const CustosOperacionaisPage = () => {
           ano_referencia: diretrizes.ano_referencia,
           categoria: item.categoria,
           nome_concessionaria: item.nome_concessionaria,
-          // Conversão explícita para string com 2 casas decimais para garantir o tipo 'numeric' no DB
-          consumo_pessoa_dia: Number(item.consumo_pessoa_dia).toFixed(4), // Maior precisão para consumo
+          // Conversão explícita para string com 4 casas decimais para garantir o tipo 'numeric' no DB
+          consumo_pessoa_dia: Number(item.consumo_pessoa_dia).toFixed(4), 
           fonte_consumo: item.fonte_consumo,
-          custo_unitario: Number(item.custo_unitario).toFixed(4), // Maior precisão para custo
+          custo_unitario: Number(item.custo_unitario).toFixed(4), 
           fonte_custo: item.fonte_custo,
           unidade_custo: item.unidade_custo,
         }));
         
       if (concessionariaItemsParaSalvar.length > 0) {
-        const { error: cError } = await supabase
-          .from("diretrizes_concessionaria")
-          .insert(concessionariaItemsParaSalvar as TablesInsert<'diretrizes_concessionaria'>[]);
+        const { error: cError } = await (supabase
+          .from("diretrizes_concessionaria") as any) // CORREÇÃO TS
+          .insert(concessionariaItemsParaSalvar as TablesInsert<'diretrizes_concessionaria'>[]); // CORREÇÃO TS
         if (cError) throw cError;
       }
 
@@ -581,23 +584,24 @@ const CustosOperacionaisPage = () => {
       }
       
       // 3. Copiar Diretrizes de Concessionária
-      const { data: sourceConcessionaria, error: concessionariaError } = await supabase
-        .from("diretrizes_concessionaria")
-        .select("categoria, nome_concessionaria, consumo_pessoa_dia, fonte_consumo, custo_unitario, fonte_custo, unidade_custo")
+      const { data: sourceConcessionaria, error: concessionariaError } = await (supabase
+        .from("diretrizes_concessionaria") as any) // CORREÇÃO TS
+        .select("id, created_at, updated_at, categoria, nome_concessionaria, consumo_pessoa_dia, fonte_consumo, custo_unitario, fonte_custo, unidade_custo")
         .eq("user_id", user.id)
         .eq("ano_referencia", sourceYear);
         
       if (concessionariaError) throw concessionariaError;
       
       if (sourceConcessionaria && sourceConcessionaria.length > 0) {
-          const newConcessionaria = sourceConcessionaria.map(c => {
-              const { id: oldId, created_at, updated_at, ...rest } = c;
+          const newConcessionaria = (sourceConcessionaria as DiretrizConcessionariaDB[]).map(c => { // CORREÇÃO TS
+              // Desestruturação segura
+              const { id: oldId, created_at, updated_at, ...rest } = c; 
               return { ...rest, ano_referencia: targetYear, user_id: user.id };
           });
           
-          const { error: insertConcessionariaError } = await supabase
-            .from("diretrizes_concessionaria")
-            .insert(newConcessionaria as TablesInsert<'diretrizes_concessionaria'>[]);
+          const { error: insertConcessionariaError } = await (supabase
+            .from("diretrizes_concessionaria") as any) // CORREÇÃO TS
+            .insert(newConcessionaria as TablesInsert<'diretrizes_concessionaria'>[]); // CORREÇÃO TS
           if (insertConcessionariaError) console.error("Erro ao inserir Concessionária copiada:", insertConcessionariaError);
       }
       
@@ -631,8 +635,8 @@ const CustosOperacionaisPage = () => {
       setLoading(true);
       
       // 1. Excluir Diretrizes de Concessionária
-      await supabase
-        .from("diretrizes_concessionaria")
+      await (supabase
+        .from("diretrizes_concessionaria") as any) // CORREÇÃO TS
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
@@ -812,7 +816,7 @@ const CustosOperacionaisPage = () => {
     config: DiretrizConcessionariaForm[], 
     setConfig: React.Dispatch<React.SetStateAction<DiretrizConcessionariaForm[]>>, 
     categoria: DiretrizConcessionariaForm['categoria'],
-    unidade: DiretrizConcessionariaForm['unidade_custo']
+    unidade: 'm3' | 'kWh' // CORREÇÃO TS: Tipagem explícita
   ) => {
     setConfig(prev => [
       ...prev,
