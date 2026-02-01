@@ -155,6 +155,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                                 step="0.01"
                                 {...register("consumo_pessoa_dia", { valueAsNumber: true })}
                                 placeholder="Ex: 0.2 (m³)"
+                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                             {errors.consumo_pessoa_dia && <p className="text-xs text-red-500">{errors.consumo_pessoa_dia.message}</p>}
                         </div>
@@ -180,7 +181,8 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                         </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* Alterado para layout de duas linhas (col-span-2) */}
+                    <div className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="fonte_consumo">Fonte do Consumo (Documento)</Label>
                             <Input
