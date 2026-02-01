@@ -804,7 +804,7 @@ const CustosOperacionaisPage = () => {
   
   // --- LÓGICA DE CONCESSIONÁRIA ---
   
-  // Removendo handleAddConcessionariaItem e handleRemoveConcessionariaItem, pois a lista é fixa.
+  // Funções de manipulação de array removidas, pois a lista é fixa.
   
   const handleUpdateConcessionariaItem = (
     config: DiretrizConcessionariaForm[], 
@@ -823,11 +823,7 @@ const CustosOperacionaisPage = () => {
     setConfig: React.Dispatch<React.SetStateAction<DiretrizConcessionariaForm[]>>,
     selectedTab: 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA'
   ) => {
-    // Filtra o item fixo correspondente à aba selecionada
-    const item = config.find(item => item.categoria === selectedTab);
-    
-    if (!item) return null; // Não deve acontecer com a initialConcessionariaConfig fixa
-    
+    const filteredItems = config.filter(item => item.categoria === selectedTab);
     const { unidade } = CATEGORIAS_CONCESSIONARIA.find(c => c.key === selectedTab)!;
     const custoLabel = `Custo Unitário (R$/${unidade})`;
     
@@ -839,9 +835,6 @@ const CustosOperacionaisPage = () => {
     const placeholderFonteConsumo = 'Ex: SNIS/2023';
     const placeholderFonteCusto = 'Ex: Tabela de Tarifa Ago/2024';
     
-    // Encontra o índice no array principal para a função de update
-    const indexInMainArray = config.findIndex(c => c.categoria === selectedTab);
-    
     const getCustoUnitarioProps = (item: DiretrizConcessionariaForm, indexInMainArray: number) => {
         const fieldName = 'custo_unitario';
         
@@ -850,76 +843,82 @@ const CustosOperacionaisPage = () => {
             handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, fieldName, numericValue);
         };
         
+        // ALTERAÇÃO AQUI: Usar rawDigits em vez de value
         return {
-            value: item.custo_unitario,
-            onChange: handleCurrencyUpdate,
+            rawDigits: numberToRawDigits(item.custo_unitario), // <-- Usa rawDigits
+            onChange: handleCurrencyUpdate, // <-- Recebe rawDigits
             onKeyDown: handleEnterToNextField,
             placeholder: `Ex.: ${placeholderCusto}`, 
         };
     };
     
-    const custoUnitarioProps = getCustoUnitarioProps(item, indexInMainArray);
-
     return (
       <div className="space-y-4 pt-4">
-        <div className="space-y-4 border-b pb-4 last:border-b-0">
-          {/* Linha 1: Concessionária (1 coluna) */}
-          <div className="space-y-2">
-            <Label className="text-xs">Concessionária</Label>
-            <Input
-              value={item.nome_concessionaria}
-              onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'nome_concessionaria', e.target.value)}
-              placeholder={placeholderNome}
-              onKeyDown={handleEnterToNextField}
-            />
-          </div>
-          
-          {/* Linha 2: Consumo e Custo Unitário (2 colunas) */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-xs">Consumo/pessoa/dia ({unidade})</Label>
-              <Input
-                type="number"
-                step="0.0001"
-                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                value={item.consumo_pessoa_dia === 0 ? "" : item.consumo_pessoa_dia}
-                onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'consumo_pessoa_dia', parseFloat(e.target.value) || 0)}
-                placeholder={placeholderConsumo}
-                onKeyDown={handleEnterToNextField}
-              />
+        {filteredItems.map((item, index) => {
+          const indexInMainArray = config.findIndex(c => c === item);
+          const custoUnitarioProps = getCustoUnitarioProps(item, indexInMainArray);
+
+          return (
+            <div key={index} className="space-y-4 border-b pb-4 last:border-b-0">
+              {/* Linha 1: Concessionária (1 coluna) */}
+              <div className="space-y-2">
+                <Label className="text-xs">Concessionária</Label>
+                <Input
+                  value={item.nome_concessionaria}
+                  onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'nome_concessionaria', e.target.value)}
+                  placeholder={placeholderNome}
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              
+              {/* Linha 2: Consumo e Custo Unitário (2 colunas) */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs">Consumo/pessoa/dia ({unidade})</Label>
+                  <Input
+                    type="number"
+                    step="0.0001"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    value={item.consumo_pessoa_dia === 0 ? "" : item.consumo_pessoa_dia}
+                    onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'consumo_pessoa_dia', parseFloat(e.target.value) || 0)}
+                    placeholder={placeholderConsumo}
+                    onKeyDown={handleEnterToNextField}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">{custoLabel}</Label>
+                  <CurrencyInput
+                    {...custoUnitarioProps}
+                  />
+                </div>
+              </div>
+              
+              {/* Linha 3: Fonte de Consumo (1 coluna) */}
+              <div className="space-y-2">
+                <Label className="text-xs">Fonte de Consumo</Label>
+                <Input
+                  value={item.fonte_consumo}
+                  onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_consumo', e.target.value)}
+                  placeholder={placeholderFonteConsumo}
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              
+              {/* Linha 4: Fonte do Custo (1 coluna) */}
+              <div className="space-y-2">
+                <Label className="text-xs">Fonte do Custo</Label>
+                <Input
+                  value={item.fonte_custo}
+                  onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_custo', e.target.value)}
+                  placeholder={placeholderFonteCusto}
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              
+              {/* Botão de exclusão removido */}
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs">{custoLabel}</Label>
-              <CurrencyInput
-                {...custoUnitarioProps}
-              />
-            </div>
-          </div>
-          
-          {/* Linha 3: Fonte de Consumo (1 coluna) */}
-          <div className="space-y-2">
-            <Label className="text-xs">Fonte de Consumo</Label>
-            <Input
-              value={item.fonte_consumo}
-              onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_consumo', e.target.value)}
-              placeholder={placeholderFonteConsumo}
-              onKeyDown={handleEnterToNextField}
-            />
-          </div>
-          
-          {/* Linha 4: Fonte do Custo (1 coluna) */}
-          <div className="space-y-2">
-            <Label className="text-xs">Fonte do Custo</Label>
-            <Input
-              value={item.fonte_custo}
-              onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_custo', e.target.value)}
-              placeholder={placeholderFonteCusto}
-              onKeyDown={handleEnterToNextField}
-            />
-          </div>
-          
-          {/* Botão de exclusão removido */}
-        </div>
+          );
+        })}
         
         {/* Botão de adição removido */}
       </div>
