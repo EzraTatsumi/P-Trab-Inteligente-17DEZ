@@ -28,6 +28,7 @@ import { useSession } from "@/components/SessionContextProvider";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { useDefaultLogisticaYear } from "@/hooks/useDefaultLogisticaYear"; // NOVO HOOK
 import { useQueryClient } from "@tanstack/react-query"; // Adicionar useQueryClient
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"; // ADICIONADO
 
 // --- Tipos Auxiliares para Carregamento ---
 // Definindo um tipo que engloba todas as categorias de diretrizes_classe_ii
