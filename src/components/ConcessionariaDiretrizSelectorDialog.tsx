@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
-import { formatCurrency, formatDecimal } from "@/lib/formatUtils"; // Importando formatDecimal
+import { formatCurrency } from "@/lib/formatUtils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CATEGORIAS_CONCESSIONARIA, CategoriaConcessionaria, DiretrizConcessionaria } from "@/types/diretrizesConcessionaria";
@@ -183,7 +183,7 @@ const ConcessionariaDiretrizSelectorDialog: React.FC<ConcessionariaDiretrizSelec
                                                                     {d.nome_concessionaria}
                                                                 </h4>
                                                                 <p className="text-xs text-muted-foreground">
-                                                                    Consumo: {formatDecimal(d.consumo_pessoa_dia, 3)} {d.unidade_custo}/pessoa/dia | Custo Unitário: {formatCurrency(d.custo_unitario)}
+                                                                    Consumo: {d.consumo_pessoa_dia} {d.unidade_custo}/pessoa/dia | Custo Unitário: {formatCurrency(d.custo_unitario)}
                                                                 </p>
                                                             </div>
                                                             {isSelected ? (
@@ -203,20 +203,20 @@ const ConcessionariaDiretrizSelectorDialog: React.FC<ConcessionariaDiretrizSelec
                     )}
                     
                     <div className="flex justify-end pt-4 border-t mt-4">
-                        <Button type="button" variant="link" onClick={onAddContract}> {/* ALTERADO PARA 'link' */}
+                        <Button type="button" variant="link" onClick={onAddContract}>
                             <Plus className="mr-2 h-4 w-4" />
                             Adicionar/Editar Diretrizes de Concessionária
                         </Button>
                     </div>
                 </div>
                 
-                <DialogFooter className="flex justify-between sm:justify-end gap-2"> {/* Adicionado flex justify-between para garantir a ordem */}
-                    <Button onClick={handleConfirm} disabled={selectedDiretrizes.length === 0 || isLoading}> {/* Movido para a esquerda */}
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>
+                        Cancelar
+                    </Button>
+                    <Button onClick={handleConfirm} disabled={selectedDiretrizes.length === 0 || isLoading}>
                         <Check className="mr-2 h-4 w-4" />
                         Confirmar Seleção ({selectedDiretrizes.length})
-                    </Button>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}> {/* Movido para a direita */}
-                        Cancelar
                     </Button>
                 </DialogFooter>
             </DialogContent>
