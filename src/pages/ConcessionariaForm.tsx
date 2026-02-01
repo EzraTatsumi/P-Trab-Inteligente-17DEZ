@@ -1203,7 +1203,7 @@ const ConcessionariaForm = () => {
                                                                                 {diretriz.nome_concessionaria}
                                                                             </TableCell>
                                                                             <TableCell className="text-center text-sm">
-                                                                                {diretriz.consumo_pessoa_dia} {diretriz.unidade_custo}
+                                                                                {diretriz.consumo_pessoa_dia.toLocaleString('pt-BR')} {diretriz.unidade_custo}
                                                                             </TableCell>
                                                                             <TableCell className="text-right text-sm">
                                                                                 {formatCurrency(diretriz.custo_unitario)}
@@ -1510,7 +1510,7 @@ const ConcessionariaForm = () => {
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
-                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
+                            {consolidatedRegistros && consolidatedRegistrados.length > 0 && (
                                 <div className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
                                         📋 Memórias de Cálculos Detalhadas
