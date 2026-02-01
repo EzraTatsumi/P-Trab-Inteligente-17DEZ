@@ -909,18 +909,19 @@ const CustosOperacionaisPage = () => {
           if (!user) throw new Error("Usuário não autenticado");
           
           // CORREÇÃO: Converte o consumo (que pode ser string do formulário) para number
-          const consumoValue = typeof data.consumo_pessoa_dia === 'string'
-            ? parseFloat(data.consumo_pessoa_dia.replace(',', '.')) || 0 // SAFE REPLACE
-            : data.consumo_pessoa_dia;
+          const rawConsumption = data.consumo_pessoa_dia as unknown;
+          const consumptionValue = (typeof rawConsumption === 'string')
+            ? parseFloat(rawConsumption.replace(',', '.')) || 0 
+            : Number(rawConsumption) || 0;
 
           const dbData: TablesInsert<'diretrizes_concessionaria'> = {
               user_id: user.id,
               ano_referencia: selectedYear,
               categoria: data.categoria,
               nome_concessionaria: data.nome_concessionaria,
-              consumo_pessoa_dia: consumoValue, // Usa o valor numérico
-              fonte_consumo: data.fonte_consumo || null,
+              consumo_pessoa_dia: consumptionValue, // Usa o valor numérico
               custo_unitario: data.custo_unitario,
+              fonte_consumo: data.fonte_consumo || null,
               fonte_custo: data.fonte_custo || null,
               unidade_custo: data.unidade_custo,
           };

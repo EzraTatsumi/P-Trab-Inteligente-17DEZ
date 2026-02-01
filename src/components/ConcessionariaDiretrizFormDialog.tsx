@@ -180,7 +180,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                     <div className="space-y-2">
                         <Label htmlFor="custo_unitario">Custo Unitário (R$/{watch('unidade_custo')}) *</Label>
                         <CurrencyInput
-                            value={rawCustoUnitario}
+                            rawDigits={rawCustoUnitario} // Corrected prop name
                             onChange={handleCurrencyChange}
                             placeholder="Ex: 5,50"
                         />
