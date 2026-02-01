@@ -1,34 +1,17 @@
 import { Tables } from "@/integrations/supabase/types";
-import * as z from "zod";
 
-export const CATEGORIAS_CONCESSIONARIA = ['Água/Esgoto', 'Energia Elétrica'] as const;
-export type CategoriaConcessionaria = typeof CATEGORIAS_CONCESSIONARIA[number];
+// Tipos literais específicos para Categoria e Unidade de Custo
+export type CategoriaConcessionaria = "Água/Esgoto" | "Energia Elétrica";
+export const CATEGORIAS_CONCESSIONARIA: CategoriaConcessionaria[] = ["Água/Esgoto", "Energia Elétrica"];
 
-export const UNIDADES_CUSTO = ['m3', 'kWh'] as const;
-export type UnidadeCusto = typeof UNIDADES_CUSTO[number];
+export type UnidadeCustoConcessionaria = "m3" | "kWh";
+export const UNIDADES_CUSTO_CONCESSIONARIA: UnidadeCustoConcessionaria[] = ["m3", "kWh"];
 
-// 1. Fix: Use the correct table name now that it's in types.ts
-export type DiretrizConcessionaria = Tables<'diretrizes_concessionaria'>;
+// Sobrescreve o tipo genérico do Supabase para impor os tipos literais
+export interface DiretrizConcessionaria extends Omit<Tables<'diretrizes_concessionaria'>, 'categoria' | 'unidade_custo'> {
+    categoria: CategoriaConcessionaria;
+    unidade_custo: UnidadeCustoConcessionaria;
+}
 
-export const diretrizConcessionariaSchema = z.object({
-    ano_referencia: z.number().int().positive(),
-    categoria: z.enum(CATEGORIAS_CONCESSIONARIA, {
-        required_error: "A categoria é obrigatória.",
-    }),
-    nome_concessionaria: z.string().min(1, "O nome da concessionária é obrigatório."),
-    
-    // Consumo por pessoa/dia (pode ser decimal)
-    consumo_pessoa_dia: z.number().min(0, "O consumo deve ser um valor positivo."),
-    fonte_consumo: z.string().optional().nullable(),
-    
-    // Custo unitário (monetário)
-    custo_unitario: z.number().min(0, "O custo unitário deve ser um valor positivo."),
-    fonte_custo: z.string().optional().nullable(),
-    
-    // 2. Fix: Use 'm3' instead of 'm³'
-    unidade_custo: z.enum(UNIDADES_CUSTO, {
-        required_error: "A unidade de custo é obrigatória.",
-    }),
-});
-
-export type DiretrizConcessionariaForm = z.infer<typeof diretrizConcessionariaSchema>;
+// Tipo de formulário para inserção/edição
+export type DiretrizConcessionariaForm = Omit<DiretrizConcessionaria, 'id' | 'user_id' | 'created_at' | 'updated_at'>;

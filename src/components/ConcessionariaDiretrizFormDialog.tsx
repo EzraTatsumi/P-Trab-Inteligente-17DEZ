@@ -1,22 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Loader2, Save } from "lucide-react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
-import {
-    DiretrizConcessionaria,
-    DiretrizConcessionariaForm,
-    diretrizConcessionariaSchema,
-    CATEGORIAS_CONCESSIONARIA,
-    CategoriaConcessionaria
-} from "@/types/diretrizesConcessionaria";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2 } from "lucide-react";
+import { diretrizConcessionariaSchema } from "@/lib/validationSchemas";
 import CurrencyInput from "@/components/CurrencyInput";
-import { formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
+import { numberToRawDigits } from "@/lib/formatUtils";
+import { 
+    DiretrizConcessionaria, 
+    DiretrizConcessionariaForm, 
+    CATEGORIAS_CONCESSIONARIA,
+    CategoriaConcessionaria,
+    UNIDADES_CUSTO_CONCESSIONARIA, // Adicionado
+} from "@/types/diretrizesConcessionaria";
 
 interface ConcessionariaDiretrizFormDialogProps {
     open: boolean;
@@ -37,246 +38,204 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
     loading,
     initialCategory,
 }) => {
-    // Definindo 0 como valor inicial limpo para RHF
-    const defaultValues: DiretrizConcessionariaForm = {
-        ano_referencia: selectedYear,
-        categoria: initialCategory,
-        nome_concessionaria: "",
-        consumo_pessoa_dia: 0, 
-        fonte_consumo: "",
-        custo_unitario: 0,
-        fonte_custo: "",
-        // Fix 2 & 7: Use 'm3' instead of 'm³'
-        unidade_custo: initialCategory === 'Água/Esgoto' ? 'm3' : 'kWh',
-    };
-
-    const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<DiretrizConcessionariaForm>({
+    const form = useForm<DiretrizConcessionariaForm>({
         resolver: zodResolver(diretrizConcessionariaSchema),
-        defaultValues: defaultValues,
+        defaultValues: {
+            ano_referencia: selectedYear,
+            categoria: initialCategory,
+            nome_concessionaria: "",
+            consumo_pessoa_dia: 0,
+            fonte_consumo: "",
+            custo_unitario: 0,
+            fonte_custo: "",
+            unidade_custo: initialCategory === "Água/Esgoto" ? "m3" : "kWh", // Define default based on category
+        },
     });
-    
-    const watchedCategoria = watch('categoria');
-    const watchedCustoUnitario = watch('custo_unitario');
-    
-    // Estado para gerenciar a string de input de consumo com vírgula (para exibição)
-    const [rawConsumoInput, setRawConsumoInput] = useState('');
 
     useEffect(() => {
-        if (open) {
-            if (diretrizToEdit) {
-                // Fix 3, 4, 5, 6: Access properties directly from diretrizToEdit (now correctly typed)
-                const numericValue = Number(diretrizToEdit.consumo_pessoa_dia);
-                const formattedString = numericValue === 0 ? '' : String(numericValue).replace('.', ',');
-                setRawConsumoInput(formattedString);
-                
-                // Reseta o RHF com o número limpo
-                reset({
-                    ano_referencia: diretrizToEdit.ano_referencia,
-                    categoria: diretrizToEdit.categoria,
-                    nome_concessionaria: diretrizToEdit.nome_concessionaria,
-                    consumo_pessoa_dia: numericValue, 
-                    fonte_consumo: diretrizToEdit.fonte_consumo || "",
-                    custo_unitario: Number(diretrizToEdit.custo_unitario),
-                    fonte_custo: diretrizToEdit.fonte_custo || "",
-                    unidade_custo: diretrizToEdit.unidade_custo,
-                });
-            } else {
-                // Ao criar novo
-                setRawConsumoInput('');
-                reset({
-                    ...defaultValues,
-                    categoria: initialCategory,
-                    // Fix 7: Use 'm3'
-                    unidade_custo: initialCategory === 'Água/Esgoto' ? 'm3' : 'kWh',
-                    consumo_pessoa_dia: 0,
-                });
-            }
+        if (diretrizToEdit) {
+            // Preenche o formulário com os dados da diretriz para edição
+            form.reset({
+                ano_referencia: diretrizToEdit.ano_referencia,
+                categoria: diretrizToEdit.categoria,
+                nome_concessionaria: diretrizToEdit.nome_concessionaria,
+                consumo_pessoa_dia: diretrizToEdit.consumo_pessoa_dia,
+                fonte_consumo: diretrizToEdit.fonte_consumo || "",
+                custo_unitario: diretrizToEdit.custo_unitario,
+                fonte_custo: diretrizToEdit.fonte_custo || "",
+                unidade_custo: diretrizToEdit.unidade_custo,
+            });
+        } else {
+            // Reseta para valores padrão ao abrir para criação
+            form.reset({
+                ano_referencia: selectedYear,
+                categoria: initialCategory,
+                nome_concessionaria: "",
+                consumo_pessoa_dia: 0,
+                fonte_consumo: "",
+                custo_unitario: 0,
+                fonte_custo: "",
+                unidade_custo: initialCategory === "Água/Esgoto" ? "m3" : "kWh",
+            });
         }
-    }, [open, diretrizToEdit, reset, selectedYear, initialCategory]);
-    
-    // Efeito para sincronizar a unidade de custo com a categoria
-    useEffect(() => {
-        // Fix 8: Use 'm3'
-        if (watchedCategoria === 'Água/Esgoto') {
-            setValue('unidade_custo', 'm3');
-        } else if (watchedCategoria === 'Energia Elétrica') {
-            setValue('unidade_custo', 'kWh');
-        }
-    }, [watchedCategoria, setValue]);
-    
-    const handleConsumoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        let value = e.target.value;
-        
-        // 1. Limpa a string: permite apenas dígitos, vírgula e ponto
-        value = value.replace(/[^0-9,.]/g, '');
-        
-        // 2. Normaliza a vírgula para ponto para conversão numérica
-        const numericString = value.replace(',', '.');
-        const numericValue = parseFloat(numericString) || 0;
-        
-        // 3. Atualiza o estado de exibição (mantém a vírgula)
-        setRawConsumoInput(value);
-        
-        // 4. Atualiza o estado do RHF com o número limpo
-        setValue('consumo_pessoa_dia', numericValue, { shouldValidate: true });
-    };
+    }, [diretrizToEdit, selectedYear, initialCategory, form]);
 
     const onSubmit = async (data: DiretrizConcessionariaForm) => {
-        try {
-            // O valor já está limpo e validado pelo RHF/Zod
-            const consumo = Number(data.consumo_pessoa_dia) || 0; 
-
-            const dataToSave = {
-                ...data,
-                // Fix 9: diretrizToEdit is now correctly typed, safe to use optional chaining
-                id: diretrizToEdit?.id, 
-                user_id: undefined, // Supabase handles user_id insertion
-                consumo_pessoa_dia: consumo, 
-                custo_unitario: Number(data.custo_unitario),
-            };
-            await onSave(dataToSave);
+        await onSave({ ...data, id: diretrizToEdit?.id });
+        if (!loading) {
             onOpenChange(false);
-        } catch (e) {
-            toast.error("Erro ao salvar a diretriz.");
         }
     };
     
-    const handleCurrencyChange = (value: string) => {
-        const { numericValue } = formatCurrencyInput(value);
-        setValue('custo_unitario', numericValue, { shouldValidate: true });
-    };
+    const currentCategory = form.watch('categoria');
+    const currentUnit = currentCategory === "Água/Esgoto" ? "m3" : "kWh";
     
-    const rawCustoUnitario = numberToRawDigits(watchedCustoUnitario);
-
-    // Lógica para placeholders dinâmicos
-    const getFonteConsumoPlaceholder = (categoria: CategoriaConcessionaria) => {
-        if (categoria === 'Energia Elétrica') {
-            return "Ex: Anuário Estatístico de Energia Elétrica 2024 do EPE";
-        }
-        if (categoria === 'Água/Esgoto') {
-            return "Ex: Sistema Nacional de Informação sobre Saneamento - SNIS/2023";
-        }
-        return "Ex: Documento de referência para consumo";
-    };
-
-    const getFonteCustoPlaceholder = (categoria: CategoriaConcessionaria) => {
-        if (categoria === 'Energia Elétrica') {
-            return "Ex: Tabela de Tarifa Equatorial Ago/2024";
-        }
-        if (categoria === 'Água/Esgoto') {
-            return "Ex: Tarifas da COSANPA a partir de Nov/23";
-        }
-        return "Ex: Documento de referência para custo";
-    };
+    // Atualiza a unidade de custo automaticamente quando a categoria muda
+    useEffect(() => {
+        form.setValue('unidade_custo', currentUnit);
+    }, [currentUnit, form]);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[700px]">
+            <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
-                    <DialogTitle>{diretrizToEdit ? "Editar Diretriz" : "Nova Diretriz"} de Concessionária</DialogTitle>
+                    <DialogTitle>{diretrizToEdit ? "Editar Diretriz de Concessionária" : "Nova Diretriz de Concessionária"}</DialogTitle>
+                    <DialogDescription>
+                        Defina os parâmetros de consumo e custo para {diretrizToEdit ? diretrizToEdit.nome_concessionaria : "uma nova concessionária"}.
+                    </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="categoria">Categoria</Label>
-                            <Select
-                                value={watchedCategoria}
-                                onValueChange={(value) => setValue('categoria', value as CategoriaConcessionaria, { shouldValidate: true })}
-                                disabled={!!diretrizToEdit} // Não permite mudar a categoria ao editar
-                            >
-                                <SelectTrigger id="categoria">
-                                    <SelectValue placeholder="Selecione a categoria" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {CATEGORIAS_CONCESSIONARIA.map(cat => (
-                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {errors.categoria && <p className="text-xs text-red-500">{errors.categoria.message}</p>}
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        
+                        <FormField
+                            control={form.control}
+                            name="categoria"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Categoria</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecione a categoria" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {CATEGORIAS_CONCESSIONARIA.map(cat => (
+                                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        
+                        <FormField
+                            control={form.control}
+                            name="nome_concessionaria"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Nome da Concessionária</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Ex: CEB, CAESB" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="consumo_pessoa_dia"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Consumo por Pessoa/Dia ({currentUnit})</FormLabel>
+                                        <FormControl>
+                                            <Input 
+                                                type="number" 
+                                                step="0.01" 
+                                                placeholder="Ex: 0.15 (m3) ou 1.5 (kWh)" 
+                                                {...field} 
+                                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            
+                            <FormField
+                                control={form.control}
+                                name="fonte_consumo"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Fonte do Consumo (Opcional)</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Ex: Média Histórica OM" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                         </div>
                         
-                        <div className="space-y-2">
-                            <Label htmlFor="nome_concessionaria">Nome da Concessionária</Label>
-                            <Input
-                                id="nome_concessionaria"
-                                {...register("nome_concessionaria")}
-                                placeholder="Ex: CEDAE, Light, Enel"
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="custo_unitario"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Custo Unitário (R$/{currentUnit})</FormLabel>
+                                        <FormControl>
+                                            <CurrencyInput
+                                                value={numberToRawDigits(field.value)}
+                                                onChange={(digits) => field.onChange(parseFloat(digits) / 100)}
+                                                placeholder="0,00"
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
                             />
-                            {errors.nome_concessionaria && <p className="text-xs text-red-500">{errors.nome_concessionaria.message}</p>}
-                        </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                            {/* Fix 7: Use 'm3' */}
-                            <Label htmlFor="consumo_pessoa_dia">Consumo/pessoa/dia ({watchedCategoria === 'Água/Esgoto' ? 'm3' : 'kWh'})</Label>
-                            <Input
-                                id="consumo_pessoa_dia"
-                                type="text" // Alterado para type="text"
-                                value={rawConsumoInput}
-                                onChange={handleConsumoChange}
-                                placeholder="Ex: 0,2"
-                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            
+                            <FormField
+                                control={form.control}
+                                name="fonte_custo"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Fonte do Custo (Opcional)</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Ex: Contrato 01/2024" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
                             />
-                            {errors.consumo_pessoa_dia && <p className="text-xs text-red-500">{errors.consumo_pessoa_dia.message}</p>}
                         </div>
                         
-                        <div className="space-y-2">
-                            <Label htmlFor="custo_unitario">Custo Unitário (R$)</Label>
-                            <CurrencyInput
-                                rawDigits={rawCustoUnitario}
-                                onChange={handleCurrencyChange}
-                                placeholder="0,00"
-                            />
-                            {errors.custo_unitario && <p className="text-xs text-red-500">{errors.custo_unitario.message}</p>}
-                        </div>
-                        
-                        <div className="space-y-2">
-                            <Label htmlFor="unidade_custo">Unidade de Custo</Label>
-                            <Input
-                                id="unidade_custo"
-                                // Fix 7: Use 'm3'
-                                value={watchedCategoria === 'Água/Esgoto' ? 'm3' : 'kWh'}
-                                disabled
-                                className="bg-muted/50"
-                            />
-                        </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="fonte_consumo">Fonte do Consumo (Documento)</Label>
-                            <Input
-                                id="fonte_consumo"
-                                {...register("fonte_consumo")}
-                                placeholder={getFonteConsumoPlaceholder(watchedCategoria)}
-                            />
-                            {errors.fonte_consumo && <p className="text-xs text-red-500">{errors.fonte_consumo.message}</p>}
-                        </div>
-                        
-                        <div className="space-y-2">
-                            <Label htmlFor="fonte_custo">Fonte do Custo (Documento)</Label>
-                            <Input
-                                id="fonte_custo"
-                                {...register("fonte_custo")}
-                                placeholder={getFonteCustoPlaceholder(watchedCategoria)}
-                            />
-                            {errors.fonte_custo && <p className="text-xs text-red-500">{errors.fonte_custo.message}</p>}
-                        </div>
-                    </div>
+                        {/* Campo oculto para unidade_custo, pois é derivado da categoria */}
+                        <FormField
+                            control={form.control}
+                            name="unidade_custo"
+                            render={({ field }) => (
+                                <FormItem className="hidden">
+                                    <FormLabel>Unidade de Custo</FormLabel>
+                                    <FormControl>
+                                        <Input {...field} disabled />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
-                    <DialogFooter>
-                        <Button type="submit" disabled={loading}>
-                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                            Salvar Diretriz
-                        </Button>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-                            Cancelar
-                        </Button>
-                    </DialogFooter>
-                </form>
+                        <div className="flex justify-end pt-4">
+                            <Button type="submit" disabled={loading}>
+                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Salvar Diretriz"}
+                            </Button>
+                        </div>
+                    </form>
+                </Form>
             </DialogContent>
         </Dialog>
     );
