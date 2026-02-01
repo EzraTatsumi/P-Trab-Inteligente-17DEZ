@@ -142,10 +142,6 @@ const CustosOperacionaisPage = () => {
   const [concessionariaConfig, setConcessionariaConfig] = useState<DiretrizConcessionariaForm[]>(defaultConcessionariaConfig); // Hook 11
   const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<'AGUA_ESGOTO' | 'ENERGIA_ELETRICA'>('AGUA_ESGOTO'); // Hook 12
   
-  // NOVO ESTADO GLOBAL PARA MÁSCARA DE CONCESSIONÁRIA (CORRIGIDO)
-  // REMOVIDO: Não precisamos mais deste estado global, pois CurrencyInput gerencia o seu próprio estado interno de raw digits.
-  // const [focusedInputConcessionaria, setFocusedInputConcessionaria] = useState<{ index: number, rawDigits: string } | null>(null); 
-  
   // Estado para controlar a expansão individual de cada campo
   const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => { // Hook 14
     const initialState: Record<string, boolean> = {};
@@ -885,7 +881,7 @@ const CustosOperacionaisPage = () => {
             value: item.custo_unitario,
             onChange: handleCurrencyUpdate,
             onKeyDown: handleEnterToNextField,
-            placeholder: formatCurrency(defaultCusto),
+            placeholder: `Ex.: ${formatCurrency(defaultCusto)}`, // Formatando o placeholder como moeda
         };
     };
     
