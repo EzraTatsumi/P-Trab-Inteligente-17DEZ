@@ -123,13 +123,12 @@ const CustosOperacionaisPage = () => {
       initialState[field.key as string] = false;
     });
     
-    // Verifica se o estado de navegação pede para abrir a seção de passagens ou concessionária
+    // Verifica se o estado de navegação pede para abrir a seção de passagens
     const shouldOpenPassagens = location.state && (location.state as { openPassagens?: boolean }).openPassagens;
-    const shouldOpenConcessionaria = location.state && (location.state as { openConcessionaria?: boolean }).openConcessionaria;
     
     initialState['diarias_detalhe'] = false; 
     initialState['passagens_detalhe'] = shouldOpenPassagens || false; 
-    initialState['concessionaria_detalhe'] = shouldOpenConcessionaria || false; // NEW: Concessionaria detail state
+    initialState['concessionaria_detalhe'] = false; // NEW: Concessionaria detail state
     return initialState;
   });
   
@@ -909,19 +908,18 @@ const CustosOperacionaisPage = () => {
           if (!user) throw new Error("Usuário não autenticado");
           
           // CORREÇÃO: Converte o consumo (que pode ser string do formulário) para number
-          const rawConsumption = data.consumo_pessoa_dia as unknown;
-          const consumptionValue = (typeof rawConsumption === 'string')
-            ? parseFloat(rawConsumption.replace(',', '.')) || 0 
-            : Number(rawConsumption) || 0;
+          const consumoValue = typeof data.consumo_pessoa_dia === 'string'
+            ? parseFloat(data.consumo_pessoa_dia.replace(',', '.')) || 0
+            : data.consumo_pessoa_dia;
 
           const dbData: TablesInsert<'diretrizes_concessionaria'> = {
               user_id: user.id,
               ano_referencia: selectedYear,
               categoria: data.categoria,
               nome_concessionaria: data.nome_concessionaria,
-              consumo_pessoa_dia: consumptionValue, // Usa o valor numérico
-              custo_unitario: data.custo_unitario,
+              consumo_pessoa_dia: consumoValue, // Usa o valor numérico
               fonte_consumo: data.fonte_consumo || null,
+              custo_unitario: data.custo_unitario,
               fonte_custo: data.fonte_custo || null,
               unidade_custo: data.unidade_custo,
           };
