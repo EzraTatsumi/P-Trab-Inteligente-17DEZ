@@ -69,7 +69,7 @@ const CATEGORIAS_CONCESSIONARIA = [
 const initialConcessionariaConfig: DiretrizConcessionariaForm[] = [
   { 
     categoria: 'AGUA_ESGOTO', 
-    nome_concessionaria: 'Água/Esgoto (Ex: COSANPA)', 
+    nome_concessionaria: '', 
     consumo_pessoa_dia: 0, 
     fonte_consumo: '', 
     custo_unitario: 0, 
@@ -78,7 +78,7 @@ const initialConcessionariaConfig: DiretrizConcessionariaForm[] = [
   },
   { 
     categoria: 'ENERGIA_ELETRICA', 
-    nome_concessionaria: 'Energia Elétrica (Ex: Equatorial)', 
+    nome_concessionaria: '', 
     consumo_pessoa_dia: 0, 
     fonte_consumo: '', 
     custo_unitario: 0, 
@@ -813,7 +813,7 @@ const CustosOperacionaisPage = () => {
       ...prev,
       { 
         categoria, 
-        nome_concessionaria: "", // Começa vazio
+        nome_concessionaria: "", 
         consumo_pessoa_dia: 0, 
         fonte_consumo: "", 
         custo_unitario: 0, 
