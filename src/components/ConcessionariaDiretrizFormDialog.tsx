@@ -45,7 +45,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
         fonte_consumo: "",
         custo_unitario: 0,
         fonte_custo: "",
-        unidade_custo: initialCategory === 'Água/Esgoto' ? 'm³' : 'kWh',
+        unidade_custo: initialCategory === 'Água/Esgoto' ? 'm3' : 'kWh',
     };
 
     const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<DiretrizConcessionariaForm>({
@@ -71,7 +71,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                 reset({
                     ...defaultValues,
                     categoria: initialCategory,
-                    unidade_custo: initialCategory === 'Água/Esgoto' ? 'm³' : 'kWh',
+                    unidade_custo: initialCategory === 'Água/Esgoto' ? 'm3' : 'kWh',
                     consumo_pessoa_dia: 0, // Mantemos 0 no estado do hook form, mas o input será renderizado como vazio
                 });
             }
@@ -81,7 +81,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
     // Efeito para sincronizar a unidade de custo com a categoria
     useEffect(() => {
         if (watchedCategoria === 'Água/Esgoto') {
-            setValue('unidade_custo', 'm³');
+            setValue('unidade_custo', 'm3');
         } else if (watchedCategoria === 'Energia Elétrica') {
             setValue('unidade_custo', 'kWh');
         }
@@ -109,6 +109,27 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
     };
     
     const rawCustoUnitario = numberToRawDigits(watchedCustoUnitario);
+
+    // Lógica para placeholders dinâmicos
+    const getFonteConsumoPlaceholder = (categoria: CategoriaConcessionaria) => {
+        if (categoria === 'Energia Elétrica') {
+            return "Ex: Anuário Estatístico de Energia Elétrica 2024 do EPE";
+        }
+        if (categoria === 'Água/Esgoto') {
+            return "Ex: Sistema Nacional de Informação sobre Saneamento - SNIS/2023";
+        }
+        return "Ex: Documento de referência para consumo";
+    };
+
+    const getFonteCustoPlaceholder = (categoria: CategoriaConcessionaria) => {
+        if (categoria === 'Energia Elétrica') {
+            return "Ex: Tabela de Tarifa Equatorial Ago/2024";
+        }
+        if (categoria === 'Água/Esgoto') {
+            return "Ex: Tarifas da COSANPA a partir de Nov/23";
+        }
+        return "Ex: Documento de referência para custo";
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -157,7 +178,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                                 type="number"
                                 step="0.01"
                                 {...register("consumo_pessoa_dia", { valueAsNumber: true })}
-                                placeholder="Ex: 0,2"
+                                placeholder="Ex: 0.2 (m³)"
                                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 // Renderiza como string vazia se for 0 e não estiver sendo editado
                                 value={diretrizToEdit ? watchedConsumoPessoaDia : (watchedConsumoPessoaDia === 0 ? "" : watchedConsumoPessoaDia)}
@@ -179,7 +200,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                             <Label htmlFor="unidade_custo">Unidade de Custo</Label>
                             <Input
                                 id="unidade_custo"
-                                value={watchedCategoria === 'Água/Esgoto' ? 'm³' : 'kWh'}
+                                value={watchedCategoria === 'Água/Esgoto' ? 'm3' : 'kWh'}
                                 disabled
                                 className="bg-muted/50"
                             />
@@ -192,7 +213,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                             <Input
                                 id="fonte_consumo"
                                 {...register("fonte_consumo")}
-                                placeholder="Ex: Portaria X/2024"
+                                placeholder={getFonteConsumoPlaceholder(watchedCategoria)}
                             />
                             {errors.fonte_consumo && <p className="text-xs text-red-500">{errors.fonte_consumo.message}</p>}
                         </div>
@@ -202,7 +223,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                             <Input
                                 id="fonte_custo"
                                 {...register("fonte_custo")}
-                                placeholder="Ex: Contrato Y/2023"
+                                placeholder={getFonteCustoPlaceholder(watchedCategoria)}
                             />
                             {errors.fonte_custo && <p className="text-xs text-red-500">{errors.fonte_custo.message}</p>}
                         </div>
