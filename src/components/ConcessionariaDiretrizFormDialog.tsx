@@ -62,13 +62,15 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
         if (open) {
             if (diretrizToEdit) {
                 // Ao editar, converte o número para string com vírgula para o input
-                const consumoString = String(diretrizToEdit.consumo_pessoa_dia).replace('.', ',');
+                // CORREÇÃO: Acessar propriedades de diretrizToEdit de forma segura
+                const consumoString = String(diretrizToEdit.consumo_pessoa_dia ?? 0).replace('.', ',');
                 
                 reset({
+                    // CORREÇÃO: Usar o spread operator em diretrizToEdit (que é um objeto)
                     ...diretrizToEdit,
                     ano_referencia: diretrizToEdit.ano_referencia,
                     consumo_pessoa_dia: consumoString as any, // Armazena como string
-                    custo_unitario: Number(diretrizToEdit.custo_unitario),
+                    custo_unitario: Number(diretrizToEdit.custo_unitario ?? 0),
                 });
             } else {
                 // Ao criar novo, resetamos para os valores padrão, definindo consumo como string vazia
@@ -98,13 +100,26 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
             const parsedConsumo = parseFloat(consumoString) || 0;
             
             const dataToSave = {
-                ...data,
                 id: diretrizToEdit?.id,
                 user_id: undefined, // Supabase handles user_id insertion
                 consumo_pessoa_dia: parsedConsumo,
                 custo_unitario: Number(data.custo_unitario),
+                // Garantir que os campos opcionais sejam tratados como null se vazios
+                fonte_consumo: data.fonte_consumo || null,
+                fonte_custo: data.fonte_custo || null,
+                ...data, // Inclui todos os outros campos
             };
-            await onSave(dataToSave);
+            
+            // Remove a propriedade 'consumo_pessoa_dia' original (string) e 'custo_unitario' original (number)
+            // e usa os valores parseados.
+            delete (dataToSave as any).consumo_pessoa_dia;
+            delete (dataToSave as any).custo_unitario;
+            
+            await onSave({
+                ...dataToSave,
+                consumo_pessoa_dia: parsedConsumo,
+                custo_unitario: Number(data.custo_unitario),
+            });
             onOpenChange(false);
         } catch (e) {
             toast.error("Erro ao salvar a diretriz.");
@@ -180,7 +195,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                     
                     <div className="grid grid-cols-3 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="consumo_pessoa_dia">Consumo/pessoa/dia ({watchedCategoria === 'Água/Esgoto' ? 'm³' : 'kWh'})</Label>
+                            <Label htmlFor="consumo_pessoa_dia">Consumo/pessoa/dia ({watchedCategoria === 'Água/Esgoto' ? 'm3' : 'kWh'})</Label>
                             <Input
                                 id="consumo_pessoa_dia"
                                 type="text" // Alterado para 'text' para permitir vírgula
