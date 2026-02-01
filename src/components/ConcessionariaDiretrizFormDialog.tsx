@@ -71,7 +71,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                 reset({
                     ...defaultValues,
                     categoria: initialCategory,
-                    unidade_custo: initialCategory === 'Água/Esgoto' ? 'm3' : 'kWh',
+                    unidade_custo: initialCategory === 'Água/Esgoto' ? 'm³' : 'kWh',
                     consumo_pessoa_dia: 0, // Mantemos 0 no estado do hook form, mas o input será renderizado como vazio
                 });
             }
