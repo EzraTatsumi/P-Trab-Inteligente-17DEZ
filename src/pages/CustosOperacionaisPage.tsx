@@ -65,33 +65,27 @@ const CATEGORIAS_CONCESSIONARIA = [
   { key: 'ENERGIA_ELETRICA', label: 'Energia Elétrica', unidade: 'kWh' as const },
 ];
 
-const defaultConcessionariaConfig: DiretrizConcessionariaForm[] = [
+// Estrutura inicial (zerada) para Concessionária
+const initialConcessionariaConfig: DiretrizConcessionariaForm[] = [
   { 
     categoria: 'AGUA_ESGOTO', 
-    nome_concessionaria: 'Águas do Pará / Saneago (GO)', 
-    consumo_pessoa_dia: 0.15, 
-    fonte_consumo: 'Sistema Nacional de Informação sobre Saneamento - SNIS/2023', 
-    custo_unitario: 5.00, 
-    fonte_custo: 'Tarifas da COSANPA a partir de Nov/23', 
+    nome_concessionaria: 'Água/Esgoto (Ex: COSANPA)', 
+    consumo_pessoa_dia: 0, 
+    fonte_consumo: '', 
+    custo_unitario: 0, 
+    fonte_custo: '', 
     unidade_custo: 'm3' 
   },
   { 
     categoria: 'ENERGIA_ELETRICA', 
-    nome_concessionaria: 'Equatorial / Enel (RJ)', 
-    consumo_pessoa_dia: 1.5, 
-    fonte_consumo: 'Anuário Estatístico de Energia Elétrica 2024 do EPE', 
-    custo_unitario: 0.80, 
-    fonte_custo: 'Tabela de Tarifa Equatorial Ago/2024', 
+    nome_concessionaria: 'Energia Elétrica (Ex: Equatorial)', 
+    consumo_pessoa_dia: 0, 
+    fonte_consumo: '', 
+    custo_unitario: 0, 
+    fonte_custo: '', 
     unidade_custo: 'kWh' 
   },
 ];
-
-// Função para gerar a configuração padrão com valores zerados
-const zeroedConcessionariaConfig: DiretrizConcessionariaForm[] = defaultConcessionariaConfig.map(item => ({
-    ...item,
-    consumo_pessoa_dia: 0,
-    custo_unitario: 0,
-}));
 
 // Valores padrão para inicialização (incluindo os novos campos de diária)
 const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
@@ -146,7 +140,7 @@ const CustosOperacionaisPage = () => {
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({}); // Hook 10
   
   // --- ESTADOS DE CONCESSIONÁRIA ---
-  const [concessionariaConfig, setConcessionariaConfig] = useState<DiretrizConcessionariaForm[]>(zeroedConcessionariaConfig); // Hook 11
+  const [concessionariaConfig, setConcessionariaConfig] = useState<DiretrizConcessionariaForm[]>(initialConcessionariaConfig); // Hook 11
   const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<'AGUA_ESGOTO' | 'ENERGIA_ELETRICA'>('AGUA_ESGOTO'); // Hook 12
   
   // Estado para controlar a expansão individual de cada campo
@@ -328,8 +322,8 @@ const CustosOperacionaisPage = () => {
           unidade_custo: d.unidade_custo as 'm3' | 'kWh', // CORREÇÃO TS
         })));
       } else {
-        // Se não houver dados salvos, usa a configuração zerada para exibir placeholders
-        setConcessionariaConfig(zeroedConcessionariaConfig);
+        // Se não houver dados salvos, usa a configuração inicial zerada
+        setConcessionariaConfig(initialConcessionariaConfig);
       }
       
     } catch (error: any) {
@@ -819,7 +813,7 @@ const CustosOperacionaisPage = () => {
       ...prev,
       { 
         categoria, 
-        nome_concessionaria: "", 
+        nome_concessionaria: "", // Começa vazio
         consumo_pessoa_dia: 0, 
         fonte_consumo: "", 
         custo_unitario: 0, 
@@ -858,13 +852,13 @@ const CustosOperacionaisPage = () => {
     const { unidade } = CATEGORIAS_CONCESSIONARIA.find(c => c.key === selectedTab)!;
     const custoLabel = `Custo Unitário (R$/${unidade})`;
     
-    // Placeholders dinâmicos
+    // Placeholders dinâmicos (usando exemplos, não valores padrão)
     const isAgua = selectedTab === 'AGUA_ESGOTO';
-    const defaultNome = isAgua ? 'Águas do Pará / Saneago (GO)' : 'Equatorial / Enel (RJ)';
-    const defaultConsumo = isAgua ? 0.15 : 1.5;
-    const defaultCusto = isAgua ? 5.00 : 0.80;
-    const defaultFonteConsumo = isAgua ? 'Sistema Nacional de Informação sobre Saneamento - SNIS/2023' : 'Anuário Estatístico de Energia Elétrica 2024 do EPE';
-    const defaultFonteCusto = isAgua ? 'Tarifas da COSANPA a partir de Nov/23' : 'Tabela de Tarifa Equatorial Ago/2024';
+    const placeholderNome = isAgua ? 'Ex: COSANPA / Saneago' : 'Ex: Equatorial / Enel';
+    const placeholderConsumo = isAgua ? 'Ex: 0.15' : 'Ex: 1.5';
+    const placeholderCusto = isAgua ? '5,00' : '0,80';
+    const placeholderFonteConsumo = 'Ex: SNIS/2023';
+    const placeholderFonteCusto = 'Ex: Tabela de Tarifa Ago/2024';
     
     const getCustoUnitarioProps = (item: DiretrizConcessionariaForm, indexInMainArray: number) => {
         const fieldName = 'custo_unitario';
@@ -878,7 +872,7 @@ const CustosOperacionaisPage = () => {
             value: item.custo_unitario,
             onChange: handleCurrencyUpdate,
             onKeyDown: handleEnterToNextField,
-            placeholder: `Ex.: ${formatCurrency(defaultCusto)}`, // Formatando o placeholder como moeda
+            placeholder: `Ex.: ${placeholderCusto}`, 
         };
     };
     
@@ -896,7 +890,7 @@ const CustosOperacionaisPage = () => {
                 <Input
                   value={item.nome_concessionaria}
                   onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'nome_concessionaria', e.target.value)}
-                  placeholder={`Ex.: ${defaultNome}`}
+                  placeholder={placeholderNome}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
@@ -909,10 +903,9 @@ const CustosOperacionaisPage = () => {
                     type="number"
                     step="0.0001"
                     className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    // Se o valor for 0, exibe string vazia para mostrar o placeholder
                     value={item.consumo_pessoa_dia === 0 ? "" : item.consumo_pessoa_dia}
                     onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'consumo_pessoa_dia', parseFloat(e.target.value) || 0)}
-                    placeholder={`Ex.: ${defaultConsumo}`}
+                    placeholder={placeholderConsumo}
                     onKeyDown={handleEnterToNextField}
                   />
                 </div>
@@ -930,7 +923,7 @@ const CustosOperacionaisPage = () => {
                 <Input
                   value={item.fonte_consumo}
                   onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_consumo', e.target.value)}
-                  placeholder={`Ex.: ${defaultFonteConsumo}`}
+                  placeholder={placeholderFonteConsumo}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
@@ -941,7 +934,7 @@ const CustosOperacionaisPage = () => {
                 <Input
                   value={item.fonte_custo}
                   onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_custo', e.target.value)}
-                  placeholder={`Ex.: ${defaultFonteCusto}`}
+                  placeholder={placeholderFonteCusto}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
