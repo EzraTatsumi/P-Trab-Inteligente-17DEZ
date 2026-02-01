@@ -766,7 +766,7 @@ const DiretrizesCusteioPage = () => {
       if (sourceClasseIX && sourceClasseIX.length > 0) {
         const newClasseIX = (sourceClasseIX as ClasseIXItemWithSystemFields[]).map(c9 => {
           // CORREÇÃO: Desestruturação segura para remover campos de sistema
-          const { id: oldC9Id, created_at: oldC9Created, updated_at: oldC9Updated, ...restC9 } = c9;
+          const { id: oldC9Id, created_at: oldC9Created, updated_at: oldC9Updated, ...restC9 } = c9 as Tables<'diretrizes_classe_ix'>;
           return { ...restC9, ano_referencia: targetYear, user_id: user.id };
         });
         const { error: insertC9Error } = await supabase

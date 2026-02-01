@@ -210,7 +210,7 @@ const CustosOperacionaisPage = () => {
           supabase.from("diretrizes_operacionais").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_passagens").select("ano_referencia").eq("user_id", user.id),
           // CORREÇÃO TS: Usar 'as any' para a nova tabela até que o types.ts seja atualizado
-          (supabase.from("diretrizes_concessionaria") as any).select("ano_referencia").eq("user_id", user.id), 
+          supabase.from("diretrizes_concessionaria" as any).select("ano_referencia").eq("user_id", user.id), 
       ]);
 
       if (opError || passagensError || concessionariaError) throw opError || passagensError || concessionariaError;
@@ -302,8 +302,8 @@ const CustosOperacionaisPage = () => {
       setRawInputs(initialRawInputs);
       
       // 2. Carregar Diretrizes de Concessionária
-      const { data: concessionariaData, error: concessionariaError } = await (supabase
-        .from("diretrizes_concessionaria") as any) // CORREÇÃO TS
+      const { data: concessionariaData, error: concessionariaError } = await supabase
+        .from("diretrizes_concessionaria" as any) // CORREÇÃO TS
         .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
@@ -455,8 +455,8 @@ const CustosOperacionaisPage = () => {
       // 2. Salvar Diretrizes de Concessionária
       
       // Deletar registros antigos de Concessionária
-      await (supabase
-        .from("diretrizes_concessionaria") as any) // CORREÇÃO TS
+      await supabase
+        .from("diretrizes_concessionaria" as any) // CORREÇÃO TS
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", diretrizes.ano_referencia!);
@@ -478,9 +478,9 @@ const CustosOperacionaisPage = () => {
         }));
         
       if (concessionariaItemsParaSalvar.length > 0) {
-        const { error: cError } = await (supabase
-          .from("diretrizes_concessionaria") as any) // CORREÇÃO TS
-          .insert(concessionariaItemsParaSalvar as TablesInsert<'diretrizes_concessionaria'>[]); // CORREÇÃO TS
+        const { error: cError } = await supabase
+          .from("diretrizes_concessionaria" as any) // CORREÇÃO TS
+          .insert(concessionariaItemsParaSalvar as any[]); // CORREÇÃO TS: Usar 'as any[]'
         if (cError) throw cError;
       }
 
@@ -580,8 +580,8 @@ const CustosOperacionaisPage = () => {
       }
       
       // 3. Copiar Diretrizes de Concessionária
-      const { data: sourceConcessionaria, error: concessionariaError } = await (supabase
-        .from("diretrizes_concessionaria") as any) // CORREÇÃO TS
+      const { data: sourceConcessionaria, error: concessionariaError } = await supabase
+        .from("diretrizes_concessionaria" as any) // CORREÇÃO TS
         .select("id, created_at, updated_at, categoria, nome_concessionaria, consumo_pessoa_dia, fonte_consumo, custo_unitario, fonte_custo, unidade_custo")
         .eq("user_id", user.id)
         .eq("ano_referencia", sourceYear);
@@ -595,9 +595,9 @@ const CustosOperacionaisPage = () => {
               return { ...rest, ano_referencia: targetYear, user_id: user.id };
           });
           
-          const { error: insertConcessionariaError } = await (supabase
-            .from("diretrizes_concessionaria") as any) // CORREÇÃO TS
-            .insert(newConcessionaria as TablesInsert<'diretrizes_concessionaria'>[]); // CORREÇÃO TS
+          const { error: insertConcessionariaError } = await supabase
+            .from("diretrizes_concessionaria" as any) // CORREÇÃO TS
+            .insert(newConcessionaria as any[]); // CORREÇÃO TS: Usar 'as any[]'
           if (insertConcessionariaError) console.error("Erro ao inserir Concessionária copiada:", insertConcessionariaError);
       }
       
@@ -631,8 +631,8 @@ const CustosOperacionaisPage = () => {
       setLoading(true);
       
       // 1. Excluir Diretrizes de Concessionária
-      await (supabase
-        .from("diretrizes_concessionaria") as any) // CORREÇÃO TS
+      await supabase
+        .from("diretrizes_concessionaria" as any) // CORREÇÃO TS
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
@@ -843,9 +843,9 @@ const CustosOperacionaisPage = () => {
             handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, fieldName, numericValue);
         };
         
-        // ALTERAÇÃO AQUI: Usar rawDigits em vez de value
+        // CORREÇÃO TS: CurrencyInput espera a prop 'value' (number)
         return {
-            rawDigits: numberToRawDigits(item.custo_unitario), // <-- Usa rawDigits
+            value: item.custo_unitario, // <-- Passa o valor numérico
             onChange: handleCurrencyUpdate, // <-- Recebe rawDigits
             onKeyDown: handleEnterToNextField,
             placeholder: `Ex.: ${placeholderCusto}`, 
