@@ -45,7 +45,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
         fonte_consumo: "",
         custo_unitario: 0,
         fonte_custo: "",
-        unidade_custo: initialCategory === 'Água/Esgoto' ? 'm3' : 'kWh',
+        unidade_custo: initialCategory === 'Água/Esgoto' ? 'm³' : 'kWh',
     };
 
     const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<DiretrizConcessionariaForm>({
