@@ -1,36 +1,32 @@
-import * as z from "zod";
-import { Tables } from "@/integrations/supabase/types"; // Importação de Tables
+import { Tables } from "@/integrations/supabase/types";
 
-// Tipos de Categoria
-export const CATEGORIAS_CONCESSIONARIA = ["Água/Esgoto", "Energia Elétrica"] as const;
-export type CategoriaConcessionaria = typeof CATEGORIAS_CONCESSIONARIA[number];
+export type CategoriaConcessionaria = 'Água/Esgoto' | 'Energia Elétrica';
+export const CATEGORIAS_CONCESSIONARIA: CategoriaConcessionaria[] = ['Água/Esgoto', 'Energia Elétrica'];
 
-// Tipo de dados do banco de dados (Row)
 export type DiretrizConcessionaria = Tables<'diretrizes_concessionaria'>;
 
-// Schema de Validação
-export const diretrizConcessionariaSchema = z.object({
-    ano_referencia: z.number().int().min(2020, "Ano inválido"),
-    categoria: z.enum(CATEGORIAS_CONCESSIONARIA, {
-        required_error: "A categoria é obrigatória.",
-    }),
-    nome_concessionaria: z.string().min(1, "O nome da concessionária é obrigatório."),
-    
-    // Consumo é tratado como string no formulário para aceitar vírgula, mas validado como número
-    consumo_pessoa_dia: z.union([
-        z.number().min(0, "O consumo deve ser positivo."),
-        z.string().min(1, "O consumo é obrigatório.").refine(val => {
-            const num = parseFloat(String(val).replace(',', '.'));
-            return !isNaN(num) && num >= 0;
-        }, "Consumo inválido ou negativo."),
-    ]),
-    
-    fonte_consumo: z.string().optional(),
-    
-    custo_unitario: z.number().min(0, "O custo unitário deve ser positivo."),
-    fonte_custo: z.string().optional(),
-    unidade_custo: z.enum(["m3", "kWh"]),
-});
+// Tipo usado no formulário de cadastro/edição de diretriz
+export interface DiretrizConcessionariaForm {
+    id?: string;
+    ano_referencia: number;
+    categoria: CategoriaConcessionaria;
+    nome_concessionaria: string;
+    consumo_pessoa_dia: number; // Consumo por pessoa por dia (m³ ou kWh)
+    fonte_consumo: string | null;
+    custo_unitario: number; // Custo por unidade (R$/m³ ou R$/kWh)
+    fonte_custo: string | null;
+    unidade_custo: string; // Ex: m³ ou kWh
+}
 
-// Tipo de dados do formulário (inclui a string para consumo)
-export type DiretrizConcessionariaForm = z.infer<typeof diretrizConcessionariaSchema>;
+// Tipo usado para a seleção no formulário de PTrab (análogo a TrechoSelection)
+export interface ConcessionariaDiretrizSelection {
+    id: string; // ID da diretriz (contrato)
+    categoria: CategoriaConcessionaria;
+    nome_concessionaria: string;
+    consumo_pessoa_dia: number;
+    custo_unitario: number;
+    unidade_custo: string;
+    
+    // Campos de cálculo (análogo a quantidade_passagens)
+    quantidade_solicitada: number; // Quantidade de unidades (m³ ou kWh) a ser solicitada
+}
