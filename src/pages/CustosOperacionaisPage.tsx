@@ -418,9 +418,6 @@ const CustosOperacionaisPage = () => {
         diaria_of_gen_bsb: diretrizes.diaria_of_gen_bsb,
         diaria_of_gen_capitais: diretrizes.diaria_of_gen_capitais,
         diaria_of_gen_demais: diretrizes.diaria_of_gen_demais,
-        diaria_of_sup_bsb: diretrizes.diaria_of_sup_bsb,
-        diaria_of_sup_capitais: diretrizes.diaria_of_sup_capitais,
-        diaria_of_sup_demais: diretrizes.diaria_of_sup_demais,
         diaria_of_int_sgt_bsb: diretrizes.diaria_of_int_sgt_bsb,
         diaria_of_int_sgt_capitais: diretrizes.diaria_of_int_sgt_capitais,
         diaria_of_int_sgt_demais: diretrizes.diaria_of_int_sgt_demais,
@@ -907,12 +904,17 @@ const CustosOperacionaisPage = () => {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error("Usuário não autenticado");
           
+          // CORREÇÃO: Converte o consumo (que pode ser string do formulário) para number
+          const consumoValue = typeof data.consumo_pessoa_dia === 'string'
+            ? parseFloat(data.consumo_pessoa_dia.replace(',', '.')) || 0
+            : data.consumo_pessoa_dia;
+
           const dbData: TablesInsert<'diretrizes_concessionaria'> = {
               user_id: user.id,
               ano_referencia: selectedYear,
               categoria: data.categoria,
               nome_concessionaria: data.nome_concessionaria,
-              consumo_pessoa_dia: data.consumo_pessoa_dia,
+              consumo_pessoa_dia: consumoValue, // Usa o valor numérico
               fonte_consumo: data.fonte_consumo || null,
               custo_unitario: data.custo_unitario,
               fonte_custo: data.fonte_custo || null,

@@ -66,8 +66,9 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                 const consumoString = String(diretrizToEdit.consumo_pessoa_dia ?? 0).replace('.', ',');
                 
                 reset({
-                    // CORREÇÃO: Usar o spread operator em diretrizToEdit (que é um objeto)
+                    // CORREÇÃO: Forçar a tipagem de 'categoria' para o enum esperado pelo formulário
                     ...diretrizToEdit,
+                    categoria: diretrizToEdit.categoria as CategoriaConcessionaria,
                     ano_referencia: diretrizToEdit.ano_referencia,
                     consumo_pessoa_dia: consumoString as any, // Armazena como string
                     custo_unitario: Number(diretrizToEdit.custo_unitario ?? 0),

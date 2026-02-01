@@ -1113,7 +1113,6 @@ export type Database = {
         }
         Relationships: []
       }
-      // NOVO: Adicionando a definição da tabela diretrizes_concessionaria
       diretrizes_concessionaria: {
         Row: {
           id: string
@@ -1589,6 +1588,51 @@ export type Database = {
           },
         ]
       }
+      diretrizes_concessionaria: {
+        Row: {
+          id: string
+          user_id: string
+          ano_referencia: number
+          categoria: string
+          nome_concessionaria: string
+          consumo_pessoa_dia: number
+          fonte_consumo: string | null
+          custo_unitario: number
+          fonte_custo: string | null
+          unidade_custo: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          ano_referencia: number
+          categoria: string
+          nome_concessionaria: string
+          consumo_pessoa_dia: number
+          fonte_consumo?: string | null
+          custo_unitario: number
+          fonte_custo?: string | null
+          unidade_custo: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          ano_referencia?: number
+          categoria?: string
+          nome_concessionaria?: string
+          consumo_pessoa_dia?: number
+          fonte_consumo?: string | null
+          custo_unitario?: number
+          fonte_custo?: string | null
+          unidade_custo?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1712,7 +1756,7 @@ export type CompositeTypes<
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DefaultSchema["CompositeTypes"]
+  schema: keyof DatabaseWithoutInternals
 }
   ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
