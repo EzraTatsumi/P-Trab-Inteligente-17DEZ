@@ -276,7 +276,7 @@ const PassagemTrechoSelectorDialog: React.FC<PassagemTrechoSelectorDialogProps> 
                         {/* NOVO BOTÃO: Adicionar Contrato */}
                         <Button 
                             type="button" 
-                            variant="link" 
+                            variant="link" {/* ALTERADO DE 'secondary' PARA 'link' */}
                             onClick={handleAddContractClick}
                             className="gap-2"
                         >
