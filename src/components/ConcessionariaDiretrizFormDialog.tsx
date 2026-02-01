@@ -179,7 +179,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                             <Label htmlFor="unidade_custo">Unidade de Custo</Label>
                             <Input
                                 id="unidade_custo"
-                                value={watchedCategoria === 'Água/Esgoto' ? 'm3' : 'kWh'}
+                                value={watchedCategoria === 'Água/Esgoto' ? 'm³' : 'kWh'}
                                 disabled
                                 className="bg-muted/50"
                             />
