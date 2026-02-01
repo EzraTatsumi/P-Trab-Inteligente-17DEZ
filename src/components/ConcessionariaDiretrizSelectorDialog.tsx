@@ -131,7 +131,7 @@ const ConcessionariaDiretrizSelectorDialog: React.FC<ConcessionariaDiretrizSelec
             <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>
-                        Selecionar Diretrizes de Concessionária ({selectedYear})
+                        Selecionar Diretrizes de Concessionária
                     </DialogTitle>
                 </DialogHeader>
                 
@@ -209,7 +209,7 @@ const ConcessionariaDiretrizSelectorDialog: React.FC<ConcessionariaDiretrizSelec
                 </div>
                 
                 <DialogFooter className="flex justify-between items-center">
-                    {/* NOVO BOTÃO: Adicionar Contrato */}
+                    {/* NOVO BOTÃO: Adicionar Concessionária */}
                     <Button 
                         type="button" 
                         variant="secondary"
@@ -217,16 +217,16 @@ const ConcessionariaDiretrizSelectorDialog: React.FC<ConcessionariaDiretrizSelec
                         className="gap-2"
                     >
                         <PlusCircle className="h-4 w-4" />
-                        Adicionar Contrato/Trecho
+                        Adicionar Concessionária
                     </Button>
                     
                     <div className="flex gap-2">
-                        <Button variant="outline" onClick={() => onOpenChange(false)}>
-                            Cancelar
-                        </Button>
                         <Button onClick={handleConfirm} disabled={selectedDiretrizes.length === 0 || isLoading}>
                             <Check className="mr-2 h-4 w-4" />
                             Confirmar Seleção ({selectedDiretrizes.length})
+                        </Button>
+                        <Button variant="outline" onClick={() => onOpenChange(false)}>
+                            Cancelar
                         </Button>
                     </div>
                 </DialogFooter>
