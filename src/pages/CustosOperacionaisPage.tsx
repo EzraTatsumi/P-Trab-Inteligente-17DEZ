@@ -816,7 +816,7 @@ const CustosOperacionaisPage = () => {
     config: DiretrizConcessionariaForm[], 
     setConfig: React.Dispatch<React.SetStateAction<DiretrizConcessionariaForm[]>>, 
     categoria: DiretrizConcessionariaForm['categoria'],
-    unidade: 'm3' | 'kWh' // CORREÇÃO TS: Tipagem explícita
+    unidade: DiretrizConcessionariaForm['unidade_custo']
   ) => {
     setConfig(prev => [
       ...prev,
