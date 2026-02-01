@@ -43,13 +43,13 @@ export type Database = {
         Insert: {
           categoria?: string
           codug_om: string
-          complemento_qr?: number
-          complemento_qs?: number
+          complemento_qr: number
+          complemento_qs: number
           created_at?: string | null
           dias_operacao: number
           efetivo: number
-          etapa_qr?: number
-          etapa_qs?: number
+          etapa_qr: number
+          etapa_qs: number
           fase_atividade?: string | null
           id?: string
           memoria_calculo_op_customizada?: string | null
@@ -61,9 +61,9 @@ export type Database = {
           p_trab_id: string
           quantidade_r2?: number
           quantidade_r3?: number
-          total_geral?: number
-          total_qr?: number
-          total_qs?: number
+          total_geral: number
+          total_qr: number
+          total_qs: number
           ug: string
           ug_qs: string
           updated_at?: string | null
@@ -863,8 +863,8 @@ export type Database = {
           item: string
           updated_at: string | null
           user_id: string
-          valor_mnt_dia: number
           valor_acionamento_mensal: number
+          valor_mnt_dia: number
         }
         Insert: {
           ano_referencia: number
@@ -875,8 +875,8 @@ export type Database = {
           item: string
           updated_at?: string | null
           user_id: string
-          valor_mnt_dia?: number
           valor_acionamento_mensal?: number
+          valor_mnt_dia?: number
         }
         Update: {
           ano_referencia?: number
@@ -887,8 +887,8 @@ export type Database = {
           item?: string
           updated_at?: string | null
           user_id?: string
-          valor_mnt_dia?: number
           valor_acionamento_mensal?: number
+          valor_mnt_dia?: number
         }
         Relationships: [
           {
@@ -918,9 +918,9 @@ export type Database = {
         Insert: {
           ano_referencia: number
           categoria: string
-          consumo_pessoa_dia: number
+          consumo_pessoa_dia?: number
           created_at?: string | null
-          custo_unitario: number
+          custo_unitario?: number
           fonte_consumo?: string | null
           fonte_custo?: string | null
           id?: string
@@ -1184,7 +1184,7 @@ export type Database = {
           id?: string
           numero_pregao?: string | null
           om_referencia: string
-          trechos: Json
+          trechos?: Json
           ug_referencia: string
           updated_at?: string | null
           user_id: string
@@ -1263,9 +1263,9 @@ export type Database = {
       p_trab: {
         Row: {
           acoes: string | null
-          comando_militar_area: string
           codug_om: string | null
           codug_rm_vinculacao: string | null
+          comando_militar_area: string
           comentario: string | null
           created_at: string | null
           efetivo_empregado: string
@@ -1289,9 +1289,9 @@ export type Database = {
         }
         Insert: {
           acoes?: string | null
-          comando_militar_area: string
           codug_om?: string | null
           codug_rm_vinculacao?: string | null
+          comando_militar_area: string
           comentario?: string | null
           created_at?: string | null
           efetivo_empregado: string
@@ -1315,9 +1315,9 @@ export type Database = {
         }
         Update: {
           acoes?: string | null
-          comando_militar_area?: string
           codug_om?: string | null
           codug_rm_vinculacao?: string | null
+          comando_militar_area?: string
           comentario?: string | null
           created_at?: string | null
           efetivo_empregado?: string
@@ -1406,12 +1406,14 @@ export type Database = {
           detalhamento_customizado: string | null
           dias_operacao: number
           destino: string
+          diretriz_id: string
           efetivo: number | null
           fase_atividade: string | null
           id: string
           is_ida_volta: boolean
           om_detentora: string
           organizacao: string
+          origem: string
           p_trab_id: string
           quantidade_passagens: number
           tipo_transporte: string
@@ -1422,7 +1424,6 @@ export type Database = {
           valor_nd_33: number
           valor_total: number
           valor_unitario: number
-          diretriz_id: string
         }
         Insert: {
           created_at?: string | null
@@ -1430,12 +1431,14 @@ export type Database = {
           detalhamento_customizado?: string | null
           dias_operacao?: number
           destino: string
+          diretriz_id: string
           efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           is_ida_volta?: boolean
           om_detentora: string
           organizacao: string
+          origem: string
           p_trab_id: string
           quantidade_passagens?: number
           tipo_transporte: string
@@ -1446,7 +1449,6 @@ export type Database = {
           valor_nd_33?: number
           valor_total?: number
           valor_unitario?: number
-          diretriz_id: string
         }
         Update: {
           created_at?: string | null
@@ -1454,12 +1456,14 @@ export type Database = {
           detalhamento_customizado?: string | null
           dias_operacao?: number
           destino?: string
+          diretriz_id?: string
           efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           is_ida_volta?: boolean
           om_detentora?: string
           organizacao?: string
+          origem?: string
           p_trab_id?: string
           quantidade_passagens?: number
           tipo_transporte?: string
@@ -1470,7 +1474,6 @@ export type Database = {
           valor_nd_33?: number
           valor_total?: number
           valor_unitario?: number
-          diretriz_id?: string
         }
         Relationships: [
           {
@@ -1492,7 +1495,6 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
-          created_at: string | null
           credit_gnd3: number
           credit_gnd4: number
           default_logistica_year: number | null
@@ -1505,7 +1507,6 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
-          created_at?: string | null
           credit_gnd3?: number
           credit_gnd4?: number
           default_logistica_year?: number | null
@@ -1518,7 +1519,6 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
-          created_at?: string | null
           credit_gnd3?: number
           credit_gnd4?: number
           default_logistica_year?: number | null
@@ -1700,7 +1700,7 @@ export type Database = {
       }
       handle_new_user: {
         Args: Record<PropertyKey, never>
-        Returns: Record<string, unknown>
+        Returns: unknown
       }
       is_ptrab_owner_or_shared: {
         Args: {
@@ -1731,11 +1731,11 @@ export type Database = {
       }
       set_updated_at: {
         Args: Record<PropertyKey, never>
-        Returns: Record<string, unknown>
+        Returns: unknown
       }
       update_ptrab_timestamp: {
         Args: Record<PropertyKey, never>
-        Returns: Record<string, unknown>
+        Returns: unknown
       }
     }
     Enums: {
@@ -1753,65 +1753,78 @@ export type Tables<
   PublicTableNameOrOptions extends
     | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
     | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"])
+    : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
   ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[Extract<
-      keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"]),
-      string
-    >]
-  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
-        PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions]
+      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
     : never
-
-export type Tables<
-  PublicTableNameOrOptions extends
-    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
-    | { schema: keyof Database },
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[Extract<
-      keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"]),
-      string
-    >]
   : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
         PublicSchema["Views"])
     ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions]
+        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
     : never
 
 export type TablesInsert<
-  PublicTableNameOrOptions extends keyof PublicSchema["Tables"] | { schema: keyof Database },
+  PublicTableNameOrOptions extends
+    | keyof PublicSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][Extract<
-      keyof Database[PublicTableNameOrOptions["schema"]]["Tables"],
-      string
-    >]["Insert"]
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
   : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions]["Insert"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
     : never
 
 export type TablesUpdate<
-  PublicTableNameOrOptions extends keyof PublicSchema["Tables"] | { schema: keyof Database },
+  PublicTableNameOrOptions extends
+    | keyof PublicSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][Extract<
-      keyof Database[PublicTableNameOrOptions["schema"]]["Tables"],
-      string
-    >]["Update"]
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
   : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions]["Update"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
     : never
 
 export type Enums<
-  PublicEnumNameOrOptions extends keyof PublicSchema["Enums"] | { schema: keyof Database },
-> = PublicEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][Extract<
-      keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"],
-      string
-    >]
-  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
-    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+  PublicEnumNameOrOptions extends
+    | keyof PublicSchema["Enums"]
+    | { schema: keyof Database },
+  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Enums"][EnumName]
+  : PublicTableNameOrOptions extends keyof PublicSchema["Enums"]
+    ? PublicSchema["Enums"][PublicTableNameOrOptions]
     : never
