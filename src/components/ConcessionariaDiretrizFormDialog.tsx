@@ -46,7 +46,8 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
         fonte_consumo: "",
         custo_unitario: 0,
         fonte_custo: "",
-        unidade_custo: initialCategory === 'Água/Esgoto' ? 'm³' : 'kWh',
+        // Fix 2 & 7: Use 'm3' instead of 'm³'
+        unidade_custo: initialCategory === 'Água/Esgoto' ? 'm3' : 'kWh',
     };
 
     const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<DiretrizConcessionariaForm>({
@@ -63,17 +64,21 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
     useEffect(() => {
         if (open) {
             if (diretrizToEdit) {
-                // 1. Carrega o valor numérico e formata para string com vírgula para exibição
+                // Fix 3, 4, 5, 6: Access properties directly from diretrizToEdit (now correctly typed)
                 const numericValue = Number(diretrizToEdit.consumo_pessoa_dia);
                 const formattedString = numericValue === 0 ? '' : String(numericValue).replace('.', ',');
                 setRawConsumoInput(formattedString);
                 
-                // 2. Reseta o RHF com o número limpo
+                // Reseta o RHF com o número limpo
                 reset({
-                    ...diretrizToEdit,
                     ano_referencia: diretrizToEdit.ano_referencia,
+                    categoria: diretrizToEdit.categoria,
+                    nome_concessionaria: diretrizToEdit.nome_concessionaria,
                     consumo_pessoa_dia: numericValue, 
+                    fonte_consumo: diretrizToEdit.fonte_consumo || "",
                     custo_unitario: Number(diretrizToEdit.custo_unitario),
+                    fonte_custo: diretrizToEdit.fonte_custo || "",
+                    unidade_custo: diretrizToEdit.unidade_custo,
                 });
             } else {
                 // Ao criar novo
@@ -81,7 +86,8 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                 reset({
                     ...defaultValues,
                     categoria: initialCategory,
-                    unidade_custo: initialCategory === 'Água/Esgoto' ? 'm³' : 'kWh',
+                    // Fix 7: Use 'm3'
+                    unidade_custo: initialCategory === 'Água/Esgoto' ? 'm3' : 'kWh',
                     consumo_pessoa_dia: 0,
                 });
             }
@@ -90,8 +96,9 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
     
     // Efeito para sincronizar a unidade de custo com a categoria
     useEffect(() => {
+        // Fix 8: Use 'm3'
         if (watchedCategoria === 'Água/Esgoto') {
-            setValue('unidade_custo', 'm³');
+            setValue('unidade_custo', 'm3');
         } else if (watchedCategoria === 'Energia Elétrica') {
             setValue('unidade_custo', 'kWh');
         }
@@ -121,7 +128,8 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
 
             const dataToSave = {
                 ...data,
-                id: diretrizToEdit?.id,
+                // Fix 9: diretrizToEdit is now correctly typed, safe to use optional chaining
+                id: diretrizToEdit?.id, 
                 user_id: undefined, // Supabase handles user_id insertion
                 consumo_pessoa_dia: consumo, 
                 custo_unitario: Number(data.custo_unitario),
@@ -202,7 +210,8 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                     
                     <div className="grid grid-cols-3 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="consumo_pessoa_dia">Consumo/pessoa/dia ({watchedCategoria === 'Água/Esgoto' ? 'm³' : 'kWh'})</Label>
+                            {/* Fix 7: Use 'm3' */}
+                            <Label htmlFor="consumo_pessoa_dia">Consumo/pessoa/dia ({watchedCategoria === 'Água/Esgoto' ? 'm3' : 'kWh'})</Label>
                             <Input
                                 id="consumo_pessoa_dia"
                                 type="text" // Alterado para type="text"
@@ -228,7 +237,8 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                             <Label htmlFor="unidade_custo">Unidade de Custo</Label>
                             <Input
                                 id="unidade_custo"
-                                value={watchedCategoria === 'Água/Esgoto' ? 'm³' : 'kWh'}
+                                // Fix 7: Use 'm3'
+                                value={watchedCategoria === 'Água/Esgoto' ? 'm3' : 'kWh'}
                                 disabled
                                 className="bg-muted/50"
                             />

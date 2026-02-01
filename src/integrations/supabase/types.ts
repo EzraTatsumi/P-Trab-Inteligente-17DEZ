@@ -7,100 +7,98 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
-  }
   public: {
     Tables: {
       classe_i_registros: {
         Row: {
+          categoria: string
+          codug_om: string
           complemento_qr: number
           complemento_qs: number
-          created_at: string
+          created_at: string | null
           dias_operacao: number
           efetivo: number
           etapa_qr: number
           etapa_qs: number
           fase_atividade: string | null
           id: string
+          memoria_calculo_op_customizada: string | null
           memoria_calculo_qr_customizada: string | null
           memoria_calculo_qs_customizada: string | null
-          memoria_calculo_op_customizada: string | null
           nr_ref_int: number
           om_qs: string
           organizacao: string
           p_trab_id: string
+          quantidade_r2: number
+          quantidade_r3: number
           total_geral: number
           total_qr: number
           total_qs: number
           ug: string
           ug_qs: string
-          updated_at: string
+          updated_at: string | null
           valor_qr: number
           valor_qs: number
-          categoria: string
-          quantidade_r2: number
-          quantidade_r3: number
         }
         Insert: {
+          categoria?: string
+          codug_om: string
           complemento_qr?: number
           complemento_qs?: number
-          created_at?: string
+          created_at?: string | null
           dias_operacao: number
           efetivo: number
           etapa_qr?: number
           etapa_qs?: number
           fase_atividade?: string | null
           id?: string
+          memoria_calculo_op_customizada?: string | null
           memoria_calculo_qr_customizada?: string | null
           memoria_calculo_qs_customizada?: string | null
-          memoria_calculo_op_customizada?: string | null
           nr_ref_int: number
           om_qs: string
           organizacao: string
           p_trab_id: string
-          total_geral: number
+          quantidade_r2?: number
+          quantidade_r3?: number
+          total_geral?: number
           total_qr?: number
           total_qs?: number
           ug: string
           ug_qs: string
-          updated_at?: string
-          valor_qr?: number
-          valor_qs?: number
-          categoria?: string
-          quantidade_r2?: number
-          quantidade_r3?: number
+          updated_at?: string | null
+          valor_qr: number
+          valor_qs: number
         }
         Update: {
+          categoria?: string
+          codug_om?: string
           complemento_qr?: number
           complemento_qs?: number
-          created_at?: string
+          created_at?: string | null
           dias_operacao?: number
           efetivo?: number
           etapa_qr?: number
           etapa_qs?: number
           fase_atividade?: string | null
           id?: string
+          memoria_calculo_op_customizada?: string | null
           memoria_calculo_qr_customizada?: string | null
           memoria_calculo_qs_customizada?: string | null
-          memoria_calculo_op_customizada?: string | null
           nr_ref_int?: number
           om_qs?: string
           organizacao?: string
           p_trab_id?: string
+          quantidade_r2?: number
+          quantidade_r3?: number
           total_geral?: number
           total_qr?: number
           total_qs?: number
           ug?: string
           ug_qs?: string
-          updated_at?: string
+          updated_at?: string | null
           valor_qr?: number
           valor_qs?: number
-          categoria?: string
-          quantidade_r2?: number
-          quantidade_r3?: number
         }
         Relationships: [
           {
@@ -115,7 +113,7 @@ export type Database = {
       classe_ii_registros: {
         Row: {
           categoria: string
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
@@ -128,14 +126,14 @@ export type Database = {
           p_trab_id: string
           ug: string
           ug_detentora: string | null
-          updated_at: string
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
         }
         Insert: {
           categoria: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
@@ -148,14 +146,14 @@ export type Database = {
           p_trab_id: string
           ug: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
         }
         Update: {
           categoria?: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
@@ -168,7 +166,7 @@ export type Database = {
           p_trab_id?: string
           ug?: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
@@ -189,15 +187,14 @@ export type Database = {
           consumo_hora: number | null
           consumo_km_litro: number | null
           consumo_lubrificante_litro: number | null
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
-          efetivo: number
           fase_atividade: string | null
           horas_dia: number | null
           id: string
-          itens_equipamentos: Json | null // <-- Mantido como Json
+          itens_equipamentos: Json | null
           km_dia: number | null
           om_detentora: string | null
           organizacao: string
@@ -213,7 +210,7 @@ export type Database = {
           total_litros_sem_margem: number | null
           ug: string
           ug_detentora: string | null
-          updated_at: string
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
@@ -223,11 +220,10 @@ export type Database = {
           consumo_hora?: number | null
           consumo_km_litro?: number | null
           consumo_lubrificante_litro?: number | null
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
-          efetivo?: number
           fase_atividade?: string | null
           horas_dia?: number | null
           id?: string
@@ -247,7 +243,7 @@ export type Database = {
           total_litros_sem_margem?: number | null
           ug: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
@@ -257,11 +253,10 @@ export type Database = {
           consumo_hora?: number | null
           consumo_km_litro?: number | null
           consumo_lubrificante_litro?: number | null
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
-          efetivo?: number
           fase_atividade?: string | null
           horas_dia?: number | null
           id?: string
@@ -281,7 +276,7 @@ export type Database = {
           total_litros_sem_margem?: number | null
           ug?: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
@@ -299,7 +294,7 @@ export type Database = {
       classe_v_registros: {
         Row: {
           categoria: string
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
@@ -312,14 +307,14 @@ export type Database = {
           p_trab_id: string
           ug: string
           ug_detentora: string | null
-          updated_at: string
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
         }
         Insert: {
           categoria: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
@@ -332,14 +327,14 @@ export type Database = {
           p_trab_id: string
           ug: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
         }
         Update: {
           categoria?: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
@@ -352,7 +347,7 @@ export type Database = {
           p_trab_id?: string
           ug?: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
@@ -370,57 +365,60 @@ export type Database = {
       classe_vi_registros: {
         Row: {
           categoria: string
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
+          efetivo: number | null
           fase_atividade: string | null
           id: string
           itens_equipamentos: Json
-          om_detentora: string | null
+          om_detentora: string
           organizacao: string
           p_trab_id: string
           ug: string
-          ug_detentora: string | null
-          updated_at: string
+          ug_detentora: string
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
         }
         Insert: {
           categoria: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_equipamentos: Json
-          om_detentora?: string | null
+          om_detentora: string
           organizacao: string
           p_trab_id: string
           ug: string
-          ug_detentora?: string | null
-          updated_at?: string
+          ug_detentora: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
         }
         Update: {
           categoria?: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_equipamentos?: Json
-          om_detentora?: string | null
+          om_detentora?: string
           organizacao?: string
           p_trab_id?: string
           ug?: string
-          ug_detentora?: string | null
-          updated_at?: string
+          ug_detentora?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
@@ -438,11 +436,11 @@ export type Database = {
       classe_vii_registros: {
         Row: {
           categoria: string
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
-          efetivo: number
+          efetivo: number | null
           fase_atividade: string | null
           id: string
           itens_equipamentos: Json
@@ -451,18 +449,18 @@ export type Database = {
           p_trab_id: string
           ug: string
           ug_detentora: string | null
-          updated_at: string
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
         }
         Insert: {
           categoria: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
-          efetivo?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_equipamentos: Json
@@ -471,18 +469,18 @@ export type Database = {
           p_trab_id: string
           ug: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
         }
         Update: {
           categoria?: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
-          efetivo?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_equipamentos?: Json
@@ -491,7 +489,7 @@ export type Database = {
           p_trab_id?: string
           ug?: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
@@ -509,10 +507,11 @@ export type Database = {
       classe_viii_remonta_registros: {
         Row: {
           animal_tipo: string
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
+          efetivo: number | null
           fase_atividade: string | null
           id: string
           itens_remonta: Json
@@ -522,17 +521,18 @@ export type Database = {
           quantidade_animais: number
           ug: string
           ug_detentora: string | null
-          updated_at: string
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
         }
         Insert: {
           animal_tipo: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_remonta: Json
@@ -542,17 +542,18 @@ export type Database = {
           quantidade_animais: number
           ug: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
         }
         Update: {
           animal_tipo?: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_remonta?: Json
@@ -562,7 +563,7 @@ export type Database = {
           quantidade_animais?: number
           ug?: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
@@ -580,10 +581,11 @@ export type Database = {
       classe_viii_saude_registros: {
         Row: {
           categoria: string
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
+          efetivo: number | null
           fase_atividade: string | null
           id: string
           itens_saude: Json
@@ -592,17 +594,18 @@ export type Database = {
           p_trab_id: string
           ug: string
           ug_detentora: string | null
-          updated_at: string
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
         }
         Insert: {
           categoria?: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_saude: Json
@@ -611,17 +614,18 @@ export type Database = {
           p_trab_id: string
           ug: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
         }
         Update: {
           categoria?: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_saude?: Json
@@ -630,7 +634,7 @@ export type Database = {
           p_trab_id?: string
           ug?: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
@@ -648,10 +652,11 @@ export type Database = {
       classe_ix_registros: {
         Row: {
           categoria: string
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
+          efetivo: number | null
           fase_atividade: string | null
           id: string
           itens_motomecanizacao: Json
@@ -660,17 +665,18 @@ export type Database = {
           p_trab_id: string
           ug: string
           ug_detentora: string | null
-          updated_at: string
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total: number
         }
         Insert: {
           categoria: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_motomecanizacao: Json
@@ -679,17 +685,18 @@ export type Database = {
           p_trab_id: string
           ug: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total: number
         }
         Update: {
           categoria?: string
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_motomecanizacao?: Json
@@ -698,7 +705,7 @@ export type Database = {
           p_trab_id?: string
           ug?: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total?: number
@@ -715,7 +722,7 @@ export type Database = {
       }
       diaria_registros: {
         Row: {
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
@@ -733,7 +740,7 @@ export type Database = {
           quantidades_por_posto: Json | null
           ug: string
           ug_detentora: string | null
-          updated_at: string
+          updated_at: string | null
           valor_diaria_unitario: number | null
           valor_nd_15: number
           valor_nd_30: number
@@ -741,7 +748,7 @@ export type Database = {
           valor_total: number
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
@@ -759,7 +766,7 @@ export type Database = {
           quantidades_por_posto?: Json | null
           ug: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_diaria_unitario?: number | null
           valor_nd_15?: number
           valor_nd_30?: number
@@ -767,7 +774,7 @@ export type Database = {
           valor_total?: number
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
@@ -785,7 +792,7 @@ export type Database = {
           quantidades_por_posto?: Json | null
           ug?: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_diaria_unitario?: number | null
           valor_nd_15?: number
           valor_nd_30?: number
@@ -807,10 +814,10 @@ export type Database = {
           ano_referencia: number
           ativo: boolean | null
           categoria: string
-          created_at: string
+          created_at: string | null
           id: string
           item: string
-          updated_at: string
+          updated_at: string | null
           user_id: string
           valor_mnt_dia: number
         }
@@ -818,35 +825,43 @@ export type Database = {
           ano_referencia: number
           ativo?: boolean | null
           categoria: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           item: string
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
-          valor_mnt_dia: number
+          valor_mnt_dia?: number
         }
         Update: {
           ano_referencia?: number
           ativo?: boolean | null
           categoria?: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           item?: string
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string
           valor_mnt_dia?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "diretrizes_classe_ii_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       diretrizes_classe_ix: {
         Row: {
           ano_referencia: number
           ativo: boolean | null
           categoria: string
-          created_at: string
+          created_at: string | null
           id: string
           item: string
-          updated_at: string
+          updated_at: string | null
           user_id: string
           valor_mnt_dia: number
           valor_acionamento_mensal: number
@@ -855,27 +870,88 @@ export type Database = {
           ano_referencia: number
           ativo?: boolean | null
           categoria: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           item: string
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
-          valor_mnt_dia: number
-          valor_acionamento_mensal: number
+          valor_mnt_dia?: number
+          valor_acionamento_mensal?: number
         }
         Update: {
           ano_referencia?: number
           ativo?: boolean | null
           categoria?: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           item?: string
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string
           valor_mnt_dia?: number
           valor_acionamento_mensal?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "diretrizes_classe_ix_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diretrizes_concessionaria: {
+        Row: {
+          ano_referencia: number
+          categoria: string
+          consumo_pessoa_dia: number
+          created_at: string | null
+          custo_unitario: number
+          fonte_consumo: string | null
+          fonte_custo: string | null
+          id: string
+          nome_concessionaria: string
+          unidade_custo: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ano_referencia: number
+          categoria: string
+          consumo_pessoa_dia: number
+          created_at?: string | null
+          custo_unitario: number
+          fonte_consumo?: string | null
+          fonte_custo?: string | null
+          id?: string
+          nome_concessionaria: string
+          unidade_custo: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          ano_referencia?: number
+          categoria?: string
+          consumo_pessoa_dia?: number
+          created_at?: string | null
+          custo_unitario?: number
+          fonte_consumo?: string | null
+          fonte_custo?: string | null
+          id?: string
+          nome_concessionaria?: string
+          unidade_custo?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diretrizes_concessionaria_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       diretrizes_custeio: {
         Row: {
@@ -885,10 +961,10 @@ export type Database = {
           classe_iii_fator_embarcacao: number
           classe_iii_fator_equip_engenharia: number
           classe_iii_fator_gerador: number
-          created_at: string
+          created_at: string | null
           id: string
           observacoes: string | null
-          updated_at: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -898,10 +974,10 @@ export type Database = {
           classe_iii_fator_embarcacao?: number
           classe_iii_fator_equip_engenharia?: number
           classe_iii_fator_gerador?: number
-          created_at?: string
+          created_at?: string | null
           id?: string
           observacoes?: string | null
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -911,102 +987,65 @@ export type Database = {
           classe_iii_fator_embarcacao?: number
           classe_iii_fator_equip_engenharia?: number
           classe_iii_fator_gerador?: number
-          created_at?: string
+          created_at?: string | null
           id?: string
           observacoes?: string | null
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "diretrizes_custeio_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       diretrizes_equipamentos_classe_iii: {
         Row: {
           ano_referencia: number
-          ativo: boolean
+          ativo: boolean | null
           categoria: string
           consumo: number
-          created_at: string
+          created_at: string | null
           id: string
           nome_equipamento: string
           tipo_combustivel: string
           unidade: string
-          updated_at: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           ano_referencia: number
-          ativo?: boolean
+          ativo?: boolean | null
           categoria: string
           consumo: number
-          created_at?: string
+          created_at?: string | null
           id?: string
           nome_equipamento: string
           tipo_combustivel: string
           unidade: string
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           ano_referencia?: number
-          ativo?: boolean
+          ativo?: boolean | null
           categoria?: string
           consumo?: number
-          created_at?: string
+          created_at?: string | null
           id?: string
           nome_equipamento?: string
           tipo_combustivel?: string
           unidade?: string
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string
-        }
-        Relationships: []
-      }
-      diretrizes_passagens: {
-        Row: {
-          id: string
-          user_id: string
-          ano_referencia: number
-          om_referencia: string
-          ug_referencia: string
-          numero_pregao: string | null
-          trechos: Json
-          ativo: boolean
-          created_at: string
-          updated_at: string
-          data_inicio_vigencia: string | null
-          data_fim_vigencia: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          ano_referencia: number
-          om_referencia: string
-          ug_referencia: string
-          numero_pregao?: string | null
-          trechos?: Json
-          ativo?: boolean
-          created_at?: string
-          updated_at?: string
-          data_inicio_vigencia?: string | null
-          data_fim_vigencia?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          ano_referencia?: number
-          om_referencia?: string
-          ug_referencia?: string
-          numero_pregao?: string | null
-          trechos?: Json
-          ativo?: boolean
-          created_at?: string
-          updated_at?: string
-          data_inicio_vigencia?: string | null
-          data_fim_vigencia?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "diretrizes_passagens_user_id_fkey"
+            foreignKeyName: "diretrizes_equipamentos_classe_iii_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -1017,7 +1056,7 @@ export type Database = {
       diretrizes_operacionais: {
         Row: {
           ano_referencia: number
-          created_at: string
+          created_at: string | null
           diaria_demais_pracas_bsb: number | null
           diaria_demais_pracas_capitais: number | null
           diaria_demais_pracas_demais: number | null
@@ -1038,7 +1077,7 @@ export type Database = {
           id: string
           observacoes: string | null
           taxa_embarque: number | null
-          updated_at: string
+          updated_at: string | null
           user_id: string
           valor_complemento_alimentacao: number
           valor_fretamento_aereo_hora: number
@@ -1049,7 +1088,7 @@ export type Database = {
         }
         Insert: {
           ano_referencia: number
-          created_at?: string
+          created_at?: string | null
           diaria_demais_pracas_bsb?: number | null
           diaria_demais_pracas_capitais?: number | null
           diaria_demais_pracas_demais?: number | null
@@ -1070,7 +1109,7 @@ export type Database = {
           id?: string
           observacoes?: string | null
           taxa_embarque?: number | null
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
           valor_complemento_alimentacao?: number
           valor_fretamento_aereo_hora?: number
@@ -1081,7 +1120,7 @@ export type Database = {
         }
         Update: {
           ano_referencia?: number
-          created_at?: string
+          created_at?: string | null
           diaria_demais_pracas_bsb?: number | null
           diaria_demais_pracas_capitais?: number | null
           diaria_demais_pracas_demais?: number | null
@@ -1102,7 +1141,7 @@ export type Database = {
           id?: string
           observacoes?: string | null
           taxa_embarque?: number | null
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string
           valor_complemento_alimentacao?: number
           valor_fretamento_aereo_hora?: number
@@ -1111,7 +1150,68 @@ export type Database = {
           valor_suprimentos_fundo_dia?: number
           valor_verba_operacional_dia?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "diretrizes_operacionais_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diretrizes_passagens: {
+        Row: {
+          ano_referencia: number
+          ativo: boolean | null
+          created_at: string | null
+          data_fim_vigencia: string | null
+          data_inicio_vigencia: string | null
+          id: string
+          numero_pregao: string | null
+          om_referencia: string
+          trechos: Json
+          ug_referencia: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ano_referencia: number
+          ativo?: boolean | null
+          created_at?: string | null
+          data_fim_vigencia?: string | null
+          data_inicio_vigencia?: string | null
+          id?: string
+          numero_pregao?: string | null
+          om_referencia: string
+          trechos: Json
+          ug_referencia: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          ano_referencia?: number
+          ativo?: boolean | null
+          created_at?: string | null
+          data_fim_vigencia?: string | null
+          data_inicio_vigencia?: string | null
+          id?: string
+          numero_pregao?: string | null
+          om_referencia?: string
+          trechos?: Json
+          ug_referencia?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diretrizes_passagens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organizacoes_militares: {
         Row: {
@@ -1124,7 +1224,7 @@ export type Database = {
           nome_om: string
           rm_vinculacao: string
           updated_at: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           ativo?: boolean | null
@@ -1136,7 +1236,7 @@ export type Database = {
           nome_om: string
           rm_vinculacao: string
           updated_at?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           ativo?: boolean | null
@@ -1148,18 +1248,26 @@ export type Database = {
           nome_om?: string
           rm_vinculacao?: string
           updated_at?: string | null
-          user_id?: string
+          user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "organizacoes_militares_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       p_trab: {
         Row: {
           acoes: string | null
+          comando_militar_area: string
           codug_om: string | null
           codug_rm_vinculacao: string | null
-          comando_militar_area: string
           comentario: string | null
-          created_at: string
+          created_at: string | null
           efetivo_empregado: string
           id: string
           local_om: string | null
@@ -1167,25 +1275,25 @@ export type Database = {
           nome_om: string
           nome_om_extenso: string | null
           nome_operacao: string
-          numero_ptrab: string
+          numero_ptrab: string | null
+          origem: string
           periodo_fim: string
           periodo_inicio: string
           rm_vinculacao: string | null
           rotulo_versao: string | null
-          status: string
-          updated_at: string
-          user_id: string
           share_token: string
           shared_with: string[] | null
-          origem: string
+          status: string
+          updated_at: string | null
+          user_id: string
         }
         Insert: {
           acoes?: string | null
+          comando_militar_area: string
           codug_om?: string | null
           codug_rm_vinculacao?: string | null
-          comando_militar_area: string
           comentario?: string | null
-          created_at?: string
+          created_at?: string | null
           efetivo_empregado: string
           id?: string
           local_om?: string | null
@@ -1193,25 +1301,25 @@ export type Database = {
           nome_om: string
           nome_om_extenso?: string | null
           nome_operacao: string
-          numero_ptrab: string
+          numero_ptrab?: string | null
+          origem?: string
           periodo_fim: string
           periodo_inicio: string
           rm_vinculacao?: string | null
           rotulo_versao?: string | null
-          status?: string
-          updated_at?: string
-          user_id: string
           share_token?: string
           shared_with?: string[] | null
-          origem?: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
         }
         Update: {
           acoes?: string | null
+          comando_militar_area?: string
           codug_om?: string | null
           codug_rm_vinculacao?: string | null
-          comando_militar_area?: string
           comentario?: string | null
-          created_at?: string
+          created_at?: string | null
           efetivo_empregado?: string
           id?: string
           local_om?: string | null
@@ -1219,24 +1327,32 @@ export type Database = {
           nome_om?: string
           nome_om_extenso?: string | null
           nome_operacao?: string
-          numero_ptrab?: string
+          numero_ptrab?: string | null
+          origem?: string
           periodo_fim?: string
           periodo_inicio?: string
           rm_vinculacao?: string | null
           rotulo_versao?: string | null
-          status?: string
-          updated_at?: string
-          user_id?: string
           share_token?: string
           shared_with?: string[] | null
-          origem?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "p_trab_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       p_trab_ref_lpc: {
         Row: {
           ambito: string
-          created_at: string
+          created_at: string | null
           data_fim_consulta: string
           data_inicio_consulta: string
           id: string
@@ -1244,12 +1360,12 @@ export type Database = {
           p_trab_id: string
           preco_diesel: number
           preco_gasolina: number
-          updated_at: string
           source: string
+          updated_at: string | null
         }
         Insert: {
           ambito: string
-          created_at?: string
+          created_at?: string | null
           data_fim_consulta: string
           data_inicio_consulta: string
           id?: string
@@ -1257,12 +1373,12 @@ export type Database = {
           p_trab_id: string
           preco_diesel: number
           preco_gasolina: number
-          updated_at?: string
           source?: string
+          updated_at?: string | null
         }
         Update: {
           ambito?: string
-          created_at?: string
+          created_at?: string | null
           data_fim_consulta?: string
           data_inicio_consulta?: string
           id?: string
@@ -1270,14 +1386,14 @@ export type Database = {
           p_trab_id?: string
           preco_diesel?: number
           preco_gasolina?: number
-          updated_at?: string
           source?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "p_trab_ref_lpc_p_trab_id_fkey"
             columns: ["p_trab_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "p_trab"
             referencedColumns: ["id"]
           },
@@ -1285,79 +1401,76 @@ export type Database = {
       }
       passagem_registros: {
         Row: {
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
           destino: string
-          diretriz_id: string
-          efetivo: number
+          efetivo: number | null
           fase_atividade: string | null
           id: string
           is_ida_volta: boolean
           om_detentora: string
           organizacao: string
-          origem: string
           p_trab_id: string
           quantidade_passagens: number
           tipo_transporte: string
           trecho_id: string
           ug: string
           ug_detentora: string
-          updated_at: string
+          updated_at: string | null
           valor_nd_33: number
           valor_total: number
           valor_unitario: number
+          diretriz_id: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
           destino: string
-          diretriz_id: string
-          efetivo?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           is_ida_volta?: boolean
           om_detentora: string
           organizacao: string
-          origem: string
           p_trab_id: string
           quantidade_passagens?: number
           tipo_transporte: string
           trecho_id: string
           ug: string
           ug_detentora: string
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_33?: number
           valor_total?: number
-          valor_unitario: number
+          valor_unitario?: number
+          diretriz_id: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
           destino?: string
-          diretriz_id?: string
-          efetivo?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           is_ida_volta?: boolean
           om_detentora?: string
           organizacao?: string
-          origem?: string
           p_trab_id?: string
           quantidade_passagens?: number
           tipo_transporte?: string
           trecho_id?: string
           ug?: string
           ug_detentora?: string
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_33?: number
           valor_total?: number
           valor_unitario?: number
+          diretriz_id?: string
         }
         Relationships: [
           {
@@ -1379,6 +1492,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          created_at: string | null
           credit_gnd3: number
           credit_gnd4: number
           default_logistica_year: number | null
@@ -1386,11 +1500,12 @@ export type Database = {
           first_name: string | null
           id: string
           last_name: string | null
-          updated_at: string | null
           raw_user_meta_data: Json | null
+          updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
+          created_at?: string | null
           credit_gnd3?: number
           credit_gnd4?: number
           default_logistica_year?: number | null
@@ -1398,11 +1513,12 @@ export type Database = {
           first_name?: string | null
           id: string
           last_name?: string | null
-          updated_at?: string | null
           raw_user_meta_data?: Json | null
+          updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
+          created_at?: string | null
           credit_gnd3?: number
           credit_gnd4?: number
           default_logistica_year?: number | null
@@ -1410,38 +1526,46 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_name?: string | null
-          updated_at?: string | null
           raw_user_meta_data?: Json | null
+          updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ptrab_share_requests: {
         Row: {
-          created_at: string
+          created_at: string | null
           id: string
           ptrab_id: string
           requester_id: string
           share_token: string
           status: string
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           id?: string
           ptrab_id: string
           requester_id: string
           share_token: string
           status?: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           id?: string
           ptrab_id?: string
           requester_id?: string
           share_token?: string
           status?: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -1462,10 +1586,11 @@ export type Database = {
       }
       verba_operacional_registros: {
         Row: {
-          created_at: string
+          created_at: string | null
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
+          efetivo: number | null
           fase_atividade: string | null
           finalidade: string | null
           id: string
@@ -1480,16 +1605,17 @@ export type Database = {
           tarefa: string | null
           ug: string
           ug_detentora: string | null
-          updated_at: string
+          updated_at: string | null
           valor_nd_30: number
           valor_nd_39: number
           valor_total_solicitado: number
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           finalidade?: string | null
           id?: string
@@ -1504,16 +1630,17 @@ export type Database = {
           tarefa?: string | null
           ug: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total_solicitado?: number
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           finalidade?: string | null
           id?: string
@@ -1528,7 +1655,7 @@ export type Database = {
           tarefa?: string | null
           ug?: string
           ug_detentora?: string | null
-          updated_at?: string
+          updated_at?: string | null
           valor_nd_30?: number
           valor_nd_39?: number
           valor_total_solicitado?: number
@@ -1548,16 +1675,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      approve_ptrab_share: {
-        Args: {
-          p_request_id: string
-        }
-        Returns: boolean
-      }
-      update_ptrab_timestamp: {
-        Args: Record<PropertyKey, never>
-        Returns: unknown
-      }
       add_user_to_shared_with: {
         Args: {
           p_ptrab_id: string
@@ -1566,23 +1683,30 @@ export type Database = {
         }
         Returns: boolean
       }
+      approve_ptrab_share: {
+        Args: {
+          p_request_id: string
+        }
+        Returns: boolean
+      }
+      clone_ptrab_with_records: {
+        Args: {
+          old_ptrab_id: string
+          new_user_id: string
+          new_numero_ptrab: string
+          new_rotulo_versao: string
+        }
+        Returns: string
+      }
+      handle_new_user: {
+        Args: Record<PropertyKey, never>
+        Returns: Record<string, unknown>
+      }
       is_ptrab_owner_or_shared: {
         Args: {
           ptrab_id_in: string
         }
         Returns: boolean
-      }
-      request_ptrab_share: {
-        Args: {
-          p_ptrab_id: string
-          p_share_token: string
-          p_user_id: string
-        }
-        Returns: boolean
-      }
-      set_updated_at: {
-        Args: Record<PropertyKey, never>
-        Returns: unknown
       }
       reject_ptrab_share: {
         Args: {
@@ -1597,9 +1721,21 @@ export type Database = {
         }
         Returns: boolean
       }
-      handle_new_user: {
+      request_ptrab_share: {
+        Args: {
+          p_ptrab_id: string
+          p_share_token: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      set_updated_at: {
         Args: Record<PropertyKey, never>
-        Returns: unknown
+        Returns: Record<string, unknown>
+      }
+      update_ptrab_timestamp: {
+        Args: Record<PropertyKey, never>
+        Returns: Record<string, unknown>
       }
     }
     Enums: {
@@ -1611,70 +1747,71 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+type PublicSchema = Database[Extract<keyof Database, "public">]
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
-
-// Define TableName como uma união de literais de string
-export type TableName = keyof DefaultSchema["Tables"]; 
-
-export type Tables<T extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])> = 
-  (DefaultSchema["Tables"] & DefaultSchema["Views"])[T] extends {
-    Row: infer R
-  }
-    ? R
+export type Tables<
+  PublicTableNameOrOptions extends
+    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
+    | { schema: keyof Database },
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+      Database[PublicTableNameOrOptions["schema"]]["Views"])[Extract<
+      keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"]),
+      string
+    >]
+  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
+        PublicSchema["Views"])
+    ? (PublicSchema["Tables"] &
+        PublicSchema["Views"])[PublicTableNameOrOptions]
     : never
 
-export type TablesInsert<T extends keyof DefaultSchema["Tables"]> = 
-  DefaultSchema["Tables"][T] extends {
-    Insert: infer I
-  }
-    ? I
+export type Tables<
+  PublicTableNameOrOptions extends
+    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
+    | { schema: keyof Database },
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+      Database[PublicTableNameOrOptions["schema"]]["Views"])[Extract<
+      keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"]),
+      string
+    >]
+  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
+        PublicSchema["Views"])
+    ? (PublicSchema["Tables"] &
+        PublicSchema["Views"])[PublicTableNameOrOptions]
     : never
 
-export type TablesUpdate<T extends keyof DefaultSchema["Tables"]> = 
-  DefaultSchema["Tables"][T] extends {
-    Update: infer U
-  }
-    ? U
+export type TablesInsert<
+  PublicTableNameOrOptions extends keyof PublicSchema["Tables"] | { schema: keyof Database },
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][Extract<
+      keyof Database[PublicTableNameOrOptions["schema"]]["Tables"],
+      string
+    >]["Insert"]
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions]["Insert"]
+    : never
+
+export type TablesUpdate<
+  PublicTableNameOrOptions extends keyof PublicSchema["Tables"] | { schema: keyof Database },
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][Extract<
+      keyof Database[PublicTableNameOrOptions["schema"]]["Tables"],
+      string
+    >]["Update"]
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions]["Update"]
     : never
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+  PublicEnumNameOrOptions extends keyof PublicSchema["Enums"] | { schema: keyof Database },
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][Extract<
+      keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"],
+      string
+    >]
+  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
+    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
     : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
-
-export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const
