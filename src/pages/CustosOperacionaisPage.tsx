@@ -125,10 +125,12 @@ const CustosOperacionaisPage = () => {
     
     // Verifica se o estado de navegação pede para abrir a seção de passagens
     const shouldOpenPassagens = location.state && (location.state as { openPassagens?: boolean }).openPassagens;
+    // NOVO: Verifica se o estado de navegação pede para abrir a seção de concessionária
+    const shouldOpenConcessionaria = location.state && (location.state as { openConcessionaria?: boolean }).openConcessionaria;
     
     initialState['diarias_detalhe'] = false; 
     initialState['passagens_detalhe'] = shouldOpenPassagens || false; 
-    initialState['concessionaria_detalhe'] = false; // NEW: Concessionaria detail state
+    initialState['concessionaria_detalhe'] = shouldOpenConcessionaria || false; // ATUALIZADO
     return initialState;
   });
   
