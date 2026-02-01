@@ -857,7 +857,7 @@ const CustosOperacionaisPage = () => {
     const placeholderNome = isAgua ? 'Ex: COSANPA / Saneago' : 'Ex: Equatorial / Enel';
     const placeholderConsumo = isAgua ? 'Ex: 0,15' : 'Ex: 1,5';
     const placeholderCusto = isAgua ? '5,00' : '0,80';
-    const placeholderFonteConsumo = 'Ex: Sistema Nacional de Informação sobre Saneamento - SNIS/2023';
+    const placeholderFonteConsumo = isAgua ? 'Ex: Sistema Nacional de Informação sobre Saneamento - SNIS/2023' : '';
     const placeholderFonteCusto = 'Ex: Tarifas da COSANPA a partir de Nov/23';
     
     const getCustoUnitarioProps = (item: DiretrizConcessionariaForm, indexInMainArray: number) => {
