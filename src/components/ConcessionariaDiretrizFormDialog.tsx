@@ -55,6 +55,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
     
     const watchedCategoria = watch('categoria');
     const watchedCustoUnitario = watch('custo_unitario');
+    const watchedConsumoPessoaDia = watch('consumo_pessoa_dia');
 
     useEffect(() => {
         if (open) {
@@ -66,10 +67,12 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                     custo_unitario: Number(diretrizToEdit.custo_unitario),
                 });
             } else {
+                // Ao criar novo, resetamos para os valores padrão, mas definimos consumo como 0 para que o input apareça vazio
                 reset({
                     ...defaultValues,
                     categoria: initialCategory,
                     unidade_custo: initialCategory === 'Água/Esgoto' ? 'm3' : 'kWh',
+                    consumo_pessoa_dia: 0, // Mantemos 0 no estado do hook form, mas o input será renderizado como vazio
                 });
             }
         }
@@ -156,6 +159,8 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                                 {...register("consumo_pessoa_dia", { valueAsNumber: true })}
                                 placeholder="Ex: 0.2 (m³)"
                                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                // Renderiza como string vazia se for 0 e não estiver sendo editado
+                                value={diretrizToEdit ? watchedConsumoPessoaDia : (watchedConsumoPessoaDia === 0 ? "" : watchedConsumoPessoaDia)}
                             />
                             {errors.consumo_pessoa_dia && <p className="text-xs text-red-500">{errors.consumo_pessoa_dia.message}</p>}
                         </div>
@@ -181,7 +186,6 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                         </div>
                     </div>
                     
-                    {/* Alterado para layout de duas linhas (col-span-2) */}
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="fonte_consumo">Fonte do Consumo (Documento)</Label>
@@ -205,12 +209,12 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-                            Cancelar
-                        </Button>
                         <Button type="submit" disabled={loading}>
                             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                             Salvar Diretriz
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+                            Cancelar
                         </Button>
                     </DialogFooter>
                 </form>
