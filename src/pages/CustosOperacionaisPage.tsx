@@ -37,6 +37,7 @@ import {
     CATEGORIAS_CONCESSIONARIA, 
     CategoriaConcessionaria 
 } from "@/types/diretrizesConcessionaria";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
