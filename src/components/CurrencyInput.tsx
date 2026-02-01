@@ -1,57 +1,58 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
-import { formatCurrencyInput } from "@/lib/formatUtils";
-import { cn } from "@/lib/utils";
+import { formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
 
-// Obtém as propriedades do componente Input diretamente
-interface CurrencyInputProps extends Omit<React.ComponentPropsWithoutRef<typeof Input>, 'value' | 'onChange' | 'onBlur'> {
-  rawDigits: string;
-  onChange: (digits: string) => void;
+interface CurrencyInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value' | 'placeholder'> {
+  value: number; // Valor numérico real
+  onChange: (rawDigits: string) => void; // Retorna apenas os dígitos brutos
   placeholder?: string;
-  className?: string;
 }
 
-export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputProps>(
-  ({ rawDigits, onChange, placeholder = "0,00", className, ...props }, ref) => {
+const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputProps>(
+  ({ value, onChange, placeholder = "0,00", className, onKeyDown, ...props }, ref) => {
     
-    // Calcula o valor formatado com base na prop rawDigits
-    const { formatted } = useMemo(() => formatCurrencyInput(rawDigits), [rawDigits]);
+    // Estado interno para armazenar os dígitos brutos (sem R$, pontos ou vírgulas)
+    const [rawDigits, setRawDigits] = useState<string>(numberToRawDigits(value));
+    
+    // Efeito para sincronizar o estado interno quando o 'value' externo muda
+    useEffect(() => {
+      const newRawDigits = numberToRawDigits(value);
+      if (newRawDigits !== rawDigits) {
+        setRawDigits(newRawDigits);
+      }
+    }, [value]);
 
-    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-      const rawValue = e.target.value;
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      const input = e.target.value;
+      const { digits } = formatCurrencyInput(input);
       
-      // 1. Remove tudo que não for dígito
-      const newDigits = rawValue.replace(/\D/g, '');
-      
-      // 2. Notifica o componente pai com os novos dígitos brutos
-      onChange(newDigits);
+      setRawDigits(digits);
+      onChange(digits);
     }, [onChange]);
 
-    const handleInputBlur = useCallback(() => {
-      // Se o input estiver vazio, garante que o estado pai receba uma string vazia
-      if (rawDigits.length === 0) {
-          onChange('');
-      }
-    }, [rawDigits, onChange]);
+    // Formatação para exibição
+    const { formatted: displayValue } = formatCurrencyInput(rawDigits);
+    
+    // Adiciona o prefixo R$
+    const finalDisplayValue = displayValue.length > 0 ? `R$ ${displayValue}` : '';
+    
+    // Placeholder com prefixo "R$ "
+    const finalPlaceholder = placeholder.startsWith("Ex.:") 
+        ? `R$ ${placeholder.replace("Ex.: ", "")}` 
+        : `R$ ${placeholder}`;
 
     return (
-      <div className="relative">
-        <Input
-          ref={ref}
-          type="text"
-          inputMode="decimal"
-          value={formatted} // Usa a string formatada para exibição
-          onChange={handleInputChange}
-          onBlur={handleInputBlur}
-          placeholder={placeholder}
-          // Garante que o padding esquerdo e o tamanho da fonte sejam aplicados, 
-          // mas permite que classes externas (como h-12) sejam mescladas.
-          className={cn("pl-12 text-lg", className)} 
-          {...props}
-        />
-        {/* Prefixo R$ fixo */}
-        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
-      </div>
+      <Input
+        ref={ref}
+        type="text"
+        inputMode="numeric"
+        className={`text-right pr-3 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${className}`}
+        value={finalDisplayValue}
+        onChange={handleChange}
+        onKeyDown={onKeyDown}
+        placeholder={finalPlaceholder}
+        {...props}
+      />
     );
   }
 );

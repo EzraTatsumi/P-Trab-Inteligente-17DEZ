@@ -135,7 +135,8 @@ const CustosOperacionaisPage = () => {
   const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear(); // Hook 9
   const defaultYear = defaultYearData?.defaultYear || null;
   
-  // Estado para armazenar os inputs brutos (apenas dígitos) para campos monetários
+  // Estado para armazenar os inputs brutos (apenas dígitos) para campos monetários que NÃO usam CurrencyInput (apenas fatores)
+  // REMOVIDO: rawInputs não é mais necessário para diárias/taxa de embarque/concessionária
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({}); // Hook 10
   
   // --- ESTADOS DE CONCESSIONÁRIA ---
@@ -291,19 +292,19 @@ const CustosOperacionaisPage = () => {
       
       setDiretrizes(numericData);
       
+      // Apenas inicializa rawInputs para campos que NÃO usam CurrencyInput (fatores)
       const initialRawInputs: Record<string, string> = {};
       
       OPERATIONAL_FIELDS.filter(f => f.type === 'currency').forEach(f => {
+        // Estes campos agora usam CurrencyInput no renderDiretrizField, mas mantemos a lógica de rawDigits para compatibilidade
+        // com o renderDiretrizField original, que não foi refatorado para usar o novo CurrencyInput.
+        // No entanto, para Diárias e Taxa de Embarque, não precisamos mais de rawInputs.
+        // Vamos manter rawInputs apenas para os campos que ainda usam o Input manual com prefixo R$ (se houver).
+        // Como o renderDiretrizField usa Input manual para currency, precisamos manter o rawInputs para ele.
         initialRawInputs[f.key as string] = numberToRawDigits(numericData[f.key as keyof DiretrizOperacional] as number);
       });
       
-      DIARIA_RANKS_CONFIG.forEach(rank => {
-        initialRawInputs[`diaria_${rank.key}_bsb`] = numberToRawDigits(numericData[`diaria_${rank.key}_bsb` as keyof DiretrizOperacional] as number);
-        initialRawInputs[`diaria_${rank.key}_capitais`] = numberToRawDigits(numericData[`diaria_${rank.key}_capitais` as keyof DiretrizOperacional] as number);
-        initialRawInputs[`diaria_${rank.key}_demais`] = numberToRawDigits(numericData[`diaria_${rank.key}_demais` as keyof DiretrizOperacional] as number);
-      });
-      
-      initialRawInputs['taxa_embarque'] = numberToRawDigits(numericData.taxa_embarque as number);
+      // Diárias e Taxa de Embarque agora usam CurrencyInput, não precisam de rawInputs aqui.
       
       setRawInputs(initialRawInputs);
       
@@ -688,25 +689,20 @@ const CustosOperacionaisPage = () => {
     const value = diretrizes[field.key as keyof DiretrizOperacional] as number;
     
     if (field.type === 'currency') {
-      const rawDigits = rawInputs[field.key] || numberToRawDigits(value);
-      const { formatted: displayValue } = formatCurrencyInput(rawDigits);
-      
+      // Usando CurrencyInput para campos monetários no renderDiretrizField
       return (
         <div className="space-y-2">
           <Label htmlFor={field.key}>{field.label}</Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
-            <Input
-              id={field.key}
-              type="text"
-              inputMode="numeric"
-              className="pl-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              value={value === 0 && rawDigits.length === 0 ? "" : displayValue}
-              onChange={(e) => handleCurrencyChange(field.key as keyof DiretrizOperacional, e.target.value)}
-              onKeyDown={handleEnterToNextField}
-              placeholder={field.placeholder}
-            />
-          </div>
+          <CurrencyInput
+            id={field.key}
+            value={value}
+            onChange={(rawDigits) => {
+              const { numericValue } = formatCurrencyInput(rawDigits);
+              setDiretrizes(prev => ({ ...prev, [field.key]: numericValue }));
+            }}
+            onKeyDown={handleEnterToNextField}
+            placeholder={field.placeholder}
+          />
         </div>
       );
     } else { // type === 'factor'
@@ -730,19 +726,20 @@ const CustosOperacionaisPage = () => {
   
   // Função para renderizar a tabela de diárias
   const renderDiariaTable = () => {
-    const handleDiariaChange = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais', rawValue: string) => {
+    
+    // Handler para Diárias (agora usa o valor numérico diretamente)
+    const handleDiariaChange = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais', rawDigits: string) => {
       const fieldKey = `diaria_${rankKey}_${destination}` as keyof DiretrizOperacional;
-      handleCurrencyChange(fieldKey, rawValue);
+      const { numericValue } = formatCurrencyInput(rawDigits);
+      setDiretrizes(prev => ({ ...prev, [fieldKey]: numericValue }));
     };
     
     const getDiariaProps = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais') => {
       const fieldKey = `${DIARIA_RANKS_CONFIG.find(r => r.key === rankKey)?.fieldPrefix}_${destination}` as keyof DiretrizOperacional;
       const value = diretrizes[fieldKey] as number;
-      const rawDigits = rawInputs[fieldKey as string] || numberToRawDigits(value);
       
       return {
         value: value,
-        rawDigits: rawDigits,
         onChange: (digits: string) => handleDiariaChange(rankKey, destination, digits),
         onKeyDown: handleEnterToNextField,
         placeholder: "0,00",
@@ -947,9 +944,31 @@ const CustosOperacionaisPage = () => {
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
+              
+              <div className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleRemoveConcessionariaItem(config, setConfig, indexInMainArray)}
+                  type="button"
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
             </div>
           );
         })}
+        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => handleAddConcessionariaItem(config, setConcessionariaConfig, selectedTab, unidade)} 
+          className="w-full"
+          type="button"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Adicionar Concessionária
+        </Button>
       </div>
     );
   };
