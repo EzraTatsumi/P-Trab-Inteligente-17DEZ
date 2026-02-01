@@ -157,7 +157,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                                 type="number"
                                 step="0.01"
                                 {...register("consumo_pessoa_dia", { valueAsNumber: true })}
-                                placeholder="Ex: 0.2 (m³)"
+                                placeholder="Ex: 0,2"
                                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 // Renderiza como string vazia se for 0 e não estiver sendo editado
                                 value={diretrizToEdit ? watchedConsumoPessoaDia : (watchedConsumoPessoaDia === 0 ? "" : watchedConsumoPessoaDia)}
