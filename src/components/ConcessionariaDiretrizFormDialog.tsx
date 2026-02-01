@@ -45,7 +45,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
         fonte_consumo: "",
         custo_unitario: 0,
         fonte_custo: "",
-        unidade_custo: initialCategory === 'Água/Esgoto' ? 'm³' : 'kWh',
+        unidade_custo: initialCategory === 'Água/Esgoto' ? 'm3' : 'kWh',
     };
 
     const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<DiretrizConcessionariaForm>({
@@ -71,7 +71,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                 reset({
                     ...defaultValues,
                     categoria: initialCategory,
-                    unidade_custo: initialCategory === 'Água/Esgoto' ? 'm³' : 'kWh',
+                    unidade_custo: initialCategory === 'Água/Esgoto' ? 'm3' : 'kWh',
                     consumo_pessoa_dia: 0, // Mantemos 0 no estado do hook form, mas o input será renderizado como vazio
                 });
             }
@@ -81,7 +81,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
     // Efeito para sincronizar a unidade de custo com a categoria
     useEffect(() => {
         if (watchedCategoria === 'Água/Esgoto') {
-            setValue('unidade_custo', 'm³');
+            setValue('unidade_custo', 'm3');
         } else if (watchedCategoria === 'Energia Elétrica') {
             setValue('unidade_custo', 'kWh');
         }
@@ -112,7 +112,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="sm:max-w-[700px]">
                 <DialogHeader>
                     <DialogTitle>{diretrizToEdit ? "Editar Diretriz" : "Nova Diretriz"} de Concessionária</DialogTitle>
                 </DialogHeader>
@@ -157,7 +157,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                                 type="number"
                                 step="0.01"
                                 {...register("consumo_pessoa_dia", { valueAsNumber: true })}
-                                placeholder="Ex: 0,2"
+                                placeholder="Ex: 0.2 (m³)"
                                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 // Renderiza como string vazia se for 0 e não estiver sendo editado
                                 value={diretrizToEdit ? watchedConsumoPessoaDia : (watchedConsumoPessoaDia === 0 ? "" : watchedConsumoPessoaDia)}
@@ -179,7 +179,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                             <Label htmlFor="unidade_custo">Unidade de Custo</Label>
                             <Input
                                 id="unidade_custo"
-                                value={watchedCategoria === 'Água/Esgoto' ? 'm³' : 'kWh'}
+                                value={watchedCategoria === 'Água/Esgoto' ? 'm3' : 'kWh'}
                                 disabled
                                 className="bg-muted/50"
                             />
