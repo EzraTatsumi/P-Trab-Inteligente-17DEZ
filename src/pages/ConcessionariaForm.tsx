@@ -1194,8 +1194,11 @@ const ConcessionariaForm = () => {
                                                                     return (
                                                                         <TableRow key={diretriz.id}>
                                                                             <TableCell className="w-[150px]">
-                                                                                <Badge variant={isAgua ? 'default' : 'secondary'} className="gap-1">
-                                                                                    {isAgua ? <Droplet className="h-3 w-3" /> : <Zap className="h-3 w-3" />}
+                                                                                <Badge variant="outline" className="gap-1">
+                                                                                    {isAgua 
+                                                                                        ? <Droplet className="h-3 w-3 text-blue-500" /> 
+                                                                                        : <Zap className="h-3 w-3 text-yellow-600" />
+                                                                                    }
                                                                                     {diretriz.categoria}
                                                                                 </Badge>
                                                                             </TableCell>
