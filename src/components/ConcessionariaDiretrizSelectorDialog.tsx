@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Check, Plus, AlertCircle, Zap, Droplet } from "lucide-react";
+import { Loader2, Check, Plus, AlertCircle, Zap, Droplet, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -120,6 +120,11 @@ const ConcessionariaDiretrizSelectorDialog: React.FC<ConcessionariaDiretrizSelec
     const selectedCategories = useMemo(() => {
         return new Set(selectedDiretrizes.map(d => d.categoria));
     }, [selectedDiretrizes]);
+    
+    const handleAddContractClick = () => {
+        onOpenChange(false); // Fecha o seletor antes de navegar
+        onAddContract();
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -183,7 +188,7 @@ const ConcessionariaDiretrizSelectorDialog: React.FC<ConcessionariaDiretrizSelec
                                                                     {d.nome_concessionaria}
                                                                 </h4>
                                                                 <p className="text-xs text-muted-foreground">
-                                                                    Consumo: {d.consumo_pessoa_dia} {d.unidade_custo}/pessoa/dia | Custo Unitário: {formatCurrency(d.custo_unitario)}
+                                                                    Consumo: {d.consumo_pessoa_dia.toLocaleString('pt-BR')} {d.unidade_custo}/pessoa/dia | Custo Unitário: {formatCurrency(d.custo_unitario)}
                                                                 </p>
                                                             </div>
                                                             {isSelected ? (
@@ -201,23 +206,29 @@ const ConcessionariaDiretrizSelectorDialog: React.FC<ConcessionariaDiretrizSelec
                             ))}
                         </Tabs>
                     )}
-                    
-                    <div className="flex justify-end pt-4 border-t mt-4">
-                        <Button type="button" variant="link" onClick={onAddContract}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Adicionar/Editar Diretrizes de Concessionária
-                        </Button>
-                    </div>
                 </div>
                 
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
-                        Cancelar
+                <DialogFooter className="flex justify-between items-center">
+                    {/* NOVO BOTÃO: Adicionar Contrato */}
+                    <Button 
+                        type="button" 
+                        variant="secondary"
+                        onClick={handleAddContractClick}
+                        className="gap-2"
+                    >
+                        <PlusCircle className="h-4 w-4" />
+                        Adicionar Contrato/Trecho
                     </Button>
-                    <Button onClick={handleConfirm} disabled={selectedDiretrizes.length === 0 || isLoading}>
-                        <Check className="mr-2 h-4 w-4" />
-                        Confirmar Seleção ({selectedDiretrizes.length})
-                    </Button>
+                    
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => onOpenChange(false)}>
+                            Cancelar
+                        </Button>
+                        <Button onClick={handleConfirm} disabled={selectedDiretrizes.length === 0 || isLoading}>
+                            <Check className="mr-2 h-4 w-4" />
+                            Confirmar Seleção ({selectedDiretrizes.length})
+                        </Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

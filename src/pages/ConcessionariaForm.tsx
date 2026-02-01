@@ -1221,7 +1221,7 @@ const ConcessionariaForm = () => {
                                             </div>
                                             
                                             <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
-                                                <span className="font-bold text-sm">VALOR TOTAL DA SOLICITAÇÃO (ND 33.90.39):</span>
+                                                <span className="font-bold text-sm">VALOR TOTAL DA SOLICITAÇÃO:</span>
                                                 <span className={cn("font-extrabold text-lg text-primary")}>
                                                     {formatCurrency(calculos.totalGeral)}
                                                 </span>
