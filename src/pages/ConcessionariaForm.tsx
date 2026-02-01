@@ -1017,10 +1017,10 @@ const ConcessionariaForm = () => {
                 <Card>
                     <CardHeader>
                         <CardTitle>
-                            Pagamento de Concessionárias (Água/Esgoto e Energia Elétrica)
+                            Pagamento de Concessionárias
                         </CardTitle>
                         <CardDescription>
-                            Solicitação de recursos para pagamento de concessionárias (ND 33.90.39).
+                            Solicitação de recursos para pagamento de concessionárias.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -1438,71 +1438,71 @@ const ConcessionariaForm = () => {
                                                 </div>
                                                 
                                                 {/* CORPO CONSOLIDADO */}
-                                                <div className="space-y-3">
-                                                    <Card 
-                                                        key={group.groupKey} 
-                                                        className="p-3 bg-background border"
-                                                    >
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex flex-col">
+                                                    <div className="space-y-3">
+                                                        <Card 
+                                                            key={group.groupKey} 
+                                                            className="p-3 bg-background border"
+                                                        >
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex flex-col">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <h4 className="font-semibold text-base text-foreground">
+                                                                            Concessionárias
+                                                                        </h4>
+                                                                        {hasAgua && <Droplet className="h-4 w-4 text-blue-500" />}
+                                                                        {hasEnergia && <Zap className="h-4 w-4 text-yellow-600" />}
+                                                                    </div>
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        Itens: {group.records.length} | Período: {diasOperacaoConsolidado} {diasText} | Efetivo: {efetivoConsolidado} {efetivoText}
+                                                                    </p>
+                                                                </div>
                                                                 <div className="flex items-center gap-2">
-                                                                    <h4 className="font-semibold text-base text-foreground">
-                                                                        Concessionárias
-                                                                    </h4>
-                                                                    {hasAgua && <Droplet className="h-4 w-4 text-blue-500" />}
-                                                                    {hasEnergia && <Zap className="h-4 w-4 text-yellow-600" />}
-                                                                </div>
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    Itens: {group.records.length} | Período: {diasOperacaoConsolidado} {diasText} | Efetivo: {efetivoConsolidado} {efetivoText}
-                                                                </p>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-extrabold text-xl text-foreground">
-                                                                    {formatCurrency(totalND39Consolidado)}
-                                                                </span>
-                                                                {/* Botões de Ação */}
-                                                                <div className="flex gap-1 shrink-0">
-                                                                    <Button
-                                                                        type="button" 
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="h-8 w-8"
-                                                                        onClick={() => handleEdit(group)} 
-                                                                        disabled={!isPTrabEditable || isSaving || pendingConcessionaria.length > 0}
-                                                                    >
-                                                                        <Pencil className="h-4 w-4" />
-                                                                    </Button>
-                                                                    <Button
-                                                                        type="button" 
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        onClick={() => handleConfirmDelete(group)} 
-                                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                                        disabled={!isPTrabEditable || isSaving}
-                                                                    >
-                                                                        <Trash2 className="h-4 w-4" />
-                                                                    </Button>
+                                                                    <span className="font-extrabold text-xl text-foreground">
+                                                                        {formatCurrency(totalND39Consolidado)}
+                                                                    </span>
+                                                                    {/* Botões de Ação */}
+                                                                    <div className="flex gap-1 shrink-0">
+                                                                        <Button
+                                                                            type="button" 
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-8 w-8"
+                                                                            onClick={() => handleEdit(group)} 
+                                                                            disabled={!isPTrabEditable || isSaving || pendingConcessionaria.length > 0}
+                                                                        >
+                                                                            <Pencil className="h-4 w-4" />
+                                                                        </Button>
+                                                                        <Button
+                                                                            type="button" 
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            onClick={() => handleConfirmDelete(group)} 
+                                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                            disabled={!isPTrabEditable || isSaving}
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                        
-                                                        {/* Detalhes da Alocação */}
-                                                        <div className="pt-2 border-t mt-2">
-                                                            {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
-                                                            <div className="flex justify-between text-xs">
-                                                                <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                                                <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
-                                                                    {omDestino} ({formatCodug(ugDestino)})
-                                                                </span>
+                                                            
+                                                            {/* Detalhes da Alocação */}
+                                                            <div className="pt-2 border-t mt-2">
+                                                                {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
+                                                                <div className="flex justify-between text-xs">
+                                                                    <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                    <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
+                                                                        {omDestino} ({formatCodug(ugDestino)})
+                                                                    </span>
+                                                                </div>
+                                                                {/* ND 33.90.39 */}
+                                                                <div className="flex justify-between text-xs">
+                                                                    <span className="text-muted-foreground">ND 33.90.39:</span>
+                                                                    <span className="text-green-600">{formatCurrency(totalND39Consolidado)}</span>
+                                                                </div>
                                                             </div>
-                                                            {/* ND 33.90.39 */}
-                                                            <div className="flex justify-between text-xs">
-                                                                <span className="text-muted-foreground">ND 33.90.39:</span>
-                                                                <span className="text-green-600">{formatCurrency(totalND39Consolidado)}</span>
-                                                            </div>
-                                                        </div>
-                                                    </Card>
-                                                </div>
+                                                        </Card>
+                                                    </div>
                                             </Card>
                                         );
                                     })}
