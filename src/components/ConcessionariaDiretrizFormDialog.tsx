@@ -37,12 +37,12 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
     loading,
     initialCategory,
 }) => {
-    // Alterado consumo_pessoa_dia para null para que o input comece vazio
+    // Usamos 'undefined' para que o campo numérico comece vazio no input HTML
     const defaultValues: DiretrizConcessionariaForm = {
         ano_referencia: selectedYear,
         categoria: initialCategory,
         nome_concessionaria: "",
-        consumo_pessoa_dia: null as any, 
+        consumo_pessoa_dia: undefined as any, 
         fonte_consumo: "",
         custo_unitario: 0,
         fonte_custo: "",
@@ -56,7 +56,6 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
     
     const watchedCategoria = watch('categoria');
     const watchedCustoUnitario = watch('custo_unitario');
-    // Não precisamos mais observar watchedConsumoPessoaDia para renderização condicional do valor
 
     useEffect(() => {
         if (open) {
@@ -64,16 +63,17 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                 reset({
                     ...diretrizToEdit,
                     ano_referencia: diretrizToEdit.ano_referencia,
+                    // Garante que 0 seja passado como número, mas se for null/undefined, o RHF deve lidar
                     consumo_pessoa_dia: Number(diretrizToEdit.consumo_pessoa_dia),
                     custo_unitario: Number(diretrizToEdit.custo_unitario),
                 });
             } else {
-                // Ao criar novo, resetamos para os valores padrão, onde consumo_pessoa_dia é null
+                // Ao criar novo, resetamos para os valores padrão, usando undefined para campo vazio
                 reset({
                     ...defaultValues,
                     categoria: initialCategory,
                     unidade_custo: initialCategory === 'Água/Esgoto' ? 'm³' : 'kWh',
-                    consumo_pessoa_dia: null as any,
+                    consumo_pessoa_dia: undefined as any,
                 });
             }
         }
@@ -90,13 +90,16 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
 
     const onSubmit = async (data: DiretrizConcessionariaForm) => {
         try {
+            // Garante que consumo_pessoa_dia seja 0 se for NaN (campo vazio) ou null
+            const consumo = isNaN(data.consumo_pessoa_dia as number) || data.consumo_pessoa_dia === null 
+                ? 0 
+                : Number(data.consumo_pessoa_dia);
+
             const dataToSave = {
                 ...data,
                 id: diretrizToEdit?.id,
                 user_id: undefined, // Supabase handles user_id insertion
-                // Se for null, Zod/RHF deve garantir que seja 0 ou falhe a validação se for obrigatório.
-                // Como o campo é obrigatório no schema, ele será validado.
-                consumo_pessoa_dia: Number(data.consumo_pessoa_dia || 0), 
+                consumo_pessoa_dia: consumo, 
                 custo_unitario: Number(data.custo_unitario),
             };
             await onSave(dataToSave);
