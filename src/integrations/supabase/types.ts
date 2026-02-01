@@ -713,6 +713,87 @@ export type Database = {
           },
         ]
       }
+      concessionaria_registros: {
+        Row: {
+          categoria: string
+          consumo_pessoa_dia: number
+          created_at: string | null
+          detalhamento: string | null
+          detalhamento_customizado: string | null
+          dias_operacao: number
+          diretriz_id: string
+          efetivo: number
+          fase_atividade: string | null
+          id: string
+          om_detentora: string | null
+          organizacao: string
+          p_trab_id: string
+          ug: string
+          ug_detentora: string | null
+          updated_at: string | null
+          valor_nd_39: number
+          valor_total: number
+          valor_unitario: number
+        }
+        Insert: {
+          categoria: string
+          consumo_pessoa_dia: number
+          created_at?: string | null
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          diretriz_id: string
+          efetivo?: number
+          fase_atividade?: string | null
+          id?: string
+          om_detentora?: string | null
+          organizacao: string
+          p_trab_id: string
+          ug: string
+          ug_detentora?: string | null
+          updated_at?: string | null
+          valor_nd_39?: number
+          valor_total?: number
+          valor_unitario: number
+        }
+        Update: {
+          categoria?: string
+          consumo_pessoa_dia?: number
+          created_at?: string | null
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          diretriz_id?: string
+          efetivo?: number
+          fase_atividade?: string | null
+          id?: string
+          om_detentora?: string | null
+          organizacao?: string
+          p_trab_id?: string
+          ug?: string
+          ug_detentora?: string | null
+          updated_at?: string | null
+          valor_nd_39?: number
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "concessionaria_registros_diretriz_id_fkey"
+            columns: ["diretriz_id"]
+            isOneToOne: false
+            referencedRelation: "diretrizes_concessionaria"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "concessionaria_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diaria_registros: {
         Row: {
           created_at: string
@@ -1662,6 +1743,14 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 // Define TableName como uma união de literais de string
 export type TableName = keyof DefaultSchema["Tables"]; 
+
+// Define a união de tabelas que possuem a coluna p_trab_id
+export type PTrabLinkedTableName =
+    'classe_i_registros' | 'classe_ii_registros' | 'classe_iii_registros' | 
+    'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' | 
+    'classe_viii_saude_registros' | 'classe_viii_remonta_registros' | 
+    'classe_ix_registros' | 'p_trab_ref_lpc' | 'passagem_registros' | 
+    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros'; // ADICIONADO
 
 export type Tables<T extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])> = 
   (DefaultSchema["Tables"] & DefaultSchema["Views"])[T] extends {

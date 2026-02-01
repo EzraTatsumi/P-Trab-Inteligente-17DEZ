@@ -198,6 +198,8 @@ const PTrabForm = () => {
       navigate(`/ptrab/suprimento-fundos?ptrabId=${ptrabId}`);
     } else if (itemId === 'passagem-aerea') {
       navigate(`/ptrab/passagem-aerea?ptrabId=${ptrabId}`);
+    } else if (itemId === 'concessionaria') { // NOVO HANDLER
+      navigate(`/ptrab/concessionaria?ptrabId=${ptrabId}`);
     } else {
       // Trata itens operacionais não implementados
       toast.info(`Funcionalidade '${itemName}' (Operacional) ainda não implementada.`);
