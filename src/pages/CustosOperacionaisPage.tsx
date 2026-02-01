@@ -462,6 +462,7 @@ const CustosOperacionaisPage = () => {
         .eq("ano_referencia", diretrizes.ano_referencia!);
         
       const concessionariaItemsParaSalvar = concessionariaConfig
+        // Agora, filtramos apenas se o nome da concessionária foi preenchido E os valores são válidos
         .filter(item => item.nome_concessionaria.trim().length > 0 && item.consumo_pessoa_dia > 0 && item.custo_unitario >= 0)
         .map(item => ({
           user_id: user.id,
@@ -803,34 +804,8 @@ const CustosOperacionaisPage = () => {
   
   // --- LÓGICA DE CONCESSIONÁRIA ---
   
-  const handleAddConcessionariaItem = (
-    config: DiretrizConcessionariaForm[], 
-    setConfig: React.Dispatch<React.SetStateAction<DiretrizConcessionariaForm[]>>, 
-    categoria: DiretrizConcessionariaForm['categoria'],
-    unidade: DiretrizConcessionariaForm['unidade_custo']
-  ) => {
-    setConfig(prev => [
-      ...prev,
-      { 
-        categoria, 
-        nome_concessionaria: "", 
-        consumo_pessoa_dia: 0, 
-        fonte_consumo: "", 
-        custo_unitario: 0, 
-        fonte_custo: "", 
-        unidade_custo: unidade 
-      } as DiretrizConcessionariaForm
-    ]);
-  };
-
-  const handleRemoveConcessionariaItem = (
-    config: DiretrizConcessionariaForm[], 
-    setConfig: React.Dispatch<React.SetStateAction<DiretrizConcessionariaForm[]>>, 
-    index: number
-  ) => {
-    setConfig(config.filter((_, i) => i !== index));
-  };
-
+  // Removendo handleAddConcessionariaItem e handleRemoveConcessionariaItem, pois a lista é fixa.
+  
   const handleUpdateConcessionariaItem = (
     config: DiretrizConcessionariaForm[], 
     setConfig: React.Dispatch<React.SetStateAction<DiretrizConcessionariaForm[]>>, 
@@ -848,17 +823,24 @@ const CustosOperacionaisPage = () => {
     setConfig: React.Dispatch<React.SetStateAction<DiretrizConcessionariaForm[]>>,
     selectedTab: 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA'
   ) => {
-    const filteredItems = config.filter(item => item.categoria === selectedTab);
+    // Filtra o item fixo correspondente à aba selecionada
+    const item = config.find(item => item.categoria === selectedTab);
+    
+    if (!item) return null; // Não deve acontecer com a initialConcessionariaConfig fixa
+    
     const { unidade } = CATEGORIAS_CONCESSIONARIA.find(c => c.key === selectedTab)!;
     const custoLabel = `Custo Unitário (R$/${unidade})`;
     
     // Placeholders dinâmicos (usando exemplos, não valores padrão)
     const isAgua = selectedTab === 'AGUA_ESGOTO';
     const placeholderNome = isAgua ? 'Ex: COSANPA / Saneago' : 'Ex: Equatorial / Enel';
-    const placeholderConsumo = isAgua ? 'Ex: 0,15' : 'Ex: 1,5';
+    const placeholderConsumo = isAgua ? 'Ex: 0.15' : 'Ex: 1.5';
     const placeholderCusto = isAgua ? '5,00' : '0,80';
-    const placeholderFonteConsumo = isAgua ? 'Ex: Sistema Nacional de Informação sobre Saneamento - SNIS/2023' : 'Ex: Anuário Estatístico de Energia Elétrica 2024 do EPE';
-    const placeholderFonteCusto = isAgua ? 'Ex: Tarifas da COSANPA a partir de Nov/23' : 'Ex: Tabela de Tarifa Equatorial Ago/2024';
+    const placeholderFonteConsumo = 'Ex: SNIS/2023';
+    const placeholderFonteCusto = 'Ex: Tabela de Tarifa Ago/2024';
+    
+    // Encontra o índice no array principal para a função de update
+    const indexInMainArray = config.findIndex(c => c.categoria === selectedTab);
     
     const getCustoUnitarioProps = (item: DiretrizConcessionariaForm, indexInMainArray: number) => {
         const fieldName = 'custo_unitario';
@@ -876,93 +858,70 @@ const CustosOperacionaisPage = () => {
         };
     };
     
+    const custoUnitarioProps = getCustoUnitarioProps(item, indexInMainArray);
+
     return (
       <div className="space-y-4 pt-4">
-        {filteredItems.map((item, index) => {
-          const indexInMainArray = config.findIndex(c => c === item);
-          const custoUnitarioProps = getCustoUnitarioProps(item, indexInMainArray);
-
-          return (
-            <div key={index} className="space-y-4 border-b pb-4 last:border-b-0">
-              {/* Linha 1: Concessionária (1 coluna) */}
-              <div className="space-y-2">
-                <Label className="text-xs">Concessionária</Label>
-                <Input
-                  value={item.nome_concessionaria}
-                  onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'nome_concessionaria', e.target.value)}
-                  placeholder={placeholderNome}
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-              
-              {/* Linha 2: Consumo e Custo Unitário (2 colunas) */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs">Consumo/pessoa/dia ({unidade})</Label>
-                  <Input
-                    type="number"
-                    step="0.0001"
-                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    value={item.consumo_pessoa_dia === 0 ? "" : item.consumo_pessoa_dia}
-                    onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'consumo_pessoa_dia', parseFloat(e.target.value) || 0)}
-                    placeholder={placeholderConsumo}
-                    onKeyDown={handleEnterToNextField}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">{custoLabel}</Label>
-                  <CurrencyInput
-                    {...custoUnitarioProps}
-                  />
-                </div>
-              </div>
-              
-              {/* Linha 3: Fonte de Consumo (1 coluna) */}
-              <div className="space-y-2">
-                <Label className="text-xs">Fonte de Consumo</Label>
-                <Input
-                  value={item.fonte_consumo}
-                  onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_consumo', e.target.value)}
-                  placeholder={placeholderFonteConsumo}
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-              
-              {/* Linha 4: Fonte do Custo (1 coluna) */}
-              <div className="space-y-2">
-                <Label className="text-xs">Fonte do Custo</Label>
-                <Input
-                  value={item.fonte_custo}
-                  onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_custo', e.target.value)}
-                  placeholder={placeholderFonteCusto}
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-              
-              <div className="flex justify-end">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleRemoveConcessionariaItem(config, setConfig, indexInMainArray)}
-                  type="button"
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
+        <div className="space-y-4 border-b pb-4 last:border-b-0">
+          {/* Linha 1: Concessionária (1 coluna) */}
+          <div className="space-y-2">
+            <Label className="text-xs">Concessionária</Label>
+            <Input
+              value={item.nome_concessionaria}
+              onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'nome_concessionaria', e.target.value)}
+              placeholder={placeholderNome}
+              onKeyDown={handleEnterToNextField}
+            />
+          </div>
+          
+          {/* Linha 2: Consumo e Custo Unitário (2 colunas) */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs">Consumo/pessoa/dia ({unidade})</Label>
+              <Input
+                type="number"
+                step="0.0001"
+                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                value={item.consumo_pessoa_dia === 0 ? "" : item.consumo_pessoa_dia}
+                onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'consumo_pessoa_dia', parseFloat(e.target.value) || 0)}
+                placeholder={placeholderConsumo}
+                onKeyDown={handleEnterToNextField}
+              />
             </div>
-          );
-        })}
+            <div className="space-y-2">
+              <Label className="text-xs">{custoLabel}</Label>
+              <CurrencyInput
+                {...custoUnitarioProps}
+              />
+            </div>
+          </div>
+          
+          {/* Linha 3: Fonte de Consumo (1 coluna) */}
+          <div className="space-y-2">
+            <Label className="text-xs">Fonte de Consumo</Label>
+            <Input
+              value={item.fonte_consumo}
+              onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_consumo', e.target.value)}
+              placeholder={placeholderFonteConsumo}
+              onKeyDown={handleEnterToNextField}
+            />
+          </div>
+          
+          {/* Linha 4: Fonte do Custo (1 coluna) */}
+          <div className="space-y-2">
+            <Label className="text-xs">Fonte do Custo</Label>
+            <Input
+              value={item.fonte_custo}
+              onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_custo', e.target.value)}
+              placeholder={placeholderFonteCusto}
+              onKeyDown={handleEnterToNextField}
+            />
+          </div>
+          
+          {/* Botão de exclusão removido */}
+        </div>
         
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => handleAddConcessionariaItem(config, setConcessionariaConfig, selectedTab, unidade)} 
-          className="w-full"
-          type="button"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Adicionar Concessionária
-        </Button>
+        {/* Botão de adição removido */}
       </div>
     );
   };
