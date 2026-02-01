@@ -912,60 +912,57 @@ const CustosOperacionaisPage = () => {
           const custoUnitarioProps = getCustoUnitarioProps(item, indexInMainArray);
 
           return (
-            <Card key={index} className="p-4 border-l-4 border-primary/50">
-              {/* REMOVIDO: Botão de exclusão (Button 918) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs">Concessionária</Label>
-                  <Input
-                    value={item.nome_concessionaria}
-                    onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'nome_concessionaria', e.target.value)}
-                    placeholder="Ex: CEDAE / LIGHT"
-                    onKeyDown={handleEnterToNextField}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Consumo/pessoa/dia ({unidade})</Label>
-                  <Input
-                    type="number"
-                    step="0.0001"
-                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    value={item.consumo_pessoa_dia === 0 ? "" : item.consumo_pessoa_dia}
-                    onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'consumo_pessoa_dia', parseFloat(e.target.value) || 0)}
-                    onKeyDown={handleEnterToNextField}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Fonte de Consumo</Label>
-                  <Input
-                    value={item.fonte_consumo}
-                    onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_consumo', e.target.value)}
-                    placeholder="Ex: Diretriz COLOG"
-                    onKeyDown={handleEnterToNextField}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">{custoLabel}</Label>
-                  <Input
-                    {...custoUnitarioProps}
-                    onKeyDown={handleEnterToNextField}
-                  />
-                </div>
-                <div className="space-y-2 col-span-full">
-                  <Label className="text-xs">Fonte do Custo</Label>
-                  <Input
-                    value={item.fonte_custo}
-                    onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_custo', e.target.value)}
-                    placeholder="Ex: Fatura Média"
-                    onKeyDown={handleEnterToNextField}
-                  />
-                </div>
+            <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-4 last:border-b-0">
+              <div className="space-y-2">
+                <Label className="text-xs">Concessionária</Label>
+                <Input
+                  value={item.nome_concessionaria}
+                  onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'nome_concessionaria', e.target.value)}
+                  placeholder="Ex: CEDAE / LIGHT"
+                  onKeyDown={handleEnterToNextField}
+                />
               </div>
-            </Card>
+              <div className="space-y-2">
+                <Label className="text-xs">Consumo/pessoa/dia ({unidade})</Label>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  value={item.consumo_pessoa_dia === 0 ? "" : item.consumo_pessoa_dia}
+                  onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'consumo_pessoa_dia', parseFloat(e.target.value) || 0)}
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Fonte de Consumo</Label>
+                <Input
+                  value={item.fonte_consumo}
+                  onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_consumo', e.target.value)}
+                  placeholder="Ex: Diretriz COLOG"
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">{custoLabel}</Label>
+                <Input
+                  {...custoUnitarioProps}
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="space-y-2 col-span-full">
+                <Label className="text-xs">Fonte do Custo</Label>
+                <Input
+                  value={item.fonte_custo}
+                  onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_custo', e.target.value)}
+                  placeholder="Ex: Fatura Média"
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+            </div>
           );
         })}
 
-        {/* REMOVIDO: Botão de adição (Button 978) */}
+        {/* Botão de adição removido, pois o cadastro é fixo */}
       </div>
     );
   };
@@ -1222,20 +1219,24 @@ const CustosOperacionaisPage = () => {
                         {fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </div>
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="pt-4"> {/* Adicionado pt-4 aqui para manter o espaçamento */}
-                      <Tabs value={selectedConcessionariaTab} onValueChange={(value) => setSelectedConcessionariaTab(value as 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA')}>
-                        <TabsList className="grid w-full grid-cols-2">
-                          {CATEGORIAS_CONCESSIONARIA.map(cat => (
-                            <TabsTrigger key={cat.key} value={cat.key}>{cat.label}</TabsTrigger>
-                          ))}
-                        </TabsList>
-                        
-                        {CATEGORIAS_CONCESSIONARIA.map(cat => (
-                          <TabsContent key={cat.key} value={cat.key}>
-                            {renderConcessionariaList(concessionariaConfig, setConcessionariaConfig, cat.key as 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA')}
-                          </TabsContent>
-                        ))}
-                      </Tabs>
+                    <CollapsibleContent className="pt-4">
+                      <Card> {/* Reintroduzindo o Card para o estilo de fundo branco */}
+                        <CardContent className="pt-4"> {/* Reintroduzindo o CardContent com padding */}
+                          <Tabs value={selectedConcessionariaTab} onValueChange={(value) => setSelectedConcessionariaTab(value as 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA')}>
+                            <TabsList className="grid w-full grid-cols-2">
+                              {CATEGORIAS_CONCESSIONARIA.map(cat => (
+                                <TabsTrigger key={cat.key} value={cat.key}>{cat.label}</TabsTrigger>
+                              ))}
+                            </TabsList>
+                            
+                            {CATEGORIAS_CONCESSIONARIA.map(cat => (
+                              <TabsContent key={cat.key} value={cat.key}>
+                                {renderConcessionariaList(concessionariaConfig, setConcessionariaConfig, cat.key as 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA')}
+                              </TabsContent>
+                            ))}
+                          </Tabs>
+                        </CardContent>
+                      </Card>
                     </CollapsibleContent>
                   </Collapsible>
                   
