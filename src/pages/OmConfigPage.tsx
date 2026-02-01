@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -42,6 +42,9 @@ const OmConfigPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { handleEnterToNextField } = useFormNavigation();
+  
+  // 1. Criar a referência para o formulário
+  const formRef = useRef<HTMLFormElement>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false); // Estado para controlar o colapso do formulário
@@ -161,7 +164,12 @@ const OmConfigPage = () => {
       cidade: om.cidade || "", // Carregar cidade
       ativo: om.ativo,
     });
-    // O useEffect cuidará de abrir o formulário
+    
+    // 4. Rolar para o formulário após definir o estado
+    // Usamos setTimeout para garantir que o Collapsible tenha tempo de abrir (se estiver fechado)
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   const handleConfirmDelete = (om: OMData) => {
@@ -198,6 +206,11 @@ const OmConfigPage = () => {
   const handleToggleForm = () => {
     if (isFormOpen) {
       resetForm();
+    } else {
+      // Rolar para o formulário ao abrir
+      setTimeout(() => {
+        formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
     }
     setIsFormOpen(!isFormOpen);
   };
@@ -273,7 +286,8 @@ const OmConfigPage = () => {
                 <h3 className="text-lg font-semibold mb-4">
                   {editingId ? "Editar OM" : "Cadastro de Nova OM"}
                 </h3>
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg bg-muted/50">
+                {/* 3. Anexar a referência ao formulário */}
+                <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg bg-muted/50">
                   
                   <div className="space-y-2">
                     <Label htmlFor="nome_om">Nome da OM (Sigla) *</Label>
