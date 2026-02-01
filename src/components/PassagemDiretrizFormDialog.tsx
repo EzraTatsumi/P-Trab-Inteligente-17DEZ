@@ -328,8 +328,8 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                         </CardTitle>
                         
                         {/* Formulário de Trecho */}
-                        {/* Alterado de grid-cols-6 para grid-cols-7 para dar mais espaço */}
-                        <div className="grid grid-cols-1 md:grid-cols-7 gap-4 border p-3 rounded-lg bg-muted/50">
+                        {/* Ajustado para grid-cols-6 para otimizar o espaço */}
+                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 border p-3 rounded-lg bg-muted/50">
                             {/* Campo Origem (1 coluna) */}
                             <div className="space-y-2 col-span-1">
                                 <Label htmlFor="trecho-origem">Origem *</Label>
@@ -352,7 +352,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                     onKeyDown={handleEnterToNextField}
                                 />
                             </div>
-                            {/* Campo Valor (1.5 colunas) */}
+                            {/* Campo Valor (1 coluna) */}
                             <div className="space-y-2 col-span-1">
                                 <Label htmlFor="trecho-valor">Valor (R$) *</Label>
                                 <CurrencyInput
@@ -363,7 +363,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                     onKeyDown={handleEnterToNextField}
                                 />
                             </div>
-                            {/* Campo Tipo (1.5 colunas) */}
+                            {/* Campo Tipo (1 coluna) */}
                             <div className="space-y-2 col-span-1">
                                 <Label htmlFor="trecho-tipo">Tipo *</Label>
                                 <Select
@@ -381,7 +381,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
                                 </Select>
                             </div>
                             {/* Switch para Ida/Volta (1 coluna) */}
-                            <div className="col-span-2 flex items-center pt-6">
+                            <div className="col-span-1 flex items-center pt-6">
                                 <Switch
                                     id="trecho-ida-volta"
                                     checked={trechoForm.is_ida_volta}
