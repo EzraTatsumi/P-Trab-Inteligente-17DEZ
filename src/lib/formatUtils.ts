@@ -59,3 +59,18 @@ export const formatDecimal = (value: number | string, decimals: number = 2): str
         maximumFractionDigits: decimals,
     }).format(num);
 };
+
+/**
+ * Formata um código UG (Unidade Gestora) para garantir 6 dígitos, preenchendo com zeros à esquerda.
+ * @param codug O código UG como string ou número.
+ * @returns O código UG formatado (string de 6 dígitos).
+ */
+export const formatCodug = (codug: string | number): string => {
+    if (typeof codug === 'number') {
+        return String(codug).padStart(6, '0');
+    }
+    if (typeof codug === 'string') {
+        return codug.padStart(6, '0');
+    }
+    return '';
+};
