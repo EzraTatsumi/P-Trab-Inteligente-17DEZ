@@ -1193,14 +1193,14 @@ const ConcessionariaForm = () => {
                                                                     
                                                                     return (
                                                                         <TableRow key={diretriz.id}>
-                                                                            <TableCell className="w-[150px]">
-                                                                                <Badge variant="outline" className="gap-1">
+                                                                            <TableCell className="w-[150px] font-medium text-sm">
+                                                                                <span className="flex items-center gap-1">
                                                                                     {isAgua 
                                                                                         ? <Droplet className="h-3 w-3 text-blue-500" /> 
                                                                                         : <Zap className="h-3 w-3 text-yellow-600" />
                                                                                     }
                                                                                     {diretriz.categoria}
-                                                                                </Badge>
+                                                                                </span>
                                                                             </TableCell>
                                                                             <TableCell>
                                                                                 {diretriz.nome_concessionaria}
@@ -1351,7 +1351,7 @@ const ConcessionariaForm = () => {
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
                                             <span className="font-bold text-base uppercase">
-                                                VALOR TOTAL DO LOTE
+                                                VALOR TOTAL DA OM
                                             </span>
                                             <span className="font-extrabold text-xl text-foreground">
                                                 {formatCurrency(totalPendingConcessionaria)}
