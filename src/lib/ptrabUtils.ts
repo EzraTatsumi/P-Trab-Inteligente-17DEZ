@@ -24,4 +24,25 @@ export type PTrabData = Tables<'p_trab'>; // EXPORTANDO O TIPO AQUI
  * @param ptrabId O ID do Plano de Trabalho.
  */
 export async function updatePTrabStatusIfAberto(ptrabId: string) {
-// ... (rest of the file remains the same)
+    try {
+        const { data, error } = await supabase
+            .from('p_trab')
+            .select('status')
+            .eq('id', ptrabId)
+            .single();
+
+        if (error) throw error;
+
+        if (data.status === 'aberto') {
+            const { error: updateError } = await supabase
+                .from('p_trab')
+                .update({ status: 'em_andamento' })
+                .eq('id', ptrabId);
+
+            if (updateError) throw updateError;
+        }
+    } catch (error) {
+        console.error("Erro ao atualizar status do PTrab:", error);
+        // Não exibe toast, pois esta é uma função de fundo
+    }
+}
