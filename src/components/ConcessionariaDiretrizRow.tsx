@@ -3,7 +3,7 @@ import { TableRow, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Loader2 } from "lucide-react";
 import { DiretrizConcessionaria } from "@/types/diretrizesConcessionaria";
-import { formatCurrency, formatDecimal } from "@/lib/formatUtils";
+import { formatCurrency } from "@/lib/formatUtils";
 
 interface ConcessionariaDiretrizRowProps {
     diretriz: DiretrizConcessionaria;
@@ -20,14 +20,11 @@ const ConcessionariaDiretrizRow: React.FC<ConcessionariaDiretrizRowProps> = ({
 }) => {
     const { id, nome_concessionaria, consumo_pessoa_dia, custo_unitario, unidade_custo } = diretriz;
 
-    // Formata o consumo para o padrão brasileiro (vírgula)
-    const formattedConsumo = formatDecimal(consumo_pessoa_dia, 2);
-
     return (
         <TableRow>
             <TableCell className="font-medium">{nome_concessionaria}</TableCell>
             <TableCell className="text-center">
-                {formattedConsumo} {unidade_custo}/pessoa/dia
+                {consumo_pessoa_dia} {unidade_custo}/pessoa/dia
             </TableCell>
             <TableCell className="text-right">
                 {formatCurrency(custo_unitario)} / {unidade_custo}
