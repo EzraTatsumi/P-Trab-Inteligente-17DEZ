@@ -14,7 +14,7 @@ import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { YearManagementDialog } from "@/components/YearManagementDialog";
 import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodug } from "@/lib/formatUtils";
 import { useSession } from "@/components/SessionContextProvider";
-import { Tables, TablesInsert, TablesUpdate, Json } from "@/integrations/supabase/types";
+import { Tables, TablesInsert, TablesUpdate, Json, TableName } from "@/integrations/supabase/types";
 import { diretrizOperacionalSchema } from "@/lib/validationSchemas";
 import * as z from "zod";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -186,20 +186,19 @@ const CustosOperacionaisPage = () => {
       const [
           { data: opData, error: opError },
           { data: passagensData, error: passagensError },
-          // CORREÇÃO: Usar 'as any' para contornar o erro de tipagem do Supabase
           { data: concessionariaData, error: concessionariaError } 
       ] = await Promise.all([
           supabase.from("diretrizes_operacionais").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_passagens").select("ano_referencia").eq("user.id", user.id),
-          (supabase.from("diretrizes_concessionaria") as any).select("ano_referencia").eq("user_id", user.id), 
+          supabase.from("diretrizes_concessionaria").select("ano_referencia").eq("user_id", user.id), 
       ]);
 
       if (opError || passagensError || concessionariaError) throw opError || passagensError || concessionariaError;
 
-      // CORREÇÃO: Acessar 'ano_referencia' de forma segura, pois o tipo de erro pode ser uma união complexa
-      const opYears = opData ? opData.map(d => (d as any).ano_referencia) : [];
-      const passagensYears = passagensData ? passagensData.map(d => (d as any).ano_referencia) : [];
-      const concessionariaYears = concessionariaData ? concessionariaData.map(d => (d as any).ano_referencia) : []; // NEW
+      // CORREÇÃO: Acessar 'ano_referencia' de forma segura
+      const opYears = opData ? opData.map(d => d.ano_referencia) : [];
+      const passagensYears = passagensData ? passagensData.map(d => d.ano_referencia) : [];
+      const concessionariaYears = concessionariaData ? concessionariaData.map(d => d.ano_referencia) : []; // NEW
 
       const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears]); // UPDATED
       
@@ -332,8 +331,8 @@ const CustosOperacionaisPage = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         
-        // CORREÇÃO: Usar 'as any' para contornar o erro de tipagem do Supabase
-        const { data, error } = await (supabase.from('diretrizes_concessionaria') as any)
+        const { data, error } = await supabase
+            .from('diretrizes_concessionaria')
             .select('*')
             .eq('user_id', user.id)
             .eq('ano_referencia', year)
@@ -344,7 +343,7 @@ const CustosOperacionaisPage = () => {
         
         // Ensure numeric types are correct
         // CORREÇÃO: Mapear o tipo de retorno para DiretrizConcessionaria
-        const typedData: DiretrizConcessionaria[] = (data || []).map((d: any) => ({
+        const typedData: DiretrizConcessionaria[] = (data || []).map((d: Tables<'diretrizes_concessionaria'>) => ({
             ...d,
             consumo_pessoa_dia: Number(d.consumo_pessoa_dia),
             custo_unitario: Number(d.custo_unitario),
@@ -541,8 +540,8 @@ const CustosOperacionaisPage = () => {
       }
       
       // 3. Copiar Diretrizes de Concessionária (NEW LOGIC)
-      // CORREÇÃO: Usar 'as any' para contornar o erro de tipagem do Supabase
-      const { data: sourceConcessionaria, error: concessionariaError } = await (supabase.from("diretrizes_concessionaria") as any)
+      const { data: sourceConcessionaria, error: concessionariaError } = await supabase
+        .from("diretrizes_concessionaria")
         .select("categoria, nome_concessionaria, consumo_pessoa_dia, fonte_consumo, custo_unitario, fonte_custo, unidade_custo")
         .eq("user_id", user.id)
         .eq("ano_referencia", sourceYear);
@@ -551,7 +550,7 @@ const CustosOperacionaisPage = () => {
       
       if (sourceConcessionaria && sourceConcessionaria.length > 0) {
           // CORREÇÃO: Mapear o tipo de retorno para DiretrizConcessionaria
-          const newConcessionaria = (sourceConcessionaria as DiretrizConcessionaria[]).map(c => {
+          const newConcessionaria = (sourceConcessionaria as Tables<'diretrizes_concessionaria'>[]).map(c => {
               // CORREÇÃO: Desestruturação segura para remover campos de sistema
               const { id, created_at, updated_at, ...restOfConcessionaria } = c as any;
               return {
@@ -561,8 +560,8 @@ const CustosOperacionaisPage = () => {
               };
           });
           
-          // CORREÇÃO: Usar 'as any' no insert para permitir o nome dinâmico
-          const { error: insertConcessionariaError } = await (supabase.from("diretrizes_concessionaria") as any)
+          const { error: insertConcessionariaError } = await supabase
+            .from("diretrizes_concessionaria")
             .insert(newConcessionaria as TablesInsert<'diretrizes_concessionaria'>[]);
           if (insertConcessionariaError) throw insertConcessionariaError;
       }
@@ -611,8 +610,8 @@ const CustosOperacionaisPage = () => {
         .eq("ano_referencia", year);
         
       // 3. Excluir Diretrizes de Concessionária (NEW LOGIC)
-      // CORREÇÃO: Usar 'as any' para contornar o erro de tipagem do Supabase
-      await (supabase.from("diretrizes_concessionaria") as any)
+      await supabase
+        .from("diretrizes_concessionaria")
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
@@ -918,18 +917,18 @@ const CustosOperacionaisPage = () => {
               custo_unitario: data.custo_unitario,
               fonte_custo: data.fonte_custo || null,
               unidade_custo: data.unidade_custo,
-          } as TablesInsert<'diretrizes_concessionaria'>; // CORREÇÃO: Usar 'as' para forçar a tipagem
+          };
 
           if (data.id) {
-              // CORREÇÃO: Usar 'as any' para contornar o erro de tipagem do Supabase
-              const { error } = await (supabase.from('diretrizes_concessionaria') as any)
+              const { error } = await supabase
+                  .from('diretrizes_concessionaria')
                   .update(dbData as TablesUpdate<'diretrizes_concessionaria'>)
                   .eq('id', data.id);
               if (error) throw error;
               toast.success("Diretriz de Concessionária atualizada!");
           } else {
-              // CORREÇÃO: Usar 'as any' para contornar o erro de tipagem do Supabase
-              const { error } = await (supabase.from('diretrizes_concessionaria') as any)
+              const { error } = await supabase
+                  .from('diretrizes_concessionaria')
                   .insert([dbData]);
               if (error) throw error;
               toast.success("Nova Diretriz de Concessionária cadastrada!");
@@ -962,8 +961,7 @@ const CustosOperacionaisPage = () => {
       
       try {
           setLoading(true);
-          // CORREÇÃO: Usar 'as any' para contornar o erro de tipagem do Supabase
-          await (supabase.from('diretrizes_concessionaria') as any).delete().eq('id', id);
+          await supabase.from('diretrizes_concessionaria').delete().eq('id', id);
           toast.success("Diretriz de Concessionária excluída!");
           await loadDiretrizesConcessionaria(selectedYear);
       } catch (error) {

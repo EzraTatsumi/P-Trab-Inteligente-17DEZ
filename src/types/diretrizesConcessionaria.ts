@@ -6,8 +6,7 @@ export const CATEGORIAS_CONCESSIONARIA = ["Água/Esgoto", "Energia Elétrica"] a
 export type CategoriaConcessionaria = typeof CATEGORIAS_CONCESSIONARIA[number];
 
 // Tipo de dados do banco de dados (Row)
-// Usamos 'as any' para contornar a restrição de tipo se 'diretrizes_concessionaria' não estiver na união de TableName
-export type DiretrizConcessionaria = Tables<'diretrizes_concessionaria' extends keyof Tables ? 'diretrizes_concessionaria' : any>;
+export type DiretrizConcessionaria = Tables<'diretrizes_concessionaria'>;
 
 // Schema de Validação
 export const diretrizConcessionariaSchema = z.object({
