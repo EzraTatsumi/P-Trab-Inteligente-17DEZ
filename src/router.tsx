@@ -1,12 +1,12 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import Layout from "@/components/Layout";
-import LoginPage from "@/pages/Login";
-import PTrabListPage from "@/pages/PTrabList";
-import PTrabFormPage from "@/pages/PTrabForm";
-import PassagemFormPage from "@/pages/PassagemForm";
-import ConcessionariaFormPage from "@/pages/ConcessionariaForm";
-import CustosOperacionaisPage from "@/pages/CustosOperacionaisPage";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import Layout from "./components/Layout";
+import LoginPage from "./pages/Login";
+import PTrabListPage from "./pages/PTrabList";
+import PTrabFormPage from "./pages/PTrabForm";
+import PassagemFormPage from "./pages/PassagemForm";
+import ConcessionariaFormPage from "./pages/ConcessionariaForm";
+import CustosOperacionaisPage from "./pages/CustosOperacionaisPage";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 export const router = createBrowserRouter([
   {
