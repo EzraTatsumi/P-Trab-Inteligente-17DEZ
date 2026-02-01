@@ -37,11 +37,12 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
     loading,
     initialCategory,
 }) => {
+    // Alterado consumo_pessoa_dia para null para que o input comece vazio
     const defaultValues: DiretrizConcessionariaForm = {
         ano_referencia: selectedYear,
         categoria: initialCategory,
         nome_concessionaria: "",
-        consumo_pessoa_dia: 0,
+        consumo_pessoa_dia: null as any, 
         fonte_consumo: "",
         custo_unitario: 0,
         fonte_custo: "",
@@ -55,7 +56,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
     
     const watchedCategoria = watch('categoria');
     const watchedCustoUnitario = watch('custo_unitario');
-    const watchedConsumoPessoaDia = watch('consumo_pessoa_dia');
+    // Não precisamos mais observar watchedConsumoPessoaDia para renderização condicional do valor
 
     useEffect(() => {
         if (open) {
@@ -67,12 +68,12 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                     custo_unitario: Number(diretrizToEdit.custo_unitario),
                 });
             } else {
-                // Ao criar novo, resetamos para os valores padrão
+                // Ao criar novo, resetamos para os valores padrão, onde consumo_pessoa_dia é null
                 reset({
                     ...defaultValues,
                     categoria: initialCategory,
                     unidade_custo: initialCategory === 'Água/Esgoto' ? 'm³' : 'kWh',
-                    consumo_pessoa_dia: 0,
+                    consumo_pessoa_dia: null as any,
                 });
             }
         }
@@ -93,7 +94,9 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                 ...data,
                 id: diretrizToEdit?.id,
                 user_id: undefined, // Supabase handles user_id insertion
-                consumo_pessoa_dia: Number(data.consumo_pessoa_dia),
+                // Se for null, Zod/RHF deve garantir que seja 0 ou falhe a validação se for obrigatório.
+                // Como o campo é obrigatório no schema, ele será validado.
+                consumo_pessoa_dia: Number(data.consumo_pessoa_dia || 0), 
                 custo_unitario: Number(data.custo_unitario),
             };
             await onSave(dataToSave);
@@ -180,7 +183,6 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                                 {...register("consumo_pessoa_dia", { valueAsNumber: true })}
                                 placeholder="Ex: 0,2"
                                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                // Removida a lógica que transformava 0 em "" para permitir a digitação inicial
                             />
                             {errors.consumo_pessoa_dia && <p className="text-xs text-red-500">{errors.consumo_pessoa_dia.message}</p>}
                         </div>
