@@ -1510,7 +1510,7 @@ const ConcessionariaForm = () => {
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
-                            {consolidatedRegistros && consolidatedRegistrados.length > 0 && (
+                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
                                 <div className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
                                         📋 Memórias de Cálculos Detalhadas
