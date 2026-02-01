@@ -1725,7 +1725,7 @@ export type TablesInsert<T extends keyof DefaultSchema["Tables"]> =
 export type TablesUpdate<T extends keyof DefaultSchema["Tables"]> = 
   DefaultSchema["Tables"][T] extends {
     Update: infer U
-  }
+    }
     ? U
     : never
 
