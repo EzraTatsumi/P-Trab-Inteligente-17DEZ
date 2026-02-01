@@ -68,7 +68,7 @@ const CATEGORIAS_CONCESSIONARIA = [
 const defaultConcessionariaConfig: DiretrizConcessionariaForm[] = [
   { 
     categoria: 'AGUA_ESGOTO', 
-    nome_concessionaria: 'Águas do Pará', 
+    nome_concessionaria: 'Águas do Pará / Saneago (GO)', 
     consumo_pessoa_dia: 0.15, 
     fonte_consumo: 'Sistema Nacional de Informação sobre Saneamento - SNIS/2023', 
     custo_unitario: 5.00, 
@@ -77,7 +77,7 @@ const defaultConcessionariaConfig: DiretrizConcessionariaForm[] = [
   },
   { 
     categoria: 'ENERGIA_ELETRICA', 
-    nome_concessionaria: 'Equatorial', 
+    nome_concessionaria: 'Equatorial / Enel (RJ)', 
     consumo_pessoa_dia: 1.5, 
     fonte_consumo: 'Anuário Estatístico de Energia Elétrica 2024 do EPE', 
     custo_unitario: 0.80, 
@@ -143,7 +143,8 @@ const CustosOperacionaisPage = () => {
   const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<'AGUA_ESGOTO' | 'ENERGIA_ELETRICA'>('AGUA_ESGOTO'); // Hook 12
   
   // NOVO ESTADO GLOBAL PARA MÁSCARA DE CONCESSIONÁRIA (CORRIGIDO)
-  const [focusedInputConcessionaria, setFocusedInputConcessionaria] = useState<{ index: number, rawDigits: string } | null>(null); // Hook 13
+  // REMOVIDO: Não precisamos mais deste estado global, pois CurrencyInput gerencia o seu próprio estado interno de raw digits.
+  // const [focusedInputConcessionaria, setFocusedInputConcessionaria] = useState<{ index: number, rawDigits: string } | null>(null); 
   
   // Estado para controlar a expansão individual de cada campo
   const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => { // Hook 14
@@ -742,9 +743,9 @@ const CustosOperacionaisPage = () => {
       const fieldKey = `${DIARIA_RANKS_CONFIG.find(r => r.key === rankKey)?.fieldPrefix}_${destination}` as keyof DiretrizOperacional;
       const value = diretrizes[fieldKey] as number;
       const rawDigits = rawInputs[fieldKey as string] || numberToRawDigits(value);
-      const { formatted: displayValue } = formatCurrencyInput(rawDigits);
       
       return {
+        value: value,
         rawDigits: rawDigits,
         onChange: (digits: string) => handleDiariaChange(rankKey, destination, digits),
         onKeyDown: handleEnterToNextField,
@@ -770,7 +771,7 @@ const CustosOperacionaisPage = () => {
               id="diaria_referencia_legal"
               value={diretrizes.diaria_referencia_legal || ''}
               onChange={(e) => setDiretrizes({ ...diretrizes, diaria_referencia_legal: e.target.value })}
-              placeholder="Decreto Nº 12.324 de 19DEZ24"
+              placeholder="Ex.: Decreto Nº 12.324 de 19DEZ24"
               onKeyDown={handleEnterToNextField}
             />
           </div>
@@ -866,7 +867,7 @@ const CustosOperacionaisPage = () => {
     
     // Placeholders dinâmicos
     const isAgua = selectedTab === 'AGUA_ESGOTO';
-    const defaultNome = isAgua ? 'Águas do Pará' : 'Equatorial';
+    const defaultNome = isAgua ? 'Águas do Pará / Saneago (GO)' : 'Equatorial / Enel (RJ)';
     const defaultConsumo = isAgua ? 0.15 : 1.5;
     const defaultCusto = isAgua ? 5.00 : 0.80;
     const defaultFonteConsumo = isAgua ? 'Sistema Nacional de Informação sobre Saneamento - SNIS/2023' : 'Anuário Estatístico de Energia Elétrica 2024 do EPE';
@@ -874,40 +875,17 @@ const CustosOperacionaisPage = () => {
     
     const getCustoUnitarioProps = (item: DiretrizConcessionariaForm, indexInMainArray: number) => {
         const fieldName = 'custo_unitario';
-        const isFocused = focusedInputConcessionaria?.index === indexInMainArray;
         
-        let displayValue = isFocused 
-            ? formatCurrencyInput(focusedInputConcessionaria.rawDigits).formatted
-            : formatCurrencyInput(numberToRawDigits(item.custo_unitario)).formatted;
-            
-        if (item.custo_unitario === 0 && !isFocused) {
-            displayValue = "";
-        }
-
-        const handleFocus = () => {
-            setFocusedInputConcessionaria({ 
-                index: indexInMainArray, 
-                rawDigits: numberToRawDigits(item.custo_unitario) 
-            });
-        };
-
-        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-            const { numericValue, digits } = formatCurrencyInput(e.target.value);
-            setFocusedInputConcessionaria(prev => prev ? { ...prev, rawDigits: digits } : null);
+        const handleCurrencyUpdate = (rawDigits: string) => {
+            const { numericValue } = formatCurrencyInput(rawDigits);
             handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, fieldName, numericValue);
         };
         
-        const handleBlur = () => {
-            setFocusedInputConcessionaria(null);
-        };
-        
         return {
-            value: displayValue,
-            onChange: handleChange,
-            onFocus: handleFocus,
-            onBlur: handleBlur,
-            type: "text" as const,
-            inputMode: "numeric" as const,
+            value: item.custo_unitario,
+            onChange: handleCurrencyUpdate,
+            onKeyDown: handleEnterToNextField,
+            placeholder: formatCurrency(defaultCusto),
         };
     };
     
@@ -925,7 +903,7 @@ const CustosOperacionaisPage = () => {
                 <Input
                   value={item.nome_concessionaria}
                   onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'nome_concessionaria', e.target.value)}
-                  placeholder={defaultNome}
+                  placeholder={`Ex.: ${defaultNome}`}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
@@ -940,16 +918,14 @@ const CustosOperacionaisPage = () => {
                     className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     value={item.consumo_pessoa_dia === 0 ? "" : item.consumo_pessoa_dia}
                     onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'consumo_pessoa_dia', parseFloat(e.target.value) || 0)}
-                    placeholder={defaultConsumo.toString()}
+                    placeholder={`Ex.: ${defaultConsumo}`}
                     onKeyDown={handleEnterToNextField}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs">{custoLabel}</Label>
-                  <Input
+                  <CurrencyInput
                     {...custoUnitarioProps}
-                    placeholder={formatCurrency(defaultCusto)}
-                    onKeyDown={handleEnterToNextField}
                   />
                 </div>
               </div>
@@ -960,7 +936,7 @@ const CustosOperacionaisPage = () => {
                 <Input
                   value={item.fonte_consumo}
                   onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_consumo', e.target.value)}
-                  placeholder={defaultFonteConsumo}
+                  placeholder={`Ex.: ${defaultFonteConsumo}`}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
@@ -971,7 +947,7 @@ const CustosOperacionaisPage = () => {
                 <Input
                   value={item.fonte_custo}
                   onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_custo', e.target.value)}
-                  placeholder={defaultFonteCusto}
+                  placeholder={`Ex.: ${defaultFonteCusto}`}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
