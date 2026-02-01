@@ -67,12 +67,12 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                     custo_unitario: Number(diretrizToEdit.custo_unitario),
                 });
             } else {
-                // Ao criar novo, resetamos para os valores padrão, mas definimos consumo como 0 para que o input apareça vazio
+                // Ao criar novo, resetamos para os valores padrão
                 reset({
                     ...defaultValues,
                     categoria: initialCategory,
                     unidade_custo: initialCategory === 'Água/Esgoto' ? 'm³' : 'kWh',
-                    consumo_pessoa_dia: 0, // Mantemos 0 no estado do hook form, mas o input será renderizado como vazio
+                    consumo_pessoa_dia: 0,
                 });
             }
         }
@@ -180,8 +180,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
                                 {...register("consumo_pessoa_dia", { valueAsNumber: true })}
                                 placeholder="Ex: 0,2"
                                 className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                // Renderiza como string vazia se for 0 e não estiver sendo editado
-                                value={diretrizToEdit ? watchedConsumoPessoaDia : (watchedConsumoPessoaDia === 0 ? "" : watchedConsumoPessoaDia)}
+                                // Removida a lógica que transformava 0 em "" para permitir a digitação inicial
                             />
                             {errors.consumo_pessoa_dia && <p className="text-xs text-red-500">{errors.consumo_pessoa_dia.message}</p>}
                         </div>
