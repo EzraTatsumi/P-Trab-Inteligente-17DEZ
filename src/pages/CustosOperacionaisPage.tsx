@@ -28,7 +28,15 @@ import CurrencyInput from "@/components/CurrencyInput";
 import { Switch } from "@/components/ui/switch";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import PassagemDiretrizFormDialog from "@/components/PassagemDiretrizFormDialog";
-import PassagemDiretrizRow from "@/components/PassagemDiretrizRow"; // NOVO IMPORT
+import PassagemDiretrizRow from "@/components/PassagemDiretrizRow"; 
+import ConcessionariaDiretrizFormDialog from "@/components/ConcessionariaDiretrizFormDialog";
+import ConcessionariaDiretrizRow from "@/components/ConcessionariaDiretrizRow";
+import { 
+    DiretrizConcessionaria, 
+    DiretrizConcessionariaForm, 
+    CATEGORIAS_CONCESSIONARIA, 
+    CategoriaConcessionaria 
+} from "@/types/diretrizesConcessionaria";
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -52,13 +60,13 @@ const OPERATIONAL_FIELDS = [
   { key: 'valor_locacao_estrutura_dia', label: 'Locação de Estrutura (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 300,00' },
   { key: 'valor_locacao_viaturas_dia', label: 'Locação de Viaturas (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 150,00' },
   { key: 'fator_material_consumo', label: 'Material de Consumo (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.02 (para 2%)' },
-  { key: 'fator_concessionaria', label: 'Concessionária (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.01 (para 1%)' },
+  // O fator_concessionaria foi removido daqui, pois a configuração agora é detalhada por contrato/consumo
 ];
 
 // Valores padrão para inicialização (incluindo os novos campos de diária)
 const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   ano_referencia: year,
-  fator_passagens_aereas: 0, // Mantido no default, mas não exibido no formulário principal
+  fator_passagens_aereas: 0, 
   fator_servicos_terceiros: 0,
   valor_verba_operacional_dia: 0,
   valor_suprimentos_fundo_dia: 0,
@@ -67,7 +75,7 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   valor_locacao_estrutura_dia: 0,
   valor_locacao_viaturas_dia: 0,
   fator_material_consumo: 0,
-  fator_concessionaria: 0,
+  fator_concessionaria: 0, // Mantido no default para compatibilidade com o schema DB
   observacoes: "",
   
   diaria_referencia_legal: 'Decreto Nº 12.324 de 19DEZ24',
@@ -118,7 +126,8 @@ const CustosOperacionaisPage = () => {
     const shouldOpenPassagens = location.state && (location.state as { openPassagens?: boolean }).openPassagens;
     
     initialState['diarias_detalhe'] = false; 
-    initialState['passagens_detalhe'] = shouldOpenPassagens || false; // Define o estado inicial
+    initialState['passagens_detalhe'] = shouldOpenPassagens || false; 
+    initialState['concessionaria_detalhe'] = false; // NEW: Concessionaria detail state
     return initialState;
   });
   
@@ -128,6 +137,13 @@ const CustosOperacionaisPage = () => {
   const [diretrizesPassagens, setDiretrizesPassagens] = useState<DiretrizPassagem[]>([]);
   const [isPassagemFormOpen, setIsPassagemFormOpen] = useState(false);
   const [diretrizToEdit, setDiretrizToEdit] = useState<DiretrizPassagem | null>(null);
+  
+  // --- ESTADOS DE DIRETRIZES DE CONCESSIONÁRIA ---
+  const [diretrizesConcessionaria, setDiretrizesConcessionaria] = useState<DiretrizConcessionaria[]>([]);
+  const [isConcessionariaFormOpen, setIsConcessionariaFormOpen] = useState(false);
+  const [diretrizConcessionariaToEdit, setDiretrizConcessionariaToEdit] = useState<DiretrizConcessionaria | null>(null);
+  const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<CategoriaConcessionaria>(CATEGORIAS_CONCESSIONARIA[0]);
+  // END CONCESSIONARIA STATES
   
   // Efeito para rolar para o topo na montagem
   useEffect(() => {
@@ -156,6 +172,7 @@ const CustosOperacionaisPage = () => {
     if (selectedYear) {
       loadDiretrizesForYear(selectedYear);
       loadDiretrizesPassagens(selectedYear); 
+      loadDiretrizesConcessionaria(selectedYear); // NEW LOAD
     }
   }, [selectedYear]);
 
@@ -164,21 +181,24 @@ const CustosOperacionaisPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Busca anos disponíveis nas duas tabelas
+      // Busca anos disponíveis nas três tabelas
       const [
           { data: opData, error: opError },
-          { data: passagensData, error: passagensError }
+          { data: passagensData, error: passagensError },
+          { data: concessionariaData, error: concessionariaError } // NEW FETCH
       ] = await Promise.all([
           supabase.from("diretrizes_operacionais").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_passagens").select("ano_referencia").eq("user_id", user.id),
+          supabase.from("diretrizes_concessionaria").select("ano_referencia").eq("user_id", user.id), // NEW FETCH
       ]);
 
-      if (opError || passagensError) throw opError || passagensError;
+      if (opError || passagensError || concessionariaError) throw opError || passagensError || concessionariaError;
 
       const opYears = opData ? opData.map(d => d.ano_referencia) : [];
       const passagensYears = passagensData ? passagensData.map(d => d.ano_referencia) : [];
-      
-      const yearsToInclude = new Set([...opYears, ...passagensYears]);
+      const concessionariaYears = concessionariaData ? concessionariaData.map(d => d.ano_referencia) : []; // NEW
+
+      const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears]); // UPDATED
       
       if (defaultYearId && !yearsToInclude.has(defaultYearId)) {
           yearsToInclude.add(defaultYearId);
@@ -301,6 +321,36 @@ const CustosOperacionaisPage = () => {
     } catch (error) {
         console.error("Erro ao carregar diretrizes de passagens:", error);
         toast.error("Erro ao carregar contratos de passagens.");
+    }
+  };
+  
+  const loadDiretrizesConcessionaria = async (year: number) => {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        const { data, error } = await supabase
+            .from('diretrizes_concessionaria')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('ano_referencia', year)
+            .order('categoria', { ascending: true })
+            .order('nome_concessionaria', { ascending: true });
+            
+        if (error) throw error;
+        
+        // Ensure numeric types are correct
+        const typedData: DiretrizConcessionaria[] = (data || []).map(d => ({
+            ...d,
+            consumo_pessoa_dia: Number(d.consumo_pessoa_dia),
+            custo_unitario: Number(d.custo_unitario),
+        }));
+        
+        setDiretrizesConcessionaria(typedData);
+        
+    } catch (error) {
+        console.error("Erro ao carregar diretrizes de concessionária:", error);
+        toast.error("Erro ao carregar diretrizes de concessionária.");
     }
   };
 
@@ -486,7 +536,29 @@ const CustosOperacionaisPage = () => {
           if (insertPassagensError) throw insertPassagensError;
       }
       
-      toast.success(`Diretrizes operacionais e de passagens do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
+      // 3. Copiar Diretrizes de Concessionária (NEW LOGIC)
+      const { data: sourceConcessionaria, error: concessionariaError } = await supabase
+        .from("diretrizes_concessionaria")
+        .select("categoria, nome_concessionaria, consumo_pessoa_dia, fonte_consumo, custo_unitario, fonte_custo, unidade_custo")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", sourceYear);
+        
+      if (concessionariaError) throw concessionariaError;
+      
+      if (sourceConcessionaria && sourceConcessionaria.length > 0) {
+          const newConcessionaria = sourceConcessionaria.map(c => ({
+              ...c,
+              ano_referencia: targetYear,
+              user_id: user.id,
+          }));
+          
+          const { error: insertConcessionariaError } = await supabase
+            .from("diretrizes_concessionaria")
+            .insert(newConcessionaria as TablesInsert<'diretrizes_concessionaria'>[]);
+          if (insertConcessionariaError) throw insertConcessionariaError;
+      }
+      
+      toast.success(`Diretrizes operacionais, de passagens e de concessionária do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
       setIsYearManagementDialogOpen(false);
       setSelectedYear(targetYear);
       
@@ -507,7 +579,7 @@ const CustosOperacionaisPage = () => {
       return;
     }
     
-    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes operacionais e de passagens para o ano ${year}? Esta ação é irreversível.`)) return;
+    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes operacionais, de passagens e de concessionária para o ano ${year}? Esta ação é irreversível.`)) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -528,8 +600,15 @@ const CustosOperacionaisPage = () => {
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
+        
+      // 3. Excluir Diretrizes de Concessionária (NEW LOGIC)
+      await supabase
+        .from("diretrizes_concessionaria")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year);
 
-      toast.success(`Diretrizes operacionais e de passagens do ano ${year} excluídas com sucesso!`);
+      toast.success(`Diretrizes operacionais, de passagens e de concessionária do ano ${year} excluídas com sucesso!`);
       setIsYearManagementDialogOpen(false);
       
       queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
@@ -811,6 +890,154 @@ const CustosOperacionaisPage = () => {
           </div>
       );
   };
+  
+  // --- LÓGICA DE CONCESSIONÁRIA (NEW) ---
+  
+  const handleSaveConcessionaria = async (data: DiretrizConcessionariaForm & { id?: string }) => {
+      try {
+          setLoading(true);
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error("Usuário não autenticado");
+          
+          const dbData: TablesInsert<'diretrizes_concessionaria'> = {
+              user_id: user.id,
+              ano_referencia: selectedYear,
+              categoria: data.categoria,
+              nome_concessionaria: data.nome_concessionaria,
+              consumo_pessoa_dia: data.consumo_pessoa_dia,
+              fonte_consumo: data.fonte_consumo || null,
+              custo_unitario: data.custo_unitario,
+              fonte_custo: data.fonte_custo || null,
+              unidade_custo: data.unidade_custo,
+          };
+          
+          if (data.id) {
+              const { error } = await supabase
+                  .from('diretrizes_concessionaria')
+                  .update(dbData as TablesUpdate<'diretrizes_concessionaria'>)
+                  .eq('id', data.id);
+              if (error) throw error;
+              toast.success("Diretriz de Concessionária atualizada!");
+          } else {
+              const { error } = await supabase
+                  .from('diretrizes_concessionaria')
+                  .insert([dbData]);
+              if (error) throw error;
+              toast.success("Nova Diretriz de Concessionária cadastrada!");
+          }
+          
+          await loadDiretrizesConcessionaria(selectedYear);
+          setDiretrizConcessionariaToEdit(null);
+          setIsConcessionariaFormOpen(false);
+          
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
+      }
+  };
+  
+  const handleStartEditConcessionaria = (diretriz: DiretrizConcessionaria) => {
+      setDiretrizConcessionariaToEdit(diretriz);
+      setIsConcessionariaFormOpen(true);
+  };
+  
+  const handleOpenNewConcessionaria = (category: CategoriaConcessionaria) => {
+      setDiretrizConcessionariaToEdit(null);
+      setSelectedConcessionariaTab(category);
+      setIsConcessionariaFormOpen(true);
+  };
+  
+  const handleDeleteConcessionaria = async (id: string, nome: string) => {
+      if (!confirm(`Tem certeza que deseja excluir a diretriz da concessionária ${nome}?`)) return;
+      
+      try {
+          setLoading(true);
+          await supabase.from('diretrizes_concessionaria').delete().eq('id', id);
+          toast.success("Diretriz de Concessionária excluída!");
+          await loadDiretrizesConcessionaria(selectedYear);
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
+      }
+  };
+  
+  const renderConcessionariaList = (category: CategoriaConcessionaria) => {
+      const filteredDiretrizes = diretrizesConcessionaria.filter(d => d.categoria === category);
+      
+      return (
+          <div className="space-y-4">
+              {filteredDiretrizes.length > 0 ? (
+                  <Card className="p-4">
+                      <CardTitle className="text-base font-semibold mb-3">Diretrizes Cadastradas</CardTitle>
+                      <Table>
+                          <TableHeader>
+                              <TableRow>
+                                  <TableHead>Concessionária</TableHead>
+                                  <TableHead className="text-center">Consumo/Pessoa/Dia</TableHead>
+                                  <TableHead className="text-right">Custo Unitário</TableHead>
+                                  <TableHead className="w-[100px] text-center">Ações</TableHead>
+                              </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                              {filteredDiretrizes.map(d => (
+                                  <ConcessionariaDiretrizRow
+                                      key={d.id}
+                                      diretriz={d}
+                                      onEdit={handleStartEditConcessionaria}
+                                      onDelete={handleDeleteConcessionaria}
+                                      loading={loading}
+                                  />
+                              ))}
+                          </TableBody>
+                      </Table>
+                  </Card>
+              ) : (
+                  <Card className="p-4 text-center text-muted-foreground">
+                      Nenhuma diretriz de {category} cadastrada para o ano de referência.
+                  </Card>
+              )}
+              
+              <div className="flex justify-end">
+                  <Button 
+                      type="button" 
+                      onClick={() => handleOpenNewConcessionaria(category)}
+                      disabled={loading}
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full"
+                  >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Adicionar Nova Diretriz de {category}
+                  </Button>
+              </div>
+          </div>
+      );
+  };
+  
+  const renderConcessionariaSection = () => {
+      return (
+          <Card>
+              <CardContent className="pt-4">
+                  <Tabs value={selectedConcessionariaTab} onValueChange={(value) => setSelectedConcessionariaTab(value as CategoriaConcessionaria)}>
+                      <TabsList className="grid w-full grid-cols-2">
+                          {CATEGORIAS_CONCESSIONARIA.map(cat => (
+                              <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                          ))}
+                      </TabsList>
+                      
+                      {CATEGORIAS_CONCESSIONARIA.map(cat => (
+                          <TabsContent key={cat} value={cat}>
+                              {renderConcessionariaList(cat)}
+                          </TabsContent>
+                      ))}
+                  </Tabs>
+              </CardContent>
+          </Card>
+      );
+  };
+  // END LÓGICA DE CONCESSIONÁRIA
 
   // Adicionando a verificação de carregamento
   if (loading || isLoadingDefaultYear) {
@@ -924,6 +1151,27 @@ const CustosOperacionaisPage = () => {
                     </CollapsibleContent>
                   </Collapsible>
                   
+                  {/* Diretrizes de Concessionária (NEW SECTION) */}
+                  <Collapsible 
+                    open={fieldCollapseState['concessionaria_detalhe']} 
+                    onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['concessionaria_detalhe']: open }))}
+                    className="border-b pb-4 last:border-b-0 last:pb-0"
+                  >
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center justify-between cursor-pointer py-2">
+                        <h4 className="text-base font-medium flex items-center gap-2">
+                          Concessionária (Água/Esgoto e Energia Elétrica)
+                        </h4>
+                        {fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mt-2">
+                        {renderConcessionariaSection()}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                  
                   {/* OUTROS CAMPOS OPERACIONAIS */}
                   {OPERATIONAL_FIELDS.map(field => {
                     const fieldKey = field.key as string;
@@ -1000,9 +1248,20 @@ const CustosOperacionaisPage = () => {
           open={isPassagemFormOpen}
           onOpenChange={setIsPassagemFormOpen}
           selectedYear={selectedYear}
-          diretrizToEdit={diretrizToEdit} // CORREÇÃO 7: diretrizToEdit é do tipo DiretrizPassagem
-          onSave={handleSavePassagem} // CORREÇÃO 8: onSave espera Partial<DiretrizPassagem>
+          diretrizToEdit={diretrizToEdit} 
+          onSave={handleSavePassagem} 
           loading={loading}
+      />
+      
+      {/* Diálogo de Formulário de Concessionária (NEW) */}
+      <ConcessionariaDiretrizFormDialog
+          open={isConcessionariaFormOpen}
+          onOpenChange={setIsConcessionariaFormOpen}
+          selectedYear={selectedYear}
+          diretrizToEdit={diretrizConcessionariaToEdit}
+          onSave={handleSaveConcessionaria}
+          loading={loading}
+          initialCategory={selectedConcessionariaTab}
       />
     </div>
   );
