@@ -1252,7 +1252,7 @@ const ConcessionariaForm = () => {
                             {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({itemsToDisplay.length} diretriz(es))
+                                        3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({itemsToDisplay.length} {itemsToDisplay.length === 1 ? 'diretriz' : 'diretrizes'})
                                     </h3>
                                     
                                     {/* Alerta de Validação Final (Modo Novo Registro) */}
