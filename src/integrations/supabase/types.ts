@@ -1588,7 +1588,7 @@ export type Database = {
           },
         ]
       }
-      diretrizes_concessionaria: {
+    diretrizes_concessionaria: {
         Row: {
           id: string
           user_id: string
