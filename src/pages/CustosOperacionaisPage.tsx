@@ -86,6 +86,13 @@ const defaultConcessionariaConfig: DiretrizConcessionariaForm[] = [
   },
 ];
 
+// Função para gerar a configuração padrão com valores zerados
+const zeroedConcessionariaConfig: DiretrizConcessionariaForm[] = defaultConcessionariaConfig.map(item => ({
+    ...item,
+    consumo_pessoa_dia: 0,
+    custo_unitario: 0,
+}));
+
 // Valores padrão para inicialização (incluindo os novos campos de diária)
 const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   ano_referencia: year,
@@ -136,11 +143,10 @@ const CustosOperacionaisPage = () => {
   const defaultYear = defaultYearData?.defaultYear || null;
   
   // Estado para armazenar os inputs brutos (apenas dígitos) para campos monetários que NÃO usam CurrencyInput (apenas fatores)
-  // REMOVIDO: rawInputs não é mais necessário para diárias/taxa de embarque/concessionária
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({}); // Hook 10
   
   // --- ESTADOS DE CONCESSIONÁRIA ---
-  const [concessionariaConfig, setConcessionariaConfig] = useState<DiretrizConcessionariaForm[]>(defaultConcessionariaConfig); // Hook 11
+  const [concessionariaConfig, setConcessionariaConfig] = useState<DiretrizConcessionariaForm[]>(zeroedConcessionariaConfig); // Hook 11
   const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<'AGUA_ESGOTO' | 'ENERGIA_ELETRICA'>('AGUA_ESGOTO'); // Hook 12
   
   // Estado para controlar a expansão individual de cada campo
@@ -296,15 +302,8 @@ const CustosOperacionaisPage = () => {
       const initialRawInputs: Record<string, string> = {};
       
       OPERATIONAL_FIELDS.filter(f => f.type === 'currency').forEach(f => {
-        // Estes campos agora usam CurrencyInput no renderDiretrizField, mas mantemos a lógica de rawDigits para compatibilidade
-        // com o renderDiretrizField original, que não foi refatorado para usar o novo CurrencyInput.
-        // No entanto, para Diárias e Taxa de Embarque, não precisamos mais de rawInputs.
-        // Vamos manter rawInputs apenas para os campos que ainda usam o Input manual com prefixo R$ (se houver).
-        // Como o renderDiretrizField usa Input manual para currency, precisamos manter o rawInputs para ele.
         initialRawInputs[f.key as string] = numberToRawDigits(numericData[f.key as keyof DiretrizOperacional] as number);
       });
-      
-      // Diárias e Taxa de Embarque agora usam CurrencyInput, não precisam de rawInputs aqui.
       
       setRawInputs(initialRawInputs);
       
@@ -329,7 +328,8 @@ const CustosOperacionaisPage = () => {
           unidade_custo: d.unidade_custo as 'm3' | 'kWh', // CORREÇÃO TS
         })));
       } else {
-        setConcessionariaConfig(defaultConcessionariaConfig);
+        // Se não houver dados salvos, usa a configuração zerada para exibir placeholders
+        setConcessionariaConfig(zeroedConcessionariaConfig);
       }
       
     } catch (error: any) {
@@ -909,6 +909,7 @@ const CustosOperacionaisPage = () => {
                     type="number"
                     step="0.0001"
                     className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    // Se o valor for 0, exibe string vazia para mostrar o placeholder
                     value={item.consumo_pessoa_dia === 0 ? "" : item.consumo_pessoa_dia}
                     onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'consumo_pessoa_dia', parseFloat(e.target.value) || 0)}
                     placeholder={`Ex.: ${defaultConsumo}`}
