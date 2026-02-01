@@ -1,15 +1,11 @@
-{
-  "name": "desktop",
-  "version": "1.0.0",
-  "main": "main.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "electron ."
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "electron": "^10.1.3"
-  }
+const {app, BrowserWindow} = require('electron')
+
+function carregar_janela () {
+  const janela = new BrowserWindow({
+    width: 800,
+    height: 600,
+  })
+  janela.loadFile(index.html)
 }
+
+app.whenReady().then(carregar_janela)
