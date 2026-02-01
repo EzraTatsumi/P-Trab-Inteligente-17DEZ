@@ -68,20 +68,20 @@ const CATEGORIAS_CONCESSIONARIA = [
 const defaultConcessionariaConfig: DiretrizConcessionariaForm[] = [
   { 
     categoria: 'AGUA_ESGOTO', 
-    nome_concessionaria: 'OM Padrão', 
+    nome_concessionaria: 'Águas do Pará', 
     consumo_pessoa_dia: 0.15, 
-    fonte_consumo: 'Diretriz COLOG', 
+    fonte_consumo: 'Sistema Nacional de Informação sobre Saneamento - SNIS/2023', 
     custo_unitario: 5.00, 
-    fonte_custo: 'Fatura Média', 
+    fonte_custo: 'Tarifas da COSANPA a partir de Nov/23', 
     unidade_custo: 'm3' 
   },
   { 
     categoria: 'ENERGIA_ELETRICA', 
-    nome_concessionaria: 'OM Padrão', 
+    nome_concessionaria: 'Equatorial', 
     consumo_pessoa_dia: 1.5, 
-    fonte_consumo: 'Diretriz COLOG', 
+    fonte_consumo: 'Anuário Estatístico de Energia Elétrica 2024 do EPE', 
     custo_unitario: 0.80, 
-    fonte_custo: 'Fatura Média', 
+    fonte_custo: 'Tabela de Tarifa Equatorial Ago/2024', 
     unidade_custo: 'kWh' 
   },
 ];
@@ -864,7 +864,13 @@ const CustosOperacionaisPage = () => {
     const { unidade } = CATEGORIAS_CONCESSIONARIA.find(c => c.key === selectedTab)!;
     const custoLabel = `Custo Unitário (R$/${unidade})`;
     
-    // Lógica de Masking para Custo Unitário
+    // Placeholders dinâmicos
+    const isAgua = selectedTab === 'AGUA_ESGOTO';
+    const defaultNome = isAgua ? 'Águas do Pará' : 'Equatorial';
+    const defaultConsumo = isAgua ? 0.15 : 1.5;
+    const defaultCusto = isAgua ? 5.00 : 0.80;
+    const defaultFonteConsumo = isAgua ? 'Sistema Nacional de Informação sobre Saneamento - SNIS/2023' : 'Anuário Estatístico de Energia Elétrica 2024 do EPE';
+    const defaultFonteCusto = isAgua ? 'Tarifas da COSANPA a partir de Nov/23' : 'Tabela de Tarifa Equatorial Ago/2024';
     
     const getCustoUnitarioProps = (item: DiretrizConcessionariaForm, indexInMainArray: number) => {
         const fieldName = 'custo_unitario';
@@ -912,57 +918,66 @@ const CustosOperacionaisPage = () => {
           const custoUnitarioProps = getCustoUnitarioProps(item, indexInMainArray);
 
           return (
-            <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-4 last:border-b-0">
+            <div key={index} className="space-y-4 border-b pb-4 last:border-b-0">
+              {/* Linha 1: Concessionária (1 coluna) */}
               <div className="space-y-2">
                 <Label className="text-xs">Concessionária</Label>
                 <Input
                   value={item.nome_concessionaria}
                   onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'nome_concessionaria', e.target.value)}
-                  placeholder="Ex: CEDAE / LIGHT"
+                  placeholder={defaultNome}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs">Consumo/pessoa/dia ({unidade})</Label>
-                <Input
-                  type="number"
-                  step="0.0001"
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  value={item.consumo_pessoa_dia === 0 ? "" : item.consumo_pessoa_dia}
-                  onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'consumo_pessoa_dia', parseFloat(e.target.value) || 0)}
-                  onKeyDown={handleEnterToNextField}
-                />
+              
+              {/* Linha 2: Consumo e Custo Unitário (2 colunas) */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs">Consumo/pessoa/dia ({unidade})</Label>
+                  <Input
+                    type="number"
+                    step="0.0001"
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    value={item.consumo_pessoa_dia === 0 ? "" : item.consumo_pessoa_dia}
+                    onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'consumo_pessoa_dia', parseFloat(e.target.value) || 0)}
+                    placeholder={defaultConsumo.toString()}
+                    onKeyDown={handleEnterToNextField}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">{custoLabel}</Label>
+                  <Input
+                    {...custoUnitarioProps}
+                    placeholder={formatCurrency(defaultCusto)}
+                    onKeyDown={handleEnterToNextField}
+                  />
+                </div>
               </div>
+              
+              {/* Linha 3: Fonte de Consumo (1 coluna) */}
               <div className="space-y-2">
                 <Label className="text-xs">Fonte de Consumo</Label>
                 <Input
                   value={item.fonte_consumo}
                   onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_consumo', e.target.value)}
-                  placeholder="Ex: Diretriz COLOG"
+                  placeholder={defaultFonteConsumo}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
+              
+              {/* Linha 4: Fonte do Custo (1 coluna) */}
               <div className="space-y-2">
-                <Label className="text-xs">{custoLabel}</Label>
-                <Input
-                  {...custoUnitarioProps}
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-              <div className="space-y-2 col-span-full">
                 <Label className="text-xs">Fonte do Custo</Label>
                 <Input
                   value={item.fonte_custo}
                   onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_custo', e.target.value)}
-                  placeholder="Ex: Fatura Média"
+                  placeholder={defaultFonteCusto}
                   onKeyDown={handleEnterToNextField}
                 />
               </div>
             </div>
           );
         })}
-
-        {/* Botão de adição removido, pois o cadastro é fixo */}
       </div>
     );
   };
@@ -1220,8 +1235,8 @@ const CustosOperacionaisPage = () => {
                       </div>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="pt-4">
-                      <Card> {/* Reintroduzindo o Card para o estilo de fundo branco */}
-                        <CardContent className="pt-4"> {/* Reintroduzindo o CardContent com padding */}
+                      <Card>
+                        <CardContent className="pt-4">
                           <Tabs value={selectedConcessionariaTab} onValueChange={(value) => setSelectedConcessionariaTab(value as 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA')}>
                             <TabsList className="grid w-full grid-cols-2">
                               {CATEGORIAS_CONCESSIONARIA.map(cat => (
