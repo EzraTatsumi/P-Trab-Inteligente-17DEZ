@@ -28,7 +28,6 @@ import { useSession } from "@/components/SessionContextProvider";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import { useDefaultLogisticaYear } from "@/hooks/useDefaultLogisticaYear"; // NOVO HOOK
 import { useQueryClient } from "@tanstack/react-query"; // Adicionar useQueryClient
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"; // ADICIONADO
 
 // --- Tipos Auxiliares para Carregamento ---
 // Definindo um tipo que engloba todas as categorias de diretrizes_classe_ii
@@ -38,13 +37,6 @@ type AllDiretrizClasseIIICategories = DiretrizClasseIIForm['categoria'] | Diretr
 type LoadedClasseItem = Tables<'diretrizes_classe_ii'>;
 // Tipo para os dados carregados da tabela diretrizes_classe_ix
 type LoadedClasseIXItem = Tables<'diretrizes_classe_ix'>;
-
-// Tipo auxiliar para desestruturação segura da Classe IX (incluindo campos de sistema)
-type ClasseIXItemWithSystemFields = LoadedClasseIXItem & {
-    id: string;
-    created_at: string;
-    updated_at: string;
-};
 
 // ... (restante das constantes e defaults)
 
@@ -758,16 +750,16 @@ const DiretrizesCusteioPage = () => {
       // 4. Copiar Diretrizes de Classe IX
       const { data: sourceClasseIX, error: classeIXError } = await supabase
         .from("diretrizes_classe_ix")
-        .select("id, created_at, updated_at, categoria, item, valor_mnt_dia, valor_acionamento_mensal")
+        .select("*")
         .eq("user_id", user.id)
         .eq("ano_referencia", sourceYear);
         
       if (classeIXError) console.error("Erro ao buscar Classe IX para cópia:", classeIXError);
       
       if (sourceClasseIX && sourceClasseIX.length > 0) {
-        const newClasseIX = (sourceClasseIX as ClasseIXItemWithSystemFields[]).map(c9 => {
+        const newClasseIX = sourceClasseIX.map(c9 => {
           // CORREÇÃO: Desestruturação segura para remover campos de sistema
-          const { id: oldC9Id, created_at: oldC9Created, updated_at: oldC9Updated, ...restC9 } = c9 as Tables<'diretrizes_classe_ix'>;
+          const { id: oldC9Id, created_at: oldC9Created, updated_at: oldC9Updated, ...restC9 } = c9;
           return { ...restC9, ano_referencia: targetYear, user_id: user.id };
         });
         const { error: insertC9Error } = await supabase
@@ -796,7 +788,7 @@ const DiretrizesCusteioPage = () => {
       return;
     }
     
-    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes de custeio e classes de material para o ano ${year}? Esta ação é irreversível.`)) return;
+    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes para o ano ${year}? Esta ação é irreversível.`)) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -804,38 +796,38 @@ const DiretrizesCusteioPage = () => {
       
       setLoading(true);
       
-      // 1. Excluir Diretrizes de Custeio (Valores e Fatores)
-      await supabase
-        .from("diretrizes_custeio")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("ano_referencia", year);
-        
-      // 2. Excluir Diretrizes de Equipamentos (Classe III)
+      // 1. Excluir Diretrizes de Equipamentos (Classe III)
       await supabase
         .from("diretrizes_equipamentos_classe_iii")
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
         
-      // 3. Excluir Diretrizes de Classe II, V, VI, VII e VIII
+      // 2. Excluir Diretrizes de Classe II, V, VI, VII e VIII
       await supabase
         .from("diretrizes_classe_ii")
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
         
-      // 4. Excluir Diretrizes de Classe IX
+      // 3. Excluir Diretrizes de Classe IX
       await supabase
         .from("diretrizes_classe_ix")
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
+        
+      // 4. Excluir Diretriz de Custeio (Valores e Fatores)
+      const { error: custeioError } = await supabase
+        .from("diretrizes_custeio")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year);
+        
+      if (custeioError) throw custeioError;
 
       toast.success(`Diretrizes do ano ${year} excluídas com sucesso!`);
       setIsYearManagementDialogOpen(false);
-      
-      queryClient.invalidateQueries({ queryKey: ["defaultLogisticaYear", user.id] });
       await loadAvailableYears(defaultYear);
       
     } catch (error: any) {
@@ -846,7 +838,384 @@ const DiretrizesCusteioPage = () => {
     }
   };
 
-  // ... (restante da página)
+
+  // Função genérica para adicionar item (Classe III)
+  const handleAddItem = (config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, unidade: 'L/h' | 'km/L') => {
+    setConfig([
+      ...config,
+      { nome_equipamento: "", tipo_combustivel: "OD", consumo: 0, unidade: unidade }
+    ]);
+  };
+
+  // Função genérica para remover item (Classe III)
+  const handleRemoveItem = (config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, index: number) => {
+    setConfig(config.filter((_, i) => i !== index));
+  };
+
+  // Função genérica para atualizar item (Classe III)
+  const handleUpdateItem = (config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>, index: number, field: keyof DiretrizEquipamentoForm, value: any) => {
+    const novosItens = [...config];
+    novosItens[index] = { ...novosItens[index], [field]: value };
+    setConfig(novosItens);
+  };
+  
+  // --- Funções de Gerenciamento da Classe II/V/VI/VII/VIII ---
+  
+  // Função genérica para adicionar item (Classes II, V, VI, VII, VIII)
+  const handleAddClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, categoria: DiretrizClasseIIForm['categoria']) => {
+    setConfig(prev => [
+      ...prev,
+      { categoria: categoria, item: "", valor_mnt_dia: 0 } as DiretrizClasseIIForm
+    ]);
+  };
+
+  // Função genérica para remover item (Classes II, V, VI, VII, VIII)
+  const handleRemoveClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, index: number) => {
+    setConfig(config.filter((_, i) => i !== index));
+  };
+
+  // Função genérica para atualizar item (Classes II, V, VI, VII, VIII)
+  const handleUpdateClasseItem = (config: DiretrizClasseIIForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>, index: number, field: keyof DiretrizClasseIIForm, value: any) => {
+    const novosItens = [...config];
+    novosItens[index] = { ...novosItens[index], [field]: value };
+    setConfig(novosItens);
+  };
+  
+  // Handler para Classe I inputs
+  const handleClasseIChange = (field: 'classe_i_valor_qs' | 'classe_i_valor_qr', rawValue: string) => {
+    const { numericValue, digits } = formatCurrencyInput(rawValue);
+    
+    if (field === 'classe_i_valor_qs') {
+        setRawQSInput(digits);
+        setDiretrizes(prev => ({ ...prev, classe_i_valor_qs: numericValue }));
+    } else {
+        setRawQRInput(digits);
+        setDiretrizes(prev => ({ ...prev, classe_i_valor_qr: numericValue }));
+    }
+  };
+  
+  // Função para renderizar a lista de itens da Classe II/V/VI/VII/VIII por categoria
+  const renderClasseList = (
+    config: DiretrizClasseIIForm[], 
+    setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIIForm[]>>,
+    categorias: string[],
+    selectedTab: string
+  ) => {
+    const filteredItems = config.filter(item => item.categoria === selectedTab);
+    
+    // --- MASKING LOGIC HELPERS ---
+    const fieldName = 'valor_mnt_dia';
+    
+    const getMaskingProps = (item: DiretrizClasseIIForm, indexInMainArray: number) => {
+        const isFocused = focusedInput?.index === indexInMainArray && focusedInput.field === fieldName;
+        
+        let displayValue = isFocused 
+            ? formatCurrencyInput(focusedInput.rawDigits).formatted
+            : formatCurrencyInput(numberToRawDigits(item.valor_mnt_dia)).formatted;
+            
+        if (item.valor_mnt_dia === 0 && !isFocused) {
+            displayValue = "";
+        }
+
+        const handleFocus = () => {
+            setFocusedInput({ 
+                index: indexInMainArray, 
+                field: fieldName, 
+                rawDigits: numberToRawDigits(item.valor_mnt_dia) 
+            });
+        };
+
+        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const { numericValue, digits } = formatCurrencyInput(e.target.value);
+            setFocusedInput(prev => prev ? { ...prev, rawDigits: digits } : null);
+            handleUpdateClasseItem(config, setConfig, indexInMainArray, fieldName, numericValue);
+        };
+        
+        const handleBlur = () => {
+            setFocusedInput(null);
+        };
+        
+        return {
+            value: displayValue,
+            onChange: handleChange,
+            onFocus: handleFocus,
+            onBlur: handleBlur,
+            type: "text" as const,
+            inputMode: "numeric" as const,
+        };
+    };
+    // --- END MASKING LOGIC HELPERS ---
+    
+    return (
+      <div className="space-y-4 pt-4">
+        {filteredItems.map((item, index) => {
+          // Encontrar o índice original no array completo para permitir a atualização/remoção
+          const indexInMainArray = config.findIndex(c => c === item);
+          
+          const handleRemoveFilteredItem = () => {
+            if (indexInMainArray !== -1) {
+              handleRemoveClasseItem(config, setConfig, indexInMainArray);
+            }
+          };
+          
+          const mntDiaProps = getMaskingProps(item, indexInMainArray);
+
+          return (
+            <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
+              <div className="col-span-8">
+                <Label className="text-xs">Item</Label>
+                <Input
+                  value={item.item}
+                  onChange={(e) => handleUpdateClasseItem(config, setConfig, indexInMainArray, 'item', e.target.value)}
+                  placeholder="Ex: Colete balístico"
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="col-span-3">
+                <Label className="text-xs">Valor (R$)</Label>
+                <Input
+                  {...mntDiaProps}
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="col-span-1 flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleRemoveFilteredItem}
+                  type="button"
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => handleAddClasseItem(config, setConfig, selectedTab as DiretrizClasseIIForm['categoria'])} 
+          className="w-full"
+          type="button"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Adicionar Item
+        </Button>
+      </div>
+    );
+  };
+  
+  // --- Funções de Gerenciamento da Classe IX ---
+  const handleAddClasseIXItem = (config: DiretrizClasseIXForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIXForm[]>>, categoria: DiretrizClasseIXForm['categoria']) => {
+    setConfig(prev => [
+      ...prev,
+      { categoria: categoria, item: "", valor_mnt_dia: 0, valor_acionamento_mensal: 0 } as DiretrizClasseIXForm
+    ]);
+  };
+
+  const handleRemoveClasseIXItem = (config: DiretrizClasseIXForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIXForm[]>>, index: number) => {
+    setConfig(config.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateClasseIXItem = (config: DiretrizClasseIXForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIXForm[]>>, index: number, field: keyof DiretrizClasseIXForm, value: any) => {
+    const novosItens = [...config];
+    novosItens[index] = { ...novosItens[index], [field]: value };
+    setConfig(novosItens);
+  };
+  
+  // Função para renderizar a lista de itens da Classe IX por categoria
+  const renderClasseIXList = (
+    config: DiretrizClasseIXForm[], 
+    setConfig: React.Dispatch<React.SetStateAction<DiretrizClasseIXForm[]>>,
+    categorias: string[],
+    selectedTab: string
+  ) => {
+    const filteredItems = config.filter(item => item.categoria === selectedTab);
+    
+    // --- MASKING LOGIC HELPERS ---
+    const getMaskingProps = (item: DiretrizClasseIXForm, indexInMainArray: number, fieldName: keyof DiretrizClasseIXForm) => {
+        const isFocused = focusedInput?.index === indexInMainArray && focusedInput.field === fieldName;
+        
+        let displayValue = isFocused 
+            ? formatCurrencyInput(focusedInput.rawDigits).formatted
+            : formatCurrencyInput(numberToRawDigits(item[fieldName] as number)).formatted;
+            
+        if ((item[fieldName] as number) === 0 && !isFocused) {
+            displayValue = "";
+        }
+
+        const handleFocus = () => {
+            setFocusedInput({ 
+                index: indexInMainArray, 
+                field: fieldName, 
+                rawDigits: numberToRawDigits(item[fieldName] as number) 
+            });
+        };
+
+        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const { numericValue, digits } = formatCurrencyInput(e.target.value);
+            setFocusedInput(prev => prev ? { ...prev, rawDigits: digits } : null);
+            handleUpdateClasseIXItem(config, setConfig, indexInMainArray, fieldName, numericValue);
+        };
+        
+        const handleBlur = () => {
+            setFocusedInput(null);
+        };
+        
+        return {
+            value: displayValue,
+            onChange: handleChange,
+            onFocus: handleFocus,
+            onBlur: handleBlur,
+            type: "text" as const,
+            inputMode: "numeric" as const,
+        };
+    };
+    // --- END MASKING LOGIC HELPERS ---
+    
+    return (
+      <div className="space-y-4 pt-4">
+        {filteredItems.map((item, index) => {
+          // Encontrar o índice original no array completo para permitir a atualização/remoção
+          const indexInMainArray = config.findIndex(c => c === item);
+          
+          const handleRemoveFilteredItem = () => {
+            if (indexInMainArray !== -1) {
+              handleRemoveClasseIXItem(config, setConfig, indexInMainArray);
+            }
+          };
+          
+          const mntDiaProps = getMaskingProps(item, indexInMainArray, 'valor_mnt_dia');
+          const acionamentoMensalProps = getMaskingProps(item, indexInMainArray, 'valor_acionamento_mensal');
+
+          return (
+            <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
+              <div className="col-span-6">
+                <Label className="text-xs">Tipo Vtr</Label>
+                <Input
+                  value={item.item}
+                  onChange={(e) => handleUpdateClasseIXItem(config, setConfig, indexInMainArray, 'item', e.target.value)}
+                  placeholder="Ex: VTP Sedan Médio"
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="col-span-3">
+                <Label className="text-xs">Mnt/Dia Op Mil (R$)</Label>
+                <Input
+                  {...mntDiaProps}
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="col-span-2">
+                <Label className="text-xs">Acionamento Mensal (R$)</Label>
+                <Input
+                  {...acionamentoMensalProps}
+                  onKeyDown={handleEnterToNextField}
+                />
+              </div>
+              <div className="col-span-1 flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleRemoveFilteredItem}
+                  type="button"
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => handleAddClasseIXItem(config, setConfig, selectedTab as DiretrizClasseIXForm['categoria'])} 
+          className="w-full"
+          type="button"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Adicionar Viatura
+        </Button>
+      </div>
+    );
+  };
+  
+  // Função para renderizar a lista de itens da Classe III por categoria
+  const renderClasseIIIList = (categoria: string, config: DiretrizEquipamentoForm[], setConfig: React.Dispatch<React.SetStateAction<DiretrizEquipamentoForm[]>>) => {
+    const unidade = categoria === 'MOTOMECANIZACAO' ? 'km/L' : 'L/h';
+    
+    return (
+      <div className="space-y-4 pt-4">
+        {config.map((item, index) => (
+          <div key={index} className="grid grid-cols-12 gap-2 items-end border-b pb-3 last:border-0">
+            <div className="col-span-5">
+              <Label className="text-xs">Nome do Equipamento</Label>
+              <Input
+                value={item.nome_equipamento}
+                onChange={(e) => handleUpdateItem(config, setConfig, index, 'nome_equipamento', e.target.value)}
+                placeholder="Ex: Retroescavadeira"
+                onKeyDown={handleEnterToNextField}
+              />
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs">Combustível</Label>
+              <Select
+                value={item.tipo_combustivel}
+                onValueChange={(val: 'GAS' | 'OD') => handleUpdateItem(config, setConfig, index, 'tipo_combustivel', val)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GAS">Gasolina</SelectItem>
+                  <SelectItem value="OD">Diesel</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs">Consumo</Label>
+              <Input
+                type="number"
+                step="0.01"
+                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                value={item.consumo === 0 ? "" : item.consumo}
+                onChange={(e) => handleUpdateItem(config, setConfig, index, 'consumo', parseFloat(e.target.value) || 0)}
+                onKeyDown={handleEnterToNextField}
+              />
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs">Unidade</Label>
+              <Input value={unidade} disabled className="bg-muted text-muted-foreground" onKeyDown={handleEnterToNextField} />
+            </div>
+            <div className="col-span-1 flex justify-end">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleRemoveItem(config, setConfig, index)}
+                type="button"
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          </div>
+        ))}
+        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => handleAddItem(config, setConfig, unidade as 'L/h' | 'km/L')} 
+          className="w-full"
+          type="button"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Adicionar Equipamento
+        </Button>
+      </div>
+    );
+  };
+
 
   if (loading || isLoadingDefaultYear) {
     return (
@@ -859,7 +1228,7 @@ const DiretrizesCusteioPage = () => {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -877,10 +1246,8 @@ const DiretrizesCusteioPage = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Diretrizes de Custeio Logístico</CardTitle>
-            <CardDescription>
-              Defina os valores de referência para o cálculo de despesas logísticas (GND 3 e 4).
-            </CardDescription>
+            <CardTitle>Configurações da Diretriz de Custeio Logístico</CardTitle>
+            <CardDescription>Diretrizes de Custeio (COLOG)</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <form onSubmit={(e) => { e.preventDefault(); handleSaveDiretrizes(); }}>
@@ -891,6 +1258,7 @@ const DiretrizesCusteioPage = () => {
                   onValueChange={(value) => setSelectedYear(parseInt(value))}
                 >
                   <SelectTrigger>
+                    {/* Revertendo para o padrão shadcn/ui, pois o estado de carregamento agora é gerenciado */}
                     <SelectValue placeholder="Selecione o ano" />
                   </SelectTrigger>
                   <SelectContent>
@@ -911,295 +1279,304 @@ const DiretrizesCusteioPage = () => {
                     <span className="text-xs text-gray-500 ml-2">(Selecione este ano para editar o padrão)</span>
                   )}
                 </p>
+                
+                {/* NOVO AVISO DE FALLBACK */}
+                {availableYears.length === 1 && availableYears[0] === currentYear && !diretrizes.id && (
+                    <div className="mt-3 p-3 border border-yellow-500 bg-yellow-50 text-sm rounded-md">
+                        <p className="font-semibold text-yellow-700">Aviso:</p>
+                        <p className="text-yellow-700">Nenhum ano de referência cadastrado. Usando dados padrão iniciais para o ano {currentYear}. Salve para persistir.</p>
+                    </div>
+                )}
               </div>
 
-              {/* CLASSE I - ALIMENTAÇÃO */}
-              <Collapsible 
-                open={showClasseIAlimentacaoConfig} 
-                onOpenChange={setShowClasseIAlimentacaoConfig}
-                className="border-t pt-4 mt-6"
-              >
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer py-2 border-b">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <Package className="h-5 w-5 text-green-600" />
-                      Classe I - Subsistência (Alimentação)
-                    </h3>
-                    {showClasseIAlimentacaoConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 pt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="classe_i_valor_qs">Valor da Quota de Subsistência (QS) - R$</Label>
-                      <Input
-                        id="classe_i_valor_qs"
-                        value={rawQSInput}
-                        onChange={(e) => {
-                          const { numericValue, digits } = formatCurrencyInput(e.target.value);
-                          setRawQSInput(digits);
-                          setDiretrizes({ ...diretrizes, classe_i_valor_qs: numericValue });
-                        }}
-                        onKeyDown={handleEnterToNextField}
-                        placeholder="Ex: 9,00"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="classe_i_valor_qr">Valor da Quota de Ração (QR) - R$</Label>
-                      <Input
-                        id="classe_i_valor_qr"
-                        value={rawQRInput}
-                        onChange={(e) => {
-                          const { numericValue, digits } = formatCurrencyInput(e.target.value);
-                          setRawQRInput(digits);
-                          setDiretrizes({ ...diretrizes, classe_i_valor_qr: numericValue });
-                        }}
-                        onKeyDown={handleEnterToNextField}
-                        placeholder="Ex: 6,00"
-                      />
+              {/* SEÇÃO CLASSE I - ALIMENTAÇÃO */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseIAlimentacaoConfig(!showClasseIAlimentacaoConfig)}
+                >
+                  <h3 className="text-lg font-semibold">Classe I - Alimentação</h3>
+                  {showClasseIAlimentacaoConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseIAlimentacaoConfig && (
+                  <div className="space-y-4 mt-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium whitespace-nowrap mr-4">Valor QS (R$/dia/militar)</Label>
+                        <div className="relative w-full max-w-[150px]">
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            value={formatCurrencyInput(rawQSInput).formatted}
+                            onChange={(e) => handleClasseIChange('classe_i_valor_qs', e.target.value)}
+                            onKeyDown={handleEnterToNextField}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium whitespace-nowrap mr-4">Valor QR (R$/dia/militar)</Label>
+                        <div className="relative w-full max-w-[150px]">
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            value={formatCurrencyInput(rawQRInput).formatted}
+                            onChange={(e) => handleClasseIChange('classe_i_valor_qr', e.target.value)}
+                            onKeyDown={handleEnterToNextField}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
+                )}
+              </div>
+              
+              {/* SEÇÃO CLASSE II - MATERIAL DE INTENDÊNCIA */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseIIConfig(!showClasseIIConfig)}
+                >
+                  <h3 className="text-lg font-semibold">
+                    Classe II - Material de Intendência
+                  </h3>
+                  {showClasseIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseIIConfig && (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <Tabs value={selectedClasseIITab} onValueChange={setSelectedClasseIITab}>
+                        <TabsList className="grid w-full grid-cols-3">
+                          {CATEGORIAS_CLASSE_II.map(cat => (
+                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                          ))}
+                        </TabsList>
+                        
+                        {CATEGORIAS_CLASSE_II.map(cat => (
+                          <TabsContent key={cat} value={cat}>
+                            {renderClasseList(classeIIConfig, setClasseIIConfig, CATEGORIAS_CLASSE_II, cat)}
+                          </TabsContent>
+                        ))}
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              
+              {/* SEÇÃO CLASSE III - COMBUSTÍVEIS E LUBRIFICANTES */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseIIIConfig(!showClasseIIIConfig)}
+                >
+                  <h3 className="text-lg font-semibold">
+                    Classe III - Combustíveis e Lubrificantes
+                  </h3>
+                  {showClasseIIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseIIIConfig && (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <Tabs value={selectedClasseIIITab} onValueChange={setSelectedClasseIIITab}>
+                        <TabsList className="grid w-full grid-cols-4">
+                          {CATEGORIAS_CLASSE_III.map(cat => (
+                            <TabsTrigger key={cat.key} value={cat.key}>{cat.label}</TabsTrigger>
+                          ))}
+                        </TabsList>
+                        
+                        <TabsContent value="GERADOR">
+                          {renderClasseIIIList("GERADOR", geradorConfig, setGeradorConfig)}
+                        </TabsContent>
+                        <TabsContent value="EMBARCACAO">
+                          {renderClasseIIIList("EMBARCACAO", embarcacaoConfig, setEmbarcacaoConfig)}
+                        </TabsContent>
+                        <TabsContent value="MOTOMECANIZACAO">
+                          {renderClasseIIIList("MOTOMECANIZACAO", motomecanizacaoConfig, setMotomecanizacaoConfig)}
+                        </TabsContent>
+                        <TabsContent value="EQUIPAMENTO_ENGENHARIA">
+                          {renderClasseIIIList("EQUIPAMENTO_ENGENHARIA", equipamentosEngenhariaConfig, setEquipamentosEngenhariaConfig)}
+                        </TabsContent>
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              
+              {/* SEÇÃO CLASSE V - ARMAMENTO */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseVConfig(!showClasseVConfig)}
+                >
+                  <h3 className="text-lg font-semibold">
+                    Classe V - Armamento
+                  </h3>
+                  {showClasseVConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseVConfig && (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <Tabs value={selectedClasseVTab} onValueChange={setSelectedClasseVTab}>
+                        <TabsList className="grid w-full grid-cols-4">
+                          {CATEGORIAS_CLASSE_V.map(cat => (
+                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                          ))}
+                        </TabsList>
+                        
+                        {CATEGORIAS_CLASSE_V.map(cat => (
+                          <TabsContent key={cat} value={cat}>
+                            {renderClasseList(classeVConfig, setClasseVConfig, CATEGORIAS_CLASSE_V, cat)}
+                          </TabsContent>
+                        ))}
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              
+              {/* SEÇÃO CLASSE VI - MATERIAL DE ENGENHARIA */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseVIConfig(!showClasseVIConfig)}
+                >
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    Classe VI - Material de Engenharia
+                  </h3>
+                  {showClasseVIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseVIConfig && (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <Tabs value={selectedClasseVITab} onValueChange={setSelectedClasseVITab}>
+                        <TabsList className="grid w-full grid-cols-3">
+                          {CATEGORIAS_CLASSE_VI.map(cat => (
+                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                          ))}
+                        </TabsList>
+                        
+                        {CATEGORIAS_CLASSE_VI.map(cat => (
+                          <TabsContent key={cat} value={cat}>
+                            {renderClasseList(classeVIConfig, setClasseVIConfig, CATEGORIAS_CLASSE_VI, cat)}
+                          </TabsContent>
+                        ))}
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              
+              {/* SEÇÃO CLASSE VII - COMUNICAÇÕES E INFORMÁTICA */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseVIIConfig(!showClasseVIIConfig)}
+                >
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    Classe VII - Comunicações e Informática
+                  </h3>
+                  {showClasseVIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseVIIConfig && (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <Tabs value={selectedClasseVIITab} onValueChange={setSelectedClasseVIITab}>
+                        <TabsList className="grid w-full grid-cols-2">
+                          {CATEGORIAS_CLASSE_VII.map(cat => (
+                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                          ))}
+                        </TabsList>
+                        
+                        {CATEGORIAS_CLASSE_VII.map(cat => (
+                          <TabsContent key={cat} value={cat}>
+                            {renderClasseList(classeVIIConfig, setClasseVIIConfig, CATEGORIAS_CLASSE_VII, cat)}
+                          </TabsContent>
+                        ))}
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              
+              {/* SEÇÃO CLASSE VIII - SAÚDE E REMONTA/VETERINÁRIA */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseVIIIConfig(!showClasseVIIIConfig)}
+                >
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    Classe VIII - Saúde e Remonta/Veterinária
+                  </h3>
+                  {showClasseVIIIConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseVIIIConfig && (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <Tabs value={selectedClasseVIIITab} onValueChange={setSelectedClasseVIIITab}>
+                        <TabsList className="grid w-full grid-cols-2">
+                          {CATEGORIAS_CLASSE_VIII.map(cat => (
+                            <TabsTrigger key={cat} value={cat}>
+                              {cat}
+                            </TabsTrigger>
+                          ))}
+                        </TabsList>
+                        
+                        <TabsContent value="Saúde">
+                          {renderClasseList(classeVIIISaudeConfig, setClasseVIIISaudeConfig, CATEGORIAS_CLASSE_VIII, 'Saúde')}
+                        </TabsContent>
+                        <TabsContent value="Remonta/Veterinária">
+                          {renderClasseList(classeVIIIRemontaConfig, setClasseVIIIRemontaConfig, CATEGORIAS_CLASSE_VIII, 'Remonta/Veterinária')}
+                        </TabsContent>
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              
+              {/* NOVO: SEÇÃO CLASSE IX - MOTOMECANIZAÇÃO */}
+              <div className="border-t pt-4 mt-6">
+                <div 
+                  className="flex items-center justify-between cursor-pointer py-2" 
+                  onClick={() => setShowClasseIXConfig(!showClasseIXConfig)}
+                >
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    Classe IX - Motomecanização
+                  </h3>
+                  {showClasseIXConfig ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </div>
+                
+                {showClasseIXConfig && (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <Tabs value={selectedClasseIXTab} onValueChange={setSelectedClasseIXTab}>
+                        <TabsList className="grid w-full grid-cols-4">
+                          {CATEGORIAS_CLASSE_IX.map(cat => (
+                            <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
+                          ))}
+                        </TabsList>
+                        
+                        {CATEGORIAS_CLASSE_IX.map(cat => (
+                          <TabsContent key={cat} value={cat}>
+                            {renderClasseIXList(classeIXConfig, setClasseIXConfig, CATEGORIAS_CLASSE_IX, cat)}
+                          </TabsContent>
+                        ))}
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
 
-              {/* CLASSE III - COMBUSTÍVEIS E LUBRIFICANTES */}
-              <Collapsible 
-                open={showClasseIIIConfig} 
-                onOpenChange={setShowClasseIIIConfig}
-                className="border-t pt-4 mt-6"
-              >
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer py-2 border-b">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <Fuel className="h-5 w-5 text-yellow-600" />
-                      Classe III - Combustíveis e Lubrificantes
-                    </h3>
-                    {showClasseIIIConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 pt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="fator_gerador">Fator de Margem (Geradores)</Label>
-                      <Input
-                        id="fator_gerador"
-                        type="number"
-                        step="0.01"
-                        value={diretrizes.classe_iii_fator_gerador || 0}
-                        onChange={(e) => setDiretrizes({ ...diretrizes, classe_iii_fator_gerador: parseFloat(e.target.value) || 0 })}
-                        onKeyDown={handleEnterToNextField}
-                        placeholder="Ex: 0.15 (15%)"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="fator_embarcacao">Fator de Margem (Embarcações)</Label>
-                      <Input
-                        id="fator_embarcacao"
-                        type="number"
-                        step="0.01"
-                        value={diretrizes.classe_iii_fator_embarcacao || 0}
-                        onChange={(e) => setDiretrizes({ ...diretrizes, classe_iii_fator_embarcacao: parseFloat(e.target.value) || 0 })}
-                        onKeyDown={handleEnterToNextField}
-                        placeholder="Ex: 0.30 (30%)"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="fator_equip_engenharia">Fator de Margem (Engenharia)</Label>
-                      <Input
-                        id="fator_equip_engenharia"
-                        type="number"
-                        step="0.01"
-                        value={diretrizes.classe_iii_fator_equip_engenharia || 0}
-                        onChange={(e) => setDiretrizes({ ...diretrizes, classe_iii_fator_equip_engenharia: parseFloat(e.target.value) || 0 })}
-                        onKeyDown={handleEnterToNextField}
-                        placeholder="Ex: 0.20 (20%)"
-                      />
-                    </div>
-                  </div>
-                  
-                  <Tabs value={selectedClasseIIITab} onValueChange={setSelectedClasseIIITab} className="w-full pt-4">
-                    <TabsList className="grid w-full grid-cols-4">
-                      {CATEGORIAS_CLASSE_III.map(cat => (
-                        <TabsTrigger key={cat.key} value={cat.key}>{cat.label}</TabsTrigger>
-                      ))}
-                    </TabsList>
-                    
-                    {CATEGORIAS_CLASSE_III.map(cat => (
-                      <TabsContent key={cat.key} value={cat.key}>
-                        {/* Conteúdo da Classe III */}
-                        {/* Renderização da lista de equipamentos (Gerador, Embarcação, Motomecanização, Engenharia) */}
-                        {/* ... (Lógica de renderização da lista de equipamentos) */}
-                        {/* Esta parte é complexa e não está totalmente visível, mas o erro não está aqui. */}
-                      </TabsContent>
-                    ))}
-                  </Tabs>
-                </CollapsibleContent>
-              </Collapsible>
-
-              {/* CLASSE II - MATERIAL DE INTENDÊNCIA */}
-              <Collapsible 
-                open={showClasseIIConfig} 
-                onOpenChange={setShowClasseIIConfig}
-                className="border-t pt-4 mt-6"
-              >
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer py-2 border-b">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <Package className="h-5 w-5 text-blue-600" />
-                      Classe II - Material de Intendência
-                    </h3>
-                    {showClasseIIConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 pt-4">
-                  <Tabs value={selectedClasseIITab} onValueChange={setSelectedClasseIITab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
-                      {CATEGORIAS_CLASSE_II.map(cat => (
-                        <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
-                      ))}
-                    </TabsList>
-                    {/* ... (Conteúdo da Classe II) */}
-                  </Tabs>
-                </CollapsibleContent>
-              </Collapsible>
-              
-              {/* CLASSE V - ARMAMENTO */}
-              <Collapsible 
-                open={showClasseVConfig} 
-                onOpenChange={setShowClasseVConfig}
-                className="border-t pt-4 mt-6"
-              >
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer py-2 border-b">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <HardHat className="h-5 w-5 text-red-600" />
-                      Classe V - Armamento
-                    </h3>
-                    {showClasseVConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 pt-4">
-                  <Tabs value={selectedClasseVTab} onValueChange={setSelectedClasseVTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-4">
-                      {CATEGORIAS_CLASSE_V.map(cat => (
-                        <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
-                      ))}
-                    </TabsList>
-                    {/* ... (Conteúdo da Classe V) */}
-                  </Tabs>
-                </CollapsibleContent>
-              </Collapsible>
-              
-              {/* CLASSE VI - ENGENHARIA */}
-              <Collapsible 
-                open={showClasseVIConfig} 
-                onOpenChange={setShowClasseVIConfig}
-                className="border-t pt-4 mt-6"
-              >
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer py-2 border-b">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <HardHat className="h-5 w-5 text-gray-600" />
-                      Classe VI - Material de Engenharia
-                    </h3>
-                    {showClasseVIConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 pt-4">
-                  <Tabs value={selectedClasseVITab} onValueChange={setSelectedClasseVITab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
-                      {CATEGORIAS_CLASSE_VI.map(cat => (
-                        <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
-                      ))}
-                    </TabsList>
-                    {/* ... (Conteúdo da Classe VI) */}
-                  </Tabs>
-                </CollapsibleContent>
-              </Collapsible>
-              
-              {/* CLASSE VII - COMUNICAÇÕES E INFORMÁTICA */}
-              <Collapsible 
-                open={showClasseVIIConfig} 
-                onOpenChange={setShowClasseVIIConfig}
-                className="border-t pt-4 mt-6"
-              >
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer py-2 border-b">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-purple-600" />
-                      Classe VII - Comunicações e Informática
-                    </h3>
-                    {showClasseVIIConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 pt-4">
-                  <Tabs value={selectedClasseVIITab} onValueChange={setSelectedClasseVIITab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                      {CATEGORIAS_CLASSE_VII.map(cat => (
-                        <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
-                      ))}
-                    </TabsList>
-                    {/* ... (Conteúdo da Classe VII) */}
-                  </Tabs>
-                </CollapsibleContent>
-              </Collapsible>
-              
-              {/* CLASSE VIII - SAÚDE E REMONTA */}
-              <Collapsible 
-                open={showClasseVIIIConfig} 
-                onOpenChange={setShowClasseVIIIConfig}
-                className="border-t pt-4 mt-6"
-              >
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer py-2 border-b">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <HeartPulse className="h-5 w-5 text-pink-600" />
-                      Classe VIII - Saúde e Remonta/Veterinária
-                    </h3>
-                    {showClasseVIIIConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 pt-4">
-                  <Tabs value={selectedClasseVIIITab} onValueChange={setSelectedClasseVIIITab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                      {CATEGORIAS_CLASSE_VIII.map(cat => (
-                        <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
-                      ))}
-                    </TabsList>
-                    {/* ... (Conteúdo da Classe VIII) */}
-                  </Tabs>
-                </CollapsibleContent>
-              </Collapsible>
-              
-              {/* CLASSE IX - MOTOMECANIZAÇÃO */}
-              <Collapsible 
-                open={showClasseIXConfig} 
-                onOpenChange={setShowClasseIXConfig}
-                className="border-t pt-4 mt-6"
-              >
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer py-2 border-b">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <Car className="h-5 w-5 text-orange-600" />
-                      Classe IX - Motomecanização
-                    </h3>
-                    {showClasseIXConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 pt-4">
-                  <Tabs value={selectedClasseIXTab} onValueChange={setSelectedClasseIXTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-4">
-                      {CATEGORIAS_CLASSE_IX.map(cat => (
-                        <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
-                      ))}
-                    </TabsList>
-                    {/* ... (Conteúdo da Classe IX) */}
-                  </Tabs>
-                </CollapsibleContent>
-              </Collapsible>
 
               <div className="space-y-2 border-t pt-4 mt-6">
-                <Label>Observações Gerais</Label>
+                <Label>Observações</Label>
                 <Textarea
                   value={diretrizes.observacoes || ""}
                   onChange={(e) => setDiretrizes({ ...diretrizes, observacoes: e.target.value })}
@@ -1232,7 +1609,7 @@ const DiretrizesCusteioPage = () => {
         open={isYearManagementDialogOpen}
         onOpenChange={setIsYearManagementDialogOpen}
         availableYears={availableYears}
-        defaultYear={defaultYear}
+        defaultYear={defaultYear} 
         onCopy={handleCopyDiretrizes}
         onDelete={handleDeleteDiretrizes}
         loading={loading}

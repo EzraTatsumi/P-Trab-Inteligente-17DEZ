@@ -28,14 +28,10 @@ import CurrencyInput from "@/components/CurrencyInput";
 import { Switch } from "@/components/ui/switch";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import PassagemDiretrizFormDialog from "@/components/PassagemDiretrizFormDialog";
-import PassagemDiretrizRow from "@/components/PassagemDiretrizRow"; 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Adicionado Tabs
-import { DiretrizConcessionariaForm } from "@/types/diretrizesConcessionaria"; // NOVO IMPORT
+import PassagemDiretrizRow from "@/components/PassagemDiretrizRow"; // NOVO IMPORT
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
-// Usando 'any' temporariamente para evitar erro de TS até que 'diretrizes_concessionaria' seja reconhecida
-type DiretrizConcessionariaDB = any; 
 
 // Estrutura de dados para a tabela de diárias
 const DIARIA_RANKS_CONFIG = [
@@ -57,34 +53,6 @@ const OPERATIONAL_FIELDS = [
   { key: 'valor_locacao_viaturas_dia', label: 'Locação de Viaturas (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 150,00' },
   { key: 'fator_material_consumo', label: 'Material de Consumo (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.02 (para 2%)' },
   { key: 'fator_concessionaria', label: 'Concessionária (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.01 (para 1%)' },
-];
-
-// NOVAS CONSTANTES PARA CONCESSIONÁRIA
-const CATEGORIAS_CONCESSIONARIA = [
-  { key: 'AGUA_ESGOTO', label: 'Água/Esgoto', unidade: 'm3' as const },
-  { key: 'ENERGIA_ELETRICA', label: 'Energia Elétrica', unidade: 'kWh' as const },
-];
-
-// Estrutura inicial (zerada) para Concessionária
-const initialConcessionariaConfig: DiretrizConcessionariaForm[] = [
-  { 
-    categoria: 'AGUA_ESGOTO', 
-    nome_concessionaria: '', 
-    consumo_pessoa_dia: 0, 
-    fonte_consumo: '', 
-    custo_unitario: 0, 
-    fonte_custo: '', 
-    unidade_custo: 'm3' 
-  },
-  { 
-    categoria: 'ENERGIA_ELETRICA', 
-    nome_concessionaria: '', 
-    consumo_pessoa_dia: 0, 
-    fonte_consumo: '', 
-    custo_unitario: 0, 
-    fonte_custo: '', 
-    unidade_custo: 'kWh' 
-  },
 ];
 
 // Valores padrão para inicialização (incluindo os novos campos de diária)
@@ -121,30 +89,26 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
 
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
-  const location = useLocation(); // Hook 1
-  const { user } = useSession(); // Hook 2
-  const queryClient = useQueryClient(); // Hook 3
-  const [loading, setLoading] = useState(true); // Hook 4
+  const location = useLocation(); // Hook para acessar o estado de navegação
+  const { user } = useSession();
+  const queryClient = useQueryClient();
+  const [loading, setLoading] = useState(true);
   
   const currentYear = new Date().getFullYear();
-  const [diretrizes, setDiretrizes] = useState<Partial<DiretrizOperacional>>(defaultDiretrizes(currentYear)); // Hook 5
+  const [diretrizes, setDiretrizes] = useState<Partial<DiretrizOperacional>>(defaultDiretrizes(currentYear));
   
-  const [availableYears, setAvailableYears] = useState<number[]>([]); // Hook 6
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear); // Hook 7
-  const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false); // Hook 8
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   
-  const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear(); // Hook 9
+  const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear();
   const defaultYear = defaultYearData?.defaultYear || null;
   
-  // Estado para armazenar os inputs brutos (apenas dígitos) para campos monetários que NÃO usam CurrencyInput (apenas fatores)
-  const [rawInputs, setRawInputs] = useState<Record<string, string>>({}); // Hook 10
-  
-  // --- ESTADOS DE CONCESSIONÁRIA ---
-  const [concessionariaConfig, setConcessionariaConfig] = useState<DiretrizConcessionariaForm[]>(initialConcessionariaConfig); // Hook 11
-  const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<'AGUA_ESGOTO' | 'ENERGIA_ELETRICA'>('AGUA_ESGOTO'); // Hook 12
+  // Estado para armazenar os inputs brutos (apenas dígitos) para campos monetários
+  const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
   
   // Estado para controlar a expansão individual de cada campo
-  const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => { // Hook 14
+  const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => {
     const initialState: Record<string, boolean> = {};
     OPERATIONAL_FIELDS.forEach(field => {
       initialState[field.key as string] = false;
@@ -154,25 +118,24 @@ const CustosOperacionaisPage = () => {
     const shouldOpenPassagens = location.state && (location.state as { openPassagens?: boolean }).openPassagens;
     
     initialState['diarias_detalhe'] = false; 
-    initialState['passagens_detalhe'] = shouldOpenPassagens || false; 
-    initialState['concessionaria_detalhe'] = false; // NOVO ESTADO
+    initialState['passagens_detalhe'] = shouldOpenPassagens || false; // Define o estado inicial
     return initialState;
   });
   
-  const { handleEnterToNextField } = useFormNavigation(); // Hook 15
+  const { handleEnterToNextField } = useFormNavigation();
   
   // --- ESTADOS DE DIRETRIZES DE PASSAGENS ---
-  const [diretrizesPassagens, setDiretrizesPassagens] = useState<DiretrizPassagem[]>([]); // Hook 16
-  const [isPassagemFormOpen, setIsPassagemFormOpen] = useState(false); // Hook 17
-  const [diretrizToEdit, setDiretrizToEdit] = useState<DiretrizPassagem | null>(null); // Hook 18
+  const [diretrizesPassagens, setDiretrizesPassagens] = useState<DiretrizPassagem[]>([]);
+  const [isPassagemFormOpen, setIsPassagemFormOpen] = useState(false);
+  const [diretrizToEdit, setDiretrizToEdit] = useState<DiretrizPassagem | null>(null);
   
   // Efeito para rolar para o topo na montagem
-  useEffect(() => { // Hook 19
+  useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   // Efeito para carregar anos disponíveis e definir o ano selecionado
-  useEffect(() => { // Hook 20
+  useEffect(() => {
     if (!isLoadingDefaultYear && defaultYearData) {
         const checkAuthAndLoadYears = async () => {
             const { data: { session } = { session: null } } = await supabase.auth.getSession();
@@ -189,7 +152,7 @@ const CustosOperacionaisPage = () => {
     }
   }, [isLoadingDefaultYear, defaultYearData]);
 
-  useEffect(() => { // Hook 21
+  useEffect(() => {
     if (selectedYear) {
       loadDiretrizesForYear(selectedYear);
       loadDiretrizesPassagens(selectedYear); 
@@ -201,26 +164,21 @@ const CustosOperacionaisPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Busca anos disponíveis nas três tabelas
+      // Busca anos disponíveis nas duas tabelas
       const [
           { data: opData, error: opError },
-          { data: passagensData, error: passagensError },
-          { data: concessionariaData, error: concessionariaError } // NOVO FETCH
+          { data: passagensData, error: passagensError }
       ] = await Promise.all([
           supabase.from("diretrizes_operacionais").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_passagens").select("ano_referencia").eq("user_id", user.id),
-          // CORREÇÃO TS: Usar 'as any' para a nova tabela até que o types.ts seja atualizado
-          supabase.from("diretrizes_concessionaria" as any).select("ano_referencia").eq("user_id", user.id), 
       ]);
 
-      if (opError || passagensError || concessionariaError) throw opError || passagensError || concessionariaError;
+      if (opError || passagensError) throw opError || passagensError;
 
       const opYears = opData ? opData.map(d => d.ano_referencia) : [];
       const passagensYears = passagensData ? passagensData.map(d => d.ano_referencia) : [];
-      // CORREÇÃO TS: Acessar 'ano_referencia' de forma segura
-      const concessionariaYears = concessionariaData ? (concessionariaData as any[]).map(d => d.ano_referencia) : []; 
-
-      const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears]); // INCLUINDO CONCESSIONÁRIA
+      
+      const yearsToInclude = new Set([...opYears, ...passagensYears]);
       
       if (defaultYearId && !yearsToInclude.has(defaultYearId)) {
           yearsToInclude.add(defaultYearId);
@@ -245,7 +203,6 @@ const CustosOperacionaisPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // 1. Carregar Diretrizes Operacionais (Fatores e Diárias)
       const { data, error } = await supabase
         .from("diretrizes_operacionais")
         .select("*")
@@ -292,39 +249,21 @@ const CustosOperacionaisPage = () => {
       
       setDiretrizes(numericData);
       
-      // Apenas inicializa rawInputs para campos que NÃO usam CurrencyInput (fatores)
       const initialRawInputs: Record<string, string> = {};
       
       OPERATIONAL_FIELDS.filter(f => f.type === 'currency').forEach(f => {
         initialRawInputs[f.key as string] = numberToRawDigits(numericData[f.key as keyof DiretrizOperacional] as number);
       });
       
+      DIARIA_RANKS_CONFIG.forEach(rank => {
+        initialRawInputs[`diaria_${rank.key}_bsb`] = numberToRawDigits(numericData[`diaria_${rank.key}_bsb` as keyof DiretrizOperacional] as number);
+        initialRawInputs[`diaria_${rank.key}_capitais`] = numberToRawDigits(numericData[`diaria_${rank.key}_capitais` as keyof DiretrizOperacional] as number);
+        initialRawInputs[`diaria_${rank.key}_demais`] = numberToRawDigits(numericData[`diaria_${rank.key}_demais` as keyof DiretrizOperacional] as number);
+      });
+      
+      initialRawInputs['taxa_embarque'] = numberToRawDigits(numericData.taxa_embarque as number);
+      
       setRawInputs(initialRawInputs);
-      
-      // 2. Carregar Diretrizes de Concessionária
-      const { data: concessionariaData, error: concessionariaError } = await supabase
-        .from("diretrizes_concessionaria" as any) // CORREÇÃO TS
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("ano_referencia", year);
-        
-      if (concessionariaError) throw concessionariaError;
-      
-      if (concessionariaData && concessionariaData.length > 0) {
-        setConcessionariaConfig((concessionariaData as DiretrizConcessionariaDB[]).map(d => ({ // CORREÇÃO TS
-          id: d.id,
-          categoria: d.categoria as 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA', // CORREÇÃO TS
-          nome_concessionaria: d.nome_concessionaria, // CORREÇÃO TS
-          consumo_pessoa_dia: Number(d.consumo_pessoa_dia), // CORREÇÃO TS
-          fonte_consumo: d.fonte_consumo || '', // CORREÇÃO TS
-          custo_unitario: Number(d.custo_unitario), // CORREÇÃO TS
-          fonte_custo: d.fonte_custo || '', // CORREÇÃO TS
-          unidade_custo: d.unidade_custo as 'm3' | 'kWh', // CORREÇÃO TS
-        })));
-      } else {
-        // Se não houver dados salvos, usa a configuração inicial zerada
-        setConcessionariaConfig(initialConcessionariaConfig);
-      }
       
     } catch (error: any) {
       console.error("Erro ao carregar diretrizes operacionais:", error);
@@ -348,7 +287,8 @@ const CustosOperacionaisPage = () => {
             
         if (error) throw error;
         
-        // Mapear os dados do Supabase para o tipo DiretrizPassagem
+        // CORREÇÃO 1: Mapear os dados do Supabase para o tipo DiretrizPassagem, 
+        // garantindo que 'trechos' seja tratado como TrechoPassagem[]
         const typedData: DiretrizPassagem[] = (data || []).map(d => ({
             ...d,
             trechos: (d.trechos as unknown as TrechoPassagem[]) || [],
@@ -438,53 +378,20 @@ const CustosOperacionaisPage = () => {
         taxa_embarque: diretrizes.taxa_embarque,
       };
 
-      // 1. Salvar Diretrizes Operacionais (Fatores e Diárias)
       if (diretrizes.id) {
         const { error } = await supabase
           .from("diretrizes_operacionais")
           .update(diretrizData as TablesUpdate<'diretrizes_operacionais'>)
           .eq("id", diretrizes.id);
         if (error) throw error;
+        toast.success("Diretrizes Operacionais atualizadas!");
       } else {
         const { error } = await supabase
           .from("diretrizes_operacionais")
           .insert([diretrizData as TablesInsert<'diretrizes_operacionais'>]);
         if (error) throw error;
+        toast.success("Diretrizes Operacionais criadas!");
       }
-      
-      // 2. Salvar Diretrizes de Concessionária
-      
-      // Deletar registros antigos de Concessionária
-      await supabase
-        .from("diretrizes_concessionaria" as any) // CORREÇÃO TS
-        .delete()
-        .eq("user_id", user.id)
-        .eq("ano_referencia", diretrizes.ano_referencia!);
-        
-      const concessionariaItemsParaSalvar = concessionariaConfig
-        // Agora, filtramos apenas se o nome da concessionária foi preenchido E os valores são válidos
-        .filter(item => item.nome_concessionaria.trim().length > 0 && item.consumo_pessoa_dia > 0 && item.custo_unitario >= 0)
-        .map(item => ({
-          user_id: user.id,
-          ano_referencia: diretrizes.ano_referencia,
-          categoria: item.categoria,
-          nome_concessionaria: item.nome_concessionaria,
-          // Conversão explícita para string com 4 casas decimais para garantir o tipo 'numeric' no DB
-          consumo_pessoa_dia: Number(item.consumo_pessoa_dia).toFixed(4), 
-          fonte_consumo: item.fonte_consumo,
-          custo_unitario: Number(item.custo_unitario).toFixed(4), 
-          fonte_custo: item.fonte_custo,
-          unidade_custo: item.unidade_custo,
-        }));
-        
-      if (concessionariaItemsParaSalvar.length > 0) {
-        const { error: cError } = await supabase
-          .from("diretrizes_concessionaria" as any) // CORREÇÃO TS
-          .insert(concessionariaItemsParaSalvar as any[]); // CORREÇÃO TS: Usar 'as any[]'
-        if (cError) throw cError;
-      }
-
-      toast.success("Diretrizes Operacionais e de Concessionária salvas!");
       
       queryClient.invalidateQueries({ queryKey: ["diretrizesOperacionais", diretrizes.ano_referencia] });
       await loadAvailableYears(defaultYear);
@@ -576,32 +483,10 @@ const CustosOperacionaisPage = () => {
           const { error: insertPassagensError } = await supabase
             .from("diretrizes_passagens")
             .insert(newPassagens as TablesInsert<'diretrizes_passagens'>[]);
-          if (insertPassagensError) console.error("Erro ao inserir Passagens copiadas:", insertPassagensError);
+          if (insertPassagensError) throw insertPassagensError;
       }
       
-      // 3. Copiar Diretrizes de Concessionária
-      const { data: sourceConcessionaria, error: concessionariaError } = await supabase
-        .from("diretrizes_concessionaria" as any) // CORREÇÃO TS
-        .select("id, created_at, updated_at, categoria, nome_concessionaria, consumo_pessoa_dia, fonte_consumo, custo_unitario, fonte_custo, unidade_custo")
-        .eq("user_id", user.id)
-        .eq("ano_referencia", sourceYear);
-        
-      if (concessionariaError) throw concessionariaError;
-      
-      if (sourceConcessionaria && sourceConcessionaria.length > 0) {
-          const newConcessionaria = (sourceConcessionaria as DiretrizConcessionariaDB[]).map(c => { // CORREÇÃO TS
-              // Desestruturação segura
-              const { id: oldId, created_at, updated_at, ...rest } = c; 
-              return { ...rest, ano_referencia: targetYear, user_id: user.id };
-          });
-          
-          const { error: insertConcessionariaError } = await supabase
-            .from("diretrizes_concessionaria" as any) // CORREÇÃO TS
-            .insert(newConcessionaria as any[]); // CORREÇÃO TS: Usar 'as any[]'
-          if (insertConcessionariaError) console.error("Erro ao inserir Concessionária copiada:", insertConcessionariaError);
-      }
-      
-      toast.success(`Diretrizes operacionais, passagens e concessionárias do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
+      toast.success(`Diretrizes operacionais e de passagens do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
       setIsYearManagementDialogOpen(false);
       setSelectedYear(targetYear);
       
@@ -622,7 +507,7 @@ const CustosOperacionaisPage = () => {
       return;
     }
     
-    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes operacionais, de passagens e de concessionária para o ano ${year}? Esta ação é irreversível.`)) return;
+    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes operacionais e de passagens para o ano ${year}? Esta ação é irreversível.`)) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -630,9 +515,9 @@ const CustosOperacionaisPage = () => {
       
       setLoading(true);
       
-      // 1. Excluir Diretrizes de Concessionária
+      // 1. Excluir Diretriz Operacional
       await supabase
-        .from("diretrizes_concessionaria" as any) // CORREÇÃO TS
+        .from("diretrizes_operacionais")
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
@@ -643,15 +528,8 @@ const CustosOperacionaisPage = () => {
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
-        
-      // 3. Excluir Diretriz Operacional
-      await supabase
-        .from("diretrizes_operacionais")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("ano_referencia", year);
 
-      toast.success(`Diretrizes do ano ${year} excluídas com sucesso!`);
+      toast.success(`Diretrizes operacionais e de passagens do ano ${year} excluídas com sucesso!`);
       setIsYearManagementDialogOpen(false);
       
       queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
@@ -684,20 +562,25 @@ const CustosOperacionaisPage = () => {
     const value = diretrizes[field.key as keyof DiretrizOperacional] as number;
     
     if (field.type === 'currency') {
-      // Usando CurrencyInput para campos monetários no renderDiretrizField
+      const rawDigits = rawInputs[field.key] || numberToRawDigits(value);
+      const { formatted: displayValue } = formatCurrencyInput(rawDigits);
+      
       return (
         <div className="space-y-2">
           <Label htmlFor={field.key}>{field.label}</Label>
-          <CurrencyInput
-            id={field.key}
-            value={value}
-            onChange={(rawDigits) => {
-              const { numericValue } = formatCurrencyInput(rawDigits);
-              setDiretrizes(prev => ({ ...prev, [field.key]: numericValue }));
-            }}
-            onKeyDown={handleEnterToNextField}
-            placeholder={field.placeholder}
-          />
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+            <Input
+              id={field.key}
+              type="text"
+              inputMode="numeric"
+              className="pl-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              value={value === 0 && rawDigits.length === 0 ? "" : displayValue}
+              onChange={(e) => handleCurrencyChange(field.key as keyof DiretrizOperacional, e.target.value)}
+              onKeyDown={handleEnterToNextField}
+              placeholder={field.placeholder}
+            />
+          </div>
         </div>
       );
     } else { // type === 'factor'
@@ -721,20 +604,19 @@ const CustosOperacionaisPage = () => {
   
   // Função para renderizar a tabela de diárias
   const renderDiariaTable = () => {
-    
-    // Handler para Diárias (agora usa o valor numérico diretamente)
-    const handleDiariaChange = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais', rawDigits: string) => {
+    const handleDiariaChange = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais', rawValue: string) => {
       const fieldKey = `diaria_${rankKey}_${destination}` as keyof DiretrizOperacional;
-      const { numericValue } = formatCurrencyInput(rawDigits);
-      setDiretrizes(prev => ({ ...prev, [fieldKey]: numericValue }));
+      handleCurrencyChange(fieldKey, rawValue);
     };
     
     const getDiariaProps = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais') => {
       const fieldKey = `${DIARIA_RANKS_CONFIG.find(r => r.key === rankKey)?.fieldPrefix}_${destination}` as keyof DiretrizOperacional;
       const value = diretrizes[fieldKey] as number;
+      const rawDigits = rawInputs[fieldKey as string] || numberToRawDigits(value);
+      const { formatted: displayValue } = formatCurrencyInput(rawDigits);
       
       return {
-        value: value,
+        rawDigits: rawDigits,
         onChange: (digits: string) => handleDiariaChange(rankKey, destination, digits),
         onKeyDown: handleEnterToNextField,
         placeholder: "0,00",
@@ -759,7 +641,7 @@ const CustosOperacionaisPage = () => {
               id="diaria_referencia_legal"
               value={diretrizes.diaria_referencia_legal || ''}
               onChange={(e) => setDiretrizes({ ...diretrizes, diaria_referencia_legal: e.target.value })}
-              placeholder="Ex.: Decreto Nº 12.324 de 19DEZ24"
+              placeholder="Decreto Nº 12.324 de 19DEZ24"
               onKeyDown={handleEnterToNextField}
             />
           </div>
@@ -802,129 +684,6 @@ const CustosOperacionaisPage = () => {
     );
   };
   
-  // --- LÓGICA DE CONCESSIONÁRIA ---
-  
-  // Funções de manipulação de array removidas, pois a lista é fixa.
-  
-  const handleUpdateConcessionariaItem = (
-    config: DiretrizConcessionariaForm[], 
-    setConfig: React.Dispatch<React.SetStateAction<DiretrizConcessionariaForm[]>>, 
-    index: number, 
-    field: keyof DiretrizConcessionariaForm, 
-    value: any
-  ) => {
-    const novosItens = [...config];
-    novosItens[index] = { ...novosItens[index], [field]: value };
-    setConfig(novosItens);
-  };
-  
-  const renderConcessionariaList = (
-    config: DiretrizConcessionariaForm[], 
-    setConfig: React.Dispatch<React.SetStateAction<DiretrizConcessionariaForm[]>>,
-    selectedTab: 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA'
-  ) => {
-    const filteredItems = config.filter(item => item.categoria === selectedTab);
-    const { unidade } = CATEGORIAS_CONCESSIONARIA.find(c => c.key === selectedTab)!;
-    const custoLabel = `Custo Unitário (R$/${unidade})`;
-    
-    // Placeholders dinâmicos (usando exemplos, não valores padrão)
-    const isAgua = selectedTab === 'AGUA_ESGOTO';
-    const placeholderNome = isAgua ? 'Ex: COSANPA / Saneago' : 'Ex: Equatorial / Enel';
-    const placeholderConsumo = isAgua ? 'Ex: 0.15' : 'Ex: 1.5';
-    const placeholderCusto = isAgua ? '5,00' : '0,80';
-    const placeholderFonteConsumo = 'Ex: SNIS/2023';
-    const placeholderFonteCusto = 'Ex: Tabela de Tarifa Ago/2024';
-    
-    const getCustoUnitarioProps = (item: DiretrizConcessionariaForm, indexInMainArray: number) => {
-        const fieldName = 'custo_unitario';
-        
-        const handleCurrencyUpdate = (rawDigits: string) => {
-            const { numericValue } = formatCurrencyInput(rawDigits);
-            handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, fieldName, numericValue);
-        };
-        
-        // CORREÇÃO TS: CurrencyInput espera a prop 'value' (number)
-        return {
-            value: item.custo_unitario, // <-- Passa o valor numérico
-            onChange: handleCurrencyUpdate, // <-- Recebe rawDigits
-            onKeyDown: handleEnterToNextField,
-            placeholder: `Ex.: ${placeholderCusto}`, 
-        };
-    };
-    
-    return (
-      <div className="space-y-4 pt-4">
-        {filteredItems.map((item, index) => {
-          const indexInMainArray = config.findIndex(c => c === item);
-          const custoUnitarioProps = getCustoUnitarioProps(item, indexInMainArray);
-
-          return (
-            <div key={index} className="space-y-4 border-b pb-4 last:border-b-0">
-              {/* Linha 1: Concessionária (1 coluna) */}
-              <div className="space-y-2">
-                <Label className="text-xs">Concessionária</Label>
-                <Input
-                  value={item.nome_concessionaria}
-                  onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'nome_concessionaria', e.target.value)}
-                  placeholder={placeholderNome}
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-              
-              {/* Linha 2: Consumo e Custo Unitário (2 colunas) */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs">Consumo/pessoa/dia ({unidade})</Label>
-                  <Input
-                    type="number"
-                    step="0.0001"
-                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    value={item.consumo_pessoa_dia === 0 ? "" : item.consumo_pessoa_dia}
-                    onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'consumo_pessoa_dia', parseFloat(e.target.value) || 0)}
-                    placeholder={placeholderConsumo}
-                    onKeyDown={handleEnterToNextField}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">{custoLabel}</Label>
-                  <CurrencyInput
-                    {...custoUnitarioProps}
-                  />
-                </div>
-              </div>
-              
-              {/* Linha 3: Fonte de Consumo (1 coluna) */}
-              <div className="space-y-2">
-                <Label className="text-xs">Fonte de Consumo</Label>
-                <Input
-                  value={item.fonte_consumo}
-                  onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_consumo', e.target.value)}
-                  placeholder={placeholderFonteConsumo}
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-              
-              {/* Linha 4: Fonte do Custo (1 coluna) */}
-              <div className="space-y-2">
-                <Label className="text-xs">Fonte do Custo</Label>
-                <Input
-                  value={item.fonte_custo}
-                  onChange={(e) => handleUpdateConcessionariaItem(config, setConfig, indexInMainArray, 'fonte_custo', e.target.value)}
-                  placeholder={placeholderFonteCusto}
-                  onKeyDown={handleEnterToNextField}
-                />
-              </div>
-              
-              {/* Botão de exclusão removido */}
-            </div>
-          );
-        })}
-        
-        {/* Botão de adição removido */}
-      </div>
-    );
-  };
-  
   // --- LÓGICA DE PASSAGENS ---
   
   const handleSavePassagem = async (data: Partial<DiretrizPassagem> & { ano_referencia: number, om_referencia: string, ug_referencia: string }) => {
@@ -933,6 +692,8 @@ const CustosOperacionaisPage = () => {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error("Usuário não autenticado");
           
+          // CORREÇÃO 2, 3, 4: O tipo TablesInsert<'diretrizes_passagens'> espera 'Json' para 'trechos' e 'string | null' para as datas.
+          // Usamos 'as Json' para 'trechos' e garantimos que as datas sejam strings ou null.
           const dbData: TablesInsert<'diretrizes_passagens'> = {
               user_id: user.id,
               ano_referencia: data.ano_referencia,
@@ -1019,7 +780,7 @@ const CustosOperacionaisPage = () => {
                               {diretrizesPassagens.map(d => (
                                   <PassagemDiretrizRow
                                       key={d.id}
-                                      diretriz={d} 
+                                      diretriz={d} // CORREÇÃO 5, 6: 'd' agora é do tipo DiretrizPassagem
                                       onEdit={handleStartEditPassagem}
                                       onDelete={handleDeletePassagem}
                                       loading={loading}
@@ -1163,41 +924,6 @@ const CustosOperacionaisPage = () => {
                     </CollapsibleContent>
                   </Collapsible>
                   
-                  {/* NOVO: Diretrizes de Concessionária */}
-                  <Collapsible 
-                    open={fieldCollapseState['concessionaria_detalhe']} 
-                    onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['concessionaria_detalhe']: open }))}
-                    className="border-b pb-4 last:border-b-0 last:pb-0"
-                  >
-                    <CollapsibleTrigger asChild>
-                      <div className="flex items-center justify-between cursor-pointer py-2">
-                        <h4 className="text-base font-medium flex items-center gap-2">
-                          Concessionárias (Água/Esgoto e Energia)
-                        </h4>
-                        {fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pt-4">
-                      <Card>
-                        <CardContent className="pt-4">
-                          <Tabs value={selectedConcessionariaTab} onValueChange={(value) => setSelectedConcessionariaTab(value as 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA')}>
-                            <TabsList className="grid w-full grid-cols-2">
-                              {CATEGORIAS_CONCESSIONARIA.map(cat => (
-                                <TabsTrigger key={cat.key} value={cat.key}>{cat.label}</TabsTrigger>
-                              ))}
-                            </TabsList>
-                            
-                            {CATEGORIAS_CONCESSIONARIA.map(cat => (
-                              <TabsContent key={cat.key} value={cat.key}>
-                                {renderConcessionariaList(concessionariaConfig, setConcessionariaConfig, cat.key as 'AGUA_ESGOTO' | 'ENERGIA_ELETRICA')}
-                              </TabsContent>
-                            ))}
-                          </Tabs>
-                        </CardContent>
-                      </Card>
-                    </CollapsibleContent>
-                  </Collapsible>
-                  
                   {/* OUTROS CAMPOS OPERACIONAIS */}
                   {OPERATIONAL_FIELDS.map(field => {
                     const fieldKey = field.key as string;
@@ -1274,8 +1000,8 @@ const CustosOperacionaisPage = () => {
           open={isPassagemFormOpen}
           onOpenChange={setIsPassagemFormOpen}
           selectedYear={selectedYear}
-          diretrizToEdit={diretrizToEdit} 
-          onSave={handleSavePassagem} 
+          diretrizToEdit={diretrizToEdit} // CORREÇÃO 7: diretrizToEdit é do tipo DiretrizPassagem
+          onSave={handleSavePassagem} // CORREÇÃO 8: onSave espera Partial<DiretrizPassagem>
           loading={loading}
       />
     </div>

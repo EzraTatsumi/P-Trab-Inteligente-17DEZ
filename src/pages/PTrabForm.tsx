@@ -371,7 +371,7 @@ const PTrabForm = () => {
         totalGND4Cost={calculatedGND4}
         initialCreditGND3={credits.credit_gnd3}
         initialCreditGND4={credits.credit_gnd4}
-        onSave={handleSaveCredit as any} // CORREÇÃO: Forçando 'any' temporariamente, pois a tipagem do CreditInputDialog não está visível e está causando conflito.
+        onSave={handleSaveCredit}
       />
       
       {/* Diálogo de Prompt de Crédito */}

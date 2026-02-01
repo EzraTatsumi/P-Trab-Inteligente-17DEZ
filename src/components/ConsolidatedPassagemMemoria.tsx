@@ -53,9 +53,9 @@ export const ConsolidatedPassagemMemoria: React.FC<ConsolidatedPassagemMemoriaPr
         
         // Adicionar Pregão/UASG dinamicamente
         if (diretrizDetails?.numero_pregao && diretrizDetails?.ug_referencia) {
-            memoria += `(Pregão ${diretrizDetails.numero_pregao} - UASG ${formatCodug(diretrizDetails.ug_referencia)})`;
+            memoria += `\n(Pregão ${diretrizDetails.numero_pregao} - UASG ${formatCodug(diretrizDetails.ug_referencia)})`;
         } else if (diretrizDetails) {
-            memoria += `(Detalhes do contrato não disponíveis ou incompletos)`;
+            memoria += `\n(Detalhes do contrato não disponíveis ou incompletos)`;
         }
         
         return memoria;

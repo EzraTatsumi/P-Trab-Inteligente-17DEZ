@@ -1,51 +1,60 @@
-import React, { useState, useCallback, forwardRef, InputHTMLAttributes, Ref } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Input } from "@/components/ui/input";
-import { formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
+import { formatCurrencyInput } from "@/lib/formatUtils";
+import { cn } from "@/lib/utils";
 
-interface CurrencyInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> {
-  // Aceita o valor numérico (para exibição inicial)
-  value?: number; 
-  // Aceita os dígitos brutos (para controle de cursor)
-  rawDigits?: string; 
-  // Retorna os dígitos brutos no onChange
-  onChange: (rawDigits: string) => void;
+// Obtém as propriedades do componente Input diretamente
+interface CurrencyInputProps extends Omit<React.ComponentPropsWithoutRef<typeof Input>, 'value' | 'onChange' | 'onBlur'> {
+  rawDigits: string;
+  onChange: (digits: string) => void;
+  placeholder?: string;
+  className?: string;
 }
 
-const CurrencyInput = forwardRef(({ value, rawDigits, onChange, ...props }: CurrencyInputProps, ref: Ref<HTMLInputElement>) => {
-  
-  // Estado interno para gerenciar os dígitos brutos se rawDigits não for fornecido
-  const [internalRawDigits, setInternalRawDigits] = useState(() => {
-    if (rawDigits !== undefined) return rawDigits;
-    return numberToRawDigits(value || 0);
-  });
-  
-  // Se rawDigits for fornecido, usamos ele como fonte de verdade
-  const currentRawDigits = rawDigits !== undefined ? rawDigits : internalRawDigits;
-
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const { digits } = formatCurrencyInput(e.target.value);
+export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputProps>(
+  ({ rawDigits, onChange, placeholder = "0,00", className, ...props }, ref) => {
     
-    if (rawDigits === undefined) {
-      setInternalRawDigits(digits);
-    }
-    
-    onChange(digits);
-  }, [onChange, rawDigits]);
+    // Calcula o valor formatado com base na prop rawDigits
+    const { formatted } = useMemo(() => formatCurrencyInput(rawDigits), [rawDigits]);
 
-  const displayValue = formatCurrencyInput(currentRawDigits).formatted;
+    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      const rawValue = e.target.value;
+      
+      // 1. Remove tudo que não for dígito
+      const newDigits = rawValue.replace(/\D/g, '');
+      
+      // 2. Notifica o componente pai com os novos dígitos brutos
+      onChange(newDigits);
+    }, [onChange]);
 
-  return (
-    <Input
-      ref={ref}
-      type="text"
-      inputMode="numeric"
-      className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-      value={displayValue}
-      onChange={handleChange}
-      {...props}
-    />
-  );
-});
+    const handleInputBlur = useCallback(() => {
+      // Se o input estiver vazio, garante que o estado pai receba uma string vazia
+      if (rawDigits.length === 0) {
+          onChange('');
+      }
+    }, [rawDigits, onChange]);
+
+    return (
+      <div className="relative">
+        <Input
+          ref={ref}
+          type="text"
+          inputMode="decimal"
+          value={formatted} // Usa a string formatada para exibição
+          onChange={handleInputChange}
+          onBlur={handleInputBlur}
+          placeholder={placeholder}
+          // Garante que o padding esquerdo e o tamanho da fonte sejam aplicados, 
+          // mas permite que classes externas (como h-12) sejam mescladas.
+          className={cn("pl-12 text-lg", className)} 
+          {...props}
+        />
+        {/* Prefixo R$ fixo */}
+        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
+      </div>
+    );
+  }
+);
 
 CurrencyInput.displayName = "CurrencyInput";
 
