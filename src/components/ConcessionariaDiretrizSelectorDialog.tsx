@@ -208,26 +208,29 @@ const ConcessionariaDiretrizSelectorDialog: React.FC<ConcessionariaDiretrizSelec
                     )}
                 </div>
                 
-                <DialogFooter className="flex justify-between items-center">
-                    {/* NOVO BOTÃO: Adicionar Concessionária */}
-                    <Button 
-                        type="button" 
-                        variant="secondary"
-                        onClick={handleAddContractClick}
-                        className="gap-2"
-                    >
-                        <PlusCircle className="h-4 w-4" />
-                        Adicionar Concessionária
-                    </Button>
-                    
-                    <div className="flex gap-2">
-                        <Button onClick={handleConfirm} disabled={selectedDiretrizes.length === 0 || isLoading}>
-                            <Check className="mr-2 h-4 w-4" />
-                            Confirmar Seleção ({selectedDiretrizes.length})
+                <DialogFooter className="mt-4">
+                    <div className="flex items-center justify-between w-full gap-2">
+                        {/* NOVO BOTÃO: Adicionar Concessionária (Esquerda) */}
+                        <Button 
+                            type="button" 
+                            variant="secondary"
+                            onClick={handleAddContractClick}
+                            className="gap-2"
+                        >
+                            <PlusCircle className="h-4 w-4" />
+                            Adicionar Concessionária
                         </Button>
-                        <Button variant="outline" onClick={() => onOpenChange(false)}>
-                            Cancelar
-                        </Button>
+                        
+                        {/* Botões de Ação (Direita) */}
+                        <div className="flex gap-2">
+                            <Button onClick={handleConfirm} disabled={selectedDiretrizes.length === 0 || isLoading}>
+                                <Check className="mr-2 h-4 w-4" />
+                                Confirmar Seleção ({selectedDiretrizes.length})
+                            </Button>
+                            <Button variant="outline" onClick={() => onOpenChange(false)}>
+                                Cancelar
+                            </Button>
+                        </div>
                     </div>
                 </DialogFooter>
             </DialogContent>
