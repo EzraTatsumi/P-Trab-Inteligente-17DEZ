@@ -1588,51 +1588,6 @@ export type Database = {
           },
         ]
       }
-    diretrizes_concessionaria: {
-        Row: {
-          id: string
-          user_id: string
-          ano_referencia: number
-          categoria: string
-          nome_concessionaria: string
-          consumo_pessoa_dia: number
-          fonte_consumo: string | null
-          custo_unitario: number
-          fonte_custo: string | null
-          unidade_custo: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          ano_referencia: number
-          categoria: string
-          nome_concessionaria: string
-          consumo_pessoa_dia: number
-          fonte_consumo?: string | null
-          custo_unitario: number
-          fonte_custo?: string | null
-          unidade_custo: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          ano_referencia?: number
-          categoria?: string
-          nome_concessionaria?: string
-          consumo_pessoa_dia?: number
-          fonte_consumo?: string | null
-          custo_unitario?: number
-          fonte_custo?: string | null
-          unidade_custo?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -1741,7 +1696,7 @@ export type Enums<
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  ? (DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["Enums"])[EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -1758,7 +1713,7 @@ export type CompositeTypes<
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  ? (DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"])[CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
