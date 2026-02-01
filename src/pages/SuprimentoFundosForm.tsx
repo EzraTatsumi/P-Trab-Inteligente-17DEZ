@@ -407,44 +407,15 @@ const SuprimentoFundosForm = () => {
             if (error) throw error;
             return data;
         },
-        onSuccess: (newRecords) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["suprimentoFundosRegistros", ptrabId] });
             queryClient.invalidateQueries({ queryKey: ["ptrabTotals", ptrabId] });
             toast.success(`Sucesso! ${pendingSuprimentos.length} registro(s) de Suprimento de Fundos adicionado(s).`);
             setPendingSuprimentos([]); 
             setLastStagedFormData(null); 
             
-            // Manter campos de contexto, detalhes E valores
-            setFormData(prev => ({
-                ...prev,
-                // Manter campos de contexto e detalhes
-                om_favorecida: prev.om_favorecida,
-                ug_favorecida: prev.ug_favorecida,
-                om_detentora: prev.om_detentora,
-                ug_detentora: prev.ug_detentora,
-                dias_operacao: prev.dias_operacao,
-                quantidade_equipes: prev.quantidade_equipes,
-                fase_atividade: prev.fase_atividade,
-                objeto_aquisicao: prev.objeto_aquisicao,
-                objeto_contratacao: prev.objeto_contratacao,
-                proposito: prev.proposito,
-                finalidade: prev.finalidade,
-                local: prev.local,
-                tarefa: prev.tarefa,
-                
-                // Manter campos de valor (não resetar)
-                valor_total_solicitado: prev.valor_total_solicitado,
-                valor_nd_30: prev.valor_nd_30,
-                valor_nd_39: prev.valor_nd_39,
-            }));
-            
-            // NOVO: Carregar o primeiro registro recém-salvo em modo de edição
-            if (newRecords && newRecords.length > 0) {
-                handleEdit(newRecords[0] as SuprimentoFundosRegistroDB);
-            } else {
-                // Se por algum motivo não houver newRecords, apenas reseta o formulário
-                resetForm();
-            }
+            // Resetar o formulário para um novo item, mantendo apenas o contexto de OM Favorecida/Detentora
+            resetForm();
         },
         onError: (err) => {
             toast.error(sanitizeError(err));
