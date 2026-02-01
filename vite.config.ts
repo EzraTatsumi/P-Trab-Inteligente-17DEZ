@@ -1,19 +1,33 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
-import path from "path";
-import { componentTagger } from "lovable-tagger";
-import dyadComponentTagger from '@dyad-sh/react-vite-component-tagger';
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { resolve } from 'path';
+import electron from 'vite-plugin-electron/simple';
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-  server: {
-    host: "::",
-    port: 8080,
-  },
-  plugins: [dyadComponentTagger(), react(), mode === "development" && componentTagger()].filter(Boolean),
+export default defineConfig({
+  plugins: [
+    react(),
+    electron({
+      main: {
+        // O arquivo principal do Electron
+        entry: 'main.ts',
+      },
+      preload: {
+        // O script de pré-carregamento
+        input: path.join(__dirname, 'preload.ts'),
+      },
+      // Configuração para o renderer (React)
+      renderer: {},
+    }),
+  ],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": resolve(__dirname, "./src"),
     },
   },
-}));
+  build: {
+    // Garante que o build do Vite seja compatível com o Electron
+    target: 'es2020',
+    outDir: 'dist',
+  },
+});
