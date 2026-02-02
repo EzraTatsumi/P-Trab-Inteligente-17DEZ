@@ -67,11 +67,10 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
     const nomeConcessionaria = detalhamentoParts && detalhamentoParts.length > 1 ? detalhamentoParts[1] : 'Detalhe não disponível';
     
     // Define a cor do badge da categoria
-    const categoryBadgeVariant = isAgua ? "default" : "secondary";
     const categoryBadgeClass = isAgua ? "bg-blue-500 hover:bg-blue-600 text-white" : "bg-yellow-600 hover:bg-yellow-700 text-white";
 
     return (
-        <Card className="space-y-3 p-4 rounded-lg bg-background shadow-md">
+        <Card className="space-y-3 p-4 rounded-lg bg-muted/50 shadow-md">
             
             <div className="flex items-start justify-between gap-4">
                 <div className="flex flex-col flex-1 min-w-0">
@@ -145,14 +144,16 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
             {/* Área de Texto da Memória */}
             <CardContent className="p-0 pt-3">
                 {/* Exibe o nome da concessionária e o total dentro do corpo da memória */}
-                <p className="text-sm font-medium mb-2">
-                    {registro.categoria}: {nomeConcessionaria}
-                </p>
-                <p className="text-xs text-muted-foreground mb-3">
-                    Total: {formatCurrency(registro.valor_total)} | ND 39: {formatCurrency(registro.valor_nd_39)}
-                </p>
+                <div className="flex justify-between items-center mb-3">
+                    <p className="text-sm font-medium">
+                        {nomeConcessionaria}
+                    </p>
+                    <p className="text-sm font-bold text-foreground">
+                        {formatCurrency(registro.valor_total)}
+                    </p>
+                </div>
                 
-                <div className="p-3 rounded-lg border bg-muted/50">
+                <div className="p-3 rounded-lg border bg-background">
                     {isEditing ? (
                         <Textarea
                             value={memoriaExibida}
