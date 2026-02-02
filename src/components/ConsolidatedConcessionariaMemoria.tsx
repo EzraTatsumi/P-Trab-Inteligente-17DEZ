@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -36,15 +36,26 @@ export const ConsolidatedConcessionariaMemoria: React.FC<ConsolidatedConcessiona
     handleRestaurarMemoriaAutomatica,
 }) => {
     
+    // Ordena os registros para garantir que 'Água/Esgoto' venha sempre antes de 'Energia Elétrica'
+    const sortedRecords = useMemo(() => {
+        const order = { 'Água/Esgoto': 1, 'Energia Elétrica': 2 };
+        
+        return [...group.records].sort((a, b) => {
+            const orderA = order[a.categoria as keyof typeof order] || 99;
+            const orderB = order[b.categoria as keyof typeof order] || 99;
+            return orderA - orderB;
+        });
+    }, [group.records]);
+
     // Verifica se a OM Detentora é diferente da OM Favorecida
     const isDifferentOmInMemoria = group.om_detentora !== group.organizacao || group.ug_detentora !== group.ug;
 
     return (
         <div className="space-y-4">
             
-            {/* Itera sobre os registros individuais */}
+            {/* Itera sobre os registros individuais ordenados */}
             <div className="space-y-3">
-                {group.records.map(registro => (
+                {sortedRecords.map(registro => (
                     <ConcessionariaMemoriaItem
                         key={registro.id}
                         registro={registro as ConcessionariaRegistroComDiretriz} // Casting to enriched type
