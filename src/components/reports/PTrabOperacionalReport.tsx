@@ -42,32 +42,42 @@ interface PTrabOperacionalReportProps {
 
 // Função auxiliar para buscar detalhes da diretriz de passagem (Pregão/UASG)
 const fetchDiretrizDetails = async (diretrizId: string): Promise<{ numero_pregao: string | null, ug_referencia: string | null } | null> => {
-    const { data, error } = await supabase
-        .from('diretrizes_passagens')
-        .select('numero_pregao, ug_referencia')
-        .eq('id', diretrizId)
-        .single();
+    try {
+        const { data, error } = await supabase
+            .from('diretrizes_passagens')
+            .select('numero_pregao, ug_referencia')
+            .eq('id', diretrizId)
+            .single();
 
-    if (error || !data) {
-        console.error("Erro ao buscar detalhes da diretriz de passagem:", error);
+        if (error) {
+            console.error("Erro ao buscar detalhes da diretriz de passagem:", error);
+            return null;
+        }
+        return data;
+    } catch (e) {
+        console.error("Erro de rede/fetch ao buscar detalhes da diretriz de passagem:", e);
         return null;
     }
-    return data;
 };
 
 // Função auxiliar para buscar detalhes da diretriz de concessionária (Nome/Unidade/Fonte)
 const fetchConcessionariaDiretrizDetails = async (diretrizId: string): Promise<{ nome_concessionaria: string, unidade_custo: string, fonte_consumo: string | null, fonte_custo: string | null } | null> => {
-    const { data, error } = await supabase
-        .from('diretrizes_concessionaria')
-        .select('nome_concessionaria, unidade_custo, fonte_consumo, fonte_custo')
-        .eq('id', diretrizId)
-        .single();
+    try {
+        const { data, error } = await supabase
+            .from('diretrizes_concessionaria')
+            .select('nome_concessionaria, unidade_custo, fonte_consumo, fonte_custo')
+            .eq('id', diretrizId)
+            .single();
 
-    if (error || !data) {
-        console.error("Erro ao buscar detalhes da diretriz de concessionária:", error);
+        if (error) {
+            console.error("Erro ao buscar detalhes da diretriz de concessionária:", error);
+            return null;
+        }
+        return data;
+    } catch (e) {
+        console.error("Erro de rede/fetch ao buscar detalhes da diretriz de concessionária:", e);
         return null;
     }
-    return data;
 };
 
 // Função auxiliar para determinar o artigo (DO/DA)
@@ -125,14 +135,14 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   registrosVerbaOperacional, 
   registrosSuprimentoFundos, 
   registrosPassagem,
-  registrosConcessionaria, // NOVO
+  registrosConcessionaria,
   diretrizesOperacionais,
   fileSuffix,
   generateDiariaMemoriaCalculo,
   generateVerbaOperacionalMemoriaCalculo, 
   generateSuprimentoFundosMemoriaCalculo, 
   generatePassagemMemoriaCalculo,
-  generateConcessionariaMemoriaCalculo, // NOVO
+  generateConcessionariaMemoriaCalculo,
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -148,7 +158,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   const { registrosAgrupadosPorOM, consolidatedPassagens, consolidatedConcessionarias } = useMemo(() => {
     const groups: Record<string, { diarias: DiariaRegistro[], verbas: VerbaOperacionalRegistro[], suprimentos: VerbaOperacionalRegistro[], passagens: PassagemRegistro[], concessionarias: ConcessionariaRegistroComDiretriz[] }> = {};
     const consolidatedPassagensMap: Record<string, ConsolidatedPassagemReport> = {};
-    const consolidatedConcessionariasMap: Record<string, ConsolidatedConcessionariaReport> = {}; // NOVO MAPA
+    const consolidatedConcessionariasMap: Record<string, ConsolidatedConcessionariaReport> = {};
 
     const initializeGroup = (om: string, ug: string) => {
         const omKey = `${om} (${ug})`;
@@ -274,9 +284,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria]);
   
   // 2. Efeito para buscar os detalhes das diretrizes de passagem e concessionária
+  // CORREÇÃO: Este useEffect agora depende apenas dos arrays de consolidação, que são estáveis (useMemo)
   useEffect(() => {
     const loadDiretrizDetails = async () => {
         setIsLoadingDiretrizDetails(true);
+        
         const uniquePassagemDiretrizIds = new Set<string>();
         const uniqueConcessionariaDiretrizIds = new Set<string>();
 
@@ -297,6 +309,12 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 }
             });
         });
+        
+        // Se não houver nada para buscar, termina o loading imediatamente
+        if (uniquePassagemDiretrizIds.size === 0 && uniqueConcessionariaDiretrizIds.size === 0) {
+            setIsLoadingDiretrizDetails(false);
+            return;
+        }
 
         const newPassagemDetailsMap: Record<string, { numero_pregao: string | null, ug_referencia: string | null } | null> = {};
         const newConcessionariaDetailsMap: Record<string, { nome_concessionaria: string, unidade_custo: string, fonte_consumo: string | null, fonte_custo: string | null } | null> = {};
@@ -318,12 +336,9 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         setIsLoadingDiretrizDetails(false);
     };
 
-    if (consolidatedPassagens.length > 0 || consolidatedConcessionarias.length > 0) {
-        loadDiretrizDetails();
-    } else if (isLoadingDiretrizDetails) {
-        setIsLoadingDiretrizDetails(false);
-    }
-  }, [consolidatedPassagens, consolidatedConcessionarias, isLoadingDiretrizDetails]);
+    // Dependências estáveis do useMemo
+    loadDiretrizDetails();
+  }, [consolidatedPassagens, consolidatedConcessionarias]);
   
   // 3. Adicionar detalhes da diretriz aos registros consolidados
   const consolidatedPassagensWithDetails = useMemo(() => {
@@ -373,7 +388,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
       nd15: 0, // Diárias (33.90.15)
       nd30: 0, // 33.90.30 (Passagens Aéreas + Verba Operacional ND 30 + Suprimento ND 30)
       nd33: 0, // 33.90.33 (Passagens)
-      nd39: 0, // 33.90.39 (Verba Operacional ND 39 + Suprimento ND 39 + Concessionária ND 39) // NOVO
+      nd39: 0, // 33.90.39 (Verba Operacional ND 39 + Suprimento ND 39 + Concessionária ND 39)
       nd00: 0, // 33.90.00 (Vazio por enquanto)
     };
 
@@ -400,7 +415,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         totals.nd33 += r.valor_nd_33;
     });
     
-    // 5. Concessionárias (ND 33.90.39) // NOVO
+    // 5. Concessionárias (ND 33.90.39)
     registrosConcessionaria.forEach(r => {
         totals.nd39 += r.valor_nd_39;
     });
