@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { PTrabData, DiariaRegistro, VerbaOperacionalRegistro, PassagemRegistro, ConcessionariaRegistro, formatDate, calculateDays } from "@/pages/PTrabReportManager";
 import { Tables } from "@/integrations/supabase/types";
 import { formatCurrency, formatCodug, formatNumber } from "@/lib/formatUtils";
@@ -214,8 +214,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         
         // 5. Concessionária
         group.concessionaria.forEach(r => {
-            // Para gerar a memória, precisamos enriquecer o registro com os detalhes da diretriz
-            // Nota: Esta é uma solução temporária para o relatório. O ideal seria buscar os detalhes da diretriz.
             const enrichedRecord: ConcessionariaRegistro & ConcessionariaRegistroComDiretriz = {
                 ...r,
                 nome_concessionaria: r.detalhamento?.split(' - ')[1] || r.categoria,
