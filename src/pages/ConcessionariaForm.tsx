@@ -41,7 +41,7 @@ import { cn } from "@/lib/utils";
 import CurrencyInput from "@/components/CurrencyInput";
 import ConcessionariaDiretrizSelectorDialog, { ConcessionariaSelection } from "@/components/ConcessionariaDiretrizSelectorDialog";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
-import { ConcessionariaMemoria } from "@/components/ConcessionariaMemoria"; // RENOMEADO
+import { ConcessionariaMemoria } from "../components/ConcessionariaMemoria"; // CORRIGIDO: Usando caminho relativo
 import { CategoriaConcessionaria } from "@/types/diretrizesConcessionaria";
 
 // Tipos de dados
@@ -1250,7 +1250,7 @@ const ConcessionariaForm = () => {
                                             <Card key={registro.id} className="p-4 bg-primary/5 border-primary/20">
                                                 <div className="flex items-center justify-between mb-3 border-b pb-2">
                                                     <h3 className="font-bold text-lg text-primary flex items-center gap-2">
-                                                        {isAgua ? <Droplet className="h-4 w-4 text-blue-500" /> : <Zap className="h-4 w-4 text-yellow-600" />}
+                                                        {isAgua ? <Droplet className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
                                                         {registro.categoria} - {registro.detalhamento?.split(' - ')[1] || 'Diretriz'}
                                                     </h3>
                                                     <span className="font-extrabold text-xl text-primary">
