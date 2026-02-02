@@ -46,7 +46,7 @@ export const ConsolidatedConcessionariaMemoria: React.FC<ConsolidatedConcessiona
                 <div className="flex flex-col flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                         <h4 className="text-base font-bold text-foreground">
-                            Lote: {group.organizacao} (UG: {formatCodug(group.ug)})
+                            {group.organizacao} (UG: {formatCodug(group.ug)})
                         </h4>
                     </div>
                     {isDifferentOmInMemoria && (

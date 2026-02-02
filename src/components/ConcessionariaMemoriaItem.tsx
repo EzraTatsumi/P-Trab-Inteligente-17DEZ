@@ -51,9 +51,7 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
     }
     
     const isDifferentOmInMemoria = registro.om_detentora !== registro.organizacao || registro.ug_detentora !== registro.ug;
-    const isAgua = registro.categoria === 'Água/Esgoto';
-    const icon = isAgua ? <Droplet className="h-4 w-4 text-blue-500" /> : <Zap className="h-4 w-4 text-yellow-600" />;
-
+    
     // Handler local para iniciar a edição, passando a memória correta
     const handleLocalIniciarEdicao = () => {
         const memoriaParaEdicao = hasCustomMemoria 
@@ -69,9 +67,8 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
             <div className="flex items-start justify-between gap-4 border-b pb-2">
                 <div className="flex flex-col flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                        {icon}
                         <h4 className="text-sm font-semibold text-foreground">
-                            {registro.categoria} - {registro.detalhamento?.split(': ')[1] || 'Detalhe não disponível'}
+                            {registro.categoria}
                         </h4>
                         {hasCustomMemoria && !isEditing && (
                             <Badge variant="outline" className="text-xs">
@@ -79,9 +76,6 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
                             </Badge>
                         )}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                        Total: {formatCurrency(registro.valor_total)} | ND 39: {formatCurrency(registro.valor_nd_39)}
-                    </p>
                     {isDifferentOmInMemoria && (
                         <div className="flex items-center gap-1 mt-1">
                             <AlertCircle className="h-3 w-3 text-red-600" />
