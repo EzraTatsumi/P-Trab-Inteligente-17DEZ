@@ -1407,7 +1407,6 @@ const ConcessionariaForm = () => {
                                     
                                     {consolidatedRegistros.map((group) => {
                                         const totalOM = group.totalGeral;
-                                        const totalND39Consolidado = group.totalND39;
                                         
                                         const diasOperacaoConsolidado = group.dias_operacao;
                                         const efetivoConsolidado = group.efetivo;
@@ -1423,89 +1422,111 @@ const ConcessionariaForm = () => {
                                         const omDestino = group.om_detentora;
                                         const ugDestino = group.ug_detentora;
                                         
-                                        const hasAgua = group.records.some(r => r.categoria === 'Água/Esgoto');
-                                        const hasEnergia = group.records.some(r => r.categoria === 'Energia Elétrica');
+                                        // Filter records by category
+                                        const aguaRecords = group.records.filter(r => r.categoria === 'Água/Esgoto');
+                                        const energiaRecords = group.records.filter(r => r.categoria === 'Energia Elétrica');
+                                        
+                                        // Helper component to render a single category card
+                                        const CategoryCard = ({ category, records }: { category: CategoriaConcessionaria, records: ConcessionariaRegistroDB[] }) => {
+                                            if (records.length === 0) return null;
+
+                                            const isAgua = category === 'Água/Esgoto';
+                                            const icon = isAgua ? <Droplet className="h-4 w-4 text-blue-500" /> : <Zap className="h-4 w-4 text-yellow-600" />;
+                                            
+                                            // Calculate totals for this specific category
+                                            const totalCategory = records.reduce((sum, r) => sum + Number(r.valor_total || 0), 0);
+                                            const totalND39Category = records.reduce((sum, r) => sum + Number(r.valor_nd_39 || 0), 0);
+                                            
+                                            return (
+                                                <Card 
+                                                    key={`${group.groupKey}-${category}`} 
+                                                    className="p-3 bg-background border"
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex flex-col">
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="font-semibold text-base text-foreground">
+                                                                    {category}
+                                                                </h4>
+                                                                {icon}
+                                                            </div>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                Diretrizes: {records.length}
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-extrabold text-xl text-foreground">
+                                                                {formatCurrency(totalCategory)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {/* Detalhes da Alocação */}
+                                                    <div className="pt-2 border-t mt-2">
+                                                        {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
+                                                        <div className="flex justify-between text-xs">
+                                                            <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                            <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
+                                                                {omDestino} ({formatCodug(ugDestino)})
+                                                            </span>
+                                                        </div>
+                                                        {/* ND 33.90.39 */}
+                                                        <div className="flex justify-between text-xs">
+                                                            <span className="text-muted-foreground">ND 33.90.39:</span>
+                                                            <span className="text-green-600">{formatCurrency(totalND39Category)}</span>
+                                                        </div>
+                                                    </div>
+                                                </Card>
+                                            );
+                                        };
 
                                         return (
                                             <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
-                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
-                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
-                                                        {omName} (UG: {formatCodug(ug)})
-                                                        <Badge variant="outline" className="text-xs">
-                                                            {faseAtividade}
-                                                        </Badge>
-                                                    </h3>
-                                                    <span className="font-extrabold text-xl text-primary">
-                                                        {formatCurrency(totalOM)}
-                                                    </span>
+                                                <div className="flex items-start justify-between mb-3 border-b pb-2">
+                                                    <div className="flex flex-col">
+                                                        <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                            {omName} (UG: {formatCodug(ug)})
+                                                            <Badge variant="outline" className="text-xs">
+                                                                {faseAtividade}
+                                                            </Badge>
+                                                        </h3>
+                                                        <p className="text-xs text-muted-foreground mt-1">
+                                                            Período: {diasOperacaoConsolidado} {diasText} | Efetivo: {efetivoConsolidado} {efetivoText}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <span className="font-extrabold text-xl text-primary">
+                                                            {formatCurrency(totalOM)}
+                                                        </span>
+                                                        {/* Botões de Ação MOVIDOS PARA O HEADER PRINCIPAL */}
+                                                        <Button
+                                                            type="button" 
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8"
+                                                            onClick={() => handleEdit(group)} 
+                                                            disabled={!isPTrabEditable || isSaving || pendingConcessionaria.length > 0}
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            type="button" 
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleConfirmDelete(group)} 
+                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                            disabled={!isPTrabEditable || isSaving}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                                 
-                                                {/* CORPO CONSOLIDADO */}
-                                                    <div className="space-y-3">
-                                                        <Card 
-                                                            key={group.groupKey} 
-                                                            className="p-3 bg-background border"
-                                                        >
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex flex-col">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <h4 className="font-semibold text-base text-foreground">
-                                                                            Concessionárias
-                                                                        </h4>
-                                                                        {hasAgua && <Droplet className="h-4 w-4 text-blue-500" />}
-                                                                        {hasEnergia && <Zap className="h-4 w-4 text-yellow-600" />}
-                                                                    </div>
-                                                                    <p className="text-xs text-muted-foreground">
-                                                                        Itens: {group.records.length} | Período: {diasOperacaoConsolidado} {diasText} | Efetivo: {efetivoConsolidado} {efetivoText}
-                                                                    </p>
-                                                                </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="font-extrabold text-xl text-foreground">
-                                                                        {formatCurrency(totalND39Consolidado)}
-                                                                    </span>
-                                                                    {/* Botões de Ação */}
-                                                                    <div className="flex gap-1 shrink-0">
-                                                                        <Button
-                                                                            type="button" 
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-8 w-8"
-                                                                            onClick={() => handleEdit(group)} 
-                                                                            disabled={!isPTrabEditable || isSaving || pendingConcessionaria.length > 0}
-                                                                        >
-                                                                            <Pencil className="h-4 w-4" />
-                                                                        </Button>
-                                                                        <Button
-                                                                            type="button" 
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            onClick={() => handleConfirmDelete(group)} 
-                                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                                            disabled={!isPTrabEditable || isSaving}
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            
-                                                            {/* Detalhes da Alocação */}
-                                                            <div className="pt-2 border-t mt-2">
-                                                                {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
-                                                                <div className="flex justify-between text-xs">
-                                                                    <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                                                    <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
-                                                                        {omDestino} ({formatCodug(ugDestino)})
-                                                                    </span>
-                                                                </div>
-                                                                {/* ND 33.90.39 */}
-                                                                <div className="flex justify-between text-xs">
-                                                                    <span className="text-muted-foreground">ND 33.90.39:</span>
-                                                                    <span className="text-green-600">{formatCurrency(totalND39Consolidado)}</span>
-                                                                </div>
-                                                            </div>
-                                                        </Card>
-                                                    </div>
+                                                {/* CORPO CONSOLIDADO: Renderiza cards separados por categoria */}
+                                                <div className="space-y-3">
+                                                    <CategoryCard category="Água/Esgoto" records={aguaRecords} />
+                                                    <CategoryCard category="Energia Elétrica" records={energiaRecords} />
+                                                </div>
                                             </Card>
                                         );
                                     })}
