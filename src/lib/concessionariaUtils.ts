@@ -53,11 +53,7 @@ export const calculateConcessionariaTotal = (
  * Determina o artigo/preposição correto ('do' ou 'da') baseado no nome da OM.
  * Prioriza indicadores ordinais (º/ª).
  */
-const getPrepositionArticle = (omName: string | null | undefined): 'do' | 'da' => {
-    if (!omName) {
-        return 'do'; // Padrão se o nome for nulo/vazio
-    }
-    
+const getPrepositionArticle = (omName: string): 'do' | 'da' => {
     const trimmedOm = omName.trim();
     
     // 1. Verifica indicadores ordinais (º/ª)
@@ -94,7 +90,7 @@ export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaReg
     const categoriaNome = categoria === 'Água/Esgoto' ? 'Água/Esgoto' : 'Energia Elétrica';
     
     const artigoOmFavorecida = getPrepositionArticle(organizacao);
-    const artigoOmDestino = getPrepositionArticle(om_detentora); // om_detentora pode ser null no DB, mas deve ser string aqui
+    const artigoOmDestino = getPrepositionArticle(om_detentora || ''); // om_detentora pode ser null no DB, mas deve ser string aqui
     
     const militaresText = efetivo === 1 ? 'militar' : 'militares';
     const diasText = dias_operacao === 1 ? 'dia' : 'dias';

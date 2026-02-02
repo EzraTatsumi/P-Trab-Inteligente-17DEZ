@@ -5,6 +5,7 @@ import { formatCurrency, formatNumber } from '@/lib/formatUtils';
 import { Briefcase, Plane, Utensils, MessageSquare, Users, DollarSign } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // =================================================================
@@ -25,38 +26,39 @@ interface PTrabOperacionalReportProps {
     generateSuprimentoFundosMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string;
     generatePassagemMemoriaCalculo: (registro: PassagemRegistro) => string;
     generateConcessionariaMemoriaCalculo: (registro: ConcessionariaRegistro) => string;
-    // PROPS PARA AGRUPAMENTO E ORDENAÇÃO
+    // NOVAS PROPS PARA AGRUPAMENTO E ORDENAÇÃO
     omsOrdenadas: string[];
     gruposPorOM: Record<string, GrupoOM>;
 }
 
 // =================================================================
-// COMPONENTES AUXILIARES DE RENDERIZAÇÃO DE TABELA
+// COMPONENTES AUXILIARES
 // =================================================================
 
-interface TableSectionProps {
+interface SectionProps {
     title: string;
     icon: React.FC<any>;
     data: any[];
-    columns: { key: string; label: string; className?: string }[];
     renderRow: (item: any, index: number) => React.ReactNode;
     totalND15?: number;
     totalND30?: number;
     totalND33?: number;
     totalND39?: number;
     totalGeral: number;
+    showTotals: boolean;
+    columns: { key: string; label: string; className?: string }[];
 }
 
-const TableSection: React.FC<TableSectionProps> = ({ title, icon: Icon, data, columns, renderRow, totalND15 = 0, totalND30 = 0, totalND33 = 0, totalND39 = 0, totalGeral }) => {
+const Section: React.FC<SectionProps> = ({ title, icon: Icon, data, renderRow, totalND15 = 0, totalND30 = 0, totalND33 = 0, totalND39 = 0, totalGeral, showTotals, columns }) => {
     if (data.length === 0) return null;
 
     return (
-        <div className="mb-6 print:mb-3">
-            <h4 className="text-base font-semibold mb-2 flex items-center gap-2 text-blue-700 print:text-sm print:font-bold">
-                <Icon className="h-4 w-4" />
+        <div className="mb-8 p-4 border rounded-lg bg-gray-50 print:p-0 print:border-0 print:bg-white">
+            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-blue-700 print:text-base print:font-bold">
+                <Icon className="h-5 w-5" />
                 {title}
-            </h4>
-            <Table className="w-full border-collapse border border-gray-300 print:border-gray-300">
+            </h3>
+            <Table className="w-full border-collapse">
                 <TableHeader className="bg-gray-100 print:bg-gray-100">
                     <TableRow className="border-b border-gray-300 print:border-gray-300">
                         {columns.map(col => (
@@ -69,22 +71,26 @@ const TableSection: React.FC<TableSectionProps> = ({ title, icon: Icon, data, co
                 </TableHeader>
                 <TableBody>
                     {data.map(renderRow)}
-                    <TableRow className="bg-blue-50/50 font-bold border-t border-blue-200 print:bg-blue-50 print:border-blue-200">
-                        <TableCell colSpan={columns.length} className="text-right text-sm py-2 px-2 print:text-[10px] print:py-1">
-                            Total da Seção:
-                        </TableCell>
-                        <TableCell className="text-right text-sm py-2 px-2 print:text-[10px] print:py-1">
-                            {formatCurrency(totalGeral)}
-                        </TableCell>
-                    </TableRow>
+                    {showTotals && (
+                        <TableRow className="bg-blue-50/50 font-bold border-t border-blue-200 print:bg-blue-50 print:border-blue-200">
+                            <TableCell colSpan={columns.length} className="text-right text-sm py-2 px-2 print:text-[10px] print:py-1">
+                                Total da Seção:
+                            </TableCell>
+                            <TableCell className="text-right text-sm py-2 px-2 print:text-[10px] print:py-1">
+                                {formatCurrency(totalGeral)}
+                            </TableCell>
+                        </TableRow>
+                    )}
                 </TableBody>
             </Table>
-            <div className="mt-1 text-xs text-right text-gray-600 print:text-[9px] print:mt-0">
-                {totalND15 > 0 && <span className="mr-4">ND 33.90.15: {formatCurrency(totalND15)}</span>}
-                {totalND30 > 0 && <span className="mr-4">ND 33.90.30: {formatCurrency(totalND30)}</span>}
-                {totalND33 > 0 && <span className="mr-4">ND 33.90.33: {formatCurrency(totalND33)}</span>}
-                {totalND39 > 0 && <span>ND 33.90.39: {formatCurrency(totalND39)}</span>}
-            </div>
+            {showTotals && (
+                <div className="mt-2 text-xs text-right text-gray-600 print:text-[9px]">
+                    {totalND15 > 0 && <span className="mr-4">ND 33.90.15: {formatCurrency(totalND15)}</span>}
+                    {totalND30 > 0 && <span className="mr-4">ND 33.90.30: {formatCurrency(totalND30)}</span>}
+                    {totalND33 > 0 && <span className="mr-4">ND 33.90.33: {formatCurrency(totalND33)}</span>}
+                    {totalND39 > 0 && <span>ND 33.90.39: {formatCurrency(totalND39)}</span>}
+                </div>
+            )}
         </div>
     );
 };
@@ -343,7 +349,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
 
     return (
         <div className="space-y-6 print:space-y-3">
-            {/* Cabeçalho do Relatório */}
+            {/* Cabeçalho do Relatório (Mantido) */}
             <div className="text-center mb-6 print:mb-3">
                 <h1 className="text-2xl font-bold print:text-lg">PLANO DE TRABALHO OPERACIONAL</h1>
                 <h2 className="text-xl font-semibold text-primary print:text-base">{ptrabData.numero_ptrab} - {ptrabData.nome_operacao}</h2>
@@ -355,13 +361,15 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 </p>
             </div>
             
-            {/* Resumo Geral */}
-            <div className="p-4 border rounded-lg shadow-lg bg-blue-50 print:shadow-none print:border print:border-gray-300 print:bg-white">
-                <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-blue-700 print:text-base">
-                    <DollarSign className="h-5 w-5" />
-                    Resumo de Custos Operacionais (GND 3)
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm print:text-xs">
+            {/* Resumo Geral (Novo) */}
+            <Card className="shadow-lg print:shadow-none print:border print:border-gray-300">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2 text-blue-700">
+                        <DollarSign className="h-5 w-5" />
+                        Resumo de Custos Operacionais (GND 3)
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm print:text-xs">
                     <div className="space-y-1">
                         <p className="text-muted-foreground">Diárias (ND 15)</p>
                         <p className="font-bold text-lg text-green-600 print:text-base">{formatCurrency(totalDiariaND15)}</p>
@@ -378,12 +386,12 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                         <p className="text-muted-foreground">Verba/Suprimento/Conc. (ND 30/39)</p>
                         <p className="font-bold text-lg text-green-600 print:text-base">{formatCurrency(totalVerbaND30 + totalVerbaND39 + totalSuprimentoND30 + totalSuprimentoND39 + totalConcessionariaND39)}</p>
                     </div>
-                    <div className="col-span-2 md:col-span-4 pt-2 border-t border-dashed border-blue-200">
+                    <div className="col-span-2 md:col-span-4 pt-2 border-t border-dashed">
                         <p className="text-muted-foreground">Total Geral Operacional</p>
                         <p className="font-extrabold text-xl text-blue-700 print:text-lg">{formatCurrency(totalGeralOperacional)}</p>
                     </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
             <h2 className="text-xl font-bold mt-8 mb-4 text-gray-800 print:text-base print:mt-4">DETALHAMENTO POR ORGANIZAÇÃO MILITAR</h2>
             <Separator className="mb-6 print:mb-3" />
@@ -405,19 +413,19 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                     const totalGeralOM = totalDiariaOM + totalVerbaOM + totalSuprimentoOM + totalPassagemOM + totalConcessionariaOM;
 
                     return (
-                        <div key={omName} className="mb-8 p-4 border rounded-lg shadow-md bg-white print:shadow-none print:border print:border-gray-300 print:p-0">
-                            <div className="bg-gray-100 p-3 border-b print:bg-gray-100 print:p-2 print:border-gray-300">
-                                <h3 className="text-lg font-bold text-gray-800 print:text-sm">
+                        <Card key={omName} className="mb-6 shadow-md print:shadow-none print:border print:border-gray-300">
+                            <CardHeader className="bg-blue-50/50 border-b print:bg-blue-50 print:border-gray-300">
+                                <CardTitle className="text-lg font-bold text-blue-800 print:text-sm">
                                     OM: {omName}
-                                </h3>
+                                </CardTitle>
                                 <p className="text-sm text-blue-600 font-medium print:text-xs">
                                     Total Operacional da OM: {formatCurrency(totalGeralOM)}
                                 </p>
-                            </div>
-                            <div className="pt-4 px-2 space-y-6 print:pt-2 print:px-0 print:space-y-3">
+                            </CardHeader>
+                            <CardContent className="pt-4 space-y-6 print:pt-2 print:space-y-3">
                                 
                                 {/* Seção de Diárias */}
-                                <TableSection
+                                <Section
                                     title="Pagamento de Diárias"
                                     icon={Users}
                                     data={grupo.linhasDiaria}
@@ -425,22 +433,24 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                     totalND15={grupo.linhasDiaria.reduce((sum, r) => sum + r.valor_nd_15, 0)}
                                     totalND30={grupo.linhasDiaria.reduce((sum, r) => sum + r.valor_nd_30, 0)}
                                     totalGeral={totalDiariaOM}
+                                    showTotals={true}
                                     columns={diariaColumns}
                                 />
                                 
                                 {/* Seção de Passagens */}
-                                <TableSection
+                                <Section
                                     title="Passagens Aéreas/Terrestres"
                                     icon={Plane}
                                     data={grupo.linhasPassagem}
                                     renderRow={renderPassagemRow}
                                     totalND33={grupo.linhasPassagem.reduce((sum, r) => sum + r.valor_nd_33, 0)}
                                     totalGeral={totalPassagemOM}
+                                    showTotals={true}
                                     columns={passagemColumns}
                                 />
                                 
                                 {/* Seção de Verba Operacional */}
-                                <TableSection
+                                <Section
                                     title="Verba Operacional"
                                     icon={Briefcase}
                                     data={grupo.linhasVerbaOperacional}
@@ -448,11 +458,12 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                     totalND30={grupo.linhasVerbaOperacional.reduce((sum, r) => sum + r.valor_nd_30, 0)}
                                     totalND39={grupo.linhasVerbaOperacional.reduce((sum, r) => sum + r.valor_nd_39, 0)}
                                     totalGeral={totalVerbaOM}
+                                    showTotals={true}
                                     columns={verbaSuprimentoColumns}
                                 />
                                 
                                 {/* Seção de Suprimento de Fundos */}
-                                <TableSection
+                                <Section
                                     title="Suprimento de Fundos"
                                     icon={DollarSign}
                                     data={grupo.linhasSuprimentoFundos}
@@ -460,37 +471,27 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                     totalND30={grupo.linhasSuprimentoFundos.reduce((sum, r) => sum + r.valor_nd_30, 0)}
                                     totalND39={grupo.linhasSuprimentoFundos.reduce((sum, r) => sum + r.valor_nd_39, 0)}
                                     totalGeral={totalSuprimentoOM}
+                                    showTotals={true}
                                     columns={verbaSuprimentoColumns}
                                 />
                                 
                                 {/* Seção de Concessionária */}
-                                <TableSection
+                                <Section
                                     title="Pagamento de Concessionárias"
                                     icon={Utensils}
                                     data={grupo.linhasConcessionaria}
                                     renderRow={renderConcessionariaRow}
                                     totalND39={grupo.linhasConcessionaria.reduce((sum, r) => sum + r.valor_nd_39, 0)}
                                     totalGeral={totalConcessionariaOM}
+                                    showTotals={true}
                                     columns={concessionariaColumns}
                                 />
                                 
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
                     );
                 })
             )}
-            
-            {/* Total Geral Final */}
-            <div className="mt-8 p-4 border rounded-lg shadow-xl bg-blue-100 print:shadow-none print:border print:border-gray-400 print:bg-blue-50">
-                <h3 className="text-xl font-bold text-blue-900 print:text-base">TOTAL GERAL OPERACIONAL DO P TRAB</h3>
-                <p className="text-2xl font-extrabold text-blue-900 print:text-lg">{formatCurrency(totalGeralOperacional)}</p>
-                <div className="mt-2 text-sm text-gray-700 print:text-xs">
-                    <p>ND 33.90.15 (Diárias): {formatCurrency(totalDiariaND15)}</p>
-                    <p>ND 33.90.30 (Diárias, Verba, Suprimento): {formatCurrency(totalDiariaND30 + totalVerbaND30 + totalSuprimentoND30)}</p>
-                    <p>ND 33.90.33 (Passagens): {formatCurrency(totalPassagemND33)}</p>
-                    <p>ND 33.90.39 (Verba, Suprimento, Concessionária): {formatCurrency(totalVerbaND39 + totalSuprimentoND39 + totalConcessionariaND39)}</p>
-                </div>
-            </div>
         </div>
     );
 };
