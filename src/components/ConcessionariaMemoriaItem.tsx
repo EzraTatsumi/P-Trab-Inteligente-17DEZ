@@ -33,7 +33,7 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
     handleSalvarMemoriaCustomizada,
     handleRestaurarMemoriaAutomatica,
 }) => {
-    const isEditing = editingMem memoriaId === registro.id;
+    const isEditing = editingMemoriaId === registro.id;
     const hasCustomMemoria = !!registro.detalhamento_customizado;
     
     // 1. Gerar a memória automática individual
