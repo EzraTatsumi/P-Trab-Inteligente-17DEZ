@@ -1431,7 +1431,6 @@ const ConcessionariaForm = () => {
                                             if (records.length === 0) return null;
 
                                             const isAgua = category === 'Água/Esgoto';
-                                            const icon = isAgua ? <Droplet className="h-4 w-4 text-blue-500" /> : <Zap className="h-4 w-4 text-yellow-600" />;
                                             
                                             // Calculate totals for this specific category
                                             const totalCategory = records.reduce((sum, r) => sum + Number(r.valor_total || 0), 0);
@@ -1448,10 +1447,9 @@ const ConcessionariaForm = () => {
                                                                 <h4 className="font-semibold text-base text-foreground">
                                                                     {category}
                                                                 </h4>
-                                                                {icon}
                                                             </div>
-                                                            <p className="text-xs text-muted-foreground">
-                                                                Diretrizes: {records.length}
+                                                            <p className="text-xs text-muted-foreground mt-1">
+                                                                Período: {diasOperacaoConsolidado} {diasText} | Efetivo: {efetivoConsolidado} {efetivoText}
                                                             </p>
                                                         </div>
                                                         <div className="flex items-center gap-2">
@@ -1490,9 +1488,6 @@ const ConcessionariaForm = () => {
                                                                 {faseAtividade}
                                                             </Badge>
                                                         </h3>
-                                                        <p className="text-xs text-muted-foreground mt-1">
-                                                            Período: {diasOperacaoConsolidado} {diasText} | Efetivo: {efetivoConsolidado} {efetivoText}
-                                                        </p>
                                                     </div>
                                                     <div className="flex items-center gap-2 shrink-0">
                                                         <span className="font-extrabold text-xl text-primary">
