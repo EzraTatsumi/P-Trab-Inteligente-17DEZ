@@ -53,10 +53,19 @@ export const formatNumber = (value: number | null | undefined, decimals: number 
     if (value === null || value === undefined) {
         return '0';
     }
-    return new Intl.NumberFormat('pt-BR', {
-        minimumFractionDigits: 0,
+    
+    const options: Intl.NumberFormatOptions = {
         maximumFractionDigits: decimals,
-    }).format(value);
+    };
+    
+    // Se o número de casas decimais for 2, garante que 2 casas sejam exibidas (ex: 7.00)
+    if (decimals === 2) {
+        options.minimumFractionDigits = 2;
+    } else {
+        options.minimumFractionDigits = 0;
+    }
+    
+    return new Intl.NumberFormat('pt-BR', options).format(value);
 };
 
 /**

@@ -1,8 +1,16 @@
 import { Tables } from "@/integrations/supabase/types";
 import { DiretrizConcessionaria, CategoriaConcessionaria } from "@/types/diretrizesConcessionaria";
-import { formatCurrency, formatCodug } from "./formatUtils";
+import { formatCurrency, formatCodug, formatNumber } from "./formatUtils";
 
 export type ConcessionariaRegistro = Tables<'concessionaria_registros'>;
+
+// Tipo para o registro estendido com detalhes da diretriz (necessário para a memória)
+export interface ConcessionariaRegistroComDiretriz extends ConcessionariaRegistro {
+    nome_concessionaria: string;
+    unidade_custo: string;
+    fonte_consumo: string | null;
+    fonte_custo: string | null;
+}
 
 // Tipo para o item selecionado no diálogo (Diretriz completa)
 export interface DiretrizSelection extends DiretrizConcessionaria {
@@ -18,7 +26,7 @@ export interface ConsolidatedConcessionariaRecord {
     dias_operacao: number;
     efetivo: number;
     fase_atividade: string;
-    records: ConcessionariaRegistro[];
+    records: ConcessionariaRegistroComDiretriz[]; // Usando o tipo estendido
     totalGeral: number;
     totalND39: number;
 }
@@ -42,6 +50,7 @@ export const calculateConcessionariaTotal = (
 
 /**
  * Gera a memória de cálculo consolidada para um grupo de registros de concessionária.
+ * Esta função agora usa o tipo estendido ConcessionariaRegistroComDiretriz.
  */
 export const generateConsolidatedConcessionariaMemoriaCalculo = (group: ConsolidatedConcessionariaRecord): string => {
     const { organizacao, ug, om_detentora, ug_detentora, dias_operacao, efetivo, records, totalGeral } = group;
@@ -55,15 +64,29 @@ export const generateConsolidatedConcessionariaMemoriaCalculo = (group: Consolid
     
     records.forEach(r => {
         const categoria = r.categoria;
-        const nomeConcessionaria = r.detalhamento?.split(': ')[1] || 'Detalhe não disponível';
+        const nomeConcessionaria = r.nome_concessionaria;
         const consumo = Number(r.consumo_pessoa_dia);
         const custo = Number(r.valor_unitario);
+        const unidade = r.unidade_custo;
+        const fonteConsumo = r.fonte_consumo || 'Não Informado';
+        const fonteCusto = r.fonte_custo || 'Não Informado';
         const total = Number(r.valor_total);
-        const unidade = categoria === 'Água/Esgoto' ? 'm³' : 'kWh';
         
-        memoria += `\n[${categoria} - ${nomeConcessionaria}]\n`;
-        memoria += `Cálculo: Efetivo (${efetivo}) x Dias (${dias_operacao}) x Consumo/Pessoa/Dia (${consumo} ${unidade}) x Custo Unitário (${formatCurrency(custo)}/${unidade})\n`;
-        memoria += `Total: ${formatCurrency(total)}\n`;
+        const categoriaNome = categoria === 'Água/Esgoto' ? 'Água/Esgoto' : 'Energia Elétrica';
+        const unidadeConsumo = categoria === 'Água/Esgoto' ? 'm³' : 'kWh';
+        const militaresText = efetivo === 1 ? 'militar' : 'militares';
+        const diasText = dias_operacao === 1 ? 'dia' : 'dias';
+        
+        memoria += `\n33.90.39 - Pagamento de Concessionária de ${categoriaNome} do ${organizacao} para atender ${efetivo} ${militaresText} do ${om_detentora}, durante ${dias_operacao} ${diasText} de operação.\n`;
+        
+        memoria += `\nCálculo:\n`;
+        memoria += `- Concessionária: ${nomeConcessionaria}\n`;
+        memoria += `- Consumo pessoa/dia: ${formatNumber(consumo, 2)} ${unidadeConsumo}/dia, segundo ${fonteConsumo}.\n`;
+        memoria += `- Custo: ${formatCurrency(custo)}/${unidadeConsumo}, segundo ${fonteCusto}.\n`;
+        
+        memoria += `\nFórmula: (Nr ${militaresText} x Consumo/dia x Custo) x Nr ${diasText} de operação.\n`;
+        memoria += `- (${efetivo} ${militaresText} x ${formatNumber(consumo, 2)} ${unidadeConsumo}/dia x ${formatCurrency(custo)} /${unidadeConsumo}) x ${dias_operacao} ${diasText} = ${formatCurrency(total)}.\n`;
+        memoria += `\nTotal: ${formatCurrency(total)}.\n`;
     });
     
     memoria += `\n--------------------------------------------------\n`;
@@ -75,21 +98,26 @@ export const generateConsolidatedConcessionariaMemoriaCalculo = (group: Consolid
 /**
  * Gera a memória de cálculo individual para um registro de concessionária.
  * (Usado principalmente para staging/revisão)
+ * Esta função agora usa o tipo estendido ConcessionariaRegistroComDiretriz.
  */
-export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaRegistro): string => {
-    const { organizacao, ug, om_detentora, ug_detentora, dias_operacao, efetivo, categoria, valor_unitario, consumo_pessoa_dia, valor_total } = registro;
+export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaRegistroComDiretriz): string => {
+    const { organizacao, ug, om_detentora, ug_detentora, dias_operacao, efetivo, categoria, valor_unitario, consumo_pessoa_dia, valor_total, nome_concessionaria, unidade_custo, fonte_consumo, fonte_custo } = registro;
     
-    let memoria = `REGISTRO INDIVIDUAL DE CONCESSIONÁRIA\n`;
-    memoria += `OM Favorecida: ${organizacao} (UG: ${formatCodug(ug)})\n`;
-    memoria += `OM Destino Recurso: ${om_detentora} (UG: ${formatCodug(ug_detentora)})\n`;
-    memoria += `Categoria: ${categoria}\n`;
-    memoria += `Período: ${dias_operacao} dias | Efetivo: ${efetivo} militares\n\n`;
+    const categoriaNome = categoria === 'Água/Esgoto' ? 'Água/Esgoto' : 'Energia Elétrica';
+    const unidadeConsumo = unidade_custo;
+    const militaresText = efetivo === 1 ? 'militar' : 'militares';
+    const diasText = dias_operacao === 1 ? 'dia' : 'dias';
     
-    const unidade = categoria === 'Água/Esgoto' ? 'm³' : 'kWh';
+    let memoria = `33.90.39 - Pagamento de Concessionária de ${categoriaNome} do ${organizacao} para atender ${efetivo} ${militaresText} do ${om_detentora}, durante ${dias_operacao} ${diasText} de operação.\n`;
     
-    memoria += `Cálculo:\n`;
-    memoria += `Efetivo (${efetivo}) x Dias (${dias_operacao}) x Consumo/Pessoa/Dia (${consumo_pessoa_dia} ${unidade}) x Custo Unitário (${formatCurrency(valor_unitario)}/${unidade})\n`;
-    memoria += `Total: ${formatCurrency(valor_total)}\n`;
+    memoria += `\nCálculo:\n`;
+    memoria += `- Concessionária: ${nome_concessionaria}\n`;
+    memoria += `- Consumo pessoa/dia: ${formatNumber(consumo_pessoa_dia, 2)} ${unidadeConsumo}/dia, segundo ${fonte_consumo || 'Não Informado'}.\n`;
+    memoria += `- Custo: ${formatCurrency(valor_unitario)}/${unidadeConsumo}, segundo ${fonte_custo || 'Não Informado'}.\n`;
+    
+    memoria += `\nFórmula: (Nr ${militaresText} x Consumo/dia x Custo) x Nr ${diasText} de operação.\n`;
+    memoria += `- (${efetivo} ${militaresText} x ${formatNumber(consumo_pessoa_dia, 2)} ${unidadeConsumo}/dia x ${formatCurrency(valor_unitario)} /${unidadeConsumo}) x ${dias_operacao} ${diasText} = ${formatCurrency(valor_total)}.\n`;
+    memoria += `\nTotal: ${formatCurrency(valor_total)}.\n`;
     
     return memoria;
 };
