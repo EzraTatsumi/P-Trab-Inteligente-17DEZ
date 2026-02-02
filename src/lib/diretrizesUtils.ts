@@ -1,58 +1,30 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 
-type DiretrizCusteio = Tables<'diretrizes_custeio'>;
+/**
+ * Tipo de dados para a Diretriz de Concessionária.
+ */
+export type DiretrizConcessionaria = Tables<'diretrizes_concessionaria'>;
 
 /**
- * Busca as diretrizes de custeio (valores unitários de Classe I e fatores de Classe III) 
- * para o ano de referência fornecido.
- * @param year O ano de referência para buscar a diretriz.
+ * Busca as diretrizes de concessionária com base em uma lista de IDs.
+ * @param diretrizIds Array de IDs das diretrizes a serem buscadas.
+ * @returns Uma promessa que resolve para um array de objetos DiretrizConcessionaria.
  */
-export async function fetchDiretrizesCusteio(year: number): Promise<DiretrizCusteio> {
-    if (!year) throw new Error("Ano de referência não fornecido.");
+export async function fetchDiretrizesConcessionaria(diretrizIds: string[]): Promise<DiretrizConcessionaria[]> {
+    if (diretrizIds.length === 0) {
+        return [];
+    }
     
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado.");
-    
-    // Busca a diretriz diretamente pelo ano e user_id
     const { data, error } = await supabase
-        .from('diretrizes_custeio')
+        .from('diretrizes_concessionaria')
         .select('*')
-        .eq('user_id', user.id)
-        .eq('ano_referencia', year)
-        .maybeSingle();
-        
-    if (error) {
-        console.error("Erro ao buscar diretriz de custeio:", error);
-        throw new Error(`Falha ao buscar diretrizes de custeio para o ano ${year}.`);
-    }
-    
-    if (!data) {
-        throw new Error(`Diretrizes de Custeio não encontradas para o ano ${year}. Por favor, cadastre-as em 'Configurações > Diretrizes de Custeio'.`);
-    }
-    
-    return data as DiretrizCusteio;
-}
-
-/**
- * Busca o ano padrão de logística (default_logistica_year) do perfil do usuário.
- * Esta função substitui a busca incorreta por 'default_diretriz_year'.
- */
-export async function fetchDefaultLogisticaYearFromProfile(): Promise<number | null> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-
-    // A coluna correta é default_logistica_year
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('default_logistica_year')
-        .eq('id', user.id)
-        .single();
+        .in('id', diretrizIds);
 
     if (error) {
-        console.error("Erro ao buscar default_logistica_year:", error);
-        return null;
+        console.error("Erro ao buscar diretrizes de concessionária:", error);
+        throw new Error("Falha ao carregar diretrizes de concessionária.");
     }
-
-    return data?.default_logistica_year ?? null;
+    
+    return data as DiretrizConcessionaria[];
 }
