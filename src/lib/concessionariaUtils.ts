@@ -49,16 +49,49 @@ export const calculateConcessionariaTotal = (
 };
 
 /**
+ * Gera a memória de cálculo individual para um registro de concessionária.
+ * (Usado principalmente para staging/revisão)
+ */
+export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaRegistroComDiretriz): string => {
+    const { organizacao, ug, om_detentora, ug_detentora, dias_operacao, efetivo, categoria, valor_unitario, consumo_pessoa_dia, valor_total, nome_concessionaria, unidade_custo, fonte_consumo, fonte_custo, fase_atividade } = registro;
+    
+    // Variáveis de concordância
+    const categoriaNome = categoria === 'Água/Esgoto' ? 'Água/Esgoto' : 'Energia Elétrica';
+    const artigoOmFavorecida = organizacao.toLowerCase().startsWith('a ') || organizacao.toLowerCase().startsWith('o ') ? '' : (organizacao.toLowerCase().includes('om') ? 'a ' : 'o ');
+    const artigoOmDestino = om_detentora.toLowerCase().startsWith('a ') || om_detentora.toLowerCase().startsWith('o ') ? '' : (om_detentora.toLowerCase().includes('om') ? 'a ' : 'o ');
+    const militaresText = efetivo === 1 ? 'militar' : 'militares';
+    const diasText = dias_operacao === 1 ? 'dia' : 'dias';
+    const unidadeConsumo = unidade_custo; // 'm³' ou 'kWh'
+    
+    // 1. Cabeçalho (33.90.39)
+    let memoria = `33.90.39 - Pagamento de Concessionária de ${categoriaNome} d${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} d${artigoOmDestino} ${om_detentora}, durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
+    
+    // 2. Detalhamento do Cálculo
+    memoria += `\nCálculo:\n`;
+    memoria += `- Concessionária: ${nome_concessionaria}\n`;
+    memoria += `- Consumo pessoa/dia: ${formatNumber(consumo_pessoa_dia, 2)} ${unidadeConsumo}/dia, segundo ${fonte_consumo || 'Não Informado'}.\n`;
+    memoria += `- Custo: ${formatCurrency(valor_unitario)}/${unidadeConsumo}, segundo ${fonte_custo || 'Não Informado'}.\n`;
+    
+    // 3. Fórmula e Aplicação
+    memoria += `\nFórmula: (Efetivo x Consumo/dia x Custo) x Nr dias de Atividade.\n`;
+    memoria += `- (${efetivo} ${militaresText} x ${formatNumber(consumo_pessoa_dia, 2)} ${unidadeConsumo}/dia x ${formatCurrency(valor_unitario)} /${unidadeConsumo}) x ${dias_operacao} ${diasText} = ${formatCurrency(valor_total)}.\n`;
+    
+    // 4. Total
+    memoria += `\nTotal: ${formatCurrency(valor_total)}.\n`;
+    
+    return memoria;
+};
+
+/**
  * Gera a memória de cálculo consolidada para um grupo de registros de concessionária.
- * Esta função agora usa o tipo estendido ConcessionariaRegistroComDiretriz.
  */
 export const generateConsolidatedConcessionariaMemoriaCalculo = (group: ConsolidatedConcessionariaRecord): string => {
-    const { organizacao, ug, om_detentora, ug_detentora, dias_operacao, efetivo, records, totalGeral } = group;
+    const { organizacao, ug, om_detentora, ug_detentora, dias_operacao, efetivo, records, totalGeral, fase_atividade } = group;
     
     let memoria = `SOLICITAÇÃO DE RECURSOS PARA PAGAMENTO DE CONCESSIONÁRIAS\n`;
     memoria += `OM Favorecida: ${organizacao} (UG: ${formatCodug(ug)})\n`;
     memoria += `OM Destino Recurso: ${om_detentora} (UG: ${formatCodug(ug_detentora)})\n`;
-    memoria += `Período: ${dias_operacao} dias | Efetivo: ${efetivo} militares\n\n`;
+    memoria += `Período: ${dias_operacao} dias | Efetivo: ${efetivo} militares | Fase: ${fase_atividade}\n\n`;
     
     memoria += `DETALHAMENTO DOS CÁLCULOS:\n`;
     
@@ -72,52 +105,29 @@ export const generateConsolidatedConcessionariaMemoriaCalculo = (group: Consolid
         const fonteCusto = r.fonte_custo || 'Não Informado';
         const total = Number(r.valor_total);
         
+        // Variáveis de concordância (dentro do loop, pois a categoria pode mudar se consolidarmos)
         const categoriaNome = categoria === 'Água/Esgoto' ? 'Água/Esgoto' : 'Energia Elétrica';
-        const unidadeConsumo = categoria === 'Água/Esgoto' ? 'm³' : 'kWh';
+        const artigoOmFavorecida = organizacao.toLowerCase().startsWith('a ') || organizacao.toLowerCase().startsWith('o ') ? '' : (organizacao.toLowerCase().includes('om') ? 'a ' : 'o ');
+        const artigoOmDestino = om_detentora.toLowerCase().startsWith('a ') || om_detentora.toLowerCase().startsWith('o ') ? '' : (om_detentora.toLowerCase().includes('om') ? 'a ' : 'o ');
         const militaresText = efetivo === 1 ? 'militar' : 'militares';
         const diasText = dias_operacao === 1 ? 'dia' : 'dias';
+        const unidadeConsumo = unidade; // 'm³' ou 'kWh'
         
-        memoria += `\n33.90.39 - Pagamento de Concessionária de ${categoriaNome} do ${organizacao} para atender ${efetivo} ${militaresText} do ${om_detentora}, durante ${dias_operacao} ${diasText} de operação.\n`;
+        // Cabeçalho individual (para detalhamento)
+        memoria += `\n33.90.39 - Pagamento de Concessionária de ${categoriaNome} d${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} d${artigoOmDestino} ${om_detentora}, durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
         
         memoria += `\nCálculo:\n`;
         memoria += `- Concessionária: ${nomeConcessionaria}\n`;
         memoria += `- Consumo pessoa/dia: ${formatNumber(consumo, 2)} ${unidadeConsumo}/dia, segundo ${fonteConsumo}.\n`;
         memoria += `- Custo: ${formatCurrency(custo)}/${unidadeConsumo}, segundo ${fonteCusto}.\n`;
         
-        memoria += `\nFórmula: (Nr ${militaresText} x Consumo/dia x Custo) x Nr ${diasText} de operação.\n`;
+        memoria += `\nFórmula: (Efetivo x Consumo/dia x Custo) x Nr dias de Atividade.\n`;
         memoria += `- (${efetivo} ${militaresText} x ${formatNumber(consumo, 2)} ${unidadeConsumo}/dia x ${formatCurrency(custo)} /${unidadeConsumo}) x ${dias_operacao} ${diasText} = ${formatCurrency(total)}.\n`;
         memoria += `\nTotal: ${formatCurrency(total)}.\n`;
     });
     
     memoria += `\n--------------------------------------------------\n`;
     memoria += `TOTAL GERAL (ND 33.90.39): ${formatCurrency(totalGeral)}\n`;
-    
-    return memoria;
-};
-
-/**
- * Gera a memória de cálculo individual para um registro de concessionária.
- * (Usado principalmente para staging/revisão)
- * Esta função agora usa o tipo estendido ConcessionariaRegistroComDiretriz.
- */
-export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaRegistroComDiretriz): string => {
-    const { organizacao, ug, om_detentora, ug_detentora, dias_operacao, efetivo, categoria, valor_unitario, consumo_pessoa_dia, valor_total, nome_concessionaria, unidade_custo, fonte_consumo, fonte_custo } = registro;
-    
-    const categoriaNome = categoria === 'Água/Esgoto' ? 'Água/Esgoto' : 'Energia Elétrica';
-    const unidadeConsumo = unidade_custo;
-    const militaresText = efetivo === 1 ? 'militar' : 'militares';
-    const diasText = dias_operacao === 1 ? 'dia' : 'dias';
-    
-    let memoria = `33.90.39 - Pagamento de Concessionária de ${categoriaNome} do ${organizacao} para atender ${efetivo} ${militaresText} do ${om_detentora}, durante ${dias_operacao} ${diasText} de operação.\n`;
-    
-    memoria += `\nCálculo:\n`;
-    memoria += `- Concessionária: ${nome_concessionaria}\n`;
-    memoria += `- Consumo pessoa/dia: ${formatNumber(consumo_pessoa_dia, 2)} ${unidadeConsumo}/dia, segundo ${fonte_consumo || 'Não Informado'}.\n`;
-    memoria += `- Custo: ${formatCurrency(valor_unitario)}/${unidadeConsumo}, segundo ${fonte_custo || 'Não Informado'}.\n`;
-    
-    memoria += `\nFórmula: (Nr ${militaresText} x Consumo/dia x Custo) x Nr ${diasText} de operação.\n`;
-    memoria += `- (${efetivo} ${militaresText} x ${formatNumber(consumo_pessoa_dia, 2)} ${unidadeConsumo}/dia x ${formatCurrency(valor_unitario)} /${unidadeConsumo}) x ${dias_operacao} ${diasText} = ${formatCurrency(valor_total)}.\n`;
-    memoria += `\nTotal: ${formatCurrency(valor_total)}.\n`;
     
     return memoria;
 };
