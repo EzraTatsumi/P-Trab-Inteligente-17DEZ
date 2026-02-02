@@ -53,11 +53,7 @@ export const calculateConcessionariaTotal = (
  * Determina o artigo/preposição correto ('do' ou 'da') baseado no nome da OM.
  * Prioriza indicadores ordinais (º/ª).
  */
-const getPrepositionArticle = (omName: string | null | undefined): 'do' | 'da' => {
-    if (!omName) {
-        return 'do'; // Retorna um padrão seguro se o nome for nulo/indefinido
-    }
-    
+const getPrepositionArticle = (omName: string): 'do' | 'da' => {
     const trimmedOm = omName.trim();
     
     // 1. Verifica indicadores ordinais (º/ª)
@@ -86,9 +82,6 @@ export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaReg
     // Agora, todas as propriedades da tabela (organizacao, om_detentora, etc.) estão disponíveis diretamente
     const { organizacao, om_detentora, dias_operacao, efetivo, categoria, valor_unitario, consumo_pessoa_dia, valor_total, nome_concessionaria, unidade_custo, fonte_consumo, fonte_custo, fase_atividade } = registro;
     
-    // Inicialização da variável 'memoria'
-    let memoria = '';
-    
     // Garantir que os campos críticos não sejam undefined/null
     const nomeConcessionaria = nome_concessionaria || 'Não Informado';
     const unidadeCusto = unidade_custo || 'unidade';
@@ -97,14 +90,13 @@ export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaReg
     const categoriaNome = categoria === 'Água/Esgoto' ? 'Água/Esgoto' : 'Energia Elétrica';
     
     const artigoOmFavorecida = getPrepositionArticle(organizacao);
-    // CORREÇÃO: om_detentora pode ser null, mas getPrepositionArticle agora lida com isso.
-    const artigoOmDestino = getPrepositionArticle(om_detentora); 
+    const artigoOmDestino = getPrepositionArticle(om_detentora || ''); // om_detentora pode ser null no DB, mas deve ser string aqui
     
     const militaresText = efetivo === 1 ? 'militar' : 'militares';
     const diasText = dias_operacao === 1 ? 'dia' : 'dias';
     
     // 1. Cabeçalho (33.90.39)
-    memoria += `33.90.39 - Pagamento de Concessionária de ${categoriaNome} ${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} ${artigoOmDestino} ${om_detentora || 'OM Detentora Não Informada'} durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
+    let memoria = `33.90.39 - Pagamento de Concessionária de ${categoriaNome} ${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} ${artigoOmDestino} ${om_detentora} durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
     
     // 2. Detalhamento do Cálculo
     memoria += `\nCálculo:\n`;
