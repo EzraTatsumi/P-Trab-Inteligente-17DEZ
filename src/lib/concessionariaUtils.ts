@@ -80,6 +80,10 @@ const getPrepositionArticle = (omName: string): 'do' | 'da' => {
 export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaRegistroComDiretriz): string => {
     const { organizacao, om_detentora, dias_operacao, efetivo, categoria, valor_unitario, consumo_pessoa_dia, valor_total, nome_concessionaria, unidade_custo, fonte_consumo, fonte_custo, fase_atividade } = registro;
     
+    // Garantir que os campos críticos não sejam undefined/null
+    const nomeConcessionaria = nome_concessionaria || 'Não Informado';
+    const unidadeCusto = unidade_custo || 'unidade';
+    
     // Variáveis de concordância
     const categoriaNome = categoria === 'Água/Esgoto' ? 'Água/Esgoto' : 'Energia Elétrica';
     
@@ -88,21 +92,20 @@ export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaReg
     
     const militaresText = efetivo === 1 ? 'militar' : 'militares';
     const diasText = dias_operacao === 1 ? 'dia' : 'dias';
-    const unidadeConsumo = unidade_custo; // 'm³' ou 'kWh'
     
     // 1. Cabeçalho (33.90.39)
     let memoria = `33.90.39 - Pagamento de Concessionária de ${categoriaNome} ${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} ${artigoOmDestino} ${om_detentora}, durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
     
     // 2. Detalhamento do Cálculo
     memoria += `\nCálculo:\n`;
-    memoria += `- Concessionária: ${nome_concessionaria}\n`;
-    memoria += `- Consumo pessoa/dia: ${formatNumber(consumo_pessoa_dia, 2)} ${unidadeConsumo}/dia, segundo ${fonte_consumo || 'Não Informado'}.\n`;
-    memoria += `- Custo: ${formatCurrency(valor_unitario)}/${unidadeConsumo}, segundo ${fonte_custo || 'Não Informado'}.\n`;
+    memoria += `- Concessionária: ${nomeConcessionaria}\n`;
+    memoria += `- Consumo pessoa/dia: ${formatNumber(consumo_pessoa_dia, 2)} ${unidadeCusto}/dia, segundo ${fonte_consumo || 'Não Informado'}.\n`;
+    memoria += `- Custo: ${formatCurrency(valor_unitario)}/${unidadeCusto}, segundo ${fonte_custo || 'Não Informado'}.\n`;
     
     // 3. Fórmula e Aplicação
     memoria += `\nFórmula: (Efetivo x Consumo/dia x Custo) x Nr dias de Atividade.\n`;
     // Aplicação da fórmula: - ( <Efetivo> militar/es x <consumo>/dia x <custo>/m3 ou kWh) x <Período> dia/s = <Total>.
-    memoria += `- (${efetivo} ${militaresText} x ${formatNumber(consumo_pessoa_dia, 2)} ${unidadeConsumo}/dia x ${formatCurrency(valor_unitario)} /${unidadeConsumo}) x ${dias_operacao} ${diasText} = ${formatCurrency(valor_total)}.\n`;
+    memoria += `- (${efetivo} ${militaresText} x ${formatNumber(consumo_pessoa_dia, 2)} ${unidadeCusto}/dia x ${formatCurrency(valor_unitario)} /${unidadeCusto}) x ${dias_operacao} ${diasText} = ${formatCurrency(valor_total)}.\n`;
     
     // 4. Total
     memoria += `\nTotal: ${formatCurrency(valor_total)}.\n`;
@@ -125,10 +128,13 @@ export const generateConsolidatedConcessionariaMemoriaCalculo = (group: Consolid
     
     records.forEach(r => {
         const categoria = r.categoria;
-        const nomeConcessionaria = r.nome_concessionaria;
+        
+        // Garantir que os campos críticos não sejam undefined/null
+        const nomeConcessionaria = r.nome_concessionaria || 'Não Informado';
+        const unidadeCusto = r.unidade_custo || 'unidade';
+        
         const consumo = Number(r.consumo_pessoa_dia);
         const custo = Number(r.valor_unitario);
-        const unidade = r.unidade_custo;
         const fonteConsumo = r.fonte_consumo || 'Não Informado';
         const fonteCusto = r.fonte_custo || 'Não Informado';
         const total = Number(r.valor_total);
@@ -137,7 +143,6 @@ export const generateConsolidatedConcessionariaMemoriaCalculo = (group: Consolid
         const categoriaNome = categoria === 'Água/Esgoto' ? 'Água/Esgoto' : 'Energia Elétrica';
         const militaresText = efetivo === 1 ? 'militar' : 'militares';
         const diasText = dias_operacao === 1 ? 'dia' : 'dias';
-        const unidadeConsumo = unidade; // 'm³' ou 'kWh'
         
         const artigoOmFavorecida = getPrepositionArticle(organizacao);
         const artigoOmDestino = getPrepositionArticle(om_detentora);
@@ -147,11 +152,11 @@ export const generateConsolidatedConcessionariaMemoriaCalculo = (group: Consolid
         
         memoria += `\nCálculo:\n`;
         memoria += `- Concessionária: ${nomeConcessionaria}\n`;
-        memoria += `- Consumo pessoa/dia: ${formatNumber(consumo, 2)} ${unidadeConsumo}/dia, segundo ${fonteConsumo}.\n`;
-        memoria += `- Custo: ${formatCurrency(custo)}/${unidadeConsumo}, segundo ${fonteCusto}.\n`;
+        memoria += `- Consumo pessoa/dia: ${formatNumber(consumo, 2)} ${unidadeCusto}/dia, segundo ${fonteConsumo}.\n`;
+        memoria += `- Custo: ${formatCurrency(custo)}/${unidadeCusto}, segundo ${fonteCusto}.\n`;
         
         memoria += `\nFórmula: (Efetivo x Consumo/dia x Custo) x Nr dias de Atividade.\n`;
-        memoria += `- (${efetivo} ${militaresText} x ${formatNumber(consumo, 2)} ${unidadeConsumo}/dia x ${formatCurrency(custo)} /${unidadeConsumo}) x ${dias_operacao} ${diasText} = ${formatCurrency(total)}.\n`;
+        memoria += `- (${efetivo} ${militaresText} x ${formatNumber(consumo, 2)} ${unidadeCusto}/dia x ${formatCurrency(custo)} /${unidadeCusto}) x ${dias_operacao} ${diasText} = ${formatCurrency(total)}.\n`;
         memoria += `\nTotal: ${formatCurrency(total)}.\n`;
     });
     
