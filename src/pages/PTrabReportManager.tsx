@@ -133,6 +133,7 @@ export interface VerbaOperacionalRegistro extends Tables<'verba_operacional_regi
 export type PassagemRegistro = PassagemRegistroType;
 
 // NOVO TIPO: ConcessionariaRegistro (Exportado do utilitário)
+// Usamos o tipo estendido que inclui os campos da diretriz
 export type ConcessionariaRegistro = ConcessionariaRegistroComDiretriz;
 
 
@@ -265,7 +266,7 @@ export interface GrupoOM {
   linhasClasseVIII: LinhaClasseII[];
   linhasClasseIX: LinhaClasseII[];
   linhasClasseIII: LinhaClasseIII[]; 
-  linhasConcessionaria: LinhaConcessionaria[]; // NOVO: Adicionado Concessionária
+  linhasConcessionaria: LinhaConcessionaria[]; // NOVO: Inicializa Concessionária
 }
 
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
@@ -750,12 +751,12 @@ const PTrabReportManager = () => {
         { data: diariaData }, 
         { data: verbaOperacionalData }, 
         { data: passagemData }, 
-        { data: concessionariaData }, // NOVO: Busca de Concessionária
+        { data: concessionariaData }, 
       ] = await Promise.all([
         supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
         supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
         supabase.from('classe_vi_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
-        supabase.from('classe_vii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId), // CORRIGIDO: 'efetivo' removido
+        supabase.from('classe_vii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId), // efetivo será 0 ou undefined
         supabase.from('classe_viii_saude_registros').select('*, itens_saude, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
@@ -764,14 +765,51 @@ const PTrabReportManager = () => {
         supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId), 
         supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId), 
         supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId), 
-        supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId), // NOVO: Busca de Concessionária
+        supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId), 
       ]);
       
       // NOVO: Fetch Diretrizes Operacionais (necessário para gerar a memória de diária)
       const diretrizesOpData = await fetchDiretrizesOperacionais(new Date(ptrab.periodo_inicio).getFullYear());
       setDiretrizesOperacionais(diretrizesOpData as Tables<'diretrizes_operacionais'> || null);
 
-      // CORREÇÃO: Usar 'as any' para contornar o erro de tipo do Supabase na desestruturação do spread
+      // 1. Processar Registros de Concessionária e buscar Diretrizes
+      const concessionariaIds = (concessionariaData || []).map(r => r.diretriz_id);
+      let diretrizesMap = new Map<string, Tables<'diretrizes_concessionaria'>>();
+      
+      if (concessionariaIds.length > 0) {
+          const { data: diretrizesData, error: diretrizesError } = await supabase
+              .from('diretrizes_concessionaria')
+              .select('*')
+              .in('id', [...new Set(concessionariaIds)]); // Busca IDs únicos
+              
+          if (diretrizesError) {
+              console.error("Erro ao buscar diretrizes de concessionária:", diretrizesError);
+          } else {
+              (diretrizesData || []).forEach(d => diretrizesMap.set(d.id, d));
+          }
+      }
+      
+      const processedConcessionariaRecords: ConcessionariaRegistro[] = (concessionariaData || []).map(r => {
+          const diretriz = diretrizesMap.get(r.diretriz_id);
+          
+          return {
+              ...r,
+              valor_unitario: Number(r.valor_unitario || 0),
+              consumo_pessoa_dia: Number(r.consumo_pessoa_dia || 0),
+              valor_total: Number(r.valor_total || 0),
+              valor_nd_39: Number(r.valor_nd_39 || 0),
+              dias_operacao: r.dias_operacao || 0,
+              efetivo: r.efetivo || 0,
+              // Anexando dados da diretriz para a memória de cálculo automática
+              nome_concessionaria: diretriz?.nome_concessionaria || 'Diretriz não encontrada',
+              unidade_custo: diretriz?.unidade_custo || 'unidade',
+              fonte_consumo: diretriz?.fonte_consumo || null,
+              fonte_custo: diretriz?.fonte_custo || null,
+          } as ConcessionariaRegistro;
+      });
+      setRegistrosConcessionaria(processedConcessionariaRecords);
+      
+      // 2. Processar Outros Registros (mantido)
       const allClasseItems = [
         ...(classeIIData as any[] || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
         ...(classeVData as any[] || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
@@ -864,22 +902,6 @@ const PTrabReportManager = () => {
           is_ida_volta: r.is_ida_volta || false,
           efetivo: r.efetivo || 0,
       })) as PassagemRegistro[]);
-      
-      // NOVO: Processar Concessionárias
-      setRegistrosConcessionaria((concessionariaData || []).map(r => ({
-          ...r,
-          valor_unitario: Number(r.valor_unitario || 0),
-          consumo_pessoa_dia: Number(r.consumo_pessoa_dia || 0),
-          valor_total: Number(r.valor_total || 0),
-          valor_nd_39: Number(r.valor_nd_39 || 0),
-          dias_operacao: r.dias_operacao || 0,
-          efetivo: r.efetivo || 0,
-          // Adicionando campos da diretriz (que serão preenchidos no PTrabOperacionalReport)
-          nome_concessionaria: '',
-          unidade_custo: '',
-          fonte_consumo: null,
-          fonte_custo: null,
-      })) as ConcessionariaRegistro[]);
       
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
