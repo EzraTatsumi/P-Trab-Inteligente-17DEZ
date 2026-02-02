@@ -796,11 +796,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       return 0;
                   });
                   
-                  console.log(`[PTrabLogisticoReport] Ordered lines for ${nomeOM}:`, allExpenseLines);
-                  console.log(`[PTrabLogisticoReport] All expense lines for ${nomeOM}:`, allExpenseLines);
-                  console.log(`[PTrabLogisticoReport] Raw grupo data for ${nomeOM}:`, grupo);
-
-
                   return (
                     <React.Fragment key={`${nomeOM}-group`}>
                       {renderExpenseLines(allExpenseLines, nomeOM)}
