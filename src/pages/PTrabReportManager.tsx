@@ -51,6 +51,10 @@ import {
   generatePassagemMemoriaCalculo,
   PassagemRegistro as PassagemRegistroType, // Importando o tipo PassagemRegistro do utilitário
 } from "@/lib/passagemUtils"; // Importando utilitários de Passagem
+import { 
+  generateConcessionariaMemoriaCalculo, // NEW IMPORT
+  ConcessionariaRegistroComDiretriz, // NEW IMPORT
+} from "@/lib/concessionariaUtils"; // NEW IMPORT
 import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais } from "@/lib/ptrabUtils";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
@@ -127,6 +131,13 @@ export interface VerbaOperacionalRegistro extends Tables<'verba_operacional_regi
 
 // NOVO TIPO: PassagemRegistro (Exportado do utilitário)
 export type PassagemRegistro = PassagemRegistroType;
+
+// NOVO TIPO: ConcessionariaRegistro
+export interface ConcessionariaRegistro extends Tables<'concessionaria_registros'> {
+  valor_total: number;
+  valor_nd_39: number;
+  efetivo: number;
+}
 
 // CORREÇÃO: Tipagem de ItemClasseIII para garantir que campos numéricos sejam number
 export interface ItemClasseIII {
@@ -582,6 +593,20 @@ export const generatePassagemMemoriaCalculada = (
     return generatePassagemMemoriaCalculo(registro);
 };
 
+/**
+ * Função unificada para gerar a memória de cálculo da Concessionária, priorizando o customizado.
+ */
+export const generateConcessionariaMemoriaCalculada = (
+    registro: ConcessionariaRegistro & ConcessionariaRegistroComDiretriz // Use intersection for enriched data
+): string => {
+    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
+        return registro.detalhamento_customizado;
+    }
+    
+    // Usa o utilitário importado
+    return generateConcessionariaMemoriaCalculo(registro);
+};
+
 
 // =================================================================
 // FUNÇÕES AUXILIARES DE RÓTULO
@@ -673,6 +698,7 @@ const PTrabReportManager = () => {
   const [registrosVerbaOperacional, setRegistrosVerbaOperacional] = useState<VerbaOperacionalRegistro[]>([]); 
   const [registrosSuprimentoFundos, setRegistrosSuprimentoFundos] = useState<VerbaOperacionalRegistro[]>([]); // NOVO ESTADO
   const [registrosPassagem, setRegistrosPassagem] = useState<PassagemRegistro[]>([]); // NOVO ESTADO
+  const [registrosConcessionaria, setRegistrosConcessionaria] = useState<ConcessionariaRegistro[]>([]); // NOVO ESTADO
   const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null); // NOVO: Estado para Diretrizes Operacionais
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
   const [loading, setLoading] = useState(true);
@@ -720,6 +746,7 @@ const PTrabReportManager = () => {
         { data: diariaData }, 
         { data: verbaOperacionalData }, 
         { data: passagemData }, 
+        { data: concessionariaData }, // NEW FETCH
       ] = await Promise.all([
         supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
         supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
@@ -733,6 +760,7 @@ const PTrabReportManager = () => {
         supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId), 
         supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId), 
         supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId), 
+        supabase.from('concessionaria_registros').select('*').eq('p_trab_id', ptrabId), // NEW FETCH
       ]);
       
       // NOVO: Fetch Diretrizes Operacionais (necessário para gerar a memória de diária)
@@ -832,6 +860,16 @@ const PTrabReportManager = () => {
           is_ida_volta: r.is_ida_volta || false,
           efetivo: r.efetivo || 0,
       })) as PassagemRegistro[]);
+      
+      // NOVO: Processar Concessionária
+      setRegistrosConcessionaria((concessionariaData || []).map(r => ({
+          ...r,
+          valor_unitario: Number(r.valor_unitario || 0),
+          consumo_pessoa_dia: Number(r.consumo_pessoa_dia || 0),
+          valor_total: Number(r.valor_total || 0),
+          valor_nd_39: Number(r.valor_nd_39 || 0),
+          efetivo: r.efetivo || 0,
+      })) as ConcessionariaRegistro[]);
       
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
@@ -1188,13 +1226,15 @@ const PTrabReportManager = () => {
                 registrosDiaria={registrosDiaria}
                 registrosVerbaOperacional={registrosVerbaOperacional} 
                 registrosSuprimentoFundos={registrosSuprimentoFundos} 
-                registrosPassagem={registrosPassagem} // ADDED
+                registrosPassagem={registrosPassagem} 
+                registrosConcessionaria={registrosConcessionaria} // NEW PROP
                 diretrizesOperacionais={diretrizesOperacionais}
                 fileSuffix={fileSuffix}
                 generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada}
                 generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada}
                 generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada}
-                generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada} // ADDED
+                generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada}
+                generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada} // NEW PROP
             />
         );
       case 'material_permanente':
