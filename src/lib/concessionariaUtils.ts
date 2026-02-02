@@ -41,22 +41,53 @@ export const calculateConcessionariaTotal = (
 };
 
 /**
- * Gera a memória de cálculo individual para um registro de concessionária.
- * (Usado para staging/revisão e exibição final)
+ * Gera a memória de cálculo consolidada para um grupo de registros de concessionária.
  */
-export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaRegistro): string => {
-    const { organizacao, ug, om_detentora, ug_detentora, dias_operacao, efetivo, categoria, valor_unitario, consumo_pessoa_dia, valor_total, detalhamento } = registro;
+export const generateConsolidatedConcessionariaMemoriaCalculo = (group: ConsolidatedConcessionariaRecord): string => {
+    const { organizacao, ug, om_detentora, ug_detentora, dias_operacao, efetivo, records, totalGeral } = group;
     
-    const nomeConcessionaria = detalhamento?.split(': ')[1] || 'Detalhe não disponível';
-    const unidade = categoria === 'Água/Esgoto' ? 'm³' : 'kWh';
-    
-    let memoria = `SOLICITAÇÃO DE RECURSOS PARA PAGAMENTO DE CONCESSIONÁRIA\n`;
+    let memoria = `SOLICITAÇÃO DE RECURSOS PARA PAGAMENTO DE CONCESSIONÁRIAS\n`;
     memoria += `OM Favorecida: ${organizacao} (UG: ${formatCodug(ug)})\n`;
     memoria += `OM Destino Recurso: ${om_detentora} (UG: ${formatCodug(ug_detentora)})\n`;
-    memoria += `Categoria: ${categoria} | Concessionária: ${nomeConcessionaria}\n`;
     memoria += `Período: ${dias_operacao} dias | Efetivo: ${efetivo} militares\n\n`;
     
-    memoria += `CÁLCULO (ND 33.90.39):\n`;
+    memoria += `DETALHAMENTO DOS CÁLCULOS:\n`;
+    
+    records.forEach(r => {
+        const categoria = r.categoria;
+        const nomeConcessionaria = r.detalhamento?.split(': ')[1] || 'Detalhe não disponível';
+        const consumo = Number(r.consumo_pessoa_dia);
+        const custo = Number(r.valor_unitario);
+        const total = Number(r.valor_total);
+        const unidade = categoria === 'Água/Esgoto' ? 'm³' : 'kWh';
+        
+        memoria += `\n[${categoria} - ${nomeConcessionaria}]\n`;
+        memoria += `Cálculo: Efetivo (${efetivo}) x Dias (${dias_operacao}) x Consumo/Pessoa/Dia (${consumo} ${unidade}) x Custo Unitário (${formatCurrency(custo)}/${unidade})\n`;
+        memoria += `Total: ${formatCurrency(total)}\n`;
+    });
+    
+    memoria += `\n--------------------------------------------------\n`;
+    memoria += `TOTAL GERAL (ND 33.90.39): ${formatCurrency(totalGeral)}\n`;
+    
+    return memoria;
+};
+
+/**
+ * Gera a memória de cálculo individual para um registro de concessionária.
+ * (Usado principalmente para staging/revisão)
+ */
+export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaRegistro): string => {
+    const { organizacao, ug, om_detentora, ug_detentora, dias_operacao, efetivo, categoria, valor_unitario, consumo_pessoa_dia, valor_total } = registro;
+    
+    let memoria = `REGISTRO INDIVIDUAL DE CONCESSIONÁRIA\n`;
+    memoria += `OM Favorecida: ${organizacao} (UG: ${formatCodug(ug)})\n`;
+    memoria += `OM Destino Recurso: ${om_detentora} (UG: ${formatCodug(ug_detentora)})\n`;
+    memoria += `Categoria: ${categoria}\n`;
+    memoria += `Período: ${dias_operacao} dias | Efetivo: ${efetivo} militares\n\n`;
+    
+    const unidade = categoria === 'Água/Esgoto' ? 'm³' : 'kWh';
+    
+    memoria += `Cálculo:\n`;
     memoria += `Efetivo (${efetivo}) x Dias (${dias_operacao}) x Consumo/Pessoa/Dia (${consumo_pessoa_dia} ${unidade}) x Custo Unitário (${formatCurrency(valor_unitario)}/${unidade})\n`;
     memoria += `Total: ${formatCurrency(valor_total)}\n`;
     

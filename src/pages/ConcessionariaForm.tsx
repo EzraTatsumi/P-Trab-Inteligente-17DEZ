@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,20 +8,21 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check, Droplet, Zap } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check, Droplet, Zap, Minus } from "lucide-react";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
-import { formatCurrency, formatCodug, formatCurrencyInput, numberToRawDigits, formatNumber } from "@/lib/formatUtils";
+import { formatCurrency, formatCodug, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
 import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/ptrabUtils";
 import { 
     calculateConcessionariaTotal, 
     generateConcessionariaMemoriaCalculo,
+    generateConsolidatedConcessionariaMemoriaCalculo,
     ConcessionariaRegistro,
-    DiretrizSelection,
     ConsolidatedConcessionariaRecord,
+    DiretrizSelection,
 } from "@/lib/concessionariaUtils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -35,13 +36,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import * as z from "zod";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
 import { cn } from "@/lib/utils"; 
-import ConcessionariaDiretrizSelectorDialog from "@/components/ConcessionariaDiretrizSelectorDialog";
+import CurrencyInput from "@/components/CurrencyInput";
+import ConcessionariaDiretrizSelectorDialog, { ConcessionariaSelection } from "@/components/ConcessionariaDiretrizSelectorDialog";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
+import { ConsolidatedConcessionariaMemoria } from "@/components/ConsolidatedConcessionariaMemoria"; 
 import { CategoriaConcessionaria } from "@/types/diretrizesConcessionaria";
-import { ConcessionariaMemoria } from "@/components/ConcessionariaMemoria";
 
 // Tipos de dados
 type ConcessionariaRegistroDB = Tables<'concessionaria_registros'>; 
@@ -65,8 +68,8 @@ interface CalculatedConcessionaria extends TablesInsert<'concessionaria_registro
     // Campos Favorecida (para display)
     om_favorecida: string;
     ug_favorecida: string;
-    // Novo: Armazena a diretriz selecionada
-    selected_diretriz: DiretrizSelection;
+    // Novo: Armazena a diretriz selecionada (agora é sempre um array de 1 para registros individuais)
+    selected_diretrizes: ConcessionariaSelection[];
 }
 
 // NOVO TIPO: Representa um lote consolidado de registros (várias diretrizes)
@@ -84,8 +87,8 @@ interface ConcessionariaFormState {
     efetivo: number; 
     fase_atividade: string;
     
-    // Dados das Diretrizes Selecionadas (Lista de DiretrizSelection)
-    selected_diretrizes: DiretrizSelection[];
+    // Dados das Diretrizes Selecionadas (Lista de ConcessionariaSelection)
+    selected_diretrizes: ConcessionariaSelection[];
 }
 
 const initialFormState: ConcessionariaFormState = {
@@ -115,7 +118,7 @@ const compareFormData = (data1: ConcessionariaFormState, data2: ConcessionariaFo
         return true;
     }
     
-    // Comparar IDs das diretrizes selecionadas
+    // Comparar detalhes das diretrizes (IDs)
     const diretrizes1 = data1.selected_diretrizes.map(d => d.id).sort().join('|');
     const diretrizes2 = data2.selected_diretrizes.map(d => d.id).sort().join('|');
     
@@ -135,19 +138,26 @@ const ConcessionariaForm = () => {
     const { handleEnterToNextField } = useFormNavigation();
     
     const [formData, setFormData] = useState<ConcessionariaFormState>(initialFormState);
-    const [editingId, setEditingId] = useState<string | null>(null); // ID do primeiro registro do grupo em edição
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [registroToDelete, setRegistroToDelete] = useState<ConcessionariaRegistroDB | null>(null);
+    
+    // NOVO ESTADO: Armazena o grupo completo a ser excluído/substituído
     const [groupToDelete, setGroupToDelete] = useState<ConsolidatedConcessionaria | null>(null); 
     const [groupToReplace, setGroupToReplace] = useState<ConsolidatedConcessionaria | null>(null); 
     
-    // ESTADOS DE EDIÇÃO DE MEMÓRIA (Individual por registro)
-    const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null); // ID do registro individual
+    // ESTADOS DE EDIÇÃO DE MEMÓRIA
+    const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
     const [memoriaEdit, setMemoriaEdit] = useState<string>("");
     
-    // NOVO ESTADO: Array de registros calculados, mas não salvos (um item por diretriz selecionada)
-    const [pendingConcessionarias, setPendingConcessionarias] = useState<CalculatedConcessionaria[]>([]);
+    // NOVO ESTADO: Array de registros calculados, mas não salvos
+    // Agora, cada item em pendingConcessionaria representa UMA diretriz/registro de DB.
+    const [pendingConcessionaria, setPendingConcessionaria] = useState<CalculatedConcessionaria[]>([]);
     
-    // NOVO ESTADO: Armazena o último formData que gerou um item em pendingConcessionarias
+    // NOVO ESTADO: Registro calculado para atualização (staging)
+    const [stagedUpdate, setStagedUpdate] = useState<CalculatedConcessionaria | null>(null);
+    
+    // NOVO ESTADO: Armazena o último formData que gerou um item em pendingConcessionaria
     const [lastStagedFormData, setLastStagedFormData] = useState<ConcessionariaFormState | null>(null);
     
     // Estado para rastrear o ID da OM Favorecida e OM Destino
@@ -168,7 +178,7 @@ const ConcessionariaForm = () => {
         enabled: !!ptrabId,
     });
 
-    // Concessionária usa a tabela 'concessionaria_registros'
+    // Concessionária usam a tabela 'concessionaria_registros'
     const { data: registros, isLoading: isLoadingRegistros } = useQuery<ConcessionariaRegistroDB[]>({
         queryKey: ['concessionariaRegistros', ptrabId],
         queryFn: () => fetchPTrabRecords('concessionaria_registros', ptrabId!),
@@ -226,9 +236,10 @@ const ConcessionariaForm = () => {
     // 1. Mutation for saving multiple new records (INSERT)
     const insertMutation = useMutation({
         mutationFn: async (newRecords: CalculatedConcessionaria[]) => {
-            // Mapear CalculatedConcessionaria (que agora representa um único registro) para TablesInsert
+            // Mapear CalculatedConcessionaria (que agora representa uma única diretriz) para TablesInsert
             const recordsToInsert: TablesInsert<'concessionaria_registros'>[] = newRecords.map(r => {
-                const diretriz = r.selected_diretriz;
+                // O registro CalculatedConcessionaria já contém os dados da diretriz no seu array selected_diretrizes[0]
+                const diretriz = r.selected_diretrizes[0];
                 
                 return {
                     p_trab_id: r.p_trab_id,
@@ -237,16 +248,16 @@ const ConcessionariaForm = () => {
                     om_detentora: r.om_detentora,
                     ug_detentora: r.ug_detentora,
                     dias_operacao: r.dias_operacao,
-                    efetivo: r.efetivo,
                     fase_atividade: r.fase_atividade,
                     
                     // Campos da Diretriz
-                    diretriz_id: diretriz.id,
+                    diretriz_id: diretriz.id, // ID da diretriz
                     categoria: diretriz.categoria,
                     valor_unitario: diretriz.custo_unitario,
                     consumo_pessoa_dia: diretriz.consumo_pessoa_dia,
                     
-                    // Campos calculados/detalhados
+                    // Campos consolidados
+                    efetivo: r.efetivo,
                     valor_total: r.valor_total,
                     valor_nd_39: r.valor_nd_39,
                     detalhamento: r.detalhamento,
@@ -263,8 +274,8 @@ const ConcessionariaForm = () => {
             return recordsToInsert;
         },
         onSuccess: () => {
-            toast.success(`Sucesso! ${pendingConcessionarias.length} registro(s) de Concessionária adicionado(s).`);
-            setPendingConcessionarias([]);
+            toast.success(`Sucesso! ${pendingConcessionaria.length} registro(s) de Concessionária adicionado(s).`);
+            setPendingConcessionaria([]);
             setLastStagedFormData(null);
             queryClient.invalidateQueries({ queryKey: ['concessionariaRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
@@ -301,7 +312,7 @@ const ConcessionariaForm = () => {
             
             // 2. Insert new records
             const recordsToInsert: TablesInsert<'concessionaria_registros'>[] = newRecords.map(r => {
-                const diretriz = r.selected_diretriz;
+                const diretriz = r.selected_diretrizes[0];
                 return {
                     p_trab_id: r.p_trab_id,
                     organizacao: r.organizacao,
@@ -309,16 +320,16 @@ const ConcessionariaForm = () => {
                     om_detentora: r.om_detentora,
                     ug_detentora: r.ug_detentora,
                     dias_operacao: r.dias_operacao,
-                    efetivo: r.efetivo,
                     fase_atividade: r.fase_atividade,
                     
                     // Campos da Diretriz
-                    diretriz_id: diretriz.id,
+                    diretriz_id: diretriz.id, 
                     categoria: diretriz.categoria,
                     valor_unitario: diretriz.custo_unitario,
                     consumo_pessoa_dia: diretriz.consumo_pessoa_dia,
                     
-                    // Campos calculados/detalhados
+                    // Campos consolidados
+                    efetivo: r.efetivo,
                     valor_total: r.valor_total,
                     valor_nd_39: r.valor_nd_39,
                     detalhamento: r.detalhamento,
@@ -335,7 +346,8 @@ const ConcessionariaForm = () => {
         onSuccess: () => {
             toast.success("Lote de Concessionária atualizado com sucesso!");
             setEditingId(null);
-            setPendingConcessionarias([]);
+            setStagedUpdate(null);
+            setPendingConcessionaria([]);
             setGroupToReplace(null);
             queryClient.invalidateQueries({ queryKey: ['concessionariaRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
@@ -360,6 +372,7 @@ const ConcessionariaForm = () => {
             queryClient.invalidateQueries({ queryKey: ['concessionariaRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
             setShowDeleteDialog(false);
+            setRegistroToDelete(null);
             setGroupToDelete(null);
         },
         onError: (error) => {
@@ -397,16 +410,33 @@ const ConcessionariaForm = () => {
     
     // Este cálculo agora é usado apenas para exibir o total consolidado no formulário (Seção 2)
     const calculos = useMemo(() => {
-        if (formData.selected_diretrizes.length === 0) {
+        if (!ptrabData || formData.selected_diretrizes.length === 0 || formData.efetivo <= 0 || formData.dias_operacao <= 0) {
             return {
                 totalGeral: 0,
-                memoria: "Selecione pelo menos uma diretriz e preencha os dados de solicitação.",
+                totalND39: 0,
+                memoria: "Selecione pelo menos uma diretriz e preencha os dados de solicitação (dias e efetivo).",
             };
         }
         
         try {
             let totalGeral = 0;
+            let totalND39 = 0;
+            let memoria = "";
             
+            // Gerar a memória consolidada para o STAGING
+            const tempGroup: ConsolidatedConcessionariaRecord = {
+                organizacao: formData.om_favorecida,
+                ug: formData.ug_favorecida,
+                om_detentora: formData.om_destino,
+                ug_detentora: formData.ug_destino,
+                dias_operacao: formData.dias_operacao,
+                efetivo: formData.efetivo,
+                fase_atividade: formData.fase_atividade,
+                records: [], 
+                totalGeral: 0, 
+                totalND39: 0, 
+            };
+
             formData.selected_diretrizes.forEach((diretriz) => {
                 const totalDiretriz = calculateConcessionariaTotal(
                     formData.efetivo,
@@ -414,34 +444,67 @@ const ConcessionariaForm = () => {
                     diretriz.consumo_pessoa_dia,
                     diretriz.custo_unitario
                 );
+                
                 totalGeral += totalDiretriz;
+                totalND39 += totalDiretriz; 
+                
+                // Criar um registro temporário para a função de memória consolidada
+                tempGroup.records.push({
+                    p_trab_id: ptrabId!,
+                    organizacao: formData.om_favorecida,
+                    ug: formData.ug_favorecida,
+                    om_detentora: formData.om_destino,
+                    ug_detentora: formData.ug_destino,
+                    dias_operacao: formData.dias_operacao,
+                    efetivo: formData.efetivo,
+                    fase_atividade: formData.fase_atividade,
+                    
+                    diretriz_id: diretriz.id,
+                    categoria: diretriz.categoria,
+                    valor_unitario: diretriz.custo_unitario,
+                    consumo_pessoa_dia: diretriz.consumo_pessoa_dia,
+                    
+                    valor_total: totalDiretriz,
+                    valor_nd_39: totalDiretriz,
+                    detalhamento: `Concessionária: ${diretriz.categoria} - ${diretriz.nome_concessionaria}`,
+                    
+                    // Campos não usados no cálculo, mas necessários para o tipo
+                    id: '', created_at: '', updated_at: '', detalhamento_customizado: null,
+                } as ConcessionariaRegistro);
             });
+            
+            tempGroup.totalGeral = totalGeral;
+            tempGroup.totalND39 = totalND39;
+            
+            memoria = generateConsolidatedConcessionariaMemoriaCalculo(tempGroup);
             
             return {
                 totalGeral,
-                memoria: `Total de ${formData.selected_diretrizes.length} contratos selecionados.`,
+                totalND39,
+                memoria,
             };
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : "Erro desconhecido no cálculo.";
             return {
                 totalGeral: 0,
+                totalND39: 0,
                 memoria: `Erro ao calcular: ${errorMessage}`,
             };
         }
-    }, [formData]);
+    }, [formData, ptrabData, ptrabId]);
     
-    // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do lastStagedFormData)
+    // NOVO MEMO: Verifica se o formulário está "sujo"
     const isConcessionariaDirty = useMemo(() => {
-        if (pendingConcessionarias.length > 0 && lastStagedFormData) {
+        if (pendingConcessionaria.length > 0 && lastStagedFormData) {
             return compareFormData(formData, lastStagedFormData);
         }
         return false;
-    }, [formData, pendingConcessionarias.length, lastStagedFormData]);
+    }, [formData, pendingConcessionaria.length, lastStagedFormData]);
     
     // NOVO: Cálculo do total de todos os itens pendentes
-    const totalPendingConcessionarias = useMemo(() => {
-        return pendingConcessionarias.reduce((sum, item) => sum + item.valor_total, 0);
-    }, [pendingConcessionarias]);
+    const totalPendingConcessionaria = useMemo(() => {
+        return pendingConcessionaria.reduce((sum, item) => sum + item.valor_total, 0);
+    }, [pendingConcessionaria]);
     
     // =================================================================
     // HANDLERS DE AÇÃO
@@ -465,30 +528,33 @@ const ConcessionariaForm = () => {
         setMemoriaEdit("");
         setSelectedOmFavorecidaId(undefined);
         setSelectedOmDestinoId(undefined);
+        setStagedUpdate(null); 
         setLastStagedFormData(null); 
     };
     
     const handleClearPending = () => {
-        setPendingConcessionarias([]);
-        setLastStagedFormData(null);
+        setPendingConcessionaria([]);
+        setStagedUpdate(null);
+        setLastStagedFormData(null); 
         setEditingId(null);
         setGroupToReplace(null);
         resetForm();
     };
 
     const handleEdit = (group: ConsolidatedConcessionaria) => {
-        if (pendingConcessionarias.length > 0) {
+        if (pendingConcessionaria.length > 0) {
             toast.warning("Salve ou limpe os itens pendentes antes de editar um registro existente.");
             return;
         }
         
         // Limpa estados pendentes
-        setPendingConcessionarias([]);
+        setPendingConcessionaria([]);
         setLastStagedFormData(null);
+        setStagedUpdate(null); 
         
         // Define o modo edição
-        setEditingId(group.records[0].id); // Usa o ID do primeiro registro do grupo para controle de UI
-        setGroupToReplace(group); // Armazena o grupo original para substituição
+        setEditingId(group.records[0].id); 
+        setGroupToReplace(group); 
         
         // 1. Configurar OM Favorecida e OM Destino
         const omFavorecidaToEdit = oms?.find(om => om.nome_om === group.organizacao && om.codug_om === group.ug);
@@ -498,18 +564,18 @@ const ConcessionariaForm = () => {
         setSelectedOmDestinoId(omDestinoToEdit?.id);
         
         // 2. Reconstruir a lista de diretrizes selecionadas a partir de TODOS os registros do grupo
-        const diretrizesFromRecords: DiretrizSelection[] = group.records.map(registro => ({
+        const diretrizesFromRecords: ConcessionariaSelection[] = group.records.map(registro => ({
             id: registro.diretriz_id, 
-            user_id: '', // Não necessário para o formulário
-            ano_referencia: selectedYear, // Não necessário para o formulário
+            user_id: '', 
+            ano_referencia: selectedYear, 
             categoria: registro.categoria as CategoriaConcessionaria,
-            nome_concessionaria: registro.detalhamento?.split(': ')[1] || '', // Extrai o nome
+            nome_concessionaria: registro.detalhamento?.split(': ')[1] || registro.categoria, 
             consumo_pessoa_dia: Number(registro.consumo_pessoa_dia || 0),
-            fonte_consumo: null,
+            fonte_consumo: null, 
             custo_unitario: Number(registro.valor_unitario || 0),
-            fonte_custo: null,
-            unidade_custo: registro.categoria === 'Água/Esgoto' ? 'm³' : 'kWh',
-            created_at: '', updated_at: '', // Campos de sistema
+            fonte_custo: null, 
+            unidade_custo: registro.categoria === 'Água/Esgoto' ? 'm³' : 'kWh', 
+            created_at: '', updated_at: '',
         }));
 
         // 3. Populate formData
@@ -521,49 +587,82 @@ const ConcessionariaForm = () => {
             dias_operacao: group.dias_operacao,
             efetivo: group.efetivo || 0, 
             fase_atividade: group.fase_atividade || "",
-            selected_diretrizes: diretrizesFromRecords, // TODAS as diretrizes
+            selected_diretrizes: diretrizesFromRecords, 
         };
         setFormData(newFormData);
         
         // 4. Gerar os itens pendentes (staging) imediatamente com os dados originais
         const newPendingItems: CalculatedConcessionaria[] = group.records.map(registro => {
-            const diretriz: DiretrizSelection = diretrizesFromRecords.find(d => d.id === registro.diretriz_id)!;
+            const diretriz: ConcessionariaSelection = diretrizesFromRecords.find(d => d.id === registro.diretriz_id) || diretrizesFromRecords[0];
             
-            // Usamos a função de memória individual para o staging
-            let memoria = generateConcessionariaMemoriaCalculo(registro);
+            const totalDiretriz = calculateConcessionariaTotal(
+                registro.efetivo || 0,
+                registro.dias_operacao,
+                diretriz.consumo_pessoa_dia,
+                diretriz.custo_unitario
+            );
             
-            return {
-                tempId: registro.id, // Usamos o ID real do DB como tempId para rastreamento
+            const calculatedFormData: ConcessionariaRegistro = {
+                id: registro.id, 
                 p_trab_id: ptrabId!,
                 organizacao: registro.organizacao, 
                 ug: registro.ug, 
                 dias_operacao: registro.dias_operacao,
-                efetivo: registro.efetivo,
+                fase_atividade: registro.fase_atividade || "",
+                
+                om_detentora: registro.om_detentora,
+                ug_detentora: registro.ug_detentora,
+                diretriz_id: diretriz.id,
+                categoria: registro.categoria,
+                valor_unitario: diretriz.custo_unitario,
+                consumo_pessoa_dia: diretriz.consumo_pessoa_dia,
+                
+                efetivo: registro.efetivo || 0,
+                
+                valor_total: totalDiretriz,
+                valor_nd_39: totalDiretriz,
+                
+                detalhamento: registro.detalhamento, 
+                detalhamento_customizado: registro.detalhamento_customizado, 
+                
+                created_at: registro.created_at,
+                updated_at: registro.updated_at,
+            } as ConcessionariaRegistro;
+
+            let memoria = generateConcessionariaMemoriaCalculo(calculatedFormData);
+            
+            return {
+                tempId: registro.id, 
+                p_trab_id: ptrabId!,
+                organizacao: registro.organizacao, 
+                ug: registro.ug, 
+                dias_operacao: registro.dias_operacao,
+                efetivo: registro.efetivo || 0,
                 fase_atividade: registro.fase_atividade,
                 
                 om_detentora: registro.om_detentora,
                 ug_detentora: registro.ug_detentora,
                 diretriz_id: diretriz.id,
-                categoria: diretriz.categoria,
+                categoria: registro.categoria,
                 valor_unitario: diretriz.custo_unitario,
                 consumo_pessoa_dia: diretriz.consumo_pessoa_dia,
                 
-                valor_total: Number(registro.valor_total || 0),
-                valor_nd_39: Number(registro.valor_nd_39 || 0),
+                valor_total: totalDiretriz,
+                valor_nd_39: totalDiretriz,
                 
                 detalhamento: registro.detalhamento, 
                 detalhamento_customizado: registro.detalhamento_customizado, 
                 
-                totalGeral: Number(registro.valor_total || 0),
+                totalGeral: totalDiretriz,
                 memoria_calculo_display: memoria, 
                 om_favorecida: registro.organizacao,
                 ug_favorecida: registro.ug,
-                selected_diretriz: diretriz, // Armazena a diretriz relevante
+                selected_diretrizes: [diretriz], // Armazena apenas a diretriz relevante
             } as CalculatedConcessionaria;
         });
         
-        setPendingConcessionarias(newPendingItems);
-        setLastStagedFormData(newFormData); // Marca o formulário como staged (limpo)
+        setPendingConcessionaria(newPendingItems);
+        setLastStagedFormData(newFormData); 
         
         toast.info("Modo Edição ativado. Altere os dados na Seção 2 e clique em 'Recalcular/Revisar Lote'.");
         
@@ -571,7 +670,8 @@ const ConcessionariaForm = () => {
     };
 
     const handleConfirmDelete = (group: ConsolidatedConcessionaria) => {
-        setGroupToDelete(group); // Armazena o grupo completo para exclusão
+        setRegistroToDelete(group.records[0]); 
+        setGroupToDelete(group); 
         setShowDeleteDialog(true);
     };
 
@@ -597,7 +697,7 @@ const ConcessionariaForm = () => {
                 throw new Error("A OM Destino do Recurso é obrigatória.");
             }
             
-            // 2. Gerar MÚLTIPLOS registros (um para cada diretriz)
+            // 2. Gerar MÚLTIPLOS registros (um para cada diretriz selecionada)
             const newPendingItems: CalculatedConcessionaria[] = formData.selected_diretrizes.map(diretriz => {
                 
                 const totalDiretriz = calculateConcessionariaTotal(
@@ -608,15 +708,13 @@ const ConcessionariaForm = () => {
                 );
                 
                 const calculatedFormData: ConcessionariaRegistro = {
-                    id: crypto.randomUUID(), // ID temporário para gerar memória
+                    id: crypto.randomUUID(), 
                     p_trab_id: ptrabId!,
                     organizacao: formData.om_favorecida, 
                     ug: formData.ug_favorecida, 
                     dias_operacao: formData.dias_operacao,
-                    efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
                     
-                    // Dados da Diretriz
                     om_detentora: formData.om_destino,
                     ug_detentora: formData.ug_destino,
                     diretriz_id: diretriz.id,
@@ -624,18 +722,18 @@ const ConcessionariaForm = () => {
                     valor_unitario: diretriz.custo_unitario,
                     consumo_pessoa_dia: diretriz.consumo_pessoa_dia,
                     
-                    // Campos calculados/detalhados
+                    efetivo: formData.efetivo,
+                    
                     valor_total: totalDiretriz,
                     valor_nd_39: totalDiretriz,
-                    detalhamento: `${diretriz.categoria}: ${diretriz.nome_concessionaria}`, 
+                    
+                    detalhamento: `Concessionária: ${diretriz.categoria} - ${diretriz.nome_concessionaria}`, 
                     detalhamento_customizado: null, 
                     
-                    // Campos obrigatórios do tipo DB
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
                 } as ConcessionariaRegistro;
 
-                // Usamos a função de memória individual para o staging
                 let memoria = generateConcessionariaMemoriaCalculo(calculatedFormData);
                 
                 return {
@@ -657,39 +755,36 @@ const ConcessionariaForm = () => {
                     valor_total: totalDiretriz,
                     valor_nd_39: totalDiretriz,
                     
-                    detalhamento: `${diretriz.categoria}: ${diretriz.nome_concessionaria}`, 
+                    detalhamento: `Concessionária: ${diretriz.categoria} - ${diretriz.nome_concessionaria}`, 
                     detalhamento_customizado: null, 
                     
                     totalGeral: totalDiretriz,
                     memoria_calculo_display: memoria, 
                     om_favorecida: formData.om_favorecida,
                     ug_favorecida: formData.ug_favorecida,
-                    selected_diretriz: diretriz, // Armazena a diretriz relevante
+                    selected_diretrizes: [diretriz], // Armazena apenas a diretriz relevante
                 } as CalculatedConcessionaria;
             });
             
             if (editingId) {
-                // MODO EDIÇÃO: Geramos os novos registros e os colocamos em pendingConcessionarias
+                // MODO EDIÇÃO: Geramos os novos registros e os colocamos em pendingConcessionaria
                 
-                // Preserva a memória customizada do primeiro registro do grupo original, se existir
                 let memoriaCustomizadaTexto: string | null = null;
                 if (groupToReplace) {
-                    // Busca o primeiro registro do grupo original para verificar a memória customizada
                     const originalRecord = groupToReplace.records.find(r => r.id === editingId);
                     if (originalRecord) {
                         memoriaCustomizadaTexto = originalRecord.detalhamento_customizado;
                     }
                 }
                 
-                // Aplicamos a memória customizada ao primeiro item da nova lista (apenas para fins de staging display)
                 if (memoriaCustomizadaTexto && newPendingItems.length > 0) {
-                    // O tempId do primeiro item deve ser o ID do registro original para rastreamento
                     newPendingItems[0].tempId = editingId; 
                     newPendingItems[0].detalhamento_customizado = memoriaCustomizadaTexto;
                 }
                 
-                setPendingConcessionarias(newPendingItems); // Armazena o novo lote completo
-                setLastStagedFormData(formData); // Marca o formulário como staged
+                setPendingConcessionaria(newPendingItems); 
+                setStagedUpdate(newPendingItems[0]); 
+                setLastStagedFormData(formData); 
                 
                 toast.info("Cálculo atualizado. Revise e confirme a atualização na Seção 3.");
                 window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); 
@@ -697,9 +792,7 @@ const ConcessionariaForm = () => {
             }
             
             // MODO ADIÇÃO: Adicionar todos os itens gerados à lista pendente
-            setPendingConcessionarias(newPendingItems);
-            
-            // Atualiza o lastStagedFormData para o estado atual do formulário
+            setPendingConcessionaria(newPendingItems);
             setLastStagedFormData(formData);
             
             toast.info(`${newPendingItems.length} item(ns) de Concessionária adicionado(s) à lista pendente.`);
@@ -710,13 +803,13 @@ const ConcessionariaForm = () => {
     };
     
     // Salva todos os itens pendentes no DB
-    const handleSavePendingConcessionarias = () => {
-        if (pendingConcessionarias.length === 0) {
+    const handleSavePendingConcessionaria = () => {
+        if (pendingConcessionaria.length === 0) {
             toast.warning("Nenhum item pendente para salvar.");
             return;
         }
         
-        insertMutation.mutate(pendingConcessionarias);
+        insertMutation.mutate(pendingConcessionaria);
     };
     
     // NOVO: Confirma a atualização do item estagiado no DB
@@ -729,13 +822,13 @@ const ConcessionariaForm = () => {
         // 1. IDs dos registros antigos para deletar
         const oldIds = groupToReplace.records.map(r => r.id);
         
-        // 2. Novos registros (pendingConcessionarias) para inserir
-        replaceGroupMutation.mutate({ oldIds, newRecords: pendingConcessionarias });
+        // 2. Novos registros (pendingConcessionaria) para inserir
+        replaceGroupMutation.mutate({ oldIds, newRecords: pendingConcessionaria });
     };
     
     // Remove item da lista pendente
     const handleRemovePending = (tempId: string) => {
-        setPendingConcessionarias(prev => {
+        setPendingConcessionaria(prev => {
             const newPending = prev.filter(p => p.tempId !== tempId);
             if (newPending.length === 0) {
                 setLastStagedFormData(null);
@@ -797,7 +890,7 @@ const ConcessionariaForm = () => {
     };
     
     // --- Lógica de Seleção de Diretriz (Callback do Dialog) ---
-    const handleDiretrizSelected = (diretrizes: DiretrizSelection[]) => {
+    const handleDiretrizSelected = (diretrizes: ConcessionariaSelection[]) => {
         // Atualiza o formulário com a lista de diretrizes selecionadas
         setFormData(prev => ({
             ...prev,
@@ -809,9 +902,9 @@ const ConcessionariaForm = () => {
     
     // --- Lógica de Edição de Memória ---
     
-    // Agora, handleIniciarEdicaoMemoria recebe o registro individual E a string da memória completa
-    const handleIniciarEdicaoMemoria = (registro: ConcessionariaRegistro, memoriaCompleta: string) => {
-        setEditingMemoriaId(registro.id);
+    const handleIniciarEdicaoMemoria = (group: ConsolidatedConcessionariaRecord, memoriaCompleta: string) => {
+        const firstRecordId = group.records[0].id;
+        setEditingMemoriaId(firstRecordId);
         setMemoriaEdit(memoriaCompleta || "");
         toast.info("Editando memória de cálculo.");
     };
@@ -823,7 +916,7 @@ const ConcessionariaForm = () => {
 
     const handleSalvarMemoriaCustomizada = async (registroId: string) => {
         try {
-            // A memória customizada é salva no registro individual.
+            // A memória customizada é salva APENAS no primeiro registro do grupo.
             const { error } = await supabase
                 .from("concessionaria_registros")
                 .update({
@@ -848,7 +941,7 @@ const ConcessionariaForm = () => {
         }
         
         try {
-            // A memória customizada é removida do registro individual.
+            // A memória customizada é removida APENAS do primeiro registro do grupo.
             const { error } = await supabase
                 .from("concessionaria_registros")
                 .update({
@@ -868,6 +961,7 @@ const ConcessionariaForm = () => {
     
     // --- Handler para Adicionar Contrato ---
     const handleAddContract = () => {
+        // Navega para a rota de Custos Operacionais, passando o estado para abrir a seção de concessionárias
         navigate('/config/custos-operacionais', { state: { openConcessionaria: true } });
     };
     
@@ -904,8 +998,8 @@ const ConcessionariaForm = () => {
     const isCalculationReady = isBaseFormReady && isSolicitationDataReady;
     
     // Lógica para a Seção 3
-    const itemsToDisplay = pendingConcessionarias;
-    const isStagingUpdate = !!editingId && pendingConcessionarias.length > 0;
+    const itemsToDisplay = editingId ? pendingConcessionaria : pendingConcessionaria;
+    const isStagingUpdate = !!editingId && pendingConcessionaria.length > 0;
     
     // Diretrizes iniciais para o diálogo (se estiver editando)
     const initialDiretrizesForDialog = editingId && groupToReplace 
@@ -926,7 +1020,7 @@ const ConcessionariaForm = () => {
                             Pagamento de Concessionárias
                         </CardTitle>
                         <CardDescription>
-                            Solicitação de recursos para pagamento de água/esgoto e energia elétrica.
+                            Solicitação de recursos para pagamento de concessionárias.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -946,7 +1040,7 @@ const ConcessionariaForm = () => {
                                             selectedOmId={selectedOmFavorecidaId}
                                             onChange={handleOmFavorecidaChange}
                                             placeholder="Selecione a OM Favorecida"
-                                            disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingConcessionarias.length > 0}
+                                            disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingConcessionaria.length > 0}
                                             initialOmName={editingId ? formData.om_favorecida : undefined}
                                             initialOmUg={editingId ? formData.ug_favorecida : undefined}
                                         />
@@ -966,7 +1060,7 @@ const ConcessionariaForm = () => {
                                         <FaseAtividadeSelect
                                             value={formData.fase_atividade}
                                             onChange={handleFaseAtividadeChange}
-                                            disabled={!isPTrabEditable || isSaving || pendingConcessionarias.length > 0}
+                                            disabled={!isPTrabEditable || isSaving || pendingConcessionaria.length > 0}
                                         />
                                     </div>
                                 </div>
@@ -976,7 +1070,7 @@ const ConcessionariaForm = () => {
                             {isBaseFormReady && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        2. Configurar Solicitação
+                                        2. Configurar Item de Concessionária
                                     </h3>
                                     
                                     <Card className="mt-6 bg-muted/50 rounded-lg p-4">
@@ -997,7 +1091,7 @@ const ConcessionariaForm = () => {
                                                                 id="dias_operacao"
                                                                 type="number"
                                                                 min={1}
-                                                                placeholder="Ex: 30"
+                                                                placeholder="Ex: 7"
                                                                 value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
                                                                 onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
                                                                 required
@@ -1015,7 +1109,7 @@ const ConcessionariaForm = () => {
                                                                 id="efetivo"
                                                                 type="number"
                                                                 min={1}
-                                                                placeholder="Ex: 100"
+                                                                placeholder="Ex: 10"
                                                                 value={formData.efetivo === 0 ? "" : formData.efetivo}
                                                                 onChange={(e) => setFormData({ ...formData, efetivo: parseInt(e.target.value) || 0 })}
                                                                 required
@@ -1033,7 +1127,7 @@ const ConcessionariaForm = () => {
                                                                 selectedOmId={selectedOmDestinoId}
                                                                 onChange={handleOmDestinoChange}
                                                                 placeholder="Selecione a OM Destino"
-                                                                disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingConcessionarias.length > 0}
+                                                                disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingConcessionaria.length > 0}
                                                                 initialOmName={editingId ? formData.om_destino : formData.om_favorecida}
                                                                 initialOmUg={editingId ? formData.ug_destino : formData.ug_favorecida}
                                                             />
@@ -1057,7 +1151,7 @@ const ConcessionariaForm = () => {
                                         {/* Detalhes da Concessionária (Seleção de Diretriz) */}
                                         <Card className="mt-4 rounded-lg p-4 bg-background">
                                             <h4 className="font-semibold text-base mb-4">
-                                                Diretrizes de Concessionária Selecionadas
+                                                Diretrizes de Consumo Selecionadas
                                             </h4>
                                             
                                             <div className="space-y-4">
@@ -1069,7 +1163,8 @@ const ConcessionariaForm = () => {
                                                     className="w-full"
                                                 >
                                                     <Droplet className="mr-2 h-4 w-4" />
-                                                    {formData.selected_diretrizes.length > 0 ? `Alterar/Adicionar Diretrizes (${formData.selected_diretrizes.length} selecionadas)` : "Selecionar Diretrizes de Contrato *"}
+                                                    <Zap className="mr-2 h-4 w-4" />
+                                                    {formData.selected_diretrizes.length > 0 ? `Alterar/Adicionar Diretrizes (${formData.selected_diretrizes.length} selecionadas)` : "Selecionar Diretrizes de Consumo *"}
                                                 </Button>
                                                 
                                                 {/* Exibição das Diretrizes Selecionadas */}
@@ -1078,16 +1173,16 @@ const ConcessionariaForm = () => {
                                                         <Table>
                                                             <TableHeader>
                                                                 <TableRow>
-                                                                    <TableHead className="w-[100px]">Categoria</TableHead>
+                                                                    <TableHead className="w-[150px]">Categoria</TableHead>
                                                                     <TableHead>Concessionária</TableHead>
                                                                     <TableHead className="text-center">Consumo/Pessoa/Dia</TableHead>
-                                                                    <TableHead className="text-right">Valor Unitário</TableHead>
+                                                                    <TableHead className="text-right">Custo Unitário</TableHead>
                                                                     <TableHead className="text-right">Total Estimado</TableHead>
                                                                 </TableRow>
                                                             </TableHeader>
                                                             <TableBody>
                                                                 {formData.selected_diretrizes.map((diretriz) => {
-                                                                    const totalDiretriz = calculateConcessionariaTotal(
+                                                                    const totalEstimado = calculateConcessionariaTotal(
                                                                         formData.efetivo,
                                                                         formData.dias_operacao,
                                                                         diretriz.consumo_pessoa_dia,
@@ -1095,33 +1190,29 @@ const ConcessionariaForm = () => {
                                                                     );
                                                                     
                                                                     const isAgua = diretriz.categoria === 'Água/Esgoto';
-                                                                    const unidade = isAgua ? 'm³' : 'kWh';
                                                                     
                                                                     return (
                                                                         <TableRow key={diretriz.id}>
-                                                                            <TableCell className="w-[100px]">
-                                                                                <Badge 
-                                                                                    variant={isAgua ? "default" : "secondary"}
-                                                                                    className={cn(isAgua ? "bg-blue-500 hover:bg-blue-600" : "bg-yellow-600 hover:bg-yellow-700 text-white")}
-                                                                                >
-                                                                                    {isAgua ? <Droplet className="h-3 w-3 mr-1" /> : <Zap className="h-3 w-3 mr-1" />}
-                                                                                    {diretriz.categoria.split('/')[0]}
-                                                                                </Badge>
+                                                                            <TableCell className="w-[150px] font-medium text-sm">
+                                                                                <span className="flex items-center gap-1">
+                                                                                    {isAgua 
+                                                                                        ? <Droplet className="h-3 w-3 text-blue-500" /> 
+                                                                                        : <Zap className="h-3 w-3 text-yellow-600" />
+                                                                                    }
+                                                                                    {diretriz.categoria}
+                                                                                </span>
                                                                             </TableCell>
                                                                             <TableCell>
                                                                                 {diretriz.nome_concessionaria}
-                                                                                <p className="text-xs text-muted-foreground mt-0.5">
-                                                                                    {diretriz.fonte_custo || 'Fonte de Custo não informada'}
-                                                                                </p>
                                                                             </TableCell>
                                                                             <TableCell className="text-center text-sm">
-                                                                                {formatNumber(diretriz.consumo_pessoa_dia, 4)} {unidade}
+                                                                                {diretriz.consumo_pessoa_dia.toLocaleString('pt-BR')} {diretriz.unidade_custo}
                                                                             </TableCell>
                                                                             <TableCell className="text-right text-sm">
-                                                                                {formatCurrency(diretriz.custo_unitario)}/{unidade}
+                                                                                {formatCurrency(diretriz.custo_unitario)}
                                                                             </TableCell>
                                                                             <TableCell className="text-right font-semibold text-sm">
-                                                                                {formatCurrency(totalDiretriz)}
+                                                                                {formatCurrency(totalEstimado)}
                                                                             </TableCell>
                                                                         </TableRow>
                                                                     );
@@ -1161,7 +1252,7 @@ const ConcessionariaForm = () => {
                             {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({itemsToDisplay.length} item(ns))
+                                        3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({itemsToDisplay.length} {itemsToDisplay.length === 1 ? 'diretriz' : 'diretrizes'})
                                     </h3>
                                     
                                     {/* Alerta de Validação Final (Modo Novo Registro) */}
@@ -1193,6 +1284,9 @@ const ConcessionariaForm = () => {
                                             
                                             const isOmDestinoDifferent = item.om_favorecida !== item.om_detentora || item.ug_favorecida !== item.ug_detentora;
                                             
+                                            const diretriz = item.selected_diretrizes[0];
+                                            const isAgua = diretriz.categoria === 'Água/Esgoto';
+
                                             return (
                                                 <Card 
                                                     key={item.tempId} 
@@ -1204,8 +1298,9 @@ const ConcessionariaForm = () => {
                                                     <CardContent className="p-4">
                                                         
                                                         <div className={cn("flex justify-between items-center pb-2 mb-2", "border-b border-secondary/30")}>
-                                                            <h4 className="font-bold text-base text-foreground">
-                                                                {item.detalhamento}
+                                                            <h4 className="font-bold text-base text-foreground flex items-center gap-2">
+                                                                {isAgua ? <Droplet className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
+                                                                {diretriz.categoria} - {diretriz.nome_concessionaria}
                                                             </h4>
                                                             <div className="flex items-center gap-2">
                                                                 <p className="font-extrabold text-lg text-foreground text-right">
@@ -1243,8 +1338,8 @@ const ConcessionariaForm = () => {
                                                         <div className="w-full h-[1px] bg-secondary/30 my-3" />
 
                                                         <div className="flex justify-between text-xs">
-                                                            <span className="text-muted-foreground">ND 33.90.39 (Concessionária):</span>
-                                                            <span className="font-medium text-blue-600">{formatCurrency(totalND39)}</span>
+                                                            <span className="text-muted-foreground">ND 33.90.39 (Serviços de Terceiros - PJ):</span>
+                                                            <span className="font-medium text-green-600">{formatCurrency(totalND39)}</span>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
@@ -1256,10 +1351,10 @@ const ConcessionariaForm = () => {
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
                                             <span className="font-bold text-base uppercase">
-                                                VALOR TOTAL DO LOTE
+                                                VALOR TOTAL DA OM
                                             </span>
                                             <span className="font-extrabold text-xl text-foreground">
-                                                {formatCurrency(totalPendingConcessionarias)}
+                                                {formatCurrency(totalPendingConcessionaria)}
                                             </span>
                                         </CardContent>
                                     </Card>
@@ -1289,8 +1384,8 @@ const ConcessionariaForm = () => {
                                                 </Button>
                                                 <Button 
                                                     type="button" 
-                                                    onClick={handleSavePendingConcessionarias}
-                                                    disabled={isSaving || pendingConcessionarias.length === 0 || isConcessionariaDirty}
+                                                    onClick={handleSavePendingConcessionaria}
+                                                    disabled={isSaving || pendingConcessionaria.length === 0 || isConcessionariaDirty}
                                                     className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                                 >
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -1324,10 +1419,12 @@ const ConcessionariaForm = () => {
                                         const diasText = diasOperacaoConsolidado === 1 ? 'dia' : 'dias';
                                         const efetivoText = efetivoConsolidado === 1 ? 'militar' : 'militares';
                                         
-                                        // Verifica se a OM Detentora é diferente da OM Favorecida
                                         const isDifferentOm = group.om_detentora !== group.organizacao || group.ug_detentora !== group.ug;
                                         const omDestino = group.om_detentora;
                                         const ugDestino = group.ug_detentora;
+                                        
+                                        const hasAgua = group.records.some(r => r.categoria === 'Água/Esgoto');
+                                        const hasEnergia = group.records.some(r => r.categoria === 'Energia Elétrica');
 
                                         return (
                                             <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
@@ -1344,86 +1441,88 @@ const ConcessionariaForm = () => {
                                                 </div>
                                                 
                                                 {/* CORPO CONSOLIDADO */}
-                                                <div className="space-y-3">
-                                                    <Card 
-                                                        key={group.groupKey} 
-                                                        className="p-3 bg-background border"
-                                                    >
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex flex-col">
+                                                    <div className="space-y-3">
+                                                        <Card 
+                                                            key={group.groupKey} 
+                                                            className="p-3 bg-background border"
+                                                        >
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex flex-col">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <h4 className="font-semibold text-base text-foreground">
+                                                                            Concessionárias
+                                                                        </h4>
+                                                                        {hasAgua && <Droplet className="h-4 w-4 text-blue-500" />}
+                                                                        {hasEnergia && <Zap className="h-4 w-4 text-yellow-600" />}
+                                                                    </div>
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        Itens: {group.records.length} | Período: {diasOperacaoConsolidado} {diasText} | Efetivo: {efetivoConsolidado} {efetivoText}
+                                                                    </p>
+                                                                </div>
                                                                 <div className="flex items-center gap-2">
-                                                                    <h4 className="font-semibold text-base text-foreground">
-                                                                        Concessionária ({group.records.length} item(ns))
-                                                                    </h4>
-                                                                </div>
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    Período: {diasOperacaoConsolidado} {diasText} | Efetivo: {efetivoConsolidado} {efetivoText}
-                                                                </p>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-extrabold text-xl text-foreground">
-                                                                    {formatCurrency(totalND39Consolidado)}
-                                                                </span>
-                                                                {/* Botões de Ação */}
-                                                                <div className="flex gap-1 shrink-0">
-                                                                    <Button
-                                                                        type="button" 
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="h-8 w-8"
-                                                                        onClick={() => handleEdit(group)} 
-                                                                        disabled={!isPTrabEditable || isSaving || pendingConcessionarias.length > 0}
-                                                                    >
-                                                                        <Pencil className="h-4 w-4" />
-                                                                    </Button>
-                                                                    <Button
-                                                                        type="button" 
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        onClick={() => handleConfirmDelete(group)} 
-                                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                                        disabled={!isPTrabEditable || isSaving}
-                                                                    >
-                                                                        <Trash2 className="h-4 w-4" />
-                                                                    </Button>
+                                                                    <span className="font-extrabold text-xl text-foreground">
+                                                                        {formatCurrency(totalND39Consolidado)}
+                                                                    </span>
+                                                                    {/* Botões de Ação */}
+                                                                    <div className="flex gap-1 shrink-0">
+                                                                        <Button
+                                                                            type="button" 
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-8 w-8"
+                                                                            onClick={() => handleEdit(group)} 
+                                                                            disabled={!isPTrabEditable || isSaving || pendingConcessionaria.length > 0}
+                                                                        >
+                                                                            <Pencil className="h-4 w-4" />
+                                                                        </Button>
+                                                                        <Button
+                                                                            type="button" 
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            onClick={() => handleConfirmDelete(group)} 
+                                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                            disabled={!isPTrabEditable || isSaving}
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                        
-                                                        {/* Detalhes da Alocação */}
-                                                        <div className="pt-2 border-t mt-2">
-                                                            {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
-                                                            <div className="flex justify-between text-xs">
-                                                                <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                                                <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
-                                                                    {omDestino} ({formatCodug(ugDestino)})
-                                                                </span>
+                                                            
+                                                            {/* Detalhes da Alocação */}
+                                                            <div className="pt-2 border-t mt-2">
+                                                                {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
+                                                                <div className="flex justify-between text-xs">
+                                                                    <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                    <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
+                                                                        {omDestino} ({formatCodug(ugDestino)})
+                                                                    </span>
+                                                                </div>
+                                                                {/* ND 33.90.39 */}
+                                                                <div className="flex justify-between text-xs">
+                                                                    <span className="text-muted-foreground">ND 33.90.39:</span>
+                                                                    <span className="text-green-600">{formatCurrency(totalND39Consolidado)}</span>
+                                                                </div>
                                                             </div>
-                                                            {/* ND 33.90.39 */}
-                                                            <div className="flex justify-between text-xs">
-                                                                <span className="text-muted-foreground">ND 33.90.39:</span>
-                                                                <span className="text-blue-600">{formatCurrency(totalND39Consolidado)}</span>
-                                                            </div>
-                                                        </div>
-                                                    </Card>
-                                                </div>
+                                                        </Card>
+                                                    </div>
                                             </Card>
                                         );
                                     })}
                                 </section>
                             )}
 
-                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS (INDIVIDUAL POR REGISTRO) */}
-                            {registros && registros.length > 0 && (
+                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
+                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
                                 <div className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
-                                        📋 Memórias de Cálculos Detalhadas ({registros.length} registros)
+                                        📋 Memórias de Cálculos Detalhadas
                                     </h3>
                                     
-                                    {registros.map(registro => (
-                                        <ConcessionariaMemoria
-                                            key={`memoria-view-${registro.id}`}
-                                            registro={registro}
+                                    {consolidatedRegistros.map(group => (
+                                        <ConsolidatedConcessionariaMemoria
+                                            key={`memoria-view-${group.groupKey}`}
+                                            group={group}
                                             isPTrabEditable={isPTrabEditable}
                                             isSaving={isSaving}
                                             editingMemoriaId={editingMemoriaId}
@@ -1450,7 +1549,7 @@ const ConcessionariaForm = () => {
                                 Confirmar Exclusão de Lote
                             </AlertDialogTitle>
                             <AlertDialogDescription>
-                                Tem certeza que deseja excluir o lote de Concessionária para a OM <span className="font-bold">{groupToDelete?.organizacao}</span>, contendo {groupToDelete?.records.length} registro(s)? Esta ação é irreversível.
+                                Tem certeza que deseja excluir o lote de Concessionária para a OM <span className="font-bold">{groupToDelete?.organizacao}</span>, contendo {groupToDelete?.records.length} diretriz(es)? Esta ação é irreversível.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -1474,7 +1573,7 @@ const ConcessionariaForm = () => {
                     onSelect={handleDiretrizSelected}
                     selectedYear={selectedYear}
                     initialSelections={initialDiretrizesForDialog}
-                    onAddContract={handleAddContract}
+                    onAddContract={handleAddContract} 
                 />
             </div>
         </div>

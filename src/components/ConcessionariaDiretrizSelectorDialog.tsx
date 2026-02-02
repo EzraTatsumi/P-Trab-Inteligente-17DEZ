@@ -1,29 +1,33 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Check, Plus, AlertCircle, Zap, Droplet } from "lucide-react";
+import { Loader2, Check, Plus, AlertCircle, Zap, Droplet, PlusCircle } from "lucide-react";
+import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { sanitizeError } from "@/lib/errorUtils";
-import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
-import { CategoriaConcessionaria, DiretrizConcessionaria, CATEGORIAS_CONCESSIONARIA } from "@/types/diretrizesConcessionaria";
-import { DiretrizSelection } from "@/lib/concessionariaUtils";
+import { Tables } from "@/integrations/supabase/types";
+import { formatCurrency } from "@/lib/formatUtils";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CATEGORIAS_CONCESSIONARIA, CategoriaConcessionaria, DiretrizConcessionaria } from "@/types/diretrizesConcessionaria";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+
+// Tipo de seleção que será retornado ao formulário principal
+export interface ConcessionariaSelection extends DiretrizConcessionaria {
+    // A diretriz completa já contém todas as informações necessárias (consumo, custo, etc.)
+}
 
 interface ConcessionariaDiretrizSelectorDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSelect: (diretrizes: DiretrizSelection[]) => void;
+    onSelect: (selections: ConcessionariaSelection[]) => void;
     selectedYear: number;
-    initialSelections: DiretrizSelection[];
+    initialSelections: ConcessionariaSelection[];
     onAddContract: () => void;
 }
 
-const fetchDiretrizes = async (year: number): Promise<DiretrizConcessionaria[]> => {
+const fetchDiretrizesConcessionaria = async (year: number): Promise<DiretrizConcessionaria[]> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
 
@@ -38,7 +42,7 @@ const fetchDiretrizes = async (year: number): Promise<DiretrizConcessionaria[]> 
     if (error) throw error;
     
     // Ensure numeric types are correct
-    return (data || []).map(d => ({
+    return (data || []).map((d: Tables<'diretrizes_concessionaria'>) => ({
         ...d,
         consumo_pessoa_dia: Number(d.consumo_pessoa_dia),
         custo_unitario: Number(d.custo_unitario),
@@ -53,185 +57,181 @@ const ConcessionariaDiretrizSelectorDialog: React.FC<ConcessionariaDiretrizSelec
     initialSelections,
     onAddContract,
 }) => {
-    const { data: availableDiretrizes, isLoading, error } = useQuery<DiretrizConcessionaria[]>({
-        queryKey: ['concessionariaDiretrizes', selectedYear],
-        queryFn: () => fetchDiretrizes(selectedYear),
+    const [selectedDiretrizes, setSelectedDiretrizes] = useState<ConcessionariaSelection[]>(initialSelections);
+    const [selectedTab, setSelectedTab] = useState<CategoriaConcessionaria>(CATEGORIAS_CONCESSIONARIA[0]);
+
+    const { data: allDiretrizes, isLoading, isError } = useQuery<DiretrizConcessionaria[]>({
+        queryKey: ['diretrizesConcessionaria', selectedYear],
+        queryFn: () => fetchDiretrizesConcessionaria(selectedYear),
         enabled: open,
     });
     
-    const [selectedDiretrizIds, setSelectedDiretrizIds] = useState<Set<string>>(new Set());
-    const [selectedTab, setSelectedTab] = useState<CategoriaConcessionaria>(CATEGORIAS_CONCESSIONARIA[0]);
-
+    // Reset state when dialog opens/closes
     useEffect(() => {
         if (open) {
-            // Initialize selected IDs from initialSelections
-            const initialIds = new Set(initialSelections.map(d => d.id));
-            setSelectedDiretrizIds(initialIds);
+            setSelectedDiretrizes(initialSelections);
         }
     }, [open, initialSelections]);
 
-    const handleToggleSelection = (diretriz: DiretrizConcessionaria) => {
-        setSelectedDiretrizIds(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(diretriz.id)) {
-                newSet.delete(diretriz.id);
+    const handleToggleDiretriz = (diretriz: DiretrizConcessionaria) => {
+        const isSelected = selectedDiretrizes.some(d => d.id === diretriz.id);
+        
+        // Concessionária é um item único por categoria.
+        // Se o usuário selecionar uma nova diretriz na mesma categoria, a anterior é substituída.
+        
+        if (isSelected) {
+            // Remove a diretriz
+            setSelectedDiretrizes(prev => prev.filter(d => d.id !== diretriz.id));
+        } else {
+            // Verifica se já existe uma diretriz da mesma categoria
+            const existingIndex = selectedDiretrizes.findIndex(d => d.categoria === diretriz.categoria);
+            
+            const newSelection: ConcessionariaSelection = diretriz as ConcessionariaSelection;
+            
+            if (existingIndex !== -1) {
+                // Substitui a existente
+                setSelectedDiretrizes(prev => {
+                    const newArray = [...prev];
+                    newArray[existingIndex] = newSelection;
+                    return newArray;
+                });
             } else {
-                newSet.add(diretriz.id);
+                // Adiciona nova
+                setSelectedDiretrizes(prev => [...prev, newSelection]);
             }
-            return newSet;
-        });
+        }
     };
 
     const handleConfirm = () => {
-        if (!availableDiretrizes) return;
-
-        const selectedItems: DiretrizSelection[] = availableDiretrizes
-            .filter(d => selectedDiretrizIds.has(d.id))
-            .map(d => d as DiretrizSelection); 
-
-        onSelect(selectedItems);
+        if (selectedDiretrizes.length === 0) {
+            toast.warning("Selecione pelo menos uma diretriz de concessionária.");
+            return;
+        }
+        onSelect(selectedDiretrizes);
         onOpenChange(false);
     };
     
-    const groupedDiretrizes = useMemo(() => {
-        return (availableDiretrizes || []).reduce((acc, diretriz) => {
-            const category = diretriz.categoria as CategoriaConcessionaria;
-            if (!acc[category]) {
-                acc[category] = [];
-            }
-            acc[category].push(diretriz);
-            return acc;
-        }, {} as Record<CategoriaConcessionaria, DiretrizConcessionaria[]>);
-    }, [availableDiretrizes]);
+    const filteredDiretrizes = useMemo(() => {
+        return allDiretrizes?.filter(d => d.categoria === selectedTab) || [];
+    }, [allDiretrizes, selectedTab]);
     
-    const renderDiretrizTable = (category: CategoriaConcessionaria) => {
-        const diretrizes = groupedDiretrizes[category] || [];
-        
-        if (isLoading) {
-            return (
-                <div className="flex items-center justify-center h-32">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <span className="ml-2 text-sm text-muted-foreground">Carregando diretrizes...</span>
-                </div>
-            );
-        }
-        
-        if (error) {
-            return (
-                <div className="flex items-center justify-center h-32 text-destructive">
-                    <AlertCircle className="h-5 w-5 mr-2" />
-                    <span className="text-sm">Erro ao carregar diretrizes: {sanitizeError(error)}</span>
-                </div>
-            );
-        }
-
-        if (diretrizes.length === 0) {
-            return (
-                <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-                    <span className="text-sm">Nenhuma diretriz de {category} encontrada para o ano {selectedYear}.</span>
-                    <Button 
-                        type="button" 
-                        variant="link" 
-                        onClick={onAddContract} 
-                        className="mt-2 h-8 text-xs"
-                    >
-                        <Plus className="mr-1 h-3 w-3" />
-                        Adicionar Contrato
-                    </Button>
-                </div>
-            );
-        }
-        
-        const unidade = category === 'Água/Esgoto' ? 'm³' : 'kWh';
-
-        return (
-            <div className="max-h-[400px] overflow-y-auto border rounded-md">
-                <Table>
-                    <TableHeader className="sticky top-0 bg-background">
-                        <TableRow>
-                            <TableHead className="w-[50px]"></TableHead>
-                            <TableHead>Concessionária</TableHead>
-                            <TableHead className="text-center">Consumo/Pessoa/Dia ({unidade})</TableHead>
-                            <TableHead className="text-right">Custo Unitário ({unidade})</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {diretrizes.map(diretriz => (
-                            <TableRow 
-                                key={diretriz.id} 
-                                onClick={() => handleToggleSelection(diretriz)}
-                                className="cursor-pointer hover:bg-muted/50"
-                            >
-                                <TableCell>
-                                    <Checkbox 
-                                        checked={selectedDiretrizIds.has(diretriz.id)}
-                                        onCheckedChange={() => handleToggleSelection(diretriz)}
-                                    />
-                                </TableCell>
-                                <TableCell className="font-medium">
-                                    {diretriz.nome_concessionaria}
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                        {diretriz.fonte_custo || 'Fonte de Custo não informada'}
-                                    </p>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                    {formatNumber(diretriz.consumo_pessoa_dia, 4)}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    {formatCurrency(diretriz.custo_unitario)}
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
-        );
+    const isDiretrizSelected = (id: string) => selectedDiretrizes.some(d => d.id === id);
+    
+    const selectedCategories = useMemo(() => {
+        return new Set(selectedDiretrizes.map(d => d.categoria));
+    }, [selectedDiretrizes]);
+    
+    const handleAddContractClick = () => {
+        onOpenChange(false); // Fecha o seletor antes de navegar
+        onAddContract();
     };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[800px] max-h-[90vh] flex flex-col">
+            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Droplet className="h-5 w-5 text-primary" />
-                        Selecionar Diretrizes de Concessionária ({selectedYear})
+                    <DialogTitle>
+                        Selecionar Diretrizes de Concessionária
                     </DialogTitle>
-                    <DialogDescription>
-                        Selecione os contratos de concessionária (Água/Esgoto e Energia Elétrica) que serão utilizados no cálculo.
-                    </DialogDescription>
                 </DialogHeader>
                 
-                <div className="flex-1 overflow-hidden space-y-4">
-                    <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as CategoriaConcessionaria)}>
-                        <TabsList className="grid w-full grid-cols-2">
+                <div className="flex-1 overflow-y-auto space-y-4 p-1">
+                    
+                    {isError && (
+                        <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Erro ao carregar diretrizes</AlertTitle>
+                            <AlertDescription>
+                                Não foi possível carregar as diretrizes de concessionária para o ano {selectedYear}. Verifique as configurações.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                    
+                    {isLoading ? (
+                        <div className="flex justify-center items-center h-40">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        </div>
+                    ) : (
+                        <Tabs value={selectedTab} onValueChange={(value) => setSelectedTab(value as CategoriaConcessionaria)}>
+                            <TabsList className="grid w-full grid-cols-2">
+                                {CATEGORIAS_CONCESSIONARIA.map(cat => (
+                                    <TabsTrigger key={cat} value={cat} className="flex items-center gap-2">
+                                        {cat === 'Água/Esgoto' ? <Droplet className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
+                                        {cat}
+                                        {selectedCategories.has(cat) && <Check className="h-4 w-4 text-green-500" />}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                            
                             {CATEGORIAS_CONCESSIONARIA.map(cat => (
-                                <TabsTrigger key={cat} value={cat} className="flex items-center gap-2">
-                                    {cat === 'Água/Esgoto' ? <Droplet className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
-                                    {cat}
-                                </TabsTrigger>
+                                <TabsContent key={cat} value={cat} className="mt-4">
+                                    <div className="space-y-3">
+                                        {filteredDiretrizes.length === 0 ? (
+                                            <Card className="p-4 text-center text-muted-foreground">
+                                                Nenhuma diretriz de {cat} cadastrada para o ano {selectedYear}.
+                                            </Card>
+                                        ) : (
+                                            filteredDiretrizes.map(d => {
+                                                const isSelected = isDiretrizSelected(d.id);
+                                                return (
+                                                    <Card 
+                                                        key={d.id} 
+                                                        className={cn(
+                                                            "cursor-pointer transition-all hover:shadow-md",
+                                                            isSelected ? "border-2 border-primary bg-primary/5" : "border"
+                                                        )}
+                                                        onClick={() => handleToggleDiretriz(d)}
+                                                    >
+                                                        <CardContent className="p-4 flex justify-between items-center">
+                                                            <div className="space-y-1">
+                                                                <h4 className="font-semibold text-base">
+                                                                    {d.nome_concessionaria}
+                                                                </h4>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    Consumo: {d.consumo_pessoa_dia.toLocaleString('pt-BR')} {d.unidade_custo}/pessoa/dia | Custo Unitário: {formatCurrency(d.custo_unitario)}
+                                                                </p>
+                                                            </div>
+                                                            {isSelected ? (
+                                                                <Check className="h-6 w-6 text-primary" />
+                                                            ) : (
+                                                                <Plus className="h-6 w-6 text-muted-foreground" />
+                                                            )}
+                                                        </CardContent>
+                                                    </Card>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                </TabsContent>
                             ))}
-                        </TabsList>
-                        
-                        {CATEGORIAS_CONCESSIONARIA.map(cat => (
-                            <TabsContent key={cat} value={cat} className="mt-4">
-                                {renderDiretrizTable(cat)}
-                            </TabsContent>
-                        ))}
-                    </Tabs>
+                        </Tabs>
+                    )}
                 </div>
-
-                <DialogFooter className="flex flex-col sm:flex-row sm:justify-between sm:items-center pt-4 border-t">
-                    <p className="text-sm text-muted-foreground mb-2 sm:mb-0">
-                        {selectedDiretrizIds.size} contrato(s) selecionado(s).
-                    </p>
-                    <Button 
-                        type="button" 
-                        onClick={handleConfirm} 
-                        disabled={selectedDiretrizIds.size === 0 || isLoading}
-                    >
-                        <Check className="mr-2 h-4 w-4" />
-                        Confirmar Seleção
-                    </Button>
+                
+                <DialogFooter className="mt-4">
+                    <div className="flex items-center justify-between w-full gap-2">
+                        {/* NOVO BOTÃO: Adicionar Concessionária (Esquerda) */}
+                        <Button 
+                            type="button" 
+                            variant="secondary"
+                            onClick={handleAddContractClick}
+                            className="gap-2"
+                        >
+                            <PlusCircle className="h-4 w-4" />
+                            Adicionar Concessionária
+                        </Button>
+                        
+                        {/* Botões de Ação (Direita) */}
+                        <div className="flex gap-2">
+                            <Button onClick={handleConfirm} disabled={selectedDiretrizes.length === 0 || isLoading}>
+                                <Check className="mr-2 h-4 w-4" />
+                                Confirmar Seleção ({selectedDiretrizes.length})
+                            </Button>
+                            <Button variant="outline" onClick={() => onOpenChange(false)}>
+                                Cancelar
+                            </Button>
+                        </div>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
