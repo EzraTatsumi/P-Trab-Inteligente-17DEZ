@@ -71,9 +71,17 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
                 <div className="flex flex-col flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                         <h4 className="text-base font-semibold text-foreground">
-                            {isAgua ? <Droplet className="h-4 w-4 text-blue-600" /> : <Zap className="h-4 w-4 text-yellow-600" />}
-                            {registro.categoria} - {registro.nome_concessionaria}
+                            {registro.organizacao} ({formatCodug(registro.ug)})
                         </h4>
+                        <Badge 
+                            variant="outline" 
+                            className={cn(
+                                "text-xs font-medium", 
+                                isAgua ? "border-blue-500 text-blue-700 bg-blue-50/50" : "border-yellow-500 text-yellow-700 bg-yellow-50/50"
+                            )}
+                        >
+                            {registro.categoria}
+                        </Badge>
                         {hasCustomMemoria && !isEditing && (
                             <Badge variant="outline" className="text-xs">
                                 Editada manualmente
@@ -81,7 +89,7 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
                         )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                        OM Favorecida: {registro.organizacao} (UG: {formatCodug(registro.ug)})
+                        Concessionária: {registro.nome_concessionaria}
                     </p>
                     {isDifferentOmInMemoria && (
                         <div className="flex items-center gap-1 mt-1">
