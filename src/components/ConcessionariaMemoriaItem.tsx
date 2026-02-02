@@ -91,7 +91,7 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
                         )}
                     </div>
                     {isDifferentOmInMemoria && (
-                        <div className="flex items-center gap-1 mt-1">
+                        <div className="flex items-center gap-1">
                             <AlertCircle className="h-4 w-4 text-red-600" />
                             <span className="text-sm font-medium text-red-600">
                                 Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
@@ -159,7 +159,7 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
             </div>
             
             {/* Área de Texto da Memória */}
-            <CardContent className="p-0 pt-3">
+            <CardContent className="p-0">
                 
                 <div className="p-3 rounded-lg border bg-background">
                     {isEditing ? (
