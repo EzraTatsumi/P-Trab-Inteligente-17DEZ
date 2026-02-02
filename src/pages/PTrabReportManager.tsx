@@ -51,10 +51,10 @@ import {
   generatePassagemMemoriaCalculo,
   PassagemRegistro as PassagemRegistroType, // Importando o tipo PassagemRegistro do utilitário
 } from "@/lib/passagemUtils"; // Importando utilitários de Passagem
-import { 
-  ConcessionariaRegistroComDiretriz, 
+import {
+  ConcessionariaRegistroComDiretriz,
   generateConcessionariaMemoriaCalculo as generateConcessionariaMemoriaCalculoUtility,
-} from "@/lib/concessionariaUtils"; // NOVO: Importando utilitários de Concessionária
+} from "@/lib/concessionariaUtils"; // Importando utilitários de Concessionária
 import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais } from "@/lib/ptrabUtils";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
