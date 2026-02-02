@@ -1458,11 +1458,7 @@ const VerbaOperacionalForm = () => {
                                                                     Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
                                                                 </span>
                                                             </div>
-                                                        ) : (
-                                                            <p className="text-xs text-muted-foreground">
-                                                                Destino Recurso: {registro.om_detentora} (UG: {formatCodug(registro.ug_detentora)})
-                                                            </p>
-                                                        )}
+                                                        ) : null}
                                                     </div>
                                                     
                                                     <div className="flex items-center justify-end gap-2 shrink-0">
