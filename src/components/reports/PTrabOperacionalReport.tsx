@@ -65,12 +65,19 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     const diasTotais = useMemo(() => calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim), [ptrabData]);
 
     const gruposPorOM = useMemo(() => {
+        // Garantir que todas as props de registros sejam arrays antes de usar o spread
+        const safeRegistrosDiaria = registrosDiaria || [];
+        const safeRegistrosVerbaOperacional = registrosVerbaOperacional || [];
+        const safeRegistrosSuprimentoFundos = registrosSuprimentoFundos || [];
+        const safeRegistrosPassagem = registrosPassagem || [];
+        const safeRegistrosConcessionaria = registrosConcessionaria || [];
+
         const allRecords = [
-            ...registrosDiaria.map(r => ({ ...r, type: 'diaria' as const })),
-            ...registrosVerbaOperacional.map(r => ({ ...r, type: 'verba' as const })),
-            ...registrosSuprimentoFundos.map(r => ({ ...r, type: 'suprimento' as const })),
-            ...registrosPassagem.map(r => ({ ...r, type: 'passagem' as const })),
-            ...registrosConcessionaria.map(r => ({ ...r, type: 'concessionaria' as const })), // NEW
+            ...safeRegistrosDiaria.map(r => ({ ...r, type: 'diaria' as const })),
+            ...safeRegistrosVerbaOperacional.map(r => ({ ...r, type: 'verba' as const })),
+            ...safeRegistrosSuprimentoFundos.map(r => ({ ...r, type: 'suprimento' as const })),
+            ...safeRegistrosPassagem.map(r => ({ ...r, type: 'passagem' as const })),
+            ...safeRegistrosConcessionaria.map(r => ({ ...r, type: 'concessionaria' as const })), // NEW
         ];
 
         const groups: Record<string, GrupoOperacional> = {};
