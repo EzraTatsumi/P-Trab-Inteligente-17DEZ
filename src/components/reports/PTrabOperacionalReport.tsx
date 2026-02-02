@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber, formatDateDDMMMAA, formatCodug, formatDate } from "@/lib/formatUtils";
 import { FileSpreadsheet, Printer, Download, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/cAard";
 import { Tables } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client"; // Importando supabase para buscar detalhes da diretriz
 import {
