@@ -284,7 +284,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria]);
   
   // 2. Efeito para buscar os detalhes das diretrizes de passagem e concessionária
-  // CORREÇÃO: Este useEffect agora depende apenas dos arrays de consolidação, que são estáveis (useMemo)
   useEffect(() => {
     const loadDiretrizDetails = async () => {
         setIsLoadingDiretrizDetails(true);
@@ -858,9 +857,16 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             
             // I: DETALHAMENTO
             const firstRecord = consolidated.records[0];
+            // Prioridade 1: Customizada
             let memoria = firstRecord.detalhamento_customizado;
             
             if (!memoria) {
+                // Prioridade 2: Automática (detalhamento)
+                memoria = firstRecord.detalhamento;
+            }
+            
+            if (!memoria) {
+                // Prioridade 3: Gerar consolidada no relatório
                 memoria = generateConsolidatedPassagemMemoriaCalculo(consolidated);
                 
                 if (consolidated.diretrizDetails?.numero_pregao && consolidated.diretrizDetails?.ug_referencia) {
@@ -885,7 +891,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             currentRow++;
         });
         
-        // --- 3. Render Concessionária (CONSOLIDADO) --- // NOVO
+        // --- 3. Render Concessionária (CONSOLIDADO) ---
         const concessionariasConsolidadasDesteGrupo = consolidatedConcessionariasWithDetails.filter(c => 
             c.om_detentora === omName && c.ug_detentora === ug
         );
@@ -896,6 +902,21 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             
             // Verifica se a OM Favorecida é diferente da OM Detentora
             const isDifferentOm = consolidated.organizacao !== consolidated.om_detentora || consolidated.ug !== consolidated.ug_detentora;
+            
+            // A memória deve ser gerada de forma consolidada, priorizando a customizada do primeiro registro
+            const firstRecord = consolidated.records[0];
+            // Prioridade 1: Customizada
+            let memoria = firstRecord.detalhamento_customizado;
+            
+            if (!memoria) {
+                // Prioridade 2: Automática (detalhamento)
+                memoria = firstRecord.detalhamento;
+            }
+            
+            if (!memoria) {
+                // Prioridade 3: Gerar consolidada no relatório
+                memoria = generateConsolidatedConcessionariaMemoriaCalculo(consolidated);
+            }
             
             // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente, COM QUEBRA DE LINHA)
             let despesasLabel = `CONCESSIONÁRIA`;
@@ -946,14 +967,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('H').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // I: DETALHAMENTO
-            const firstRecord = consolidated.records[0];
-            let memoria = firstRecord.detalhamento_customizado;
-            
-            if (!memoria) {
-                // Se não houver customização, gera a automática consolidada
-                memoria = generateConsolidatedConcessionariaMemoriaCalculo(consolidated);
-            }
-            
             row.getCell('I').value = memoria;
             row.getCell('I').alignment = leftTopAlignment; 
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
@@ -1444,7 +1457,12 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             let memoria = firstRecord.detalhamento_customizado;
                             
                             if (!memoria) {
-                                // Se não houver customização, gera a automática consolidada
+                                // Prioridade 2: Automática (detalhamento)
+                                memoria = firstRecord.detalhamento;
+                            }
+                            
+                            if (!memoria) {
+                                // Prioridade 3: Gerar consolidada no relatório
                                 memoria = generateConsolidatedPassagemMemoriaCalculo(consolidated);
                                 
                                 // Adicionar Pregão/UASG dinamicamente
@@ -1499,7 +1517,12 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             let memoria = firstRecord.detalhamento_customizado;
                             
                             if (!memoria) {
-                                // Se não houver customização, gera a automática consolidada
+                                // Prioridade 2: Automática (detalhamento)
+                                memoria = firstRecord.detalhamento;
+                            }
+                            
+                            if (!memoria) {
+                                // Prioridade 3: Gerar consolidada no relatório
                                 memoria = generateConsolidatedConcessionariaMemoriaCalculo(consolidated);
                             }
                             
