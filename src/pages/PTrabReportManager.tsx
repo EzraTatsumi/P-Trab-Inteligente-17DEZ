@@ -21,7 +21,7 @@ import { formatCurrency, formatNumber } from "@/lib/formatUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
 import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacionalReport";
-import PTrabOperacionalReport from "@/components/reports/PTrabOperacionalReport"; // NOVO: Importar o relatório operacional
+import PTrabOperacionalPrintReport from "@/components/reports/PTrabOperacionalPrintReport"; // NOVO: Importar o relatório operacional de IMPRESSÃO
 import { 
   generateRacaoQuenteMemoriaCalculo, 
   generateRacaoOperacionalMemoriaCalculo,
@@ -1278,22 +1278,12 @@ const PTrabReportManager = () => {
           />
         );
       case 'operacional':
+        // USANDO O NOVO COMPONENTE DE IMPRESSÃO
         return (
-            <PTrabOperacionalReport
+            <PTrabOperacionalPrintReport
                 ptrabData={ptrabData}
-                registrosDiaria={registrosDiaria}
-                registrosVerbaOperacional={registrosVerbaOperacional} 
-                registrosSuprimentoFundos={registrosSuprimentoFundos} 
-                registrosPassagem={registrosPassagem}
-                registrosConcessionaria={registrosConcessionaria} // NOVO: Passando registros de Concessionária
                 diretrizesOperacionais={diretrizesOperacionais}
                 fileSuffix={fileSuffix}
-                generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada}
-                generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada}
-                generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada}
-                generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada}
-                generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada} // NOVO: Passando função de memória
-                // NOVAS PROPS PARA AGRUPAMENTO
                 omsOrdenadas={omsOrdenadas}
                 gruposPorOM={gruposPorOM}
             />
