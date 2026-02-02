@@ -86,6 +86,9 @@ export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaReg
     // Agora, todas as propriedades da tabela (organizacao, om_detentora, etc.) estão disponíveis diretamente
     const { organizacao, om_detentora, dias_operacao, efetivo, categoria, valor_unitario, consumo_pessoa_dia, valor_total, nome_concessionaria, unidade_custo, fonte_consumo, fonte_custo, fase_atividade } = registro;
     
+    // Inicialização da variável 'memoria'
+    let memoria = '';
+    
     // Garantir que os campos críticos não sejam undefined/null
     const nomeConcessionaria = nome_concessionaria || 'Não Informado';
     const unidadeCusto = unidade_custo || 'unidade';
@@ -101,7 +104,7 @@ export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaReg
     const diasText = dias_operacao === 1 ? 'dia' : 'dias';
     
     // 1. Cabeçalho (33.90.39)
-    memoria = `33.90.39 - Pagamento de Concessionária de ${categoriaNome} ${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} ${artigoOmDestino} ${om_detentora || 'OM Detentora Não Informada'} durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
+    memoria += `33.90.39 - Pagamento de Concessionária de ${categoriaNome} ${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} ${artigoOmDestino} ${om_detentora || 'OM Detentora Não Informada'} durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
     
     // 2. Detalhamento do Cálculo
     memoria += `\nCálculo:\n`;
