@@ -1293,8 +1293,6 @@ const ConcessionariaForm = () => {
                                                                         diretriz.custo_unitario
                                                                     );
                                                                     
-                                                                    const isAgua = diretriz.categoria === 'Água/Esgoto';
-                                                                    
                                                                     return (
                                                                         <TableRow key={diretriz.id}>
                                                                             <TableCell className="w-[150px] font-medium text-sm">
@@ -1389,6 +1387,7 @@ const ConcessionariaForm = () => {
                                             
                                             // Extrai o nome da concessionária do detalhamento
                                             const detalhamentoParts = item.detalhamento?.split(' - ');
+                                            // Ajuste aqui: Pega apenas o nome da concessionária (o segundo elemento)
                                             const nomeConcessionaria = detalhamentoParts && detalhamentoParts.length > 1 ? detalhamentoParts[1] : diretriz.nome_concessionaria;
 
                                             return (

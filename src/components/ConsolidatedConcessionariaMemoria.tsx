@@ -40,25 +40,7 @@ export const ConsolidatedConcessionariaMemoria: React.FC<ConsolidatedConcessiona
     const isDifferentOmInMemoria = group.om_detentora !== group.organizacao || group.ug_detentora !== group.ug;
 
     return (
-        <div className="space-y-4 border p-4 rounded-lg bg-muted/30">
-            
-            <div className="flex items-start justify-between gap-4 mb-2">
-                <div className="flex flex-col flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                        <h4 className="text-base font-bold text-foreground">
-                            {group.organizacao} (UG: {formatCodug(group.ug)})
-                        </h4>
-                    </div>
-                    {isDifferentOmInMemoria && (
-                        <div className="flex items-center gap-1 mt-1">
-                            <AlertCircle className="h-4 w-4 text-red-600" />
-                            <span className="text-sm font-medium text-red-600">
-                                Destino Recurso: {group.om_detentora} ({formatCodug(group.ug_detentora)})
-                            </span>
-                        </div>
-                    )}
-                </div>
-            </div>
+        <div className="space-y-4">
             
             {/* Itera sobre os registros individuais */}
             <div className="space-y-3">
