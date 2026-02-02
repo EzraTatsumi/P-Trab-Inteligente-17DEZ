@@ -121,12 +121,7 @@ export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaReg
 export const generateConsolidatedConcessionariaMemoriaCalculo = (group: ConsolidatedConcessionariaRecord): string => {
     const { organizacao, ug, om_detentora, ug_detentora, dias_operacao, efetivo, records, totalGeral, fase_atividade } = group;
     
-    let memoria = `SOLICITAÇÃO DE RECURSOS PARA PAGAMENTO DE CONCESSIONÁRIAS\n`;
-    memoria += `OM Favorecida: ${organizacao} (UG: ${formatCodug(ug)})\n`;
-    memoria += `OM Destino Recurso: ${om_detentora} (UG: ${formatCodug(ug_detentora)})\n`;
-    memoria += `Período: ${dias_operacao} dias | Efetivo: ${efetivo} militares | Fase: ${fase_atividade}\n\n`;
-    
-    memoria += `DETALHAMENTO DOS CÁLCULOS:\n`;
+    let memoria = ``;
     
     records.forEach(r => {
         const categoria = r.categoria;
@@ -161,9 +156,6 @@ export const generateConsolidatedConcessionariaMemoriaCalculo = (group: Consolid
         memoria += `- (${efetivo} ${militaresText} x ${formatNumber(consumo, 2)} ${unidadeCusto}/dia x ${formatCurrency(custo)} /${unidadeCusto}) x ${dias_operacao} ${diasText} = ${formatCurrency(total)}.\n`;
         memoria += `\nTotal: ${formatCurrency(total)}.\n`;
     });
-    
-    memoria += `\n--------------------------------------------------\n`;
-    memoria += `TOTAL GERAL (ND 33.90.39): ${formatCurrency(totalGeral)}\n`;
     
     return memoria;
 };
