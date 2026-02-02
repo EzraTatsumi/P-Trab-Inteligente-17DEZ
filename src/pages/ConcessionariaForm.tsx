@@ -1440,40 +1440,51 @@ const ConcessionariaForm = () => {
                                             return (
                                                 <Card 
                                                     key={`${group.groupKey}-${category}`} 
-                                                    className="p-3 bg-background border"
+                                                    className="p-4 bg-background border shadow-sm" // Ajustado para p-4 e shadow-sm
                                                 >
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex flex-col">
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="flex flex-col space-y-1">
+                                                            {/* Título e Fase da Atividade */}
                                                             <div className="flex items-center gap-2">
-                                                                <h4 className="font-semibold text-base text-foreground">
+                                                                {icon}
+                                                                <h4 className="font-bold text-base text-foreground">
                                                                     {category}
                                                                 </h4>
-                                                                {icon}
+                                                                <Badge variant="secondary" className="text-xs font-medium">
+                                                                    {faseAtividade}
+                                                                </Badge>
                                                             </div>
+                                                            
+                                                            {/* Detalhes de Efetivo e Dias */}
                                                             <p className="text-xs text-muted-foreground">
-                                                                Diretrizes: {records.length}
+                                                                Efetivo: {efetivoConsolidado} | Dias: {diasOperacaoConsolidado}
                                                             </p>
+                                                            
+                                                            {/* Detalhes da Alocação */}
+                                                            <div className="text-xs pt-1 space-y-0.5">
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-muted-foreground">OM Destino:</span>
+                                                                    <span className={cn("font-medium text-right", isDifferentOm && "text-red-600 font-bold")}>
+                                                                        {omDestino} ({formatCodug(ugDestino)})
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-muted-foreground">ND 33.90.39 (Serviço):</span>
+                                                                    <span className="text-green-600 font-medium text-right">
+                                                                        {formatCurrency(totalND39Category)}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-extrabold text-xl text-foreground">
+                                                        
+                                                        {/* Valor Total e Ações */}
+                                                        <div className="flex flex-col items-end gap-1 shrink-0">
+                                                            <span className="font-extrabold text-lg text-foreground">
                                                                 {formatCurrency(totalCategory)}
                                                             </span>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    {/* Detalhes da Alocação */}
-                                                    <div className="pt-2 border-t mt-2">
-                                                        {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
-                                                        <div className="flex justify-between text-xs">
-                                                            <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                                            <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
-                                                                {omDestino} ({formatCodug(ugDestino)})
-                                                            </span>
-                                                        </div>
-                                                        {/* ND 33.90.39 */}
-                                                        <div className="flex justify-between text-xs">
-                                                            <span className="text-muted-foreground">ND 33.90.39:</span>
-                                                            <span className="text-green-600">{formatCurrency(totalND39Category)}</span>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {records.length} diretriz(es)
+                                                            </p>
                                                         </div>
                                                     </div>
                                                 </Card>
@@ -1484,21 +1495,15 @@ const ConcessionariaForm = () => {
                                             <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
                                                 <div className="flex items-start justify-between mb-3 border-b pb-2">
                                                     <div className="flex flex-col">
-                                                        <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                        <h3 className="font-bold text-lg text-primary">
                                                             {omName} (UG: {formatCodug(ug)})
-                                                            <Badge variant="outline" className="text-xs">
-                                                                {faseAtividade}
-                                                            </Badge>
                                                         </h3>
-                                                        <p className="text-xs text-muted-foreground mt-1">
-                                                            Período: {diasOperacaoConsolidado} {diasText} | Efetivo: {efetivoConsolidado} {efetivoText}
-                                                        </p>
                                                     </div>
                                                     <div className="flex items-center gap-2 shrink-0">
                                                         <span className="font-extrabold text-xl text-primary">
                                                             {formatCurrency(totalOM)}
                                                         </span>
-                                                        {/* Botões de Ação MOVIDOS PARA O HEADER PRINCIPAL */}
+                                                        {/* Botões de Ação */}
                                                         <Button
                                                             type="button" 
                                                             variant="ghost"
