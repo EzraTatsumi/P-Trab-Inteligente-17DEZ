@@ -629,35 +629,27 @@ export const getTipoCombustivelLabel = (tipo: string) => {
 // FUNÇÕES DE NORMALIZAÇÃO E IDENTIFICAÇÃO DA RM (AÇÕES 1 e 2)
 // =================================================================
 
-const normalizarNome = (valor: string) =>
+const normalizarNome = (valor?: string) =>
   (valor || '')
     .toUpperCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 
 const isRegiaoMilitar = (nomeOM: string, nomeRM: string) => {
   const om = normalizarNome(nomeOM);
   const rm = normalizarNome(nomeRM);
-  
-  // 1. Se o nome da OM for exatamente o nome da RM (após normalização)
-  if (om === rm) {
-      return true;
-  }
 
-  // 2. Se a OM for uma RM (ex: 10A RM, 10A RM/CMDO) E o nome da RM vinculada estiver contido no nome da OM.
-  // Isso cobre casos onde a OM é a própria RM ou um Cmdo/Base da RM.
-  if (om.includes(rm) || rm.includes(om)) {
-      return true;
-  }
+  if (om === rm) return true;
+
+  if (/^\d+ª?\s*RM$/.test(om) || om.includes('REGIAO MILITAR')) return true;
+
+  if (rm.includes(om)) return true;
 
   const numRM = rm.match(/\d+/)?.[0];
   if (numRM && om.startsWith(numRM)) {
-    // Se a OM começar com o número da RM e contiver "RM"
-    if (om.includes('RM')) {
-      return true;
-    }
+      if (om.includes('RM')) return true;
   }
 
   return false;
@@ -1115,44 +1107,10 @@ const PTrabReportManager = () => {
         if (aIsRM && !bIsRM) return -1;
         if (!aIsRM && bIsRM) return 1;
         
-        // Ordenação alfabética consistente para as demais OMs
-        const normalizedA = normalizarNome(a);
-        const normalizedB = normalizarNome(b);
-        return normalizedA.localeCompare(normalizedB);
+        return a.localeCompare(b);
     });
   }, [gruposPorOM, nomeRM]);
   
-  // NOVO: Lista de OMs para o relatório operacional (Diárias, Passagens, Verba, Suprimento, Concessionária)
-  const omsOperacionais = useMemo(() => {
-    const oms = new Set<string>();
-    
-    registrosDiaria.forEach(r => oms.add(r.om_detentora || r.organizacao));
-    registrosPassagem.forEach(r => oms.add(r.om_detentora || r.organizacao));
-    registrosVerbaOperacional.forEach(r => oms.add(r.om_detentora || r.organizacao));
-    registrosSuprimentoFundos.forEach(r => oms.add(r.om_detentora || r.organizacao));
-    registrosConcessionaria.forEach(r => oms.add(r.om_detentora || r.organizacao));
-    
-    return Array.from(oms);
-  }, [registrosDiaria, registrosPassagem, registrosVerbaOperacional, registrosSuprimentoFundos, registrosConcessionaria]);
-
-  const omsOperacionaisOrdenadas = useMemo(() => {
-    if (!omsOperacionais) return [];
-
-    return [...omsOperacionais].sort((omA, omB) => {
-        const aIsRM = isRegiaoMilitar(omA, nomeRM);
-        const bIsRM = isRegiaoMilitar(omB, nomeRM);
-
-        // Prioriza a RM
-        if (aIsRM && !bIsRM) return -1;
-        if (!aIsRM && bIsRM) return 1;
-
-        // Ordenação alfabética consistente para as demais OMs
-        const normalizedOmA = normalizarNome(omA);
-        const normalizedOmB = normalizarNome(omB);
-        return normalizedOmA.localeCompare(normalizedOmB);
-    });
-  }, [omsOperacionais, nomeRM]);
-
   const calcularTotaisClasseIII = (linhas: LinhaClasseIII[]) => {
     let dieselLitros = 0;
     let gasolinaLitros = 0;
@@ -1289,7 +1247,6 @@ const PTrabReportManager = () => {
                 registrosPassagem={registrosPassagem}
                 registrosConcessionaria={registrosConcessionaria} // NOVO: Passando registros de Concessionária
                 diretrizesOperacionais={diretrizesOperacionais}
-                omsOrdenadas={omsOperacionaisOrdenadas} // Passando a lista ordenada
                 fileSuffix={fileSuffix}
                 generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada}
                 generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada}
