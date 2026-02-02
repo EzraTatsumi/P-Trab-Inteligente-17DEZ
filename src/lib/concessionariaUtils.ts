@@ -101,6 +101,7 @@ export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaReg
     
     // 3. Fórmula e Aplicação
     memoria += `\nFórmula: (Efetivo x Consumo/dia x Custo) x Nr dias de Atividade.\n`;
+    // Aplicação da fórmula: - ( <Efetivo> militar/es x <consumo>/dia x <custo>/m3 ou kWh) x <Período> dia/s = <Total>.
     memoria += `- (${efetivo} ${militaresText} x ${formatNumber(consumo_pessoa_dia, 2)} ${unidadeConsumo}/dia x ${formatCurrency(valor_unitario)} /${unidadeConsumo}) x ${dias_operacao} ${diasText} = ${formatCurrency(valor_total)}.\n`;
     
     // 4. Total
