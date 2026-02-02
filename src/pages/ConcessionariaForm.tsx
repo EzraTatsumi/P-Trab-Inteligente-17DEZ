@@ -23,6 +23,7 @@ import {
     ConcessionariaRegistro,
     ConsolidatedConcessionariaRecord,
     DiretrizSelection,
+    ConcessionariaRegistroComDiretriz, // IMPORTED
 } from "@/lib/concessionariaUtils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -44,7 +45,7 @@ import CurrencyInput from "@/components/CurrencyInput";
 import ConcessionariaDiretrizSelectorDialog, { ConcessionariaSelection } from "@/components/ConcessionariaDiretrizSelectorDialog";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { ConsolidatedConcessionariaMemoria } from "@/components/ConsolidatedConcessionariaMemoria"; 
-import { CategoriaConcessionaria } from "@/types/diretrizesConcessionaria";
+import { CategoriaConcessionaria, DiretrizConcessionaria } from "@/types/diretrizesConcessionaria"; // IMPORTED DiretrizConcessionaria
 
 // Tipos de dados
 type ConcessionariaRegistroDB = Tables<'concessionaria_registros'>; 
@@ -187,11 +188,56 @@ const ConcessionariaForm = () => {
         select: (data) => data.sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
     });
     
-    // NOVO MEMO: Consolida os registros por lote de solicitação
+    // Fetch all concessionaria directives for the current year (STEP 1)
+    const { data: diretrizesConcessionaria, isLoading: isLoadingDiretrizes } = useQuery<DiretrizConcessionaria[]>({
+        queryKey: ['diretrizesConcessionaria', selectedYear],
+        queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return [];
+            
+            const { data, error } = await supabase
+                .from('diretrizes_concessionaria')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('ano_referencia', selectedYear);
+                
+            if (error) throw error;
+            
+            // Ensure numeric types are correct
+            return (data || []).map(d => ({
+                ...d,
+                consumo_pessoa_dia: Number(d.consumo_pessoa_dia),
+                custo_unitario: Number(d.custo_unitario),
+            })) as DiretrizConcessionaria[];
+        },
+        enabled: !!ptrabId && !!selectedYear,
+    });
+    
+    // NOVO MEMO: Consolida os registros por lote de solicitação (STEP 2)
     const consolidatedRegistros = useMemo<ConsolidatedConcessionaria[]>(() => {
-        if (!registros) return [];
+        if (!registros || !diretrizesConcessionaria) return [];
+
+        const diretrizesMap = new Map(diretrizesConcessionaria.map(d => [d.id, d]));
 
         const groups = registros.reduce((acc, registro) => {
+            // ENRICHMENT STEP: Find the corresponding directive details
+            const diretriz = diretrizesMap.get(registro.diretriz_id);
+            
+            // If directive is missing, use placeholders to prevent 'undefined'
+            const nomeConcessionaria = diretriz?.nome_concessionaria || 'Diretriz Não Encontrada';
+            const unidadeCusto = diretriz?.unidade_custo || 'unidade';
+            const fonteConsumo = diretriz?.fonte_consumo || null;
+            const fonteCusto = diretriz?.fonte_custo || null;
+            
+            // Create the enriched record (ConcessionariaRegistroComDiretriz)
+            const enrichedRecord: ConcessionariaRegistroComDiretriz = {
+                ...registro,
+                nome_concessionaria: nomeConcessionaria,
+                unidade_custo: unidadeCusto,
+                fonte_consumo: fonteConsumo,
+                fonte_custo: fonteCusto,
+            };
+            
             // Chave de consolidação: todos os campos que definem o lote de solicitação
             const key = [
                 registro.organizacao,
@@ -219,7 +265,8 @@ const ConcessionariaForm = () => {
                 };
             }
 
-            acc[key].records.push(registro);
+            // Push the enriched record
+            acc[key].records.push(enrichedRecord);
             acc[key].totalGeral += Number(registro.valor_total || 0);
             acc[key].totalND39 += Number(registro.valor_nd_39 || 0);
 
@@ -228,7 +275,7 @@ const ConcessionariaForm = () => {
 
         // Ordenar por OM
         return Object.values(groups).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
-    }, [registros]);
+    }, [registros, diretrizesConcessionaria]);
     
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
     
@@ -450,7 +497,7 @@ const ConcessionariaForm = () => {
                 totalND39 += totalDiretriz; 
                 
                 // Criar um registro temporário para a função de memória consolidada
-                tempGroup.records.push({
+                const tempRecord: ConcessionariaRegistroComDiretriz = {
                     p_trab_id: ptrabId!,
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
@@ -469,9 +516,17 @@ const ConcessionariaForm = () => {
                     valor_nd_39: totalDiretriz,
                     detalhamento: `Concessionária: ${diretriz.categoria} - ${diretriz.nome_concessionaria}`,
                     
+                    // Campos de enriquecimento (diretamente da seleção)
+                    nome_concessionaria: diretriz.nome_concessionaria,
+                    unidade_custo: diretriz.unidade_custo,
+                    fonte_consumo: diretriz.fonte_consumo,
+                    fonte_custo: diretriz.fonte_custo,
+                    
                     // Campos não usados no cálculo, mas necessários para o tipo
                     id: '', created_at: '', updated_at: '', detalhamento_customizado: null,
-                } as ConcessionariaRegistro);
+                } as ConcessionariaRegistroComDiretriz;
+                
+                tempGroup.records.push(tempRecord);
             });
             
             tempGroup.totalGeral = totalGeral;
@@ -565,19 +620,25 @@ const ConcessionariaForm = () => {
         setSelectedOmDestinoId(omDestinoToEdit?.id);
         
         // 2. Reconstruir a lista de diretrizes selecionadas a partir de TODOS os registros do grupo
-        const diretrizesFromRecords: ConcessionariaSelection[] = group.records.map(registro => ({
-            id: registro.diretriz_id, 
-            user_id: '', 
-            ano_referencia: selectedYear, 
-            categoria: registro.categoria as CategoriaConcessionaria,
-            nome_concessionaria: registro.detalhamento?.split(': ')[1] || registro.categoria, 
-            consumo_pessoa_dia: Number(registro.consumo_pessoa_dia || 0),
-            fonte_consumo: null, 
-            custo_unitario: Number(registro.valor_unitario || 0),
-            fonte_custo: null, 
-            unidade_custo: registro.categoria === 'Água/Esgoto' ? 'm³' : 'kWh', 
-            created_at: '', updated_at: '',
-        }));
+        const diretrizesFromRecords: ConcessionariaSelection[] = group.records.map(registro => {
+            // Registro já está enriquecido com nome_concessionaria, unidade_custo, etc.
+            const enrichedRegistro = registro as unknown as ConcessionariaRegistroComDiretriz; 
+            
+            return {
+                id: registro.diretriz_id, 
+                user_id: '', 
+                ano_referencia: selectedYear, 
+                categoria: registro.categoria as CategoriaConcessionaria,
+                // Use os campos enriquecidos
+                nome_concessionaria: enrichedRegistro.nome_concessionaria, 
+                consumo_pessoa_dia: Number(registro.consumo_pessoa_dia || 0),
+                fonte_consumo: enrichedRegistro.fonte_consumo, 
+                custo_unitario: Number(registro.valor_unitario || 0),
+                fonte_custo: enrichedRegistro.fonte_custo, 
+                unidade_custo: enrichedRegistro.unidade_custo, 
+                created_at: '', updated_at: '',
+            } as ConcessionariaSelection;
+        });
 
         // 3. Populate formData
         const newFormData: ConcessionariaFormState = {
@@ -603,7 +664,7 @@ const ConcessionariaForm = () => {
                 diretriz.custo_unitario
             );
             
-            const calculatedFormData: ConcessionariaRegistro = {
+            const calculatedFormData: ConcessionariaRegistroComDiretriz = {
                 id: registro.id, 
                 p_trab_id: ptrabId!,
                 organizacao: registro.organizacao, 
@@ -626,9 +687,15 @@ const ConcessionariaForm = () => {
                 detalhamento: registro.detalhamento, 
                 detalhamento_customizado: registro.detalhamento_customizado, 
                 
+                // ADDED ENRICHMENT FIELDS
+                nome_concessionaria: diretriz.nome_concessionaria,
+                unidade_custo: diretriz.unidade_custo,
+                fonte_consumo: diretriz.fonte_consumo,
+                fonte_custo: diretriz.fonte_custo,
+                
                 created_at: registro.created_at,
                 updated_at: registro.updated_at,
-            } as ConcessionariaRegistro;
+            } as ConcessionariaRegistroComDiretriz;
 
             let memoria = generateConcessionariaMemoriaCalculo(calculatedFormData);
             
@@ -644,7 +711,7 @@ const ConcessionariaForm = () => {
                 om_detentora: registro.om_detentora,
                 ug_detentora: registro.ug_detentora,
                 diretriz_id: diretriz.id,
-                categoria: registro.categoria,
+                categoria: diretriz.categoria,
                 valor_unitario: diretriz.custo_unitario,
                 consumo_pessoa_dia: diretriz.consumo_pessoa_dia,
                 
@@ -708,7 +775,7 @@ const ConcessionariaForm = () => {
                     diretriz.custo_unitario
                 );
                 
-                const calculatedFormData: ConcessionariaRegistro = {
+                const calculatedFormData: ConcessionariaRegistroComDiretriz = {
                     id: crypto.randomUUID(), 
                     p_trab_id: ptrabId!,
                     organizacao: formData.om_favorecida, 
@@ -731,9 +798,15 @@ const ConcessionariaForm = () => {
                     detalhamento: `Concessionária: ${diretriz.categoria} - ${diretriz.nome_concessionaria}`, 
                     detalhamento_customizado: null, 
                     
+                    // ADDED ENRICHMENT FIELDS
+                    nome_concessionaria: diretriz.nome_concessionaria,
+                    unidade_custo: diretriz.unidade_custo,
+                    fonte_consumo: diretriz.fonte_consumo,
+                    fonte_custo: diretriz.fonte_custo,
+                    
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
-                } as ConcessionariaRegistro;
+                } as ConcessionariaRegistroComDiretriz;
 
                 let memoria = generateConcessionariaMemoriaCalculo(calculatedFormData);
                 
@@ -908,7 +981,7 @@ const ConcessionariaForm = () => {
     // --- Lógica de Edição de Memória ---
     
     // ATUALIZADO: Recebe o registro individual
-    const handleIniciarEdicaoMemoria = (registro: ConcessionariaRegistro, memoriaCompleta: string) => {
+    const handleIniciarEdicaoMemoria = (registro: ConcessionariaRegistroComDiretriz, memoriaCompleta: string) => {
         setEditingMemoriaId(registro.id);
         setMemoriaEdit(memoriaCompleta || "");
         toast.info("Editando memória de cálculo.");
@@ -974,7 +1047,7 @@ const ConcessionariaForm = () => {
     // RENDERIZAÇÃO
     // =================================================================
 
-    const isGlobalLoading = isLoadingPTrab || isLoadingRegistros || isLoadingOms || isLoadingDefaultYear;
+    const isGlobalLoading = isLoadingPTrab || isLoadingRegistros || isLoadingOms || isLoadingDefaultYear || isLoadingDiretrizes;
     const isSaving = insertMutation.isPending || replaceGroupMutation.isPending || handleDeleteMutation.isPending;
 
     if (isGlobalLoading) {
