@@ -49,6 +49,31 @@ export const calculateConcessionariaTotal = (
 };
 
 /**
+ * Determina o artigo/preposição correto ('do' ou 'da') baseado no nome da OM.
+ * Prioriza indicadores ordinais (º/ª).
+ */
+const getPrepositionArticle = (omName: string): 'do' | 'da' => {
+    const trimmedOm = omName.trim();
+    
+    // 1. Verifica indicadores ordinais (º/ª)
+    if (/\d+º/.test(trimmedOm)) {
+        return 'do';
+    }
+    if (/\d+ª/.test(trimmedOm)) {
+        return 'da';
+    }
+    
+    // 2. Verifica nomes femininos comuns (fallback)
+    const lowerOm = trimmedOm.toLowerCase();
+    if (lowerOm.includes('companhia') || lowerOm.includes('base') || lowerOm.includes('escola') || lowerOm.includes('diretoria')) {
+        return 'da';
+    }
+    
+    // 3. Padrão para masculino
+    return 'do';
+};
+
+/**
  * Gera a memória de cálculo individual para um registro de concessionária.
  * (Usado principalmente para staging/revisão)
  */
@@ -58,25 +83,14 @@ export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaReg
     // Variáveis de concordância
     const categoriaNome = categoria === 'Água/Esgoto' ? 'Água/Esgoto' : 'Energia Elétrica';
     
-    // Lógica de concordância para "do/da"
-    // Se a OM começar com "A" (ex: "A OM X"), usamos "da". Caso contrário, usamos "do".
-    const getArticle = (omName: string) => {
-        const lowerOm = omName.toLowerCase().trim();
-        if (lowerOm.startsWith('a ')) return 'da';
-        if (lowerOm.startsWith('o ')) return 'do';
-        // Tentativa de inferir se é feminino (ex: "Companhia", "Base")
-        if (lowerOm.includes('companhia') || lowerOm.includes('base') || lowerOm.includes('escola')) return 'da';
-        return 'do'; // Padrão para masculino/neutro (Batalhão, Regimento, etc.)
-    };
-    
-    const artigoOmFavorecida = getArticle(organizacao);
-    const artigoOmDestino = getArticle(om_detentora);
+    const artigoOmFavorecida = getPrepositionArticle(organizacao);
+    const artigoOmDestino = getPrepositionArticle(om_detentora);
     
     const militaresText = efetivo === 1 ? 'militar' : 'militares';
     const diasText = dias_operacao === 1 ? 'dia' : 'dias';
     const unidadeConsumo = unidade_custo; // 'm³' ou 'kWh'
     
-    // 1. Cabeçalho (33.90.39) - Ajustado para usar a concordância refinada e incluir a fase no final
+    // 1. Cabeçalho (33.90.39)
     let memoria = `33.90.39 - Pagamento de Concessionária de ${categoriaNome} ${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} ${artigoOmDestino} ${om_detentora}, durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
     
     // 2. Detalhamento do Cálculo
@@ -124,16 +138,8 @@ export const generateConsolidatedConcessionariaMemoriaCalculo = (group: Consolid
         const diasText = dias_operacao === 1 ? 'dia' : 'dias';
         const unidadeConsumo = unidade; // 'm³' ou 'kWh'
         
-        const getArticle = (omName: string) => {
-            const lowerOm = omName.toLowerCase().trim();
-            if (lowerOm.startsWith('a ')) return 'da';
-            if (lowerOm.startsWith('o ')) return 'do';
-            if (lowerOm.includes('companhia') || lowerOm.includes('base') || lowerOm.includes('escola')) return 'da';
-            return 'do';
-        };
-        
-        const artigoOmFavorecida = getArticle(organizacao);
-        const artigoOmDestino = getArticle(om_detentora);
+        const artigoOmFavorecida = getPrepositionArticle(organizacao);
+        const artigoOmDestino = getPrepositionArticle(om_detentora);
         
         // Cabeçalho individual (para detalhamento) - Ajustado
         memoria += `\n33.90.39 - Pagamento de Concessionária de ${categoriaNome} ${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} ${artigoOmDestino} ${om_detentora}, durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
