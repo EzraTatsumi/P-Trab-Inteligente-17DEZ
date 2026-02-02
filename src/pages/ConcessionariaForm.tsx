@@ -1006,6 +1006,105 @@ const ConcessionariaForm = () => {
         ? formData.selected_diretrizes 
         : formData.selected_diretrizes;
 
+    // Helper component to render a single category card
+    const CategoryCard = ({ 
+        category, 
+        records, 
+        group, 
+        handleEdit, 
+        handleConfirmDelete, 
+        isPTrabEditable, 
+        isSaving, 
+        hasPending 
+    }: { 
+        category: CategoriaConcessionaria, 
+        records: ConcessionariaRegistroDB[],
+        group: ConsolidatedConcessionaria,
+        handleEdit: (group: ConsolidatedConcessionaria) => void,
+        handleConfirmDelete: (group: ConsolidatedConcessionaria) => void,
+        isPTrabEditable: boolean,
+        isSaving: boolean,
+        hasPending: boolean,
+    }) => {
+        if (records.length === 0) return null;
+
+        const isAgua = category === 'Água/Esgoto';
+        
+        // Calculate totals for this specific category
+        const totalCategory = records.reduce((sum, r) => sum + Number(r.valor_total || 0), 0);
+        const totalND39Category = records.reduce((sum, r) => sum + Number(r.valor_nd_39 || 0), 0);
+        
+        const diasOperacaoConsolidado = group.dias_operacao;
+        const efetivoConsolidado = group.efetivo;
+        const diasText = diasOperacaoConsolidado === 1 ? 'dia' : 'dias';
+        const efetivoText = efetivoConsolidado === 1 ? 'militar' : 'militares';
+        const isDifferentOm = group.om_detentora !== group.organizacao || group.ug_detentora !== group.ug;
+        const omDestino = group.om_detentora;
+        const ugDestino = group.ug_detentora;
+
+        return (
+            <Card 
+                key={`${group.groupKey}-${category}`} 
+                className="p-3 bg-background border"
+            >
+                <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-base text-foreground">
+                                {category}
+                            </h4>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            Período: {diasOperacaoConsolidado} {diasText} | Efetivo: {efetivoConsolidado} {efetivoText}
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-xl text-foreground">
+                            {formatCurrency(totalCategory)}
+                        </span>
+                        {/* Botões de Ação MOVIDOS AQUI */}
+                        <Button
+                            type="button" 
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleEdit(group)} 
+                            disabled={!isPTrabEditable || isSaving || hasPending}
+                        >
+                            <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            type="button" 
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleConfirmDelete(group)} 
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                            disabled={!isPTrabEditable || isSaving}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+                
+                {/* Detalhes da Alocação */}
+                <div className="pt-2 border-t mt-2">
+                    {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
+                    <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">OM Destino Recurso:</span>
+                        <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
+                            {omDestino} ({formatCodug(ugDestino)})
+                        </span>
+                    </div>
+                    {/* ND 33.90.39 */}
+                    <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">ND 33.90.39:</span>
+                        <span className="text-green-600">{formatCurrency(totalND39Category)}</span>
+                    </div>
+                </div>
+            </Card>
+        );
+    };
+
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
             <div className="max-w-6xl mx-auto space-y-6">
@@ -1426,58 +1525,6 @@ const ConcessionariaForm = () => {
                                         const aguaRecords = group.records.filter(r => r.categoria === 'Água/Esgoto');
                                         const energiaRecords = group.records.filter(r => r.categoria === 'Energia Elétrica');
                                         
-                                        // Helper component to render a single category card
-                                        const CategoryCard = ({ category, records }: { category: CategoriaConcessionaria, records: ConcessionariaRegistroDB[] }) => {
-                                            if (records.length === 0) return null;
-
-                                            const isAgua = category === 'Água/Esgoto';
-                                            
-                                            // Calculate totals for this specific category
-                                            const totalCategory = records.reduce((sum, r) => sum + Number(r.valor_total || 0), 0);
-                                            const totalND39Category = records.reduce((sum, r) => sum + Number(r.valor_nd_39 || 0), 0);
-                                            
-                                            return (
-                                                <Card 
-                                                    key={`${group.groupKey}-${category}`} 
-                                                    className="p-3 bg-background border"
-                                                >
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex flex-col">
-                                                            <div className="flex items-center gap-2">
-                                                                <h4 className="font-semibold text-base text-foreground">
-                                                                    {category}
-                                                                </h4>
-                                                            </div>
-                                                            <p className="text-xs text-muted-foreground mt-1">
-                                                                Período: {diasOperacaoConsolidado} {diasText} | Efetivo: {efetivoConsolidado} {efetivoText}
-                                                            </p>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-extrabold text-xl text-foreground">
-                                                                {formatCurrency(totalCategory)}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    {/* Detalhes da Alocação */}
-                                                    <div className="pt-2 border-t mt-2">
-                                                        {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
-                                                        <div className="flex justify-between text-xs">
-                                                            <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                                            <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
-                                                                {omDestino} ({formatCodug(ugDestino)})
-                                                            </span>
-                                                        </div>
-                                                        {/* ND 33.90.39 */}
-                                                        <div className="flex justify-between text-xs">
-                                                            <span className="text-muted-foreground">ND 33.90.39:</span>
-                                                            <span className="text-green-600">{formatCurrency(totalND39Category)}</span>
-                                                        </div>
-                                                    </div>
-                                                </Card>
-                                            );
-                                        };
-
                                         return (
                                             <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
                                                 <div className="flex items-start justify-between mb-3 border-b pb-2">
@@ -1493,34 +1540,31 @@ const ConcessionariaForm = () => {
                                                         <span className="font-extrabold text-xl text-primary">
                                                             {formatCurrency(totalOM)}
                                                         </span>
-                                                        {/* Botões de Ação MOVIDOS PARA O HEADER PRINCIPAL */}
-                                                        <Button
-                                                            type="button" 
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8"
-                                                            onClick={() => handleEdit(group)} 
-                                                            disabled={!isPTrabEditable || isSaving || pendingConcessionaria.length > 0}
-                                                        >
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            type="button" 
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleConfirmDelete(group)} 
-                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                            disabled={!isPTrabEditable || isSaving}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
                                                     </div>
                                                 </div>
                                                 
                                                 {/* CORPO CONSOLIDADO: Renderiza cards separados por categoria */}
                                                 <div className="space-y-3">
-                                                    <CategoryCard category="Água/Esgoto" records={aguaRecords} />
-                                                    <CategoryCard category="Energia Elétrica" records={energiaRecords} />
+                                                    <CategoryCard 
+                                                        category="Água/Esgoto" 
+                                                        records={aguaRecords} 
+                                                        group={group}
+                                                        handleEdit={handleEdit}
+                                                        handleConfirmDelete={handleConfirmDelete}
+                                                        isPTrabEditable={isPTrabEditable}
+                                                        isSaving={isSaving}
+                                                        hasPending={pendingConcessionaria.length > 0}
+                                                    />
+                                                    <CategoryCard 
+                                                        category="Energia Elétrica" 
+                                                        records={energiaRecords} 
+                                                        group={group}
+                                                        handleEdit={handleEdit}
+                                                        handleConfirmDelete={handleConfirmDelete}
+                                                        isPTrabEditable={isPTrabEditable}
+                                                        isSaving={isSaving}
+                                                        hasPending={pendingConcessionaria.length > 0}
+                                                    />
                                                 </div>
                                             </Card>
                                         );
