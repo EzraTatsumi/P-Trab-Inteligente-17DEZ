@@ -88,9 +88,6 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
                             </Badge>
                         )}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                        Concessionária: {registro.nome_concessionaria}
-                    </p>
                     {isDifferentOmInMemoria && (
                         <div className="flex items-center gap-1 mt-1">
                             <AlertCircle className="h-4 w-4 text-red-600" />
