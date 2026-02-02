@@ -109,7 +109,7 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
                                 variant="outline"
                                 onClick={handleLocalIniciarEdicao}
                                 disabled={isSaving || !isPTrabEditable}
-                                className="gap-2" // Removendo h-8 text-sm para padronizar
+                                className="gap-2"
                             >
                                 <Pencil className="h-4 w-4" />
                                 Editar Memória
@@ -160,15 +160,7 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
             
             {/* Área de Texto da Memória */}
             <CardContent className="p-0 pt-3">
-                {/* Informações principais da Concessionária */}
-                <div className="flex justify-between items-center mb-3">
-                    <p className="text-sm font-medium">
-                        {nomeConcessionaria}
-                    </p>
-                    <p className="text-sm font-bold text-foreground">
-                        {formatCurrency(registro.valor_total)}
-                    </p>
-                </div>
+                {/* Informações principais da Concessionária (REMOVIDAS) */}
                 
                 <div className="p-3 rounded-lg border bg-background">
                     {isEditing ? (
@@ -185,7 +177,21 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
                     )}
                 </div>
                 
-                {/* O botão de restaurar foi movido para o cabeçalho, então removemos este bloco */}
+                {hasCustomMemoria && !isEditing && isPTrabEditable && (
+                    <div className="flex justify-end mt-2">
+                        <Button
+                            type="button" 
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
+                            disabled={isSaving}
+                            className="gap-2 h-7 text-xs text-muted-foreground hover:text-destructive"
+                        >
+                            <RefreshCw className="h-3 w-3" />
+                            Restaurar Automática
+                        </Button>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
