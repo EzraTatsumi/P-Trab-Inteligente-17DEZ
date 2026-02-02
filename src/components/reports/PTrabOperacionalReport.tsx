@@ -155,7 +155,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   const [isLoadingDiretrizDetails, setIsLoadingDiretrizDetails] = useState(true);
 
   // 1. Agrupamento e Consolidação dos Registros
-  const { registrosAgrupadosPorOM, consolidatedPassagens, consolidatedConcessionarias } = useMemo(() => {
+  const { sortedRegistrosAgrupadosPorOM, consolidatedPassagens, consolidatedConcessionarias } = useMemo(() => {
     const groups: Record<string, { diarias: DiariaRegistro[], verbas: VerbaOperacionalRegistro[], suprimentos: VerbaOperacionalRegistro[], passagens: PassagemRegistro[], concessionarias: ConcessionariaRegistroComDiretriz[] }> = {};
     const consolidatedPassagensMap: Record<string, ConsolidatedPassagemReport> = {};
     const consolidatedConcessionariasMap: Record<string, ConsolidatedConcessionariaReport> = {};
@@ -199,7 +199,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             registro.dias_operacao,
             registro.efetivo,
             registro.fase_atividade,
-            registro.diretriz_id, 
+            registro.diretriz_id,
         ].join('|');
         
         // Chave de agrupamento no relatório (OM Detentora do Recurso)
@@ -207,7 +207,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         const ugDetentora = registro.ug_detentora || registro.ug;
         
         const reportGroup = initializeGroup(omDetentora, ugDetentora);
-        reportGroup.passagens.push(registro); 
+        reportGroup.passagens.push(registro);
         
         // Cria ou atualiza o registro consolidado
         if (!consolidatedPassagensMap[consolidationKey]) {
@@ -223,7 +223,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 records: [],
                 totalGeral: 0,
                 totalND33: 0,
-            } as ConsolidatedPassagemReport; 
+            } as ConsolidatedPassagemReport;
         }
         
         const consolidated = consolidatedPassagensMap[consolidationKey];
@@ -276,11 +276,14 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         consolidated.totalND39 += Number(registro.valor_nd_39 || 0);
     });
     
+    // 6. Ordenar os grupos para exibição (garante que a OM apareça uma vez e em ordem)
+    const sortedGroups = Object.entries(groups).sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
+
     // Ordenar os grupos consolidados para exibição
     const consolidatedPassagens = Object.values(consolidatedPassagensMap).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
     const consolidatedConcessionarias = Object.values(consolidatedConcessionariasMap).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
 
-    return { registrosAgrupadosPorOM: groups, consolidatedPassagens, consolidatedConcessionarias };
+    return { sortedRegistrosAgrupadosPorOM: sortedGroups, consolidatedPassagens, consolidatedConcessionarias };
   }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria]);
   
   // 2. Efeito para buscar os detalhes das diretrizes de passagem e concessionária
@@ -688,7 +691,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     currentRow += 2; // Start data rows after the two header rows
 
     // Dados da Tabela (Agrupados por OM)
-    Object.entries(registrosAgrupadosPorOM).forEach(([omKey, group]) => {
+    sortedRegistrosAgrupadosPorOM.forEach(([omKey, group]) => {
         const omName = omKey.split(' (')[0];
         const ug = omKey.split(' (')[1].replace(')', '');
         const article = getArticleForOM(omName); // Determina DO/DA
@@ -1362,7 +1365,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 </tr>
             </thead>
             <tbody>
-              {Object.entries(registrosAgrupadosPorOM).map(([omKey, group]) => {
+              {sortedRegistrosAgrupadosPorOM.map(([omKey, group]) => {
                 const omName = omKey.split(' (')[0];
                 const ug = omKey.split(' (')[1].replace(')', '');
                 const article = getArticleForOM(omName); // Determina DO/DA
