@@ -53,18 +53,31 @@ export const calculateConcessionariaTotal = (
  * (Usado principalmente para staging/revisão)
  */
 export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaRegistroComDiretriz): string => {
-    const { organizacao, ug, om_detentora, ug_detentora, dias_operacao, efetivo, categoria, valor_unitario, consumo_pessoa_dia, valor_total, nome_concessionaria, unidade_custo, fonte_consumo, fonte_custo, fase_atividade } = registro;
+    const { organizacao, om_detentora, dias_operacao, efetivo, categoria, valor_unitario, consumo_pessoa_dia, valor_total, nome_concessionaria, unidade_custo, fonte_consumo, fonte_custo, fase_atividade } = registro;
     
     // Variáveis de concordância
     const categoriaNome = categoria === 'Água/Esgoto' ? 'Água/Esgoto' : 'Energia Elétrica';
-    const artigoOmFavorecida = organizacao.toLowerCase().startsWith('a ') || organizacao.toLowerCase().startsWith('o ') ? '' : (organizacao.toLowerCase().includes('om') ? 'a ' : 'o ');
-    const artigoOmDestino = om_detentora.toLowerCase().startsWith('a ') || om_detentora.toLowerCase().startsWith('o ') ? '' : (om_detentora.toLowerCase().includes('om') ? 'a ' : 'o ');
+    
+    // Lógica de concordância para "do/da"
+    // Se a OM começar com "A" (ex: "A OM X"), usamos "da". Caso contrário, usamos "do".
+    const getArticle = (omName: string) => {
+        const lowerOm = omName.toLowerCase().trim();
+        if (lowerOm.startsWith('a ')) return 'da';
+        if (lowerOm.startsWith('o ')) return 'do';
+        // Tentativa de inferir se é feminino (ex: "Companhia", "Base")
+        if (lowerOm.includes('companhia') || lowerOm.includes('base') || lowerOm.includes('escola')) return 'da';
+        return 'do'; // Padrão para masculino/neutro (Batalhão, Regimento, etc.)
+    };
+    
+    const artigoOmFavorecida = getArticle(organizacao);
+    const artigoOmDestino = getArticle(om_detentora);
+    
     const militaresText = efetivo === 1 ? 'militar' : 'militares';
     const diasText = dias_operacao === 1 ? 'dia' : 'dias';
     const unidadeConsumo = unidade_custo; // 'm³' ou 'kWh'
     
-    // 1. Cabeçalho (33.90.39)
-    let memoria = `33.90.39 - Pagamento de Concessionária de ${categoriaNome} d${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} d${artigoOmDestino} ${om_detentora}, durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
+    // 1. Cabeçalho (33.90.39) - Ajustado para usar a concordância refinada e incluir a fase no final
+    let memoria = `33.90.39 - Pagamento de Concessionária de ${categoriaNome} ${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} ${artigoOmDestino} ${om_detentora}, durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
     
     // 2. Detalhamento do Cálculo
     memoria += `\nCálculo:\n`;
@@ -105,16 +118,25 @@ export const generateConsolidatedConcessionariaMemoriaCalculo = (group: Consolid
         const fonteCusto = r.fonte_custo || 'Não Informado';
         const total = Number(r.valor_total);
         
-        // Variáveis de concordância (dentro do loop, pois a categoria pode mudar se consolidarmos)
+        // Variáveis de concordância (dentro do loop)
         const categoriaNome = categoria === 'Água/Esgoto' ? 'Água/Esgoto' : 'Energia Elétrica';
-        const artigoOmFavorecida = organizacao.toLowerCase().startsWith('a ') || organizacao.toLowerCase().startsWith('o ') ? '' : (organizacao.toLowerCase().includes('om') ? 'a ' : 'o ');
-        const artigoOmDestino = om_detentora.toLowerCase().startsWith('a ') || om_detentora.toLowerCase().startsWith('o ') ? '' : (om_detentora.toLowerCase().includes('om') ? 'a ' : 'o ');
         const militaresText = efetivo === 1 ? 'militar' : 'militares';
         const diasText = dias_operacao === 1 ? 'dia' : 'dias';
         const unidadeConsumo = unidade; // 'm³' ou 'kWh'
         
-        // Cabeçalho individual (para detalhamento)
-        memoria += `\n33.90.39 - Pagamento de Concessionária de ${categoriaNome} d${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} d${artigoOmDestino} ${om_detentora}, durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
+        const getArticle = (omName: string) => {
+            const lowerOm = omName.toLowerCase().trim();
+            if (lowerOm.startsWith('a ')) return 'da';
+            if (lowerOm.startsWith('o ')) return 'do';
+            if (lowerOm.includes('companhia') || lowerOm.includes('base') || lowerOm.includes('escola')) return 'da';
+            return 'do';
+        };
+        
+        const artigoOmFavorecida = getArticle(organizacao);
+        const artigoOmDestino = getArticle(om_detentora);
+        
+        // Cabeçalho individual (para detalhamento) - Ajustado
+        memoria += `\n33.90.39 - Pagamento de Concessionária de ${categoriaNome} ${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} ${artigoOmDestino} ${om_detentora}, durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
         
         memoria += `\nCálculo:\n`;
         memoria += `- Concessionária: ${nomeConcessionaria}\n`;
