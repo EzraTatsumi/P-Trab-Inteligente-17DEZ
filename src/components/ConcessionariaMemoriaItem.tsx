@@ -33,7 +33,7 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
     handleSalvarMemoriaCustomizada,
     handleRestaurarMemoriaAutomatica,
 }) => {
-    const isEditing = editingMemoriaId === registro.id;
+    const isEditing = editingMem memoriaId === registro.id;
     const hasCustomMemoria = !!registro.detalhamento_customizado;
     
     // 1. Gerar a memória automática individual
@@ -92,8 +92,8 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
                     </div>
                     {isDifferentOmInMemoria && (
                         <div className="flex items-center gap-1 mt-1">
-                            <AlertCircle className="h-3 w-3 text-red-600" />
-                            <span className="text-[10px] font-medium text-red-600">
+                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <span className="text-sm font-medium text-red-600">
                                 Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
                             </span>
                         </div>
@@ -160,7 +160,6 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
             
             {/* Área de Texto da Memória */}
             <CardContent className="p-0 pt-3">
-                {/* Informações principais da Concessionária (REMOVIDAS) */}
                 
                 <div className="p-3 rounded-lg border bg-background">
                     {isEditing ? (
