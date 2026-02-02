@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Check, XCircle, RefreshCw, AlertCircle, Loader2 } from "lucide-react";
-import { ConsolidatedConcessionariaRecord } from "@/lib/concessionariaUtils";
+import { ConsolidatedConcessionariaRecord, ConcessionariaRegistroComDiretriz } from "@/lib/concessionariaUtils";
 import { formatCodug } from "@/lib/formatUtils";
 import { cn } from "@/lib/utils";
 import { ConcessionariaMemoriaItem } from "./ConcessionariaMemoriaItem"; // Importando o novo componente
@@ -17,7 +17,7 @@ interface ConsolidatedConcessionariaMemoriaProps {
     memoriaEdit: string;
     setMemoriaEdit: (value: string) => void;
     // O handler agora recebe o registro individual
-    handleIniciarEdicaoMemoria: (registro: any, memoriaCompleta: string) => void;
+    handleIniciarEdicaoMemoria: (registro: ConcessionariaRegistroComDiretriz, memoriaCompleta: string) => void;
     handleCancelarEdicaoMemoria: () => void;
     handleSalvarMemoriaCustomizada: (registroId: string) => Promise<void>;
     handleRestaurarMemoriaAutomatica: (registroId: string) => Promise<void>;

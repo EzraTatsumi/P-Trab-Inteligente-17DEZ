@@ -99,7 +99,7 @@ export const ConsolidatedPassagemMemoria: React.FC<ConsolidatedPassagemMemoriaPr
     return (
         <div className="space-y-4 border p-4 rounded-lg bg-muted/30">
             
-            <div className="flex items-start justify-between gap-4 mb-2">
+            <div className="flex items-start justify-between gap-4 mb-0"> {/* FIX: Reduced spacing */}
                 <div className="flex flex-col flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                         <h4 className="text-base font-semibold text-foreground">
