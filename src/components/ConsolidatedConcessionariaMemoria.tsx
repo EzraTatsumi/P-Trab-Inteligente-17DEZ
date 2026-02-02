@@ -47,9 +47,6 @@ export const ConsolidatedConcessionariaMemoria: React.FC<ConsolidatedConcessiona
         });
     }, [group.records]);
 
-    // Verifica se a OM Detentora é diferente da OM Favorecida
-    const isDifferentOmInMemoria = group.om_detentora !== group.organizacao || group.ug_detentora !== group.ug;
-
     return (
         <div className="space-y-4">
             
@@ -58,7 +55,7 @@ export const ConsolidatedConcessionariaMemoria: React.FC<ConsolidatedConcessiona
                 {sortedRecords.map(registro => (
                     <ConcessionariaMemoriaItem
                         key={registro.id}
-                        registro={registro as ConcessionariaRegistroComDiretriz} // Casting to enriched type
+                        registro={registro} // O tipo já está correto aqui
                         isPTrabEditable={isPTrabEditable}
                         isSaving={isSaving}
                         editingMemoriaId={editingMemoriaId}

@@ -5,6 +5,7 @@ import { formatCurrency, formatCodug, formatNumber } from "./formatUtils";
 export type ConcessionariaRegistro = Tables<'concessionaria_registros'>;
 
 // Tipo para o registro estendido com detalhes da diretriz (necessário para a memória)
+// Deve estender ConcessionariaRegistro para incluir todas as propriedades da tabela
 export interface ConcessionariaRegistroComDiretriz extends ConcessionariaRegistro {
     nome_concessionaria: string;
     unidade_custo: string;
@@ -78,6 +79,7 @@ const getPrepositionArticle = (omName: string): 'do' | 'da' => {
  * (Usado principalmente para staging/revisão)
  */
 export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaRegistroComDiretriz): string => {
+    // Agora, todas as propriedades da tabela (organizacao, om_detentora, etc.) estão disponíveis diretamente
     const { organizacao, om_detentora, dias_operacao, efetivo, categoria, valor_unitario, consumo_pessoa_dia, valor_total, nome_concessionaria, unidade_custo, fonte_consumo, fonte_custo, fase_atividade } = registro;
     
     // Garantir que os campos críticos não sejam undefined/null
@@ -88,13 +90,13 @@ export const generateConcessionariaMemoriaCalculo = (registro: ConcessionariaReg
     const categoriaNome = categoria === 'Água/Esgoto' ? 'Água/Esgoto' : 'Energia Elétrica';
     
     const artigoOmFavorecida = getPrepositionArticle(organizacao);
-    const artigoOmDestino = getPrepositionArticle(om_detentora);
+    const artigoOmDestino = getPrepositionArticle(om_detentora || ''); // om_detentora pode ser null no DB, mas deve ser string aqui
     
     const militaresText = efetivo === 1 ? 'militar' : 'militares';
     const diasText = dias_operacao === 1 ? 'dia' : 'dias';
     
     // 1. Cabeçalho (33.90.39)
-    let memoria = `33.90.39 - Pagamento de Concessionária de ${categoriaNome} ${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} ${artigoOmDestino} ${om_detentora}, durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
+    let memoria = `33.90.39 - Pagamento de Concessionária de ${categoriaNome} ${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} ${artigoOmDestino} ${om_detentora} durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
     
     // 2. Detalhamento do Cálculo
     memoria += `\nCálculo:\n`;
@@ -148,7 +150,7 @@ export const generateConsolidatedConcessionariaMemoriaCalculo = (group: Consolid
         const artigoOmDestino = getPrepositionArticle(om_detentora);
         
         // Cabeçalho individual (para detalhamento) - Ajustado
-        memoria += `\n33.90.39 - Pagamento de Concessionária de ${categoriaNome} ${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} ${artigoOmDestino} ${om_detentora}, durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
+        memoria += `\n33.90.39 - Pagamento de Concessionária de ${categoriaNome} ${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} ${artigoOmDestino} ${om_detentora} durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
         
         memoria += `\nCálculo:\n`;
         memoria += `- Concessionária: ${nomeConcessionaria}\n`;

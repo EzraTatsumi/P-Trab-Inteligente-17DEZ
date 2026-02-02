@@ -62,7 +62,7 @@ interface OMData {
 }
 
 // Tipo para o registro calculado antes de salvar (inclui campos de display)
-interface CalculatedConcessionaria extends TablesInsert<'concessionaria_registros'> {
+interface CalculatedConcessionaria extends ConcessionariaRegistroDB { // EXTENDENDO DA TABELA DB
     tempId: string; // ID temporário para gerenciamento local
     memoria_calculo_display: string; // A memória gerada
     totalGeral: number;
@@ -254,8 +254,8 @@ const ConcessionariaForm = () => {
                     groupKey: key, 
                     organizacao: registro.organizacao,
                     ug: registro.ug,
-                    om_detentora: registro.om_detentora,
-                    ug_detentora: registro.ug_detentora,
+                    om_detentora: registro.om_detentora || '', // Garantir string
+                    ug_detentora: registro.ug_detentora || '', // Garantir string
                     dias_operacao: registro.dias_operacao,
                     efetivo: registro.efetivo || 0,
                     fase_atividade: registro.fase_atividade || '',
@@ -286,7 +286,6 @@ const ConcessionariaForm = () => {
         mutationFn: async (newRecords: CalculatedConcessionaria[]) => {
             // Mapear CalculatedConcessionaria (que agora representa uma única diretriz) para TablesInsert
             const recordsToInsert: TablesInsert<'concessionaria_registros'>[] = newRecords.map(r => {
-                // O registro CalculatedConcessionaria já contém os dados da diretriz no seu array selected_diretrizes[0]
                 const diretriz = r.selected_diretrizes[0];
                 
                 return {
@@ -486,6 +485,7 @@ const ConcessionariaForm = () => {
             };
 
             formData.selected_diretrizes.forEach((diretriz) => {
+                
                 const totalDiretriz = calculateConcessionariaTotal(
                     formData.efetivo,
                     formData.dias_operacao,
@@ -498,19 +498,21 @@ const ConcessionariaForm = () => {
                 
                 // Criar um registro temporário para a função de memória consolidada
                 const tempRecord: ConcessionariaRegistroComDiretriz = {
+                    id: crypto.randomUUID(), 
                     p_trab_id: ptrabId!,
-                    organizacao: formData.om_favorecida,
-                    ug: formData.ug_favorecida,
-                    om_detentora: formData.om_destino,
-                    ug_detentora: formData.ug_destino,
+                    organizacao: formData.om_favorecida, 
+                    ug: formData.ug_favorecida, 
                     dias_operacao: formData.dias_operacao,
-                    efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
                     
+                    om_detentora: formData.om_destino,
+                    ug_detentora: formData.ug_destino,
                     diretriz_id: diretriz.id,
                     categoria: diretriz.categoria,
                     valor_unitario: diretriz.custo_unitario,
                     consumo_pessoa_dia: diretriz.consumo_pessoa_dia,
+                    
+                    efetivo: formData.efetivo,
                     
                     valor_total: totalDiretriz,
                     valor_nd_39: totalDiretriz,
@@ -522,8 +524,10 @@ const ConcessionariaForm = () => {
                     fonte_consumo: diretriz.fonte_consumo,
                     fonte_custo: diretriz.fonte_custo,
                     
-                    // Campos não usados no cálculo, mas necessários para o tipo
-                    id: '', created_at: '', updated_at: '', detalhamento_customizado: null,
+                    // Campos obrigatórios do tipo DB
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    detalhamento_customizado: null,
                 } as ConcessionariaRegistroComDiretriz;
                 
                 tempGroup.records.push(tempRecord);
@@ -622,7 +626,7 @@ const ConcessionariaForm = () => {
         // 2. Reconstruir a lista de diretrizes selecionadas a partir de TODOS os registros do grupo
         const diretrizesFromRecords: ConcessionariaSelection[] = group.records.map(registro => {
             // Registro já está enriquecido com nome_concessionaria, unidade_custo, etc.
-            const enrichedRegistro = registro as unknown as ConcessionariaRegistroComDiretriz; 
+            const enrichedRegistro = registro as ConcessionariaRegistroComDiretriz; 
             
             return {
                 id: registro.diretriz_id, 
@@ -664,63 +668,28 @@ const ConcessionariaForm = () => {
                 diretriz.custo_unitario
             );
             
+            // O registro do grupo já é ConcessionariaRegistroComDiretriz, mas precisamos mapear para CalculatedConcessionaria
             const calculatedFormData: ConcessionariaRegistroComDiretriz = {
-                id: registro.id, 
-                p_trab_id: ptrabId!,
-                organizacao: registro.organizacao, 
-                ug: registro.ug, 
-                dias_operacao: registro.dias_operacao,
-                fase_atividade: registro.fase_atividade || "",
-                
-                om_detentora: registro.om_detentora,
-                ug_detentora: registro.ug_detentora,
-                diretriz_id: diretriz.id,
-                categoria: registro.categoria,
-                valor_unitario: diretriz.custo_unitario,
-                consumo_pessoa_dia: diretriz.consumo_pessoa_dia,
-                
-                efetivo: registro.efetivo || 0,
-                
-                valor_total: totalDiretriz,
-                valor_nd_39: totalDiretriz,
-                
-                detalhamento: registro.detalhamento, 
-                detalhamento_customizado: registro.detalhamento_customizado, 
-                
-                // ADDED ENRICHMENT FIELDS
+                ...registro, // Copia todos os campos do DB
+                // Sobrescreve campos enriquecidos
                 nome_concessionaria: diretriz.nome_concessionaria,
                 unidade_custo: diretriz.unidade_custo,
                 fonte_consumo: diretriz.fonte_consumo,
                 fonte_custo: diretriz.fonte_custo,
-                
-                created_at: registro.created_at,
-                updated_at: registro.updated_at,
+                // Garante que os valores calculados estejam corretos
+                valor_total: totalDiretriz,
+                valor_nd_39: totalDiretriz,
             } as ConcessionariaRegistroComDiretriz;
 
             let memoria = generateConcessionariaMemoriaCalculo(calculatedFormData);
             
             return {
-                tempId: registro.id, 
-                p_trab_id: ptrabId!,
-                organizacao: registro.organizacao, 
-                ug: registro.ug, 
-                dias_operacao: registro.dias_operacao,
-                efetivo: registro.efetivo || 0,
-                fase_atividade: registro.fase_atividade,
+                ...registro, // Copia todos os campos do DB
+                tempId: registro.id, // Usa o ID real do DB como tempId para rastreamento
                 
-                om_detentora: registro.om_detentora,
-                ug_detentora: registro.ug_detentora,
-                diretriz_id: diretriz.id,
-                categoria: diretriz.categoria,
-                valor_unitario: diretriz.custo_unitario,
-                consumo_pessoa_dia: diretriz.consumo_pessoa_dia,
-                
+                // Campos de display/cálculo
                 valor_total: totalDiretriz,
                 valor_nd_39: totalDiretriz,
-                
-                detalhamento: registro.detalhamento, 
-                detalhamento_customizado: registro.detalhamento_customizado, 
-                
                 totalGeral: totalDiretriz,
                 memoria_calculo_display: memoria, 
                 om_favorecida: registro.organizacao,
@@ -775,7 +744,8 @@ const ConcessionariaForm = () => {
                     diretriz.custo_unitario
                 );
                 
-                const calculatedFormData: ConcessionariaRegistroComDiretriz = {
+                // Cria o objeto base com todos os campos da tabela DB
+                const baseRecord: ConcessionariaRegistroDB = {
                     id: crypto.randomUUID(), 
                     p_trab_id: ptrabId!,
                     organizacao: formData.om_favorecida, 
@@ -794,44 +764,27 @@ const ConcessionariaForm = () => {
                     
                     valor_total: totalDiretriz,
                     valor_nd_39: totalDiretriz,
-                    
                     detalhamento: `Concessionária: ${diretriz.categoria} - ${diretriz.nome_concessionaria}`, 
                     detalhamento_customizado: null, 
                     
-                    // ADDED ENRICHMENT FIELDS
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                };
+                
+                // Cria o objeto enriquecido para gerar a memória
+                const calculatedFormData: ConcessionariaRegistroComDiretriz = {
+                    ...baseRecord,
                     nome_concessionaria: diretriz.nome_concessionaria,
                     unidade_custo: diretriz.unidade_custo,
                     fonte_consumo: diretriz.fonte_consumo,
                     fonte_custo: diretriz.fonte_custo,
-                    
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                } as ConcessionariaRegistroComDiretriz;
+                };
 
                 let memoria = generateConcessionariaMemoriaCalculo(calculatedFormData);
                 
                 return {
-                    tempId: crypto.randomUUID(), 
-                    p_trab_id: ptrabId!,
-                    organizacao: formData.om_favorecida, 
-                    ug: formData.ug_favorecida, 
-                    dias_operacao: formData.dias_operacao,
-                    efetivo: formData.efetivo,
-                    fase_atividade: formData.fase_atividade,
-                    
-                    om_detentora: formData.om_destino,
-                    ug_detentora: formData.ug_destino,
-                    diretriz_id: diretriz.id,
-                    categoria: diretriz.categoria,
-                    valor_unitario: diretriz.custo_unitario,
-                    consumo_pessoa_dia: diretriz.consumo_pessoa_dia,
-                    
-                    valor_total: totalDiretriz,
-                    valor_nd_39: totalDiretriz,
-                    
-                    detalhamento: `Concessionária: ${diretriz.categoria} - ${diretriz.nome_concessionaria}`, 
-                    detalhamento_customizado: null, 
-                    
+                    ...baseRecord,
+                    tempId: baseRecord.id, 
                     totalGeral: totalDiretriz,
                     memoria_calculo_display: memoria, 
                     om_favorecida: formData.om_favorecida,
@@ -843,10 +796,6 @@ const ConcessionariaForm = () => {
             if (editingId) {
                 // MODO EDIÇÃO: Geramos os novos registros e os colocamos em pendingConcessionaria
                 
-                // Ao editar, a memória customizada deve ser buscada do registro original
-                // e aplicada ao novo item correspondente (se houver).
-                // Como estamos editando o LOTE, vamos apenas manter a memória customizada do primeiro registro
-                // do grupo original, se ela existir.
                 let memoriaCustomizadaTexto: string | null = null;
                 if (groupToReplace) {
                     const originalRecord = groupToReplace.records.find(r => r.id === editingId);
@@ -1527,7 +1476,7 @@ const ConcessionariaForm = () => {
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
                                             <span className="font-bold text-base uppercase">
-                                                VALOR TOTAL DA OM
+                                                VALOR TOTAL DO LOTE
                                             </span>
                                             <span className="font-extrabold text-xl text-foreground">
                                                 {formatCurrency(totalPendingConcessionaria)}

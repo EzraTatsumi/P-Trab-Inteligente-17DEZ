@@ -374,6 +374,7 @@ export type Database = {
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
+          efetivo: number | null
           fase_atividade: string | null
           id: string
           itens_equipamentos: Json
@@ -393,6 +394,7 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_equipamentos: Json
@@ -412,6 +414,7 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_equipamentos?: Json
@@ -513,6 +516,7 @@ export type Database = {
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
+          efetivo: number | null
           fase_atividade: string | null
           id: string
           itens_remonta: Json
@@ -533,6 +537,7 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_remonta: Json
@@ -553,6 +558,7 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_remonta?: Json
@@ -584,6 +590,7 @@ export type Database = {
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
+          efetivo: number | null
           fase_atividade: string | null
           id: string
           itens_saude: Json
@@ -603,6 +610,7 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_saude: Json
@@ -622,6 +630,7 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_saude?: Json
@@ -652,6 +661,7 @@ export type Database = {
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
+          efetivo: number | null
           fase_atividade: string | null
           id: string
           itens_motomecanizacao: Json
@@ -671,6 +681,7 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_motomecanizacao: Json
@@ -690,6 +701,7 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           id?: string
           itens_motomecanizacao?: Json
@@ -706,6 +718,87 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "classe_ix_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      concessionaria_registros: {
+        Row: {
+          categoria: string
+          consumo_pessoa_dia: number
+          created_at: string
+          detalhamento: string | null
+          detalhamento_customizado: string | null
+          dias_operacao: number
+          diretriz_id: string
+          efetivo: number
+          fase_atividade: string | null
+          id: string
+          om_detentora: string | null
+          organizacao: string
+          p_trab_id: string
+          ug: string
+          ug_detentora: string | null
+          updated_at: string
+          valor_nd_39: number
+          valor_total: number
+          valor_unitario: number
+        }
+        Insert: {
+          categoria: string
+          consumo_pessoa_dia: number
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          diretriz_id: string
+          efetivo?: number
+          fase_atividade?: string | null
+          id?: string
+          om_detentora?: string | null
+          organizacao: string
+          p_trab_id: string
+          ug: string
+          ug_detentora?: string | null
+          updated_at?: string
+          valor_nd_39?: number
+          valor_total?: number
+          valor_unitario: number
+        }
+        Update: {
+          categoria?: string
+          consumo_pessoa_dia?: number
+          created_at?: string
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          dias_operacao?: number
+          diretriz_id?: string
+          efetivo?: number
+          fase_atividade?: string | null
+          id?: string
+          om_detentora?: string | null
+          organizacao?: string
+          p_trab_id?: string
+          ug?: string
+          ug_detentora?: string | null
+          updated_at?: string
+          valor_nd_39?: number
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "concessionaria_registros_diretriz_id_fkey"
+            columns: ["diretriz_id"]
+            isOneToOne: false
+            referencedRelation: "diretrizes_concessionaria"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "concessionaria_registros_p_trab_id_fkey"
             columns: ["p_trab_id"]
             isOneToOne: false
             referencedRelation: "p_trab"
@@ -1511,6 +1604,7 @@ export type Database = {
           detalhamento: string | null
           detalhamento_customizado: string | null
           dias_operacao: number
+          efetivo: number | null
           fase_atividade: string | null
           finalidade: string | null
           id: string
@@ -1535,6 +1629,7 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           finalidade?: string | null
           id?: string
@@ -1559,6 +1654,7 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           finalidade?: string | null
           id?: string
