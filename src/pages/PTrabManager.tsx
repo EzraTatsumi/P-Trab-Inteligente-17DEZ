@@ -561,6 +561,18 @@ const PTrabManager = () => {
           else {
               totalPassagemND33 = (passagemData || []).reduce((sum, record) => sum + (record.valor_nd_33 || 0), 0);
           }
+          
+          // 7. Fetch Concessionaria totals (33.90.39) - NOVO
+          const { data: concessionariaData, error: concessionariaError } = await supabase
+            .from('concessionaria_registros')
+            .select('valor_nd_39')
+            .eq('p_trab_id', ptrab.id);
+            
+          let totalConcessionariaND39 = 0;
+          if (concessionariaError) console.error("Erro ao carregar Concessionárias para PTrab", ptrab.numero_ptrab, concessionariaError);
+          else {
+              totalConcessionariaND39 = (concessionariaData || []).reduce((sum, record) => sum + (record.valor_nd_39 || 0), 0);
+          }
 
 
           // SOMA TOTAL DA ABA LOGÍSTICA
@@ -568,8 +580,8 @@ const PTrabManager = () => {
           totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII;
           
           // SOMA TOTAL DA ABA OPERACIONAL
-          // Operacional = Diárias (ND 15) + Verba Operacional + Passagens (ND 33)
-          totalOperacionalCalculado = totalDiariaND15 + totalVerbaOperacional + totalPassagemND33;
+          // Operacional = Diárias (ND 15) + Verba Operacional + Passagens (ND 33) + Concessionárias (ND 39)
+          totalOperacionalCalculado = totalDiariaND15 + totalVerbaOperacional + totalPassagemND33 + totalConcessionariaND39;
           
           const isOwner = ptrab.user_id === user.id;
           const isShared = !isOwner && (ptrab.shared_with || []).includes(user.id);
