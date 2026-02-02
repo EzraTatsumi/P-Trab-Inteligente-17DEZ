@@ -1,5 +1,5 @@
 import React, { useMemo, useRef } from 'react';
-import { ArrowLeft, Loader2, Download, Printer, Droplet, Zap } from "lucide-react";
+import { ArrowLeft, Loader2, Download, Printer, Droplet, Zap, FileText, Plane } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
