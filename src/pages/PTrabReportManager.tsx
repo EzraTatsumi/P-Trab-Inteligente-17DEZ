@@ -266,6 +266,11 @@ export interface GrupoOM {
   linhasClasseIX: LinhaClasseII[];
   linhasClasseIII: LinhaClasseIII[]; 
   linhasConcessionaria: LinhaConcessionaria[]; // NOVO: Adicionado Concessionária
+  // NOVOS CAMPOS OPERACIONAIS PARA AGRUPAMENTO
+  linhasDiaria: DiariaRegistro[];
+  linhasVerbaOperacional: VerbaOperacionalRegistro[];
+  linhasSuprimentoFundos: VerbaOperacionalRegistro[];
+  linhasPassagem: PassagemRegistro[];
 }
 
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
@@ -902,7 +907,12 @@ const PTrabReportManager = () => {
             grupos[name] = { 
                 linhasQS: [], linhasQR: [], linhasClasseII: [], linhasClasseV: [],
                 linhasClasseVI: [], linhasClasseVII: [], linhasClasseVIII: [], linhasClasseIX: [],
-                linhasClasseIII: [], linhasConcessionaria: [] // NOVO: Inicializa Concessionária
+                linhasClasseIII: [], linhasConcessionaria: [],
+                // Inicialização dos novos campos operacionais
+                linhasDiaria: [],
+                linhasVerbaOperacional: [],
+                linhasSuprimentoFundos: [],
+                linhasPassagem: [],
             };
         }
     };
@@ -1076,10 +1086,14 @@ const PTrabReportManager = () => {
         }
     });
     
-    // 4. Processar Concessionária (ND 33.90.39)
+    // 4. Processar Concessionária (ND 33.90.39) - Logístico
     registrosConcessionaria.forEach((registro) => {
         const omDestinoRecurso = registro.om_detentora || registro.organizacao;
         initializeGroup(omDestinoRecurso);
+        
+        // Se o valor_nd_39 for 0, ele é considerado Logístico (Material Permanente)
+        // Se o valor_nd_39 for > 0, ele é considerado Operacional (Custeio)
+        // No contexto atual, Concessionária é sempre Operacional (ND 39).
         
         grupos[omDestinoRecurso].linhasConcessionaria.push({
             registro,
@@ -1087,10 +1101,36 @@ const PTrabReportManager = () => {
         });
     });
     
+    // 5. Processar Registros Operacionais (Diária, Verba, Suprimento, Passagem)
+    
+    // Diária (Agrupado por OM que usa o recurso)
+    registrosDiaria.forEach(registro => {
+        initializeGroup(registro.organizacao);
+        grupos[registro.organizacao].linhasDiaria.push(registro);
+    });
+    
+    // Verba Operacional (Agrupado por OM que usa o recurso)
+    registrosVerbaOperacional.forEach(registro => {
+        initializeGroup(registro.organizacao);
+        grupos[registro.organizacao].linhasVerbaOperacional.push(registro);
+    });
+    
+    // Suprimento de Fundos (Agrupado por OM que usa o recurso)
+    registrosSuprimentoFundos.forEach(registro => {
+        initializeGroup(registro.organizacao);
+        grupos[registro.organizacao].linhasSuprimentoFundos.push(registro);
+    });
+    
+    // Passagem (Agrupado por OM que usa o recurso)
+    registrosPassagem.forEach(registro => {
+        initializeGroup(registro.organizacao);
+        grupos[registro.organizacao].linhasPassagem.push(registro);
+    });
+    
     // console.log("[PTrabManager] Final Grouping Result:", grupos); // Log final do agrupamento
     
     return grupos;
-  }, [registrosClasseI, registrosClasseII, registrosClasseIII, registrosConcessionaria, refLPC]);
+  }, [registrosClasseI, registrosClasseII, registrosClasseIII, registrosConcessionaria, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, refLPC]);
 
   const nomeRM = useMemo(() => {
     return ptrabData?.rm_vinculacao || '';
@@ -1253,6 +1293,9 @@ const PTrabReportManager = () => {
                 generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada}
                 generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada}
                 generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada} // NOVO: Passando função de memória
+                // NOVAS PROPS PARA AGRUPAMENTO
+                omsOrdenadas={omsOrdenadas}
+                gruposPorOM={gruposPorOM}
             />
         );
       case 'material_permanente':
