@@ -145,7 +145,7 @@ export const generateConsolidatedConcessionariaMemoriaCalculo = (group: Consolid
         const artigoOmDestino = getPrepositionArticle(om_detentora);
         
         // Cabeçalho individual (para detalhamento) - Ajustado
-        memoria += `\n33.90.39 - Pagamento de Concessionária de ${categoriaNome} ${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} ${artigoOmDestino} ${om_detentora} durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
+        memoria += `33.90.39 - Pagamento de Concessionária de ${categoriaNome} ${artigoOmFavorecida} ${organizacao} para atender ${efetivo} ${militaresText} ${artigoOmDestino} ${om_detentora} durante ${dias_operacao} ${diasText} de ${fase_atividade}.\n`;
         
         memoria += `\nCálculo:\n`;
         memoria += `- Concessionária: ${nomeConcessionaria}\n`;
