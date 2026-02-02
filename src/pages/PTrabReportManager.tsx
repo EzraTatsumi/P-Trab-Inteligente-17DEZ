@@ -51,10 +51,6 @@ import {
   generatePassagemMemoriaCalculo,
   PassagemRegistro as PassagemRegistroType, // Importando o tipo PassagemRegistro do utilitário
 } from "@/lib/passagemUtils"; // Importando utilitários de Passagem
-import { 
-  ConcessionariaRegistroComDiretriz, 
-  generateConcessionariaMemoriaCalculo as generateConcessionariaMemoriaCalculoUtility,
-} from "@/lib/concessionariaUtils"; // NOVO: Importando utilitários de Concessionária
 import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais } from "@/lib/ptrabUtils";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
@@ -131,10 +127,6 @@ export interface VerbaOperacionalRegistro extends Tables<'verba_operacional_regi
 
 // NOVO TIPO: PassagemRegistro (Exportado do utilitário)
 export type PassagemRegistro = PassagemRegistroType;
-
-// NOVO TIPO: ConcessionariaRegistro (Exportado do utilitário)
-export type ConcessionariaRegistro = ConcessionariaRegistroComDiretriz;
-
 
 // CORREÇÃO: Tipagem de ItemClasseIII para garantir que campos numéricos sejam number
 export interface ItemClasseIII {
@@ -231,12 +223,6 @@ export interface LinhaClasseIII {
   memoria_calculo: string; // Armazena a memória de cálculo granular
 }
 
-// NOVO TIPO: Linha de Concessionária para o relatório logístico
-export interface LinhaConcessionaria {
-  registro: ConcessionariaRegistro;
-  valor_nd_39: number;
-}
-
 // NOVO TIPO: Estrutura granular para geração de memória da Classe III
 interface GranularDisplayItem {
   id: string; 
@@ -264,8 +250,7 @@ export interface GrupoOM {
   linhasClasseVII: LinhaClasseII[];
   linhasClasseVIII: LinhaClasseII[];
   linhasClasseIX: LinhaClasseII[];
-  linhasClasseIII: LinhaClasseIII[]; 
-  linhasConcessionaria: LinhaConcessionaria[]; // NOVO: Adicionado Concessionária
+  linhasClasseIII: LinhaClasseIII[]; // Inicializa a nova lista
 }
 
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
@@ -370,7 +355,7 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
     // Lógica para Ração Quente (QS/QR)
     if (tipo === 'QS') {
         if (registro.memoriaQSCustomizada && registro.memoriaQSCustomizada.trim().length > 0) {
-            return registro.memoria_calculo_qs_customizada || "Memória de cálculo QS não disponível.";
+            return registro.memoriaQSCustomizada;
         }
         const { qs } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
@@ -405,7 +390,7 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
 
     if (tipo === 'QR') {
         if (registro.memoriaQRCustomizada && registro.memoriaQRCustomizada.trim().length > 0) {
-            return registro.memoria_calculo_qr_customizada || "Memória de cálculo QR não disponível.";
+            return registro.memoriaQRCustomizada;
         }
         const { qr } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
@@ -597,20 +582,6 @@ export const generatePassagemMemoriaCalculada = (
     return generatePassagemMemoriaCalculo(registro);
 };
 
-/**
- * Função unificada para gerar a memória de cálculo da Concessionária, priorizando o customizado.
- */
-export const generateConcessionariaMemoriaCalculada = (
-    registro: ConcessionariaRegistro
-): string => {
-    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
-        return registro.detalhamento_customizado;
-    }
-    
-    // Usa o utilitário importado
-    return generateConcessionariaMemoriaCalculoUtility(registro);
-};
-
 
 // =================================================================
 // FUNÇÕES AUXILIARES DE RÓTULO
@@ -702,11 +673,10 @@ const PTrabReportManager = () => {
   const [registrosVerbaOperacional, setRegistrosVerbaOperacional] = useState<VerbaOperacionalRegistro[]>([]); 
   const [registrosSuprimentoFundos, setRegistrosSuprimentoFundos] = useState<VerbaOperacionalRegistro[]>([]); // NOVO ESTADO
   const [registrosPassagem, setRegistrosPassagem] = useState<PassagemRegistro[]>([]); // NOVO ESTADO
-  const [registrosConcessionaria, setRegistrosConcessionaria] = useState<ConcessionariaRegistro[]>([]); // NOVO ESTADO
   const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null); // NOVO: Estado para Diretrizes Operacionais
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedReport, setSelectedReport] = useState<ReportType>('operacional'); // Default para Operacional
+  const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
 
   const isLubrificante = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
   const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
@@ -750,7 +720,6 @@ const PTrabReportManager = () => {
         { data: diariaData }, 
         { data: verbaOperacionalData }, 
         { data: passagemData }, 
-        { data: concessionariaData }, // NOVO: Busca de Concessionária
       ] = await Promise.all([
         supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
         supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
@@ -764,7 +733,6 @@ const PTrabReportManager = () => {
         supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId), 
         supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId), 
         supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId), 
-        supabase.from('concessionaria_registros').select('*, diretriz_id, om_detentora, ug_detentora').eq('p_trab_id', ptrabId), // NOVO: Busca de Concessionária
       ]);
       
       // NOVO: Fetch Diretrizes Operacionais (necessário para gerar a memória de diária)
@@ -865,22 +833,6 @@ const PTrabReportManager = () => {
           efetivo: r.efetivo || 0,
       })) as PassagemRegistro[]);
       
-      // NOVO: Processar Concessionárias
-      setRegistrosConcessionaria((concessionariaData || []).map(r => ({
-          ...r,
-          valor_unitario: Number(r.valor_unitario || 0),
-          consumo_pessoa_dia: Number(r.consumo_pessoa_dia || 0),
-          valor_total: Number(r.valor_total || 0),
-          valor_nd_39: Number(r.valor_nd_39 || 0),
-          dias_operacao: r.dias_operacao || 0,
-          efetivo: r.efetivo || 0,
-          // Adicionando campos da diretriz (que serão preenchidos no PTrabOperacionalReport)
-          nome_concessionaria: '',
-          unidade_custo: '',
-          fonte_consumo: null,
-          fonte_custo: null,
-      })) as ConcessionariaRegistro[]);
-      
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
       toast({ title: "Erro", description: "Não foi possível carregar os dados do P Trab.", variant: "destructive" });
@@ -896,13 +848,13 @@ const PTrabReportManager = () => {
 
   // --- LÓGICA DE AGRUPAMENTO E CÁLCULO (Mantida no Manager para ser passada aos relatórios) ---
   const gruposPorOM = useMemo(() => {
-    const groups: Record<string, GrupoOM> = {};
+    const grupos: Record<string, GrupoOM> = {};
     const initializeGroup = (name: string) => {
-        if (!groups[name]) {
-            groups[name] = { 
+        if (!grupos[name]) {
+            grupos[name] = { 
                 linhasQS: [], linhasQR: [], linhasClasseII: [], linhasClasseV: [],
                 linhasClasseVI: [], linhasClasseVII: [], linhasClasseVIII: [], linhasClasseIX: [],
-                linhasClasseIII: [], linhasConcessionaria: [] // NOVO: Inicializa Concessionária
+                linhasClasseIII: []
             };
         }
     };
@@ -910,7 +862,7 @@ const PTrabReportManager = () => {
     // 1. Processar Classe I (Apenas Ração Quente para a tabela principal)
     registrosClasseI.filter(r => r.categoria === 'RACAO_QUENTE').forEach((registro) => {
         initializeGroup(registro.omQS || registro.organizacao);
-        groups[registro.omQS || registro.organizacao].linhasQS.push({ 
+        grupos[registro.omQS || registro.organizacao].linhasQS.push({ 
             registro, 
             tipo: 'QS',
             valor_nd_30: registro.totalQS,
@@ -918,7 +870,7 @@ const PTrabReportManager = () => {
         });
         
         initializeGroup(registro.organizacao);
-        groups[registro.organizacao].linhasQR.push({ 
+        grupos[registro.organizacao].linhasQR.push({ 
             registro, 
             tipo: 'QR',
             valor_nd_30: registro.totalQR,
@@ -929,7 +881,7 @@ const PTrabReportManager = () => {
     // 2. Processar Classes II, V, VI, VII, VIII, IX
     registrosClasseII.forEach((registro) => {
         initializeGroup(registro.organizacao);
-        const omGroup = groups[registro.organizacao];
+        const omGroup = grupos[registro.organizacao];
         
         const linha = { 
             registro,
@@ -938,20 +890,26 @@ const PTrabReportManager = () => {
         };
         
         // --- DEBUG LOG CRÍTICO ---
-        // console.log(`[PTrabManager:Grouping] Processing Classe II/V/VI/VII/VIII/IX record. Category: ${registro.categoria}, OM: ${registro.organizacao}, ID: ${registro.id}`);
+        console.log(`[PTrabManager:Grouping] Processing Classe II/V/VI/VII/VIII/IX record. Category: ${registro.categoria}, OM: ${registro.organizacao}, ID: ${registro.id}`);
         
         if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
             omGroup.linhasClasseV.push(linha);
+            console.log(`[PTrabManager:Grouping] -> Pushed to Classe V`);
         } else if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
             omGroup.linhasClasseVI.push(linha);
+            console.log(`[PTrabManager:Grouping] -> Pushed to Classe VI`);
         } else if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
             omGroup.linhasClasseVII.push(linha);
+            console.log(`[PTrabManager:Grouping] -> Pushed to Classe VII`);
         } else if (CLASSE_VIII_CATEGORIES.includes(registro.categoria)) {
             omGroup.linhasClasseVIII.push(linha);
+            console.log(`[PTrabManager:Grouping] -> Pushed to Classe VIII`);
         } else if (CLASSE_IX_CATEGORIES.includes(registro.categoria)) {
             omGroup.linhasClasseIX.push(linha);
+            console.log(`[PTrabManager:Grouping] -> Pushed to Classe IX`);
         } else {
             omGroup.linhasClasseII.push(linha);
+            console.log(`[PTrabManager:Grouping] -> Pushed to Classe II (Default)`);
         }
     });
 
@@ -1063,7 +1021,7 @@ const PTrabReportManager = () => {
                     );
                 }
                 
-                groups[omDestinoRecurso].linhasClasseIII.push({
+                grupos[omDestinoRecurso].linhasClasseIII.push({
                     registro,
                     categoria_equipamento: categoriaKey as any,
                     tipo_suprimento: tipoSuprimento,
@@ -1076,22 +1034,11 @@ const PTrabReportManager = () => {
         }
     });
     
-    // 4. Processar Concessionária (ND 33.90.39)
-    registrosConcessionaria.forEach((registro) => {
-        const omDestinoRecurso = registro.om_detentora || registro.organizacao;
-        initializeGroup(omDestinoRecurso);
-        
-        groups[omDestinoRecurso].linhasConcessionaria.push({
-            registro,
-            valor_nd_39: registro.valor_nd_39,
-        });
-    });
+    console.log("[PTrabManager] Final Grouping Result:", grupos); // Log final do agrupamento
     
-    // console.log("[PTrabManager] Final Grouping Result:", groups); // Log final do agrupamento
-    
-    return groups;
-  }, [registrosClasseI, registrosClasseII, registrosClasseIII, registrosConcessionaria, refLPC]);
-
+    return grupos;
+  }, [registrosClasseI, registrosClasseII, registrosClasseIII, refLPC]);
+  
   const nomeRM = useMemo(() => {
     return ptrabData?.rm_vinculacao || '';
   }, [ptrabData]);
@@ -1104,11 +1051,9 @@ const PTrabReportManager = () => {
         const aIsRM = isRegiaoMilitar(a, rmName);
         const bIsRM = isRegiaoMilitar(b, rmName);
         
-        // 1. Prioriza Regiões Militares
         if (aIsRM && !bIsRM) return -1;
         if (!aIsRM && bIsRM) return 1;
         
-        // 2. Ordenação alfabética para as demais
         return a.localeCompare(b);
     });
   }, [gruposPorOM, nomeRM]);
@@ -1171,16 +1116,12 @@ const PTrabReportManager = () => {
     const totalLubrificante = grupo.linhasClasseIII
         .filter(l => l.tipo_suprimento === 'LUBRIFICANTE')
         .reduce((acc, linha) => acc + linha.valor_total_linha, 0);
-        
-    const totalConcessionaria_ND39 = grupo.linhasConcessionaria.reduce((acc, linha) => acc + linha.valor_nd_39, 0); // NOVO
-
     
     const total_33_90_30 = totalQS + totalQR + 
                            totalClasseII_ND30 + totalClasseV_ND30 + totalClasseVI_ND30 + totalClasseVII_ND30 + totalClasseVIII_ND30 + totalClasseIX_ND30 +
                            totalLubrificante; 
     
-    const total_33_90_39 = totalClasseII_ND39 + totalClasseV_ND39 + totalClasseVI_ND39 + totalClasseVII_ND39 + totalClasseVIII_ND39 + totalClasseIX_ND39 +
-                           totalConcessionaria_ND39; // NOVO: Inclui Concessionária
+    const total_33_90_39 = totalClasseII_ND39 + totalClasseV_ND39 + totalClasseVI_ND39 + totalClasseVII_ND39 + totalClasseVIII_ND39 + totalClasseIX_ND39;
     
     const total_parte_azul = total_33_90_30 + total_33_90_39;
     
@@ -1247,15 +1188,13 @@ const PTrabReportManager = () => {
                 registrosDiaria={registrosDiaria}
                 registrosVerbaOperacional={registrosVerbaOperacional} 
                 registrosSuprimentoFundos={registrosSuprimentoFundos} 
-                registrosPassagem={registrosPassagem}
-                registrosConcessionaria={registrosConcessionaria} // NOVO: Passando registros de Concessionária
+                registrosPassagem={registrosPassagem} // ADDED
                 diretrizesOperacionais={diretrizesOperacionais}
                 fileSuffix={fileSuffix}
                 generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada}
                 generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada}
                 generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada}
-                generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada}
-                generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada} // NOVO: Passando função de memória
+                generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada} // ADDED
             />
         );
       case 'material_permanente':

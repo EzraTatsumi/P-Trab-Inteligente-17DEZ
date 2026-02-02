@@ -95,7 +95,8 @@ type PTrabLinkedTableName =
     'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' | 
     'classe_viii_saude_registros' | 'classe_viii_remonta_registros' | 
     'classe_ix_registros' | 'p_trab_ref_lpc' | 'passagem_registros' | 
-    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros'; // ADICIONADO
+    'diaria_registros' | 'verba_operacional_registros';
+
 
 // Lista de Comandos Militares de Área (CMA)
 const COMANDOS_MILITARES_AREA = [
@@ -360,8 +361,8 @@ const PTrabManager = () => {
     nome_om: "",
     nome_om_extenso: "",
     codug_om: "",
-    codug_rm_vinculacao: "",
     rm_vinculacao: "",
+    codug_rm_vinculacao: "",
     nome_operacao: "",
     periodo_inicio: "",
     periodo_fim: "",
@@ -543,12 +544,10 @@ const PTrabManager = () => {
             .select('valor_nd_30, valor_nd_39')
             .eq('p_trab_id', ptrab.id);
             
-          let totalVerbaOperacionalND30 = 0;
-          let totalVerbaOperacionalND39 = 0;
+          let totalVerbaOperacional = 0;
           if (verbaOperacionalError) console.error("Erro ao carregar Verba Operacional para PTrab", ptrab.numero_ptrab, verbaOperacionalError);
           else {
-              totalVerbaOperacionalND30 = (verbaOperacionalData || []).reduce((sum, record) => sum + (record.valor_nd_30 || 0), 0);
-              totalVerbaOperacionalND39 = (verbaOperacionalData || []).reduce((sum, record) => sum + (record.valor_nd_39 || 0), 0);
+              totalVerbaOperacional = (verbaOperacionalData || []).reduce((sum, record) => sum + (record.valor_nd_30 || 0) + (record.valor_nd_39 || 0), 0);
           }
           
           // 6. Fetch Passagem totals (33.90.33) - NOVO
@@ -581,8 +580,8 @@ const PTrabManager = () => {
           totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII;
           
           // SOMA TOTAL DA ABA OPERACIONAL
-          // Operacional = Diárias (ND 15) + Diárias (ND 30) + Verba Operacional (ND 30 + ND 39) + Passagens (ND 33) + Concessionárias (ND 39)
-          totalOperacionalCalculado = totalDiariaND15 + totalDiariaND30 + totalVerbaOperacionalND30 + totalVerbaOperacionalND39 + totalPassagemND33 + totalConcessionariaND39;
+          // Operacional = Diárias (ND 15) + Verba Operacional + Passagens (ND 33) + Concessionárias (ND 39)
+          totalOperacionalCalculado = totalDiariaND15 + totalVerbaOperacional + totalPassagemND33 + totalConcessionariaND39;
           
           const isOwner = ptrab.user_id === user.id;
           const isShared = !isOwner && (ptrab.shared_with || []).includes(user.id);
@@ -1301,9 +1300,6 @@ const PTrabManager = () => {
     
     // CLONAGEM DE PASSAGENS
     await cloneClassRecords('passagem_registros', null, ['dias_operacao', 'efetivo', 'quantidade_passagens', 'valor_nd_33', 'valor_total', 'valor_unitario']);
-    
-    // CLONAGEM DE CONCESSIONÁRIA
-    await cloneClassRecords('concessionaria_registros', null, ['dias_operacao', 'efetivo', 'consumo_pessoa_dia', 'valor_unitario', 'valor_total', 'valor_nd_39']);
   };
 
   const needsNumbering = (ptrab: PTrab) => {
@@ -1378,7 +1374,6 @@ const PTrabManager = () => {
             'diaria_registros', 
             'verba_operacional_registros', 
             'passagem_registros', 
-            'concessionaria_registros', // NOVO: Adicionado Concessionária
         ];
         
         for (const tableName of tablesToConsolidate) {
