@@ -72,7 +72,7 @@ export const ConcessionariaMemoriaItem: React.FC<ConcessionariaMemoriaItemProps>
                         </h4>
                         {hasCustomMemoria && !isEditing && (
                             <Badge variant="outline" className="text-xs">
-                                Editada
+                                Editada Manualmente
                             </Badge>
                         )}
                     </div>

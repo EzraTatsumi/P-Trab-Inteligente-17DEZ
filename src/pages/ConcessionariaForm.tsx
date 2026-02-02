@@ -1299,10 +1299,6 @@ const ConcessionariaForm = () => {
                                                                         <TableRow key={diretriz.id}>
                                                                             <TableCell className="w-[150px] font-medium text-sm">
                                                                                 <span className="flex items-center gap-1">
-                                                                                    {isAgua 
-                                                                                        ? <Droplet className="h-3 w-3 text-blue-500" /> 
-                                                                                        : <Zap className="h-3 w-3 text-yellow-600" />
-                                                                                    }
                                                                                     {diretriz.categoria}
                                                                                 </span>
                                                                             </TableCell>
@@ -1390,6 +1386,10 @@ const ConcessionariaForm = () => {
                                             
                                             const diretriz = item.selected_diretrizes[0];
                                             const isAgua = diretriz.categoria === 'Água/Esgoto';
+                                            
+                                            // Extrai o nome da concessionária do detalhamento
+                                            const detalhamentoParts = item.detalhamento?.split(' - ');
+                                            const nomeConcessionaria = detalhamentoParts && detalhamentoParts.length > 1 ? detalhamentoParts[1] : diretriz.nome_concessionaria;
 
                                             return (
                                                 <Card 
@@ -1404,7 +1404,7 @@ const ConcessionariaForm = () => {
                                                         <div className={cn("flex justify-between items-center pb-2 mb-2", "border-b border-secondary/30")}>
                                                             <h4 className="font-bold text-base text-foreground flex items-center gap-2">
                                                                 {isAgua ? <Droplet className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
-                                                                {diretriz.categoria} - {diretriz.nome_concessionaria}
+                                                                {diretriz.categoria} - {nomeConcessionaria}
                                                             </h4>
                                                             <div className="flex items-center gap-2">
                                                                 <p className="font-extrabold text-lg text-foreground text-right">
