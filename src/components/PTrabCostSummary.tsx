@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase } from "lucide-react";
+import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase, Droplet, Zap } from "lucide-react";
 import {
   Accordion,
   AccordionItem,
@@ -100,7 +100,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     { data: classeIIIData, error: classeIIIError }, // Classe III
     { data: diariaData, error: diariaError }, // Diárias
     { data: verbaOperacionalData, error: verbaOperacionalError }, // Verba Operacional e Suprimento de Fundos
-    { data: passagemData, error: passagemError }, // NOVO: Passagens
+    { data: passagemData, error: passagemError }, // Passagens
+    { data: concessionariaData, error: concessionariaError }, // NOVO: Concessionária
   ] = await Promise.all([
     supabase
       .from('classe_ii_registros')
@@ -143,9 +144,13 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .from('verba_operacional_registros')
       .select('valor_nd_30, valor_nd_39, valor_total_solicitado, dias_operacao, quantidade_equipes, detalhamento')
       .eq('p_trab_id', ptrabId),
-    supabase // NOVO: Passagens
+    supabase // Passagens
       .from('passagem_registros')
       .select('valor_total, valor_nd_33, quantidade_passagens, is_ida_volta, origem, destino')
+      .eq('p_trab_id', ptrabId),
+    supabase // NOVO: Concessionária
+      .from('concessionaria_registros')
+      .select('valor_total, valor_nd_39, dias_operacao, efetivo, categoria')
       .eq('p_trab_id', ptrabId),
   ]);
 
@@ -160,7 +165,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   if (classeIIIError) console.error("Erro ao carregar Classe III:", classeIIIError);
   if (diariaError) console.error("Erro ao carregar Diárias:", diariaError);
   if (verbaOperacionalError) console.error("Erro ao carregar Verba Operacional/Suprimento:", verbaOperacionalError);
-  if (passagemError) console.error("Erro ao carregar Passagens:", passagemError); // NOVO
+  if (passagemError) console.error("Erro ao carregar Passagens:", passagemError); 
+  if (concessionariaError) console.error("Erro ao carregar Concessionária:", concessionariaError); // NOVO
   
   // Usar arrays vazios se o fetch falhou
   const safeClasseIIData = classeIIData || [];
@@ -173,7 +179,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const safeClasseIIIData = classeIIIData || [];
   const safeDiariaData = diariaData || [];
   const safeVerbaOperacionalData = verbaOperacionalData || [];
-  const safePassagemData = passagemData || []; // NOVO
+  const safePassagemData = passagemData || []; 
+  const safeConcessionariaData = concessionariaData || []; // NOVO
   
   const allClasseItemsData = [
     ...safeClasseIIData,
@@ -460,6 +467,16 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       // Cada registro representa um trecho (ida ou ida/volta)
       totalTrechosPassagens += 1; 
   });
+  
+  // 7. Processamento de Concessionária (ND 33.90.39) - NOVO
+  let totalConcessionariaND39 = 0;
+  let totalConcessionariaRegistros = 0;
+  
+  (safeConcessionariaData || []).forEach(record => {
+      const valorND39 = Number(record.valor_nd_39 || 0);
+      totalConcessionariaND39 += valorND39;
+      totalConcessionariaRegistros += 1;
+  });
     
   // Soma de todas as classes diversas (II, V, VI, VII, VIII, IX)
   const totalClassesDiversas = totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX;
@@ -467,9 +484,9 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
   const totalLogisticoGeral = totalClasseI + totalClassesDiversas + totalCombustivel + totalLubrificanteValor; 
   
-  // Total Operacional (Diárias + Verba Operacional + Suprimento de Fundos + Passagens + Outros Operacionais)
+  // Total Operacional (Diárias + Verba Operacional + Suprimento de Fundos + Passagens + Concessionária + Outros Operacionais)
   const totalOutrosOperacionais = 0; // Placeholder para outros itens operacionais
-  const totalOperacional = totalDiarias + totalVerbaOperacional + totalSuprimentoFundos + totalPassagensND33 + totalOutrosOperacionais;
+  const totalOperacional = totalDiarias + totalVerbaOperacional + totalSuprimentoFundos + totalPassagensND33 + totalConcessionariaND39 + totalOutrosOperacionais; // ADICIONADO totalConcessionariaND39
   
   // Novos totais (placeholders)
   const totalMaterialPermanente = 0;
@@ -551,10 +568,14 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalEquipesSuprimento, 
     totalDiasSuprimento,
     
-    // NOVO: Passagens
+    // Passagens
     totalPassagensND33,
     totalQuantidadePassagens,
     totalTrechosPassagens,
+    
+    // NOVO: Concessionária
+    totalConcessionariaND39,
+    totalConcessionariaRegistros,
   };
 };
 
@@ -640,10 +661,13 @@ export const PTrabCostSummary = ({
       totalSuprimentoFundosND39: 0,
       totalEquipesSuprimento: 0,
       totalDiasSuprimento: 0,
-      // NOVO: Passagens
+      // Passagens
       totalPassagensND33: 0,
       totalQuantidadePassagens: 0,
       totalTrechosPassagens: 0,
+      // NOVO: Concessionária
+      totalConcessionariaND39: 0,
+      totalConcessionariaRegistros: 0,
     },
   });
   
@@ -1381,15 +1405,59 @@ export const PTrabCostSummary = ({
                     </Accordion>
                   )}
                   
+                  {/* NOVO: Concessionária (ND 33.90.39) */}
+                  {totals.totalConcessionariaND39 > 0 && (
+                    <Accordion type="single" collapsible className="w-full pt-1">
+                        <AccordionItem value="item-concessionaria" className="border-b-0">
+                            <AccordionTrigger className="p-0 hover:no-underline">
+                                <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                                    <div className="flex items-center gap-1 text-foreground">
+                                        <Droplet className="h-3 w-3 text-blue-500" />
+                                        Concessionária
+                                    </div>
+                                    <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                                        {formatCurrency(totals.totalConcessionariaND39)}
+                                    </span>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-1 pb-0">
+                                <div className="space-y-1 pl-4 text-[10px]">
+                                    {/* Detalhe 1: Total de Registros */}
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span className="w-1/2 text-left">Total de Registros</span>
+                                        <span className="w-1/4 text-right font-medium">
+                                            {formatNumber(totals.totalConcessionariaRegistros, 0)}
+                                        </span>
+                                        <span className="w-1/4 text-right font-medium text-background">
+                                            {/* Vazio */}
+                                        </span>
+                                    </div>
+                                    
+                                    {/* Linha de Detalhe Consolidada (ND 39) */}
+                                    <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                        <span className="w-1/2 text-left font-semibold">ND 39 (Serviços de Terceiros)</span>
+                                        <span className="w-1/4 text-right font-medium text-background">
+                                            {/* Vazio */}
+                                        </span>
+                                        <span className="w-1/4 text-right font-medium text-blue-600">
+                                            {formatCurrency(totals.totalConcessionariaND39)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                  )}
+                  
                   {/* Outros Operacionais (Placeholder) - Adjusted logic */}
-                  {totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33 > 0 && (
+                  {totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33 - totals.totalConcessionariaND39 > 0 && (
                     <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-border/50 mt-1">
                         <span className="w-1/2 text-left">Outros Itens Operacionais</span>
                         <span className="w-1/4 text-right font-medium">
                             {/* Vazio */}
                         </span>
                         <span className="w-1/4 text-right font-medium">
-                            {formatCurrency(totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33)}
+                            {formatCurrency(totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33 - totals.totalConcessionariaND39)}
                         </span>
                     </div>
                   )}
