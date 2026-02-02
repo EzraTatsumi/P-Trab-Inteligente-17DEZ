@@ -470,12 +470,20 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   
   // 7. Processamento de Concessionária (ND 33.90.39) - NOVO
   let totalConcessionariaND39 = 0;
+  let totalConcessionariaAgua = 0; // Novo subtotal
+  let totalConcessionariaEnergia = 0; // Novo subtotal
   let totalConcessionariaRegistros = 0;
   
   (safeConcessionariaData || []).forEach(record => {
       const valorND39 = Number(record.valor_nd_39 || 0);
       totalConcessionariaND39 += valorND39;
       totalConcessionariaRegistros += 1;
+      
+      if (record.categoria === 'Água/Esgoto') {
+          totalConcessionariaAgua += valorND39;
+      } else if (record.categoria === 'Energia Elétrica') {
+          totalConcessionariaEnergia += valorND39;
+      }
   });
     
   // Soma de todas as classes diversas (II, V, VI, VII, VIII, IX)
@@ -576,6 +584,8 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     // NOVO: Concessionária
     totalConcessionariaND39,
     totalConcessionariaRegistros,
+    totalConcessionariaAgua, // NOVO
+    totalConcessionariaEnergia, // NOVO
   };
 };
 
@@ -668,6 +678,8 @@ export const PTrabCostSummary = ({
       // NOVO: Concessionária
       totalConcessionariaND39: 0,
       totalConcessionariaRegistros: 0,
+      totalConcessionariaAgua: 0, // NOVO
+      totalConcessionariaEnergia: 0, // NOVO
     },
   });
   
@@ -1422,16 +1434,32 @@ export const PTrabCostSummary = ({
                             </AccordionTrigger>
                             <AccordionContent className="pt-1 pb-0">
                                 <div className="space-y-1 pl-4 text-[10px]">
-                                    {/* Detalhe 1: Total de Registros */}
-                                    <div className="flex justify-between text-muted-foreground">
-                                        <span className="w-1/2 text-left">Total de Registros</span>
-                                        <span className="w-1/4 text-right font-medium">
-                                            {formatNumber(totals.totalConcessionariaRegistros, 0)}
-                                        </span>
-                                        <span className="w-1/4 text-right font-medium text-background">
-                                            {/* Vazio */}
-                                        </span>
-                                    </div>
+                                    
+                                    {/* Detalhe 1: Água/Esgoto */}
+                                    {totals.totalConcessionariaAgua > 0 && (
+                                        <div className="flex justify-between text-muted-foreground">
+                                            <span className="w-1/2 text-left">Água/Esgoto</span>
+                                            <span className="w-1/4 text-right font-medium text-background">
+                                                {/* Vazio */}
+                                            </span>
+                                            <span className="w-1/4 text-right font-medium">
+                                                {formatCurrency(totals.totalConcessionariaAgua)}
+                                            </span>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Detalhe 2: Energia Elétrica */}
+                                    {totals.totalConcessionariaEnergia > 0 && (
+                                        <div className="flex justify-between text-muted-foreground">
+                                            <span className="w-1/2 text-left">Energia Elétrica</span>
+                                            <span className="w-1/4 text-right font-medium text-background">
+                                                {/* Vazio */}
+                                            </span>
+                                            <span className="w-1/4 text-right font-medium">
+                                                {formatCurrency(totals.totalConcessionariaEnergia)}
+                                            </span>
+                                        </div>
+                                    )}
                                     
                                     {/* Linha de Detalhe Consolidada (ND 39) */}
                                     <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
