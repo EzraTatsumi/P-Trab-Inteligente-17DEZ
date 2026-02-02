@@ -1177,8 +1177,7 @@ const PTrabReportManager = () => {
                            totalClasseII_ND30 + totalClasseV_ND30 + totalClasseVI_ND30 + totalClasseVII_ND30 + totalClasseVIII_ND30 + totalClasseIX_ND30 +
                            totalLubrificante; 
     
-    const total_33_90_39 = totalClasseII_ND39 + totalClasseV_ND39 + totalClasseVI_ND39 + totalClasseVII_ND39 + totalClasseVIII_ND39 + totalClasseIX_ND39 +
-                           totalConcessionaria_ND39; // NOVO: Inclui Concessionária
+    const total_33_90_39 = totalClasseII_ND39 + totalClasseV_ND39 + totalClasseVI_ND39 + totalClasseVII_ND39 + totalClasseVIII_ND39 + totalClasseIX_ND39; // CORREÇÃO: Exclui Concessionária (Operacional) do Logístico
     
     const total_parte_azul = total_33_90_30 + total_33_90_39;
     
