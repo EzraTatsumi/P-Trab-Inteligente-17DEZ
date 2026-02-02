@@ -17,13 +17,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { formatCurrency, formatNumber } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, isRegiaoMilitar } from "@/lib/formatUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
 import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacionalReport";
 import PTrabOperacionalReport from "@/components/reports/PTrabOperacionalReport"; // NOVO: Importar o relatório operacional
-import { 
-  generateRacaoQuenteMemoriaCalculo, 
+import {
+  generateRacaoQuenteMemoriaCalculo,
   generateRacaoOperacionalMemoriaCalculo,
   calculateClasseICalculations,
   ClasseIRegistro as ClasseIRegistroType,
@@ -35,24 +35,24 @@ import { generateCategoryMemoriaCalculo as generateClasseVIIUtility } from "@/li
 import { generateCategoryMemoriaCalculo as generateClasseVIIIUtility } from "@/lib/classeVIIIUtils";
 import { generateCategoryMemoriaCalculo as generateClasseIXUtility, calculateItemTotalClasseIX as calculateItemTotalClasseIXUtility } from "@/lib/classeIXUtils";
 import { generateGranularMemoriaCalculo as generateClasseIIIGranularUtility, calculateItemTotals } from "@/lib/classeIIIUtils";
-import { 
-  generateDiariaMemoriaCalculo as generateDiariaMemoriaCalculoUtility, 
+import {
+  generateDiariaMemoriaCalculo as generateDiariaMemoriaCalculoUtility,
   calculateDiariaTotals,
   DestinoDiaria,
   QuantidadesPorPosto,
 } from "@/lib/diariaUtils"; // NOVO: Importar utilitários de Diária
-import { 
+import {
   generateVerbaOperacionalMemoriaCalculo as generateVerbaOperacionalMemoriaCalculoUtility,
 } from "@/lib/verbaOperacionalUtils"; // NOVO: Importar utilitários de Verba Operacional
-import { 
+import {
   generateSuprimentoFundosMemoriaCalculo as generateSuprimentoFundosMemoriaCalculoUtility,
 } from "@/lib/suprimentoFundosUtils"; // NOVO: Importar utilitários de Suprimento de Fundos
-import { 
+import {
   generatePassagemMemoriaCalculo,
   PassagemRegistro as PassagemRegistroType, // Importando o tipo PassagemRegistro do utilitário
 } from "@/lib/passagemUtils"; // Importando utilitários de Passagem
-import { 
-  ConcessionariaRegistroComDiretriz, 
+import {
+  ConcessionariaRegistroComDiretriz,
   generateConcessionariaMemoriaCalculo as generateConcessionariaMemoriaCalculoUtility,
 } from "@/lib/concessionariaUtils"; // NOVO: Importando utilitários de Concessionária
 import { RefLPC } from "@/types/refLPC";
@@ -623,36 +623,6 @@ export const getTipoCombustivelLabel = (tipo: string) => {
         return 'GASOLINA';
     }
     return tipo;
-};
-
-// =================================================================
-// FUNÇÕES DE NORMALIZAÇÃO E IDENTIFICAÇÃO DA RM (AÇÕES 1 e 2)
-// =================================================================
-
-const normalizarNome = (valor?: string) =>
-  (valor || '')
-    .toUpperCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-const isRegiaoMilitar = (nomeOM: string, nomeRM: string) => {
-  const om = normalizarNome(nomeOM);
-  const rm = normalizarNome(nomeRM);
-
-  if (om === rm) return true;
-
-  if (/^\d+ª?\s*RM$/.test(om) || om.includes('REGIAO MILITAR')) return true;
-
-  if (rm.includes(om)) return true;
-
-  const numRM = rm.match(/\d+/)?.[0];
-  if (numRM && om.startsWith(numRM)) {
-      if (om.includes('RM')) return true;
-  }
-
-  return false;
 };
 
 // =================================================================
