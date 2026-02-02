@@ -147,6 +147,7 @@ const ConcessionariaForm = () => {
     const [groupToReplace, setGroupToReplace] = useState<ConsolidatedConcessionaria | null>(null); 
     
     // ESTADOS DE EDIÇÃO DE MEMÓRIA
+    // editingMemoriaId agora rastreia o ID do registro individual que está sendo editado
     const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
     const [memoriaEdit, setMemoriaEdit] = useState<string>("");
     
@@ -769,6 +770,10 @@ const ConcessionariaForm = () => {
             if (editingId) {
                 // MODO EDIÇÃO: Geramos os novos registros e os colocamos em pendingConcessionaria
                 
+                // Ao editar, a memória customizada deve ser buscada do registro original
+                // e aplicada ao novo item correspondente (se houver).
+                // Como estamos editando o LOTE, vamos apenas manter a memória customizada do primeiro registro
+                // do grupo original, se ela existir.
                 let memoriaCustomizadaTexto: string | null = null;
                 if (groupToReplace) {
                     const originalRecord = groupToReplace.records.find(r => r.id === editingId);
@@ -902,9 +907,9 @@ const ConcessionariaForm = () => {
     
     // --- Lógica de Edição de Memória ---
     
-    const handleIniciarEdicaoMemoria = (group: ConsolidatedConcessionariaRecord, memoriaCompleta: string) => {
-        const firstRecordId = group.records[0].id;
-        setEditingMemoriaId(firstRecordId);
+    // ATUALIZADO: Recebe o registro individual
+    const handleIniciarEdicaoMemoria = (registro: ConcessionariaRegistro, memoriaCompleta: string) => {
+        setEditingMemoriaId(registro.id);
         setMemoriaEdit(memoriaCompleta || "");
         toast.info("Editando memória de cálculo.");
     };
@@ -916,7 +921,7 @@ const ConcessionariaForm = () => {
 
     const handleSalvarMemoriaCustomizada = async (registroId: string) => {
         try {
-            // A memória customizada é salva APENAS no primeiro registro do grupo.
+            // A memória customizada é salva no registro individual.
             const { error } = await supabase
                 .from("concessionaria_registros")
                 .update({
@@ -941,7 +946,7 @@ const ConcessionariaForm = () => {
         }
         
         try {
-            // A memória customizada é removida APENAS do primeiro registro do grupo.
+            // A memória customizada é removida do registro individual.
             const { error } = await supabase
                 .from("concessionaria_registros")
                 .update({
@@ -1513,13 +1518,6 @@ const ConcessionariaForm = () => {
                                         const omName = group.organizacao;
                                         const ug = group.ug;
                                         const faseAtividade = group.fase_atividade || 'Não Definida';
-                                        
-                                        const diasText = diasOperacaoConsolidado === 1 ? 'dia' : 'dias';
-                                        const efetivoText = efetivoConsolidado === 1 ? 'militar' : 'militares';
-                                        
-                                        const isDifferentOm = group.om_detentora !== group.organizacao || group.ug_detentora !== group.ug;
-                                        const omDestino = group.om_detentora;
-                                        const ugDestino = group.ug_detentora;
                                         
                                         // Filter records by category
                                         const aguaRecords = group.records.filter(r => r.categoria === 'Água/Esgoto');
