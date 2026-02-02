@@ -1173,12 +1173,14 @@ const PTrabReportManager = () => {
     const totalConcessionaria_ND39 = grupo.linhasConcessionaria.reduce((acc, linha) => acc + linha.valor_nd_39, 0); // NOVO
 
     
-    const total_33_90_30 = totalQS + totalQR + 
+    const total_33_90_30 = totalQS + totalQR +
                            totalClasseII_ND30 + totalClasseV_ND30 + totalClasseVI_ND30 + totalClasseVII_ND30 + totalClasseVIII_ND30 + totalClasseIX_ND30 +
-                           totalLubrificante; 
+                           totalLubrificante;
     
     const total_33_90_39 = totalClasseII_ND39 + totalClasseV_ND39 + totalClasseVI_ND39 + totalClasseVII_ND39 + totalClasseVIII_ND39 + totalClasseIX_ND39 +
                            totalConcessionaria_ND39; // NOVO: Inclui Concessionária
+    
+    console.log(`[TotaisOM] ${nomeOM} - ND39: ${total_33_90_39}. Componentes: II=${totalClasseII_ND39}, V=${totalClasseV_ND39}, VI=${totalClasseVI_ND39}, VII=${totalClasseVII_ND39}, VIII=${totalClasseVIII_ND39}, IX=${totalClasseIX_ND39}, Conc=${totalConcessionaria_ND39}`);
     
     const total_parte_azul = total_33_90_30 + total_33_90_39;
     
