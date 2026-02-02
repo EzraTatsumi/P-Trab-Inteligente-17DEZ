@@ -370,7 +370,7 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
     // Lógica para Ração Quente (QS/QR)
     if (tipo === 'QS') {
         if (registro.memoriaQSCustomizada && registro.memoriaQSCustomizada.trim().length > 0) {
-            return registro.memoria_calculo_qs_customizada || "Memória de cálculo QS não disponível.";
+            return registro.memoriaQSCustomizada;
         }
         const { qs } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
@@ -405,7 +405,7 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
 
     if (tipo === 'QR') {
         if (registro.memoriaQRCustomizada && registro.memoriaQRCustomizada.trim().length > 0) {
-            return registro.memoria_calculo_qr_customizada || "Memória de cálculo QR não disponível.";
+            return registro.memoriaQRCustomizada;
         }
         const { qr } = generateRacaoQuenteMemoriaCalculo({
             id: registro.id,
@@ -706,7 +706,7 @@ const PTrabReportManager = () => {
   const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null); // NOVO: Estado para Diretrizes Operacionais
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedReport, setSelectedReport] = useState<ReportType>('operacional'); // Default para Operacional
+  const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
 
   const isLubrificante = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
   const isCombustivel = (r: ClasseIIIRegistro) => r.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
@@ -764,7 +764,7 @@ const PTrabReportManager = () => {
         supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId), 
         supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId), 
         supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId), 
-        supabase.from('concessionaria_registros').select('*, diretriz_id, om_detentora, ug_detentora').eq('p_trab_id', ptrabId), // NOVO: Busca de Concessionária
+        supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId), // NOVO: Busca de Concessionária
       ]);
       
       // NOVO: Fetch Diretrizes Operacionais (necessário para gerar a memória de diária)
@@ -896,10 +896,10 @@ const PTrabReportManager = () => {
 
   // --- LÓGICA DE AGRUPAMENTO E CÁLCULO (Mantida no Manager para ser passada aos relatórios) ---
   const gruposPorOM = useMemo(() => {
-    const groups: Record<string, GrupoOM> = {};
+    const grupos: Record<string, GrupoOM> = {};
     const initializeGroup = (name: string) => {
-        if (!groups[name]) {
-            groups[name] = { 
+        if (!grupos[name]) {
+            grupos[name] = { 
                 linhasQS: [], linhasQR: [], linhasClasseII: [], linhasClasseV: [],
                 linhasClasseVI: [], linhasClasseVII: [], linhasClasseVIII: [], linhasClasseIX: [],
                 linhasClasseIII: [], linhasConcessionaria: [] // NOVO: Inicializa Concessionária
@@ -910,7 +910,7 @@ const PTrabReportManager = () => {
     // 1. Processar Classe I (Apenas Ração Quente para a tabela principal)
     registrosClasseI.filter(r => r.categoria === 'RACAO_QUENTE').forEach((registro) => {
         initializeGroup(registro.omQS || registro.organizacao);
-        groups[registro.omQS || registro.organizacao].linhasQS.push({ 
+        grupos[registro.omQS || registro.organizacao].linhasQS.push({ 
             registro, 
             tipo: 'QS',
             valor_nd_30: registro.totalQS,
@@ -918,7 +918,7 @@ const PTrabReportManager = () => {
         });
         
         initializeGroup(registro.organizacao);
-        groups[registro.organizacao].linhasQR.push({ 
+        grupos[registro.organizacao].linhasQR.push({ 
             registro, 
             tipo: 'QR',
             valor_nd_30: registro.totalQR,
@@ -929,7 +929,7 @@ const PTrabReportManager = () => {
     // 2. Processar Classes II, V, VI, VII, VIII, IX
     registrosClasseII.forEach((registro) => {
         initializeGroup(registro.organizacao);
-        const omGroup = groups[registro.organizacao];
+        const omGroup = grupos[registro.organizacao];
         
         const linha = { 
             registro,
@@ -1063,7 +1063,7 @@ const PTrabReportManager = () => {
                     );
                 }
                 
-                groups[omDestinoRecurso].linhasClasseIII.push({
+                grupos[omDestinoRecurso].linhasClasseIII.push({
                     registro,
                     categoria_equipamento: categoriaKey as any,
                     tipo_suprimento: tipoSuprimento,
@@ -1081,15 +1081,15 @@ const PTrabReportManager = () => {
         const omDestinoRecurso = registro.om_detentora || registro.organizacao;
         initializeGroup(omDestinoRecurso);
         
-        groups[omDestinoRecurso].linhasConcessionaria.push({
+        grupos[omDestinoRecurso].linhasConcessionaria.push({
             registro,
             valor_nd_39: registro.valor_nd_39,
         });
     });
     
-    // console.log("[PTrabManager] Final Grouping Result:", groups); // Log final do agrupamento
+    // console.log("[PTrabManager] Final Grouping Result:", grupos); // Log final do agrupamento
     
-    return groups;
+    return grupos;
   }, [registrosClasseI, registrosClasseII, registrosClasseIII, registrosConcessionaria, refLPC]);
 
   const nomeRM = useMemo(() => {
@@ -1104,11 +1104,9 @@ const PTrabReportManager = () => {
         const aIsRM = isRegiaoMilitar(a, rmName);
         const bIsRM = isRegiaoMilitar(b, rmName);
         
-        // 1. Prioriza Regiões Militares
         if (aIsRM && !bIsRM) return -1;
         if (!aIsRM && bIsRM) return 1;
         
-        // 2. Ordenação alfabética para as demais
         return a.localeCompare(b);
     });
   }, [gruposPorOM, nomeRM]);
