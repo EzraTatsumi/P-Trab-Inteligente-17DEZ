@@ -8,7 +8,7 @@ import {
   LinhaTabela,
   LinhaClasseII,
   LinhaClasseIII,
-  LinhaConcessionaria, // Importando o novo tipo
+  LinhaConcessionaria,
   getClasseIILabel,
   getTipoCombustivelLabel,
   generateClasseIMemoriaCalculoUnificada,
@@ -19,6 +19,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { FileText, Package, Utensils, Briefcase, HardHat, Plane, ClipboardList, Zap, Droplet } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { generateConcessionariaMemoriaCalculo as generateConcessionariaMemoriaCalculoUtility } from "@/lib/concessionariaUtils"; // Importa a função de utilidade
 
 interface PTrabLogisticoReportProps {
   ptrabData: PTrabData;
@@ -58,7 +59,6 @@ const renderExpenseLines = (
   generateClasseVIMemoriaCalculo: PTrabLogisticoReportProps['generateClasseVIMemoriaCalculo'],
   generateClasseVIIMemoriaCalculo: PTrabLogisticoReportProps['generateClasseVIIMemoriaCalculo'],
   generateClasseVIIIMemoriaCalculo: PTrabLogisticoReportProps['generateClasseVIIIMemoriaCalculo'],
-  generateConcessionariaMemoriaCalculo: (registro: LinhaConcessionaria['registro']) => string, // Adicionado
 ) => {
   const allLines: (LinhaTabela | LinhaClasseII | LinhaClasseIII | LinhaConcessionaria)[] = [
     ...grupo.linhasQS,
@@ -78,7 +78,7 @@ const renderExpenseLines = (
     const getOrder = (line: typeof a) => {
       if ('tipo' in line) return 1; // Classe I (QS/QR)
       if ('categoria_equipamento' in line) return 3; // Classe III
-      if ('valor_nd_39' in line && 'consumo_pessoa_dia' in line.registro) return 4; // Concessionária
+      if ('valor_nd_39' in line && 'registro' in line && 'consumo_pessoa_dia' in line.registro) return 4; // Concessionária
       return 2; // Classes II, V, VI, VII, VIII, IX
     };
     return getOrder(a) - getOrder(b);
@@ -94,7 +94,7 @@ const renderExpenseLines = (
     let memoriaCalculo = "";
     let isClasseI = false;
     let isClasseIII = false;
-    let isConcessionaria = false; // NOVO
+    let isConcessionaria = false;
 
     if ('tipo' in line) {
       // Classe I (QS/QR)
@@ -117,7 +117,7 @@ const renderExpenseLines = (
       valorND30 = tipoSuprimento !== 'LUBRIFICANTE' ? line.valor_total_linha : 0;
       valorND39 = tipoSuprimento === 'LUBRIFICANTE' ? line.valor_total_linha : 0;
       memoriaCalculo = line.memoria_calculo;
-    } else if ('consumo_pessoa_dia' in line.registro) {
+    } else if ('registro' in line && 'consumo_pessoa_dia' in line.registro) {
       // Concessionária (ND 33.90.39)
       isConcessionaria = true;
       const registro = line.registro;
@@ -125,10 +125,10 @@ const renderExpenseLines = (
       detalhamento = `Efetivo: ${registro.efetivo} | Dias: ${registro.dias_operacao} | Consumo: ${formatNumber(registro.consumo_pessoa_dia, 2)} ${registro.unidade_custo}/dia`;
       valorND30 = 0;
       valorND39 = line.valor_nd_39;
-      memoriaCalculo = generateConcessionariaMemoriaCalculo(registro);
+      memoriaCalculo = generateConcessionariaMemoriaCalculoUtility(registro); // CORRIGIDO: Usando o nome importado
     } else {
       // Classes II, V, VI, VII, VIII, IX
-      const registro = line.registro;
+      const registro = (line as LinhaClasseII).registro;
       const isClasseIX = registro.categoria && ['Vtr Administrativa', 'Vtr Operacional', 'Motocicleta', 'Vtr Blindada'].includes(registro.categoria);
       
       let classeLabel = "";
@@ -148,8 +148,8 @@ const renderExpenseLines = (
       
       tipoDespesa = `${classeLabel} - ${getClasseIILabel(registro.categoria)}`;
       detalhamento = `Efetivo: ${registro.efetivo || 0} | Dias: ${registro.dias_operacao}`;
-      valorND30 = line.valor_nd_30;
-      valorND39 = line.valor_nd_39;
+      valorND30 = (line as LinhaClasseII).valor_nd_30;
+      valorND39 = (line as LinhaClasseII).valor_nd_39;
       
       if (isClasseIX) {
         memoriaCalculo = generateClasseIXMemoriaCalculo(registro);
@@ -235,12 +235,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     }, 0);
   }, [omsOrdenadas, gruposPorOM, calcularTotaisPorOM]);
 
-  // Função para gerar a memória de cálculo da Concessionária (passada como prop para renderExpenseLines)
-  const generateConcessionariaMemoriaCalculoWrapper = (registro: LinhaConcessionaria['registro']) => {
-    // Reutiliza a função importada do Manager
-    return (PTrabLogisticoReport as any).generateConcessionariaMemoriaCalculo(registro);
-  };
-
   return (
     <div className="space-y-6 print:space-y-2">
       {/* Cabeçalho do Relatório (Omitido para brevidade, mas deve existir) */}
@@ -292,7 +286,6 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
                       generateClasseVIMemoriaCalculo,
                       generateClasseVIIMemoriaCalculo,
                       generateClasseVIIIMemoriaCalculo,
-                      generateConcessionariaMemoriaCalculoWrapper // Passando a função wrapper
                     )}
 
                     {/* 3. Linha de Soma por ND e Gp de Despesa (Parte Azul) */}
@@ -364,8 +357,5 @@ const PTrabLogisticoReport: React.FC<PTrabLogisticoReportProps> = ({
     </div>
   );
 };
-
-// Adiciona a função de utilidade ao componente para ser acessada pelo wrapper
-(PTrabLogisticoReport as any).generateConcessionariaMemoriaCalculo = generateConcessionariaMemoriaCalculoUtility;
 
 export default PTrabLogisticoReport;
