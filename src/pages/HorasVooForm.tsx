@@ -1154,7 +1154,7 @@ const HorasVooForm = () => {
                                                                 onKeyDown={handleEnterToNextField}
                                                             />
                                                             {formData.isCoterResponsibility && (
-                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-red-500 opacity-70 pointer-events-none font-medium">
+                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-red-500 opacity-70 pointer-events-none font-medium px-2 py-0.5 rounded-sm bg-background/80 border border-red-500/30">
                                                                     A cargo do COTER
                                                                 </span>
                                                             )}
@@ -1175,7 +1175,7 @@ const HorasVooForm = () => {
                                                                 onKeyDown={handleEnterToNextField}
                                                             />
                                                             {formData.isCoterResponsibility && (
-                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-red-500 opacity-70 pointer-events-none font-medium">
+                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-red-500 opacity-70 pointer-events-none font-medium px-2 py-0.5 rounded-sm bg-background/80 border border-red-500/30">
                                                                     A cargo do COTER
                                                                 </span>
                                                             )}
