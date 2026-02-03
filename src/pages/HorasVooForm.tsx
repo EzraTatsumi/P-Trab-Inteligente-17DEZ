@@ -1154,7 +1154,7 @@ const HorasVooForm = () => {
                                                                 onKeyDown={handleEnterToNextField}
                                                             />
                                                             {formData.isCoterResponsibility && (
-                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-red-500 opacity-70 pointer-events-none font-medium px-2 py-0.5 rounded-sm bg-background/80 border border-red-500/30">
+                                                                <span className="absolute left-[100px] top-1/2 -translate-y-1/2 text-xs text-red-500 opacity-70 pointer-events-none font-medium">
                                                                     A cargo do COTER
                                                                 </span>
                                                             )}
@@ -1175,7 +1175,7 @@ const HorasVooForm = () => {
                                                                 onKeyDown={handleEnterToNextField}
                                                             />
                                                             {formData.isCoterResponsibility && (
-                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-red-500 opacity-70 pointer-events-none font-medium px-2 py-0.5 rounded-sm bg-background/80 border border-red-500/30">
+                                                                <span className="absolute left-[100px] top-1/2 -translate-y-1/2 text-xs text-red-500 opacity-70 pointer-events-none font-medium">
                                                                     A cargo do COTER
                                                                 </span>
                                                             )}
@@ -1487,10 +1487,9 @@ const HorasVooForm = () => {
                                                             {/* ND 33.90.39 */}
                                                             <div className="flex justify-between text-xs">
                                                                 <span className="text-muted-foreground">ND 33.90.39 (Serviços):</span>
-                                                                <span className="text-green-600">
-                                                                    {totalND39Consolidado === 0 ? (isCoter ? "A cargo do COTER" : formatCurrency(totalND39Consolidado)) : formatCurrency(totalND39Consolidado)}
-                                                                </span>
-                                                            </div>
+                                                            <span className="text-green-600">
+                                                                {totalND39Consolidado === 0 ? (isCoter ? "A cargo do COTER" : formatCurrency(totalND39Consolidado)) : formatCurrency(totalND39Consolidado)}
+                                                            </span>
                                                         </div>
                                                     </Card>
                                                 </div>
