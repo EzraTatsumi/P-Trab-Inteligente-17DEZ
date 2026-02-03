@@ -13,7 +13,7 @@ import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tables, TablesInsert } from "@/integrations/supabase/types";
-import { formatCurrency, formatCodug, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
+import { formatCurrency, formatCodug, formatCurrencyInput, numberToRawDigits, formatNumber } from "@/lib/formatUtils";
 import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/ptrabUtils";
 import { 
     calculateHorasVooTotals, 
@@ -561,7 +561,7 @@ const HorasVooForm = () => {
             codug_destino: firstRecord.codug_destino,
             municipio: firstRecord.municipio,
             quantidade_hv: firstRecord.quantidade_hv,
-            tipo_anv: firstRecord.tipo_anav,
+            tipo_anv: firstRecord.tipo_anv,
             amparo: firstRecord.amparo || "",
             // Se for COTER, mantemos 0 no formData, senão, mantemos o valor original
             valor_nd_30: firstRecord.valor_nd_30,
