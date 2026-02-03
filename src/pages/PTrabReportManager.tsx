@@ -265,7 +265,7 @@ export interface GrupoOM {
   linhasClasseVIII: LinhaClasseII[];
   linhasClasseIX: LinhaClasseII[];
   linhasClasseIII: LinhaClasseIII[]; 
-  linhasConcessionaria: LinhaConcessionaria[]; // NOVO: Adicionado Concessionária
+  linhasConcessionaria: LinhaConcessionaria[]; // NOVO: Inicializa Concessionária
 }
 
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
