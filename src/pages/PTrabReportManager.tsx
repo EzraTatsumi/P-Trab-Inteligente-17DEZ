@@ -56,7 +56,7 @@ import {
   generateConcessionariaMemoriaCalculo as generateConcessionariaMemoriaCalculoUtility,
 } from "@/lib/concessionariaUtils"; // NOVO: Importando utilitários de Concessionária
 import { RefLPC } from "@/types/refLPC";
-import { fetchDiretrizesOperacionais } from "@/lib/ptrabUtils";
+import { fetchDiretrizesOperacionais, fetchDiretrizesPassagens } from "@/lib/ptrabUtils"; // IMPORTANDO fetchDiretrizesPassagens
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { Tables, Json } from "@/integrations/supabase/types"; // Importar Tables e Json
 
@@ -587,14 +587,18 @@ export const generateSuprimentoFundosMemoriaCalculada = (
  * Função unificada para gerar a memória de cálculo da Passagem, priorizando o customizado.
  */
 export const generatePassagemMemoriaCalculada = (
-    registro: PassagemRegistro
+    registro: PassagemRegistro,
+    diretrizesPassagens: Tables<'diretrizes_passagens'>[] | null
 ): string => {
     if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
         return registro.detalhamento_customizado;
     }
     
-    // Usa o utilitário importado
-    return generatePassagemMemoriaCalculo(registro);
+    // Busca a diretriz específica usada pelo registro
+    const diretriz = diretrizesPassagens?.find(d => d.id === registro.diretriz_id);
+    
+    // Usa o utilitário importado, passando a diretriz para extrair o número do pregão
+    return generatePassagemMemoriaCalculo(registro, diretriz || null);
 };
 
 /**
@@ -729,6 +733,7 @@ const PTrabReportManager = () => {
   const [registrosPassagem, setRegistrosPassagem] = useState<PassagemRegistro[]>([]); // NOVO ESTADO
   const [registrosConcessionaria, setRegistrosConcessionaria] = useState<ConcessionariaRegistro[]>([]); // NOVO ESTADO
   const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null); // NOVO: Estado para Diretrizes Operacionais
+  const [diretrizesPassagens, setDiretrizesPassagens] = useState<Tables<'diretrizes_passagens'>[]>([]); // NOVO: Estado para Diretrizes de Passagens
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
@@ -774,7 +779,8 @@ const PTrabReportManager = () => {
         { data: verbaOperacionalData }, 
         { data: passagemData }, 
         { data: concessionariaData },
-        diretrizesOpData, // Fetch Diretrizes Operacionais em paralelo
+        diretrizesOpData, 
+        diretrizesPassagensData, // NOVO: Busca de Diretrizes de Passagens
       ] = await Promise.all([
         supabase.from('classe_i_registros').select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3').eq('p_trab_id', ptrabId),
         supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
@@ -790,10 +796,12 @@ const PTrabReportManager = () => {
         supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId), 
         supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId), 
         supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId),
-        fetchDiretrizesOperacionais(year), // Execução em paralelo
+        fetchDiretrizesOperacionais(year), 
+        fetchDiretrizesPassagens(year), // NOVO: Chamada da função utilitária
       ]);
       
       setDiretrizesOperacionais(diretrizesOpData as Tables<'diretrizes_operacionais'> || null);
+      setDiretrizesPassagens(diretrizesPassagensData as Tables<'diretrizes_passagens'>[] || []); // NOVO: Setando o estado
 
       // CORREÇÃO: Usar 'as any' para contornar o erro de tipo do Supabase na desestruturação do spread
       const allClasseItems = [
@@ -1274,11 +1282,12 @@ const PTrabReportManager = () => {
                 registrosPassagem={registrosPassagem}
                 registrosConcessionaria={registrosConcessionaria} // NOVO: Passando registros de Concessionária
                 diretrizesOperacionais={diretrizesOperacionais}
+                diretrizesPassagens={diretrizesPassagens} // NOVO: Passando diretrizes de passagens
                 fileSuffix={fileSuffix}
                 generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada}
                 generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada}
                 generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada}
-                generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada}
+                generatePassagemMemoriaCalculo={(registro) => generatePassagemMemoriaCalculada(registro, diretrizesPassagens)} // NOVO: Passando diretrizes para a função de memória
                 generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada} // NOVO: Passando função de memória
             />
         );

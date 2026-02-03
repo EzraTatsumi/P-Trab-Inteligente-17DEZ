@@ -5,6 +5,8 @@ import { Tables, TableName } from "@/integrations/supabase/types";
 
 // Tipo para as diretrizes operacionais (valores unitários)
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
+// NOVO TIPO: Tipo para as diretrizes de passagens
+type DiretrizPassagens = Tables<'diretrizes_passagens'>;
 
 // Define a união de tabelas que possuem a coluna p_trab_id
 type PTrabLinkedTableName =
@@ -117,6 +119,32 @@ export async function fetchDiretrizesOperacionais(year: number): Promise<Diretri
     }
     
     return data as DiretrizOperacional;
+}
+
+/**
+ * Busca as diretrizes de passagens para o ano de referência fornecido.
+ * @param year O ano de referência para buscar a diretriz.
+ */
+export async function fetchDiretrizesPassagens(year: number): Promise<DiretrizPassagens[]> {
+    if (!year) return [];
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    
+    // Busca todas as diretrizes de passagens ativas para o ano e user_id
+    const { data, error } = await supabase
+        .from('diretrizes_passagens')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('ano_referencia', year)
+        .eq('ativo', true);
+        
+    if (error) {
+        console.error("Erro ao buscar diretrizes de passagens:", error);
+        return [];
+    }
+    
+    return data as DiretrizPassagens[];
 }
 
 /**
