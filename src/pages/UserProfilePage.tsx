@@ -395,10 +395,9 @@ const UserProfilePage = () => {
     <div className="min-h-screen bg-background py-8 px-4">
       <div className="container max-w-4xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
-          <Button
+          <Button>
             variant="ghost"
             onClick={() => navigate('/ptrab')}
-          >
             < Voltar
           </Button>
           <h1 className="text-3xl font-bold flex items-center gap-2">
