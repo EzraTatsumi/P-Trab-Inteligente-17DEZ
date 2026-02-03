@@ -156,6 +156,10 @@ const HorasVooForm = () => {
     const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
     const [selectedOmDestinoId, setSelectedOmDestinoId] = useState<string | undefined>(undefined);
     
+    // ESTADOS PARA INPUT DE MOEDA (RAW DIGITS)
+    const [rawND30Input, setRawND30Input] = useState(numberToRawDigits(initialFormState.valor_nd_30));
+    const [rawND39Input, setRawND39Input] = useState(numberToRawDigits(initialFormState.valor_nd_39));
+    
     // Dados mestres
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
         queryKey: ['ptrabData', ptrabId],
@@ -385,8 +389,21 @@ const HorasVooForm = () => {
     // CÁLCULOS E MEMÓRIA (MEMOIZED)
     // =================================================================
     
+    // Handler unificado para CurrencyInput
+    const handleCurrencyChange = (field: 'valor_nd_30' | 'valor_nd_39', rawDigits: string) => {
+        const { numericValue } = formatCurrencyInput(rawDigits);
+        
+        if (field === 'valor_nd_30') {
+            setRawND30Input(rawDigits);
+            setFormData(prev => ({ ...prev, valor_nd_30: numericValue }));
+        } else {
+            setRawND39Input(rawDigits);
+            setFormData(prev => ({ ...prev, valor_nd_39: numericValue }));
+        }
+    };
+    
     const calculos = useMemo(() => {
-        if (!ptrabData) {
+        if (!ptrabId) {
             return {
                 totalGeral: 0,
                 memoria: "Preencha os dados de solicitação.",
@@ -435,7 +452,7 @@ const HorasVooForm = () => {
                 memoria: `Erro ao calcular: ${errorMessage}`,
             };
         }
-    }, [formData, ptrabId, ptrabData]);
+    }, [formData, ptrabId]);
     
     // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do lastStagedFormData)
     const isFormDirty = useMemo(() => {
@@ -475,6 +492,10 @@ const HorasVooForm = () => {
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
         setLastStagedFormData(null); 
+        
+        // Resetar inputs de moeda
+        setRawND30Input(numberToRawDigits(initialFormState.valor_nd_30));
+        setRawND39Input(numberToRawDigits(initialFormState.valor_nd_39));
     };
     
     const handleClearPending = () => {
@@ -528,7 +549,11 @@ const HorasVooForm = () => {
         };
         setFormData(newFormData);
         
-        // 3. Gerar os itens pendentes (staging) imediatamente com os dados originais
+        // 3. Inicializar inputs de moeda com os valores do registro
+        setRawND30Input(numberToRawDigits(firstRecord.valor_nd_30));
+        setRawND39Input(numberToRawDigits(firstRecord.valor_nd_39));
+        
+        // 4. Gerar os itens pendentes (staging) imediatamente com os dados originais
         const newPendingItems: CalculatedHorasVoo[] = group.records.map(registro => {
             const { valor_total } = calculateHorasVooTotals(registro);
             
@@ -717,6 +742,10 @@ const HorasVooForm = () => {
                 valor_nd_30: 0,
                 valor_nd_39: 0,
             }));
+            
+            // Limpa os inputs de moeda
+            setRawND30Input(numberToRawDigits(0));
+            setRawND39Input(numberToRawDigits(0));
             
         } catch (err: any) {
             toast.error(err.message || "Erro desconhecido ao calcular.");
@@ -1061,8 +1090,8 @@ const HorasVooForm = () => {
                                                     <Label htmlFor="valor_nd_30">Valor ND 33.90.30 (Custeio) *</Label>
                                                     <CurrencyInput
                                                         id="valor_nd_30"
-                                                        value={formData.valor_nd_30}
-                                                        onValueChange={(value) => setFormData({ ...formData, valor_nd_30: value })}
+                                                        rawDigits={rawND30Input}
+                                                        onChange={(digits) => handleCurrencyChange('valor_nd_30', digits)}
                                                         placeholder="Ex: R$ 10.000,00"
                                                         required
                                                         disabled={!isPTrabEditable || isSaving}
@@ -1075,8 +1104,8 @@ const HorasVooForm = () => {
                                                     <Label htmlFor="valor_nd_39">Valor ND 33.90.39 (Serviços) *</Label>
                                                     <CurrencyInput
                                                         id="valor_nd_39"
-                                                        value={formData.valor_nd_39}
-                                                        onValueChange={(value) => setFormData({ ...formData, valor_nd_39: value })}
+                                                        rawDigits={rawND39Input}
+                                                        onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
                                                         placeholder="Ex: R$ 5.000,00"
                                                         required
                                                         disabled={!isPTrabEditable || isSaving}
@@ -1368,7 +1397,7 @@ const HorasVooForm = () => {
                                             </Card>
                                         );
                                     })}
-                                </section>
+                                </div>
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
