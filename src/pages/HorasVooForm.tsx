@@ -94,7 +94,7 @@ const initialFormState: HorasVooFormState = {
     municipio: "",
     quantidade_hv: 0,
     tipo_anv: "",
-    amparo: "",
+    amparo: "Tudo conforme o DIEx nº 972-DMAvEx/COLOG, de 16 de dezembro de 2022, do Subcomandate Logístico versando sobre o valor da hora de voo para o ano de 2023. O valor foi convertido para REAIS utilizando-se da cotação do dólar (PTAX do DÓLAR).",
     valor_nd_30: 0,
     valor_nd_39: 0,
 };
@@ -713,7 +713,7 @@ const HorasVooForm = () => {
                 municipio: "",
                 quantidade_hv: 0,
                 tipo_anv: "",
-                amparo: "",
+                amparo: initialFormState.amparo, // Mantém o valor padrão
                 valor_nd_30: 0,
                 valor_nd_39: 0,
             }));
