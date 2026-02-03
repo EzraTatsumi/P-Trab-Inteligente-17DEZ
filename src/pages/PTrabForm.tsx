@@ -56,14 +56,14 @@ const PTrabForm = () => {
 
   // Itens Operacionais ordenados alfabeticamente
   const itensOperacional = [
-    { id: "concessionaria", name: "Pagamento de Concessionárias" },
     { id: "complemento-alimentacao", name: "Complemento de Alimentação" },
-    { id: "diaria", name: "Pagamento de Diárias" },
     { id: "horas-voo-avex", name: "Horas de Voo (AvEx)" },
     { id: "locacao-estruturas", name: "Locação de Estruturas" },
     { id: "locacao-viatura", name: "Locação de Viatura" },
     { id: "material-consumo", name: "Material de Consumo" },
     { id: "outros-servicos", name: "Outros Serviços" },
+    { id: "concessionaria", name: "Pagamento de Concessionárias" },
+    { id: "diaria", name: "Pagamento de Diárias" },
     { id: "passagem-aerea", name: "Passagens" },
     { id: "servico-grafico", name: "Serviço Gráfico" },
     { id: "servico-lavanderia", name: "Serviço de Lavanderia" },
