@@ -4,7 +4,7 @@ import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber, formatDateDDMMMAA, formatCodug, formatDate } from "@/lib/formatUtils";
-import { FileSpreadsheet, Printer, Download, Briefcase } from "lucide-react";
+import { FileSpreadsheet, Printer, Download, Briefcase, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tables } from "@/integrations/supabase/types";
@@ -36,7 +36,7 @@ interface PTrabOperacionalReportProps {
   generateDiariaMemoriaCalculo: (registro: DiariaRegistro, diretrizesOp: Tables<'diretrizes_operacionais'> | null) => string;
   generateVerbaOperacionalMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; 
   generateSuprimentoFundosMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; 
-  generatePassagemMemoriaCalculo: (registro: PassagemRegistro) => string;
+  generatePassagemMemoriaCalculo: (registro: PassagemRegistro, diretrizesPassagens: Tables<'diretrizes_passagens'>[] | null) => string; // CORRIGIDO: Adicionando diretrizesPassagens
   generateConcessionariaMemoriaCalculo: (registro: ConcessionariaRegistroComDiretriz) => string; // NOVO: Adicionado função de memória
 }
 
@@ -284,7 +284,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria]);
   
   // 2. Efeito para buscar os detalhes das diretrizes de passagem e concessionária
-  // CORREÇÃO: Este useEffect agora depende apenas dos arrays de consolidação, que são estáveis (useMemo)
   useEffect(() => {
     const loadDiretrizDetails = async () => {
         setIsLoadingDiretrizDetails(true);
@@ -333,7 +332,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         
         setDiretrizDetailsMap(newPassagemDetailsMap);
         setConcessionariaDetailsMap(newConcessionariaDetailsMap);
-        setIsLoadingDiretrizDetails(false);
+        setIsLoadingDiretrizDetails(false); // SÓ SETA FALSE APÓS TUDO SER RESOLVIDO
     };
 
     // Dependências estáveis do useMemo
@@ -1298,6 +1297,16 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         </CardContent>
       </Card>
     );
+  }
+  
+  // NOVO: Bloqueia a renderização da tabela enquanto os detalhes das diretrizes estão sendo carregados
+  if (isLoadingDiretrizDetails) {
+      return (
+          <div className="min-h-[300px] flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span className="ml-2 text-muted-foreground">Carregando detalhes das diretrizes...</span>
+          </div>
+      );
   }
 
   return (
