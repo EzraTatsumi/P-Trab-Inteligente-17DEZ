@@ -1,0 +1,1469 @@
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { toast } from "sonner";
+import { ArrowLeft, Loader2, Save, Trash2, Pencil, Sparkles, AlertCircle, Check, Plane, Minus } from "lucide-react";
+import { sanitizeError } from "@/lib/errorUtils";
+import { useFormNavigation } from "@/hooks/useFormNavigation";
+import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Tables, TablesInsert } from "@/integrations/supabase/types";
+import { formatCurrency, formatCodug, formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
+import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/ptrabUtils";
+import { 
+    calculateHorasVooTotals, 
+    generateHorasVooMemoriaCalculo,
+    HorasVooRegistro,
+    ConsolidatedHorasVooRecord,
+    generateConsolidatedHorasVooMemoriaCalculo,
+    HorasVooForm as HorasVooFormType,
+} from "@/lib/horasVooUtils";
+import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
+import { OmSelector } from "@/components/OmSelector";
+import { cn } from "@/lib/utils"; 
+import CurrencyInput from "@/components/CurrencyInput";
+import { ConsolidatedHorasVooMemoria } from "@/components/ConsolidatedHorasVooMemoria"; // Será criado no próximo passo
+
+// Tipos de dados
+type HorasVooRegistroDB = Tables<'horas_voo_registros'>; 
+
+// Tipo de dados para OmSelector
+interface OMData {
+    id: string;
+    nome_om: string;
+    codug_om: string;
+    rm_vinculacao: string;
+    codug_rm_vinculacao: string;
+    cidade: string | null;
+    ativo: boolean;
+}
+
+// Tipo para o registro calculado antes de salvar (inclui campos de display)
+interface CalculatedHorasVoo extends TablesInsert<'horas_voo_registros'> {
+    tempId: string; // ID temporário para gerenciamento local
+    memoria_calculo_display: string; // A memória gerada
+    totalGeral: number;
+    // Campos Favorecida (para display)
+    om_favorecida: string;
+    ug_favorecida: string;
+}
+
+// Tipo para o registro consolidado (lote)
+interface ConsolidatedHorasVoo extends ConsolidatedHorasVooRecord {
+    groupKey: string;
+}
+
+// Estado inicial para o formulário
+interface HorasVooFormState extends HorasVooFormType {
+    om_favorecida: string; 
+    ug_favorecida: string; 
+    om_destino: string; // OM Detentora
+    ug_destino: string; // UG Detentora
+    dias_operacao: number;
+    fase_atividade: string;
+}
+
+const initialFormState: HorasVooFormState = {
+    om_favorecida: "", 
+    ug_favorecida: "", 
+    om_destino: "",
+    ug_destino: "",
+    dias_operacao: 0,
+    fase_atividade: "",
+    
+    // Campos específicos de HV
+    codug_destino: "",
+    municipio: "",
+    quantidade_hv: 0,
+    tipo_anv: "",
+    amparo: "",
+    valor_nd_30: 0,
+    valor_nd_39: 0,
+};
+
+// Helper function to compare form data structures
+const compareFormData = (data1: HorasVooFormState, data2: HorasVooFormState) => {
+    // Compare todos os campos relevantes
+    if (
+        data1.dias_operacao !== data2.dias_operacao ||
+        data1.om_favorecida !== data2.om_favorecida ||
+        data1.ug_favorecida !== data2.ug_favorecida ||
+        data1.om_destino !== data2.om_destino ||
+        data1.ug_destino !== data2.ug_destino ||
+        data1.fase_atividade !== data2.fase_atividade ||
+        
+        // Campos específicos de HV
+        data1.codug_destino !== data2.codug_destino ||
+        data1.municipio !== data2.municipio ||
+        data1.quantidade_hv !== data2.quantidade_hv ||
+        data1.tipo_anv !== data2.tipo_anv ||
+        data1.amparo !== data2.amparo ||
+        data1.valor_nd_30 !== data2.valor_nd_30 ||
+        data1.valor_nd_39 !== data2.valor_nd_39
+    ) {
+        return true;
+    }
+    
+    return false;
+};
+
+
+const HorasVooForm = () => {
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const ptrabId = searchParams.get('ptrabId');
+    const queryClient = useQueryClient();
+    const { handleEnterToNextField } = useFormNavigation();
+    
+    const [formData, setFormData] = useState<HorasVooFormState>(initialFormState);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [registroToDelete, setRegistroToDelete] = useState<HorasVooRegistroDB | null>(null);
+    
+    // NOVO ESTADO: Armazena o grupo completo a ser excluído/substituído
+    const [groupToDelete, setGroupToDelete] = useState<ConsolidatedHorasVoo | null>(null); 
+    const [groupToReplace, setGroupToReplace] = useState<ConsolidatedHorasVoo | null>(null); 
+    
+    // ESTADOS DE EDIÇÃO DE MEMÓRIA
+    const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
+    const [memoriaEdit, setMemoriaEdit] = useState<string>("");
+    
+    // NOVO ESTADO: Array de registros calculados, mas não salvos
+    const [pendingRegistros, setPendingRegistros] = useState<CalculatedHorasVoo[]>([]);
+    
+    // NOVO ESTADO: Armazena o último formData que gerou um item em pendingRegistros
+    const [lastStagedFormData, setLastStagedFormData] = useState<HorasVooFormState | null>(null);
+    
+    // Estado para rastrear o ID da OM Favorecida e OM Destino
+    const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
+    const [selectedOmDestinoId, setSelectedOmDestinoId] = useState<string | undefined>(undefined);
+    
+    // Dados mestres
+    const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
+        queryKey: ['ptrabData', ptrabId],
+        queryFn: () => fetchPTrabData(ptrabId!),
+        enabled: !!ptrabId,
+    });
+
+    // Registros de Horas de Voo
+    const { data: registros, isLoading: isLoadingRegistros } = useQuery<HorasVooRegistroDB[]>({
+        queryKey: ['horasVooRegistros', ptrabId],
+        queryFn: () => fetchPTrabRecords('horas_voo_registros', ptrabId!),
+        enabled: !!ptrabId,
+        select: (data) => data.sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
+    });
+    
+    // NOVO MEMO: Consolida os registros por lote de solicitação
+    const consolidatedRegistros = useMemo<ConsolidatedHorasVoo[]>(() => {
+        if (!registros) return [];
+
+        const groups = registros.reduce((acc, registro) => {
+            // Chave de consolidação: todos os campos que definem o lote de solicitação
+            const key = [
+                registro.organizacao,
+                registro.ug,
+                registro.om_detentora,
+                registro.ug_detentora,
+                registro.dias_operacao,
+                registro.fase_atividade,
+            ].join('|');
+
+            if (!acc[key]) {
+                acc[key] = {
+                    groupKey: key,
+                    organizacao: registro.organizacao,
+                    ug: registro.ug,
+                    om_detentora: registro.om_detentora || '',
+                    ug_detentora: registro.ug_detentora || '',
+                    dias_operacao: registro.dias_operacao,
+                    fase_atividade: registro.fase_atividade || '',
+                    records: [],
+                    totalGeral: 0,
+                    totalND30: 0,
+                    totalND39: 0,
+                };
+            }
+
+            acc[key].records.push(registro);
+            acc[key].totalGeral += Number(registro.valor_total || 0);
+            acc[key].totalND30 += Number(registro.valor_nd_30 || 0);
+            acc[key].totalND39 += Number(registro.valor_nd_39 || 0);
+
+            return acc;
+        }, {} as Record<string, ConsolidatedHorasVoo>);
+
+        // Ordenar por OM
+        return Object.values(groups).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
+    }, [registros]);
+    
+    const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
+    
+    // --- Mutations ---
+
+    // 1. Mutation for saving multiple new records (INSERT)
+    const insertMutation = useMutation({
+        mutationFn: async (newRecords: CalculatedHorasVoo[]) => {
+            const recordsToInsert: TablesInsert<'horas_voo_registros'>[] = newRecords.map(r => ({
+                p_trab_id: r.p_trab_id,
+                organizacao: r.organizacao,
+                ug: r.ug,
+                om_detentora: r.om_detentora,
+                ug_detentora: r.ug_detentora,
+                dias_operacao: r.dias_operacao,
+                fase_atividade: r.fase_atividade,
+                
+                codug_destino: r.codug_destino,
+                municipio: r.municipio,
+                quantidade_hv: r.quantidade_hv,
+                tipo_anv: r.tipo_anv,
+                amparo: r.amparo,
+                
+                valor_nd_30: r.valor_nd_30,
+                valor_nd_39: r.valor_nd_39,
+                valor_total: r.valor_total,
+                
+                detalhamento: r.detalhamento,
+                detalhamento_customizado: r.detalhamento_customizado,
+            }));
+
+            const { error } = await supabase
+                .from('horas_voo_registros')
+                .insert(recordsToInsert);
+
+            if (error) throw error;
+            
+            return recordsToInsert;
+        },
+        onSuccess: () => {
+            toast.success(`Sucesso! ${pendingRegistros.length} registro(s) de Horas de Voo adicionado(s).`);
+            setPendingRegistros([]);
+            setLastStagedFormData(null);
+            queryClient.invalidateQueries({ queryKey: ['horasVooRegistros', ptrabId] });
+            queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
+            
+            // Manter campos de contexto (OMs, Dias, Fase)
+            setFormData(prev => ({
+                ...initialFormState,
+                om_favorecida: prev.om_favorecida,
+                ug_favorecida: prev.ug_favorecida,
+                om_destino: prev.om_destino,
+                ug_destino: prev.ug_destino,
+                dias_operacao: prev.dias_operacao,
+                fase_atividade: prev.fase_atividade,
+            }));
+            
+            resetForm();
+        },
+        onError: (error) => { 
+            toast.error("Falha ao salvar registros.", { description: sanitizeError(error) });
+        }
+    });
+
+    // 2. Mutation for replacing an entire group of records (UPDATE/REPLACE)
+    const replaceGroupMutation = useMutation({
+        mutationFn: async ({ oldIds, newRecords }: { oldIds: string[], newRecords: CalculatedHorasVoo[] }) => {
+            // 1. Delete old records
+            const { error: deleteError } = await supabase
+                .from('horas_voo_registros')
+                .delete()
+                .in('id', oldIds);
+            if (deleteError) throw deleteError;
+            
+            // 2. Insert new records
+            const recordsToInsert: TablesInsert<'horas_voo_registros'>[] = newRecords.map(r => ({
+                p_trab_id: r.p_trab_id,
+                organizacao: r.organizacao,
+                ug: r.ug,
+                om_detentora: r.om_detentora,
+                ug_detentora: r.ug_detentora,
+                dias_operacao: r.dias_operacao,
+                fase_atividade: r.fase_atividade,
+                
+                codug_destino: r.codug_destino,
+                municipio: r.municipio,
+                quantidade_hv: r.quantidade_hv,
+                tipo_anv: r.tipo_anv,
+                amparo: r.amparo,
+                
+                valor_nd_30: r.valor_nd_30,
+                valor_nd_39: r.valor_nd_39,
+                valor_total: r.valor_total,
+                
+                detalhamento: r.detalhamento,
+                detalhamento_customizado: r.detalhamento_customizado,
+            }));
+
+            const { error: insertError } = await supabase
+                .from('horas_voo_registros')
+                .insert(recordsToInsert);
+
+            if (insertError) throw insertError;
+        },
+        onSuccess: () => {
+            toast.success("Lote de Horas de Voo atualizado com sucesso!");
+            setEditingId(null);
+            setPendingRegistros([]);
+            setGroupToReplace(null);
+            queryClient.invalidateQueries({ queryKey: ['horasVooRegistros', ptrabId] });
+            queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
+            resetForm();
+        },
+        onError: (error) => {
+            toast.error("Falha ao atualizar lote.", { description: sanitizeError(error) });
+        }
+    });
+
+    // 3. Mutation for deleting a group of records
+    const handleDeleteMutation = useMutation({
+        mutationFn: async (recordIds: string[]) => {
+            const { error } = await supabase
+                .from('horas_voo_registros')
+                .delete()
+                .in('id', recordIds);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            toast.success("Lote de Horas de Voo excluído com sucesso!");
+            queryClient.invalidateQueries({ queryKey: ['horasVooRegistros', ptrabId] });
+            queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
+            setShowDeleteDialog(false);
+            setRegistroToDelete(null);
+            setGroupToDelete(null);
+        },
+        onError: (error) => {
+            toast.error("Falha ao excluir lote.", { description: sanitizeError(error) });
+        }
+    });
+    
+    // Efeito de inicialização da OM Favorecida (do PTrab)
+    useEffect(() => {
+        if (ptrabData && !editingId) {
+            // Preenchimento automático da OM Favorecida com dados do PTrab
+            const omFavorecida = oms?.find(om => om.nome_om === ptrabData.nome_om && om.codug_om === ptrabData.codug_om);
+            
+            if (omFavorecida) {
+                setSelectedOmFavorecidaId(omFavorecida.id);
+                setSelectedOmDestinoId(omFavorecida.id); // Sincroniza OM Destino
+                setFormData(prev => ({
+                    ...initialFormState,
+                    om_favorecida: omFavorecida.nome_om,
+                    ug_favorecida: omFavorecida.codug_om,
+                    om_destino: omFavorecida.nome_om, // Preenchimento automático
+                    ug_destino: omFavorecida.codug_om, // Preenchimento automático
+                }));
+            }
+        } else if (ptrabData && editingId) {
+            // Modo Edição: Preencher OMs
+            const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
+            setSelectedOmFavorecidaId(omFavorecida?.id);
+            
+            const omDestino = oms?.find(om => om.nome_om === formData.om_destino && om.codug_om === formData.ug_destino);
+            setSelectedOmDestinoId(omDestino?.id);
+        }
+    }, [ptrabData, oms, editingId]);
+    
+    // =================================================================
+    // CÁLCULOS E MEMÓRIA (MEMOIZED)
+    // =================================================================
+    
+    const calculos = useMemo(() => {
+        if (!ptrabData) {
+            return {
+                totalGeral: 0,
+                memoria: "Preencha os dados de solicitação.",
+            };
+        }
+        
+        try {
+            const { valor_total } = calculateHorasVooTotals(formData);
+            
+            // Cria um registro temporário para gerar a memória
+            const tempRegistro: HorasVooRegistro = {
+                id: 'temp',
+                p_trab_id: ptrabId!,
+                organizacao: formData.om_favorecida,
+                ug: formData.ug_favorecida,
+                om_detentora: formData.om_destino,
+                ug_detentora: formData.ug_destino,
+                dias_operacao: formData.dias_operacao,
+                fase_atividade: formData.fase_atividade,
+                codug_destino: formData.codug_destino,
+                municipio: formData.municipio,
+                quantidade_hv: formData.quantidade_hv,
+                tipo_anv: formData.tipo_anv,
+                amparo: formData.amparo,
+                valor_nd_30: formData.valor_nd_30,
+                valor_nd_39: formData.valor_nd_39,
+                valor_total: valor_total,
+                detalhamento: '',
+                detalhamento_customizado: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            
+            const memoria = generateHorasVooMemoriaCalculo(tempRegistro);
+            
+            return {
+                totalGeral: valor_total,
+                memoria,
+            };
+        } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : "Erro desconhecido no cálculo.";
+            return {
+                totalGeral: 0,
+                memoria: `Erro ao calcular: ${errorMessage}`,
+            };
+        }
+    }, [formData, ptrabData, ptrabId]);
+    
+    // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do lastStagedFormData)
+    const isFormDirty = useMemo(() => {
+        if (pendingRegistros.length > 0 && lastStagedFormData) {
+            return compareFormData(formData, lastStagedFormData);
+        }
+        return false;
+    }, [formData, pendingRegistros.length, lastStagedFormData]);
+    
+    // NOVO: Cálculo do total de todos os itens pendentes
+    const totalPendingRegistros = useMemo(() => {
+        return pendingRegistros.reduce((sum, item) => sum + item.valor_total, 0);
+    }, [pendingRegistros]);
+    
+    // =================================================================
+    // HANDLERS DE AÇÃO
+    // =================================================================
+
+    const resetForm = () => {
+        setEditingId(null);
+        setGroupToReplace(null);
+        setFormData(prev => ({
+            ...initialFormState,
+            // Manter a OM Favorecida (do PTrab)
+            om_favorecida: prev.om_favorecida,
+            ug_favorecida: prev.ug_favorecida,
+            om_destino: prev.om_destino,
+            ug_destino: prev.ug_destino,
+            // Resetar campos de solicitação
+            dias_operacao: prev.dias_operacao,
+            fase_atividade: prev.fase_atividade,
+        }));
+        setEditingMemoriaId(null); 
+        setMemoriaEdit("");
+        setLastStagedFormData(null); 
+    };
+    
+    const handleClearPending = () => {
+        setPendingRegistros([]);
+        setLastStagedFormData(null);
+        setEditingId(null);
+        setGroupToReplace(null);
+        resetForm();
+    };
+
+    const handleEdit = (group: ConsolidatedHorasVoo) => {
+        if (pendingRegistros.length > 0) {
+            toast.warning("Salve ou limpe os itens pendentes antes de editar um registro existente.");
+            return;
+        }
+        
+        // Limpa estados pendentes
+        setPendingRegistros([]);
+        setLastStagedFormData(null);
+        
+        // Define o modo edição
+        setEditingId(group.records[0].id); // Usa o ID do primeiro registro para controle de UI
+        setGroupToReplace(group); // Armazena o grupo original para substituição
+        
+        // 1. Configurar OM Favorecida e OM Destino
+        const omFavorecidaToEdit = oms?.find(om => om.nome_om === group.organizacao && om.codug_om === group.ug);
+        setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
+        
+        const omDestinoToEdit = oms?.find(om => om.nome_om === group.om_detentora && om.codug_om === group.ug_detentora);
+        setSelectedOmDestinoId(omDestinoToEdit?.id);
+        
+        // 2. Populate formData com os dados do PRIMEIRO registro do grupo (para edição)
+        const firstRecord = group.records[0];
+        
+        const newFormData: HorasVooFormState = {
+            om_favorecida: group.organizacao, 
+            ug_favorecida: group.ug, 
+            om_destino: group.om_detentora,
+            ug_destino: group.ug_detentora,
+            dias_operacao: group.dias_operacao,
+            fase_atividade: group.fase_atividade || "",
+            
+            // Campos específicos de HV (do primeiro registro)
+            codug_destino: firstRecord.codug_destino,
+            municipio: firstRecord.municipio,
+            quantidade_hv: firstRecord.quantidade_hv,
+            tipo_anv: firstRecord.tipo_anv,
+            amparo: firstRecord.amparo || "",
+            valor_nd_30: firstRecord.valor_nd_30,
+            valor_nd_39: firstRecord.valor_nd_39,
+        };
+        setFormData(newFormData);
+        
+        // 3. Gerar os itens pendentes (staging) imediatamente com os dados originais
+        const newPendingItems: CalculatedHorasVoo[] = group.records.map(registro => {
+            const { valor_total } = calculateHorasVooTotals(registro);
+            
+            const calculatedFormData: HorasVooRegistro = {
+                ...registro,
+                valor_total: valor_total,
+            };
+
+            let memoria = generateHorasVooMemoriaCalculo(calculatedFormData);
+            
+            return {
+                tempId: registro.id, // Usamos o ID real do DB como tempId para rastreamento
+                p_trab_id: ptrabId!,
+                organizacao: registro.organizacao, 
+                ug: registro.ug, 
+                dias_operacao: registro.dias_operacao,
+                fase_atividade: registro.fase_atividade,
+                om_detentora: registro.om_detentora,
+                ug_detentora: registro.ug_detentora,
+                
+                codug_destino: registro.codug_destino,
+                municipio: registro.municipio,
+                quantidade_hv: registro.quantidade_hv,
+                tipo_anv: registro.tipo_anv,
+                amparo: registro.amparo,
+                valor_nd_30: registro.valor_nd_30,
+                valor_nd_39: registro.valor_nd_39,
+                
+                valor_total: valor_total,
+                detalhamento: registro.detalhamento, 
+                detalhamento_customizado: registro.detalhamento_customizado, 
+                
+                totalGeral: valor_total,
+                memoria_calculo_display: memoria, 
+                om_favorecida: registro.organizacao,
+                ug_favorecida: registro.ug,
+            } as CalculatedHorasVoo;
+        });
+        
+        setPendingRegistros(newPendingItems);
+        setLastStagedFormData(newFormData); // Marca o formulário como staged (limpo)
+        
+        toast.info("Modo Edição ativado. Altere os dados na Seção 2 e clique em 'Recalcular/Revisar Lote'.");
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleConfirmDelete = (group: ConsolidatedHorasVoo) => {
+        // Usamos o primeiro registro apenas para exibir o nome da OM no diálogo
+        setRegistroToDelete(group.records[0]); 
+        setGroupToDelete(group); // Armazena o grupo completo para exclusão
+        setShowDeleteDialog(true);
+    };
+
+    // Adiciona o item calculado à lista pendente OU prepara a atualização (staging)
+    const handleStageCalculation = (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        try {
+            // 1. Validação básica
+            if (formData.dias_operacao <= 0) {
+                throw new Error("O número de dias deve ser maior que zero.");
+            }
+            if (formData.quantidade_hv <= 0) {
+                throw new Error("A quantidade de Horas de Voo deve ser maior que zero.");
+            }
+            if (!formData.om_favorecida || !formData.ug_favorecida) {
+                throw new Error("A OM Favorecida é obrigatória.");
+            }
+            if (!formData.om_destino || !formData.ug_destino) {
+                throw new Error("A OM Detentora do Recurso é obrigatória.");
+            }
+            if (!formData.municipio || !formData.codug_destino || !formData.tipo_anv) {
+                throw new Error("Preencha todos os campos de Horas de Voo (Município, CODUG, Tipo Anv).");
+            }
+            if (formData.valor_nd_30 + formData.valor_nd_39 <= 0) {
+                throw new Error("O valor total (ND 30 + ND 39) deve ser maior que zero.");
+            }
+            
+            // 2. Gerar o registro (Horas de Voo é sempre um registro único por submissão)
+            const { valor_total } = calculateHorasVooTotals(formData);
+            
+            const calculatedFormData: HorasVooRegistro = {
+                id: crypto.randomUUID(), // ID temporário para gerar memória
+                p_trab_id: ptrabId!,
+                organizacao: formData.om_favorecida, 
+                ug: formData.ug_favorecida, 
+                dias_operacao: formData.dias_operacao,
+                fase_atividade: formData.fase_atividade,
+                
+                om_detentora: formData.om_destino,
+                ug_detentora: formData.ug_destino,
+                
+                codug_destino: formData.codug_destino,
+                municipio: formData.municipio,
+                quantidade_hv: formData.quantidade_hv,
+                tipo_anv: formData.tipo_anv,
+                amparo: formData.amparo,
+                
+                valor_nd_30: formData.valor_nd_30,
+                valor_nd_39: formData.valor_nd_39,
+                valor_total: valor_total,
+                
+                detalhamento: `Horas de Voo (${formData.tipo_anv}) para ${formData.municipio}`, 
+                detalhamento_customizado: null, 
+                
+                // Campos obrigatórios do tipo DB
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            } as HorasVooRegistro;
+
+            let memoria = generateHorasVooMemoriaCalculo(calculatedFormData);
+            
+            const newPendingItem: CalculatedHorasVoo = {
+                tempId: crypto.randomUUID(), 
+                p_trab_id: ptrabId!,
+                organizacao: formData.om_favorecida, 
+                ug: formData.ug_favorecida, 
+                dias_operacao: formData.dias_operacao,
+                fase_atividade: formData.fase_atividade,
+                om_detentora: formData.om_destino,
+                ug_detentora: formData.ug_destino,
+                
+                codug_destino: formData.codug_destino,
+                municipio: formData.municipio,
+                quantidade_hv: formData.quantidade_hv,
+                tipo_anv: formData.tipo_anv,
+                amparo: formData.amparo,
+                valor_nd_30: formData.valor_nd_30,
+                valor_nd_39: formData.valor_nd_39,
+                
+                valor_total: valor_total,
+                detalhamento: calculatedFormData.detalhamento, 
+                detalhamento_customizado: null, 
+                
+                totalGeral: valor_total,
+                memoria_calculo_display: memoria, 
+                om_favorecida: formData.om_favorecida,
+                ug_favorecida: formData.ug_favorecida,
+            } as CalculatedHorasVoo;
+            
+            if (editingId) {
+                // MODO EDIÇÃO: Geramos o novo registro e o colocamos em pendingRegistros
+                
+                // Preserva a memória customizada do registro original, se existir
+                let memoriaCustomizadaTexto: string | null = null;
+                if (groupToReplace) {
+                    const originalRecord = groupToReplace.records.find(r => r.id === editingId);
+                    if (originalRecord) {
+                        memoriaCustomizadaTexto = originalRecord.detalhamento_customizado;
+                    }
+                }
+                
+                // Aplicamos a memória customizada ao item
+                if (memoriaCustomizadaTexto) {
+                    newPendingItem.tempId = editingId; 
+                    newPendingItem.detalhamento_customizado = memoriaCustomizadaTexto;
+                }
+                
+                setPendingRegistros([newPendingItem]); // Armazena o novo lote completo (apenas 1 item)
+                setLastStagedFormData(formData); // Marca o formulário como staged
+                
+                toast.info("Cálculo atualizado. Revise e confirme a atualização na Seção 3.");
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); 
+                return;
+            }
+            
+            // MODO ADIÇÃO: Adicionar o item gerado à lista pendente
+            setPendingRegistros(prev => [...prev, newPendingItem]);
+            
+            // Atualiza o lastStagedFormData para o estado atual do formulário
+            setLastStagedFormData(formData);
+            
+            toast.info(`Item de Horas de Voo adicionado à lista pendente.`);
+            
+            // Limpa apenas os campos específicos de HV para permitir a adição de outro item
+            setFormData(prev => ({
+                ...prev,
+                codug_destino: "",
+                municipio: "",
+                quantidade_hv: 0,
+                tipo_anv: "",
+                amparo: "",
+                valor_nd_30: 0,
+                valor_nd_39: 0,
+            }));
+            
+        } catch (err: any) {
+            toast.error(err.message || "Erro desconhecido ao calcular.");
+        }
+    };
+    
+    // Salva todos os itens pendentes no DB
+    const handleSavePendingRegistros = () => {
+        if (pendingRegistros.length === 0) {
+            toast.warning("Nenhum item pendente para salvar.");
+            return;
+        }
+        
+        insertMutation.mutate(pendingRegistros);
+    };
+    
+    // Confirma a atualização do item estagiado no DB
+    const handleCommitStagedUpdate = () => {
+        if (!editingId || !groupToReplace) {
+            toast.error("Erro: Dados de atualização incompletos.");
+            return;
+        }
+        
+        // 1. IDs dos registros antigos para deletar
+        const oldIds = groupToReplace.records.map(r => r.id);
+        
+        // 2. Novos registros (pendingRegistros) para inserir
+        replaceGroupMutation.mutate({ oldIds, newRecords: pendingRegistros });
+    };
+    
+    // Remove item da lista pendente
+    const handleRemovePending = (tempId: string) => {
+        setPendingRegistros(prev => {
+            const newPending = prev.filter(p => p.tempId !== tempId);
+            if (newPending.length === 0) {
+                setLastStagedFormData(null);
+            }
+            return newPending;
+        });
+        toast.info("Item removido da lista pendente.");
+    };
+    
+    // Handler para a OM Favorecida (OM do PTrab)
+    const handleOmFavorecidaChange = (omData: OMData | undefined) => {
+        if (omData) {
+            setSelectedOmFavorecidaId(omData.id);
+            setSelectedOmDestinoId(omData.id); // Sincroniza OM Detentora
+            setFormData(prev => ({
+                ...prev,
+                om_favorecida: omData.nome_om,
+                ug_favorecida: omData.codug_om,
+                om_destino: omData.nome_om, // Preenchimento automático
+                ug_destino: omData.codug_om, // Preenchimento automático
+            }));
+        } else {
+            setSelectedOmFavorecidaId(undefined);
+            setSelectedOmDestinoId(undefined); // Limpa OM Detentora
+            setFormData(prev => ({
+                ...prev,
+                om_favorecida: "",
+                ug_favorecida: "",
+                om_destino: "", // Limpa OM Detentora
+                ug_destino: "", // Limpa UG Detentora
+            }));
+        }
+    };
+    
+    // Handler para a OM Detentora do Recurso
+    const handleOmDestinoChange = (omData: OMData | undefined) => {
+        if (omData) {
+            setSelectedOmDestinoId(omData.id);
+            setFormData(prev => ({
+                ...prev,
+                om_destino: omData.nome_om,
+                ug_destino: omData.codug_om,
+            }));
+        } else {
+            setSelectedOmDestinoId(undefined);
+            setFormData(prev => ({
+                ...prev,
+                om_destino: "",
+                ug_destino: "",
+            }));
+        }
+    };
+    
+    const handleFaseAtividadeChange = (fase: string) => {
+        setFormData(prev => ({
+            ...prev,
+            fase_atividade: fase,
+        }));
+    };
+    
+    // --- Lógica de Edição de Memória ---
+    
+    const handleIniciarEdicaoMemoria = (group: ConsolidatedHorasVoo, memoriaCompleta: string) => {
+        const firstRecordId = group.records[0].id;
+        setEditingMemoriaId(firstRecordId);
+        setMemoriaEdit(memoriaCompleta || "");
+        toast.info("Editando memória de cálculo.");
+    };
+
+    const handleCancelarEdicaoMemoria = () => {
+        setEditingMemoriaId(null);
+        setMemoriaEdit("");
+    };
+
+    const handleSalvarMemoriaCustomizada = async (registroId: string) => {
+        try {
+            const { error } = await supabase
+                .from("horas_voo_registros")
+                .update({
+                    detalhamento_customizado: memoriaEdit.trim() || null, 
+                })
+                .eq("id", registroId);
+
+            if (error) throw error;
+
+            toast.success("Memória de cálculo atualizada com sucesso!");
+            handleCancelarEdicaoMemoria();
+            queryClient.invalidateQueries({ queryKey: ["horasVooRegistros", ptrabId] });
+        } catch (error) {
+            console.error("Erro ao salvar memória:", error);
+            toast.error(sanitizeError(error));
+        }
+    };
+
+    const handleRestaurarMemoriaAutomatica = async (registroId: string) => {
+        if (!confirm("Deseja realmente restaurar a memória de cálculo automática? O texto customizado será perdido.")) {
+            return;
+        }
+        
+        try {
+            const { error } = await supabase
+                .from("horas_voo_registros")
+                .update({
+                    detalhamento_customizado: null,
+                })
+                .eq("id", registroId);
+
+            if (error) throw error;
+
+            toast.success("Memória de cálculo restaurada!");
+            queryClient.invalidateQueries({ queryKey: ["horasVooRegistros", ptrabId] });
+        } catch (error) {
+            console.error("Erro ao restaurar memória:", error);
+            toast.error(sanitizeError(error));
+        }
+    };
+    
+    // =================================================================
+    // RENDERIZAÇÃO
+    // =================================================================
+
+    const isGlobalLoading = isLoadingPTrab || isLoadingRegistros || isLoadingOms;
+    const isSaving = insertMutation.isPending || replaceGroupMutation.isPending || handleDeleteMutation.isPending;
+
+    if (isGlobalLoading) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Carregando dados do P Trab...</span>
+            </div>
+        );
+    }
+
+    const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
+    
+    // Lógica de abertura da Seção 2: Depende apenas da OM Favorecida e Fase da Atividade
+    const isBaseFormReady = formData.om_favorecida.length > 0 && 
+                            formData.ug_favorecida.length > 0 && 
+                            formData.fase_atividade.length > 0;
+
+    // Verifica se os campos numéricos da Solicitação estão preenchidos
+    const isSolicitationDataReady = formData.dias_operacao > 0 &&
+                                    formData.quantidade_hv > 0 &&
+                                    formData.om_destino.length > 0 &&
+                                    formData.ug_destino.length > 0 &&
+                                    formData.codug_destino.length > 0 &&
+                                    formData.municipio.length > 0 &&
+                                    formData.tipo_anv.length > 0 &&
+                                    (formData.valor_nd_30 + formData.valor_nd_39 > 0);
+
+    const isCalculationReady = isBaseFormReady && isSolicitationDataReady;
+    
+    // Lógica para a Seção 3
+    const itemsToDisplay = pendingRegistros;
+    const isStagingUpdate = !!editingId && pendingRegistros.length > 0;
+
+    return (
+        <div className="min-h-screen bg-background p-4 md:p-8">
+            <div className="max-w-6xl mx-auto space-y-6">
+                <Button variant="ghost" onClick={() => navigate(`/ptrab/form?ptrabId=${ptrabId}`)} className="mb-4">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Voltar
+                </Button>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>
+                            Horas de Voo (AvEx)
+                        </CardTitle>
+                        <CardDescription>
+                            Solicitação de recursos para custeio de Horas de Voo da Aviação do Exército.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleStageCalculation} className="space-y-8">
+                            
+                            {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
+                            <section className="space-y-4 border-b pb-6">
+                                <h3 className="text-lg font-semibold flex items-center gap-2">
+                                    1. Dados da Organização
+                                </h3>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {/* OM FAVORECIDA (Preenchimento automático do PTrab) */}
+                                    <div className="space-y-2 col-span-1">
+                                        <Label htmlFor="om_favorecida">OM Favorecida *</Label>
+                                        <OmSelector
+                                            selectedOmId={selectedOmFavorecidaId}
+                                            onChange={handleOmFavorecidaChange}
+                                            placeholder="Selecione a OM Favorecida"
+                                            disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingRegistros.length > 0}
+                                            initialOmName={editingId ? formData.om_favorecida : ptrabData?.nome_om}
+                                            initialOmUg={editingId ? formData.ug_favorecida : ptrabData?.codug_om}
+                                        />
+                                    </div>
+                                    <div className="space-y-2 col-span-1">
+                                        <Label htmlFor="ug_favorecida">UG Favorecida</Label>
+                                        <Input
+                                            id="ug_favorecida"
+                                            value={formatCodug(formData.ug_favorecida)}
+                                            disabled
+                                            className="bg-muted/50"
+                                        />
+                                    </div>
+                                    
+                                    <div className="space-y-2 col-span-1">
+                                        <Label htmlFor="fase_atividade">Fase da Atividade *</Label>
+                                        <FaseAtividadeSelect
+                                            value={formData.fase_atividade}
+                                            onChange={handleFaseAtividadeChange}
+                                            disabled={!isPTrabEditable || isSaving || pendingRegistros.length > 0}
+                                        />
+                                    </div>
+                                </div>
+                            </section>
+
+                            {/* SEÇÃO 2: CONFIGURAR ITEM (DADOS DE HV) */}
+                            {isBaseFormReady && (
+                                <section className="space-y-4 border-b pb-6">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                                        2. Configurar Item de Horas de Voo
+                                    </h3>
+                                    
+                                    <Card className="mt-6 bg-muted/50 rounded-lg p-4">
+                                        
+                                        {/* Dados da Solicitação (Dias, OM Detentora) */}
+                                        <Card className="rounded-lg mb-4">
+                                            <CardHeader className="py-3">
+                                                <CardTitle className="text-base font-semibold">Período e OM Detentora do Recurso</CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="pt-2">
+                                                <div className="p-4 bg-background rounded-lg border">
+                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                        
+                                                        {/* CAMPO 1: DIAS OPERAÇÃO (Período) */}
+                                                        <div className="space-y-2 col-span-1">
+                                                            <Label htmlFor="dias_operacao">Período (Nr Dias) *</Label>
+                                                            <Input
+                                                                id="dias_operacao"
+                                                                type="number"
+                                                                min={1}
+                                                                placeholder="Ex: 7"
+                                                                value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
+                                                                onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
+                                                                required
+                                                                disabled={!isPTrabEditable || isSaving}
+                                                                onKeyDown={handleEnterToNextField}
+                                                                onWheel={(e) => e.currentTarget.blur()}
+                                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                            />
+                                                        </div>
+                                                        
+                                                        {/* CAMPO 2: OM DETENTORA */}
+                                                        <div className="space-y-2 col-span-2">
+                                                            <Label htmlFor="om_destino">OM Detentora do Recurso *</Label>
+                                                            <OmSelector
+                                                                selectedOmId={selectedOmDestinoId}
+                                                                onChange={handleOmDestinoChange}
+                                                                placeholder="Selecione a OM Detentora"
+                                                                disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingRegistros.length > 0}
+                                                                initialOmName={editingId ? formData.om_destino : formData.om_favorecida}
+                                                                initialOmUg={editingId ? formData.ug_destino : formData.ug_favorecida}
+                                                            />
+                                                        </div>
+
+                                                        {/* CAMPO 3: UG DETENTORA */}
+                                                        <div className="space-y-2 col-span-1">
+                                                            <Label htmlFor="ug_destino">UG Detentora</Label>
+                                                            <Input
+                                                                id="ug_destino"
+                                                                value={formatCodug(formData.ug_destino)}
+                                                                disabled
+                                                                className="bg-muted/50"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                        
+                                        {/* Detalhes das Horas de Voo */}
+                                        <Card className="mt-4 rounded-lg p-4 bg-background">
+                                            <h4 className="font-semibold text-base mb-4">
+                                                Detalhes da Solicitação de Horas de Voo
+                                            </h4>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                {/* CODUG Destino */}
+                                                <div className="space-y-2 col-span-1">
+                                                    <Label htmlFor="codug_destino">CODUG Destino *</Label>
+                                                    <Input
+                                                        id="codug_destino"
+                                                        placeholder="Ex: 01001"
+                                                        value={formData.codug_destino}
+                                                        onChange={(e) => setFormData({ ...formData, codug_destino: e.target.value })}
+                                                        required
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                    />
+                                                </div>
+                                                
+                                                {/* Município */}
+                                                <div className="space-y-2 col-span-2">
+                                                    <Label htmlFor="municipio">Município *</Label>
+                                                    <Input
+                                                        id="municipio"
+                                                        placeholder="Ex: Taubaté - SP"
+                                                        value={formData.municipio}
+                                                        onChange={(e) => setFormData({ ...formData, municipio: e.target.value })}
+                                                        required
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                    />
+                                                </div>
+                                                
+                                                {/* Tipo de Aeronave */}
+                                                <div className="space-y-2 col-span-1">
+                                                    <Label htmlFor="tipo_anv">Tipo de Anv *</Label>
+                                                    <Input
+                                                        id="tipo_anv"
+                                                        placeholder="Ex: HM-1"
+                                                        value={formData.tipo_anv}
+                                                        onChange={(e) => setFormData({ ...formData, tipo_anv: e.target.value })}
+                                                        required
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                    />
+                                                </div>
+                                                
+                                                {/* Quantidade de HV */}
+                                                <div className="space-y-2 col-span-1">
+                                                    <Label htmlFor="quantidade_hv">Quantidade de HV *</Label>
+                                                    <Input
+                                                        id="quantidade_hv"
+                                                        type="number"
+                                                        min={0.01}
+                                                        step={0.01}
+                                                        placeholder="Ex: 10.5"
+                                                        value={formData.quantidade_hv === 0 ? "" : formData.quantidade_hv}
+                                                        onChange={(e) => setFormData({ ...formData, quantidade_hv: parseFloat(e.target.value) || 0 })}
+                                                        required
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                        onWheel={(e) => e.currentTarget.blur()}
+                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                    />
+                                                </div>
+                                                
+                                                {/* Amparo */}
+                                                <div className="space-y-2 col-span-3">
+                                                    <Label htmlFor="amparo">Amparo Legal/Diretriz</Label>
+                                                    <Input
+                                                        id="amparo"
+                                                        placeholder="Ex: Portaria 123/2024"
+                                                        value={formData.amparo}
+                                                        onChange={(e) => setFormData({ ...formData, amparo: e.target.value })}
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                    />
+                                                </div>
+                                                
+                                                {/* ND 30 */}
+                                                <div className="space-y-2 col-span-2">
+                                                    <Label htmlFor="valor_nd_30">Valor ND 33.90.30 (Custeio) *</Label>
+                                                    <CurrencyInput
+                                                        id="valor_nd_30"
+                                                        value={formData.valor_nd_30}
+                                                        onValueChange={(value) => setFormData({ ...formData, valor_nd_30: value })}
+                                                        placeholder="Ex: R$ 10.000,00"
+                                                        required
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                    />
+                                                </div>
+                                                
+                                                {/* ND 39 */}
+                                                <div className="space-y-2 col-span-2">
+                                                    <Label htmlFor="valor_nd_39">Valor ND 33.90.39 (Serviços) *</Label>
+                                                    <CurrencyInput
+                                                        id="valor_nd_39"
+                                                        value={formData.valor_nd_39}
+                                                        onValueChange={(value) => setFormData({ ...formData, valor_nd_39: value })}
+                                                        placeholder="Ex: R$ 5.000,00"
+                                                        required
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                    />
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
+                                                <span className="font-bold text-sm">VALOR TOTAL DA SOLICITAÇÃO:</span>
+                                                <span className={cn("font-extrabold text-lg text-primary")}>
+                                                    {formatCurrency(calculos.totalGeral)}
+                                                </span>
+                                            </div>
+                                        </Card>
+                                        
+                                        {/* BOTÕES DE AÇÃO */}
+                                        <div className="flex justify-end gap-3 pt-4">
+                                            <Button 
+                                                type="submit" 
+                                                disabled={!isPTrabEditable || isSaving || !isCalculationReady}
+                                                className="w-full md:w-auto bg-primary hover:bg-primary/90"
+                                            >
+                                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                                {editingId ? "Recalcular/Revisar Lote" : "Salvar Item na Lista"}
+                                            </Button>
+                                        </div>
+                                        
+                                    </Card> 
+                                    
+                                </section>
+                            )}
+
+                            {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
+                            {itemsToDisplay.length > 0 && (
+                                <section className="space-y-4 border-b pb-6">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                                        3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({itemsToDisplay.length} item(ns))
+                                    </h3>
+                                    
+                                    {/* Alerta de Validação Final */}
+                                    {isFormDirty && (
+                                        <Alert variant="destructive">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertDescription className="font-medium">
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados e não correspondem ao registro em revisão. Clique em "Recalcular/Revisar Lote" na Seção 2 para atualizar o cálculo.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                    
+                                    <div className="space-y-4">
+                                        {itemsToDisplay.map((item) => {
+                                            const totalND30 = item.valor_nd_30;
+                                            const totalND39 = item.valor_nd_39;
+                                            
+                                            const diasText = item.dias_operacao === 1 ? "dia" : "dias";
+                                            
+                                            const isOmDestinoDifferent = item.om_favorecida !== item.om_detentora || item.ug_favorecida !== item.ug_detentora;
+
+                                            return (
+                                                <Card 
+                                                    key={item.tempId} 
+                                                    className={cn(
+                                                        "border-2 shadow-md",
+                                                        "border-secondary bg-secondary/10"
+                                                    )}
+                                                >
+                                                    <CardContent className="p-4">
+                                                        
+                                                        <div className={cn("flex justify-between items-center pb-2 mb-2", "border-b border-secondary/30")}>
+                                                            <h4 className="font-bold text-base text-foreground">
+                                                                Horas de Voo ({item.tipo_anv}) - {item.municipio}
+                                                            </h4>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="font-extrabold text-lg text-foreground text-right">
+                                                                    {formatCurrency(item.valor_total)}
+                                                                </p>
+                                                                {!isStagingUpdate && (
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="icon" 
+                                                                        onClick={() => handleRemovePending(item.tempId)}
+                                                                        disabled={isSaving}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Detalhes da Solicitação */}
+                                                        <div className="grid grid-cols-2 gap-4 text-xs pt-1">
+                                                            <div className="space-y-1">
+                                                                <p className="font-medium">OM Favorecida:</p>
+                                                                <p className="font-medium">OM Detentora do Recurso:</p>
+                                                                <p className="font-medium">Qtd HV / Período:</p>
+                                                            </div>
+                                                            <div className="text-right space-y-1">
+                                                                <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
+                                                                <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>
+                                                                    {item.om_detentora} ({formatCodug(item.ug_detentora)})
+                                                                </p>
+                                                                <p className="font-medium">{item.quantidade_hv.toFixed(2)} HV / {item.dias_operacao} {diasText}</p>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="w-full h-[1px] bg-secondary/30 my-3" />
+
+                                                        <div className="flex justify-between text-xs">
+                                                            <span className="text-muted-foreground">ND 33.90.30 (Custeio):</span>
+                                                            <span className="font-medium text-green-600">{formatCurrency(totalND30)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-xs">
+                                                            <span className="text-muted-foreground">ND 33.90.39 (Serviços):</span>
+                                                            <span className="font-medium text-green-600">{formatCurrency(totalND39)}</span>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
+                                    </div>
+                                    
+                                    {/* VALOR TOTAL DO LOTE (PENDENTE / STAGING) */}
+                                    <Card className="bg-gray-100 shadow-inner">
+                                        <CardContent className="p-4 flex justify-between items-center">
+                                            <span className="font-bold text-base uppercase">
+                                                VALOR TOTAL DO LOTE
+                                            </span>
+                                            <span className="font-extrabold text-xl text-foreground">
+                                                {formatCurrency(totalPendingRegistros)}
+                                            </span>
+                                        </CardContent>
+                                    </Card>
+                                    
+                                    <div className="flex justify-end gap-3 pt-4">
+                                        {isStagingUpdate ? (
+                                            <>
+                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
+                                                    <XCircle className="mr-2 h-4 w-4" />
+                                                    Cancelar Edição
+                                                </Button>
+                                                <Button 
+                                                    type="button" 
+                                                    onClick={handleCommitStagedUpdate}
+                                                    disabled={isSaving || isFormDirty} 
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
+                                                >
+                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                                    Atualizar Lote
+                                                </Button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
+                                                    <XCircle className="mr-2 h-4 w-4" />
+                                                    Limpar Lista
+                                                </Button>
+                                                <Button 
+                                                    type="button" 
+                                                    onClick={handleSavePendingRegistros}
+                                                    disabled={isSaving || pendingRegistros.length === 0 || isFormDirty}
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
+                                                >
+                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                                    Salvar Registros
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
+                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
+                                <section className="space-y-4 border-b pb-6">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        <Sparkles className="h-5 w-5 text-accent" />
+                                        OMs Cadastradas ({consolidatedRegistros.length})
+                                    </h3>
+                                    
+                                    {consolidatedRegistros.map((group) => {
+                                        const totalOM = group.totalGeral;
+                                        const totalND30Consolidado = group.totalND30;
+                                        const totalND39Consolidado = group.totalND39;
+                                        
+                                        const diasOperacaoConsolidado = group.dias_operacao;
+                                        
+                                        const omName = group.organizacao;
+                                        const ug = group.ug;
+                                        const faseAtividade = group.fase_atividade || 'Não Definida';
+                                        
+                                        const diasText = diasOperacaoConsolidado === 1 ? 'dia' : 'dias';
+                                        
+                                        const isDifferentOm = group.om_detentora !== group.organizacao || group.ug_detentora !== group.ug;
+                                        const omDestino = group.om_detentora;
+                                        const ugDestino = group.ug_detentora;
+
+                                        return (
+                                            <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
+                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                        {omName} (UG: {formatCodug(ug)})
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {faseAtividade}
+                                                        </Badge>
+                                                    </h3>
+                                                    <span className="font-extrabold text-xl text-primary">
+                                                        {formatCurrency(totalOM)}
+                                                    </span>
+                                                </div>
+                                                
+                                                {/* CORPO CONSOLIDADO */}
+                                                <div className="space-y-3">
+                                                    <Card 
+                                                        key={group.groupKey} 
+                                                        className="p-3 bg-background border"
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex flex-col">
+                                                                <div className="flex items-center gap-2">
+                                                                    <h4 className="font-semibold text-base text-foreground">
+                                                                        Horas de Voo (AvEx)
+                                                                    </h4>
+                                                                </div>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {group.records.length} item(ns) | Período: {diasOperacaoConsolidado} {diasText}
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-extrabold text-xl text-foreground">
+                                                                    {formatCurrency(totalOM)}
+                                                                </span>
+                                                                {/* Botões de Ação */}
+                                                                <div className="flex gap-1 shrink-0">
+                                                                    <Button
+                                                                        type="button" 
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-8 w-8"
+                                                                        onClick={() => handleEdit(group)}
+                                                                        disabled={!isPTrabEditable || isSaving || pendingRegistros.length > 0}
+                                                                    >
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button
+                                                                        type="button" 
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => handleConfirmDelete(group)}
+                                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Detalhes da Alocação */}
+                                                        <div className="pt-2 border-t mt-2">
+                                                            {/* OM Detentora Recurso (Sempre visível, vermelha se diferente) */}
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-muted-foreground">OM Detentora Recurso:</span>
+                                                                <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
+                                                                    {omDestino} ({formatCodug(ugDestino)})
+                                                                </span>
+                                                            </div>
+                                                            {/* ND 30 */}
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-muted-foreground">ND 33.90.30 (Custeio):</span>
+                                                                <span className="text-green-600">{formatCurrency(totalND30Consolidado)}</span>
+                                                            </div>
+                                                            {/* ND 39 */}
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-muted-foreground">ND 33.90.39 (Serviços):</span>
+                                                                <span className="text-green-600">{formatCurrency(totalND39Consolidado)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </Card>
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
+                                </section>
+                            )}
+
+                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
+                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
+                                <div className="space-y-4 mt-8">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        📋 Memórias de Cálculos Detalhadas
+                                    </h3>
+                                    
+                                    {consolidatedRegistros.map(group => (
+                                        <ConsolidatedHorasVooMemoria
+                                            key={`memoria-view-${group.groupKey}`}
+                                            group={group}
+                                            isPTrabEditable={isPTrabEditable}
+                                            isSaving={isSaving}
+                                            editingMemoriaId={editingMemoriaId}
+                                            memoriaEdit={memoriaEdit}
+                                            setMemoriaEdit={setMemoriaEdit}
+                                            handleIniciarEdicaoMemoria={handleIniciarEdicaoMemoria}
+                                            handleCancelarEdicaoMemoria={handleCancelarEdicaoMemoria}
+                                            handleSalvarMemoriaCustomizada={handleSalvarMemoriaCustomizada}
+                                            handleRestaurarMemoriaAutomatica={handleRestaurarMemoriaAutomatica}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </form>
+                    </CardContent>
+                </Card>
+                
+                {/* Diálogo de Confirmação de Exclusão */}
+                <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                                <Trash2 className="h-5 w-5" />
+                                Confirmar Exclusão de Lote
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Tem certeza que deseja excluir o lote de Horas de Voo para a OM <span className="font-bold">{groupToDelete?.organizacao}</span>, contendo {groupToDelete?.records.length} item(ns)? Esta ação é irreversível.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogAction 
+                                onClick={() => groupToDelete && handleDeleteMutation.mutate(groupToDelete.records.map(r => r.id))}
+                                disabled={handleDeleteMutation.isPending}
+                                className="bg-destructive hover:bg-destructive/90"
+                            >
+                                {handleDeleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Excluir Lote
+                            </AlertDialogAction>
+                            <AlertDialogCancel disabled={handleDeleteMutation.isPending}>Cancelar</AlertDialogCancel>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
+        </div>
+    );
+};
+
+export default HorasVooForm;

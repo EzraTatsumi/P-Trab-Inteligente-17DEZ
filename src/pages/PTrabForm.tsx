@@ -205,6 +205,8 @@ const PTrabForm = () => {
       navigate(`/ptrab/suprimento-fundos?ptrabId=${ptrabId}`);
     } else if (itemId === 'passagem-aerea') {
       navigate(`/ptrab/passagem-aerea?ptrabId=${ptrabId}`);
+    } else if (itemId === 'horas-voo-avex') {
+      navigate(`/ptrab/horas-voo-avex?ptrabId=${ptrabId}`);
     } else if (itemId === 'concessionaria') {
       navigate(`/ptrab/concessionaria?ptrabId=${ptrabId}`);
     } else {

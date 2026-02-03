@@ -25,6 +25,7 @@ import DiariaForm from "./pages/DiariaForm";
 import VerbaOperacionalForm from "./pages/VerbaOperacionalForm";
 import SuprimentoFundosForm from "./pages/SuprimentoFundosForm";
 import PassagemForm from "./pages/PassagemForm";
+import HorasVooForm from "./pages/HorasVooForm";
 import ConcessionariaForm from "./pages/ConcessionariaForm";
 import NotFound from "./pages/NotFound";
 
@@ -48,6 +49,7 @@ const routes: RouteObject[] = [
   { path: "/ptrab/verba-operacional", element: <VerbaOperacionalForm /> },
   { path: "/ptrab/suprimento-fundos", element: <SuprimentoFundosForm /> },
   { path: "/ptrab/passagem-aerea", element: <PassagemForm /> },
+  { path: "/ptrab/horas-voo-avex", element: <HorasVooForm /> },
   { path: "/ptrab/concessionaria", element: <ConcessionariaForm /> },
   { path: "/config/custos-operacionais", element: <CustosOperacionaisPage /> },
   { path: "/config/diretrizes", element: <DiretrizesCusteioPage /> },
