@@ -416,7 +416,7 @@ const OmConfigPage = () => {
                           </TableCell>
                           <TableCell className="whitespace-nowrap">{om.rm_vinculacao}</TableCell>
                           <TableCell className="whitespace-nowrap">
-                            {formatCodug(om.codug_rm_vinculacao)}
+                            {om.codug_rm_vinculacao}
                           </TableCell>
                           <TableCell className="text-right space-x-2 whitespace-nowrap">
                             <Button 
