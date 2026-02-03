@@ -40,6 +40,7 @@ import { OmSelector } from "@/components/OmSelector";
 import { cn } from "@/lib/utils"; 
 import CurrencyInput from "@/components/CurrencyInput";
 import { ConsolidatedHorasVooMemoria } from "@/components/ConsolidatedHorasVooMemoria"; 
+import { TipoAnvSelect } from "@/components/TipoAnvSelect";
 
 // Tipos de dados
 type HorasVooRegistroDB = Tables<'horas_voo_registros'>; 
@@ -1016,14 +1017,10 @@ const HorasVooForm = () => {
                                                 {/* Tipo de Aeronave */}
                                                 <div className="space-y-2 col-span-1">
                                                     <Label htmlFor="tipo_anv">Tipo de Anv *</Label>
-                                                    <Input
-                                                        id="tipo_anv"
-                                                        placeholder="Ex: HM-1"
+                                                    <TipoAnvSelect
                                                         value={formData.tipo_anv}
-                                                        onChange={(e) => setFormData({ ...formData, tipo_anv: e.target.value })}
-                                                        required
+                                                        onChange={(value) => setFormData({ ...formData, tipo_anv: value })}
                                                         disabled={!isPTrabEditable || isSaving}
-                                                        onKeyDown={handleEnterToNextField}
                                                     />
                                                 </div>
                                                 
