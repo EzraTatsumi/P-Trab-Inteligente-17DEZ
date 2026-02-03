@@ -360,7 +360,7 @@ const HorasVooForm = () => {
             
             if (omFavorecida) {
                 setSelectedOmFavorecidaId(omFavorecida.id);
-                setSelectedOmDestinoId(omFavorecida.id); // Sincroniza OM Destino
+                setSelectedOmDestinoId(omFavorecida.id); // Sincroniza OM Detentora
                 setFormData(prev => ({
                     ...initialFormState,
                     om_favorecida: omFavorecida.nome_om,
@@ -431,7 +431,7 @@ const HorasVooForm = () => {
                 memoria: `Erro ao calcular: ${errorMessage}`,
             };
         }
-    }, [formData, ptrabData, ptrabId]);
+    }, [formData, ptrabId, ptrabData]);
     
     // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do lastStagedFormData)
     const isFormDirty = useMemo(() => {
@@ -1146,4 +1146,321 @@ const HorasVooForm = () => {
 
                             {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
                             {itemsToDisplay.length > 0 && (
-// ... (restante do componente)
+                                <section className="space-y-4 border-b pb-6">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                                        3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({itemsToDisplay.length} item(ns))
+                                    </h3>
+                                    
+                                    {/* Alerta de Validação Final (Modo Novo Registro) */}
+                                    {!editingId && isFormDirty && (
+                                        <Alert variant="destructive">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertDescription className="font-medium">
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados. Clique em "Salvar Item na Lista" na Seção 2 para atualizar o item pendente antes de salvar os registros.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                    
+                                    {/* Alerta de Validação Final (Apenas em modo de edição) */}
+                                    {editingId && isFormDirty && (
+                                        <Alert variant="destructive">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertDescription className="font-medium">
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados e não correspondem ao registro em revisão. Clique em "Recalcular/Revisar Lote" na Seção 2 para atualizar o cálculo.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                    
+                                    <div className="space-y-4">
+                                        {itemsToDisplay.map((item) => {
+                                            const totalND30 = item.valor_nd_30;
+                                            const totalND39 = item.valor_nd_39;
+                                            
+                                            const diasText = item.dias_operacao === 1 ? "dia" : "dias";
+                                            const isOmDestinoDifferent = item.om_favorecida !== item.om_detentora || item.ug_favorecida !== item.ug_detentora;
+
+                                            return (
+                                                <Card 
+                                                    key={item.tempId} 
+                                                    className={cn(
+                                                        "border-2 shadow-md",
+                                                        "border-secondary bg-secondary/10"
+                                                    )}
+                                                >
+                                                    <CardContent className="p-4">
+                                                        
+                                                        <div className={cn("flex justify-between items-center pb-2 mb-2", "border-b border-secondary/30")}>
+                                                            <h4 className="font-bold text-base text-foreground">
+                                                                Horas de Voo ({item.tipo_anv})
+                                                            </h4>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="font-extrabold text-lg text-foreground text-right">
+                                                                    {formatCurrency(item.valor_total)}
+                                                                </p>
+                                                                {!isStagingUpdate && (
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="icon" 
+                                                                        onClick={() => handleRemovePending(item.tempId)}
+                                                                        disabled={isSaving}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Detalhes da Solicitação */}
+                                                        <div className="grid grid-cols-2 gap-4 text-xs pt-1">
+                                                            <div className="space-y-1">
+                                                                <p className="font-medium">OM Favorecida:</p>
+                                                                <p className="font-medium">OM Detentora do Recurso:</p>
+                                                                <p className="font-medium">Qtd HV / Período:</p>
+                                                            </div>
+                                                            <div className="text-right space-y-1">
+                                                                <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
+                                                                <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>
+                                                                    {item.om_detentora} ({formatCodug(item.ug_detentora)})
+                                                                </p>
+                                                                <p className="font-medium">{formatNumber(item.quantidade_hv, 2)} h / {item.dias_operacao} {diasText}</p>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="w-full h-[1px] bg-secondary/30 my-3" />
+
+                                                        <div className="flex justify-between text-xs">
+                                                            <span className="text-muted-foreground">ND 33.90.30 (Custeio):</span>
+                                                            <span className="font-medium text-green-600">{formatCurrency(totalND30)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-xs">
+                                                            <span className="text-muted-foreground">ND 33.90.39 (Serviços):</span>
+                                                            <span className="font-medium text-green-600">{formatCurrency(totalND39)}</span>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
+                                    </div>
+                                    
+                                    {/* VALOR TOTAL DA OM (PENDENTE / STAGING) */}
+                                    <Card className="bg-gray-100 shadow-inner">
+                                        <CardContent className="p-4 flex justify-between items-center">
+                                            <span className="font-bold text-base uppercase">
+                                                VALOR TOTAL DO LOTE
+                                            </span>
+                                            <span className="font-extrabold text-xl text-foreground">
+                                                {formatCurrency(totalPendingRegistros)}
+                                            </span>
+                                        </CardContent>
+                                    </Card>
+                                    
+                                    <div className="flex justify-end gap-3 pt-4">
+                                        {isStagingUpdate ? (
+                                            <>
+                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
+                                                    <XCircle className="mr-2 h-4 w-4" />
+                                                    Cancelar Edição
+                                                </Button>
+                                                <Button 
+                                                    type="button" 
+                                                    onClick={handleCommitStagedUpdate}
+                                                    disabled={isSaving || isFormDirty} 
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
+                                                >
+                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                                    Atualizar Lote
+                                                </Button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
+                                                    <XCircle className="mr-2 h-4 w-4" />
+                                                    Limpar Lista
+                                                </Button>
+                                                <Button 
+                                                    type="button" 
+                                                    onClick={handleSavePendingRegistros}
+                                                    disabled={isSaving || pendingRegistros.length === 0 || isFormDirty}
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
+                                                >
+                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                                    Salvar Registros
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
+                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
+                                <section className="space-y-4 mt-8">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        <Sparkles className="h-5 w-5 text-accent" />
+                                        OMs Cadastradas ({consolidatedRegistros.length})
+                                    </h3>
+                                    
+                                    {consolidatedRegistros.map((group) => {
+                                        const totalOM = group.totalGeral;
+                                        const totalND30Consolidado = group.totalND30;
+                                        const totalND39Consolidado = group.totalND39;
+                                        
+                                        const omName = group.organizacao;
+                                        const ug = group.ug;
+                                        const faseAtividade = group.fase_atividade || 'Não Definida';
+                                        
+                                        const diasOperacaoConsolidado = group.dias_operacao;
+                                        const diasText = diasOperacaoConsolidado === 1 ? 'dia' : 'dias';
+                                        
+                                        const isDifferentOm = group.om_detentora !== group.organizacao || group.ug_detentora !== group.ug;
+                                        const omDestino = group.om_detentora;
+                                        const ugDestino = group.ug_detentora;
+
+                                        return (
+                                            <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
+                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                        {omName} (UG: {formatCodug(ug)})
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {faseAtividade}
+                                                        </Badge>
+                                                    </h3>
+                                                    <span className="font-extrabold text-xl text-primary">
+                                                        {formatCurrency(totalOM)}
+                                                    </span>
+                                                </div>
+                                                
+                                                {/* CORPO CONSOLIDADO */}
+                                                <div className="space-y-3">
+                                                    <Card 
+                                                        key={group.groupKey} 
+                                                        className="p-3 bg-background border"
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex flex-col">
+                                                                <div className="flex items-center gap-2">
+                                                                    <h4 className="font-semibold text-base text-foreground">
+                                                                        Horas de Voo ({group.records.length} registro(s))
+                                                                    </h4>
+                                                                </div>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    Período: {diasOperacaoConsolidado} {diasText}
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-extrabold text-xl text-foreground">
+                                                                    {formatCurrency(totalOM)}
+                                                                </span>
+                                                                {/* Botões de Ação */}
+                                                                <div className="flex gap-1 shrink-0">
+                                                                    <Button
+                                                                        type="button" 
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-8 w-8"
+                                                                        onClick={() => handleEdit(group)} // Passa o grupo consolidado
+                                                                        disabled={!isPTrabEditable || isSaving || pendingRegistros.length > 0}
+                                                                    >
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button
+                                                                        type="button" 
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => handleConfirmDelete(group)} // Passa o grupo consolidado
+                                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Detalhes da Alocação */}
+                                                        <div className="pt-2 border-t mt-2">
+                                                            {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-muted-foreground">OM Detentora Recurso:</span>
+                                                                <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
+                                                                    {omDestino} ({formatCodug(ugDestino)})
+                                                                </span>
+                                                            </div>
+                                                            {/* ND 33.90.30 */}
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-muted-foreground">ND 33.90.30 (Custeio):</span>
+                                                                <span className="text-green-600">{formatCurrency(totalND30Consolidado)}</span>
+                                                            </div>
+                                                            {/* ND 33.90.39 */}
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-muted-foreground">ND 33.90.39 (Serviços):</span>
+                                                                <span className="text-green-600">{formatCurrency(totalND39Consolidado)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </Card>
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
+                                </section>
+                            )}
+
+                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
+                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
+                                <div className="space-y-4 mt-8">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        📋 Memórias de Cálculos Detalhadas
+                                    </h3>
+                                    
+                                    {consolidatedRegistros.map(group => (
+                                        <ConsolidatedHorasVooMemoria
+                                            key={`memoria-view-${group.groupKey}`}
+                                            group={group}
+                                            isPTrabEditable={isPTrabEditable}
+                                            isSaving={isSaving}
+                                            editingMemoriaId={editingMemoriaId}
+                                            memoriaEdit={memoriaEdit}
+                                            setMemoriaEdit={setMemoriaEdit}
+                                            handleIniciarEdicaoMemoria={handleIniciarEdicaoMemoria}
+                                            handleCancelarEdicaoMemoria={handleCancelarEdicaoMemoria}
+                                            handleSalvarMemoriaCustomizada={handleSalvarMemoriaCustomizada}
+                                            handleRestaurarMemoriaAutomatica={handleRestaurarMemoriaAutomatica}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </form>
+                    </CardContent>
+                </Card>
+                
+                {/* Diálogo de Confirmação de Exclusão */}
+                <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                                <Trash2 className="h-5 w-5" />
+                                Confirmar Exclusão de Lote
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Tem certeza que deseja excluir o lote de Horas de Voo para a OM <span className="font-bold">{groupToDelete?.organizacao}</span>, contendo {groupToDelete?.records.length} registro(s)? Esta ação é irreversível.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogAction 
+                                onClick={() => groupToDelete && handleDeleteMutation.mutate(groupToDelete.records.map(r => r.id))}
+                                disabled={handleDeleteMutation.isPending}
+                                className="bg-destructive hover:bg-destructive/90"
+                            >
+                                {handleDeleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Excluir Lote
+                            </AlertDialogAction>
+                            <AlertDialogCancel disabled={handleDeleteMutation.isPending}>Cancelar</AlertDialogCancel>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
+        </div>
+    );
+};
+
+export default HorasVooForm;
