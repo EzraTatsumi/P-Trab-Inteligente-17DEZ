@@ -561,7 +561,7 @@ const HorasVooForm = () => {
             codug_destino: firstRecord.codug_destino,
             municipio: firstRecord.municipio,
             quantidade_hv: firstRecord.quantidade_hv,
-            tipo_anv: firstRecord.tipo_anv,
+            tipo_anv: firstRecord.tipo_anav,
             amparo: firstRecord.amparo || "",
             // Se for COTER, mantemos 0 no formData, senão, mantemos o valor original
             valor_nd_30: firstRecord.valor_nd_30,
@@ -1487,9 +1487,10 @@ const HorasVooForm = () => {
                                                             {/* ND 33.90.39 */}
                                                             <div className="flex justify-between text-xs">
                                                                 <span className="text-muted-foreground">ND 33.90.39 (Serviços):</span>
-                                                            <span className="text-green-600">
-                                                                {totalND39Consolidado === 0 ? (isCoter ? "A cargo do COTER" : formatCurrency(totalND39Consolidado)) : formatCurrency(totalND39Consolidado)}
-                                                            </span>
+                                                                <span className="text-green-600">
+                                                                    {totalND39Consolidado === 0 ? (isCoter ? "A cargo do COTER" : formatCurrency(totalND39Consolidado)) : formatCurrency(totalND39Consolidado)}
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </Card>
                                                 </div>
