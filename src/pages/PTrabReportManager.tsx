@@ -255,6 +255,15 @@ interface GranularDisplayItem {
   detailed_items: ItemClasseIII[];
 }
 
+// NOVO TIPO: Estrutura de agrupamento para o Relatório Operacional
+export interface GrupoOMOperacional {
+  diarias: DiariaRegistro[];
+  verbaOperacional: VerbaOperacionalRegistro[];
+  suprimentoFundos: VerbaOperacionalRegistro[];
+  passagens: PassagemRegistro[];
+  concessionarias: ConcessionariaRegistro[];
+}
+
 export interface GrupoOM {
   linhasQS: LinhaTabela[];
   linhasQR: LinhaTabela[];
@@ -264,7 +273,7 @@ export interface GrupoOM {
   linhasClasseVII: LinhaClasseII[];
   linhasClasseVIII: LinhaClasseII[];
   linhasClasseIX: LinhaClasseII[];
-  linhasClasseIII: LinhaClasseIII[]; 
+  linhasClasseIII: LinhaClasseIII[];
   linhasConcessionaria: LinhaConcessionaria[]; // NOVO: Inicializa Concessionária
 }
 
@@ -1257,6 +1266,72 @@ const PTrabReportManager = () => {
     };
   }, [nomeRM]);
   
+  // --- LÓGICA DE AGRUPAMENTO E ORDENAÇÃO OPERACIONAL (NOVO) ---
+  const gruposOperacionaisPorOM = useMemo(() => {
+    const grupos: Record<string, GrupoOMOperacional> = {};
+    const initializeGroup = (name: string) => {
+        if (!grupos[name]) {
+            grupos[name] = {
+                diarias: [],
+                verbaOperacional: [],
+                suprimentoFundos: [],
+                passagens: [],
+                concessionarias: []
+            };
+        }
+    };
+
+    // 1. Processar Diárias
+    registrosDiaria.forEach(r => {
+        initializeGroup(r.organizacao);
+        grupos[r.organizacao].diarias.push(r);
+    });
+
+    // 2. Processar Verba Operacional
+    registrosVerbaOperacional.forEach(r => {
+        initializeGroup(r.organizacao);
+        grupos[r.organizacao].verbaOperacional.push(r);
+    });
+
+    // 3. Processar Suprimento de Fundos
+    registrosSuprimentoFundos.forEach(r => {
+        initializeGroup(r.organizacao);
+        grupos[r.organizacao].suprimentoFundos.push(r);
+    });
+
+    // 4. Processar Passagens
+    registrosPassagem.forEach(r => {
+        initializeGroup(r.organizacao);
+        grupos[r.organizacao].passagens.push(r);
+    });
+
+    // 5. Processar Concessionárias
+    registrosConcessionaria.forEach(r => {
+        initializeGroup(r.organizacao);
+        grupos[r.organizacao].concessionarias.push(r);
+    });
+
+    return grupos;
+  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria]);
+
+  const omsOperacionaisOrdenadas = useMemo(() => {
+    const oms = Object.keys(gruposOperacionaisPorOM);
+    const rmName = nomeRM;
+    
+    return oms.sort((a, b) => {
+        const aPriority = getOMPriority(a, rmName);
+        const bPriority = getOMPriority(b, rmName);
+        
+        // 1. Ordenar por prioridade (1 < 2 < 3)
+        if (aPriority !== bPriority) {
+            return aPriority - bPriority;
+        }
+        
+        // 2. Desempate alfabético
+        return a.localeCompare(b);
+    });
+  }, [gruposOperacionaisPorOM, nomeRM]);
+  
   // --- LÓGICA DE VERIFICAÇÃO DE DADOS ---
   const hasDataForReport = useMemo(() => {
     switch (selectedReport) {
@@ -1338,19 +1413,21 @@ const PTrabReportManager = () => {
         return (
             <PTrabOperacionalReport
                 ptrabData={ptrabData}
+                omsOrdenadas={omsOperacionaisOrdenadas}
+                gruposPorOM={gruposOperacionaisPorOM}
                 registrosDiaria={registrosDiaria}
-                registrosVerbaOperacional={registrosVerbaOperacional} 
-                registrosSuprimentoFundos={registrosSuprimentoFundos} 
+                registrosVerbaOperacional={registrosVerbaOperacional}
+                registrosSuprimentoFundos={registrosSuprimentoFundos}
                 registrosPassagem={registrosPassagem}
-                registrosConcessionaria={registrosConcessionaria} 
+                registrosConcessionaria={registrosConcessionaria}
                 diretrizesOperacionais={diretrizesOperacionais}
-                diretrizesPassagens={diretrizesPassagens} 
+                diretrizesPassagens={diretrizesPassagens}
                 fileSuffix={fileSuffix}
                 generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada}
                 generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada}
                 generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada}
-                generatePassagemMemoriaCalculo={(registro) => generatePassagemMemoriaCalculada(registro, diretrizesPassagens)} 
-                generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada} 
+                generatePassagemMemoriaCalculo={(registro) => generatePassagemMemoriaCalculada(registro, diretrizesPassagens)}
+                generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada}
             />
         );
       case 'material_permanente':

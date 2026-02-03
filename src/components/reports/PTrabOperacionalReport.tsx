@@ -15,6 +15,7 @@ import {
   VerbaOperacionalRegistro, 
   calculateDays,
   PassagemRegistro,
+  GrupoOMOperacional, // NOVO: Importar o tipo de agrupamento
 } from "@/pages/PTrabReportManager"; 
 import { DIARIA_RANKS_CONFIG } from "@/lib/diariaUtils";
 import { generateConsolidatedPassagemMemoriaCalculo, ConsolidatedPassagemRecord } from "@/lib/passagemUtils"; // Importando utilitários de consolidação
@@ -26,6 +27,8 @@ import {
 
 interface PTrabOperacionalReportProps {
   ptrabData: PTrabData;
+  omsOrdenadas: string[]; // NOVO
+  gruposPorOM: Record<string, GrupoOMOperacional>; // NOVO
   registrosDiaria: DiariaRegistro[];
   registrosVerbaOperacional: VerbaOperacionalRegistro[]; 
   registrosSuprimentoFundos: VerbaOperacionalRegistro[]; 
@@ -146,6 +149,8 @@ type ExpenseRow = {
 
 const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   ptrabData,
+  omsOrdenadas, // NOVO
+  gruposPorOM, // NOVO
   registrosDiaria,
   registrosVerbaOperacional, 
   registrosSuprimentoFundos, 
@@ -169,40 +174,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   const [concessionariaDetailsMap, setConcessionariaDetailsMap] = useState<Record<string, { nome_concessionaria: string, unidade_custo: string, fonte_consumo: string | null, fonte_custo: string | null } | null>>({});
   const [isLoadingDiretrizDetails, setIsLoadingDiretrizDetails] = useState(true);
 
-  // 1. Agrupamento e Consolidação dos Registros
-  const { registrosAgrupadosPorOM, consolidatedPassagens, consolidatedConcessionarias } = useMemo(() => {
-    const groups: Record<string, { diarias: DiariaRegistro[], verbas: VerbaOperacionalRegistro[], suprimentos: VerbaOperacionalRegistro[], passagens: PassagemRegistro[], concessionarias: ConcessionariaRegistroComDiretriz[] }> = {};
+  // 1. Consolidação dos Registros (Agrupamento por OM já feito no Manager)
+  const { consolidatedPassagens, consolidatedConcessionarias } = useMemo(() => {
     const consolidatedPassagensMap: Record<string, ConsolidatedPassagemReport> = {};
     const consolidatedConcessionariasMap: Record<string, ConsolidatedConcessionariaReport> = {};
 
-    const initializeGroup = (om: string, ug: string) => {
-        const omKey = `${om} (${ug})`;
-        if (!groups[omKey]) {
-            groups[omKey] = { diarias: [], verbas: [], suprimentos: [], passagens: [], concessionarias: [] };
-        }
-        return groups[omKey];
-    };
-
-    // Agrupamento de Diárias, Verbas e Suprimentos (mantido)
-    registrosDiaria.forEach(registro => {
-        const omDetentora = registro.om_detentora || registro.organizacao;
-        const ugDetentora = registro.ug_detentora || registro.ug;
-        const group = initializeGroup(omDetentora, ugDetentora);
-        group.diarias.push(registro);
-    });
-    registrosVerbaOperacional.forEach(registro => {
-        const omDetentora = registro.om_detentora || registro.organizacao;
-        const ugDetentora = registro.ug_detentora || registro.ug;
-        const group = initializeGroup(omDetentora, ugDetentora);
-        group.verbas.push(registro);
-    });
-    registrosSuprimentoFundos.forEach(registro => {
-        const omDetentora = registro.om_detentora || registro.organizacao;
-        const ugDetentora = registro.ug_detentora || registro.ug;
-        const group = initializeGroup(omDetentora, ugDetentora);
-        group.suprimentos.push(registro);
-    });
-    
     // Agrupamento de Passagens (Consolidado por Lote de Solicitação)
     registrosPassagem.forEach(registro => {
         // Chave de consolidação: OM Favorecida, OM Detentora, Dias, Efetivo, Fase, Diretriz ID
@@ -220,9 +196,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         // Chave de agrupamento no relatório (OM Detentora do Recurso)
         const omDetentora = registro.om_detentora || registro.organizacao;
         const ugDetentora = registro.ug_detentora || registro.ug;
-        
-        const reportGroup = initializeGroup(omDetentora, ugDetentora);
-        reportGroup.passagens.push(registro); 
         
         // Cria ou atualiza o registro consolidado
         if (!consolidatedPassagensMap[consolidationKey]) {
@@ -247,7 +220,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         consolidated.totalND33 += Number(registro.valor_nd_33 || 0);
     });
     
-    // NOVO: Agrupamento de Concessionária (Consolidado por Lote de Solicitação)
+    // Agrupamento de Concessionária (Consolidado por Lote de Solicitação)
     registrosConcessionaria.forEach(registro => {
         // Chave de consolidação: OM Favorecida, OM Detentora, Dias, Efetivo, Fase, Diretriz ID
         const consolidationKey = [
@@ -264,9 +237,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         // Chave de agrupamento no relatório (OM Detentora do Recurso)
         const omDetentora = registro.om_detentora || registro.organizacao;
         const ugDetentora = registro.ug_detentora || registro.ug;
-        
-        const reportGroup = initializeGroup(omDetentora, ugDetentora);
-        reportGroup.concessionarias.push(registro); // Adiciona ao grupo de relatório (apenas para cálculo de subtotal)
         
         // Cria ou atualiza o registro consolidado
         if (!consolidatedConcessionariasMap[consolidationKey]) {
@@ -291,12 +261,12 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         consolidated.totalND39 += Number(registro.valor_nd_39 || 0);
     });
     
-    // Ordenar os grupos consolidados para exibição
+    // Ordenar os grupos consolidados para exibição (opcional, mas mantido)
     const consolidatedPassagens = Object.values(consolidatedPassagensMap).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
     const consolidatedConcessionarias = Object.values(consolidatedConcessionariasMap).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
 
-    return { registrosAgrupadosPorOM: groups, consolidatedPassagens, consolidatedConcessionarias };
-  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria]);
+    return { consolidatedPassagens, consolidatedConcessionarias };
+  }, [registrosPassagem, registrosConcessionaria]);
   
   // 2. Efeito para buscar os detalhes das diretrizes de passagem e concessionária
   useEffect(() => {
@@ -394,10 +364,8 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   }, [consolidatedConcessionarias, concessionariaDetailsMap, isLoadingDiretrizDetails]);
 
   // 4. Função para gerar e ordenar todas as linhas de despesa de uma OM
-  const getSortedRowsForOM = useCallback((omKey: string, group: typeof registrosAgrupadosPorOM[string]): ExpenseRow[] => {
-    const omName = omKey.split(' (')[0];
-    const ug = omKey.split(' (')[1].replace(')', '');
-
+  const getSortedRowsForOM = useCallback((omName: string, group: GrupoOMOperacional): ExpenseRow[] => { // MUDANÇA AQUI: omName e GrupoOMOperacional
+    
     const allRows: ExpenseRow[] = [];
 
     // 1. Diárias
@@ -407,25 +375,25 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
 
     // 2. Passagens (Consolidado)
     consolidatedPassagensWithDetails.filter(c => 
-        c.om_detentora === omName && c.ug_detentora === ug
+        c.om_detentora === omName // Filtra apenas pelo nome da OM
     ).forEach(consolidated => {
         allRows.push({ type: 'PASSAGENS', data: consolidated });
     });
 
     // 3. Concessionária (Consolidado)
     consolidatedConcessionariasWithDetails.filter(c => 
-        c.om_detentora === omName && c.ug_detentora === ug
+        c.om_detentora === omName // Filtra apenas pelo nome da OM
     ).forEach(consolidated => {
         allRows.push({ type: 'CONCESSIONÁRIA', data: consolidated });
     });
 
     // 4. Verba Operacional
-    group.verbas.forEach(registro => {
+    group.verbaOperacional.forEach(registro => {
         allRows.push({ type: 'VERBA OPERACIONAL', data: registro });
     });
 
     // 5. Suprimento de Fundos
-    group.suprimentos.forEach(registro => {
+    group.suprimentoFundos.forEach(registro => {
         allRows.push({ type: 'SUPRIMENTO DE FUNDOS', data: registro });
     });
 
@@ -441,7 +409,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         // Desempate: ordem alfabética do tipo (embora já seja única)
         return a.type.localeCompare(b.type);
     });
-  }, [consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails, registrosAgrupadosPorOM]);
+  }, [consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails]);
 
 
   // Calcula os totais gerais de cada ND com base nos registros de Diária e Verba Operacional
@@ -565,7 +533,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         variant: "destructive",
       });
     });
-  }, [ptrabData, totaisND, fileSuffix, diasOperacao, generateDiariaMemoriaCalculo, diretrizesOperacionais, toast, registrosAgrupadosPorOM, consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails]);
+  }, [ptrabData, totaisND, fileSuffix, diasOperacao, generateDiariaMemoriaCalculo, diretrizesOperacionais, toast, consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails]);
 
   // Função para Imprimir (Abre a caixa de diálogo de impressão)
   const handlePrint = useCallback(() => {
@@ -750,13 +718,17 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     currentRow += 2; // Start data rows after the two header rows
 
     // Dados da Tabela (Agrupados por OM)
-    Object.entries(registrosAgrupadosPorOM).forEach(([omKey, group]) => {
-        const omName = omKey.split(' (')[0];
-        const ug = omKey.split(' (')[1].replace(')', '');
+    omsOrdenadas.forEach((omName) => { // ITERAÇÃO PELA LISTA ORDENADA
+        const group = gruposPorOM[omName];
+        
+        if (!group) return;
+        
+        // Para o subtotal, precisamos de um UG de referência. Usamos o UG do primeiro registro encontrado.
+        const ugReference = group.diarias[0]?.ug || group.verbaOperacional[0]?.ug || group.suprimentoFundos[0]?.ug || 'N/A';
         const article = getArticleForOM(omName); // Determina DO/DA
         
         // 1. Gerar e ordenar todas as linhas de despesa para esta OM
-        const sortedRows = getSortedRowsForOM(omKey, group);
+        const sortedRows = getSortedRowsForOM(omName, group);
 
         // Calculate subtotal for this OM
         const subtotalOM = group.diarias.reduce((acc, r) => ({
@@ -769,27 +741,27 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         }), { nd15: 0, nd30: 0, nd33: 0, nd39: 0, nd00: 0, totalGND3: 0 });
         
         // Add Verba Operacional totals to subtotal
-        group.verbas.forEach(r => {
+        group.verbaOperacional.forEach(r => { // CORRIGIDO: Usando group.verbaOperacional
             subtotalOM.nd30 += r.valor_nd_30;
             subtotalOM.nd39 += r.valor_nd_39;
             subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39;
         });
         
         // Add Suprimento de Fundos totals to subtotal
-        group.suprimentos.forEach(r => {
+        group.suprimentoFundos.forEach(r => { // CORRIGIDO: Usando group.suprimentoFundos
             subtotalOM.nd30 += r.valor_nd_30;
             subtotalOM.nd39 += r.valor_nd_39;
             subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39;
         });
         
         // Add Passagens totals to subtotal (ND 33.90.33)
-        group.passagens.forEach(r => {
+        group.passagens.forEach(r => { // CORRIGIDO: Usando group.passagens
             subtotalOM.nd33 += r.valor_nd_33;
             subtotalOM.totalGND3 += r.valor_nd_33;
         });
         
         // NOVO: Add Concessionária totals to subtotal (ND 33.90.39)
-        group.concessionarias.forEach(r => {
+        group.concessionarias.forEach(r => { // CORRIGIDO: Usando group.concessionarias
             subtotalOM.nd39 += r.valor_nd_39;
             subtotalOM.totalGND3 += r.valor_nd_39;
         });
@@ -804,7 +776,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             let despesasLabel = type;
             let nd15 = 0, nd30 = 0, nd33 = 0, nd39 = 0, nd00 = 0;
             let omDetentora = omName;
-            let ugDetentora = ug;
+            let ugDetentora = ugReference; // Usar UG de referência da OM
 
             // Lógica de extração de dados e memória
             switch (type) {
@@ -1110,7 +1082,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
       description: "O relatório Operacional foi salvo com sucesso.",
       duration: 3000,
     });
-  }, [consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, diretrizesOperacionais, toast, registrosAgrupadosPorOM, getSortedRowsForOM]);
+  }, [omsOrdenadas, gruposPorOM, consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, diretrizesOperacionais, toast, getSortedRowsForOM]);
 
 
   if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0 && registrosSuprimentoFundos.length === 0 && registrosPassagem.length === 0 && registrosConcessionaria.length === 0) {
@@ -1201,13 +1173,17 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 </tr>
             </thead>
             <tbody>
-              {Object.entries(registrosAgrupadosPorOM).map(([omKey, group]) => {
-                const omName = omKey.split(' (')[0];
-                const ug = omKey.split(' (')[1].replace(')', '');
+              {omsOrdenadas.map((omName) => { // ITERAÇÃO PELA LISTA ORDENADA
+                const group = gruposPorOM[omName];
+                
+                if (!group) return null;
+                
+                // Para o subtotal, precisamos de um UG de referência. Usamos o UG do primeiro registro encontrado.
+                const ugReference = group.diarias[0]?.ug || group.verbaOperacional[0]?.ug || group.suprimentoFundos[0]?.ug || 'N/A';
                 const article = getArticleForOM(omName); // Determina DO/DA
                 
                 // 1. Gerar e ordenar todas as linhas de despesa para esta OM
-                const sortedRows = getSortedRowsForOM(omKey, group);
+                const sortedRows = getSortedRowsForOM(omName, group);
 
                 // Calculate subtotal for this OM
                 const subtotalOM = group.diarias.reduce((acc, r) => ({
@@ -1219,30 +1195,30 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                     totalGND3: acc.totalGND3 + r.valor_total,
                 }), { nd15: 0, nd30: 0, nd33: 0, nd39: 0, nd00: 0, totalGND3: 0 });
                 
-                group.verbas.forEach(r => {
+                group.verbaOperacional.forEach(r => { // CORRIGIDO: Usando group.verbaOperacional
                     subtotalOM.nd30 += r.valor_nd_30;
                     subtotalOM.nd39 += r.valor_nd_39;
                     subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39;
                 });
                 
-                group.suprimentos.forEach(r => { // Suprimento de Fundos
+                group.suprimentoFundos.forEach(r => { // CORRIGIDO: Usando group.suprimentoFundos
                     subtotalOM.nd30 += r.valor_nd_30;
                     subtotalOM.nd39 += r.valor_nd_39;
                     subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39;
                 });
                 
-                group.passagens.forEach(r => { // Passagens (ND 33.90.33)
+                group.passagens.forEach(r => { // CORRIGIDO: Usando group.passagens
                     subtotalOM.nd33 += r.valor_nd_33;
                     subtotalOM.totalGND3 += r.valor_nd_33;
                 });
                 
-                group.concessionarias.forEach(r => { // Concessionária (ND 33.90.39) // NOVO
+                group.concessionarias.forEach(r => { // CORRIGIDO: Usando group.concessionarias
                     subtotalOM.nd39 += r.valor_nd_39;
                     subtotalOM.totalGND3 += r.valor_nd_39;
                 });
 
                 return (
-                    <React.Fragment key={omKey}>
+                    <React.Fragment key={omName}>
                         {sortedRows.map((rowItem) => {
                             const type = rowItem.type;
                             const data = rowItem.data;
@@ -1251,7 +1227,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             let despesasLabel = type;
                             let nd15 = 0, nd30 = 0, nd33 = 0, nd39 = 0, nd00 = 0;
                             let omDetentora = omName;
-                            let ugDetentora = ug;
+                            let ugDetentora = ugReference; // Usar UG de referência da OM
 
                             // Lógica de extração de dados e memória
                             switch (type) {
@@ -1326,7 +1302,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                             }
 
                             return (
-                                <tr key={`${type}-${omKey}-${(data as any).id || (data as any).groupKey}`} className="expense-row">
+                                <tr key={`${type}-${omName}-${(data as any).id || (data as any).groupKey}`} className="expense-row">
                                   <td className="col-despesas-op"> 
                                     <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: despesasLabel }} />
                                   </td>
