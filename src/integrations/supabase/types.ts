@@ -895,6 +895,83 @@ export type Database = {
           },
         ]
       }
+      horas_voo_registros: {
+        Row: {
+          id: string
+          p_trab_id: string
+          organizacao: string
+          ug: string
+          om_detentora: string | null
+          ug_detentora: string | null
+          dias_operacao: number
+          fase_atividade: string | null
+          codug_destino: string
+          municipio: string
+          quantidade_hv: number
+          tipo_anv: string
+          amparo: string | null
+          valor_nd_30: number
+          valor_nd_39: number
+          valor_total: number
+          detalhamento: string | null
+          detalhamento_customizado: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          p_trab_id: string
+          organizacao: string
+          ug: string
+          om_detentora?: string | null
+          ug_detentora?: string | null
+          dias_operacao?: number
+          fase_atividade?: string | null
+          codug_destino: string
+          municipio: string
+          quantidade_hv: number
+          tipo_anv: string
+          amparo?: string | null
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total?: number
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          p_trab_id?: string
+          organizacao?: string
+          ug?: string
+          om_detentora?: string | null
+          ug_detentora?: string | null
+          dias_operacao?: number
+          fase_atividade?: string | null
+          codug_destino?: string
+          municipio?: string
+          quantidade_hv?: number
+          tipo_anv?: string
+          amparo?: string | null
+          valor_nd_30?: number
+          valor_nd_39?: number
+          valor_total?: number
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "horas_voo_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diretrizes_classe_ii: {
         Row: {
           ano_referencia: number
