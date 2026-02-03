@@ -78,10 +78,10 @@ interface PasswordCriteria {
 }
 
 const fetchProfile = async (userId: string): Promise<ProfileData> => {
-  // 1. Buscar dados da tabela profiles (incluindo raw_user_meta_data)
+  // 1. Buscar dados da tabela profiles
   const { data: profileData, error: profileError } = await supabase
     .from('profiles')
-    .select('id, first_name, last_name, default_diretriz_year, raw_user_meta_data')
+    .select('id, first_name, last_name, default_diretriz_year')
     .eq('id', userId)
     .single();
 
@@ -91,18 +91,9 @@ const fetchProfile = async (userId: string): Promise<ProfileData> => {
   const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
   
   if (authError || !authUser) {
-      // Se não conseguir o usuário autenticado, usa apenas o que veio da tabela profiles
-      const metaData = profileData.raw_user_meta_data as any;
-      return {
-          id: profileData.id,
-          first_name: profileData.first_name || '',
-          last_name: profileData.last_name || '',
-          posto_graduacao: metaData?.posto_graduacao || '',
-          sigla_om: metaData?.sigla_om || '',
-          funcao_om: metaData?.funcao_om || '',
-          telefone: metaData?.telefone || '', 
-          default_diretriz_year: profileData.default_diretriz_year,
-      };
+      // Se não conseguir o usuário autenticado, lançamos um erro, pois os metadados
+      // institucionais (posto, om, função) estão no objeto authUser.
+      throw new Error("Sessão de usuário inválida ou expirada. Por favor, faça login novamente.");
   }
   
   // 3. Consolidar metadados: Usar metadados do authUser (mais recentes)
