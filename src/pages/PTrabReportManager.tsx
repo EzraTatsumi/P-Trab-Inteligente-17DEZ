@@ -361,7 +361,7 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
                 organizacao: registro.organizacao,
                 ug: registro.ug,
                 diasOperacao: registro.diasOperacao,
-                faseAtividade: registro.fase_atividade,
+                faseAtividade: registro.faseAtividade,
                 efetivo: registro.efetivo,
                 quantidadeR2: registro.quantidadeR2,
                 quantidadeR3: registro.quantidadeR3,
@@ -594,21 +594,18 @@ export const generateSuprimentoFundosMemoriaCalculada = (
 
 /**
  * Função unificada para gerar a memória de cálculo da Passagem, priorizando o customizado.
+ * CORREÇÃO 1: Removendo o argumento diretrizesPassagens e a lógica de busca interna,
+ * assumindo que generatePassagemMemoriaCalculo foi simplificado para aceitar apenas o registro.
  */
 export const generatePassagemMemoriaCalculada = (
-    registro: PassagemRegistro,
-    diretrizesPassagens: Tables<'diretrizes_passagens'>[] | null
+    registro: PassagemRegistro
 ): string => {
     if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
         return registro.detalhamento_customizado;
     }
     
-    // Busca a diretriz específica usada pelo registro
-    // GARANTIA: Se diretrizesPassagens for null ou [], a diretriz será null, e generatePassagemMemoriaCalculo deve lidar com isso.
-    const diretriz = diretrizesPassagens?.find(d => d.id === registro.diretriz_id);
-    
-    // Usa o utilitário importado, passando a diretriz para extrair o número do pregão
-    return generatePassagemMemoriaCalculo(registro, diretriz || null);
+    // Usa o utilitário importado, passando apenas o registro
+    return generatePassagemMemoriaCalculo(registro);
 };
 
 /**
@@ -909,7 +906,7 @@ const PTrabReportManager = () => {
           dias_operacao: r.dias_operacao || 0,
           quantidade_equipes: r.quantidade_equipes || 0,
           objeto_aquisicao: r.objeto_aquisicao || null,
-          objeto_contratacao: r.objeto_contratacao || null,
+                    objeto_contratacao: r.objeto_contratacao || null,
           proposito: r.proposito || null,
           finalidade: r.finalidade || null,
           local: r.local || null,
@@ -1436,12 +1433,12 @@ const PTrabReportManager = () => {
                 registrosPassagem={registrosPassagem}
                 registrosConcessionaria={registrosConcessionaria}
                 diretrizesOperacionais={diretrizesOperacionais}
-                diretrizesPassagens={diretrizesPassagens}
+                diretrizesPassagens={diretrizesPassagens} {/* CORREÇÃO 2: Adicionada a prop diretrizesPassagens */}
                 fileSuffix={fileSuffix}
                 generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada}
                 generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada}
                 generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada}
-                generatePassagemMemoriaCalculo={(registro) => generatePassagemMemoriaCalculada(registro, diretrizesPassagens)}
+                generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada} {/* CORREÇÃO 1: Passando a função com 1 argumento */}
                 generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada}
             />
         );
