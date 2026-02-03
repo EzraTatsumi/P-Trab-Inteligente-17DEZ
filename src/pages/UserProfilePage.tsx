@@ -149,6 +149,8 @@ const UserProfilePage = () => {
     enabled: !!userId,
   });
 
+  const isLoadingOms = false; // Variável adicionada para corrigir o erro de "not defined"
+
   // Efeito para preencher o formulário quando os dados do perfil são carregados
   useEffect(() => {
     if (profileData) {
