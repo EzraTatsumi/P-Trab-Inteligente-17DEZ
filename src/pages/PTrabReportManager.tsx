@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, FileText, Package, Utensils, Briefcase, HardHat, Plane, ClipboardList } from "lucide-react";
+import { ArrowLeft, Loader2, FileText, Package, Utensils, Briefcase, HardHat, Plane, ClipboardList, Frown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
@@ -715,6 +715,30 @@ const REPORT_OPTIONS: ReportOption[] = [
 ];
 
 // =================================================================
+// COMPONENTE DE FALLBACK PADRONIZADO
+// =================================================================
+
+interface NoDataFallbackProps {
+    reportName: string;
+    message: string;
+}
+
+const NoDataFallback: React.FC<NoDataFallbackProps> = ({ reportName, message }) => (
+    <div className="text-center py-16 border border-dashed border-muted-foreground/30 rounded-lg bg-muted/20">
+        <Frown className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+        <h3 className="text-xl font-semibold text-foreground">
+            {reportName}
+        </h3>
+        <p className="text-muted-foreground mt-2 max-w-md mx-auto">
+            {message}
+        </p>
+        <p className="text-sm text-muted-foreground mt-4">
+            Verifique se o P Trab possui registros de classes ou itens operacionais relacionados.
+        </p>
+    </div>
+);
+
+// =================================================================
 // COMPONENTE PRINCIPAL
 // =================================================================
 
@@ -728,13 +752,13 @@ const PTrabReportManager = () => {
   const [registrosClasseI, setRegistrosClasseI] = useState<ClasseIRegistro[]>([]);
   const [registrosClasseII, setRegistrosClasseII] = useState<ClasseIIRegistro[]>([]);
   const [registrosClasseIII, setRegistrosClasseIII] = useState<ClasseIIIRegistro[]>([]);
-  const [registrosDiaria, setRegistrosDiaria] = useState<DiariaRegistro[]>([]); // NOVO: Estado para Diárias
+  const [registrosDiaria, setRegistrosDiaria] = useState<DiariaRegistro[]>([]); 
   const [registrosVerbaOperacional, setRegistrosVerbaOperacional] = useState<VerbaOperacionalRegistro[]>([]); 
-  const [registrosSuprimentoFundos, setRegistrosSuprimentoFundos] = useState<VerbaOperacionalRegistro[]>([]); // NOVO ESTADO
-  const [registrosPassagem, setRegistrosPassagem] = useState<PassagemRegistro[]>([]); // NOVO ESTADO
-  const [registrosConcessionaria, setRegistrosConcessionaria] = useState<ConcessionariaRegistro[]>([]); // NOVO ESTADO
-  const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null); // NOVO: Estado para Diretrizes Operacionais
-  const [diretrizesPassagens, setDiretrizesPassagens] = useState<Tables<'diretrizes_passagens'>[]>([]); // NOVO: Estado para Diretrizes de Passagens
+  const [registrosSuprimentoFundos, setRegistrosSuprimentoFundos] = useState<VerbaOperacionalRegistro[]>([]); 
+  const [registrosPassagem, setRegistrosPassagem] = useState<PassagemRegistro[]>([]); 
+  const [registrosConcessionaria, setRegistrosConcessionaria] = useState<ConcessionariaRegistro[]>([]); 
+  const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null); 
+  const [diretrizesPassagens, setDiretrizesPassagens] = useState<Tables<'diretrizes_passagens'>[]>([]); 
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
@@ -781,7 +805,7 @@ const PTrabReportManager = () => {
         { data: passagemData }, 
         { data: concessionariaData },
         diretrizesOpData, 
-        diretrizesPassagensData, // NOVO: Busca de Diretrizes de Passagens
+        diretrizesPassagensData, 
       ] = await Promise.all([
         supabase.from('classe_i_registros').select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3').eq('p_trab_id', ptrabId),
         supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
@@ -798,11 +822,11 @@ const PTrabReportManager = () => {
         supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId), 
         supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId),
         fetchDiretrizesOperacionais(year), 
-        fetchDiretrizesPassagens(year), // NOVO: Chamada da função utilitária
+        fetchDiretrizesPassagens(year), 
       ]);
       
       setDiretrizesOperacionais(diretrizesOpData as Tables<'diretrizes_operacionais'> || null);
-      setDiretrizesPassagens(diretrizesPassagensData as Tables<'diretrizes_passagens'>[] || []); // NOVO: Setando o estado
+      setDiretrizesPassagens(diretrizesPassagensData as Tables<'diretrizes_passagens'>[] || []); 
 
       // CORREÇÃO: Usar 'as any' para contornar o erro de tipo do Supabase na desestruturação do spread
       const allClasseItems = [
@@ -935,7 +959,7 @@ const PTrabReportManager = () => {
             grupos[name] = { 
                 linhasQS: [], linhasQR: [], linhasClasseII: [], linhasClasseV: [],
                 linhasClasseVI: [], linhasClasseVII: [], linhasClasseVIII: [], linhasClasseIX: [],
-                linhasClasseIII: [], linhasConcessionaria: [] // NOVO: Inicializa Concessionária
+                linhasClasseIII: [], linhasConcessionaria: [] 
             };
         }
     };
@@ -969,9 +993,6 @@ const PTrabReportManager = () => {
             valor_nd_30: registro.valor_nd_30,
             valor_nd_39: registro.valor_nd_39,
         };
-        
-        // --- DEBUG LOG CRÍTICO ---
-        // console.log(`[PTrabManager:Grouping] Processing Classe II/V/VI/VII/VIII/IX record. Category: ${registro.categoria}, OM: ${registro.organizacao}, ID: ${registro.id}`);
         
         if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
             omGroup.linhasClasseV.push(linha);
@@ -1120,8 +1141,6 @@ const PTrabReportManager = () => {
         });
     });
     
-    // console.log("[PTrabManager] Final Grouping Result:", grupos); // Log final do agrupamento
-    
     return grupos;
   }, [registrosClasseI, registrosClasseII, registrosClasseIII, registrosConcessionaria, refLPC]);
 
@@ -1206,14 +1225,14 @@ const PTrabReportManager = () => {
         .filter(l => l.tipo_suprimento === 'LUBRIFICANTE')
         .reduce((acc, linha) => acc + linha.valor_total_linha, 0);
         
-    const totalConcessionaria_ND39 = grupo.linhasConcessionaria.reduce((acc, linha) => acc + linha.valor_nd_39, 0); // NOVO
+    const totalConcessionaria_ND39 = grupo.linhasConcessionaria.reduce((acc, linha) => acc + linha.valor_nd_39, 0); 
 
     
     const total_33_90_30 = totalQS + totalQR + 
                            totalClasseII_ND30 + totalClasseV_ND30 + totalClasseVI_ND30 + totalClasseVII_ND30 + totalClasseVIII_ND30 + totalClasseIX_ND30 +
                            totalLubrificante; 
     
-    const total_33_90_39 = totalClasseII_ND39 + totalClasseV_ND39 + totalClasseVI_ND39 + totalClasseVII_ND39 + totalClasseVIII_ND39 + totalClasseIX_ND39; // CORREÇÃO: Exclui Concessionária (Operacional) do Logístico
+    const total_33_90_39 = totalClasseII_ND39 + totalClasseV_ND39 + totalClasseVI_ND39 + totalClasseVII_ND39 + totalClasseVIII_ND39 + totalClasseIX_ND39; 
     
     const total_parte_azul = total_33_90_30 + total_33_90_39;
     
@@ -1237,11 +1256,53 @@ const PTrabReportManager = () => {
       valorGasolina: valorGasolina,
     };
   }, [nomeRM]);
+  
+  // --- LÓGICA DE VERIFICAÇÃO DE DADOS ---
+  const hasDataForReport = useMemo(() => {
+    switch (selectedReport) {
+      case 'logistico':
+        // Logístico inclui Classe I (QS/QR), II, III (Combustível/Lubrificante), V, VI, VII, VIII, IX
+        const hasClasseI_QSQR = registrosClasseI.some(r => r.categoria === 'RACAO_QUENTE');
+        const hasOutrasClasses = registrosClasseII.length > 0 || 
+                                 registrosClasseIII.length > 0;
+        return hasClasseI_QSQR || hasOutrasClasses;
+
+      case 'racao_operacional':
+        // Ração Operacional inclui Classe I (Ração Operacional)
+        return registrosClasseI.some(r => r.categoria === 'RACAO_OPERACIONAL');
+
+      case 'operacional':
+        // Operacional inclui Diárias, Verba Operacional, Suprimento de Fundos, Passagens, Concessionária
+        return registrosDiaria.length > 0 || 
+               registrosVerbaOperacional.length > 0 || 
+               registrosSuprimentoFundos.length > 0 || 
+               registrosPassagem.length > 0 ||
+               registrosConcessionaria.length > 0;
+
+      case 'material_permanente':
+      case 'hora_voo':
+      case 'dor':
+        return false; // Ainda não implementados
+      default:
+        return false;
+    }
+  }, [selectedReport, registrosClasseI, registrosClasseII, registrosClasseIII, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria]);
+
 
   const renderReport = () => {
     if (!ptrabData) return null;
 
     const fileSuffix = currentReportOption.fileSuffix;
+    const reportName = currentReportOption.label;
+
+    if (!hasDataForReport) {
+        return (
+            <NoDataFallback 
+                reportName={reportName}
+                message={`Não há dados de classes ou itens registrados neste P Trab para gerar o relatório de ${reportName}.`}
+            />
+        );
+    }
 
     switch (selectedReport) {
       case 'logistico':
@@ -1281,15 +1342,15 @@ const PTrabReportManager = () => {
                 registrosVerbaOperacional={registrosVerbaOperacional} 
                 registrosSuprimentoFundos={registrosSuprimentoFundos} 
                 registrosPassagem={registrosPassagem}
-                registrosConcessionaria={registrosConcessionaria} // NOVO: Passando registros de Concessionária
+                registrosConcessionaria={registrosConcessionaria} 
                 diretrizesOperacionais={diretrizesOperacionais}
-                diretrizesPassagens={diretrizesPassagens} // NOVO: Passando diretrizes de passagens
+                diretrizesPassagens={diretrizesPassagens} 
                 fileSuffix={fileSuffix}
                 generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada}
                 generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada}
                 generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada}
-                generatePassagemMemoriaCalculo={(registro) => generatePassagemMemoriaCalculada(registro, diretrizesPassagens)} // NOVO: Passando diretrizes para a função de memória
-                generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada} // NOVO: Passando função de memória
+                generatePassagemMemoriaCalculo={(registro) => generatePassagemMemoriaCalculada(registro, diretrizesPassagens)} 
+                generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada} 
             />
         );
       case 'material_permanente':
