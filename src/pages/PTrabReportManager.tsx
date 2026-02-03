@@ -1281,34 +1281,49 @@ const PTrabReportManager = () => {
         }
     };
 
-    // 1. Processar Diárias
+    // Função auxiliar para determinar a OM que recebe o crédito/recurso
+    const getCreditRecipientOM = (record: any, isDetentoraBased: boolean) => {
+        if (isDetentoraBased) {
+            // Para Verba Operacional, Passagens, Concessionária: usa om_detentora como prioridade
+            return record.om_detentora || record.organizacao;
+        }
+        // Para Diárias, Suprimento de Fundos: usa organizacao (OM Favorecida)
+        return record.organizacao;
+    };
+
+    // 1. Processar Diárias (Agrupamento por OM Favorecida)
     registrosDiaria.forEach(r => {
-        initializeGroup(r.organizacao);
-        grupos[r.organizacao].diarias.push(r);
+        const om = getCreditRecipientOM(r, false);
+        initializeGroup(om);
+        grupos[om].diarias.push(r);
     });
 
-    // 2. Processar Verba Operacional
+    // 2. Processar Verba Operacional (Agrupamento por OM Detentora)
     registrosVerbaOperacional.forEach(r => {
-        initializeGroup(r.organizacao);
-        grupos[r.organizacao].verbaOperacional.push(r);
+        const om = getCreditRecipientOM(r, true);
+        initializeGroup(om);
+        grupos[om].verbaOperacional.push(r);
     });
 
-    // 3. Processar Suprimento de Fundos
+    // 3. Processar Suprimento de Fundos (Agrupamento por OM Favorecida)
     registrosSuprimentoFundos.forEach(r => {
-        initializeGroup(r.organizacao);
-        grupos[r.organizacao].suprimentoFundos.push(r);
+        const om = getCreditRecipientOM(r, false);
+        initializeGroup(om);
+        grupos[om].suprimentoFundos.push(r);
     });
 
-    // 4. Processar Passagens
+    // 4. Processar Passagens (Agrupamento por OM Detentora)
     registrosPassagem.forEach(r => {
-        initializeGroup(r.organizacao);
-        grupos[r.organizacao].passagens.push(r);
+        const om = getCreditRecipientOM(r, true);
+        initializeGroup(om);
+        grupos[om].passagens.push(r);
     });
 
-    // 5. Processar Concessionárias
+    // 5. Processar Concessionárias (Agrupamento por OM Detentora)
     registrosConcessionaria.forEach(r => {
-        initializeGroup(r.organizacao);
-        grupos[r.organizacao].concessionarias.push(r);
+        const om = getCreditRecipientOM(r, true);
+        initializeGroup(om);
+        grupos[om].concessionarias.push(r);
     });
 
     return grupos;
