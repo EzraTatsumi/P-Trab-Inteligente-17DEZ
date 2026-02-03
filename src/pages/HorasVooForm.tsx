@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 import CurrencyInput from "@/components/CurrencyInput";
 import { ConsolidatedHorasVooMemoria } from "@/components/ConsolidatedHorasVooMemoria"; 
 import { TipoAnvSelect } from "@/components/TipoAnvSelect";
+import { Switch } from "@/components/ui/switch"; // Importando Switch
 
 // Tipos de dados
 type HorasVooRegistroDB = Tables<'horas_voo_registros'>; 
@@ -79,6 +80,7 @@ interface HorasVooFormState extends HorasVooFormType {
     ug_destino: string; // UG Detentora
     dias_operacao: number;
     fase_atividade: string;
+    isCoterResponsibility: boolean; // NOVO: Responsabilidade do COTER
 }
 
 const initialFormState: HorasVooFormState = {
@@ -88,6 +90,7 @@ const initialFormState: HorasVooFormState = {
     ug_destino: "",
     dias_operacao: 0,
     fase_atividade: "",
+    isCoterResponsibility: true, // NOVO: Padrão é A CARGO DO COTER
     
     // Campos específicos de HV
     codug_destino: "DMAvEx/COLOG Gestor (160.504)", // Valor padrão preenchido
@@ -109,6 +112,7 @@ const compareFormData = (data1: HorasVooFormState, data2: HorasVooFormState) => 
         data1.om_destino !== data2.om_destino ||
         data1.ug_destino !== data2.ug_destino ||
         data1.fase_atividade !== data2.fase_atividade ||
+        data1.isCoterResponsibility !== data2.isCoterResponsibility || // NOVO
         
         // Campos específicos de HV
         data1.codug_destino !== data2.codug_destino ||
@@ -272,6 +276,7 @@ const HorasVooForm = () => {
                 ug_destino: prev.ug_destino,
                 dias_operacao: prev.dias_operacao,
                 fase_atividade: prev.fase_atividade,
+                isCoterResponsibility: prev.isCoterResponsibility, // Manter estado do COTER
             }));
             
             resetForm();
@@ -410,9 +415,18 @@ const HorasVooForm = () => {
             };
         }
         
+        // Se for responsabilidade do COTER, os valores são zero para o cálculo
+        const valor_nd_30 = formData.isCoterResponsibility ? 0 : formData.valor_nd_30;
+        const valor_nd_39 = formData.isCoterResponsibility ? 0 : formData.valor_nd_39;
+
         try {
             // Dias de operação é fixo em 1 para o cálculo, já que o campo foi removido da UI
-            const dataForCalculation = { ...formData, dias_operacao: 1 }; 
+            const dataForCalculation = { 
+                ...formData, 
+                dias_operacao: 1,
+                valor_nd_30,
+                valor_nd_39,
+            }; 
             const { valor_total } = calculateHorasVooTotals(dataForCalculation);
             
             // Cria um registro temporário para gerar a memória
@@ -430,8 +444,8 @@ const HorasVooForm = () => {
                 quantidade_hv: formData.quantidade_hv,
                 tipo_anv: formData.tipo_anv,
                 amparo: formData.amparo,
-                valor_nd_30: formData.valor_nd_30,
-                valor_nd_39: formData.valor_nd_39,
+                valor_nd_30: valor_nd_30,
+                valor_nd_39: valor_nd_39,
                 valor_total: valor_total,
                 detalhamento: '',
                 detalhamento_customizado: null,
@@ -488,6 +502,7 @@ const HorasVooForm = () => {
             ug_destino: prev.ug_favorecida, // Volta para a UG Favorecida
             dias_operacao: 1, // Fixo
             fase_atividade: prev.fase_atividade,
+            isCoterResponsibility: initialFormState.isCoterResponsibility, // Resetar para padrão COTER
         }));
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
@@ -530,6 +545,9 @@ const HorasVooForm = () => {
         // 2. Populate formData com os dados do PRIMEIRO registro do grupo (para edição)
         const firstRecord = group.records[0];
         
+        // Determina se o registro original tinha valores zero (indicando COTER)
+        const isCoter = firstRecord.valor_nd_30 === 0 && firstRecord.valor_nd_39 === 0;
+
         const newFormData: HorasVooFormState = {
             om_favorecida: group.organizacao, 
             ug_favorecida: group.ug, 
@@ -537,6 +555,7 @@ const HorasVooForm = () => {
             ug_destino: group.ug_detentora,
             dias_operacao: group.dias_operacao, // Mantém o valor original do DB
             fase_atividade: group.fase_atividade || "",
+            isCoterResponsibility: isCoter, // Define o estado do switch
             
             // Campos específicos de HV (do primeiro registro)
             codug_destino: firstRecord.codug_destino,
@@ -544,6 +563,7 @@ const HorasVooForm = () => {
             quantidade_hv: firstRecord.quantidade_hv,
             tipo_anv: firstRecord.tipo_anv,
             amparo: firstRecord.amparo || "",
+            // Se for COTER, mantemos 0 no formData, senão, mantemos o valor original
             valor_nd_30: firstRecord.valor_nd_30,
             valor_nd_39: firstRecord.valor_nd_39,
         };
@@ -555,6 +575,7 @@ const HorasVooForm = () => {
         
         // 4. Gerar os itens pendentes (staging) imediatamente com os dados originais
         const newPendingItems: CalculatedHorasVoo[] = group.records.map(registro => {
+            // Recalcula usando os valores do registro (que podem ser 0 se for COTER)
             const { valor_total } = calculateHorasVooTotals(registro);
             
             const calculatedFormData: HorasVooRegistro = {
@@ -614,7 +635,6 @@ const HorasVooForm = () => {
         
         try {
             // 1. Validação básica
-            // Dias de operação é fixo em 1 para o cálculo, já que o campo foi removido da UI
             const diasOperacao = 1; 
             
             if (formData.quantidade_hv <= 0) {
@@ -623,19 +643,29 @@ const HorasVooForm = () => {
             if (!formData.om_favorecida || !formData.ug_favorecida) {
                 throw new Error("A OM Favorecida é obrigatória.");
             }
-            // OM Detentora e UG Detentora são preenchidas automaticamente com a OM Favorecida
             if (!formData.om_destino || !formData.ug_destino) {
                 throw new Error("A OM Detentora do Recurso é obrigatória (preenchida automaticamente).");
             }
             if (!formData.municipio || !formData.codug_destino || !formData.tipo_anv) {
                 throw new Error("Preencha todos os campos de Horas de Voo (Município, CODUG, Tipo Anv).");
             }
-            if (formData.valor_nd_30 + formData.valor_nd_39 <= 0) {
-                throw new Error("O valor total (ND 30 + ND 39) deve ser maior que zero.");
+            
+            // Se não for COTER, exige que pelo menos um valor seja preenchido
+            if (!formData.isCoterResponsibility && (formData.valor_nd_30 + formData.valor_nd_39 <= 0)) {
+                throw new Error("No modo manual, o valor total (ND 30 + ND 39) deve ser maior que zero.");
             }
             
-            // 2. Gerar o registro (Horas de Voo é sempre um registro único por submissão)
-            const dataToCalculate = { ...formData, dias_operacao: diasOperacao };
+            // 2. Determinar valores para o registro (0 se for COTER)
+            const valor_nd_30_final = formData.isCoterResponsibility ? 0 : formData.valor_nd_30;
+            const valor_nd_39_final = formData.isCoterResponsibility ? 0 : formData.valor_nd_39;
+
+            const dataToCalculate = { 
+                ...formData, 
+                dias_operacao: diasOperacao,
+                valor_nd_30: valor_nd_30_final,
+                valor_nd_39: valor_nd_39_final,
+            };
+            
             const { valor_total } = calculateHorasVooTotals(dataToCalculate);
             
             const calculatedFormData: HorasVooRegistro = {
@@ -655,8 +685,8 @@ const HorasVooForm = () => {
                 tipo_anv: formData.tipo_anv,
                 amparo: formData.amparo,
                 
-                valor_nd_30: formData.valor_nd_30,
-                valor_nd_39: formData.valor_nd_39,
+                valor_nd_30: valor_nd_30_final,
+                valor_nd_39: valor_nd_39_final,
                 valor_total: valor_total,
                 
                 detalhamento: `Horas de Voo (${formData.tipo_anv}) para ${formData.municipio}`, 
@@ -684,8 +714,8 @@ const HorasVooForm = () => {
                 quantidade_hv: formData.quantidade_hv,
                 tipo_anv: formData.tipo_anv,
                 amparo: formData.amparo,
-                valor_nd_30: formData.valor_nd_30,
-                valor_nd_39: formData.valor_nd_39,
+                valor_nd_30: valor_nd_30_final,
+                valor_nd_39: valor_nd_39_final,
                 
                 valor_total: valor_total,
                 detalhamento: calculatedFormData.detalhamento, 
@@ -741,6 +771,7 @@ const HorasVooForm = () => {
                 amparo: initialFormState.amparo, // Mantém o valor padrão
                 valor_nd_30: 0,
                 valor_nd_39: 0,
+                isCoterResponsibility: initialFormState.isCoterResponsibility, // Mantém o padrão COTER
             }));
             
             // Limpa os inputs de moeda
@@ -839,6 +870,22 @@ const HorasVooForm = () => {
         }));
     };
     
+    // Handler para o Switch do COTER
+    const handleCoterResponsibilityChange = (checked: boolean) => {
+        setFormData(prev => ({
+            ...prev,
+            isCoterResponsibility: checked,
+            // Se voltar para COTER, zera os valores de input
+            valor_nd_30: checked ? 0 : prev.valor_nd_30,
+            valor_nd_39: checked ? 0 : prev.valor_nd_39,
+        }));
+        // Zera os inputs de moeda para refletir o estado
+        if (checked) {
+            setRawND30Input(numberToRawDigits(0));
+            setRawND39Input(numberToRawDigits(0));
+        }
+    };
+    
     // --- Lógica de Edição de Memória ---
     
     const handleIniciarEdicaoMemoria = (group: ConsolidatedHorasVoo, memoriaCompleta: string) => {
@@ -927,13 +974,18 @@ const HorasVooForm = () => {
                                     formData.codug_destino.length > 0 &&
                                     formData.municipio.length > 0 &&
                                     formData.tipo_anv.length > 0 &&
-                                    (formData.valor_nd_30 + formData.valor_nd_39 > 0);
+                                    (formData.isCoterResponsibility || (formData.valor_nd_30 + formData.valor_nd_39 > 0)); // Se for COTER, não precisa de valor > 0
 
     const isCalculationReady = isBaseFormReady && isSolicitationDataReady;
     
     // Lógica para a Seção 3
     const itemsToDisplay = pendingRegistros;
     const isStagingUpdate = !!editingId && pendingRegistros.length > 0;
+    
+    // Display do valor total
+    const totalDisplay = (formData.isCoterResponsibility && calculos.totalGeral === 0) 
+        ? "A CARGO DO COTER" 
+        : formatCurrency(calculos.totalGeral);
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1085,40 +1137,59 @@ const HorasVooForm = () => {
                                                     />
                                                 </div>
                                                 
-                                                {/* ND 30 */}
-                                                <div className="space-y-2 col-span-2">
-                                                    <Label htmlFor="valor_nd_30">Valor ND 33.90.30 (Custeio) *</Label>
-                                                    <CurrencyInput
-                                                        id="valor_nd_30"
-                                                        rawDigits={rawND30Input}
-                                                        onChange={(digits) => handleCurrencyChange('valor_nd_30', digits)}
-                                                        placeholder="Ex: R$ 10.000,00"
-                                                        required
-                                                        disabled={!isPTrabEditable || isSaving}
-                                                        onKeyDown={handleEnterToNextField}
-                                                    />
-                                                </div>
-                                                
-                                                {/* ND 39 */}
-                                                <div className="space-y-2 col-span-2">
-                                                    <Label htmlFor="valor_nd_39">Valor ND 33.90.39 (Serviços) *</Label>
-                                                    <CurrencyInput
-                                                        id="valor_nd_39"
-                                                        rawDigits={rawND39Input}
-                                                        onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
-                                                        placeholder="Ex: R$ 5.000,00"
-                                                        required
-                                                        disabled={!isPTrabEditable || isSaving}
-                                                        onKeyDown={handleEnterToNextField}
-                                                    />
+                                                {/* NOVO LAYOUT DE 3 COLUNAS PARA VALORES E SWITCH */}
+                                                <div className="col-span-4 grid grid-cols-3 gap-4">
+                                                    
+                                                    {/* ND 30 */}
+                                                    <div className="space-y-2 col-span-1">
+                                                        <Label htmlFor="valor_nd_30">Valor ND 33.90.30 (Custeio) *</Label>
+                                                        <CurrencyInput
+                                                            id="valor_nd_30"
+                                                            rawDigits={rawND30Input}
+                                                            onChange={(digits) => handleCurrencyChange('valor_nd_30', digits)}
+                                                            placeholder="Ex: R$ 10.000,00"
+                                                            required={!formData.isCoterResponsibility}
+                                                            disabled={!isPTrabEditable || isSaving || formData.isCoterResponsibility}
+                                                            onKeyDown={handleEnterToNextField}
+                                                        />
+                                                    </div>
+                                                    
+                                                    {/* ND 39 */}
+                                                    <div className="space-y-2 col-span-1">
+                                                        <Label htmlFor="valor_nd_39">Valor ND 33.90.39 (Serviços) *</Label>
+                                                        <CurrencyInput
+                                                            id="valor_nd_39"
+                                                            rawDigits={rawND39Input}
+                                                            onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
+                                                            placeholder="Ex: R$ 5.000,00"
+                                                            required={!formData.isCoterResponsibility}
+                                                            disabled={!isPTrabEditable || isSaving || formData.isCoterResponsibility}
+                                                            onKeyDown={handleEnterToNextField}
+                                                        />
+                                                    </div>
+                                                    
+                                                    {/* SWITCH COTER */}
+                                                    <div className="space-y-2 col-span-1 flex flex-col justify-end">
+                                                        <div className="flex items-center space-x-2 p-2 border rounded-md bg-background">
+                                                            <Switch
+                                                                id="coter-responsibility"
+                                                                checked={formData.isCoterResponsibility}
+                                                                onCheckedChange={handleCoterResponsibilityChange}
+                                                                disabled={!isPTrabEditable || isSaving}
+                                                            />
+                                                            <Label htmlFor="coter-responsibility" className="text-sm font-medium leading-none">
+                                                                A cargo do COTER
+                                                            </Label>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </Card>
                                         
                                         <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
                                             <span className="font-bold text-sm">VALOR TOTAL DA SOLICITAÇÃO:</span>
-                                            <span className={cn("font-extrabold text-lg text-primary")}>
-                                                {formatCurrency(calculos.totalGeral)}
+                                            <span className={cn("font-extrabold text-lg", formData.isCoterResponsibility && calculos.totalGeral === 0 ? "text-muted-foreground" : "text-primary")}>
+                                                {totalDisplay}
                                             </span>
                                         </div>
                                         
@@ -1173,6 +1244,8 @@ const HorasVooForm = () => {
                                             
                                             const diasText = item.dias_operacao === 1 ? "dia" : "dias";
                                             const isOmDestinoDifferent = item.om_favorecida !== item.om_detentora || item.ug_favorecida !== item.ug_detentora;
+                                            
+                                            const isCoter = totalND30 === 0 && totalND39 === 0;
 
                                             return (
                                                 <Card 
@@ -1190,7 +1263,7 @@ const HorasVooForm = () => {
                                                             </h4>
                                                             <div className="flex items-center gap-2">
                                                                 <p className="font-extrabold text-lg text-foreground text-right">
-                                                                    {formatCurrency(item.valor_total)}
+                                                                    {isCoter ? "A CARGO DO COTER" : formatCurrency(item.valor_total)}
                                                                 </p>
                                                                 {!isStagingUpdate && (
                                                                     <Button 
@@ -1225,11 +1298,15 @@ const HorasVooForm = () => {
 
                                                         <div className="flex justify-between text-xs">
                                                             <span className="text-muted-foreground">ND 33.90.30 (Custeio):</span>
-                                                            <span className="font-medium text-green-600">{formatCurrency(totalND30)}</span>
+                                                            <span className="font-medium text-green-600">
+                                                                {totalND30 === 0 ? (isCoter ? "A cargo do COTER" : formatCurrency(totalND30)) : formatCurrency(totalND30)}
+                                                            </span>
                                                         </div>
                                                         <div className="flex justify-between text-xs">
                                                             <span className="text-muted-foreground">ND 33.90.39 (Serviços):</span>
-                                                            <span className="font-medium text-green-600">{formatCurrency(totalND39)}</span>
+                                                            <span className="font-medium text-green-600">
+                                                                {totalND39 === 0 ? (isCoter ? "A cargo do COTER" : formatCurrency(totalND39)) : formatCurrency(totalND39)}
+                                                            </span>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
@@ -1310,6 +1387,8 @@ const HorasVooForm = () => {
                                         const isDifferentOm = group.om_detentora !== group.organizacao || group.ug_detentora !== group.ug;
                                         const omDestino = group.om_detentora;
                                         const ugDestino = group.ug_detentora;
+                                        
+                                        const isCoter = totalND30Consolidado === 0 && totalND39Consolidado === 0;
 
                                         return (
                                             <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
@@ -1321,7 +1400,7 @@ const HorasVooForm = () => {
                                                         </Badge>
                                                     </h3>
                                                     <span className="font-extrabold text-xl text-primary">
-                                                        {formatCurrency(totalOM)}
+                                                        {isCoter ? "A CARGO DO COTER" : formatCurrency(totalOM)}
                                                     </span>
                                                 </div>
                                                 
@@ -1344,7 +1423,7 @@ const HorasVooForm = () => {
                                                             </div>
                                                             <div className="flex items-center gap-2">
                                                                 <span className="font-extrabold text-xl text-foreground">
-                                                                    {formatCurrency(totalOM)}
+                                                                    {isCoter ? "A CARGO DO COTER" : formatCurrency(totalOM)}
                                                                 </span>
                                                                 {/* Botões de Ação */}
                                                                 <div className="flex gap-1 shrink-0">
@@ -1384,12 +1463,16 @@ const HorasVooForm = () => {
                                                             {/* ND 33.90.30 */}
                                                             <div className="flex justify-between text-xs">
                                                                 <span className="text-muted-foreground">ND 33.90.30 (Custeio):</span>
-                                                                <span className="text-green-600">{formatCurrency(totalND30Consolidado)}</span>
+                                                                <span className="text-green-600">
+                                                                    {totalND30Consolidado === 0 ? (isCoter ? "A cargo do COTER" : formatCurrency(totalND30Consolidado)) : formatCurrency(totalND30Consolidado)}
+                                                                </span>
                                                             </div>
                                                             {/* ND 33.90.39 */}
                                                             <div className="flex justify-between text-xs">
                                                                 <span className="text-muted-foreground">ND 33.90.39 (Serviços):</span>
-                                                                <span className="text-green-600">{formatCurrency(totalND39Consolidado)}</span>
+                                                                <span className="text-green-600">
+                                                                    {totalND39Consolidado === 0 ? (isCoter ? "A cargo do COTER" : formatCurrency(totalND39Consolidado)) : formatCurrency(totalND39Consolidado)}
+                                                                </span>
                                                             </div>
                                                         </div>
                                                     </Card>
