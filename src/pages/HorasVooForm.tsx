@@ -1142,7 +1142,7 @@ const HorasVooForm = () => {
                                                     
                                                     {/* ND 30 */}
                                                     <div className="space-y-2 col-span-1">
-                                                        <Label htmlFor="valor_nd_30">Valor ND 33.90.30 (Custeio) *</Label>
+                                                        <Label htmlFor="valor_nd_30">Valor ND 33.90.30 *</Label>
                                                         <CurrencyInput
                                                             id="valor_nd_30"
                                                             rawDigits={rawND30Input}
@@ -1156,7 +1156,7 @@ const HorasVooForm = () => {
                                                     
                                                     {/* ND 39 */}
                                                     <div className="space-y-2 col-span-1">
-                                                        <Label htmlFor="valor_nd_39">Valor ND 33.90.39 (Serviços) *</Label>
+                                                        <Label htmlFor="valor_nd_39">Valor ND 33.90.39 *</Label>
                                                         <CurrencyInput
                                                             id="valor_nd_39"
                                                             rawDigits={rawND39Input}
@@ -1170,6 +1170,9 @@ const HorasVooForm = () => {
                                                     
                                                     {/* SWITCH COTER */}
                                                     <div className="space-y-2 col-span-1 flex flex-col justify-end">
+                                                        <Label className="text-sm font-medium leading-none mb-2">
+                                                            Responsável pelo Cálculo dos Custo
+                                                        </Label>
                                                         <div className="flex items-center space-x-2 p-2 border rounded-md bg-background">
                                                             <Switch
                                                                 id="coter-responsibility"
