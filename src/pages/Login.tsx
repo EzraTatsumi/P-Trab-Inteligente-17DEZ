@@ -22,6 +22,8 @@ import { useSession } from '@/components/SessionContextProvider';
 import { useNavigate } from 'react-router-dom';
 import { ForgotPasswordDialog } from '@/components/ForgotPasswordDialog';
 import { EmailVerificationDialog } from '@/components/EmailVerificationDialog';
+import { SignupDialog } from '@/components/SignupDialog'; // Importar o diálogo de cadastro
+import { SignupSuccessDialog } from '@/components/SignupSuccessDialog'; // Importar o diálogo de sucesso
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
@@ -30,9 +32,16 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Estados para Login/Verificação
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [unconfirmedEmail, setUnconfirmedEmail] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  
+  // NOVOS ESTADOS para Cadastro
+  const [showSignupDialog, setShowSignupDialog] = useState(false);
+  const [showSignupSuccess, setShowSignupSuccess] = useState(false);
+  const [newlyRegisteredEmail, setNewlyRegisteredEmail] = useState('');
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -91,6 +100,13 @@ const Login: React.FC = () => {
     }
   };
   
+  // NOVO: Handler para sucesso no cadastro
+  const handleSignupSuccess = (email: string) => {
+    setShowSignupDialog(false);
+    setNewlyRegisteredEmail(email);
+    setShowSignupSuccess(true);
+  };
+
   // If session is loading, show a spinner
   if (sessionLoading) {
     return (
@@ -210,7 +226,7 @@ const Login: React.FC = () => {
               <Button 
                 variant="link" 
                 className="p-0 h-auto text-primary hover:text-primary/80"
-                onClick={() => navigate('/signup')}
+                onClick={() => setShowSignupDialog(true)} // ABRINDO O DIÁLOGO
               >
                 Cadastre-se
               </Button>
@@ -218,6 +234,20 @@ const Login: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Diálogo de Cadastro */}
+      <SignupDialog
+        open={showSignupDialog}
+        onOpenChange={setShowSignupDialog}
+        onSignupSuccess={handleSignupSuccess}
+      />
+      
+      {/* Diálogo de Sucesso no Cadastro */}
+      <SignupSuccessDialog
+        open={showSignupSuccess}
+        onOpenChange={setShowSignupSuccess}
+        email={newlyRegisteredEmail}
+      />
       
       {/* Diálogo de Verificação de E-mail */}
       <EmailVerificationDialog
