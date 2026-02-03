@@ -595,6 +595,7 @@ export const generatePassagemMemoriaCalculada = (
     }
     
     // Busca a diretriz específica usada pelo registro
+    // GARANTIA: Se diretrizesPassagens for null ou [], a diretriz será null, e generatePassagemMemoriaCalculo deve lidar com isso.
     const diretriz = diretrizesPassagens?.find(d => d.id === registro.diretriz_id);
     
     // Usa o utilitário importado, passando a diretriz para extrair o número do pregão
