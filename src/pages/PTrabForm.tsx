@@ -54,21 +54,22 @@ const PTrabForm = () => {
     { id: "classe-ix", name: "Classe IX - Material de Manutenção" },
   ];
 
+  // Itens Operacionais ordenados alfabeticamente
   const itensOperacional = [
-    { id: "locacao-viatura", name: "Locação de Viatura" },
-    { id: "locacao-estruturas", name: "Locação de Estruturas" },
-    { id: "servico-grafico", name: "Serviço Gráfico" },
-    { id: "passagem-aerea", name: "Passagens" }, // Rótulo alterado
-    { id: "diaria", name: "Pagamento de Diárias" },
-    { id: "verba-operacional", name: "Verba Operacional" },
-    { id: "suprimento-fundos", name: "Suprimento de Fundos" }, // NOVO ITEM
     { id: "concessionaria", name: "Pagamento de Concessionárias" },
-    { id: "horas-voo-avex", name: "Horas de Voo (AvEx)" }, // NOVO ITEM
-    { id: "material-consumo", name: "Material de Consumo" }, // NOVO ITEM
-    { id: "servico-satelital", name: "Serviço Satelital" }, // NOVO ITEM
-    { id: "servico-lavanderia", name: "Serviço de Lavanderia" }, // NOVO ITEM
-    { id: "outros-servicos", name: "Outros Serviços" }, // NOVO ITEM
-    { id: "complemento-alimentacao", name: "Complemento de Alimentação" }, // NOVO ITEM
+    { id: "complemento-alimentacao", name: "Complemento de Alimentação" },
+    { id: "diaria", name: "Pagamento de Diárias" },
+    { id: "horas-voo-avex", name: "Horas de Voo (AvEx)" },
+    { id: "locacao-estruturas", name: "Locação de Estruturas" },
+    { id: "locacao-viatura", name: "Locação de Viatura" },
+    { id: "material-consumo", name: "Material de Consumo" },
+    { id: "outros-servicos", name: "Outros Serviços" },
+    { id: "passagem-aerea", name: "Passagens" },
+    { id: "servico-grafico", name: "Serviço Gráfico" },
+    { id: "servico-lavanderia", name: "Serviço de Lavanderia" },
+    { id: "servico-satelital", name: "Serviço Satelital" },
+    { id: "suprimento-fundos", name: "Suprimento de Fundos" },
+    { id: "verba-operacional", name: "Verba Operacional" },
   ];
 
   // --- Lógica de Busca de Créditos (TanStack Query) ---
