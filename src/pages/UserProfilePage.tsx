@@ -354,7 +354,7 @@ const UserProfilePage = () => {
                     </Select>
                   </div>
                   
-                  {/* Sigla da OM (AGORA INPUT SIMPLES) */}
+                  {/* Sigla da OM (CORRIGIDO: AGORA INPUT SIMPLES) */}
                   <div className="space-y-2">
                     <Label htmlFor="sigla_om">Sigla da OM *</Label>
                     <Input
