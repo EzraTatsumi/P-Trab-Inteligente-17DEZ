@@ -15,6 +15,13 @@ import { useFormNavigation } from "@/hooks/useFormNavigation";
 import InputMask from 'react-input-mask';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { z } from "zod";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"; // <-- Importações adicionadas
 
 // Lista de Postos/Graduações (copiada do SignupDialog para validação)
 const MILITARY_RANKS = [
@@ -49,8 +56,6 @@ const UserProfilePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string | undefined>>({});
   
-  // Removido: const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
-
   const loadProfile = useCallback(async () => {
     if (!user) return;
 
@@ -68,7 +73,8 @@ const UserProfilePage: React.FC = () => {
       }
       
       // 2. Usar metadados do Auth (fallback) ou do Profile (preferencial)
-      const metadata = profileData?.raw_user_meta_data || user.user_metadata;
+      // CORREÇÃO DE TIPAGEM: Cast para Record<string, any> para acessar as propriedades
+      const metadata = (profileData?.raw_user_meta_data || user.user_metadata) as Record<string, any> | undefined;
       
       setForm({
         first_name: profileData?.first_name || metadata?.first_name || "",
@@ -154,22 +160,17 @@ const UserProfilePage: React.FC = () => {
       if (authError) throw authError;
       
       // 3. Atualizar tabela 'profiles' (para persistência de first_name/last_name e metadados)
-      // Nota: O trigger handle_new_user já insere first_name/last_name no profiles.
-      // Aqui, atualizamos explicitamente o profiles para garantir que first_name/last_name sejam sincronizados.
       const { error: profileUpdateError } = await supabase
         .from('profiles')
         .update({
           first_name,
           last_name,
           updated_at: new Date().toISOString(),
-          // O raw_user_meta_data é atualizado pelo trigger do Supabase, mas podemos forçar a atualização aqui se necessário.
-          // Para simplificar, confiamos no update do auth.user para sincronizar os metadados.
         })
         .eq('id', user.id);
         
       if (profileUpdateError) {
           console.error("Erro ao atualizar tabela profiles:", profileUpdateError);
-          // Não lançamos erro fatal, mas avisamos
           toast.warning("Dados salvos, mas houve um erro na sincronização do perfil.");
       }
 
