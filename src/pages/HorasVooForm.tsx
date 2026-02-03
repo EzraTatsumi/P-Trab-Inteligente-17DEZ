@@ -1143,29 +1143,57 @@ const HorasVooForm = () => {
                                                     {/* ND 30 */}
                                                     <div className="space-y-2 col-span-1">
                                                         <Label htmlFor="valor_nd_30">Valor ND 33.90.30 *</Label>
-                                                        <CurrencyInput
-                                                            id="valor_nd_30"
-                                                            rawDigits={rawND30Input}
-                                                            onChange={(digits) => handleCurrencyChange('valor_nd_30', digits)}
-                                                            placeholder="Ex: R$ 10.000,00"
-                                                            required={!formData.isCoterResponsibility}
-                                                            disabled={!isPTrabEditable || isSaving || formData.isCoterResponsibility}
-                                                            onKeyDown={handleEnterToNextField}
-                                                        />
+                                                        {formData.isCoterResponsibility ? (
+                                                            <div className="relative">
+                                                                <Input
+                                                                    id="valor_nd_30"
+                                                                    value="A cargo do COTER"
+                                                                    disabled
+                                                                    className="bg-muted/50 text-center font-medium"
+                                                                />
+                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-red-500 opacity-70 pointer-events-none">
+                                                                    A cargo do COTER
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <CurrencyInput
+                                                                id="valor_nd_30"
+                                                                rawDigits={rawND30Input}
+                                                                onChange={(digits) => handleCurrencyChange('valor_nd_30', digits)}
+                                                                placeholder="Ex: R$ 10.000,00"
+                                                                required={!formData.isCoterResponsibility}
+                                                                disabled={!isPTrabEditable || isSaving || formData.isCoterResponsibility}
+                                                                onKeyDown={handleEnterToNextField}
+                                                            />
+                                                        )}
                                                     </div>
                                                     
                                                     {/* ND 39 */}
                                                     <div className="space-y-2 col-span-1">
                                                         <Label htmlFor="valor_nd_39">Valor ND 33.90.39 *</Label>
-                                                        <CurrencyInput
-                                                            id="valor_nd_39"
-                                                            rawDigits={rawND39Input}
-                                                            onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
-                                                            placeholder="Ex: R$ 5.000,00"
-                                                            required={!formData.isCoterResponsibility}
-                                                            disabled={!isPTrabEditable || isSaving || formData.isCoterResponsibility}
-                                                            onKeyDown={handleEnterToNextField}
-                                                        />
+                                                        {formData.isCoterResponsibility ? (
+                                                            <div className="relative">
+                                                                <Input
+                                                                    id="valor_nd_39"
+                                                                    value="A cargo do COTER"
+                                                                    disabled
+                                                                    className="bg-muted/50 text-center font-medium"
+                                                                />
+                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-red-500 opacity-70 pointer-events-none">
+                                                                    A cargo do COTER
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <CurrencyInput
+                                                                id="valor_nd_39"
+                                                                rawDigits={rawND39Input}
+                                                                onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
+                                                                placeholder="Ex: R$ 5.000,00"
+                                                                required={!formData.isCoterResponsibility}
+                                                                disabled={!isPTrabEditable || isSaving || formData.isCoterResponsibility}
+                                                                onKeyDown={handleEnterToNextField}
+                                                            />
+                                                        )}
                                                     </div>
                                                     
                                                     {/* SWITCH COTER */}
