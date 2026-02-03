@@ -342,7 +342,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   
   // 3. Adicionar detalhes da diretriz aos registros consolidados
   const consolidatedPassagensWithDetails = useMemo(() => {
-    if (isLoadingDiretrizDetails) return [];
     
     return consolidatedPassagens.map(group => {
         const firstRecord = group.records[0];
@@ -357,7 +356,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   }, [consolidatedPassagens, diretrizDetailsMap, isLoadingDiretrizDetails]);
 
   const consolidatedConcessionariasWithDetails = useMemo(() => {
-    if (isLoadingDiretrizDetails) return [];
     
     return consolidatedConcessionarias.map(group => {
         const firstRecord = group.records[0];
