@@ -94,7 +94,7 @@ const initialFormState: HorasVooFormState = {
     municipio: "",
     quantidade_hv: 0,
     tipo_anv: "",
-    amparo: "Tudo conforme o DIEx nº 972-DMAvEx/COLOG, de 16 de dezembro de 2022, do Subcomandate Logístico versando sobre o valor da hora de voo para o ano de 2023. O valor foi convertido para REAIS utilizando-se da cotação do dólar (PTAX do DÓLAR).",
+    amparo: "Tudo conforme o DIEx nº 972-DMAvEx/COLOG, de 16 de dezembro de 2022, do Subcomandante Logístico versando sobre o valor da hora de voo para o ano de 2023. O valor foi convertido para REAIS utilizando-se da cotação do dólar (PTAX do DÓLAR).",
     valor_nd_30: 0,
     valor_nd_39: 0,
 };
@@ -1368,31 +1368,6 @@ const HorasVooForm = () => {
                                             </Card>
                                         );
                                     })}
-                                </section>
-                            )}
-
-                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
-                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
-                                <div className="space-y-4 mt-8">
-                                    <h3 className="text-xl font-bold flex items-center gap-2">
-                                        📋 Memórias de Cálculos Detalhadas
-                                    </h3>
-                                    
-                                    {consolidatedRegistros.map(group => (
-                                        <ConsolidatedHorasVooMemoria
-                                            key={`memoria-view-${group.groupKey}`}
-                                            group={group}
-                                            isPTrabEditable={isPTrabEditable}
-                                            isSaving={isSaving}
-                                            editingMemoriaId={editingMemoriaId}
-                                            memoriaEdit={memoriaEdit}
-                                            setMemoriaEdit={setMemoriaEdit}
-                                            handleIniciarEdicaoMemoria={handleIniciarEdicaoMemoria}
-                                            handleCancelarEdicaoMemoria={handleCancelarEdicaoMemoria}
-                                            handleSalvarMemoriaCustomizada={handleSalvarMemoriaCustomizada}
-                                            handleRestaurarMemoriaAutomatica={handleRestaurarMemoriaAutomatica}
-                                        />
-                                    ))}
                                 </div>
                             )}
                         </form>
