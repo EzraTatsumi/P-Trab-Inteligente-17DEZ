@@ -128,21 +128,6 @@ interface ConsolidatedConcessionariaReport extends ConsolidatedConcessionariaRec
     diretrizDetails?: { nome_concessionaria: string, unidade_custo: string, fonte_consumo: string | null, fonte_custo: string | null } | null;
 }
 
-// Mapeamento de ordem alfabética para despesas
-const EXPENSE_ORDER_MAP: Record<string, number> = {
-    'CONCESSIONÁRIA': 1,
-    'DIÁRIAS': 2,
-    'PASSAGENS': 3,
-    'SUPRIMENTO DE FUNDOS': 4,
-    'VERBA OPERACIONAL': 5,
-};
-
-// Tipo unificado para as linhas de despesa
-type ExpenseRow = {
-    type: keyof typeof EXPENSE_ORDER_MAP;
-    data: DiariaRegistro | ConsolidatedPassagemReport | ConsolidatedConcessionariaReport | VerbaOperacionalRegistro;
-};
-
 
 const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   ptrabData,
@@ -392,56 +377,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         };
     });
   }, [consolidatedConcessionarias, concessionariaDetailsMap, isLoadingDiretrizDetails]);
-
-  // 4. Função para gerar e ordenar todas as linhas de despesa de uma OM
-  const getSortedRowsForOM = useCallback((omKey: string, group: typeof registrosAgrupadosPorOM[string]): ExpenseRow[] => {
-    const omName = omKey.split(' (')[0];
-    const ug = omKey.split(' (')[1].replace(')', '');
-
-    const allRows: ExpenseRow[] = [];
-
-    // 1. Diárias
-    group.diarias.forEach(registro => {
-        allRows.push({ type: 'DIÁRIAS', data: registro });
-    });
-
-    // 2. Passagens (Consolidado)
-    consolidatedPassagensWithDetails.filter(c => 
-        c.om_detentora === omName && c.ug_detentora === ug
-    ).forEach(consolidated => {
-        allRows.push({ type: 'PASSAGENS', data: consolidated });
-    });
-
-    // 3. Concessionária (Consolidado)
-    consolidatedConcessionariasWithDetails.filter(c => 
-        c.om_detentora === omName && c.ug_detentora === ug
-    ).forEach(consolidated => {
-        allRows.push({ type: 'CONCESSIONÁRIA', data: consolidated });
-    });
-
-    // 4. Verba Operacional
-    group.verbas.forEach(registro => {
-        allRows.push({ type: 'VERBA OPERACIONAL', data: registro });
-    });
-
-    // 5. Suprimento de Fundos
-    group.suprimentos.forEach(registro => {
-        allRows.push({ type: 'SUPRIMENTO DE FUNDOS', data: registro });
-    });
-
-    // Ordenar por ordem alfabética definida no EXPENSE_ORDER_MAP
-    return allRows.sort((a, b) => {
-        const orderA = EXPENSE_ORDER_MAP[a.type] || 99;
-        const orderB = EXPENSE_ORDER_MAP[b.type] || 99;
-        
-        if (orderA !== orderB) {
-            return orderA - orderB;
-        }
-        
-        // Desempate: ordem alfabética do tipo (embora já seja única)
-        return a.type.localeCompare(b.type);
-    });
-  }, [consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails, registrosAgrupadosPorOM]);
 
 
   // Calcula os totais gerais de cada ND com base nos registros de Diária e Verba Operacional
@@ -755,9 +690,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         const ug = omKey.split(' (')[1].replace(')', '');
         const article = getArticleForOM(omName); // Determina DO/DA
         
-        // 1. Gerar e ordenar todas as linhas de despesa para esta OM
-        const sortedRows = getSortedRowsForOM(omKey, group);
-
         // Calculate subtotal for this OM
         const subtotalOM = group.diarias.reduce((acc, r) => ({
             nd15: acc.nd15 + r.valor_nd_15,
@@ -794,124 +726,45 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             subtotalOM.totalGND3 += r.valor_nd_39;
         });
 
-        // --- 2. Renderizar Linhas Ordenadas ---
-        sortedRows.forEach(rowItem => {
+        // --- 1. Render Diárias ---
+        group.diarias.forEach(registro => {
             const row = worksheet.getRow(currentRow);
-            const type = rowItem.type;
-            const data = rowItem.data;
-            let totalLinha = 0;
-            let memoria = '';
-            let despesasLabel = type;
-            let nd15 = 0, nd30 = 0, nd33 = 0, nd39 = 0, nd00 = 0;
-            let omDetentora = omName;
-            let ugDetentora = ug;
-
-            // Lógica de extração de dados e memória
-            switch (type) {
-                case 'DIÁRIAS':
-                    const diaria = data as DiariaRegistro;
-                    totalLinha = diaria.valor_nd_15 + diaria.valor_nd_30;
-                    nd15 = diaria.valor_nd_15;
-                    nd30 = diaria.valor_nd_30;
-                    memoria = generateDiariaMemoriaCalculo(diaria, diretrizesOperacionais);
-                    omDetentora = diaria.om_detentora || diaria.organizacao;
-                    ugDetentora = diaria.ug_detentora || diaria.ug;
-                    break;
-                case 'PASSAGENS':
-                    const passagemConsolidada = data as ConsolidatedPassagemReport;
-                    totalLinha = passagemConsolidada.totalND33;
-                    nd33 = passagemConsolidada.totalND33;
-                    omDetentora = passagemConsolidada.om_detentora;
-                    ugDetentora = passagemConsolidada.ug_detentora;
-                    
-                    const isDifferentOmPassagem = passagemConsolidada.organizacao !== omDetentora || passagemConsolidada.ug !== ugDetentora;
-                    if (isDifferentOmPassagem) {
-                        despesasLabel += `\n${passagemConsolidada.organizacao}`;
-                    }
-                    
-                    const firstRecordPassagem = passagemConsolidada.records[0];
-                    memoria = firstRecordPassagem.detalhamento_customizado;
-                    if (!memoria) {
-                        memoria = generateConsolidatedPassagemMemoriaCalculo(passagemConsolidada);
-                        if (passagemConsolidada.diretrizDetails?.numero_pregao && passagemConsolidada.diretrizDetails?.ug_referencia) {
-                            memoria += `(Pregão ${passagemConsolidada.diretrizDetails.numero_pregao} - UASG ${formatCodug(passagemConsolidada.diretrizDetails.ug_referencia)})\n`;
-                        } else if (passagemConsolidada.diretrizDetails) {
-                            memoria += `(Detalhes do contrato não disponíveis ou incompletos)\n`;
-                        }
-                    }
-                    break;
-                case 'CONCESSIONÁRIA':
-                    const concessionariaConsolidada = data as ConsolidatedConcessionariaReport;
-                    totalLinha = concessionariaConsolidada.totalND39;
-                    nd39 = concessionariaConsolidada.totalND39;
-                    omDetentora = concessionariaConsolidada.om_detentora;
-                    ugDetentora = concessionariaConsolidada.ug_detentora;
-                    
-                    const isDifferentOmConcessionaria = concessionariaConsolidada.organizacao !== omDetentora || concessionariaConsolidada.ug !== ugDetentora;
-                    if (isDifferentOmConcessionaria) {
-                        despesasLabel += `\n${concessionariaConsolidada.organizacao}`;
-                    }
-                    
-                    const firstRecordConcessionaria = concessionariaConsolidada.records[0];
-                    memoria = firstRecordConcessionaria.detalhamento_customizado;
-                    if (!memoria) {
-                        memoria = generateConsolidatedConcessionariaMemoriaCalculo(concessionariaConsolidada);
-                    }
-                    break;
-                case 'VERBA OPERACIONAL':
-                    const verba = data as VerbaOperacionalRegistro;
-                    totalLinha = verba.valor_nd_30 + verba.valor_nd_39;
-                    nd30 = verba.valor_nd_30;
-                    nd39 = verba.valor_nd_39;
-                    memoria = generateVerbaOperacionalMemoriaCalculo(verba);
-                    omDetentora = verba.om_detentora || verba.organizacao;
-                    ugDetentora = verba.ug_detentora || verba.ug;
-                    break;
-                case 'SUPRIMENTO DE FUNDOS':
-                    const suprimento = data as VerbaOperacionalRegistro;
-                    totalLinha = suprimento.valor_nd_30 + suprimento.valor_nd_39;
-                    nd30 = suprimento.valor_nd_30;
-                    nd39 = suprimento.valor_nd_39;
-                    memoria = generateSuprimentoFundosMemoriaCalculo(suprimento);
-                    omDetentora = suprimento.om_detentora || suprimento.organizacao;
-                    ugDetentora = suprimento.ug_detentora || suprimento.ug;
-                    break;
-            }
+            const totalLinha = registro.valor_nd_15 + registro.valor_nd_30; // ND 15 + ND 30 (Passagens)
             
             // A: DESPESAS
-            row.getCell('A').value = despesasLabel; 
+            row.getCell('A').value = `DIÁRIAS`; 
             row.getCell('A').alignment = leftMiddleAlignment; 
             
             // B: OM (UGE) CODUG
-            row.getCell('B').value = `${omDetentora}\n(${formatCodug(ugDetentora)})`;
+            row.getCell('B').value = `${registro.organizacao}\n(${formatCodug(registro.ug)})`;
             row.getCell('B').alignment = dataCenterMiddleAlignment; 
             
-            // C: 33.90.15
-            row.getCell('C').value = nd15;
+            // C: 33.90.15 (Diárias)
+            row.getCell('C').value = registro.valor_nd_15;
             row.getCell('C').alignment = dataCenterMiddleAlignment;
             row.getCell('C').numFmt = 'R$ #,##0.00';
             row.getCell('C').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
-            // D: 33.90.30
-            row.getCell('D').value = nd30;
+            // D: 33.90.30 (Passagens Aéreas)
+            row.getCell('D').value = registro.valor_nd_30;
             row.getCell('D').alignment = dataCenterMiddleAlignment;
             row.getCell('D').numFmt = 'R$ #,##0.00';
             row.getCell('D').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
-            // E: 33.90.33
-            row.getCell('E').value = nd33;
+            // E: 33.90.33 (0)
+            row.getCell('E').value = 0;
             row.getCell('E').alignment = dataCenterMiddleAlignment;
             row.getCell('E').numFmt = 'R$ #,##0.00';
             row.getCell('E').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
-            // F: 33.90.39
-            row.getCell('F').value = nd39;
+            // F: 33.90.39 (0)
+            row.getCell('F').value = 0;
             row.getCell('F').alignment = dataCenterMiddleAlignment;
             row.getCell('F').numFmt = 'R$ #,##0.00';
             row.getCell('F').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // G: 33.90.00 (0)
-            row.getCell('G').value = nd00;
+            row.getCell('G').value = 0;
             row.getCell('G').alignment = dataCenterMiddleAlignment;
             row.getCell('G').numFmt = 'R$ #,##0.00';
             row.getCell('G').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
@@ -923,6 +776,321 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             row.getCell('H').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
             
             // I: DETALHAMENTO
+            const memoria = generateDiariaMemoriaCalculo(registro, diretrizesOperacionais);
+            row.getCell('I').value = memoria;
+            row.getCell('I').alignment = leftTopAlignment; 
+            row.getCell('I').font = { name: 'Arial', size: 6.5 };
+            
+            // Apply base styles
+            ['A', 'B', 'I'].forEach(col => {
+                row.getCell(col).font = baseFontStyle;
+            });
+            
+            ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
+                row.getCell(col).border = cellBorder;
+            });
+            currentRow++;
+        });
+        
+        // --- 2. Render Passagens (CONSOLIDADO) ---
+        const passagensConsolidadasDesteGrupo = consolidatedPassagensWithDetails.filter(c => 
+            c.om_detentora === omName && c.ug_detentora === ug
+        );
+
+        passagensConsolidadasDesteGrupo.forEach(consolidated => {
+            const row = worksheet.getRow(currentRow);
+            const totalLinha = consolidated.totalND33;
+            
+            // Verifica se a OM Favorecida é diferente da OM Detentora
+            const isDifferentOm = consolidated.organizacao !== consolidated.om_detentora || consolidated.ug !== consolidated.ug_detentora;
+            
+            // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente, COM QUEBRA DE LINHA)
+            let despesasLabel = `PASSAGENS`;
+            if (isDifferentOm) {
+                // Usar \n para quebra de linha no Excel
+                despesasLabel += `\n${consolidated.organizacao}`;
+            }
+            row.getCell('A').value = despesasLabel; 
+            row.getCell('A').alignment = leftMiddleAlignment; 
+            
+            // B: OM (UGE) CODUG (OM Detentora do Recurso)
+            row.getCell('B').value = `${consolidated.om_detentora}\n(${formatCodug(consolidated.ug_detentora)})`;
+            row.getCell('B').alignment = dataCenterMiddleAlignment; 
+            
+            // C: 33.90.15 (0)
+            row.getCell('C').value = 0;
+            row.getCell('C').alignment = dataCenterMiddleAlignment;
+            row.getCell('C').numFmt = 'R$ #,##0.00';
+            row.getCell('C').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // D: 33.90.30 (0)
+            row.getCell('D').value = 0;
+            row.getCell('D').alignment = dataCenterMiddleAlignment;
+            row.getCell('D').numFmt = 'R$ #,##0.00';
+            row.getCell('D').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // E: 33.90.33 (Passagens ND 33)
+            row.getCell('E').value = consolidated.totalND33;
+            row.getCell('E').alignment = dataCenterMiddleAlignment;
+            row.getCell('E').numFmt = 'R$ #,##0.00';
+            row.getCell('E').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // F: 33.90.39 (0)
+            row.getCell('F').value = 0;
+            row.getCell('F').alignment = dataCenterMiddleAlignment;
+            row.getCell('F').numFmt = 'R$ #,##0.00';
+            row.getCell('F').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // G: 33.90.00 (0)
+            row.getCell('G').value = 0;
+            row.getCell('G').alignment = dataCenterMiddleAlignment;
+            row.getCell('G').numFmt = 'R$ #,##0.00';
+            row.getCell('G').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // H: GND 3 (Total da linha)
+            row.getCell('H').value = totalLinha;
+            row.getCell('H').alignment = dataCenterMiddleAlignment;
+            row.getCell('H').numFmt = 'R$ #,##0.00';
+            row.getCell('H').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // I: DETALHAMENTO
+            const firstRecord = consolidated.records[0];
+            let memoria = firstRecord.detalhamento_customizado;
+            
+            if (!memoria) {
+                memoria = generateConsolidatedPassagemMemoriaCalculo(consolidated);
+                
+                if (consolidated.diretrizDetails?.numero_pregao && consolidated.diretrizDetails?.ug_referencia) {
+                    memoria += `(Pregão ${consolidated.diretrizDetails.numero_pregao} - UASG ${formatCodug(consolidated.diretrizDetails.ug_referencia)})\n`;
+                } else if (consolidated.diretrizDetails) {
+                    memoria += `(Detalhes do contrato não disponíveis ou incompletos)\n`;
+                }
+            }
+            
+            row.getCell('I').value = memoria;
+            row.getCell('I').alignment = leftTopAlignment; 
+            row.getCell('I').font = { name: 'Arial', size: 6.5 };
+            
+            // Apply base styles
+            ['A', 'B', 'I'].forEach(col => {
+                row.getCell(col).font = baseFontStyle;
+            });
+            
+            ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
+                row.getCell(col).border = cellBorder;
+            });
+            currentRow++;
+        });
+        
+        // --- 3. Render Concessionária (CONSOLIDADO) --- // NOVO
+        const concessionariasConsolidadasDesteGrupo = consolidatedConcessionariasWithDetails.filter(c => 
+            c.om_detentora === omName && c.ug_detentora === ug
+        );
+
+        concessionariasConsolidadasDesteGrupo.forEach(consolidated => {
+            const row = worksheet.getRow(currentRow);
+            const totalLinha = consolidated.totalND39;
+            
+            // Verifica se a OM Favorecida é diferente da OM Detentora
+            const isDifferentOm = consolidated.organizacao !== consolidated.om_detentora || consolidated.ug !== consolidated.ug_detentora;
+            
+            // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente, COM QUEBRA DE LINHA)
+            let despesasLabel = `CONCESSIONÁRIA`;
+            if (isDifferentOm) {
+                despesasLabel += `\n${consolidated.organizacao}`;
+            }
+            row.getCell('A').value = despesasLabel; 
+            row.getCell('A').alignment = leftMiddleAlignment; 
+            
+            // B: OM (UGE) CODUG (OM Detentora do Recurso)
+            row.getCell('B').value = `${consolidated.om_detentora}\n(${formatCodug(consolidated.ug_detentora)})`;
+            row.getCell('B').alignment = dataCenterMiddleAlignment; 
+            
+            // C: 33.90.15 (0)
+            row.getCell('C').value = 0;
+            row.getCell('C').alignment = dataCenterMiddleAlignment;
+            row.getCell('C').numFmt = 'R$ #,##0.00';
+            row.getCell('C').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // D: 33.90.30 (0)
+            row.getCell('D').value = 0;
+            row.getCell('D').alignment = dataCenterMiddleAlignment;
+            row.getCell('D').numFmt = 'R$ #,##0.00';
+            row.getCell('D').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // E: 33.90.33 (0)
+            row.getCell('E').value = 0;
+            row.getCell('E').alignment = dataCenterMiddleAlignment;
+            row.getCell('E').numFmt = 'R$ #,##0.00';
+            row.getCell('E').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // F: 33.90.39 (Concessionária ND 39)
+            row.getCell('F').value = consolidated.totalND39;
+            row.getCell('F').alignment = dataCenterMiddleAlignment;
+            row.getCell('F').numFmt = 'R$ #,##0.00';
+            row.getCell('F').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // G: 33.90.00 (0)
+            row.getCell('G').value = 0;
+            row.getCell('G').alignment = dataCenterMiddleAlignment;
+            row.getCell('G').numFmt = 'R$ #,##0.00';
+            row.getCell('G').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // H: GND 3 (Total da linha)
+            row.getCell('H').value = totalLinha;
+            row.getCell('H').alignment = dataCenterMiddleAlignment;
+            row.getCell('H').numFmt = 'R$ #,##0.00';
+            row.getCell('H').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // I: DETALHAMENTO
+            const firstRecord = consolidated.records[0];
+            let memoria = firstRecord.detalhamento_customizado;
+            
+            if (!memoria) {
+                // Se não houver customização, gera a automática consolidada
+                memoria = generateConsolidatedConcessionariaMemoriaCalculo(consolidated);
+            }
+            
+            row.getCell('I').value = memoria;
+            row.getCell('I').alignment = leftTopAlignment; 
+            row.getCell('I').font = { name: 'Arial', size: 6.5 };
+            
+            // Apply base styles
+            ['A', 'B', 'I'].forEach(col => {
+                row.getCell(col).font = baseFontStyle;
+            });
+            
+            ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
+                row.getCell(col).border = cellBorder;
+            });
+            currentRow++;
+        });
+        
+        // --- 4. Render Verba Operacional ---
+        group.verbas.forEach(registro => {
+            const row = worksheet.getRow(currentRow);
+            const totalLinha = registro.valor_nd_30 + registro.valor_nd_39;
+            
+            // OM Detentora do Recurso
+            const omDetentora = registro.om_detentora || registro.organizacao;
+            const ugDetentora = registro.ug_detentora || registro.ug;
+            
+            // A: DESPESAS
+            row.getCell('A').value = `VERBA OPERACIONAL`; 
+            row.getCell('A').alignment = leftMiddleAlignment; 
+            
+            // B: OM (UGE) CODUG (OM Detentora do Recurso)
+            row.getCell('B').value = `${omDetentora}\n(${formatCodug(ugDetentora)})`;
+            row.getCell('B').alignment = dataCenterMiddleAlignment; 
+            
+            // C: 33.90.15 (0)
+            row.getCell('C').value = 0;
+            row.getCell('C').alignment = dataCenterMiddleAlignment;
+            row.getCell('C').numFmt = 'R$ #,##0.00';
+            row.getCell('C').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // D: 33.90.30 (Verba ND 30)
+            row.getCell('D').value = registro.valor_nd_30;
+            row.getCell('D').alignment = dataCenterMiddleAlignment;
+            row.getCell('D').numFmt = 'R$ #,##0.00';
+            row.getCell('D').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // E: 33.90.33 (0)
+            row.getCell('E').value = 0;
+            row.getCell('E').alignment = dataCenterMiddleAlignment;
+            row.getCell('E').numFmt = 'R$ #,##0.00';
+            row.getCell('E').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // F: 33.90.39 (Verba ND 39)
+            row.getCell('F').value = registro.valor_nd_39;
+            row.getCell('F').alignment = dataCenterMiddleAlignment;
+            row.getCell('F').numFmt = 'R$ #,##0.00';
+            row.getCell('F').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // G: 33.90.00 (0)
+            row.getCell('G').value = 0;
+            row.getCell('G').alignment = dataCenterMiddleAlignment;
+            row.getCell('G').numFmt = 'R$ #,##0.00';
+            row.getCell('G').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // H: GND 3 (Total da linha)
+            row.getCell('H').value = totalLinha;
+            row.getCell('H').alignment = dataCenterMiddleAlignment;
+            row.getCell('H').numFmt = 'R$ #,##0.00';
+            row.getCell('H').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // I: DETALHAMENTO
+            const memoria = generateVerbaOperacionalMemoriaCalculo(registro);
+            row.getCell('I').value = memoria;
+            row.getCell('I').alignment = leftTopAlignment; 
+            row.getCell('I').font = { name: 'Arial', size: 6.5 };
+            
+            // Apply base styles
+            ['A', 'B', 'I'].forEach(col => {
+                row.getCell(col).font = baseFontStyle;
+            });
+            
+            ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].forEach(col => {
+                row.getCell(col).border = cellBorder;
+            });
+            currentRow++;
+        });
+        
+        // --- 5. Render Suprimento de Fundos ---
+        group.suprimentos.forEach(registro => {
+            const row = worksheet.getRow(currentRow);
+            const totalLinha = registro.valor_nd_30 + registro.valor_nd_39;
+            
+            // OM Detentora do Recurso
+            const omDetentora = registro.om_detentora || registro.organizacao;
+            const ugDetentora = registro.ug_detentora || registro.ug;
+            
+            // A: DESPESAS
+            row.getCell('A').value = `SUPRIMENTO DE FUNDOS`; 
+            row.getCell('A').alignment = leftMiddleAlignment; 
+            
+            // B: OM (UGE) CODUG (OM Detentora do Recurso)
+            row.getCell('B').value = `${omDetentora}\n(${formatCodug(ugDetentora)})`;
+            row.getCell('B').alignment = dataCenterMiddleAlignment; 
+            
+            // C: 33.90.15 (0)
+            row.getCell('C').value = 0;
+            row.getCell('C').alignment = dataCenterMiddleAlignment;
+            row.getCell('C').numFmt = 'R$ #,##0.00';
+            row.getCell('C').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // D: 33.90.30 (Suprimento ND 30)
+            row.getCell('D').value = registro.valor_nd_30;
+            row.getCell('D').alignment = dataCenterMiddleAlignment;
+            row.getCell('D').numFmt = 'R$ #,##0.00';
+            row.getCell('D').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // E: 33.90.33 (0)
+            row.getCell('E').value = 0;
+            row.getCell('E').alignment = dataCenterMiddleAlignment;
+            row.getCell('E').numFmt = 'R$ #,##0.00';
+            row.getCell('E').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // F: 33.90.39 (Suprimento ND 39)
+            row.getCell('F').value = registro.valor_nd_39;
+            row.getCell('F').alignment = dataCenterMiddleAlignment;
+            row.getCell('F').numFmt = 'R$ #,##0.00';
+            row.getCell('F').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // G: 33.90.00 (0)
+            row.getCell('G').value = 0;
+            row.getCell('G').alignment = dataCenterMiddleAlignment;
+            row.getCell('G').numFmt = 'R$ #,##0.00';
+            row.getCell('G').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // H: GND 3 (Total da linha)
+            row.getCell('H').value = totalLinha;
+            row.getCell('H').alignment = dataCenterMiddleAlignment;
+            row.getCell('H').numFmt = 'R$ #,##0.00';
+            row.getCell('H').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } }; 
+            
+            // I: DETALHAMENTO
+            const memoria = generateSuprimentoFundosMemoriaCalculo(registro);
             row.getCell('I').value = memoria;
             row.getCell('I').alignment = leftTopAlignment; 
             row.getCell('I').font = { name: 'Arial', size: 6.5 };
@@ -1110,7 +1278,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
       description: "O relatório Operacional foi salvo com sucesso.",
       duration: 3000,
     });
-  }, [consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, diretrizesOperacionais, toast, registrosAgrupadosPorOM, getSortedRowsForOM]);
+  }, [consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, diretrizesOperacionais, toast, registrosAgrupadosPorOM]);
 
 
   if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0 && registrosSuprimentoFundos.length === 0 && registrosPassagem.length === 0 && registrosConcessionaria.length === 0) {
@@ -1206,9 +1374,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 const ug = omKey.split(' (')[1].replace(')', '');
                 const article = getArticleForOM(omName); // Determina DO/DA
                 
-                // 1. Gerar e ordenar todas as linhas de despesa para esta OM
-                const sortedRows = getSortedRowsForOM(omKey, group);
-
                 // Calculate subtotal for this OM
                 const subtotalOM = group.diarias.reduce((acc, r) => ({
                     nd15: acc.nd15 + r.valor_nd_15,
@@ -1243,102 +1408,80 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
 
                 return (
                     <React.Fragment key={omKey}>
-                        {sortedRows.map((rowItem) => {
-                            const type = rowItem.type;
-                            const data = rowItem.data;
-                            let totalLinha = 0;
-                            let memoria = '';
-                            let despesasLabel = type;
-                            let nd15 = 0, nd30 = 0, nd33 = 0, nd39 = 0, nd00 = 0;
-                            let omDetentora = omName;
-                            let ugDetentora = ug;
-
-                            // Lógica de extração de dados e memória
-                            switch (type) {
-                                case 'DIÁRIAS':
-                                    const diaria = data as DiariaRegistro;
-                                    totalLinha = diaria.valor_nd_15 + diaria.valor_nd_30;
-                                    nd15 = diaria.valor_nd_15;
-                                    nd30 = diaria.valor_nd_30;
-                                    memoria = generateDiariaMemoriaCalculo(diaria, diretrizesOperacionais);
-                                    omDetentora = diaria.om_detentora || diaria.organizacao;
-                                    ugDetentora = diaria.ug_detentora || diaria.ug;
-                                    break;
-                                case 'PASSAGENS':
-                                    const passagemConsolidada = data as ConsolidatedPassagemReport;
-                                    totalLinha = passagemConsolidada.totalND33;
-                                    nd33 = passagemConsolidada.totalND33;
-                                    omDetentora = passagemConsolidada.om_detentora;
-                                    ugDetentora = passagemConsolidada.ug_detentora;
-                                    
-                                    const isDifferentOmPassagem = passagemConsolidada.organizacao !== omDetentora || passagemConsolidada.ug !== ugDetentora;
-                                    if (isDifferentOmPassagem) {
-                                        despesasLabel += `<br/>${passagemConsolidada.organizacao}`;
-                                    }
-                                    
-                                    const firstRecordPassagem = passagemConsolidada.records[0];
-                                    memoria = firstRecordPassagem.detalhamento_customizado;
-                                    if (!memoria) {
-                                        memoria = generateConsolidatedPassagemMemoriaCalculo(passagemConsolidada);
-                                        if (passagemConsolidada.diretrizDetails?.numero_pregao && passagemConsolidada.diretrizDetails?.ug_referencia) {
-                                            memoria += `(Pregão ${passagemConsolidada.diretrizDetails.numero_pregao} - UASG ${formatCodug(passagemConsolidada.diretrizDetails.ug_referencia)})\n`;
-                                        } else if (passagemConsolidada.diretrizDetails) {
-                                            memoria += `(Detalhes do contrato não disponíveis ou incompletos)\n`;
-                                        }
-                                    }
-                                    break;
-                                case 'CONCESSIONÁRIA':
-                                    const concessionariaConsolidada = data as ConsolidatedConcessionariaReport;
-                                    totalLinha = concessionariaConsolidada.totalND39;
-                                    nd39 = concessionariaConsolidada.totalND39;
-                                    omDetentora = concessionariaConsolidada.om_detentora;
-                                    ugDetentora = concessionariaConsolidada.ug_detentora;
-                                    
-                                    const isDifferentOmConcessionaria = concessionariaConsolidada.organizacao !== omDetentora || concessionariaConsolidada.ug !== ugDetentora;
-                                    if (isDifferentOmConcessionaria) {
-                                        despesasLabel += `<br/>${concessionariaConsolidada.organizacao}`;
-                                    }
-                                    
-                                    const firstRecordConcessionaria = concessionariaConsolidada.records[0];
-                                    memoria = firstRecordConcessionaria.detalhamento_customizado;
-                                    if (!memoria) {
-                                        memoria = generateConsolidatedConcessionariaMemoriaCalculo(concessionariaConsolidada);
-                                    }
-                                    break;
-                                case 'VERBA OPERACIONAL':
-                                    const verba = data as VerbaOperacionalRegistro;
-                                    totalLinha = verba.valor_nd_30 + verba.valor_nd_39;
-                                    nd30 = verba.valor_nd_30;
-                                    nd39 = verba.valor_nd_39;
-                                    memoria = generateVerbaOperacionalMemoriaCalculo(verba);
-                                    omDetentora = verba.om_detentora || verba.organizacao;
-                                    ugDetentora = verba.ug_detentora || verba.ug;
-                                    break;
-                                case 'SUPRIMENTO DE FUNDOS':
-                                    const suprimento = data as VerbaOperacionalRegistro;
-                                    totalLinha = suprimento.valor_nd_30 + suprimento.valor_nd_39;
-                                    nd30 = suprimento.valor_nd_30;
-                                    nd39 = suprimento.valor_nd_39;
-                                    memoria = generateSuprimentoFundosMemoriaCalculo(suprimento);
-                                    omDetentora = suprimento.om_detentora || suprimento.organizacao;
-                                    ugDetentora = suprimento.ug_detentora || suprimento.ug;
-                                    break;
-                            }
-
+                        {/* --- 1. Render Diárias --- */}
+                        {group.diarias.map((registro, index) => {
+                            const totalLinha = registro.valor_nd_15 + registro.valor_nd_30;
+                            
                             return (
-                                <tr key={`${type}-${omKey}-${(data as any).id || (data as any).groupKey}`} className="expense-row">
+                                <tr key={`diaria-${registro.id}`} className="expense-row">
+                                  <td className="col-despesas-op"> 
+                                    DIÁRIAS
+                                  </td>
+                                  <td className="col-om-op">
+                                    <div>{registro.organizacao}</div>
+                                    <div>({formatCodug(registro.ug)})</div>
+                                  </td>
+                                  <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_15)}</td>
+                                  <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_30)}</td>
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.33 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.39 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.00 */}
+                                  <td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
+                                  <td className="col-detalhamento-op">
+                                    <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                                      {generateDiariaMemoriaCalculo(registro, diretrizesOperacionais)}
+                                    </div>
+                                  </td>
+                                </tr>
+                            );
+                        })}
+                        
+                        {/* --- 2. Render Passagens (CONSOLIDADO) --- */}
+                        {/* Filtra os registros consolidados que pertencem a esta OM Detentora */}
+                        {consolidatedPassagensWithDetails.filter(c => 
+                            c.om_detentora === omName && c.ug_detentora === ug
+                        ).map((consolidated) => {
+                            const totalLinha = consolidated.totalND33;
+                            const firstRecord = consolidated.records[0];
+                            
+                            // Verifica se a OM Favorecida é diferente da OM Detentora
+                            const isDifferentOm = consolidated.organizacao !== consolidated.om_detentora || consolidated.ug !== consolidated.ug_detentora;
+                            
+                            // A memória deve ser gerada de forma consolidada, priorizando a customizada do primeiro registro
+                            let memoria = firstRecord.detalhamento_customizado;
+                            
+                            if (!memoria) {
+                                // Se não houver customização, gera a automática consolidada
+                                memoria = generateConsolidatedPassagemMemoriaCalculo(consolidated);
+                                
+                                // Adicionar Pregão/UASG dinamicamente
+                                if (consolidated.diretrizDetails?.numero_pregao && consolidated.diretrizDetails?.ug_referencia) {
+                                    memoria += `(Pregão ${consolidated.diretrizDetails.numero_pregao} - UASG ${formatCodug(consolidated.diretrizDetails.ug_referencia)})\n`;
+                                } else if (consolidated.diretrizDetails) {
+                                    memoria += `(Detalhes do contrato não disponíveis ou incompletos)\n`;
+                                }
+                            }
+                            
+                            // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente, COM QUEBRA DE LINHA)
+                            let despesasLabel = `PASSAGENS`;
+                            if (isDifferentOm) {
+                                despesasLabel += `<br/>${consolidated.organizacao}`;
+                            }
+                            
+                            return (
+                                <tr key={`passagem-consolidada-${consolidated.groupKey}`} className="expense-row">
                                   <td className="col-despesas-op"> 
                                     <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: despesasLabel }} />
                                   </td>
                                   <td className="col-om-op">
-                                    <div>{omDetentora}</div>
-                                    <div>({formatCodug(ugDetentora)})</div>
+                                    <div>{consolidated.om_detentora}</div>
+                                    <div>({formatCodug(consolidated.ug_detentora)})</div>
                                   </td>
-                                  <td className="col-nd-op-small">{formatCurrency(nd15)}</td>
-                                  <td className="col-nd-op-small">{formatCurrency(nd30)}</td>
-                                  <td className="col-nd-op-small">{formatCurrency(nd33)}</td>
-                                  <td className="col-nd-op-small">{formatCurrency(nd39)}</td>
-                                  <td className="col-nd-op-small">{formatCurrency(nd00)}</td>
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.15 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.30 */}
+                                  <td className="col-nd-op-small">{formatCurrency(consolidated.totalND33)}</td> {/* 33.90.33 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.39 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.00 */}
                                   <td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
                                   <td className="col-detalhamento-op">
                                     <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
@@ -1348,6 +1491,119 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                 </tr>
                             );
                         })}
+                        
+                        {/* --- 3. Render Concessionária (CONSOLIDADO) --- */}
+                        {consolidatedConcessionariasWithDetails.filter(c => 
+                            c.om_detentora === omName && c.ug_detentora === ug
+                        ).map((consolidated) => {
+                            const totalLinha = consolidated.totalND39;
+                            const firstRecord = consolidated.records[0];
+                            
+                            // Verifica se a OM Favorecida é diferente da OM Detentora
+                            const isDifferentOm = consolidated.organizacao !== consolidated.om_detentora || consolidated.ug !== consolidated.ug_detentora;
+                            
+                            // A memória deve ser gerada de forma consolidada, priorizando a customizada do primeiro registro
+                            let memoria = firstRecord.detalhamento_customizado;
+                            
+                            if (!memoria) {
+                                // Se não houver customização, gera a automática consolidada
+                                memoria = generateConsolidatedConcessionariaMemoriaCalculo(consolidated);
+                            }
+                            
+                            // A: DESPESAS (Ajustado para incluir OM Favorecida se diferente, COM QUEBRA DE LINHA)
+                            let despesasLabel = `CONCESSIONÁRIA`;
+                            if (isDifferentOm) {
+                                despesasLabel += `<br/>${consolidated.organizacao}`;
+                            }
+                            
+                            return (
+                                <tr key={`concessionaria-consolidada-${consolidated.groupKey}`} className="expense-row">
+                                  <td className="col-despesas-op"> 
+                                    <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: despesasLabel }} />
+                                  </td>
+                                  <td className="col-om-op">
+                                    <div>{consolidated.om_detentora}</div>
+                                    <div>({formatCodug(consolidated.ug_detentora)})</div>
+                                  </td>
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.15 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.30 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.33 */}
+                                  <td className="col-nd-op-small">{formatCurrency(consolidated.totalND39)}</td> {/* 33.90.39 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.00 */}
+                                  <td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
+                                  <td className="col-detalhamento-op">
+                                    <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                                      {memoria}
+                                    </div>
+                                  </td>
+                                </tr>
+                            );
+                        })}
+                        
+                        {/* --- 4. Render Verba Operacional --- */}
+                        {group.verbas.map((registro, index) => {
+                            const totalLinha = registro.valor_nd_30 + registro.valor_nd_39;
+                            
+                            // OM Detentora do Recurso
+                            const omDetentora = registro.om_detentora || registro.organizacao;
+                            const ugDetentora = registro.ug_detentora || registro.ug;
+                            
+                            return (
+                                <tr key={`verba-${registro.id}`} className="expense-row">
+                                  <td className="col-despesas-op"> 
+                                    VERBA OPERACIONAL
+                                  </td>
+                                  <td className="col-om-op">
+                                    <div>{omDetentora}</div>
+                                    <div>({formatCodug(ugDetentora)})</div>
+                                  </td>
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.15 */}
+                                  <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_30)}</td> {/* 33.90.30 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.33 */}
+                                  <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_39)}</td> {/* 33.90.39 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.00 */}
+                                  <td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
+                                  <td className="col-detalhamento-op">
+                                    <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                                      {generateVerbaOperacionalMemoriaCalculo(registro)}
+                                    </div>
+                                  </td>
+                                </tr>
+                            );
+                        })}
+                        
+                        {/* --- 5. Render Suprimento de Fundos --- */}
+                        {group.suprimentos.map((registro, index) => {
+                            const totalLinha = registro.valor_nd_30 + registro.valor_nd_39;
+                            
+                            // OM Detentora do Recurso
+                            const omDetentora = registro.om_detentora || registro.organizacao;
+                            const ugDetentora = registro.ug_detentora || registro.ug;
+                            
+                            return (
+                                <tr key={`suprimento-${registro.id}`} className="expense-row">
+                                  <td className="col-despesas-op"> 
+                                    SUPRIMENTO DE FUNDOS
+                                  </td>
+                                  <td className="col-om-op">
+                                    <div>{omDetentora}</div>
+                                    <div>({formatCodug(ugDetentora)})</div>
+                                  </td>
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.15 */}
+                                  <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_30)}</td> {/* 33.90.30 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.33 */}
+                                  <td className="col-nd-op-small">{formatCurrency(registro.valor_nd_39)}</td> {/* 33.90.39 */}
+                                  <td className="col-nd-op-small">{formatCurrency(0)}</td> {/* 33.90.00 */}
+                                  <td className="col-nd-op-small total-gnd3-cell">{formatCurrency(totalLinha)}</td>
+                                  <td className="col-detalhamento-op">
+                                    <div style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
+                                      {generateSuprimentoFundosMemoriaCalculo(registro)}
+                                    </div>
+                                  </td>
+                                </tr>
+                            );
+                        })}
+
                         
                         {/* Subtotal Row 1: SOMA POR ND E GP DE DESPESA - NDs agora em Cinza (#D9D9D9) */}
                         <tr className="subtotal-om-soma-row">
