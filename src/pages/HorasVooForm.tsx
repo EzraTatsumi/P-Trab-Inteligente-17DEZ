@@ -360,13 +360,15 @@ const HorasVooForm = () => {
             
             if (omFavorecida) {
                 setSelectedOmFavorecidaId(omFavorecida.id);
-                setSelectedOmDestinoId(omFavorecida.id); // Sincroniza OM Detentora
+                // OM Detentora não é mais necessária, mas mantemos o estado para evitar quebras no DB
+                setSelectedOmDestinoId(omFavorecida.id); 
                 setFormData(prev => ({
                     ...initialFormState,
                     om_favorecida: omFavorecida.nome_om,
                     ug_favorecida: omFavorecida.codug_om,
-                    om_destino: omFavorecida.nome_om, // Preenchimento automático
-                    ug_destino: omFavorecida.codug_om, // Preenchimento automático
+                    om_destino: omFavorecida.nome_om, // Mantido para DB
+                    ug_destino: omFavorecida.codug_om, // Mantido para DB
+                    dias_operacao: 1, // Definido como 1 por padrão, já que o campo foi removido
                 }));
             }
         } else if (ptrabData && editingId) {
@@ -392,7 +394,9 @@ const HorasVooForm = () => {
         }
         
         try {
-            const { valor_total } = calculateHorasVooTotals(formData);
+            // Força dias_operacao = 1 para o cálculo, já que o campo foi removido
+            const dataForCalculation = { ...formData, dias_operacao: 1 }; 
+            const { valor_total } = calculateHorasVooTotals(dataForCalculation);
             
             // Cria um registro temporário para gerar a memória
             const tempRegistro: HorasVooRegistro = {
@@ -402,7 +406,7 @@ const HorasVooForm = () => {
                 ug: formData.ug_favorecida,
                 om_detentora: formData.om_destino,
                 ug_detentora: formData.ug_destino,
-                dias_operacao: formData.dias_operacao,
+                dias_operacao: 1, // Usar 1
                 fase_atividade: formData.fase_atividade,
                 codug_destino: formData.codug_destino,
                 municipio: formData.municipio,
@@ -436,7 +440,11 @@ const HorasVooForm = () => {
     // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do lastStagedFormData)
     const isFormDirty = useMemo(() => {
         if (pendingRegistros.length > 0 && lastStagedFormData) {
-            return compareFormData(formData, lastStagedFormData);
+            // Ignoramos dias_operacao na comparação, pois ele foi fixado em 1
+            const { dias_operacao: d1, ...rest1 } = formData;
+            const { dias_operacao: d2, ...rest2 } = lastStagedFormData;
+            
+            return compareFormData({ ...rest1, dias_operacao: 1 }, { ...rest2, dias_operacao: 1 });
         }
         return false;
     }, [formData, pendingRegistros.length, lastStagedFormData]);
@@ -458,10 +466,10 @@ const HorasVooForm = () => {
             // Manter a OM Favorecida (do PTrab)
             om_favorecida: prev.om_favorecida,
             ug_favorecida: prev.ug_favorecida,
-            om_destino: prev.om_destino,
-            ug_destino: prev.ug_destino,
-            // Resetar campos de solicitação
-            dias_operacao: prev.dias_operacao,
+            // OM Detentora e Dias de Operação são fixos/removidos, mas mantemos o estado para DB
+            om_destino: prev.om_favorecida, // Volta para a OM Favorecida
+            ug_destino: prev.ug_favorecida, // Volta para a UG Favorecida
+            dias_operacao: 1, // Fixo
             fase_atividade: prev.fase_atividade,
         }));
         setEditingMemoriaId(null); 
@@ -495,6 +503,7 @@ const HorasVooForm = () => {
         const omFavorecidaToEdit = oms?.find(om => om.nome_om === group.organizacao && om.codug_om === group.ug);
         setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
         
+        // OM Detentora e UG Detentora são preenchidas, mas não editáveis na UI
         const omDestinoToEdit = oms?.find(om => om.nome_om === group.om_detentora && om.codug_om === group.ug_detentora);
         setSelectedOmDestinoId(omDestinoToEdit?.id);
         
@@ -506,7 +515,7 @@ const HorasVooForm = () => {
             ug_favorecida: group.ug, 
             om_destino: group.om_detentora,
             ug_destino: group.ug_detentora,
-            dias_operacao: group.dias_operacao,
+            dias_operacao: group.dias_operacao, // Mantém o valor original do DB
             fase_atividade: group.fase_atividade || "",
             
             // Campos específicos de HV (do primeiro registro)
@@ -581,17 +590,18 @@ const HorasVooForm = () => {
         
         try {
             // 1. Validação básica
-            if (formData.dias_operacao <= 0) {
-                throw new Error("O número de dias deve ser maior que zero.");
-            }
+            // Dias de operação é fixo em 1
+            const diasOperacao = 1; 
+            
             if (formData.quantidade_hv <= 0) {
                 throw new Error("A quantidade de Horas de Voo deve ser maior que zero.");
             }
             if (!formData.om_favorecida || !formData.ug_favorecida) {
                 throw new Error("A OM Favorecida é obrigatória.");
             }
+            // OM Detentora e UG Detentora são preenchidas automaticamente com a OM Favorecida
             if (!formData.om_destino || !formData.ug_destino) {
-                throw new Error("A OM Detentora do Recurso é obrigatória.");
+                throw new Error("A OM Detentora do Recurso é obrigatória (preenchida automaticamente).");
             }
             if (!formData.municipio || !formData.codug_destino || !formData.tipo_anv) {
                 throw new Error("Preencha todos os campos de Horas de Voo (Município, CODUG, Tipo Anv).");
@@ -601,14 +611,15 @@ const HorasVooForm = () => {
             }
             
             // 2. Gerar o registro (Horas de Voo é sempre um registro único por submissão)
-            const { valor_total } = calculateHorasVooTotals(formData);
+            const dataToCalculate = { ...formData, dias_operacao: diasOperacao };
+            const { valor_total } = calculateHorasVooTotals(dataToCalculate);
             
             const calculatedFormData: HorasVooRegistro = {
                 id: crypto.randomUUID(), // ID temporário para gerar memória
                 p_trab_id: ptrabId!,
                 organizacao: formData.om_favorecida, 
                 ug: formData.ug_favorecida, 
-                dias_operacao: formData.dias_operacao,
+                dias_operacao: diasOperacao, // Usar 1
                 fase_atividade: formData.fase_atividade,
                 
                 om_detentora: formData.om_destino,
@@ -639,7 +650,7 @@ const HorasVooForm = () => {
                 p_trab_id: ptrabId!,
                 organizacao: formData.om_favorecida, 
                 ug: formData.ug_favorecida, 
-                dias_operacao: formData.dias_operacao,
+                dias_operacao: diasOperacao, // Usar 1
                 fase_atividade: formData.fase_atividade,
                 om_detentora: formData.om_destino,
                 ug_detentora: formData.ug_destino,
@@ -753,29 +764,31 @@ const HorasVooForm = () => {
     const handleOmFavorecidaChange = (omData: OMData | undefined) => {
         if (omData) {
             setSelectedOmFavorecidaId(omData.id);
-            setSelectedOmDestinoId(omData.id); // Sincroniza OM Detentora
+            // OM Detentora e UG Detentora são preenchidas automaticamente com a OM Favorecida
+            setSelectedOmDestinoId(omData.id); 
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: omData.nome_om,
                 ug_favorecida: omData.codug_om,
-                om_destino: omData.nome_om, // Preenchimento automático
-                ug_destino: omData.codug_om, // Preenchimento automático
+                om_destino: omData.nome_om, 
+                ug_destino: omData.codug_om, 
             }));
         } else {
             setSelectedOmFavorecidaId(undefined);
-            setSelectedOmDestinoId(undefined); // Limpa OM Detentora
+            setSelectedOmDestinoId(undefined); 
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: "",
                 ug_favorecida: "",
-                om_destino: "", // Limpa OM Detentora
-                ug_destino: "", // Limpa UG Detentora
+                om_destino: "", 
+                ug_destino: "", 
             }));
         }
     };
     
-    // Handler para a OM Detentora do Recurso
+    // Handler para a OM Detentora do Recurso (Removido da UI, mas mantido para consistência)
     const handleOmDestinoChange = (omData: OMData | undefined) => {
+        // Este handler não será mais chamado pela UI, mas é mantido para evitar quebras
         if (omData) {
             setSelectedOmDestinoId(omData.id);
             setFormData(prev => ({
@@ -881,10 +894,9 @@ const HorasVooForm = () => {
                             formData.fase_atividade.length > 0;
 
     // Verifica se os campos numéricos da Solicitação estão preenchidos
-    const isSolicitationDataReady = formData.dias_operacao > 0 &&
-                                    formData.quantidade_hv > 0 &&
-                                    formData.om_destino.length > 0 &&
-                                    formData.ug_destino.length > 0 &&
+    const isSolicitationDataReady = formData.quantidade_hv > 0 &&
+                                    formData.om_destino.length > 0 && // Ainda necessário para o DB
+                                    formData.ug_destino.length > 0 && // Ainda necessário para o DB
                                     formData.codug_destino.length > 0 &&
                                     formData.municipio.length > 0 &&
                                     formData.tipo_anv.length > 0 &&
@@ -968,50 +980,8 @@ const HorasVooForm = () => {
                                         {/* Campos de Período, OM Detentora e Detalhes de HV em um único grid */}
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                             
-                                            {/* CAMPO 1: DIAS OPERAÇÃO (Período) */}
-                                            <div className="space-y-2 col-span-1">
-                                                <Label htmlFor="dias_operacao">Período (Nr Dias) *</Label>
-                                                <Input
-                                                    id="dias_operacao"
-                                                    type="number"
-                                                    min={1}
-                                                    placeholder="Ex: 7"
-                                                    value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
-                                                    onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
-                                                    required
-                                                    disabled={!isPTrabEditable || isSaving}
-                                                    onKeyDown={handleEnterToNextField}
-                                                    onWheel={(e) => e.currentTarget.blur()}
-                                                    className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                />
-                                            </div>
-                                            
-                                            {/* CAMPO 2: OM DETENTORA */}
-                                            <div className="space-y-2 col-span-2">
-                                                <Label htmlFor="om_destino">OM Detentora do Recurso *</Label>
-                                                <OmSelector
-                                                    selectedOmId={selectedOmDestinoId}
-                                                    onChange={handleOmDestinoChange}
-                                                    placeholder="Selecione a OM Detentora"
-                                                    disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingRegistros.length > 0}
-                                                    initialOmName={editingId ? formData.om_destino : formData.om_favorecida}
-                                                    initialOmUg={editingId ? formData.ug_destino : formData.ug_favorecida}
-                                                />
-                                            </div>
-
-                                            {/* CAMPO 3: UG DETENTORA */}
-                                            <div className="space-y-2 col-span-1">
-                                                <Label htmlFor="ug_destino">UG Detentora</Label>
-                                                <Input
-                                                    id="ug_destino"
-                                                    value={formatCodug(formData.ug_destino)}
-                                                    disabled
-                                                    className="bg-muted/50"
-                                                />
-                                            </div>
-                                            
-                                            {/* Separador visual */}
-                                            <div className="col-span-4 border-t pt-4 mt-2">
+                                            {/* Separador visual (Removido, pois os campos de contexto foram removidos) */}
+                                            <div className="col-span-4">
                                                 <h4 className="font-semibold text-base mb-4">
                                                     Detalhes da Solicitação de Horas de Voo
                                                 </h4>
