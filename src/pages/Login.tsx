@@ -22,6 +22,8 @@ import { useSession } from '@/components/SessionContextProvider';
 import { useNavigate } from 'react-router-dom';
 import { ForgotPasswordDialog } from '@/components/ForgotPasswordDialog';
 import { EmailVerificationDialog } from '@/components/EmailVerificationDialog';
+import { SignupDialog } from '@/components/SignupDialog'; // NEW
+import { SignupSuccessDialog } from '@/components/SignupSuccessDialog'; // NEW
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
@@ -33,6 +35,11 @@ const Login: React.FC = () => {
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [unconfirmedEmail, setUnconfirmedEmail] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  
+  // NEW STATES for Signup Flow
+  const [showSignupDialog, setShowSignupDialog] = useState(false);
+  const [showSignupSuccess, setShowSignupSuccess] = useState(false);
+  const [signupEmail, setSignupEmail] = useState('');
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -83,16 +90,23 @@ const Login: React.FC = () => {
         console.error("Login error:", error);
       } else {
         // Success handled by SessionContextProvider redirect
+        }
+      } catch (e) {
+        toast.error('Ocorreu um erro inesperado ao tentar fazer login.');
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      toast.error('Ocorreu um erro inesperado ao tentar fazer login.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    
+    // NEW HANDLER for Signup Success
+    const handleSignupSuccess = (email: string) => {
+      setShowSignupDialog(false); // Close signup form
+      setSignupEmail(email); // Store email for success message
+      setShowSignupSuccess(true); // Open success dialog
+    };
   
-  // If session is loading, show a spinner
-  if (sessionLoading) {
+    // If session is loading, show a spinner
+    if (sessionLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -207,10 +221,10 @@ const Login: React.FC = () => {
             </Button>
             <p className="text-muted-foreground">
               Não tem uma conta?{' '}
-              <Button 
-                variant="link" 
+              <Button
+                variant="link"
                 className="p-0 h-auto text-primary hover:text-primary/80"
-                onClick={() => navigate('/signup')}
+                onClick={() => setShowSignupDialog(true)}
               >
                 Cadastre-se
               </Button>
@@ -230,6 +244,20 @@ const Login: React.FC = () => {
       <ForgotPasswordDialog
         open={showForgotPassword}
         onOpenChange={setShowForgotPassword}
+      />
+      
+      {/* Diálogo de Cadastro (NEW) */}
+      <SignupDialog
+        open={showSignupDialog}
+        onOpenChange={setShowSignupDialog}
+        onSignupSuccess={handleSignupSuccess}
+      />
+      
+      {/* Diálogo de Sucesso de Cadastro (NEW) */}
+      <SignupSuccessDialog
+        open={showSignupSuccess}
+        onOpenChange={setShowSignupSuccess}
+        email={signupEmail}
       />
     </div>
   );
