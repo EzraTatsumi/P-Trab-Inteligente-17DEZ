@@ -1143,19 +1143,7 @@ const HorasVooForm = () => {
                                                     {/* ND 30 */}
                                                     <div className="space-y-2 col-span-1">
                                                         <Label htmlFor="valor_nd_30">Valor ND 33.90.30 *</Label>
-                                                        {formData.isCoterResponsibility ? (
-                                                            <div className="relative">
-                                                                <Input
-                                                                    id="valor_nd_30"
-                                                                    value="A cargo do COTER"
-                                                                    disabled
-                                                                    className="bg-muted/50 text-center font-medium"
-                                                                />
-                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-red-500 opacity-70 pointer-events-none">
-                                                                    A cargo do COTER
-                                                                </span>
-                                                            </div>
-                                                        ) : (
+                                                        <div className="relative">
                                                             <CurrencyInput
                                                                 id="valor_nd_30"
                                                                 rawDigits={rawND30Input}
@@ -1165,25 +1153,18 @@ const HorasVooForm = () => {
                                                                 disabled={!isPTrabEditable || isSaving || formData.isCoterResponsibility}
                                                                 onKeyDown={handleEnterToNextField}
                                                             />
-                                                        )}
+                                                            {formData.isCoterResponsibility && (
+                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-red-500 opacity-70 pointer-events-none font-medium">
+                                                                    A cargo do COTER
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     
                                                     {/* ND 39 */}
                                                     <div className="space-y-2 col-span-1">
                                                         <Label htmlFor="valor_nd_39">Valor ND 33.90.39 *</Label>
-                                                        {formData.isCoterResponsibility ? (
-                                                            <div className="relative">
-                                                                <Input
-                                                                    id="valor_nd_39"
-                                                                    value="A cargo do COTER"
-                                                                    disabled
-                                                                    className="bg-muted/50 text-center font-medium"
-                                                                />
-                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-red-500 opacity-70 pointer-events-none">
-                                                                    A cargo do COTER
-                                                                </span>
-                                                            </div>
-                                                        ) : (
+                                                        <div className="relative">
                                                             <CurrencyInput
                                                                 id="valor_nd_39"
                                                                 rawDigits={rawND39Input}
@@ -1193,13 +1174,18 @@ const HorasVooForm = () => {
                                                                 disabled={!isPTrabEditable || isSaving || formData.isCoterResponsibility}
                                                                 onKeyDown={handleEnterToNextField}
                                                             />
-                                                        )}
+                                                            {formData.isCoterResponsibility && (
+                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-red-500 opacity-70 pointer-events-none font-medium">
+                                                                    A cargo do COTER
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     
                                                     {/* SWITCH COTER */}
                                                     <div className="space-y-2 col-span-1 flex flex-col justify-end">
                                                         <Label className="text-sm font-medium leading-none mb-2">
-                                                            Responsável pelo Cálculo dos Custo
+                                                            Responsável pelo Cálculo dos Custos
                                                         </Label>
                                                         <div className="flex items-center space-x-2 p-2 border rounded-md bg-background">
                                                             <Switch
