@@ -398,7 +398,7 @@ const UserProfilePage = () => {
           <Button>
             variant="ghost"
             onClick={() => navigate('/ptrab')}
-            < Voltar
+             Voltar
           </Button>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <User className="h-6 w-6 text-primary" />
