@@ -63,6 +63,12 @@ const PTrabForm = () => {
     { id: "verba-operacional", name: "Verba Operacional" },
     { id: "suprimento-fundos", name: "Suprimento de Fundos" }, // NOVO ITEM
     { id: "concessionaria", name: "Pagamento de Concessionárias" },
+    { id: "horas-voo-avex", name: "Horas de Voo (AvEx)" }, // NOVO ITEM
+    { id: "material-consumo", name: "Material de Consumo" }, // NOVO ITEM
+    { id: "servico-satelital", name: "Serviço Satelital" }, // NOVO ITEM
+    { id: "servico-lavanderia", name: "Serviço de Lavanderia" }, // NOVO ITEM
+    { id: "outros-servicos", name: "Outros Serviços" }, // NOVO ITEM
+    { id: "complemento-alimentacao", name: "Complemento de Alimentação" }, // NOVO ITEM
   ];
 
   // --- Lógica de Busca de Créditos (TanStack Query) ---
