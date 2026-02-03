@@ -37,7 +37,8 @@ interface ProfileData {
   sigla_om: string;
   funcao_om: string;
   telefone: string;
-  default_diretriz_year: number | null;
+  default_logistica_year: number | null;
+  default_operacional_year: number | null;
 }
 
 const MILITARY_RANKS = [
@@ -81,7 +82,7 @@ const fetchProfile = async (userId: string): Promise<ProfileData> => {
   // 1. Buscar dados da tabela profiles
   const { data: profileData, error: profileError } = await supabase
     .from('profiles')
-    .select('id, first_name, last_name, default_diretriz_year')
+    .select('id, first_name, last_name, default_logistica_year, default_operacional_year')
     .eq('id', userId)
     .single();
 
@@ -108,24 +109,24 @@ const fetchProfile = async (userId: string): Promise<ProfileData> => {
     posto_graduacao: authMetaData?.posto_graduacao || '',
     sigla_om: authMetaData?.sigla_om || '',
     funcao_om: authMetaData?.funcao_om || '',
-    telefone: authMetaData?.telefone || '', 
-    default_diretriz_year: profileData.default_diretriz_year,
+    telefone: authMetaData?.telefone || '',
+    default_logistica_year: profileData.default_logistica_year,
+    default_operacional_year: profileData.default_operacional_year,
   };
 };
 
 const UserProfilePage = () => {
   const navigate = useNavigate();
-  const { user, loading: loadingSession } = useSession();
+  const { user, isLoading: loadingSession } = useSession();
   const queryClient = useQueryClient();
   
-  const [form, setForm] = useState<Omit<ProfileData, 'id'>>({
+  const [form, setForm] = useState<Omit<ProfileData, 'id' | 'default_logistica_year' | 'default_operacional_year'>>({
     first_name: "",
     last_name: "",
     posto_graduacao: "",
     sigla_om: "",
     funcao_om: "",
     telefone: "",
-    default_diretriz_year: null, // Mantido no estado, mas não usado na UI
   });
   const [passwordForm, setPasswordForm] = useState({
     newPassword: "",
@@ -164,8 +165,7 @@ const UserProfilePage = () => {
         sigla_om: profileData.sigla_om,
         funcao_om: profileData.funcao_om,
         // O telefone é a string de dígitos (sem máscara)
-        telefone: profileData.telefone, 
-        default_diretriz_year: profileData.default_diretriz_year,
+        telefone: profileData.telefone,
       });
     }
   }, [profileData]); // Depende apenas de profileData
@@ -182,12 +182,7 @@ const UserProfilePage = () => {
   };
   
   const handleSelectChange = (name: keyof Omit<ProfileData, 'id'>, value: string) => {
-    if (name === 'default_diretriz_year') {
-        const yearValue = value === 'null_year' ? null : Number(value);
-        setForm(prev => ({ ...prev, default_diretriz_year: yearValue }));
-    } else {
-        setForm(prev => ({ ...prev, [name]: value }));
-    }
+    setForm(prev => ({ ...prev, [name]: value }));
   };
   
   const checkPasswordCriteria = (password: string): PasswordCriteria => ({
@@ -256,7 +251,6 @@ const UserProfilePage = () => {
         .update({
           first_name: form.first_name,
           last_name: form.last_name,
-          default_diretriz_year: form.default_diretriz_year,
           updated_at: new Date().toISOString(),
         })
         .eq('id', userId);
