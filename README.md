@@ -1,73 +1,104 @@
-# Welcome to your Lovable project
+# PTrab Inteligente
 
-## Project info
+O PTrab Inteligente é uma aplicação web desenvolvida para otimizar e automatizar o processo de criação, cálculo e gerenciamento de Planos de Trabalho (P Trabs) Logísticos e Operacionais. A ferramenta visa garantir a precisão dos custos e a conformidade com as diretrizes institucionais, facilitando o planejamento e a execução de operações.
 
-**URL**: https://ptrab-inteligente.vercel.app
+## 1. Visão Geral da Arquitetura (Tech Stack)
 
-## How can I edit this code?
+O projeto é construído sobre uma arquitetura moderna e robusta, utilizando as seguintes tecnologias:
 
-There are several ways of editing your application.
+| Categoria | Tecnologias Chave | Propósito |
+| :--- | :--- | :--- |
+| **Frontend** | React, TypeScript, Vite | Base para a construção da interface de usuário, garantindo tipagem e velocidade de desenvolvimento. |
+| **Estilização & UI** | Tailwind CSS, shadcn/ui (Radix UI) | Estilização utilitária e componentes de interface acessíveis e reutilizáveis. |
+| **Gerenciamento de Dados** | TanStack Query (React Query) | Gerenciamento de estado assíncrono (server state), caching e sincronização de dados com o backend. |
+| **Backend & Autenticação** | Supabase (PostgreSQL, Auth, Edge Functions) | Banco de dados relacional, autenticação de usuários e lógica de negócios serverless. |
+| **Formulários** | React Hook Form, Zod | Criação de formulários performáticos e validação de esquema robusta. |
+| **Roteamento** | React Router DOM | Navegação e definição de rotas no lado do cliente. |
+| **Notificações** | Sonner | Exibição de toasts e notificações. |
+| **Ícones** | Lucide React | Biblioteca de ícones. |
 
-**Use Lovable**
+## 2. Pré-requisitos e Configuração Inicial
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/cc367425-a9ed-4277-871b-2dbc8b68fd55) and start prompting.
+Para rodar o projeto localmente, você precisará das seguintes ferramentas:
 
-Changes made via Lovable will be committed automatically to this repo.
+*   **Node.js:** Versão 18+
+*   **npm/yarn/pnpm:** Gerenciador de pacotes de sua preferência.
 
-**Use your preferred IDE**
+### 2.1. Instalação
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+1.  Clone o repositório:
+    ```bash
+    git clone [URL_DO_REPOSITORIO]
+    cd ptrab-inteligente
+    ```
+2.  Instale as dependências:
+    ```bash
+    npm install
+    # ou yarn install
+    # ou pnpm install
+    ```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 2.2. Variáveis de Ambiente
 
-Follow these steps:
+O projeto requer chaves de acesso ao Supabase para funcionar. Estas chaves são configuradas automaticamente pelo ambiente de desenvolvimento, mas em um ambiente de produção, você precisaria de um arquivo `.env` com:
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+```
+VITE_SUPABASE_URL="[SUA_SUPABASE_URL]"
+VITE_SUPABASE_ANON_KEY="[SUA_CHAVE_ANON]"
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### 2.3. Inicialização
 
-# Step 3: Install the necessary dependencies.
-npm i
+Inicie o servidor de desenvolvimento:
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+O aplicativo estará disponível em `http://localhost:5173` (ou porta similar).
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 3. Diretrizes de Desenvolvimento
 
-**Use GitHub Codespaces**
+Para manter a consistência e a qualidade do código, siga rigorosamente as diretrizes abaixo:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### 3.1. UI e Estilização
 
-## What technologies are used for this project?
+*   **Componentes:** Sempre utilize os componentes do `shadcn/ui` (importados via `@/components/ui/`).
+*   **Estilo:** O **Tailwind CSS** deve ser usado exclusivamente para toda a estilização. Evite estilos inline ou arquivos CSS customizados.
+*   **Responsividade:** Todos os componentes devem ser projetados para serem responsivos (mobile-first).
+*   **Ícones:** Use apenas ícones da biblioteca `lucide-react`.
 
-This project is built with:
+### 3.2. Gerenciamento de Estado e Dados
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+*   **Server State (Dados do Banco):** Use **TanStack Query** para buscar, armazenar em cache e sincronizar dados do Supabase.
+*   **Client State (UI):** Use `useState` e `useContext` para gerenciar o estado da interface do usuário.
+*   **Autenticação:** Use o `SessionContextProvider` e o hook `useSession` para acessar o estado de autenticação do usuário.
 
-## How can I deploy this project?
+### 3.3. Formulários e Validação
 
-Simply open [Lovable](https://lovable.dev/projects/cc367425-a9ed-4277-871b-2dbc8b68fd55) and click on Share -> Publish.
+*   **Implementação:** Todos os formulários devem ser construídos utilizando **React Hook Form**.
+*   **Validação:** A validação de esquema deve ser feita exclusivamente com o **Zod**.
 
-## Can I connect a custom domain to my Lovable project?
+### 3.4. Interação com o Backend (Supabase)
 
-Yes, you can!
+*   **Cliente:** Use o cliente Supabase configurado em `src/integrations/supabase/client.ts`.
+*   **Segurança:** Lembre-se que a **Row Level Security (RLS)** está habilitada em todas as tabelas.
+*   **Lógica de Negócios:** Para operações complexas (clonagem, aprovação, exclusão de usuário), utilize as **Stored Procedures (RPCs)** ou **Edge Functions** para garantir a segurança e a atomicidade das transações.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 4. Estrutura de Arquivos
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+*   `src/components`: Componentes reutilizáveis da UI.
+*   `src/pages`: Componentes de nível de rota (páginas).
+*   `src/hooks`: Lógica reutilizável (ex: `useSession`, `useFormNavigation`).
+*   `src/lib`: Funções utilitárias (formatação, tratamento de erros, etc.).
+*   `src/integrations/supabase`: Configuração do cliente Supabase e tipos gerados.
+*   `src/types`: Definições de tipos globais e interfaces complexas.
+
+## 5. Contato e Suporte
+
+Para dúvidas, sugestões, ou necessidade de suporte técnico relacionado ao desenvolvimento ou à arquitetura do projeto, por favor, entre em contato com o desenvolvedor principal:
+
+| Nome | Contato |
+| :--- | :--- |
+| **Ezra Tatsumi Kimura de Moraes** | **E-mail:** ezratatsumi@hotmail.com |
+| | **Telefone/WhatsApp:** (12) 99628-6303 |
