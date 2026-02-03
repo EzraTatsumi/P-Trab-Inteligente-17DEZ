@@ -756,14 +756,11 @@ const HorasVooForm = () => {
             // MODO ADIÇÃO: Adicionar o item gerado à lista pendente
             setPendingRegistros(prev => [...prev, newPendingItem]);
             
-            // Atualiza o lastStagedFormData para o estado atual do formulário
-            setLastStagedFormData(formData);
-            
             toast.info(`Item de Horas de Voo adicionado à lista pendente.`);
             
-            // Limpa apenas os campos específicos de HV para permitir a adição de outro item
-            setFormData(prev => ({
-                ...prev,
+            // 1. Calcula o novo estado (resetado)
+            const newFormStateAfterReset: HorasVooFormState = {
+                ...formData,
                 codug_destino: initialFormState.codug_destino, // Mantém o valor padrão
                 municipio: "",
                 quantidade_hv: 0,
@@ -772,9 +769,15 @@ const HorasVooForm = () => {
                 valor_nd_30: 0,
                 valor_nd_39: 0,
                 isCoterResponsibility: initialFormState.isCoterResponsibility, // Mantém o padrão COTER
-            }));
+            };
             
-            // Limpa os inputs de moeda
+            // 2. Atualiza o lastStagedFormData para o novo estado "limpo"
+            setLastStagedFormData(newFormStateAfterReset);
+            
+            // 3. Aplica o reset ao formData
+            setFormData(newFormStateAfterReset);
+            
+            // 4. Limpa os inputs de moeda
             setRawND30Input(numberToRawDigits(0));
             setRawND39Input(numberToRawDigits(0));
             
