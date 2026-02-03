@@ -1397,7 +1397,7 @@ const HorasVooForm = () => {
                                             </Card>
                                         );
                                     })}
-                                </div>
+                                </section>
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
