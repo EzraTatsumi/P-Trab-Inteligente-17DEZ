@@ -1,112 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { LogIn, Eye, EyeOff, Loader2 } from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Checkbox } from '@/components/ui/checkbox';
-import { sanitizeAuthError } from '@/lib/errorUtils';
-import { loginSchema } from '@/lib/validationSchemas';
-import { useSession } from '@/components/SessionContextProvider';
-import { useNavigate } from 'react-router-dom';
-import { ForgotPasswordDialog } from '@/components/ForgotPasswordDialog';
-import { EmailVerificationDialog } from '@/components/EmailVerificationDialog';
-import { SignupDialog } from '@/components/SignupDialog'; // NEW
-import { SignupSuccessDialog } from '@/components/SignupSuccessDialog'; // NEW
+"use client";
 
-type LoginFormValues = z.infer<typeof loginSchema>;
+import React, { useState, useEffect } from 'react';
+import { Auth } from '@supabase/auth-ui-react';
+import { ThemeSupa } from '@supabase/auth-ui-shared';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
+import { useSession } from '@/components/SessionContextProvider';
+import { Loader2, UserPlus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { SignupDialog } from '@/components/SignupDialog';
+import { SignupSuccessDialog } from '@/components/SignupSuccessDialog';
 
 const Login: React.FC = () => {
-  const { user, isLoading: sessionLoading } = useSession();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showEmailVerification, setShowEmailVerification] = useState(false);
-  const [unconfirmedEmail, setUnconfirmedEmail] = useState('');
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const { session, isLoading } = useSession();
   
-  // NEW STATES for Signup Flow
   const [showSignupDialog, setShowSignupDialog] = useState(false);
-  const [showSignupSuccess, setShowSignupSuccess] = useState(false);
-  const [signupEmail, setSignupEmail] = useState('');
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-      rememberMe: true, // Default to true for better UX
-    },
-  });
-  
-  // Redirect if already logged in
+  // Redireciona se o usuário já estiver logado
   useEffect(() => {
-    if (!sessionLoading && user) {
-      navigate('/ptrab');
+    if (!isLoading && session) {
+      navigate('/ptrab', { replace: true });
     }
-  }, [user, sessionLoading, navigate]);
+  }, [session, isLoading, navigate]);
 
-  const onSubmit = async (data: LoginFormValues) => {
-    setLoading(true);
-    setUnconfirmedEmail('');
-    setShowEmailVerification(false);
+  const handleSignupSuccess = (email: string) => {
+    setShowSignupDialog(false);
+    setRegisteredEmail(email);
+    setShowSuccessDialog(true);
+  };
 
-    try {
-      const rememberMe = data.rememberMe ?? true;
-      
-      // CORREÇÃO: signInWithPassword agora aceita um único objeto que contém credenciais e opções.
-      const { error } = await supabase.auth.signInWithPassword(
-        {
-          email: data.email,
-          password: data.password,
-          options: {
-            // FIX: Casting the options object to 'any' to resolve TS2353 error 
-            // related to 'shouldCreateSession' not existing in the inferred type.
-            // Se for false, a sessão é de curta duração (session cookie).
-            shouldCreateSession: rememberMe,
-          } as any,
-        }
-      );
-
-      if (error) {
-        if (error.message.includes('Email not confirmed')) {
-          setUnconfirmedEmail(data.email);
-          setShowEmailVerification(true);
-          // Do not show toast error here, the dialog handles the next step
-        } else {
-          toast.error(sanitizeAuthError(error));
-        }
-        console.error("Login error:", error);
-      } else {
-        // Success handled by SessionContextProvider redirect
-        }
-      } catch (e) {
-        toast.error('Ocorreu um erro inesperado ao tentar fazer login.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    // NEW HANDLER for Signup Success
-    const handleSignupSuccess = (email: string) => {
-      setShowSignupDialog(false); // Close signup form
-      setSignupEmail(email); // Store email for success message
-      setShowSignupSuccess(true); // Open success dialog
-    };
-  
-    // If session is loading, show a spinner
-    if (sessionLoading) {
+  if (isLoading || session) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -115,149 +42,84 @@ const Login: React.FC = () => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-muted/40 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md shadow-xl">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl flex items-center justify-center gap-2">
-            <LogIn className="h-6 w-6 text-primary" />
-            Acesso à Plataforma
-          </CardTitle>
-          <CardDescription>
-            Entre com seu e-mail e senha.
-          </CardDescription>
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl text-center">Acesso ao PTrab Inteligente</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>E-mail</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="seu@email.com"
-                        type="email"
-                        autoComplete="email"
-                        {...field}
-                        disabled={loading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Senha</FormLabel>
-                    <div className="relative">
-                      <FormControl>
-                        <Input
-                          placeholder="••••••••"
-                          type={showPassword ? "text" : "password"}
-                          autoComplete="current-password"
-                          {...field}
-                          disabled={loading}
-                          className="pr-10"
-                        />
-                      </FormControl>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onMouseDown={() => setShowPassword(true)}
-                        onMouseUp={() => setShowPassword(false)}
-                        tabIndex={-1}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
-                      </Button>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {/* Checkbox Remember Me (Added to support shouldCreateSession logic) */}
-              <FormField
-                control={form.control}
-                name="rememberMe"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={loading}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel className="text-sm font-medium cursor-pointer">
-                        Manter-me conectado
-                      </FormLabel>
-                    </div>
-                  </FormItem>
-                )}
-              />
-
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Entrar'}
-              </Button>
-            </form>
-          </Form>
+        <CardContent className="grid gap-4">
           
-          <div className="mt-4 text-center text-sm space-y-2">
-            <Button 
-              variant="link" 
-              className="p-0 h-auto text-primary hover:text-primary/80"
-              onClick={() => setShowForgotPassword(true)}
-            >
-              Esqueceu sua senha?
-            </Button>
-            <p className="text-muted-foreground">
-              Não tem uma conta?{' '}
-              <Button
-                variant="link"
-                className="p-0 h-auto text-primary hover:text-primary/80"
-                onClick={() => setShowSignupDialog(true)}
-              >
-                Cadastre-se
-              </Button>
-            </p>
+          {/* Componente de Autenticação do Supabase (Login e Reset de Senha) */}
+          <Auth
+            supabaseClient={supabase}
+            providers={[]}
+            appearance={{
+              theme: ThemeSupa,
+              variables: {
+                default: {
+                  colors: {
+                    brand: 'hsl(221.2 83.2% 53.3%)', // Cor primária do shadcn/ui
+                    brandAccent: 'hsl(221.2 83.2% 40%)',
+                  },
+                },
+              },
+            }}
+            theme="light"
+            localization={{
+              variables: {
+                sign_in: {
+                  email_label: 'E-mail',
+                  password_label: 'Senha',
+                  button_label: 'Entrar',
+                  social_provider_text: 'Entrar com {{provider}}',
+                  link_text: 'Já tem uma conta? Faça login',
+                },
+                forgotten_password: {
+                  email_label: 'E-mail',
+                  button_label: 'Enviar instruções de recuperação',
+                  link_text: 'Esqueceu sua senha?',
+                },
+                update_password: {
+                  password_label: 'Nova Senha',
+                  button_label: 'Atualizar Senha',
+                },
+              },
+            }}
+            // Desabilita o formulário de Sign Up padrão do Supabase
+            view="sign_in" 
+          />
+          
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-card px-2 text-muted-foreground">
+              Ou
+            </span>
           </div>
+
+          {/* Botão Customizado para Abrir o Diálogo de Cadastro */}
+          <Button 
+            variant="outline" 
+            onClick={() => setShowSignupDialog(true)}
+            className="w-full"
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            Criar Nova Conta (Cadastro)
+          </Button>
+          
         </CardContent>
       </Card>
-      
-      {/* Diálogo de Verificação de E-mail */}
-      <EmailVerificationDialog
-        open={showEmailVerification}
-        onOpenChange={setShowEmailVerification}
-        email={unconfirmedEmail}
-      />
-      
-      {/* Diálogo de Recuperação de Senha */}
-      <ForgotPasswordDialog
-        open={showForgotPassword}
-        onOpenChange={setShowForgotPassword}
-      />
-      
-      {/* Diálogo de Cadastro (NEW) */}
+
+      {/* Diálogo de Cadastro */}
       <SignupDialog
         open={showSignupDialog}
         onOpenChange={setShowSignupDialog}
         onSignupSuccess={handleSignupSuccess}
       />
-      
-      {/* Diálogo de Sucesso de Cadastro (NEW) */}
+
+      {/* Diálogo de Sucesso (Abre após o cadastro ser concluído) */}
       <SignupSuccessDialog
-        open={showSignupSuccess}
-        onOpenChange={setShowSignupSuccess}
-        email={signupEmail}
+        open={showSuccessDialog}
+        onOpenChange={setShowSuccessDialog}
+        email={registeredEmail}
       />
     </div>
   );
