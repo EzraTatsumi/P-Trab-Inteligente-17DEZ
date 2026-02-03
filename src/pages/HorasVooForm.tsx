@@ -89,7 +89,7 @@ const initialFormState: HorasVooFormState = {
     fase_atividade: "",
     
     // Campos específicos de HV
-    codug_destino: "",
+    codug_destino: "DMAvEx/COLOG Gestor (160.504)", // Valor padrão preenchido
     municipio: "",
     quantidade_hv: 0,
     tipo_anv: "",
@@ -708,7 +708,7 @@ const HorasVooForm = () => {
             // Limpa apenas os campos específicos de HV para permitir a adição de outro item
             setFormData(prev => ({
                 ...prev,
-                codug_destino: "",
+                codug_destino: initialFormState.codug_destino, // Mantém o valor padrão
                 municipio: "",
                 quantidade_hv: 0,
                 tipo_anv: "",
@@ -987,10 +987,10 @@ const HorasVooForm = () => {
                                                 
                                                 {/* CODUG Destino */}
                                                 <div className="space-y-2 col-span-1">
-                                                    <Label htmlFor="codug_destino">CODUG Destino *</Label>
+                                                    <Label htmlFor="codug_destino">OM Gestora (CODUG) *</Label>
                                                     <Input
                                                         id="codug_destino"
-                                                        placeholder="Ex: 01001"
+                                                        placeholder="OM Gestora (CODUG)"
                                                         value={formData.codug_destino}
                                                         onChange={(e) => setFormData({ ...formData, codug_destino: e.target.value })}
                                                         required
