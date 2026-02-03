@@ -337,6 +337,8 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
         // C: QUANTIDADE (Total R2 + R3)
         row.getCell('C').value = linha.total_unidades;
         row.getCell('C').alignment = centerMiddleAlignment;
+        // GARANTINDO QUE O EXCEL TRATE COMO INTEIRO
+        row.getCell('C').numFmt = '#,##0'; 
         
         // D: DETALHAMENTO
         // USANDO A FUNÇÃO UNIFICADA COM O REGISTRO ORIGINAL
@@ -368,6 +370,8 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
     totalRow.getCell('C').font = headerFontStyle;
     totalRow.getCell('C').fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotalC } }; // Azul
     totalRow.getCell('C').border = cellBorder;
+    // GARANTINDO QUE O EXCEL TRATE O TOTAL COMO INTEIRO
+    totalRow.getCell('C').numFmt = '#,##0'; 
     
     // Célula D (Branco)
     totalRow.getCell('D').value = '';
@@ -498,7 +502,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
                     <div>{linha.om}</div>
                     <div>({formatCodug(linha.ug)})</div>
                   </td>
-                  <td className="col-quantidade-op">{formatNumber(linha.total_unidades)}</td>
+                  <td className="col-quantidade-op">{formatNumber(linha.total_unidades, 0)}</td> {/* ALTERADO AQUI */}
                   <td className="col-detalhamento-op" style={{ fontSize: '6.5pt' }}>
                     <pre style={{ fontSize: '6.5pt', fontFamily: 'inherit', whiteSpace: 'pre-wrap', margin: 0 }}>
                       {generateClasseIMemoriaCalculo(linha.registroOriginal, 'OP')}
@@ -530,7 +534,7 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
                     fontWeight: 'bold',
                   }}
                 >
-                  {formatNumber(totalRacoesGeral)}
+                  {formatNumber(totalRacoesGeral, 0)} {/* ALTERADO AQUI */}
                 </td>
                 <td 
                   style={{ 
@@ -590,7 +594,6 @@ const PTrabRacaoOperacionalReport: React.FC<PTrabRacaoOperacionalReportProps> = 
           @page { size: landscape; margin: 0.5cm; }
           body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
           .ptrab-print-container { padding: 0 !important; margin: 0 !important; }
-          .ptrab-table-op thead { display: table-row-group; break-inside: avoid; break-after: auto; }
           .ptrab-table-op th, .ptrab-table-op td { border: 0.25pt solid #000 !important; } /* Borda mais fina para impressão */
           .ptrab-table-op { border: 0.25pt solid #000 !important; }
           
