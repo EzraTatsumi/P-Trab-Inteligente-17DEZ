@@ -299,7 +299,9 @@ const UserProfilePage = () => {
 
     try {
       // 1. Invocar a Edge Function para exclusão do usuário (requer Service Role Key)
-      const { error: invokeError } = await supabase.functions.invoke('delete-user');
+      const { error: invokeError } = await supabase.functions.invoke('delete-user', {
+        body: {}, // Envia um corpo JSON vazio para evitar erro de parsing
+      });
 
       if (invokeError) {
         console.error("Erro ao invocar Edge Function de exclusão:", invokeError);
