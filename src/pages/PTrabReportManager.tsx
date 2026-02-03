@@ -756,13 +756,12 @@ const PTrabReportManager = () => {
 
       if (ptrabError || !ptrab) throw new Error("Não foi possível carregar o P Trab");
 
-      const { data: classeIData } = await supabase
-        .from('classe_i_registros')
-        .select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3')
-        .eq('p_trab_id', ptrabId);
+      const year = new Date(ptrab.periodo_inicio).getFullYear();
       
       // CORREÇÃO: Removendo 'efetivo' das tabelas que não o possuem para evitar o erro 400 Bad Request.
+      // Otimização: Todas as buscas de dados e diretrizes são feitas em paralelo.
       const [
+        { data: classeIData },
         { data: classeIIData },
         { data: classeVData },
         { data: classeVIData },
@@ -772,28 +771,29 @@ const PTrabReportManager = () => {
         { data: classeIXData },
         { data: classeIIIData },
         { data: refLPCData },
-        { data: diariaData }, 
-        { data: verbaOperacionalData }, 
-        { data: passagemData }, 
-        { data: concessionariaData }, // NOVO: Busca de Concessionária
+        { data: diariaData },
+        { data: verbaOperacionalData },
+        { data: passagemData },
+        { data: concessionariaData },
+        diretrizesOpData, // Fetch Diretrizes Operacionais em paralelo
       ] = await Promise.all([
+        supabase.from('classe_i_registros').select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3').eq('p_trab_id', ptrabId),
         supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
         supabase.from('classe_v_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
         supabase.from('classe_vi_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
-        supabase.from('classe_vii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId), // CORRIGIDO: 'efetivo' removido
+        supabase.from('classe_vii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from('classe_viii_saude_registros').select('*, itens_saude, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from('classe_viii_remonta_registros').select('*, itens_remonta, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from('classe_ix_registros').select('*, itens_motomecanizacao, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from('classe_iii_registros').select('*, detalhamento_customizado, itens_equipamentos, fase_atividade, consumo_lubrificante_litro, preco_lubrificante, valor_nd_30, valor_nd_39, om_detentora, ug_detentora').eq('p_trab_id', ptrabId),
         supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", ptrabId).maybeSingle(),
-        supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId), 
-        supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId), 
-        supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId), 
-        supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId), // NOVO: Busca de Concessionária
+        supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId),
+        supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId),
+        supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId),
+        supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId),
+        fetchDiretrizesOperacionais(year), // Execução em paralelo
       ]);
       
-      // NOVO: Fetch Diretrizes Operacionais (necessário para gerar a memória de diária)
-      const diretrizesOpData = await fetchDiretrizesOperacionais(new Date(ptrab.periodo_inicio).getFullYear());
       setDiretrizesOperacionais(diretrizesOpData as Tables<'diretrizes_operacionais'> || null);
 
       // CORREÇÃO: Usar 'as any' para contornar o erro de tipo do Supabase na desestruturação do spread
