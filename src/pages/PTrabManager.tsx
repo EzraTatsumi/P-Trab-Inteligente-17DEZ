@@ -137,30 +137,13 @@ const statusConfig = {
 const PTrabManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
-  const { user, isLoading: sessionLoading } = useSession(); // Get session state
-  
-  // REDIRECIONAMENTO DE ROTA PROTEGIDA
-  if (sessionLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    navigate("/login");
-    return null; // Retorna null para evitar renderização do componente
-  }
-  
   const [pTrabs, setPTrabs] = useState<PTrab[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]);
   
-  // REMOVIDO: const { user } = useSession(); // LINHA DUPLICADA
+  const { user } = useSession();
   const [userName, setUserName] = useState<string>("");
   
   // Estado para controlar a abertura do DropdownMenu de configurações
@@ -395,6 +378,13 @@ const PTrabManager = () => {
   const [selectedOmId, setSelectedOmId] = useState<string | undefined>(undefined);
 
   const { handleEnterToNextField } = useFormNavigation();
+
+  const checkAuth = async () => {
+    const { data: { session } = {} } = await supabase.auth.getSession();
+    if (!session) {
+      navigate("/login");
+    }
+  };
 
   const calculateDays = (inicio: string, fim: string) => {
     const start = new Date(inicio);
@@ -641,7 +631,7 @@ const PTrabManager = () => {
   }, [setLoading, setPTrabs, setExistingPTrabNumbers, user?.id]);
 
   useEffect(() => {
-    // REMOVIDO: checkAuth(); // Não é necessário, useSession já faz o trabalho
+    checkAuth();
     loadPTrabs();
     
     if (user?.id) {

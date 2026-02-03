@@ -1,29 +1,28 @@
-"use client";
+import { Hero } from "@/components/Hero";
+import { Features } from "@/components/Features";
+import { Benefits } from "@/components/Benefits";
+import { Process } from "@/components/Process";
+import { Stakeholders } from "@/components/Stakeholders";
+import { Footer } from "@/components/Footer";
+// import ScrollToTopAndPlatformButton from "@/components/ScrollToTopAndPlatformButton"; // Importar o novo componente
 
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useSession } from '@/components/SessionContextProvider';
-import { Loader2 } from 'lucide-react';
-
-const Index: React.FC = () => {
-  const navigate = useNavigate();
-  const { session, isLoading } = useSession();
-
-  useEffect(() => {
-    if (!isLoading) {
-      if (session) {
-        // Usuário autenticado, redireciona para o gerenciador de PTrabs
-        navigate('/ptrab', { replace: true });
-      } else {
-        // Usuário não autenticado, redireciona para a página de login
-        navigate('/login', { replace: true });
-      }
+const Index = () => {
+  const handleScrollToFeatures = () => {
+    const featuresSection = document.getElementById('features-section');
+    if (featuresSection) {
+      featuresSection.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [session, isLoading, navigate]);
+  };
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    <div className="min-h-screen bg-background">
+      <Hero onScrollToFeatures={handleScrollToFeatures} /> {/* Passando a função como prop */}
+      <Features />
+      <Process />
+      <Benefits />
+      <Stakeholders />
+      <Footer />
+      {/* <ScrollToTopAndPlatformButton /> */} {/* Adicionar o botão aqui */}
     </div>
   );
 };
