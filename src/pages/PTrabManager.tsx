@@ -160,7 +160,7 @@ const PTrabManager = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [existingPTrabNumbers, setExistingPTrabNumbers] = useState<string[]>([]);
   
-  const { user } = useSession();
+  // REMOVIDO: const { user } = useSession(); // LINHA DUPLICADA
   const [userName, setUserName] = useState<string>("");
   
   // Estado para controlar a abertura do DropdownMenu de configurações
@@ -641,7 +641,7 @@ const PTrabManager = () => {
   }, [setLoading, setPTrabs, setExistingPTrabNumbers, user?.id]);
 
   useEffect(() => {
-    checkAuth();
+    // REMOVIDO: checkAuth(); // Não é necessário, useSession já faz o trabalho
     loadPTrabs();
     
     if (user?.id) {
