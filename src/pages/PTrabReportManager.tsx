@@ -637,6 +637,31 @@ const normalizarNome = (valor?: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+/**
+ * Retorna a prioridade de ordenação da OM:
+ * 1: Região Militar (RM)
+ * 2: Brigada (Bda)
+ * 3: Demais OMs
+ */
+const getOMPriority = (nomeOM: string, nomeRM: string): 1 | 2 | 3 => {
+  const om = normalizarNome(nomeOM);
+  const rm = normalizarNome(nomeRM);
+
+  // Prioridade 1: Região Militar (RM)
+  // Usa a lógica existente de isRegiaoMilitar para ser abrangente
+  if (om === rm || /^\d+ª?\s*RM$/.test(om) || om.includes('REGIAO MILITAR') || rm.includes(om)) {
+    return 1;
+  }
+  
+  // Prioridade 2: Brigada (Bda)
+  if (om.includes('BDA') || om.includes('BRIGADA')) {
+    return 2;
+  }
+
+  // Prioridade 3: Demais OMs
+  return 3;
+};
+
 const isRegiaoMilitar = (nomeOM: string, nomeRM: string) => {
   const om = normalizarNome(nomeOM);
   const rm = normalizarNome(nomeRM);
@@ -1101,12 +1126,15 @@ const PTrabReportManager = () => {
     const rmName = nomeRM;
     
     return oms.sort((a, b) => {
-        const aIsRM = isRegiaoMilitar(a, rmName);
-        const bIsRM = isRegiaoMilitar(b, rmName);
+        const aPriority = getOMPriority(a, rmName);
+        const bPriority = getOMPriority(b, rmName);
         
-        if (aIsRM && !bIsRM) return -1;
-        if (!aIsRM && bIsRM) return 1;
+        // 1. Ordenar por prioridade (1 < 2 < 3)
+        if (aPriority !== bPriority) {
+            return aPriority - bPriority;
+        }
         
+        // 2. Desempate alfabético
         return a.localeCompare(b);
     });
   }, [gruposPorOM, nomeRM]);
