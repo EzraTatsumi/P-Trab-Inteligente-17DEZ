@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Save, Trash2, Pencil, Sparkles, AlertCircle, Check, Plane, Minus } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, Pencil, Sparkles, AlertCircle, Check, Plane, Minus, XCircle } from "lucide-react";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
@@ -39,7 +39,7 @@ import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
 import { cn } from "@/lib/utils"; 
 import CurrencyInput from "@/components/CurrencyInput";
-import { ConsolidatedHorasVooMemoria } from "@/components/ConsolidatedHorasVooMemoria"; // Será criado no próximo passo
+import { ConsolidatedHorasVooMemoria } from "@/components/ConsolidatedHorasVooMemoria"; 
 
 // Tipos de dados
 type HorasVooRegistroDB = Tables<'horas_voo_registros'>; 
@@ -965,8 +965,8 @@ const HorasVooForm = () => {
                                     
                                     <Card className="mt-6 bg-muted/50 rounded-lg p-4">
                                         
-                                        {/* Dados da Solicitação (Dias, OM Detentora) */}
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 bg-background rounded-lg border">
+                                        {/* Campos de Período, OM Detentora e Detalhes de HV em um único grid */}
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                             
                                             {/* CAMPO 1: DIAS OPERAÇÃO (Período) */}
                                             <div className="space-y-2 col-span-1">
@@ -1009,125 +1009,123 @@ const HorasVooForm = () => {
                                                     className="bg-muted/50"
                                                 />
                                             </div>
+                                            
+                                            {/* Separador visual */}
+                                            <div className="col-span-4 border-t pt-4 mt-2">
+                                                <h4 className="font-semibold text-base mb-4">
+                                                    Detalhes da Solicitação de Horas de Voo
+                                                </h4>
+                                            </div>
+                                            
+                                            {/* CODUG Destino */}
+                                            <div className="space-y-2 col-span-1">
+                                                <Label htmlFor="codug_destino">CODUG Destino *</Label>
+                                                <Input
+                                                    id="codug_destino"
+                                                    placeholder="Ex: 01001"
+                                                    value={formData.codug_destino}
+                                                    onChange={(e) => setFormData({ ...formData, codug_destino: e.target.value })}
+                                                    required
+                                                    disabled={!isPTrabEditable || isSaving}
+                                                    onKeyDown={handleEnterToNextField}
+                                                />
+                                            </div>
+                                            
+                                            {/* Município */}
+                                            <div className="space-y-2 col-span-2">
+                                                <Label htmlFor="municipio">Município *</Label>
+                                                <Input
+                                                    id="municipio"
+                                                    placeholder="Ex: Taubaté - SP"
+                                                    value={formData.municipio}
+                                                    onChange={(e) => setFormData({ ...formData, municipio: e.target.value })}
+                                                    required
+                                                    disabled={!isPTrabEditable || isSaving}
+                                                    onKeyDown={handleEnterToNextField}
+                                                />
+                                            </div>
+                                            
+                                            {/* Tipo de Aeronave */}
+                                            <div className="space-y-2 col-span-1">
+                                                <Label htmlFor="tipo_anv">Tipo de Anv *</Label>
+                                                <Input
+                                                    id="tipo_anv"
+                                                    placeholder="Ex: HM-1"
+                                                    value={formData.tipo_anv}
+                                                    onChange={(e) => setFormData({ ...formData, tipo_anv: e.target.value })}
+                                                    required
+                                                    disabled={!isPTrabEditable || isSaving}
+                                                    onKeyDown={handleEnterToNextField}
+                                                />
+                                            </div>
+                                            
+                                            {/* Quantidade de HV */}
+                                            <div className="space-y-2 col-span-1">
+                                                <Label htmlFor="quantidade_hv">Quantidade de HV *</Label>
+                                                <Input
+                                                    id="quantidade_hv"
+                                                    type="number"
+                                                    min={0.01}
+                                                    step={0.01}
+                                                    placeholder="Ex: 10.5"
+                                                    value={formData.quantidade_hv === 0 ? "" : formData.quantidade_hv}
+                                                    onChange={(e) => setFormData({ ...formData, quantidade_hv: parseFloat(e.target.value) || 0 })}
+                                                    required
+                                                    disabled={!isPTrabEditable || isSaving}
+                                                    onKeyDown={handleEnterToNextField}
+                                                    onWheel={(e) => e.currentTarget.blur()}
+                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                />
+                                            </div>
+                                            
+                                            {/* Amparo */}
+                                            <div className="space-y-2 col-span-3">
+                                                <Label htmlFor="amparo">Amparo Legal/Diretriz</Label>
+                                                <Input
+                                                    id="amparo"
+                                                    placeholder="Ex: Portaria 123/2024"
+                                                    value={formData.amparo}
+                                                    onChange={(e) => setFormData({ ...formData, amparo: e.target.value })}
+                                                    disabled={!isPTrabEditable || isSaving}
+                                                    onKeyDown={handleEnterToNextField}
+                                                />
+                                            </div>
+                                            
+                                            {/* ND 30 */}
+                                            <div className="space-y-2 col-span-2">
+                                                <Label htmlFor="valor_nd_30">Valor ND 33.90.30 (Custeio) *</Label>
+                                                <CurrencyInput
+                                                    id="valor_nd_30"
+                                                    value={formData.valor_nd_30}
+                                                    onValueChange={(value) => setFormData({ ...formData, valor_nd_30: value })}
+                                                    placeholder="Ex: R$ 10.000,00"
+                                                    required
+                                                    disabled={!isPTrabEditable || isSaving}
+                                                    onKeyDown={handleEnterToNextField}
+                                                />
+                                            </div>
+                                            
+                                            {/* ND 39 */}
+                                            <div className="space-y-2 col-span-2">
+                                                <Label htmlFor="valor_nd_39">Valor ND 33.90.39 (Serviços) *</Label>
+                                                <CurrencyInput
+                                                    id="valor_nd_39"
+                                                    value={formData.valor_nd_39}
+                                                    onValueChange={(value) => setFormData({ ...formData, valor_nd_39: value })}
+                                                    placeholder="Ex: R$ 5.000,00"
+                                                    required
+                                                    disabled={!isPTrabEditable || isSaving}
+                                                    onKeyDown={handleEnterToNextField}
+                                                />
+                                            </div>
                                         </div>
                                         
-                                        {/* Detalhes das Horas de Voo */}
-                                        <Card className="mt-4 rounded-lg p-4 bg-background">
-                                            <h4 className="font-semibold text-base mb-4">
-                                                Detalhes da Solicitação de Horas de Voo
-                                            </h4>
-                                            
-                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                                {/* CODUG Destino */}
-                                                <div className="space-y-2 col-span-1">
-                                                    <Label htmlFor="codug_destino">CODUG Destino *</Label>
-                                                    <Input
-                                                        id="codug_destino"
-                                                        placeholder="Ex: 01001"
-                                                        value={formData.codug_destino}
-                                                        onChange={(e) => setFormData({ ...formData, codug_destino: e.target.value })}
-                                                        required
-                                                        disabled={!isPTrabEditable || isSaving}
-                                                        onKeyDown={handleEnterToNextField}
-                                                    />
-                                                </div>
-                                                
-                                                {/* Município */}
-                                                <div className="space-y-2 col-span-2">
-                                                    <Label htmlFor="municipio">Município *</Label>
-                                                    <Input
-                                                        id="municipio"
-                                                        placeholder="Ex: Taubaté - SP"
-                                                        value={formData.municipio}
-                                                        onChange={(e) => setFormData({ ...formData, municipio: e.target.value })}
-                                                        required
-                                                        disabled={!isPTrabEditable || isSaving}
-                                                        onKeyDown={handleEnterToNextField}
-                                                    />
-                                                </div>
-                                                
-                                                {/* Tipo de Aeronave */}
-                                                <div className="space-y-2 col-span-1">
-                                                    <Label htmlFor="tipo_anv">Tipo de Anv *</Label>
-                                                    <Input
-                                                        id="tipo_anv"
-                                                        placeholder="Ex: HM-1"
-                                                        value={formData.tipo_anv}
-                                                        onChange={(e) => setFormData({ ...formData, tipo_anv: e.target.value })}
-                                                        required
-                                                        disabled={!isPTrabEditable || isSaving}
-                                                        onKeyDown={handleEnterToNextField}
-                                                    />
-                                                </div>
-                                                
-                                                {/* Quantidade de HV */}
-                                                <div className="space-y-2 col-span-1">
-                                                    <Label htmlFor="quantidade_hv">Quantidade de HV *</Label>
-                                                    <Input
-                                                        id="quantidade_hv"
-                                                        type="number"
-                                                        min={0.01}
-                                                        step={0.01}
-                                                        placeholder="Ex: 10.5"
-                                                        value={formData.quantidade_hv === 0 ? "" : formData.quantidade_hv}
-                                                        onChange={(e) => setFormData({ ...formData, quantidade_hv: parseFloat(e.target.value) || 0 })}
-                                                        required
-                                                        disabled={!isPTrabEditable || isSaving}
-                                                        onKeyDown={handleEnterToNextField}
-                                                        onWheel={(e) => e.currentTarget.blur()}
-                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                    />
-                                                </div>
-                                                
-                                                {/* Amparo */}
-                                                <div className="space-y-2 col-span-3">
-                                                    <Label htmlFor="amparo">Amparo Legal/Diretriz</Label>
-                                                    <Input
-                                                        id="amparo"
-                                                        placeholder="Ex: Portaria 123/2024"
-                                                        value={formData.amparo}
-                                                        onChange={(e) => setFormData({ ...formData, amparo: e.target.value })}
-                                                        disabled={!isPTrabEditable || isSaving}
-                                                        onKeyDown={handleEnterToNextField}
-                                                    />
-                                                </div>
-                                                
-                                                {/* ND 30 */}
-                                                <div className="space-y-2 col-span-2">
-                                                    <Label htmlFor="valor_nd_30">Valor ND 33.90.30 (Custeio) *</Label>
-                                                    <CurrencyInput
-                                                        id="valor_nd_30"
-                                                        value={formData.valor_nd_30}
-                                                        onValueChange={(value) => setFormData({ ...formData, valor_nd_30: value })}
-                                                        placeholder="Ex: R$ 10.000,00"
-                                                        required
-                                                        disabled={!isPTrabEditable || isSaving}
-                                                        onKeyDown={handleEnterToNextField}
-                                                    />
-                                                </div>
-                                                
-                                                {/* ND 39 */}
-                                                <div className="space-y-2 col-span-2">
-                                                    <Label htmlFor="valor_nd_39">Valor ND 33.90.39 (Serviços) *</Label>
-                                                    <CurrencyInput
-                                                        id="valor_nd_39"
-                                                        value={formData.valor_nd_39}
-                                                        onValueChange={(value) => setFormData({ ...formData, valor_nd_39: value })}
-                                                        placeholder="Ex: R$ 5.000,00"
-                                                        required
-                                                        disabled={!isPTrabEditable || isSaving}
-                                                        onKeyDown={handleEnterToNextField}
-                                                    />
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
-                                                <span className="font-bold text-sm">VALOR TOTAL DA SOLICITAÇÃO:</span>
-                                                <span className={cn("font-extrabold text-lg text-primary")}>
-                                                    {formatCurrency(calculos.totalGeral)}
-                                                </span>
-                                            </div>
-                                        </Card>
+                                        <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
+                                            <span className="font-bold text-sm">VALOR TOTAL DA SOLICITAÇÃO:</span>
+                                            <span className={cn("font-extrabold text-lg text-primary")}>
+                                                {formatCurrency(calculos.totalGeral)}
+                                            </span>
+                                        </div>
                                         
                                         {/* BOTÕES DE AÇÃO */}
                                         <div className="flex justify-end gap-3 pt-4">
@@ -1148,313 +1146,4 @@ const HorasVooForm = () => {
 
                             {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
                             {itemsToDisplay.length > 0 && (
-                                <section className="space-y-4 border-b pb-6">
-                                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({itemsToDisplay.length} item(ns))
-                                    </h3>
-                                    
-                                    {/* Alerta de Validação Final */}
-                                    {isFormDirty && (
-                                        <Alert variant="destructive">
-                                            <AlertCircle className="h-4 w-4" />
-                                            <AlertDescription className="font-medium">
-                                                Atenção: Os dados do formulário (Seção 2) foram alterados e não correspondem ao registro em revisão. Clique em "Recalcular/Revisar Lote" na Seção 2 para atualizar o cálculo.
-                                            </AlertDescription>
-                                        </Alert>
-                                    )}
-                                    
-                                    <div className="space-y-4">
-                                        {itemsToDisplay.map((item) => {
-                                            const totalND30 = item.valor_nd_30;
-                                            const totalND39 = item.valor_nd_39;
-                                            
-                                            const diasText = item.dias_operacao === 1 ? "dia" : "dias";
-                                            
-                                            const isOmDestinoDifferent = item.om_favorecida !== item.om_detentora || item.ug_favorecida !== item.ug_detentora;
-
-                                            return (
-                                                <Card 
-                                                    key={item.tempId} 
-                                                    className={cn(
-                                                        "border-2 shadow-md",
-                                                        "border-secondary bg-secondary/10"
-                                                    )}
-                                                >
-                                                    <CardContent className="p-4">
-                                                        
-                                                        <div className={cn("flex justify-between items-center pb-2 mb-2", "border-b border-secondary/30")}>
-                                                            <h4 className="font-bold text-base text-foreground">
-                                                                Horas de Voo ({item.tipo_anv}) - {item.municipio}
-                                                            </h4>
-                                                            <div className="flex items-center gap-2">
-                                                                <p className="font-extrabold text-lg text-foreground text-right">
-                                                                    {formatCurrency(item.valor_total)}
-                                                                </p>
-                                                                {!isStagingUpdate && (
-                                                                    <Button 
-                                                                        variant="ghost" 
-                                                                        size="icon" 
-                                                                        onClick={() => handleRemovePending(item.tempId)}
-                                                                        disabled={isSaving}
-                                                                    >
-                                                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        {/* Detalhes da Solicitação */}
-                                                        <div className="grid grid-cols-2 gap-4 text-xs pt-1">
-                                                            <div className="space-y-1">
-                                                                <p className="font-medium">OM Favorecida:</p>
-                                                                <p className="font-medium">OM Detentora do Recurso:</p>
-                                                                <p className="font-medium">Qtd HV / Período:</p>
-                                                            </div>
-                                                            <div className="text-right space-y-1">
-                                                                <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
-                                                                <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>
-                                                                    {item.om_detentora} ({formatCodug(item.ug_detentora)})
-                                                                </p>
-                                                                <p className="font-medium">{item.quantidade_hv.toFixed(2)} HV / {item.dias_operacao} {diasText}</p>
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        <div className="w-full h-[1px] bg-secondary/30 my-3" />
-
-                                                        <div className="flex justify-between text-xs">
-                                                            <span className="text-muted-foreground">ND 33.90.30 (Custeio):</span>
-                                                            <span className="font-medium text-green-600">{formatCurrency(totalND30)}</span>
-                                                        </div>
-                                                        <div className="flex justify-between text-xs">
-                                                            <span className="text-muted-foreground">ND 33.90.39 (Serviços):</span>
-                                                            <span className="font-medium text-green-600">{formatCurrency(totalND39)}</span>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            );
-                                        })}
-                                    </div>
-                                    
-                                    {/* VALOR TOTAL DO LOTE (PENDENTE / STAGING) */}
-                                    <Card className="bg-gray-100 shadow-inner">
-                                        <CardContent className="p-4 flex justify-between items-center">
-                                            <span className="font-bold text-base uppercase">
-                                                VALOR TOTAL DO LOTE
-                                            </span>
-                                            <span className="font-extrabold text-xl text-foreground">
-                                                {formatCurrency(totalPendingRegistros)}
-                                            </span>
-                                        </CardContent>
-                                    </Card>
-                                    
-                                    <div className="flex justify-end gap-3 pt-4">
-                                        {isStagingUpdate ? (
-                                            <>
-                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
-                                                    <XCircle className="mr-2 h-4 w-4" />
-                                                    Cancelar Edição
-                                                </Button>
-                                                <Button 
-                                                    type="button" 
-                                                    onClick={handleCommitStagedUpdate}
-                                                    disabled={isSaving || isFormDirty} 
-                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
-                                                >
-                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                                                    Atualizar Lote
-                                                </Button>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
-                                                    <XCircle className="mr-2 h-4 w-4" />
-                                                    Limpar Lista
-                                                </Button>
-                                                <Button 
-                                                    type="button" 
-                                                    onClick={handleSavePendingRegistros}
-                                                    disabled={isSaving || pendingRegistros.length === 0 || isFormDirty}
-                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90"
-                                                >
-                                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                    Salvar Registros
-                                                </Button>
-                                            </>
-                                        )}
-                                    </div>
-                                </section>
-                            )}
-
-                            {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
-                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
-                                <section className="space-y-4 border-b pb-6">
-                                    <h3 className="text-xl font-bold flex items-center gap-2">
-                                        <Sparkles className="h-5 w-5 text-accent" />
-                                        OMs Cadastradas ({consolidatedRegistros.length})
-                                    </h3>
-                                    
-                                    {consolidatedRegistros.map((group) => {
-                                        const totalOM = group.totalGeral;
-                                        const totalND30Consolidado = group.totalND30;
-                                        const totalND39Consolidado = group.totalND39;
-                                        
-                                        const diasOperacaoConsolidado = group.dias_operacao;
-                                        
-                                        const omName = group.organizacao;
-                                        const ug = group.ug;
-                                        const faseAtividade = group.fase_atividade || 'Não Definida';
-                                        
-                                        const diasText = diasOperacaoConsolidado === 1 ? 'dia' : 'dias';
-                                        
-                                        const isDifferentOm = group.om_detentora !== group.organizacao || group.ug_detentora !== group.ug;
-                                        const omDestino = group.om_detentora;
-                                        const ugDestino = group.ug_detentora;
-
-                                        return (
-                                            <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
-                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
-                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
-                                                        {omName} (UG: {formatCodug(ug)})
-                                                        <Badge variant="outline" className="text-xs">
-                                                            {faseAtividade}
-                                                        </Badge>
-                                                    </h3>
-                                                    <span className="font-extrabold text-xl text-primary">
-                                                        {formatCurrency(totalOM)}
-                                                    </span>
-                                                </div>
-                                                
-                                                {/* CORPO CONSOLIDADO */}
-                                                <div className="space-y-3">
-                                                    <Card 
-                                                        key={group.groupKey} 
-                                                        className="p-3 bg-background border"
-                                                    >
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex flex-col">
-                                                                <div className="flex items-center gap-2">
-                                                                    <h4 className="font-semibold text-base text-foreground">
-                                                                        Horas de Voo (AvEx)
-                                                                    </h4>
-                                                                </div>
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    {group.records.length} item(ns) | Período: {diasOperacaoConsolidado} {diasText}
-                                                                </p>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-extrabold text-xl text-foreground">
-                                                                    {formatCurrency(totalOM)}
-                                                                </span>
-                                                                {/* Botões de Ação */}
-                                                                <div className="flex gap-1 shrink-0">
-                                                                    <Button
-                                                                        type="button" 
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="h-8 w-8"
-                                                                        onClick={() => handleEdit(group)}
-                                                                        disabled={!isPTrabEditable || isSaving || pendingRegistros.length > 0}
-                                                                    >
-                                                                        <Pencil className="h-4 w-4" />
-                                                                    </Button>
-                                                                    <Button
-                                                                        type="button" 
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        onClick={() => handleConfirmDelete(group)}
-                                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                                        disabled={!isPTrabEditable || isSaving}
-                                                                    >
-                                                                        <Trash2 className="h-4 w-4" />
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        {/* Detalhes da Alocação */}
-                                                        <div className="pt-2 border-t mt-2">
-                                                            {/* OM Detentora Recurso (Sempre visível, vermelha se diferente) */}
-                                                            <div className="flex justify-between text-xs">
-                                                                <span className="text-muted-foreground">OM Detentora Recurso:</span>
-                                                                <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
-                                                                    {omDestino} ({formatCodug(ugDestino)})
-                                                                </span>
-                                                            </div>
-                                                            {/* ND 30 */}
-                                                            <div className="flex justify-between text-xs">
-                                                                <span className="text-muted-foreground">ND 33.90.30 (Custeio):</span>
-                                                                <span className="text-green-600">{formatCurrency(totalND30Consolidado)}</span>
-                                                            </div>
-                                                            {/* ND 39 */}
-                                                            <div className="flex justify-between text-xs">
-                                                                <span className="text-muted-foreground">ND 33.90.39 (Serviços):</span>
-                                                                <span className="text-green-600">{formatCurrency(totalND39Consolidado)}</span>
-                                                            </div>
-                                                        </div>
-                                                    </Card>
-                                                </div>
-                                            </Card>
-                                        );
-                                    })}
-                                </section>
-                            )}
-
-                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
-                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
-                                <div className="space-y-4 mt-8">
-                                    <h3 className="text-xl font-bold flex items-center gap-2">
-                                        📋 Memórias de Cálculos Detalhadas
-                                    </h3>
-                                    
-                                    {consolidatedRegistros.map(group => (
-                                        <ConsolidatedHorasVooMemoria
-                                            key={`memoria-view-${group.groupKey}`}
-                                            group={group}
-                                            isPTrabEditable={isPTrabEditable}
-                                            isSaving={isSaving}
-                                            editingMemoriaId={editingMemoriaId}
-                                            memoriaEdit={memoriaEdit}
-                                            setMemoriaEdit={setMemoriaEdit}
-                                            handleIniciarEdicaoMemoria={handleIniciarEdicaoMemoria}
-                                            handleCancelarEdicaoMemoria={handleCancelarEdicaoMemoria}
-                                            handleSalvarMemoriaCustomizada={handleSalvarMemoriaCustomizada}
-                                            handleRestaurarMemoriaAutomatica={handleRestaurarMemoriaAutomatica}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </form>
-                    </CardContent>
-                </Card>
-                
-                {/* Diálogo de Confirmação de Exclusão */}
-                <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                                <Trash2 className="h-5 w-5" />
-                                Confirmar Exclusão de Lote
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Tem certeza que deseja excluir o lote de Horas de Voo para a OM <span className="font-bold">{groupToDelete?.organizacao}</span>, contendo {groupToDelete?.records.length} item(ns)? Esta ação é irreversível.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogAction 
-                                onClick={() => groupToDelete && handleDeleteMutation.mutate(groupToDelete.records.map(r => r.id))}
-                                disabled={handleDeleteMutation.isPending}
-                                className="bg-destructive hover:bg-destructive/90"
-                            >
-                                {handleDeleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                Excluir Lote
-                            </AlertDialogAction>
-                            <AlertDialogCancel disabled={handleDeleteMutation.isPending}>Cancelar</AlertDialogCancel>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            </div>
-        </div>
-    );
-};
-
-export default HorasVooForm;
+// ... (restante do componente)
