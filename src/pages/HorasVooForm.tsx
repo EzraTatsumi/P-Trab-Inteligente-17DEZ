@@ -966,59 +966,53 @@ const HorasVooForm = () => {
                                     <Card className="mt-6 bg-muted/50 rounded-lg p-4">
                                         
                                         {/* Dados da Solicitação (Dias, OM Detentora) */}
-                                        <Card className="rounded-lg mb-4">
-                                            <CardHeader className="py-3">
-                                                <CardTitle className="text-base font-semibold">Período e OM Detentora do Recurso</CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="pt-2">
-                                                <div className="p-4 bg-background rounded-lg border">
-                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                                        
-                                                        {/* CAMPO 1: DIAS OPERAÇÃO (Período) */}
-                                                        <div className="space-y-2 col-span-1">
-                                                            <Label htmlFor="dias_operacao">Período (Nr Dias) *</Label>
-                                                            <Input
-                                                                id="dias_operacao"
-                                                                type="number"
-                                                                min={1}
-                                                                placeholder="Ex: 7"
-                                                                value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
-                                                                onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
-                                                                required
-                                                                disabled={!isPTrabEditable || isSaving}
-                                                                onKeyDown={handleEnterToNextField}
-                                                                onWheel={(e) => e.currentTarget.blur()}
-                                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                            />
-                                                        </div>
-                                                        
-                                                        {/* CAMPO 2: OM DETENTORA */}
-                                                        <div className="space-y-2 col-span-2">
-                                                            <Label htmlFor="om_destino">OM Detentora do Recurso *</Label>
-                                                            <OmSelector
-                                                                selectedOmId={selectedOmDestinoId}
-                                                                onChange={handleOmDestinoChange}
-                                                                placeholder="Selecione a OM Detentora"
-                                                                disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingRegistros.length > 0}
-                                                                initialOmName={editingId ? formData.om_destino : formData.om_favorecida}
-                                                                initialOmUg={editingId ? formData.ug_destino : formData.ug_favorecida}
-                                                            />
-                                                        </div>
-
-                                                        {/* CAMPO 3: UG DETENTORA */}
-                                                        <div className="space-y-2 col-span-1">
-                                                            <Label htmlFor="ug_destino">UG Detentora</Label>
-                                                            <Input
-                                                                id="ug_destino"
-                                                                value={formatCodug(formData.ug_destino)}
-                                                                disabled
-                                                                className="bg-muted/50"
-                                                            />
-                                                        </div>
-                                                    </div>
+                                        <div className="p-4 bg-background rounded-lg border mb-4">
+                                            <h4 className="font-semibold text-base mb-4">Período e OM Detentora do Recurso</h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                
+                                                {/* CAMPO 1: DIAS OPERAÇÃO (Período) */}
+                                                <div className="space-y-2 col-span-1">
+                                                    <Label htmlFor="dias_operacao">Período (Nr Dias) *</Label>
+                                                    <Input
+                                                        id="dias_operacao"
+                                                        type="number"
+                                                        min={1}
+                                                        placeholder="Ex: 7"
+                                                        value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
+                                                        onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
+                                                        required
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                        onWheel={(e) => e.currentTarget.blur()}
+                                                        className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                    />
                                                 </div>
-                                            </CardContent>
-                                        </Card>
+                                                
+                                                {/* CAMPO 2: OM DETENTORA */}
+                                                <div className="space-y-2 col-span-2">
+                                                    <Label htmlFor="om_destino">OM Detentora do Recurso *</Label>
+                                                    <OmSelector
+                                                        selectedOmId={selectedOmDestinoId}
+                                                        onChange={handleOmDestinoChange}
+                                                        placeholder="Selecione a OM Detentora"
+                                                        disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingRegistros.length > 0}
+                                                        initialOmName={editingId ? formData.om_destino : formData.om_favorecida}
+                                                        initialOmUg={editingId ? formData.ug_destino : formData.ug_favorecida}
+                                                    />
+                                                </div>
+
+                                                {/* CAMPO 3: UG DETENTORA */}
+                                                <div className="space-y-2 col-span-1">
+                                                    <Label htmlFor="ug_destino">UG Detentora</Label>
+                                                    <Input
+                                                        id="ug_destino"
+                                                        value={formatCodug(formData.ug_destino)}
+                                                        disabled
+                                                        className="bg-muted/50"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
                                         
                                         {/* Detalhes das Horas de Voo */}
                                         <Card className="mt-4 rounded-lg p-4 bg-background">
