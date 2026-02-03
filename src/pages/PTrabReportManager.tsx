@@ -649,7 +649,7 @@ const getOMPriority = (nomeOM: string, nomeRM: string): 1 | 2 | 3 => {
 
   // Prioridade 1: Região Militar (RM)
   // Usa a lógica existente de isRegiaoMilitar para ser abrangente
-  if (om === rm || /^\d+ª?\s*RM$/.test(om) || om.includes('REGIAO MILITAR') || rm.includes(om)) {
+  if (om === rm || /^\d+ª?\s*RM$/.test(om) || om.includes('REGIAO MILITAR') || rm.includes(om) || om.includes('RM')) {
     return 1;
   }
   
