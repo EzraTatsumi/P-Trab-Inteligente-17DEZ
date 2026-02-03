@@ -1433,12 +1433,12 @@ const PTrabReportManager = () => {
                 registrosPassagem={registrosPassagem}
                 registrosConcessionaria={registrosConcessionaria}
                 diretrizesOperacionais={diretrizesOperacionais}
-                diretrizesPassagens={diretrizesPassagens} {/* CORREÇÃO 2: Adicionada a prop diretrizesPassagens */}
+                diretrizesPassagens={diretrizesPassagens} 
                 fileSuffix={fileSuffix}
                 generateDiariaMemoriaCalculo={generateDiariaMemoriaCalculoUnificada}
                 generateVerbaOperacionalMemoriaCalculo={generateVerbaOperacionalMemoriaCalculada}
                 generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada}
-                generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada} {/* CORREÇÃO 1: Passando a função com 1 argumento */}
+                generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada} 
                 generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada}
             />
         );
