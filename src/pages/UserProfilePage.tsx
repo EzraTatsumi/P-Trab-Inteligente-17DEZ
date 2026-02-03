@@ -12,7 +12,6 @@ import { ArrowLeft, User, Loader2, Check, Eye, EyeOff, X, Trash2, AlertTriangle 
 import { sanitizeError, sanitizeAuthError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useSession } from "@/components/SessionContextProvider";
-import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -140,8 +139,6 @@ const UserProfilePage = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false); // NOVO ESTADO
   
   const { handleEnterToNextField } = useFormNavigation();
-  // NOTE: useMilitaryOrganizations retorna OMData[], que é compatível com MilitaryOrganization
-  const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
   
   const userId = user?.id;
 
@@ -439,24 +436,15 @@ const UserProfilePage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="sigla_om">Sigla da OM</Label>
-                    <Select
+                    <Input
+                      id="sigla_om"
+                      name="sigla_om"
                       value={form.sigla_om}
-                      onValueChange={(value) => handleSelectChange("sigla_om", value)}
-                      disabled={isLoadingOms}
-                    >
-                      <SelectTrigger id="sigla_om" className="justify-start">
-                        <SelectValue placeholder="Selecione a OM">
-                          {form.sigla_om || "Selecione a OM"}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {oms?.map((om) => (
-                          <SelectItem key={om.id} value={om.nome_om}>
-                            {om.nome_om}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      onChange={handleChange}
+                      placeholder="Ex: Cia C/Ap"
+                      required
+                      onKeyDown={handleEnterToNextField}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="funcao_om">Função na OM</Label>
