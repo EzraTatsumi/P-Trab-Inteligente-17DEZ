@@ -360,15 +360,14 @@ const HorasVooForm = () => {
             
             if (omFavorecida) {
                 setSelectedOmFavorecidaId(omFavorecida.id);
-                // OM Detentora não é mais necessária, mas mantemos o estado para evitar quebras no DB
-                setSelectedOmDestinoId(omFavorecida.id); 
+                setSelectedOmDestinoId(omFavorecida.id); // Sincroniza OM Detentora
                 setFormData(prev => ({
                     ...initialFormState,
                     om_favorecida: omFavorecida.nome_om,
                     ug_favorecida: omFavorecida.codug_om,
-                    om_destino: omFavorecida.nome_om, // Mantido para DB
-                    ug_destino: omFavorecida.codug_om, // Mantido para DB
-                    dias_operacao: 1, // Definido como 1 por padrão, já que o campo foi removido
+                    om_destino: omFavorecida.nome_om, // Preenchimento automático
+                    ug_destino: omFavorecida.codug_om, // Preenchimento automático
+                    dias_operacao: 1, // Valor padrão
                 }));
             }
         } else if (ptrabData && editingId) {
@@ -394,7 +393,7 @@ const HorasVooForm = () => {
         }
         
         try {
-            // Força dias_operacao = 1 para o cálculo, já que o campo foi removido
+            // Dias de operação é fixo em 1 para o cálculo, já que o campo foi removido da UI
             const dataForCalculation = { ...formData, dias_operacao: 1 }; 
             const { valor_total } = calculateHorasVooTotals(dataForCalculation);
             
@@ -503,7 +502,6 @@ const HorasVooForm = () => {
         const omFavorecidaToEdit = oms?.find(om => om.nome_om === group.organizacao && om.codug_om === group.ug);
         setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
         
-        // OM Detentora e UG Detentora são preenchidas, mas não editáveis na UI
         const omDestinoToEdit = oms?.find(om => om.nome_om === group.om_detentora && om.codug_om === group.ug_detentora);
         setSelectedOmDestinoId(omDestinoToEdit?.id);
         
@@ -590,7 +588,7 @@ const HorasVooForm = () => {
         
         try {
             // 1. Validação básica
-            // Dias de operação é fixo em 1
+            // Dias de operação é fixo em 1 para o cálculo, já que o campo foi removido da UI
             const diasOperacao = 1; 
             
             if (formData.quantidade_hv <= 0) {
@@ -764,31 +762,29 @@ const HorasVooForm = () => {
     const handleOmFavorecidaChange = (omData: OMData | undefined) => {
         if (omData) {
             setSelectedOmFavorecidaId(omData.id);
-            // OM Detentora e UG Detentora são preenchidas automaticamente com a OM Favorecida
-            setSelectedOmDestinoId(omData.id); 
+            setSelectedOmDestinoId(omData.id); // Sincroniza OM Detentora
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: omData.nome_om,
                 ug_favorecida: omData.codug_om,
-                om_destino: omData.nome_om, 
-                ug_destino: omData.codug_om, 
+                om_destino: omData.nome_om, // Preenchimento automático
+                ug_destino: omData.codug_om, // Preenchimento automático
             }));
         } else {
             setSelectedOmFavorecidaId(undefined);
-            setSelectedOmDestinoId(undefined); 
+            setSelectedOmDestinoId(undefined); // Limpa OM Detentora
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: "",
                 ug_favorecida: "",
-                om_destino: "", 
-                ug_destino: "", 
+                om_destino: "", // Limpa OM Detentora
+                ug_destino: "", // Limpa UG Detentora
             }));
         }
     };
     
-    // Handler para a OM Detentora do Recurso (Removido da UI, mas mantido para consistência)
+    // Handler para a OM Detentora do Recurso
     const handleOmDestinoChange = (omData: OMData | undefined) => {
-        // Este handler não será mais chamado pela UI, mas é mantido para evitar quebras
         if (omData) {
             setSelectedOmDestinoId(omData.id);
             setFormData(prev => ({
@@ -894,7 +890,8 @@ const HorasVooForm = () => {
                             formData.fase_atividade.length > 0;
 
     // Verifica se os campos numéricos da Solicitação estão preenchidos
-    const isSolicitationDataReady = formData.quantidade_hv > 0 &&
+    const isSolicitationDataReady = formData.dias_operacao > 0 &&
+                                    formData.quantidade_hv > 0 &&
                                     formData.om_destino.length > 0 && // Ainda necessário para o DB
                                     formData.ug_destino.length > 0 && // Ainda necessário para o DB
                                     formData.codug_destino.length > 0 &&
@@ -977,118 +974,120 @@ const HorasVooForm = () => {
                                     
                                     <Card className="mt-6 bg-muted/50 rounded-lg p-4">
                                         
-                                        {/* Campos de Período, OM Detentora e Detalhes de HV em um único grid */}
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                            
-                                            {/* Separador visual (Removido, pois os campos de contexto foram removidos) */}
-                                            <div className="col-span-4">
-                                                <h4 className="font-semibold text-base mb-4">
-                                                    Detalhes da Solicitação de Horas de Voo
-                                                </h4>
+                                        <Card className="rounded-lg p-4 bg-background">
+                                            {/* Campos de Período, OM Detentora e Detalhes de HV em um único grid */}
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                
+                                                {/* Separador visual */}
+                                                <div className="col-span-4">
+                                                    <h4 className="font-semibold text-base mb-4">
+                                                        Detalhes da Solicitação de Horas de Voo
+                                                    </h4>
+                                                </div>
+                                                
+                                                {/* CODUG Destino */}
+                                                <div className="space-y-2 col-span-1">
+                                                    <Label htmlFor="codug_destino">CODUG Destino *</Label>
+                                                    <Input
+                                                        id="codug_destino"
+                                                        placeholder="Ex: 01001"
+                                                        value={formData.codug_destino}
+                                                        onChange={(e) => setFormData({ ...formData, codug_destino: e.target.value })}
+                                                        required
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                    />
+                                                </div>
+                                                
+                                                {/* Município */}
+                                                <div className="space-y-2 col-span-2">
+                                                    <Label htmlFor="municipio">Município *</Label>
+                                                    <Input
+                                                        id="municipio"
+                                                        placeholder="Ex: Taubaté - SP"
+                                                        value={formData.municipio}
+                                                        onChange={(e) => setFormData({ ...formData, municipio: e.target.value })}
+                                                        required
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                    />
+                                                </div>
+                                                
+                                                {/* Tipo de Aeronave */}
+                                                <div className="space-y-2 col-span-1">
+                                                    <Label htmlFor="tipo_anv">Tipo de Anv *</Label>
+                                                    <Input
+                                                        id="tipo_anv"
+                                                        placeholder="Ex: HM-1"
+                                                        value={formData.tipo_anv}
+                                                        onChange={(e) => setFormData({ ...formData, tipo_anv: e.target.value })}
+                                                        required
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                    />
+                                                </div>
+                                                
+                                                {/* Quantidade de HV */}
+                                                <div className="space-y-2 col-span-1">
+                                                    <Label htmlFor="quantidade_hv">Quantidade de HV *</Label>
+                                                    <Input
+                                                        id="quantidade_hv"
+                                                        type="number"
+                                                        min={0.01}
+                                                        step={0.01}
+                                                        placeholder="Ex: 10.5"
+                                                        value={formData.quantidade_hv === 0 ? "" : formData.quantidade_hv}
+                                                        onChange={(e) => setFormData({ ...formData, quantidade_hv: parseFloat(e.target.value) || 0 })}
+                                                        required
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                        onWheel={(e) => e.currentTarget.blur()}
+                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                    />
+                                                </div>
+                                                
+                                                {/* Amparo */}
+                                                <div className="space-y-2 col-span-3">
+                                                    <Label htmlFor="amparo">Amparo Legal/Diretriz</Label>
+                                                    <Input
+                                                        id="amparo"
+                                                        placeholder="Ex: Portaria 123/2024"
+                                                        value={formData.amparo}
+                                                        onChange={(e) => setFormData({ ...formData, amparo: e.target.value })}
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                    />
+                                                </div>
+                                                
+                                                {/* ND 30 */}
+                                                <div className="space-y-2 col-span-2">
+                                                    <Label htmlFor="valor_nd_30">Valor ND 33.90.30 (Custeio) *</Label>
+                                                    <CurrencyInput
+                                                        id="valor_nd_30"
+                                                        value={formData.valor_nd_30}
+                                                        onValueChange={(value) => setFormData({ ...formData, valor_nd_30: value })}
+                                                        placeholder="Ex: R$ 10.000,00"
+                                                        required
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                    />
+                                                </div>
+                                                
+                                                {/* ND 39 */}
+                                                <div className="space-y-2 col-span-2">
+                                                    <Label htmlFor="valor_nd_39">Valor ND 33.90.39 (Serviços) *</Label>
+                                                    <CurrencyInput
+                                                        id="valor_nd_39"
+                                                        value={formData.valor_nd_39}
+                                                        onValueChange={(value) => setFormData({ ...formData, valor_nd_39: value })}
+                                                        placeholder="Ex: R$ 5.000,00"
+                                                        required
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        onKeyDown={handleEnterToNextField}
+                                                    />
+                                                </div>
                                             </div>
-                                            
-                                            {/* CODUG Destino */}
-                                            <div className="space-y-2 col-span-1">
-                                                <Label htmlFor="codug_destino">CODUG Destino *</Label>
-                                                <Input
-                                                    id="codug_destino"
-                                                    placeholder="Ex: 01001"
-                                                    value={formData.codug_destino}
-                                                    onChange={(e) => setFormData({ ...formData, codug_destino: e.target.value })}
-                                                    required
-                                                    disabled={!isPTrabEditable || isSaving}
-                                                    onKeyDown={handleEnterToNextField}
-                                                />
-                                            </div>
-                                            
-                                            {/* Município */}
-                                            <div className="space-y-2 col-span-2">
-                                                <Label htmlFor="municipio">Município *</Label>
-                                                <Input
-                                                    id="municipio"
-                                                    placeholder="Ex: Taubaté - SP"
-                                                    value={formData.municipio}
-                                                    onChange={(e) => setFormData({ ...formData, municipio: e.target.value })}
-                                                    required
-                                                    disabled={!isPTrabEditable || isSaving}
-                                                    onKeyDown={handleEnterToNextField}
-                                                />
-                                            </div>
-                                            
-                                            {/* Tipo de Aeronave */}
-                                            <div className="space-y-2 col-span-1">
-                                                <Label htmlFor="tipo_anv">Tipo de Anv *</Label>
-                                                <Input
-                                                    id="tipo_anv"
-                                                    placeholder="Ex: HM-1"
-                                                    value={formData.tipo_anv}
-                                                    onChange={(e) => setFormData({ ...formData, tipo_anv: e.target.value })}
-                                                    required
-                                                    disabled={!isPTrabEditable || isSaving}
-                                                    onKeyDown={handleEnterToNextField}
-                                                />
-                                            </div>
-                                            
-                                            {/* Quantidade de HV */}
-                                            <div className="space-y-2 col-span-1">
-                                                <Label htmlFor="quantidade_hv">Quantidade de HV *</Label>
-                                                <Input
-                                                    id="quantidade_hv"
-                                                    type="number"
-                                                    min={0.01}
-                                                    step={0.01}
-                                                    placeholder="Ex: 10.5"
-                                                    value={formData.quantidade_hv === 0 ? "" : formData.quantidade_hv}
-                                                    onChange={(e) => setFormData({ ...formData, quantidade_hv: parseFloat(e.target.value) || 0 })}
-                                                    required
-                                                    disabled={!isPTrabEditable || isSaving}
-                                                    onKeyDown={handleEnterToNextField}
-                                                    onWheel={(e) => e.currentTarget.blur()}
-                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                />
-                                            </div>
-                                            
-                                            {/* Amparo */}
-                                            <div className="space-y-2 col-span-3">
-                                                <Label htmlFor="amparo">Amparo Legal/Diretriz</Label>
-                                                <Input
-                                                    id="amparo"
-                                                    placeholder="Ex: Portaria 123/2024"
-                                                    value={formData.amparo}
-                                                    onChange={(e) => setFormData({ ...formData, amparo: e.target.value })}
-                                                    disabled={!isPTrabEditable || isSaving}
-                                                    onKeyDown={handleEnterToNextField}
-                                                />
-                                            </div>
-                                            
-                                            {/* ND 30 */}
-                                            <div className="space-y-2 col-span-2">
-                                                <Label htmlFor="valor_nd_30">Valor ND 33.90.30 (Custeio) *</Label>
-                                                <CurrencyInput
-                                                    id="valor_nd_30"
-                                                    value={formData.valor_nd_30}
-                                                    onValueChange={(value) => setFormData({ ...formData, valor_nd_30: value })}
-                                                    placeholder="Ex: R$ 10.000,00"
-                                                    required
-                                                    disabled={!isPTrabEditable || isSaving}
-                                                    onKeyDown={handleEnterToNextField}
-                                                />
-                                            </div>
-                                            
-                                            {/* ND 39 */}
-                                            <div className="space-y-2 col-span-2">
-                                                <Label htmlFor="valor_nd_39">Valor ND 33.90.39 (Serviços) *</Label>
-                                                <CurrencyInput
-                                                    id="valor_nd_39"
-                                                    value={formData.valor_nd_39}
-                                                    onValueChange={(value) => setFormData({ ...formData, valor_nd_39: value })}
-                                                    placeholder="Ex: R$ 5.000,00"
-                                                    required
-                                                    disabled={!isPTrabEditable || isSaving}
-                                                    onKeyDown={handleEnterToNextField}
-                                                />
-                                            </div>
-                                        </div>
+                                        </Card>
                                         
                                         <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
                                             <span className="font-bold text-sm">VALOR TOTAL DA SOLICITAÇÃO:</span>
@@ -1372,7 +1371,7 @@ const HorasVooForm = () => {
                                             </Card>
                                         );
                                     })}
-                                </section>
+                                </div>
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
