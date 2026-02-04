@@ -82,6 +82,7 @@ export const generateConsolidatedHorasVooMemoriaCalculo = (group: ConsolidatedHo
 
     const memoria = [
         `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${totalHV.toFixed(2)} HV na Anv ${tipoAnv}.`,
+        ``, // Linha em branco adicionada aqui
         amparo,
     ];
 
