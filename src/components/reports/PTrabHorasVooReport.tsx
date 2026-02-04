@@ -81,7 +81,8 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     // Adiciona a nota sobre a diretriz de custeio (usando o texto exato do modelo)
     const notaDiretriz = "\n\nTudo conforme o DIEx nº 972-DMAvEx/COLOG, de 16 de dezembro de 2022, do Subcomandate Logístico versando sobre o valor da hora de voo para o ano de 2023. O valor foi convertido para REAIS utilizando-se da cotação do dólar (PTAX do DÓLAR).";
     
-    return detalhamentoConsolidado.trim().length > 0 ? detalhamentoConsolidado + notaDiretriz : notaDiretriz;
+    // CORREÇÃO: Usar a variável local 'detalhes'
+    return detalhes.trim().length > 0 ? detalhes + notaDiretriz : notaDiretriz;
   }, [registros]);
 
   return (
