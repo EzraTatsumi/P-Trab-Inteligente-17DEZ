@@ -1,5 +1,5 @@
 import { Tables, TablesInsert } from "@/integrations/supabase/types";
-import { formatCurrency, formatCodug } from "./formatUtils";
+import { formatCurrency, formatCodug, formatNumber } from "./formatUtils";
 
 // Tipos de dados
 export type HorasVooRegistro = Tables<'horas_voo_registros'>;
@@ -57,7 +57,7 @@ export const generateHorasVooMemoriaCalculo = (registro: HorasVooRegistro): stri
         `--------------------------------------------------`,
         `Município/Destino: ${municipio} (CODUG: ${registro.codug_destino})`,
         `Tipo de Aeronave: ${tipo_anv}`,
-        `Quantidade de Horas de Voo (HV): ${quantidade_hv.toFixed(2)} HV`,
+        `Quantidade de Horas de Voo (HV): ${formatNumber(quantidade_hv, 2)} HV`,
         `Amparo Legal/Diretriz: ${amparo || 'Não Informado'}`,
         `--------------------------------------------------`,
         `Custeio ND 33.90.30 (Custeio): ${formatCurrency(valor_nd_30)}`,
@@ -81,7 +81,7 @@ export const generateConsolidatedHorasVooMemoriaCalculo = (group: ConsolidatedHo
     const amparo = records[0]?.amparo || 'N/I';
 
     const memoria = [
-        `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${totalHV.toFixed(2)} HV na Anv ${tipoAnv}.`,
+        `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${formatNumber(totalHV, 2)} HV na Anv ${tipoAnv}.`,
         ``, // Linha em branco adicionada aqui
         amparo,
     ];
