@@ -177,10 +177,10 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
                 </TableCell>
               </TableRow>
               
-              {/* Linha de Total */}
+              {/* LINHA 1: SUBTOTAL (ND 30, ND 39, GND 3) */}
               <TableRow className="h-auto font-bold bg-[#E8E8E8] print:bg-[#E8E8E8]">
                 <TableCell colSpan={3} className="border border-black text-right">
-                  VALOR TOTAL
+                  SUBTOTAL
                 </TableCell>
                 <TableCell className="border border-black text-center bg-[#B4C7E7]">
                   {formatCurrency(totalND30)}
@@ -189,6 +189,19 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
                   {formatCurrency(totalND39)}
                 </TableCell>
                 <TableCell className="border border-black text-center bg-[#B4C7E7]">
+                  {formatCurrency(totalGeral)}
+                </TableCell>
+                <TableCell className="border border-black bg-[#E8E8E8]">
+                  {/* Vazio */}
+                </TableCell>
+              </TableRow>
+
+              {/* LINHA 2: VALOR TOTAL (GND 3) */}
+              <TableRow className="h-auto font-bold bg-[#E8E8E8] print:bg-[#E8E8E8]">
+                <TableCell colSpan={5} className="border border-black text-right">
+                  VALOR TOTAL
+                </TableCell>
+                <TableCell className="border border-black text-center bg-[#E8E8E8]">
                   {formatCurrency(totalGeral)}
                 </TableCell>
                 <TableCell className="border border-black bg-[#E8E8E8]">
