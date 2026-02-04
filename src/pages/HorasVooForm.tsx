@@ -1204,7 +1204,7 @@ const HorasVooForm = () => {
                             {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({itemsToDisplay.length} item(ns))
+                                        3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({itemsToDisplay.length} {itemsToDisplay.length === 1 ? 'item' : 'itens'})
                                     </h3>
                                     
                                     {/* Alerta de Validação Final (Modo Novo Registro) */}
@@ -1272,15 +1272,15 @@ const HorasVooForm = () => {
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
-                                                                <p className="font-medium">OM Detentora do Recurso:</p>
-                                                                <p className="font-medium">Qtd HV / Período:</p>
+                                                                <p className="font-medium">OM Gestora:</p>
+                                                                <p className="font-medium">Qtd HV:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
                                                                 <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>
-                                                                    {item.om_detentora} ({formatCodug(item.ug_detentora)})
+                                                                    {item.codug_destino}
                                                                 </p>
-                                                                <p className="font-medium">{formatNumber(item.quantidade_hv, 2)} h / {item.dias_operacao} {diasText}</p>
+                                                                <p className="font-medium">{formatNumber(item.quantidade_hv, 2)} h</p>
                                                             </div>
                                                         </div>
                                                         
@@ -1308,10 +1308,10 @@ const HorasVooForm = () => {
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
                                             <span className="font-bold text-base uppercase">
-                                                VALOR TOTAL DO LOTE
+                                                VALOR TOTAL DA OM
                                             </span>
                                             <span className="font-extrabold text-xl text-foreground">
-                                                {formatCurrency(totalPendingRegistros)}
+                                                {totalPendingRegistros === 0 && formData.isCoterResponsibility ? "A CARGO DO COTER" : formatCurrency(totalPendingRegistros)}
                                             </span>
                                         </CardContent>
                                     </Card>
