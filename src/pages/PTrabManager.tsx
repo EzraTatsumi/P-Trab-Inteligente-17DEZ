@@ -10,10 +10,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
   DialogFooter,
   DialogClose,
-  DialogDescription,
-  DialogTrigger // Adicionado DialogTrigger
+  DialogDescription
 } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -95,7 +95,7 @@ type PTrabLinkedTableName =
     'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' | 
     'classe_viii_saude_registros' | 'classe_viii_remonta_registros' | 
     'classe_ix_registros' | 'p_trab_ref_lpc' | 'passagem_registros' | 
-    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros' | 'horas_voo_registros'; // CORRIGIDO: Adicionado 'horas_voo_registros'
+    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros'; // ADICIONADO
 
 // Lista de Comandos Militares de Área (CMA)
 const COMANDOS_MILITARES_AREA = [
@@ -574,23 +574,6 @@ const PTrabManager = () => {
           else {
               totalConcessionariaND39 = (concessionariaData || []).reduce((sum, record) => sum + (record.valor_nd_39 || 0), 0);
           }
-          
-          // 8. Fetch Horas Voo totals (33.90.30 and 33.90.39) - NOVO
-          const { data: horasVooData, error: horasVooError } = await supabase
-            .from('horas_voo_registros')
-            .select('valor_nd_30, valor_nd_39, quantidade_hv')
-            .eq('p_trab_id', ptrab.id);
-            
-          let totalHorasVooND30 = 0;
-          let totalHorasVooND39 = 0;
-          if (horasVooError) console.error("Erro ao carregar Horas de Voo para PTrab", ptrab.numero_ptrab, horasVooError);
-          else {
-              totalHorasVooND30 = (horasVooData || []).reduce((sum, record) => sum + (record.valor_nd_30 || 0), 0);
-              totalHorasVooND39 = (horasVooData || []).reduce((sum, record) => sum + (record.valor_nd_39 || 0), 0);
-              quantidadeHorasVooCalculada = (horasVooData || []).reduce((sum, record) => sum + (record.quantidade_hv || 0), 0);
-          }
-          
-          const totalHorasVoo = totalHorasVooND30 + totalHorasVooND39;
 
 
           // SOMA TOTAL DA ABA LOGÍSTICA
@@ -598,8 +581,8 @@ const PTrabManager = () => {
           totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII;
           
           // SOMA TOTAL DA ABA OPERACIONAL
-          // Operacional = Diárias (ND 15) + Diárias (ND 30) + Verba Operacional (ND 30 + ND 39) + Passagens (ND 33) + Concessionárias (ND 39) + Horas Voo (ND 30 + ND 39)
-          totalOperacionalCalculado = totalDiariaND15 + totalDiariaND30 + totalVerbaOperacionalND30 + totalVerbaOperacionalND39 + totalPassagemND33 + totalConcessionariaND39 + totalHorasVoo;
+          // Operacional = Diárias (ND 15) + Diárias (ND 30) + Verba Operacional (ND 30 + ND 39) + Passagens (ND 33) + Concessionárias (ND 39)
+          totalOperacionalCalculado = totalDiariaND15 + totalDiariaND30 + totalVerbaOperacionalND30 + totalVerbaOperacionalND39 + totalPassagemND33 + totalConcessionariaND39;
           
           const isOwner = ptrab.user_id === user.id;
           const isShared = !isOwner && (ptrab.shared_with || []).includes(user.id);
@@ -1321,9 +1304,6 @@ const PTrabManager = () => {
     
     // CLONAGEM DE CONCESSIONÁRIA
     await cloneClassRecords('concessionaria_registros', null, ['dias_operacao', 'efetivo', 'consumo_pessoa_dia', 'valor_unitario', 'valor_total', 'valor_nd_39']);
-    
-    // CLONAGEM DE HORAS DE VOO
-    await cloneClassRecords('horas_voo_registros', null, ['dias_operacao', 'quantidade_hv', 'valor_nd_30', 'valor_nd_39', 'valor_total']);
   };
 
   const needsNumbering = (ptrab: PTrab) => {
@@ -1399,7 +1379,6 @@ const PTrabManager = () => {
             'verba_operacional_registros', 
             'passagem_registros', 
             'concessionaria_registros', // NOVO: Adicionado Concessionária
-            'horas_voo_registros', // CORRIGIDO: Adicionado Horas de Voo
         ];
         
         for (const tableName of tablesToConsolidate) {
@@ -1983,7 +1962,8 @@ const PTrabManager = () => {
             {loading ? (
               <div className="text-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mb-2 mx-auto" />
-                <span className="ml-2 text-muted-foreground">Carregando P Trabs...</span>
+                <h3 className="text-lg font-semibold text-foreground">Carregando P Trabs...</h3>
+                <p className="text-sm text-muted-foreground mt-1">Calculando totais de classes.</p>
               </div>
             ) : pTrabs.length === 0 ? (
               <div className="text-center py-12">
@@ -2089,22 +2069,17 @@ const PTrabManager = () => {
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  {/* CORREÇÃO: Envolver o Badge em um span para resolver o erro de ref */}
-                                  <span 
+                                  <Badge 
+                                    variant="ptrab-shared" // USANDO NOVO VARIANT
+                                    className="mt-1 text-xs cursor-pointer w-[140px] h-7 flex items-center justify-center"
                                     onClick={() => handleOpenManageSharingDialog(ptrab)}
-                                    className="cursor-pointer"
                                   >
-                                    <Badge 
-                                      variant="ptrab-shared" // USANDO NOVO VARIANT
-                                      className="mt-1 text-xs w-[140px] h-7 flex items-center justify-center"
-                                    >
-                                      <Users className="h-3 w-3 mr-1" />
-                                      Compartilhando
-                                      {ptrab.hasPendingRequests && (
-                                          <span className="ml-1 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                                      )}
-                                    </Badge>
-                                  </span>
+                                    <Users className="h-3 w-3 mr-1" />
+                                    Compartilhando
+                                    {ptrab.hasPendingRequests && (
+                                        <span className="ml-1 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                                    )}
+                                  </Badge>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   {ptrab.hasPendingRequests ? "Gerenciar (Solicitações Pendentes!)" : "Gerenciar Compartilhamento"}

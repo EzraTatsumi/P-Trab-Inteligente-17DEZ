@@ -155,7 +155,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .eq('p_trab_id', ptrabId),
     supabase // NOVO: Horas de Voo
       .from('horas_voo_registros')
-      .select('valor_total, valor_nd_30, valor_nd_39, quantidade_hv')
+      .select('valor_total, quantidade_hv')
       .eq('p_trab_id', ptrabId),
   ]);
 
@@ -423,7 +423,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   });
   
   // O total da Diária (ND 33.90.15) é a soma das duas subdivisões
-  const totalDiarias = totalDiariasND15_TaxaEmbarque + totalDiariasND15_DiariaBase; 
+  const totalDiarias = totalDiariasND15_DiariaBase + totalDiariasND30; 
   
   // 5. Processamento de Verba Operacional e Suprimento de Fundos
   let totalVerbaOperacionalND30 = 0;
@@ -493,21 +493,13 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       }
   });
   
-  // 8. Processamento de Horas de Voo (ND 33.90.30 e 33.90.39) - NOVO
-  let totalHorasVooND30 = 0;
-  let totalHorasVooND39 = 0;
+  // 8. Processamento de Horas de Voo (ND 33.90.30 + ND 33.90.39) - NOVO
   let totalHorasVoo = 0;
-  let totalQuantidadeHorasVoo = 0;
+  let quantidadeHorasVoo = 0;
   
   (safeHorasVooData || []).forEach(record => {
-      const valorND30 = Number(record.valor_nd_30 || 0);
-      const valorND39 = Number(record.valor_nd_39 || 0);
-      const total = valorND30 + valorND39;
-      
-      totalHorasVooND30 += valorND30;
-      totalHorasVooND39 += valorND39;
-      totalHorasVoo += total;
-      totalQuantidadeHorasVoo += Number(record.quantidade_hv || 0);
+      totalHorasVoo += Number(record.valor_total || 0);
+      quantidadeHorasVoo += Number(record.quantidade_hv || 0);
   });
     
   // Soma de todas as classes diversas (II, V, VI, VII, VIII, IX)
@@ -516,13 +508,13 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
   const totalLogisticoGeral = totalClasseI + totalClassesDiversas + totalCombustivel + totalLubrificanteValor; 
   
-  // Total Operacional (Diárias + Verba Operacional + Suprimento de Fundos + Passagens + Concessionária + Horas Voo)
+  // Total Operacional (Diárias + Verba Operacional + Suprimento de Fundos + Passagens + Concessionária + Horas de Voo + Outros Operacionais)
   const totalOutrosOperacionais = 0; // Placeholder para outros itens operacionais
-  const totalOperacional = totalDiarias + totalVerbaOperacional + totalSuprimentoFundos + totalPassagensND33 + totalConcessionariaND39 + totalHorasVoo + totalOutrosOperacionais; 
+  const totalOperacional = totalDiarias + totalVerbaOperacional + totalSuprimentoFundos + totalPassagensND33 + totalConcessionariaND39 + totalHorasVoo + totalOutrosOperacionais; // ADICIONADO totalHorasVoo
   
   // Novos totais (placeholders)
   const totalMaterialPermanente = 0;
-  const totalAviacaoExercito = totalHorasVoo; // Horas de Voo é o único item de AvEx por enquanto
+  const totalAviacaoExercito = totalHorasVoo; // O valor monetário total de HV
   
   return {
     totalLogisticoGeral,
@@ -605,17 +597,15 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalQuantidadePassagens,
     totalTrechosPassagens,
     
-    // NOVO: Concessionária
+    // Concessionária
     totalConcessionariaND39,
     totalConcessionariaRegistros,
     totalConcessionariaAgua, // NOVO
     totalConcessionariaEnergia, // NOVO
     
-    // NOVO: Horas de Voo
-    totalHorasVoo,
-    totalHorasVooND30,
-    totalHorasVooND39,
-    totalQuantidadeHorasVoo,
+    // Horas de Voo (AvEx)
+    totalHorasVoo, // Valor monetário total (igual a totalAviacaoExercito)
+    quantidadeHorasVoo, // Quantidade total de HV
   };
 };
 
@@ -705,16 +695,14 @@ export const PTrabCostSummary = ({
       totalPassagensND33: 0,
       totalQuantidadePassagens: 0,
       totalTrechosPassagens: 0,
-      // NOVO: Concessionária
+      // Concessionária
       totalConcessionariaND39: 0,
       totalConcessionariaRegistros: 0,
       totalConcessionariaAgua: 0, // NOVO
       totalConcessionariaEnergia: 0, // NOVO
-      // NOVO: Horas de Voo
+      // Horas de Voo (AvEx)
       totalHorasVoo: 0,
-      totalHorasVooND30: 0,
-      totalHorasVooND39: 0,
-      totalQuantidadeHorasVoo: 0,
+      quantidadeHorasVoo: 0,
     },
   });
   
@@ -803,7 +791,10 @@ export const PTrabCostSummary = ({
             </div>
             <div className="flex justify-between text-purple-600 cursor-pointer" onClick={handleSummaryClick}>
               <span className="font-semibold text-sm">Aba Aviação do Exército</span>
-              <span className="font-bold text-sm">{formatCurrency(totals.totalAviacaoExercito)}</span>
+              <span className="font-bold text-sm">
+                {/* ALTERADO: Exibir quantidade de HV formatada */}
+                {formatNumber(totals.quantidadeHorasVoo, 2)} HV
+              </span>
             </div>
         </div>
         
@@ -1512,50 +1503,6 @@ export const PTrabCostSummary = ({
                     </Accordion>
                   )}
                   
-                  {/* Horas de Voo (ND 30/39) - NOVO */}
-                  {totals.totalHorasVoo > 0 && (
-                    <Accordion type="single" collapsible className="w-full pt-1">
-                        <AccordionItem value="item-horas-voo" className="border-b-0">
-                            <AccordionTrigger className="p-0 hover:no-underline">
-                                <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                                    <div className="flex items-center gap-1 text-foreground">
-                                        <Plane className="h-3 w-3 text-blue-500" />
-                                        Horas de Voo
-                                    </div>
-                                    <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                                        {formatCurrency(totals.totalHorasVoo)}
-                                    </span>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-1 pb-0">
-                                <div className="space-y-1 pl-4 text-[10px]">
-                                    {/* Detalhe 1: Total de Horas */}
-                                    <div className="flex justify-between text-muted-foreground">
-                                        <span className="w-1/2 text-left">Total de Horas</span>
-                                        <span className="w-1/4 text-right font-medium">
-                                            {formatNumber(totals.totalQuantidadeHorasVoo, 2)} h
-                                        </span>
-                                        <span className="w-1/4 text-right font-medium text-background">
-                                            {/* Vazio */}
-                                        </span>
-                                    </div>
-                                    
-                                    {/* Linha de Detalhe Consolidada (ND 30 / ND 39) */}
-                                    <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                                        <span className="w-1/2 text-left font-semibold">ND 30 / ND 39</span>
-                                        <span className="w-1/4 text-right font-medium text-green-600">
-                                            {formatCurrency(totals.totalHorasVooND30)}
-                                        </span>
-                                        <span className="w-1/4 text-right font-medium text-blue-600">
-                                            {formatCurrency(totals.totalHorasVooND39)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
-                  )}
-                  
                   {/* Outros Operacionais (Placeholder) - Adjusted logic */}
                   {totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33 - totals.totalConcessionariaND39 - totals.totalHorasVoo > 0 && (
                     <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-border/50 mt-1">
@@ -1572,9 +1519,12 @@ export const PTrabCostSummary = ({
                 
                 {/* Aba Material Permanente (Placeholder) */}
                 <div className="space-y-3 border-l-4 border-green-500 pl-3 pt-4">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-green-600">
-                    <HardHat className="h-3 w-3" />
-                    Material Permanente ({formatCurrency(totals.totalMaterialPermanente)})
+                  <div className="flex items-center justify-between text-xs font-semibold text-green-600 mb-2">
+                    <div className="flex items-center gap-2">
+                        <HardHat className="h-3 w-3" />
+                        Material Permanente
+                    </div>
+                    <span className="font-bold text-sm">{formatCurrency(totals.totalMaterialPermanente)}</span>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span className="w-1/2 text-left">Itens de Material Permanente</span>
@@ -1589,17 +1539,20 @@ export const PTrabCostSummary = ({
                 
                 {/* Aba Aviação do Exército (Placeholder) */}
                 <div className="space-y-3 border-l-4 border-purple-500 pl-3 pt-4">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-purple-600">
-                    <Plane className="h-3 w-3" />
-                    Aviação do Exército ({formatCurrency(totals.totalAviacaoExercito)})
+                  <div className="flex items-center justify-between text-xs font-semibold text-purple-600 mb-2">
+                    <div className="flex items-center gap-2">
+                        <Plane className="h-3 w-3" />
+                        Aviação do Exército
+                    </div>
+                    <span className="font-bold text-sm">{formatCurrency(totals.totalAviacaoExercito)}</span>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span className="w-1/2 text-left">Total Horas de Voo</span>
+                    <span className="w-1/2 text-left">Horas de Voo Solicitadas</span>
                     <span className="w-1/4 text-right font-medium">
-                      {formatNumber(totals.totalQuantidadeHorasVoo, 2)} h
+                      {/* Vazio */}
                     </span>
                     <span className="w-1/4 text-right font-medium">
-                      {formatCurrency(totals.totalHorasVoo)}
+                      {formatNumber(totals.quantidadeHorasVoo, 2)} HV
                     </span>
                   </div>
                 </div>
