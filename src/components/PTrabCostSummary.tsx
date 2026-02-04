@@ -102,6 +102,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     { data: verbaOperacionalData, error: verbaOperacionalError }, // Verba Operacional e Suprimento de Fundos
     { data: passagemData, error: passagemError }, // Passagens
     { data: concessionariaData, error: concessionariaError }, // NOVO: Concessionária
+    { data: horasVooData, error: horasVooError }, // NOVO: Horas de Voo
   ] = await Promise.all([
     supabase
       .from('classe_ii_registros')
@@ -152,6 +153,10 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .from('concessionaria_registros')
       .select('valor_total, valor_nd_39, dias_operacao, efetivo, categoria')
       .eq('p_trab_id', ptrabId),
+    supabase // NOVO: Horas de Voo
+      .from('horas_voo_registros')
+      .select('valor_total, quantidade_hv')
+      .eq('p_trab_id', ptrabId),
   ]);
 
   // Logar erros, mas não lançar exceção para permitir que o cálculo continue
@@ -167,6 +172,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   if (verbaOperacionalError) console.error("Erro ao carregar Verba Operacional/Suprimento:", verbaOperacionalError);
   if (passagemError) console.error("Erro ao carregar Passagens:", passagemError); 
   if (concessionariaError) console.error("Erro ao carregar Concessionária:", concessionariaError); // NOVO
+  if (horasVooError) console.error("Erro ao carregar Horas de Voo:", horasVooError); // NOVO
   
   // Usar arrays vazios se o fetch falhou
   const safeClasseIIData = classeIIData || [];
@@ -181,6 +187,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const safeVerbaOperacionalData = verbaOperacionalData || [];
   const safePassagemData = passagemData || []; 
   const safeConcessionariaData = concessionariaData || []; // NOVO
+  const safeHorasVooData = horasVooData || []; // NOVO
   
   const allClasseItemsData = [
     ...safeClasseIIData,
@@ -416,7 +423,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   });
   
   // O total da Diária (ND 33.90.15) é a soma das duas subdivisões
-  const totalDiarias = totalDiariasND15_TaxaEmbarque + totalDiariasND15_DiariaBase; 
+  const totalDiarias = totalDiariasND15_DiariaBase + totalDiariasND30; 
   
   // 5. Processamento de Verba Operacional e Suprimento de Fundos
   let totalVerbaOperacionalND30 = 0;
@@ -485,6 +492,15 @@ const fetchPTrabTotals = async (ptrabId: string) => {
           totalConcessionariaEnergia += valorND39;
       }
   });
+  
+  // 8. Processamento de Horas de Voo (ND 33.90.30 + ND 33.90.39) - NOVO
+  let totalHorasVoo = 0;
+  let quantidadeHorasVoo = 0;
+  
+  (safeHorasVooData || []).forEach(record => {
+      totalHorasVoo += Number(record.valor_total || 0);
+      quantidadeHorasVoo += Number(record.quantidade_hv || 0);
+  });
     
   // Soma de todas as classes diversas (II, V, VI, VII, VIII, IX)
   const totalClassesDiversas = totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX;
@@ -492,13 +508,13 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
   const totalLogisticoGeral = totalClasseI + totalClassesDiversas + totalCombustivel + totalLubrificanteValor; 
   
-  // Total Operacional (Diárias + Verba Operacional + Suprimento de Fundos + Passagens + Concessionária + Outros Operacionais)
+  // Total Operacional (Diárias + Verba Operacional + Suprimento de Fundos + Passagens + Concessionária + Horas de Voo + Outros Operacionais)
   const totalOutrosOperacionais = 0; // Placeholder para outros itens operacionais
-  const totalOperacional = totalDiarias + totalVerbaOperacional + totalSuprimentoFundos + totalPassagensND33 + totalConcessionariaND39 + totalOutrosOperacionais; // ADICIONADO totalConcessionariaND39
+  const totalOperacional = totalDiarias + totalVerbaOperacional + totalSuprimentoFundos + totalPassagensND33 + totalConcessionariaND39 + totalHorasVoo + totalOutrosOperacionais; // ADICIONADO totalHorasVoo
   
   // Novos totais (placeholders)
   const totalMaterialPermanente = 0;
-  const totalAviacaoExercito = 0;
+  const totalAviacaoExercito = totalHorasVoo; // O valor monetário total de HV
   
   return {
     totalLogisticoGeral,
@@ -581,11 +597,15 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalQuantidadePassagens,
     totalTrechosPassagens,
     
-    // NOVO: Concessionária
+    // Concessionária
     totalConcessionariaND39,
     totalConcessionariaRegistros,
     totalConcessionariaAgua, // NOVO
     totalConcessionariaEnergia, // NOVO
+    
+    // Horas de Voo (AvEx)
+    totalHorasVoo, // Valor monetário total (igual a totalAviacaoExercito)
+    quantidadeHorasVoo, // Quantidade total de HV
   };
 };
 
@@ -675,11 +695,14 @@ export const PTrabCostSummary = ({
       totalPassagensND33: 0,
       totalQuantidadePassagens: 0,
       totalTrechosPassagens: 0,
-      // NOVO: Concessionária
+      // Concessionária
       totalConcessionariaND39: 0,
       totalConcessionariaRegistros: 0,
       totalConcessionariaAgua: 0, // NOVO
       totalConcessionariaEnergia: 0, // NOVO
+      // Horas de Voo (AvEx)
+      totalHorasVoo: 0,
+      quantidadeHorasVoo: 0,
     },
   });
   
@@ -768,7 +791,10 @@ export const PTrabCostSummary = ({
             </div>
             <div className="flex justify-between text-purple-600 cursor-pointer" onClick={handleSummaryClick}>
               <span className="font-semibold text-sm">Aba Aviação do Exército</span>
-              <span className="font-bold text-sm">{formatCurrency(totals.totalAviacaoExercito)}</span>
+              <span className="font-bold text-sm">
+                {/* ALTERADO: Exibir quantidade de HV formatada */}
+                {formatNumber(totals.quantidadeHorasVoo, 2)} HV
+              </span>
             </div>
         </div>
         
@@ -1478,14 +1504,14 @@ export const PTrabCostSummary = ({
                   )}
                   
                   {/* Outros Operacionais (Placeholder) - Adjusted logic */}
-                  {totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33 - totals.totalConcessionariaND39 > 0 && (
+                  {totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33 - totals.totalConcessionariaND39 - totals.totalHorasVoo > 0 && (
                     <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-border/50 mt-1">
                         <span className="w-1/2 text-left">Outros Itens Operacionais</span>
                         <span className="w-1/4 text-right font-medium">
                             {/* Vazio */}
                         </span>
                         <span className="w-1/4 text-right font-medium">
-                            {formatCurrency(totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33 - totals.totalConcessionariaND39)}
+                            {formatCurrency(totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33 - totals.totalConcessionariaND39 - totals.totalHorasVoo)}
                         </span>
                     </div>
                   )}
@@ -1493,9 +1519,12 @@ export const PTrabCostSummary = ({
                 
                 {/* Aba Material Permanente (Placeholder) */}
                 <div className="space-y-3 border-l-4 border-green-500 pl-3 pt-4">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-green-600">
-                    <HardHat className="h-3 w-3" />
-                    Material Permanente ({formatCurrency(totals.totalMaterialPermanente)})
+                  <div className="flex items-center justify-between text-xs font-semibold text-green-600 mb-2">
+                    <div className="flex items-center gap-2">
+                        <HardHat className="h-3 w-3" />
+                        Material Permanente
+                    </div>
+                    <span className="font-bold text-sm">{formatCurrency(totals.totalMaterialPermanente)}</span>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span className="w-1/2 text-left">Itens de Material Permanente</span>
@@ -1510,17 +1539,20 @@ export const PTrabCostSummary = ({
                 
                 {/* Aba Aviação do Exército (Placeholder) */}
                 <div className="space-y-3 border-l-4 border-purple-500 pl-3 pt-4">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-purple-600">
-                    <Plane className="h-3 w-3" />
-                    Aviação do Exército ({formatCurrency(totals.totalAviacaoExercito)})
+                  <div className="flex items-center justify-between text-xs font-semibold text-purple-600 mb-2">
+                    <div className="flex items-center gap-2">
+                        <Plane className="h-3 w-3" />
+                        Aviação do Exército
+                    </div>
+                    <span className="font-bold text-sm">{formatCurrency(totals.totalAviacaoExercito)}</span>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span className="w-1/2 text-left">Itens de Aviação</span>
+                    <span className="w-1/2 text-left">Horas de Voo Solicitadas</span>
                     <span className="w-1/4 text-right font-medium">
                       {/* Vazio */}
                     </span>
                     <span className="w-1/4 text-right font-medium">
-                      {formatCurrency(totals.totalAviacaoExercito)}
+                      {formatNumber(totals.quantidadeHorasVoo, 2)} HV
                     </span>
                   </div>
                 </div>
