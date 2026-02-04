@@ -48,7 +48,7 @@ export const generateHorasVooMemoriaCalculo = (registro: HorasVooRegistro): stri
     const { valor_total, valor_nd_30, valor_nd_39, quantidade_hv, tipo_anv, municipio, amparo } = registro;
 
     const memoria = [
-        `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${quantidade_hv} HV na Anv ${tipo_anv}.', /n
+        `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${quantidade_hv} HV na Anv ${tipo_anv}.', /n,
         `${amparo}`,
     ].join('\n');
 
