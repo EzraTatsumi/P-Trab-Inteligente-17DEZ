@@ -11,7 +11,7 @@ import {
 import { Tables } from "@/integrations/supabase/types";
 
 // =================================================================
-// TIPOS DE COMPARTILHAMENTO (NOVO)
+// TIPOS DE COMPARTILHAMENTO
 // =================================================================
 
 export interface SharePreviewData {
@@ -22,6 +22,12 @@ export interface SharePreviewData {
     raw_user_meta_data: any; // Assuming JSONB structure
   } | null;
 }
+
+// =================================================================
+// TIPOS DE COMBUSTÍVEL (NOVO)
+// =================================================================
+
+export interface RefLPC extends Tables<'p_trab_ref_lpc'> {}
 
 // =================================================================
 // FUNÇÕES DE SUBITEM (Personalizado do Usuário)
@@ -165,7 +171,7 @@ export async function fetchGlobalSubitemCatalog(): Promise<GlobalSubitemCatalog[
 }
 
 // =================================================================
-// FUNÇÕES DE COMPARTILHAMENTO (NOVO)
+// FUNÇÕES DE COMPARTILHAMENTO
 // =================================================================
 
 /**
@@ -196,4 +202,23 @@ export async function fetchSharePreview(ptrabId: string, shareToken: string): Pr
     ptrab: ptrabData as Tables<'p_trab'>,
     ownerProfile: profileData || null,
   };
+}
+
+// =================================================================
+// FUNÇÕES DE CLASSE III (COMBUSTÍVEL) (NOVO)
+// =================================================================
+
+/**
+ * Busca o registro de Referência LPC (Preços de Combustível) para um PTrab.
+ */
+export async function fetchFuelPrice(ptrabId: string): Promise<RefLPC | null> {
+  const { data, error } = await supabase
+    .from('p_trab_ref_lpc')
+    .select('*')
+    .eq('p_trab_id', ptrabId)
+    .maybeSingle();
+
+  if (error) throw error;
+  
+  return data as RefLPC | null;
 }
