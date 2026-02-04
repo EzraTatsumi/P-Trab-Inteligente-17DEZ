@@ -37,7 +37,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { formatCurrency, formatNumber } from "@/lib/formatUtils";
+import { formatCurrency } from "@/lib/formatUtils";
 import { generateUniquePTrabNumber, generateVariationPTrabNumber, isPTrabNumberDuplicate, generateApprovalPTrabNumber, generateUniqueMinutaNumber } from "@/lib/ptrabNumberUtils";
 import PTrabConsolidationDialog from "@/components/PTrabConsolidationDialog";
 import { ConsolidationNumberDialog } from "@/components/ConsolidationNumberDialog";
@@ -573,17 +573,6 @@ const PTrabManager = () => {
           if (concessionariaError) console.error("Erro ao carregar Concessionárias para PTrab", ptrab.numero_ptrab, concessionariaError);
           else {
               totalConcessionariaND39 = (concessionariaData || []).reduce((sum, record) => sum + (record.valor_nd_39 || 0), 0);
-          }
-          
-          // 8. Fetch Horas Voo totals (quantidade_hv) - NOVO
-          const { data: horasVooData, error: horasVooError } = await supabase
-            .from('horas_voo_registros')
-            .select('quantidade_hv')
-            .eq('p_trab_id', ptrab.id);
-            
-          if (horasVooError) console.error("Erro ao carregar Horas de Voo para PTrab", ptrab.numero_ptrab, horasVooError);
-          else {
-              quantidadeHorasVooCalculada = (horasVooData || []).reduce((sum, record) => sum + (record.quantidade_hv || 0), 0);
           }
 
 
@@ -2160,8 +2149,7 @@ const PTrabManager = () => {
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">HV:</span>
                             <span className="font-medium">
-                              {/* ALTERADO: Usando formatNumber para HV */}
-                              {`${formatNumber(ptrab.quantidadeHorasVoo || 0, 2)} h`}
+                              {`${ptrab.quantidadeHorasVoo || 0} h`}
                             </span>
                           </div>
                           
