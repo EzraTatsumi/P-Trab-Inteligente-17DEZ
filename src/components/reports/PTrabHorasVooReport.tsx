@@ -88,7 +88,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
       {/* Conteúdo do Relatório (para impressão) */}
       <div ref={contentRef} className="bg-white p-8 shadow-xl print:p-0 print:shadow-none" style={{ padding: '0.5cm' }}>
         
-        {/* CABEÇALHO FORMAL - CORRIGIDO O ESPAÇAMENTO E O SUBLINHADO */}
+        {/* CABEÇALHO FORMAL */}
         <div className="ptrab-header">
           <p className="text-[11pt] font-bold uppercase">Ministério da Defesa</p>
           <p className="text-[11pt] font-bold uppercase">Exército Brasileiro</p>
@@ -108,7 +108,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
           </div>
         </div>
 
-        {/* INFORMAÇÕES DA OPERAÇÃO - CORRIGIDO O ESPAÇAMENTO */}
+        {/* INFORMAÇÕES DA OPERAÇÃO */}
         <div className="ptrab-info">
           <p className="info-item"><span className="font-bold">1. NOME DA OPERAÇÃO:</span> {ptrabData.nome_operacao}</p>
           <p className="info-item"><span className="font-bold">2. PERÍODO:</span> de {formatDate(ptrabData.periodo_inicio)} a {formatDate(ptrabData.periodo_fim)} - Nr Dias: {numDias}</p>
@@ -122,31 +122,31 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
           <Table className="w-full border border-black print:border-black print:text-[9pt] [&_th]:p-1 [&_td]:p-1">
             <TableHeader>
               <TableRow className="h-auto bg-gray-100 print:bg-gray-100">
-                <TableHead rowSpan={2} className="w-[20%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black">
+                <TableHead rowSpan={2} className="w-[20%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black header-font-size">
                   DESPESAS (ORDENAR POR CLASSE DE SUBSISTÊNCIA)
                 </TableHead>
-                <TableHead rowSpan={2} className="w-[10%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black">
+                <TableHead rowSpan={2} className="w-[10%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black header-font-size">
                   OM (UGE)<br/>CODUG
                 </TableHead>
-                <TableHead rowSpan={2} className="w-[15%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black">
+                <TableHead rowSpan={2} className="w-[15%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black header-font-size">
                   MUNICÍPIO(S)/ LOCALIDADE(S)
                 </TableHead>
-                <TableHead colSpan={3} className="w-[20%] border border-black text-center font-bold bg-[#B4C7E7] text-black">
+                <TableHead colSpan={3} className="w-[20%] border border-black text-center font-bold bg-[#B4C7E7] text-black header-font-size">
                   NATUREZA DE DESPESA
                 </TableHead>
-                <TableHead rowSpan={2} className="w-[35%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black">
+                <TableHead rowSpan={2} className="w-[35%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black header-font-size">
                   DETALHAMENTO / MEMÓRIA DE CÁLCULO<br/>
                   <span className="font-normal text-[8pt]">(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/><span className="font-bold underline">OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG</span></span>
                 </TableHead>
               </TableRow>
               <TableRow className="h-auto bg-gray-100 print:bg-gray-100">
-                <TableHead className="w-[6.6%] border border-black text-center font-bold bg-[#B4C7E7] text-black">
+                <TableHead className="w-[6.6%] border border-black text-center font-bold bg-[#B4C7E7] text-black header-font-size">
                   33.90.30
                 </TableHead>
-                <TableHead className="w-[6.6%] border border-black text-center font-bold bg-[#B4C7E7] text-black">
+                <TableHead className="w-[6.6%] border border-black text-center font-bold bg-[#B4C7E7] text-black header-font-size">
                   33.90.39
                 </TableHead>
-                <TableHead className="w-[6.6%] border border-black text-center font-bold bg-[#B4C7E7] text-black">
+                <TableHead className="w-[6.6%] border border-black text-center font-bold bg-[#B4C7E7] text-black header-font-size">
                   GND 3
                 </TableHead>
               </TableRow>
@@ -212,15 +212,14 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
           </Table>
         </section>
 
-        {/* RODAPÉ */}
-        <footer className="mt-12 print:mt-8 text-center">
-          <p className="mb-12 print:mb-8">{localOM}, {dataAtual}.</p>
-          
-          <div className="mt-12 print:mt-8">
-            <p className="font-bold">{nomeCmtOM.toUpperCase()}</p>
-            <p className="border-t border-black inline-block pt-1">Comandante da {nomeOMExtenso}</p>
+        {/* RODAPÉ PADRONIZADO */}
+        <div className="ptrab-footer print-avoid-break">
+          <p className="text-[10pt]">{localOM}, {dataAtual}.</p>
+          <div className="signature-block">
+            <p className="text-[10pt] font-bold">{nomeCmtOM.toUpperCase()}</p>
+            <p className="text-[9pt]">Comandante da {nomeOMExtenso}</p>
           </div>
-        </footer>
+        </div>
       </div>
       
       {/* ESTILOS CSS INLINE PARA CONTROLE FINO DE IMPRESSÃO */}
@@ -241,10 +240,17 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
         .ptrab-table th, .ptrab-table td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; font-size: 8pt; }
         .ptrab-table thead th { background-color: #E8E8E8; font-weight: bold; text-align: center; font-size: 9pt; }
         
+        /* NOVO: Classe para ajustar o tamanho da fonte do cabeçalho da tabela para 9pt */
+        .header-font-size { font-size: 9pt !important; }
+        
         /* Cores específicas para Horas de Voo */
         .bg-\\[\\#B4C7E7\\] { background-color: #B4C7E7 !important; }
         .bg-\\[\\#E8E8E8\\] { background-color: #E8E8E8 !important; }
 
+        /* RODAPÉ PADRONIZADO */
+        .ptrab-footer { margin-top: 3rem; text-align: center; }
+        .signature-block { margin-top: 4rem; display: inline-block; text-align: center; }
+        
         /* REGRAS ESPECÍFICAS DE IMPRESSÃO */
         @media print {
           @page { size: landscape; margin: 0.5cm; }
@@ -254,6 +260,11 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
           .bg-\\[\\#B4C7E7\\], .bg-\\[\\#E8E8E8\\], .bg-gray-100 {
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
+          }
+          
+          .print-avoid-break {
+            page-break-before: avoid !important;
+            page-break-inside: avoid !important;
           }
         }
       `}</style>
