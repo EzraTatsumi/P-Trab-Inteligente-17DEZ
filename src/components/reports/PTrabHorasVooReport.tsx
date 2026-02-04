@@ -30,32 +30,12 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     return registros.reduce((acc, r) => acc + r.valor_nd_39, 0);
   }, [registros]);
 
-  const detalhamentoConsolidado = useMemo(() => {
-    // Concatena todos os detalhamentos customizados ou detalhamentos padrão
-    const detalhes = registros.map(r => {
-      const detalhe = r.detalhamento_customizado || r.detalhamento || '';
-      const omDetentora = r.om_detentora || r.organizacao;
-      const ugDetentora = r.ug_detentora || r.ug;
-      
-      const tipoAnv = r.tipo_anv;
-      const quantidadeHv = formatNumber(r.quantidade_hv, 2);
-      const municipio = r.municipio;
-      
-      // Se houver detalhamento customizado, usá-lo.
-      if (detalhe.trim().length > 0) {
-          return detalhe;
-      }
-      
-      // Detalhamento padrão (se não houver customizado)
-      return `ND 33.90.30: Aquisição de Suprimento de Aviação, referente a ${quantidadeHv} HV na Anv ${tipoAnv} (UG: ${ugDetentora}). Localidade: ${municipio}.`;
-    }).filter(d => d.trim().length > 0).join('\n\n');
-    
-    // Adiciona a nota sobre a diretriz de custeio
-    const notaDiretriz = "\n\nTudo conforme a Diretriz de Custeio Logístico do COLOG e valores de hora de voo definidos pelo DMAvEx.";
-    
-    return detalhes + notaDiretriz;
-  }, [registros]);
-
+  // Lógica para exibir "A CARGO DO COTER"
+  const isACargoDoCoter = totalND30 === 0 && totalND39 === 0;
+  const valorND30Display = isACargoDoCoter ? 'Será definido pelo COTER' : formatCurrency(totalND30);
+  const valorND39Display = isACargoDoCoter ? 'Será definido pelo COTER' : formatCurrency(totalND39);
+  const valorGND3Display = isACargoDoCoter ? 'Será definido pelo COTER' : formatCurrency(totalGeral);
+  
   const numDias = useMemo(() => {
     return calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
   }, [ptrabData.periodo_inicio, ptrabData.periodo_fim]);
@@ -72,8 +52,36 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
   const nomeOMExtenso = ptrabData.nome_om_extenso || ptrabData.nome_om;
   const comandoMilitarArea = ptrabData.comando_militar_area || 'COMANDO MILITAR DE ÁREA';
   
+  const omGestora = registros.length > 0 ? (registros[0].om_detentora || registros[0].organizacao) : ptrabData.nome_om;
+  const ugGestora = registros.length > 0 ? (registros[0].ug_detentora || registros[0].ug) : ptrabData.codug_om;
+  const omUGDisplay = `${omGestora}/COLOG Gestor (${ugGestora})`; // Ajustando para o formato do modelo
+
   const municipiosConsolidados = useMemo(() => {
     return registros.map(r => r.municipio).filter((v, i, a) => a.indexOf(v) === i).join('/');
+  }, [registros]);
+
+  const detalhamentoConsolidado = useMemo(() => {
+    // Concatena todos os detalhamentos customizados ou detalhamentos padrão
+    const detalhes = registros.map(r => {
+      const detalhe = r.detalhamento_customizado || r.detalhamento || '';
+      const ugDetentora = r.ug_detentora || r.ug;
+      
+      const tipoAnv = r.tipo_anv;
+      const quantidadeHv = formatNumber(r.quantidade_hv, 2);
+      
+      // Se houver detalhamento customizado, usá-lo.
+      if (detalhe.trim().length > 0) {
+          return detalhe;
+      }
+      
+      // Detalhamento padrão (se não houver customizado)
+      return `ND 33.90.30 – Aquisição de Suprimento de Aviação, referente a ${quantidadeHv} HV na Anv ${tipoAnv} (UG: ${ugDetentora}).`;
+    }).filter(d => d.trim().length > 0).join('\n\n');
+    
+    // Adiciona a nota sobre a diretriz de custeio (usando o texto exato do modelo)
+    const notaDiretriz = "\n\nTudo conforme o DIEx nº 972-DMAvEx/COLOG, de 16 de dezembro de 2022, do Subcomandate Logístico versando sobre o valor da hora de voo para o ano de 2023. O valor foi convertido para REAIS utilizando-se da cotação do dólar (PTAX do DÓLAR).";
+    
+    return detalhamentoConsolidado.trim().length > 0 ? detalhamentoConsolidado + notaDiretriz : notaDiretriz;
   }, [registros]);
 
   return (
@@ -101,35 +109,35 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
       {/* TABELA DE DESPESAS (CONSOLIDADA) */}
       <section className="mb-6 print:mb-4">
         <p className="font-bold mb-1">5. DESPESAS OPERACIONAIS REALIZADAS OU A REALIZAR:</p>
-        <Table className="w-full border border-black print:border-black print:text-[9pt]">
+        <Table className="w-full border border-black print:border-black print:text-[9pt] [&_th]:p-1 [&_td]:p-1">
           <TableHeader>
-            <TableRow className="h-auto">
-              <TableHead rowSpan={2} className="w-[20%] border border-black text-center align-top p-1 font-bold bg-gray-100 print:bg-gray-100">
+            <TableRow className="h-auto bg-gray-100 print:bg-gray-100">
+              <TableHead rowSpan={2} className="w-[20%] border border-black text-center align-top font-bold">
                 DESPESAS (ORDENAR POR CLASSE DE SUBSISTÊNCIA)
               </TableHead>
-              <TableHead rowSpan={2} className="w-[10%] border border-black text-center align-top p-1 font-bold bg-gray-100 print:bg-gray-100">
+              <TableHead rowSpan={2} className="w-[10%] border border-black text-center align-top font-bold">
                 OM (UGE)
               </TableHead>
-              <TableHead rowSpan={2} className="w-[15%] border border-black text-center align-top p-1 font-bold bg-gray-100 print:bg-gray-100">
+              <TableHead rowSpan={2} className="w-[15%] border border-black text-center align-top font-bold">
                 MUNICÍPIO(S)/ LOCALIDADE(S)
               </TableHead>
-              <TableHead colSpan={3} className="w-[20%] border border-black text-center p-1 font-bold bg-gray-100 print:bg-gray-100">
+              <TableHead colSpan={3} className="w-[20%] border border-black text-center font-bold">
                 NATUREZA DE DESPESA
               </TableHead>
-              <TableHead rowSpan={2} className="w-[35%] border border-black text-center align-top p-1 font-bold bg-gray-100 print:bg-gray-100">
+              <TableHead rowSpan={2} className="w-[35%] border border-black text-center align-top font-bold">
                 DETALHAMENTO / MEMÓRIA DE CÁLCULO
                 <br/>
                 <span className="font-normal text-[8pt]">(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS) OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG</span>
               </TableHead>
             </TableRow>
-            <TableRow className="h-auto">
-              <TableHead className="w-[6.6%] border border-black text-center p-1 font-bold bg-gray-100 print:bg-gray-100">
+            <TableRow className="h-auto bg-gray-100 print:bg-gray-100">
+              <TableHead className="w-[6.6%] border border-black text-center font-bold">
                 33.90.30
               </TableHead>
-              <TableHead className="w-[6.6%] border border-black text-center p-1 font-bold bg-gray-100 print:bg-gray-100">
+              <TableHead className="w-[6.6%] border border-black text-center font-bold">
                 33.90.39
               </TableHead>
-              <TableHead className="w-[6.6%] border border-black text-center p-1 font-bold bg-gray-100 print:bg-gray-100">
+              <TableHead className="w-[6.6%] border border-black text-center font-bold">
                 GND 3
               </TableHead>
             </TableRow>
@@ -137,44 +145,44 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
           <TableBody>
             {/* Linha de Dados Consolidada */}
             <TableRow className="h-auto">
-              <TableCell className="border border-black text-left align-top p-1">
+              <TableCell className="border border-black text-left align-top">
                 Horas de voo Anv Aviação do Exército
               </TableCell>
-              <TableCell className="border border-black text-center align-top p-1">
-                {ptrabData.nome_om} ({ptrabData.codug_om})
+              <TableCell className="border border-black text-center align-top">
+                {omUGDisplay}
               </TableCell>
-              <TableCell className="border border-black text-center align-top p-1">
+              <TableCell className="border border-black text-center align-top">
                 {municipiosConsolidados}
               </TableCell>
-              <TableCell className="border border-black text-center align-top p-1">
-                {formatCurrency(totalND30)}
+              <TableCell className={`border border-black text-center align-top ${isACargoDoCoter ? 'text-[8pt] font-bold' : ''}`}>
+                {valorND30Display}
               </TableCell>
-              <TableCell className="border border-black text-center align-top p-1">
-                {formatCurrency(totalND39)}
+              <TableCell className={`border border-black text-center align-top ${isACargoDoCoter ? 'text-[8pt] font-bold' : ''}`}>
+                {valorND39Display}
               </TableCell>
-              <TableCell className="border border-black text-center align-top p-1">
-                {formatCurrency(totalGeral)}
+              <TableCell className={`border border-black text-center align-top ${isACargoDoCoter ? 'text-[8pt] font-bold' : ''}`}>
+                {valorGND3Display}
               </TableCell>
-              <TableCell className="border border-black align-top p-1 whitespace-pre-wrap text-left text-[8pt]">
+              <TableCell className="border border-black align-top whitespace-pre-wrap text-left text-[8pt]">
                 {detalhamentoConsolidado}
               </TableCell>
             </TableRow>
             
             {/* Linha de Total */}
             <TableRow className="h-auto font-bold bg-gray-50 print:bg-gray-50">
-              <TableCell colSpan={3} className="border border-black text-right p-1">
+              <TableCell colSpan={3} className="border border-black text-right">
                 VALOR TOTAL
               </TableCell>
-              <TableCell className="border border-black text-center p-1">
+              <TableCell className="border border-black text-center">
                 {formatCurrency(totalND30)}
               </TableCell>
-              <TableCell className="border border-black text-center p-1">
+              <TableCell className="border border-black text-center">
                 {formatCurrency(totalND39)}
               </TableCell>
-              <TableCell className="border border-black text-center p-1">
+              <TableCell className="border border-black text-center">
                 {formatCurrency(totalGeral)}
               </TableCell>
-              <TableCell className="border border-black p-1">
+              <TableCell className="border border-black">
                 {/* Vazio */}
               </TableCell>
             </TableRow>
