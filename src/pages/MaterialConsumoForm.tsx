@@ -499,19 +499,17 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
           </DialogHeader>
           <div className="grid gap-4 py-4">
             
-            {/* Botão para abrir o Catálogo */}
-            {subitems.length > 0 && (
-              <Button 
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setIsCatalogOpen(true)}
-                className="w-full"
-              >
-                <BookOpen className="h-4 w-4 mr-2" />
-                Buscar no Catálogo de Subitens ({subitems.length})
-              </Button>
-            )}
+            {/* Botão para abrir o Catálogo - CORRIGIDO PARA ESTAR SEMPRE VISÍVEL */}
+            <Button 
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsCatalogOpen(true)}
+              className="w-full"
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              Buscar no Catálogo de Subitens ({subitems.length})
+            </Button>
             
             <div className="space-y-2">
               <Label htmlFor="nr_subitem">Nr Subitem (Opcional)</Label>
