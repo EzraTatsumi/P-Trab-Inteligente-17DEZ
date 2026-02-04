@@ -24,7 +24,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
   }, [registros]);
 
   const totalND30 = useMemo(() => {
-    return registros.reduce((acc, r) => acc + r.valor_nd_30, 0);
+    return registros.reduce((acc, r => acc + r.valor_nd_30, 0);
   }, [registros]);
 
   const totalND39 = useMemo(() => {
@@ -177,16 +177,10 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
                 </TableCell>
               </TableRow>
               
-              {/* Linha de Total */}
+              {/* Linha de Total (Modificada para mesclar A-E e mostrar apenas GND 3) */}
               <TableRow className="h-auto font-bold bg-[#E8E8E8] print:bg-[#E8E8E8]">
-                <TableCell colSpan={3} className="border border-black text-right">
+                <TableCell colSpan={5} className="border border-black text-right">
                   VALOR TOTAL
-                </TableCell>
-                <TableCell className="border border-black text-center bg-[#B4C7E7]">
-                  {formatCurrency(totalND30)}
-                </TableCell>
-                <TableCell className="border border-black text-center bg-[#B4C7E7]">
-                  {formatCurrency(totalND39)}
                 </TableCell>
                 <TableCell className="border border-black text-center bg-[#B4C7E7]">
                   {formatCurrency(totalGeral)}
