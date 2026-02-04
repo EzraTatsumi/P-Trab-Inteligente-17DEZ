@@ -263,23 +263,13 @@ const HorasVooForm = () => {
         onSuccess: () => {
             toast.success(`Sucesso! ${pendingRegistros.length} registro(s) de Horas de Voo adicionado(s).`);
             setPendingRegistros([]);
-            setLastStagedFormData(null);
+            // O lastStagedFormData já foi atualizado no handleStageCalculation para o estado "limpo"
+            // Não precisa resetar aqui, apenas invalidar queries
             queryClient.invalidateQueries({ queryKey: ['horasVooRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
             
             // Manter campos de contexto (OMs, Dias, Fase)
-            setFormData(prev => ({
-                ...initialFormState,
-                om_favorecida: prev.om_favorecida,
-                ug_favorecida: prev.ug_favorecida,
-                om_destino: prev.om_destino,
-                ug_destino: prev.ug_destino,
-                dias_operacao: prev.dias_operacao,
-                fase_atividade: prev.fase_atividade,
-                isCoterResponsibility: prev.isCoterResponsibility, // Manter estado do COTER
-            }));
-            
-            resetForm();
+            // O reset do formulário para o próximo item já foi feito no handleStageCalculation
         },
         onError: (error) => { 
             toast.error("Falha ao salvar registros.", { description: sanitizeError(error) });
@@ -761,14 +751,23 @@ const HorasVooForm = () => {
             // 1. Calcula o novo estado (resetado)
             const newFormStateAfterReset: HorasVooFormState = {
                 ...formData,
-                codug_destino: initialFormState.codug_destino, // Mantém o valor padrão
+                // Manter campos de contexto
+                om_favorecida: formData.om_favorecida,
+                ug_favorecida: formData.ug_favorecida,
+                om_destino: formData.om_destino,
+                ug_destino: formData.ug_destino,
+                dias_operacao: formData.dias_operacao, // Manter dias de operação
+                fase_atividade: formData.fase_atividade, // Manter fase
+                isCoterResponsibility: formData.isCoterResponsibility, // Manter switch
+                
+                // Resetar campos de item
+                codug_destino: initialFormState.codug_destino, 
                 municipio: "",
                 quantidade_hv: 0,
                 tipo_anv: "",
-                amparo: initialFormState.amparo, // Mantém o valor padrão
+                amparo: initialFormState.amparo, 
                 valor_nd_30: 0,
                 valor_nd_39: 0,
-                isCoterResponsibility: initialFormState.isCoterResponsibility, // Mantém o padrão COTER
             };
             
             // 2. Atualiza o lastStagedFormData para o novo estado "limpo"
