@@ -48,8 +48,21 @@ export const generateHorasVooMemoriaCalculo = (registro: HorasVooRegistro): stri
     const { valor_total, valor_nd_30, valor_nd_39, quantidade_hv, tipo_anv, municipio, amparo } = registro;
 
     const memoria = [
-        `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${quantidade_hv} HV na Anv ${tipo_anv}.',
-        `${amparo}`,
+        `MEMÓRIA DE CÁLCULO - HORAS DE VOO (AvEx)`,
+        `--------------------------------------------------`,
+        `OM Favorecida: ${registro.organizacao} (UG: ${formatCodug(registro.ug)})`,
+        `OM Detentora do Recurso: ${registro.om_detentora} (UG: ${formatCodug(registro.ug_detentora)})`,
+        `Fase da Atividade: ${registro.fase_atividade || 'Não Informada'}`,
+        `Período: ${registro.dias_operacao} dia(s)`,
+        `--------------------------------------------------`,
+        `Município/Destino: ${municipio} (CODUG: ${registro.codug_destino})`,
+        `Tipo de Aeronave: ${tipo_anv}`,
+        `Quantidade de Horas de Voo (HV): ${quantidade_hv.toFixed(2)} HV`,
+        `Amparo Legal/Diretriz: ${amparo || 'Não Informado'}`,
+        `--------------------------------------------------`,
+        `Custeio ND 33.90.30 (Custeio): ${formatCurrency(valor_nd_30)}`,
+        `Custeio ND 33.90.39 (Serviços): ${formatCurrency(valor_nd_39)}`,
+        `VALOR TOTAL SOLICITADO: ${formatCurrency(valor_total)}`,
     ].join('\n');
 
     return memoria;
