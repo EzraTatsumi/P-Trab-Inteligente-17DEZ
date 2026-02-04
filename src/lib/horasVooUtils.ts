@@ -53,21 +53,20 @@ export const generateHorasVooMemoriaCalculo = (registro: HorasVooRegistro): stri
     const isCoter = valor_nd_30 === 0 && valor_nd_39 === 0;
 
     if (isCoter) {
-        // Se for COTER, retorna uma string vazia ou um placeholder mínimo,
-        // pois o usuário pediu para remover "Custeio a cargo do COTER"
         return ''; 
     }
 
     if (valor_nd_30 > 0) {
+        // Ajustado conforme solicitado: 33.90.30 – Aquisição de Suprimento de Aviação, referente a <Qtd HV> HV na Anv <Tipo Anv>.
         memoria.push(`33.90.30 – Aquisição de Suprimento de Aviação, referente a ${totalHv} HV na Anv ${tipo_anv}.`);
         memoria.push(`Amparo: ${amparoText}`);
     }
 
     if (valor_nd_39 > 0) {
-        // Adiciona uma linha em branco se já houver ND 30 para separação visual
         if (valor_nd_30 > 0) {
             memoria.push('');
         }
+        // Ajustado conforme solicitado: 33.90.39 – Aquisição de Serviços de Aviação, referente a <Qtd HV> HV na Anv <Tipo Anv>.
         memoria.push(`33.90.39 – Aquisição de Serviços de Aviação, referente a ${totalHv} HV na Anv ${tipo_anv}.`);
         memoria.push(`Amparo: ${amparoText}`);
     }
@@ -89,7 +88,6 @@ export const generateConsolidatedHorasVooMemoriaCalculo = (group: ConsolidatedHo
     const nonCoterRecords = records.filter(r => r.valor_nd_30 > 0 || r.valor_nd_39 > 0);
 
     if (nonCoterRecords.length === 0) {
-        // Se todos os registros forem COTER, retorna vazio
         return '';
     }
 
@@ -102,9 +100,11 @@ export const generateConsolidatedHorasVooMemoriaCalculo = (group: ConsolidatedHo
             memoria.push('\n--------------------------------------------------\n');
         }
         
-        memoria.push(`[Item ${index + 1}] - Anv ${registro.tipo_anv} (${totalHv} HV) em ${registro.municipio} (CODUG: ${registro.codug_destino})`);
+        // Removendo a linha de detalhamento extra que estava aqui:
+        // memoria.push(`[Item ${index + 1}] - Anv ${registro.tipo_anv} (${totalHv} HV) em ${registro.municipio} (CODUG: ${registro.codug_destino})`);
         
         if (registro.valor_nd_30 > 0) {
+            // Ajustado conforme solicitado
             memoria.push(`33.90.30 – Aquisição de Suprimento de Aviação, referente a ${totalHv} HV na Anv ${registro.tipo_anv}.`);
             memoria.push(`Amparo: ${amparo}`);
         }
@@ -113,6 +113,7 @@ export const generateConsolidatedHorasVooMemoriaCalculo = (group: ConsolidatedHo
             if (registro.valor_nd_30 > 0) {
                 memoria.push(''); // Linha em branco entre ND 30 e ND 39 do mesmo item
             }
+            // Ajustado conforme solicitado
             memoria.push(`33.90.39 – Aquisição de Serviços de Aviação, referente a ${totalHv} HV na Anv ${registro.tipo_anv}.`);
             memoria.push(`Amparo: ${amparo}`);
         }
