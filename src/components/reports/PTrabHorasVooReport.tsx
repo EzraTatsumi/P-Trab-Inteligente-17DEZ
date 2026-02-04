@@ -334,43 +334,45 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     // A: DESPESAS
     dataRow.getCell('A').value = 'Horas de voo Anv Aviação do Exército'; 
     dataRow.getCell('A').alignment = leftTopAlignment; 
+    dataRow.getCell('A').font = baseFontStyle; // Aplicando 8pt
     
     // B: OM (UGE) CODUG
     dataRow.getCell('B').value = omUGDisplay;
     dataRow.getCell('B').alignment = dataCenterMiddleAlignment; 
+    dataRow.getCell('B').font = baseFontStyle; // Aplicando 8pt
     
     // C: MUNICÍPIO
     dataRow.getCell('C').value = municipiosConsolidados;
     dataRow.getCell('C').alignment = dataCenterMiddleAlignment; 
+    dataRow.getCell('C').font = baseFontStyle; // Aplicando 8pt
     
     // D: 33.90.30
     dataRow.getCell('D').value = totalND30;
     dataRow.getCell('D').alignment = dataCenterMiddleAlignment;
     dataRow.getCell('D').numFmt = 'R$ #,##0.00';
     dataRow.getCell('D').fill = headerFillAzul; 
+    dataRow.getCell('D').font = baseFontStyle; // Aplicando 8pt
     
     // E: 33.90.39
     dataRow.getCell('E').value = totalND39;
     dataRow.getCell('E').alignment = dataCenterMiddleAlignment;
     dataRow.getCell('E').numFmt = 'R$ #,##0.00';
     dataRow.getCell('E').fill = headerFillAzul; 
+    dataRow.getCell('E').font = baseFontStyle; // Aplicando 8pt
     
     // F: GND 3
     dataRow.getCell('F').value = totalGeral;
     dataRow.getCell('F').alignment = dataCenterMiddleAlignment;
     dataRow.getCell('F').numFmt = 'R$ #,##0.00';
     dataRow.getCell('F').fill = headerFillAzul; 
+    dataRow.getCell('F').font = baseFontStyle; // Aplicando 8pt
     
     // G: DETALHAMENTO
     dataRow.getCell('G').value = detalhamentoConsolidado;
     dataRow.getCell('G').alignment = leftTopAlignment; 
-    dataRow.getCell('G').font = { name: 'Arial', size: 6.5 };
+    dataRow.getCell('G').font = { name: 'Arial', size: 6.5 }; // Mantendo 6.5pt para detalhamento
     
-    // Apply base styles
-    ['A', 'B', 'C', 'G'].forEach(col => {
-        dataRow.getCell(col).font = baseFontStyle;
-    });
-    
+    // Apply borders
     headerCols.forEach(col => {
         dataRow.getCell(col).border = cellBorder;
     });
@@ -393,6 +395,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     subtotalRow.getCell('D').numFmt = 'R$ #,##0.00';
     subtotalRow.getCell('D').fill = headerFillAzul; 
     subtotalRow.getCell('D').border = cellBorder;
+    subtotalRow.getCell('D').font = baseFontStyle; // Aplicando 8pt
     
     // E: 33.90.39
     subtotalRow.getCell('E').value = totalND39;
@@ -400,6 +403,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     subtotalRow.getCell('E').numFmt = 'R$ #,##0.00';
     subtotalRow.getCell('E').fill = headerFillAzul; 
     subtotalRow.getCell('E').border = cellBorder;
+    subtotalRow.getCell('E').font = baseFontStyle; // Aplicando 8pt
     
     // F: GND 3
     subtotalRow.getCell('F').value = totalGeral;
@@ -407,6 +411,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     subtotalRow.getCell('F').numFmt = 'R$ #,##0.00';
     subtotalRow.getCell('F').fill = headerFillAzul; 
     subtotalRow.getCell('F').border = cellBorder;
+    subtotalRow.getCell('F').font = baseFontStyle; // Aplicando 8pt
     
     // G: Vazio
     subtotalRow.getCell('G').value = '';
@@ -432,6 +437,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     totalRow.getCell('F').numFmt = 'R$ #,##0.00';
     totalRow.getCell('F').fill = totalFinalFill; // D9D9D9
     totalRow.getCell('F').border = cellBorder;
+    totalRow.getCell('F').font = headerFontStyle; // Mantendo negrito para o total final
     
     // G: Vazio
     totalRow.getCell('G').value = '';
@@ -554,7 +560,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
 
         {/* TABELA DE DESPESAS (CONSOLIDADA) */}
         <section className="mb-6 print:mb-4">
-          <Table className="w-full border border-black print:border-black print:text-[9pt] [&_th]:p-1 [&_td]:p-1">
+          <Table className="w-full border border-black print:border-black [&_th]:p-1 [&_td]:p-1">
             <TableHeader>
               <TableRow className="h-auto bg-gray-100 print:bg-gray-100">
                 <TableHead rowSpan={2} className="w-[20%] border border-black text-center align-middle font-bold bg-[#D9D9D9] text-black header-font-size">
@@ -589,22 +595,22 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
             <TableBody>
               {/* Linha de Dados Consolidada */}
               <TableRow className="h-auto">
-                <TableCell className="border border-black text-left align-middle">
+                <TableCell className="border border-black text-left align-middle text-[8pt]">
                   Horas de voo Anv Aviação do Exército
                 </TableCell>
-                <TableCell className="border border-black text-center align-middle">
+                <TableCell className="border border-black text-center align-middle text-[8pt]">
                   {omUGDisplay}
                 </TableCell>
-                <TableCell className="border border-black text-center align-middle">
+                <TableCell className="border border-black text-center align-middle text-[8pt]">
                   {municipiosConsolidados}
                 </TableCell>
-                <TableCell className={`border border-black text-center align-middle bg-[#B4C7E7] ${isACargoDoCoter ? 'text-[8pt] font-bold' : ''}`}>
+                <TableCell className={`border border-black text-center align-middle bg-[#B4C7E7] text-[8pt] ${isACargoDoCoter ? 'font-bold' : ''}`}>
                   {valorND30Display}
                 </TableCell>
-                <TableCell className={`border border-black text-center align-middle bg-[#B4C7E7] ${isACargoDoCoter ? 'text-[8pt] font-bold' : ''}`}>
+                <TableCell className={`border border-black text-center align-middle bg-[#B4C7E7] text-[8pt] ${isACargoDoCoter ? 'font-bold' : ''}`}>
                   {valorND39Display}
                 </TableCell>
-                <TableCell className={`border border-black text-center align-middle bg-[#B4C7E7] font-bold ${isACargoDoCoter ? 'text-[8pt]' : ''}`}>
+                <TableCell className={`border border-black text-center align-middle bg-[#B4C7E7] font-bold text-[8pt] ${isACargoDoCoter ? 'text-[8pt]' : ''}`}>
                   {valorGND3Display}
                 </TableCell>
                 <TableCell className="border border-black align-middle whitespace-pre-wrap text-left text-[8pt]">
@@ -614,16 +620,16 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
               
               {/* LINHA 1: SUBTOTAL (ND 30, ND 39, GND 3) */}
               <TableRow className="h-auto font-bold bg-[#E8E8E8] print:bg-[#E8E8E8]">
-                <TableCell colSpan={3} className="border border-black text-right bg-[#E8E8E8]">
+                <TableCell colSpan={3} className="border border-black text-right bg-[#E8E8E8] text-[8pt]">
                   SUBTOTAL
                 </TableCell>
-                <TableCell className="border border-black text-center bg-[#B4C7E7]">
+                <TableCell className="border border-black text-center bg-[#B4C7E7] text-[8pt]">
                   {formatCurrency(totalND30)}
                 </TableCell>
-                <TableCell className="border border-black text-center bg-[#B4C7E7]">
+                <TableCell className="border border-black text-center bg-[#B4C7E7] text-[8pt]">
                   {formatCurrency(totalND39)}
                 </TableCell>
-                <TableCell className="border border-black text-center bg-[#B4C7E7]">
+                <TableCell className="border border-black text-center bg-[#B4C7E7] text-[8pt]">
                   {formatCurrency(totalGeral)}
                 </TableCell>
                 <TableCell className="border border-black bg-[#E8E8E8]">
@@ -633,10 +639,10 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
 
               {/* LINHA 2: VALOR TOTAL (GND 3) */}
               <TableRow className="h-auto font-bold bg-[#D9D9D9] print:bg-[#D9D9D9]">
-                <TableCell colSpan={5} className="border border-black text-right bg-[#D9D9D9]">
+                <TableCell colSpan={5} className="border border-black text-right bg-[#D9D9D9] text-[9pt]">
                   VALOR TOTAL
                 </TableCell>
-                <TableCell className="border border-black text-center bg-[#D9D9D9]">
+                <TableCell className="border border-black text-center bg-[#D9D9D9] text-[9pt]">
                   {formatCurrency(totalGeral)}
                 </TableCell>
                 <TableCell className="border border-black bg-[#D9D9D9]">
@@ -697,6 +703,16 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
           .bg-\\[\\#B4C7E7\\], .bg-\\[\\#E8E8E8\\], .bg-\\[\\#D9D9D9\\], .bg-gray-100 {
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
+          }
+          
+          /* Ajuste fino para a tabela */
+          section table {
+            font-size: 8pt !important; /* Força 8pt para o corpo da tabela */
+          }
+          
+          /* Ajuste fino para o total final (9pt) */
+          section table tbody tr:last-child td {
+            font-size: 9pt !important;
           }
           
           .print-avoid-break {
