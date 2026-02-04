@@ -508,7 +508,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       quantidadeHorasVoo += quantidadeHv;
       
       if (!groupedHorasVoo[tipoAnv]) {
-          groupedHorasVoo[tipoAnv] = { totalValor: 0, totalHV: 0 };
+          groupedHorasVoo[tipoAnv] = { totalValor: 0, totalND30: 0, totalND39: 0, totalHV: 0 };
       }
       groupedHorasVoo[tipoAnv].totalValor += valorTotal;
       groupedHorasVoo[tipoAnv].totalHV += quantidadeHv;
@@ -808,7 +808,7 @@ export const PTrabCostSummary = ({
             <div className="flex justify-between text-purple-600 cursor-pointer" onClick={handleSummaryClick}>
               <span className="font-semibold text-sm">Aba Aviação do Exército</span>
               <span className="font-bold text-sm">
-                {/* ALTERADO: Exibir quantidade de HV formatada */}
+                {/* ALTERADO: Exibir quantidade de HV formatada no resumo da aba */}
                 {formatNumber(totals.quantidadeHorasVoo, 2)} HV
               </span>
             </div>
@@ -1560,17 +1560,25 @@ export const PTrabCostSummary = ({
                         <Plane className="h-3 w-3" />
                         Aviação do Exército
                     </div>
-                    <span className="font-bold text-sm">{formatCurrency(totals.totalAviacaoExercito)}</span>
+                    {/* Span 1563: Mostrar o total de HV solicitadas */}
+                    <span className="font-bold text-sm">
+                        {formatNumber(totals.quantidadeHorasVoo, 2)} HV
+                    </span>
                   </div>
                   
                   {/* Detalhes por Tipo de Aeronave */}
                   <div className="space-y-1 pl-4 text-[10px]">
                     {sortedHorasVoo.map(([tipoAnv, data]) => (
                         <div key={tipoAnv} className="flex justify-between text-muted-foreground">
+                            {/* Span 1570: Tipo de Aeronave */}
                             <span className="w-1/2 text-left">{tipoAnv}</span>
+                            
+                            {/* Span 1574 (Antigo 1571): Quantidade de HV por ANV */}
                             <span className="w-1/4 text-right font-medium">
                                 {formatNumber(data.totalHV, 2)} HV
                             </span>
+                            
+                            {/* Span 1577 (Antigo 1574): Valor Monetário */}
                             <span className="w-1/4 text-right font-medium">
                                 {formatCurrency(data.totalValor)}
                             </span>
@@ -1580,12 +1588,12 @@ export const PTrabCostSummary = ({
                     {/* Linha de Total Geral de HV (para manter a informação de quantidade total) */}
                     {sortedHorasVoo.length > 1 && (
                         <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1 font-semibold">
-                            <span className="w-1/2 text-left">Total Geral de HV</span>
-                            <span className="w-1/4 text-right font-medium">
-                                {formatNumber(totals.quantidadeHorasVoo, 2)} HV
-                            </span>
+                            <span className="w-1/2 text-left">Total Geral (R$)</span>
                             <span className="w-1/4 text-right font-medium text-background">
                                 {/* Vazio */}
+                            </span>
+                            <span className="w-1/4 text-right font-medium">
+                                {formatCurrency(totals.totalAviacaoExercito)}
                             </span>
                         </div>
                     )}
