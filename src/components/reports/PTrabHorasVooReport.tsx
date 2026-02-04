@@ -55,7 +55,8 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
   
   const omGestora = registros.length > 0 ? (registros[0].om_detentora || registros[0].organizacao) : ptrabData.nome_om;
   const ugGestora = registros.length > 0 ? (registros[0].ug_detentora || registros[0].ug) : ptrabData.codug_om;
-  const omUGDisplay = `${omGestora}/COLOG Gestor (${ugGestora})`; // Ajustando para o formato do modelo
+  // Ajustado para mostrar apenas OM Gestora (UG Gestora)
+  const omUGDisplay = `${omGestora} (${ugGestora})`; 
 
   const municipiosConsolidados = useMemo(() => {
     return registros.map(r => r.municipio).filter((v, i, a) => a.indexOf(v) === i).join('/');
@@ -159,25 +160,25 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
             <TableBody>
               {/* Linha de Dados Consolidada */}
               <TableRow className="h-auto">
-                <TableCell className="border border-black text-left align-top">
+                <TableCell className="border border-black text-left align-middle">
                   Horas de voo Anv Aviação do Exército
                 </TableCell>
-                <TableCell className="border border-black text-center align-top">
+                <TableCell className="border border-black text-center align-middle">
                   {omUGDisplay}
                 </TableCell>
-                <TableCell className="border border-black text-center align-top">
+                <TableCell className="border border-black text-center align-middle">
                   {municipiosConsolidados}
                 </TableCell>
-                <TableCell className={`border border-black text-center align-top bg-[#B4C7E7] ${isACargoDoCoter ? 'text-[8pt] font-bold' : ''}`}>
+                <TableCell className={`border border-black text-center align-middle bg-[#B4C7E7] ${isACargoDoCoter ? 'text-[8pt] font-bold' : ''}`}>
                   {valorND30Display}
                 </TableCell>
-                <TableCell className={`border border-black text-center align-top bg-[#B4C7E7] ${isACargoDoCoter ? 'text-[8pt] font-bold' : ''}`}>
+                <TableCell className={`border border-black text-center align-middle bg-[#B4C7E7] ${isACargoDoCoter ? 'text-[8pt] font-bold' : ''}`}>
                   {valorND39Display}
                 </TableCell>
-                <TableCell className={`border border-black text-center align-top bg-[#B4C7E7] font-bold ${isACargoDoCoter ? 'text-[8pt]' : ''}`}>
+                <TableCell className={`border border-black text-center align-middle bg-[#B4C7E7] font-bold ${isACargoDoCoter ? 'text-[8pt]' : ''}`}>
                   {valorGND3Display}
                 </TableCell>
-                <TableCell className="border border-black align-top whitespace-pre-wrap text-left text-[8pt]">
+                <TableCell className="border border-black align-middle whitespace-pre-wrap text-left text-[8pt]">
                   {detalhamentoConsolidado}
                 </TableCell>
               </TableRow>
