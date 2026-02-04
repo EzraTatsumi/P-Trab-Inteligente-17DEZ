@@ -68,8 +68,8 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
   const nomeOMExtenso = ptrabData.nome_om_extenso || ptrabData.nome_om;
   const comandoMilitarArea = ptrabData.comando_militar_area || 'COMANDO MILITAR DE ÁREA';
   
-  // OM Gestora Fixa para o relatório de HV
-  const OM_GESTORA_HV = 'DMAvEx/COLOG Gestor (160.504)'; 
+  // OM Gestora Fixa para o relatório de HV, com quebra de linha
+  const OM_GESTORA_HV = 'DMAvEx/COLOG Gestor\n(160.504)'; 
 
   // --- FUNÇÕES DE EXPORTAÇÃO ---
 
@@ -318,7 +318,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     
     registros.forEach((registro, index) => {
         // Usamos a OM Gestora fixa para a coluna B
-        const omGestoraDisplay = OM_GESTORA_HV;
+        const omGestoraDisplay = OM_GESTORA_HV.replace('\n', ' '); // No Excel, usamos espaço para evitar problemas de formatação complexa na mesclagem.
         
         const isCoterRegistro = registro.valor_nd_30 === 0 && registro.valor_nd_39 === 0;
         
@@ -611,7 +611,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
                     <TableCell className="border border-black text-left align-middle text-[8pt]">
                       Horas de voo Anv Aviação do Exército
                     </TableCell>
-                    <TableCell className="border border-black text-center align-middle text-[8pt]">
+                    <TableCell className="border border-black text-center align-middle text-[8pt] whitespace-pre-wrap">
                       {omGestoraDisplay}
                     </TableCell>
                     <TableCell className="border border-black text-center align-middle text-[8pt]">
