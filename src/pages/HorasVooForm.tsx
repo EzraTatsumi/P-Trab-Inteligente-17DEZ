@@ -222,6 +222,15 @@ const HorasVooForm = () => {
         return Object.values(groups).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
     }, [registros]);
     
+    // NOVO MEMO: Calcula a quantidade total de HV por grupo consolidado
+    const totalHvByGroup = useMemo(() => {
+        return consolidatedRegistros.reduce((acc, group) => {
+            const totalHv = group.records.reduce((sum, record) => sum + Number(record.quantidade_hv || 0), 0);
+            acc[group.groupKey] = totalHv;
+            return acc;
+        }, {} as Record<string, number>);
+    }, [consolidatedRegistros]);
+    
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
     
     // --- Mutations ---
@@ -1277,7 +1286,7 @@ const HorasVooForm = () => {
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
-                                                                <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>
+                                                                <p className="font-medium">
                                                                     {item.codug_destino}
                                                                 </p>
                                                                 <p className="font-medium">{formatNumber(item.quantidade_hv, 2)} h</p>
@@ -1287,13 +1296,13 @@ const HorasVooForm = () => {
                                                         <div className="w-full h-[1px] bg-secondary/30 my-3" />
 
                                                         <div className="flex justify-between text-xs">
-                                                            <span className="text-muted-foreground">ND 33.90.30 (Custeio):</span>
+                                                            <span className="text-muted-foreground">ND 33.90.30:</span>
                                                             <span className="font-medium text-green-600">
                                                                 {totalND30 === 0 ? (isCoter ? "A cargo do COTER" : formatCurrency(totalND30)) : formatCurrency(totalND30)}
                                                             </span>
                                                         </div>
                                                         <div className="flex justify-between text-xs">
-                                                            <span className="text-muted-foreground">ND 33.90.39 (Serviços):</span>
+                                                            <span className="text-muted-foreground">ND 33.90.39:</span>
                                                             <span className="font-medium text-green-600">
                                                                 {totalND39 === 0 ? (isCoter ? "A cargo do COTER" : formatCurrency(totalND39)) : formatCurrency(totalND39)}
                                                             </span>
@@ -1379,6 +1388,9 @@ const HorasVooForm = () => {
                                         const ugDestino = group.ug_detentora;
                                         
                                         const isCoter = totalND30Consolidado === 0 && totalND39Consolidado === 0;
+                                        
+                                        // Quantidade total de HV para este grupo
+                                        const totalHv = totalHvByGroup[group.groupKey] || 0;
 
                                         return (
                                             <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
@@ -1404,11 +1416,11 @@ const HorasVooForm = () => {
                                                             <div className="flex flex-col">
                                                                 <div className="flex items-center gap-2">
                                                                     <h4 className="font-semibold text-base text-foreground">
-                                                                        Horas de Voo ({group.records.length} registro(s))
+                                                                        Horas de Voo ({group.records.length} {group.records.length === 1 ? 'registro' : 'registros'})
                                                                     </h4>
                                                                 </div>
                                                                 <p className="text-xs text-muted-foreground">
-                                                                    Período: {diasOperacaoConsolidado} {diasText}
+                                                                    Qtd HV Solicitada: {formatNumber(totalHv, 2)} h
                                                                 </p>
                                                             </div>
                                                             <div className="flex items-center gap-2">
@@ -1443,23 +1455,23 @@ const HorasVooForm = () => {
                                                         
                                                         {/* Detalhes da Alocação */}
                                                         <div className="pt-2 border-t mt-2">
-                                                            {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
+                                                            {/* OM Gestora (Sempre visível, vermelha se diferente) */}
                                                             <div className="flex justify-between text-xs">
-                                                                <span className="text-muted-foreground">OM Detentora Recurso:</span>
+                                                                <span className="text-muted-foreground">OM Gestora:</span>
                                                                 <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
-                                                                    {omDestino} ({formatCodug(ugDestino)})
+                                                                    {group.records[0].codug_destino}
                                                                 </span>
                                                             </div>
                                                             {/* ND 33.90.30 */}
                                                             <div className="flex justify-between text-xs">
-                                                                <span className="text-muted-foreground">ND 33.90.30 (Custeio):</span>
+                                                                <span className="text-muted-foreground">ND 33.90.30:</span>
                                                                 <span className="text-green-600">
                                                                     {totalND30Consolidado === 0 ? (isCoter ? "A cargo do COTER" : formatCurrency(totalND30Consolidado)) : formatCurrency(totalND30Consolidado)}
                                                                 </span>
                                                             </div>
                                                             {/* ND 33.90.39 */}
                                                             <div className="flex justify-between text-xs">
-                                                                <span className="text-muted-foreground">ND 33.90.39 (Serviços):</span>
+                                                                <span className="text-muted-foreground">ND 33.90.39:</span>
                                                                 <span className="text-green-600">
                                                                     {totalND39Consolidado === 0 ? (isCoter ? "A cargo do COTER" : formatCurrency(totalND39Consolidado)) : formatCurrency(totalND39Consolidado)}
                                                                 </span>

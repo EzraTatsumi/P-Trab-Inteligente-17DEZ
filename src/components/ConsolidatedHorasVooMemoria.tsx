@@ -53,7 +53,7 @@ export const ConsolidatedHorasVooMemoria = ({
         <Card className="shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-base font-semibold">
-                    OM: {group.organizacao} (UG: {formatCodug(group.ug)})
+                    {group.organizacao} (UG: {formatCodug(group.ug)})
                 </CardTitle>
                 <div className="flex items-center gap-2">
                     {memoriaCustomizada && !isEditing && (
