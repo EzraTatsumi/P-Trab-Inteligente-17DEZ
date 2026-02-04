@@ -11,6 +11,19 @@ import {
 import { Tables } from "@/integrations/supabase/types";
 
 // =================================================================
+// TIPOS DE COMPARTILHAMENTO (NOVO)
+// =================================================================
+
+export interface SharePreviewData {
+  ptrab: Tables<'p_trab'>;
+  ownerProfile: {
+    first_name: string | null;
+    last_name: string | null;
+    raw_user_meta_data: any; // Assuming JSONB structure
+  } | null;
+}
+
+// =================================================================
 // FUNÇÕES DE SUBITEM (Personalizado do Usuário)
 // =================================================================
 
@@ -122,7 +135,7 @@ export async function deleteMaterialConsumoItem(id: string): Promise<void> {
 }
 
 // =================================================================
-// FUNÇÃO DE CATÁLOGO GLOBAL (NOVA)
+// FUNÇÃO DE CATÁLOGO GLOBAL
 // =================================================================
 
 /**
@@ -149,4 +162,38 @@ export async function fetchGlobalSubitemCatalog(): Promise<GlobalSubitemCatalog[
     descricao_subitem: d.descricao_subitem,
     created_at: d.created_at,
   })) as GlobalSubitemCatalog[];
+}
+
+// =================================================================
+// FUNÇÕES DE COMPARTILHAMENTO (NOVO)
+// =================================================================
+
+/**
+ * Fetches PTrab data and owner profile for a share link preview.
+ */
+export async function fetchSharePreview(ptrabId: string, shareToken: string): Promise<SharePreviewData> {
+  // 1. Fetch PTrab data and owner ID, verifying the share token
+  const { data: ptrabData, error: ptrabError } = await supabase
+    .from('p_trab')
+    .select('*, user_id')
+    .eq('id', ptrabId)
+    .eq('share_token', shareToken)
+    .maybeSingle();
+
+  if (ptrabError) throw ptrabError;
+  if (!ptrabData) throw new Error("P Trab não encontrado ou token inválido.");
+
+  // 2. Fetch Owner Profile
+  const { data: profileData, error: profileError } = await supabase
+    .from('profiles')
+    .select('first_name, last_name, raw_user_meta_data')
+    .eq('id', ptrabData.user_id)
+    .maybeSingle();
+
+  if (profileError) console.error("Erro ao buscar perfil do proprietário:", profileError);
+
+  return {
+    ptrab: ptrabData as Tables<'p_trab'>,
+    ownerProfile: profileData || null,
+  };
 }
