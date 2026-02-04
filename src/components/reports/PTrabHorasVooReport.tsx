@@ -127,32 +127,32 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
           <Table className="w-full border border-black print:border-black print:text-[9pt] [&_th]:p-1 [&_td]:p-1">
             <TableHeader>
               <TableRow className="h-auto bg-gray-100 print:bg-gray-100">
-                <TableHead rowSpan={2} className="w-[20%] border border-black text-center align-top font-bold">
+                <TableHead rowSpan={2} className="w-[20%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black">
                   DESPESAS (ORDENAR POR CLASSE DE SUBSISTÊNCIA)
                 </TableHead>
-                <TableHead rowSpan={2} className="w-[10%] border border-black text-center align-top font-bold">
+                <TableHead rowSpan={2} className="w-[10%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black">
                   OM (UGE)
                 </TableHead>
-                <TableHead rowSpan={2} className="w-[15%] border border-black text-center align-top font-bold">
+                <TableHead rowSpan={2} className="w-[15%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black">
                   MUNICÍPIO(S)/ LOCALIDADE(S)
                 </TableHead>
-                <TableHead colSpan={3} className="w-[20%] border border-black text-center font-bold bg-[#B4C7E7]">
+                <TableHead colSpan={3} className="w-[20%] border border-black text-center font-bold bg-[#B4C7E7] text-black">
                   NATUREZA DE DESPESA
                 </TableHead>
-                <TableHead rowSpan={2} className="w-[35%] border border-black text-center align-top font-bold">
+                <TableHead rowSpan={2} className="w-[35%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black">
                   DETALHAMENTO / MEMÓRIA DE CÁLCULO
                   <br/>
                   <span className="font-normal text-[8pt]">(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS) OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG</span>
                 </TableHead>
               </TableRow>
               <TableRow className="h-auto bg-gray-100 print:bg-gray-100">
-                <TableHead className="w-[6.6%] border border-black text-center font-bold bg-[#B4C7E7]">
+                <TableHead className="w-[6.6%] border border-black text-center font-bold bg-[#B4C7E7] text-black">
                   33.90.30
                 </TableHead>
-                <TableHead className="w-[6.6%] border border-black text-center font-bold bg-[#B4C7E7]">
+                <TableHead className="w-[6.6%] border border-black text-center font-bold bg-[#B4C7E7] text-black">
                   33.90.39
                 </TableHead>
-                <TableHead className="w-[6.6%] border border-black text-center font-bold bg-[#B4C7E7]">
+                <TableHead className="w-[6.6%] border border-black text-center font-bold bg-[#B4C7E7] text-black">
                   GND 3
                 </TableHead>
               </TableRow>
