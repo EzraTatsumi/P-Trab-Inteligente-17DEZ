@@ -51,7 +51,7 @@ export const ConsolidatedHorasVooMemoria = ({
 
     return (
         <Card className="shadow-lg bg-background">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 mb-2 border-b">
                 <CardTitle className="text-base font-semibold">
                     {group.organizacao} (UG: {formatCodug(group.ug)})
                 </CardTitle>
@@ -74,7 +74,7 @@ export const ConsolidatedHorasVooMemoria = ({
                     )}
                 </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
                 <div className="relative">
                     <Textarea
                         value={currentMemoriaText}
