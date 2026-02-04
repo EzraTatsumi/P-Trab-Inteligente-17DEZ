@@ -188,7 +188,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
                 <TableCell className="border border-black text-center bg-[#B4C7E7]">
                   {formatCurrency(totalND39)}
                 </TableCell>
-                <TableCell className="border border-black text-center bg-[#E8E8E8]">
+                <TableCell className="border border-black text-center bg-[#B4C7E7]">
                   {formatCurrency(totalGeral)}
                 </TableCell>
                 <TableCell className="border border-black bg-[#E8E8E8]">
