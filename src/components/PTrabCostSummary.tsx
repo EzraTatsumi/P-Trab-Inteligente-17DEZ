@@ -1586,17 +1586,18 @@ export const PTrabCostSummary = ({
                     ))}
                     
                     {/* Linha de Total Geral de HV (para manter a informação de quantidade total) */}
-                    {sortedHorasVoo.length > 1 && (
+                    {/* REMOVIDO: Span 1582 e 1595 */}
+                    {/* {sortedHorasVoo.length > 1 && (
                         <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1 font-semibold">
                             <span className="w-1/2 text-left">Total Geral (R$)</span>
                             <span className="w-1/4 text-right font-medium text-background">
-                                {/* Vazio */}
+                                
                             </span>
                             <span className="w-1/4 text-right font-medium">
                                 {formatCurrency(totals.totalAviacaoExercito)}
                             </span>
                         </div>
-                    )}
+                    )} */}
                   </div>
                 </div>
                 
