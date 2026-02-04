@@ -74,35 +74,16 @@ export const generateHorasVooMemoriaCalculo = (registro: HorasVooRegistro): stri
  * @returns A string da memória de cálculo consolidada.
  */
 export const generateConsolidatedHorasVooMemoriaCalculo = (group: ConsolidatedHorasVooRecord): string => {
-    const { totalGeral, totalND30, totalND39, records } = group;
+    const { records } = group;
+
+    const totalHV = records.reduce((sum, record) => sum + record.quantidade_hv, 0);
+    const tipoAnv = records[0]?.tipo_anv || 'N/I';
+    const amparo = records[0]?.amparo || 'N/I';
 
     const memoria = [
-        `MEMÓRIA DE CÁLCULO CONSOLIDADA - HORAS DE VOO (AvEx)`,
-        `--------------------------------------------------`,
-        `OM Favorecida: ${group.organizacao} (UG: ${formatCodug(group.ug)})`,
-        `OM Detentora do Recurso: ${group.om_detentora} (UG: ${formatCodug(group.ug_detentora)})`,
-        `Fase da Atividade: ${group.fase_atividade || 'Não Informada'}`,
-        `Período: ${group.dias_operacao} dia(s)`,
-        `--------------------------------------------------`,
-        `DETALHAMENTO DOS REGISTROS (${records.length} item(ns)):`,
+        `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${totalHV.toFixed(2)} HV na Anv ${tipoAnv}.`,
+        amparo,
     ];
-
-    records.forEach((registro, index) => {
-        memoria.push(
-            `\n[Item ${index + 1}]`,
-            `  Município: ${registro.municipio} (CODUG: ${registro.codug_destino})`,
-            `  Tipo Anv: ${registro.tipo_anv} | Qtd HV: ${registro.quantidade_hv.toFixed(2)}`,
-            `  Amparo: ${registro.amparo || 'N/I'}`,
-            `  ND 30: ${formatCurrency(registro.valor_nd_30)} | ND 39: ${formatCurrency(registro.valor_nd_39)} | Total: ${formatCurrency(registro.valor_total)}`
-        );
-    });
-
-    memoria.push(
-        `\n--------------------------------------------------`,
-        `TOTAL CONSOLIDADO ND 33.90.30 (Custeio): ${formatCurrency(totalND30)}`,
-        `TOTAL CONSOLIDADO ND 33.90.39 (Serviços): ${formatCurrency(totalND39)}`,
-        `VALOR TOTAL GERAL SOLICITADO: ${formatCurrency(totalGeral)}`,
-    );
 
     return memoria.join('\n');
 };
