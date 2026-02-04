@@ -1,25 +1,40 @@
 import * as z from "zod";
 import { Tables } from "@/integrations/supabase/types";
 
-// Nível 3: Categorias (Subitens da ND 30)
+// --- Material de Consumo - Categorias (Nível 3) ---
+
 export type DiretrizMaterialConsumoCategoria = Tables<'diretrizes_material_consumo_categorias'>;
 
+export type DiretrizMaterialConsumoCategoriaForm = {
+    id?: string;
+    nome_categoria: string;
+    observacoes?: string | null;
+};
+
 export const materialConsumoCategoriaSchema = z.object({
-  nome_categoria: z.string().min(3, "O nome da categoria é obrigatório."),
-  observacoes: z.string().optional().nullable(),
+    nome_categoria: z.string().min(3, "O nome da categoria deve ter pelo menos 3 caracteres."),
+    observacoes: z.string().optional().nullable(),
 });
 
-export type DiretrizMaterialConsumoCategoriaForm = z.infer<typeof materialConsumoCategoriaSchema>;
+// --- Material de Consumo - Itens (Nível 4) ---
 
-// Nível 4: Itens Específicos
 export type DiretrizMaterialConsumoItem = Tables<'diretrizes_material_consumo_itens'>;
 
-export const materialConsumoItemSchema = z.object({
-  descricao_item: z.string().min(3, "A descrição do item é obrigatória."),
-  preco_unitario: z.number().min(0.01, "O preço unitário deve ser maior que zero."),
-  numero_pregao: z.string().optional().nullable(),
-  uasg_referencia: z.string().optional().nullable(),
-  ativo: z.boolean().default(true),
-});
+export type DiretrizMaterialConsumoItemForm = {
+    id?: string;
+    categoria_id: string; // Foreign key
+    descricao_item: string;
+    preco_unitario: number;
+    numero_pregao?: string | null;
+    uasg_referencia?: string | null;
+    ativo: boolean;
+};
 
-export type DiretrizMaterialConsumoItemForm = z.infer<typeof materialConsumoItemSchema>;
+export const materialConsumoItemSchema = z.object({
+    categoria_id: z.string().uuid("ID da categoria inválido."),
+    descricao_item: z.string().min(5, "A descrição do item deve ser detalhada (mínimo 5 caracteres)."),
+    preco_unitario: z.number().min(0.01, "O preço unitário deve ser maior que zero."),
+    numero_pregao: z.string().optional().nullable(),
+    uasg_referencia: z.string().optional().nullable(),
+    ativo: z.boolean(),
+});
