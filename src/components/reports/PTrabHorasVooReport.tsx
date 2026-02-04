@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useCallback } from 'react';
-import { PTrabData, HorasVooRegistro, calculateDays, formatDate, formatDateDDMMMAA } from '@/pages/PTrabReportManager';
+import { PTrabData, HorasVooRegistro, calculateDays, formatDate } from '@/pages/PTrabReportManager';
 import { formatCurrency, formatNumber } from '@/lib/formatUtils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plane, FileSpreadsheet, Printer, Download } from 'lucide-react';
@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
+import { formatDateDDMMMAA } from '@/lib/formatUtils'; // CORRIGIDO: Importação de formatDateDDMMMAA
 
 interface PTrabHorasVooReportProps {
   ptrabData: PTrabData;
