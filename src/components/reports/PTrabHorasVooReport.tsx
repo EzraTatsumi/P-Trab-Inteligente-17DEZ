@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { PTrabData, HorasVooRegistro, calculateDays, formatDate } from '@/pages/PTrabReportManager';
 import { formatCurrency, formatNumber } from '@/lib/formatUtils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -16,6 +16,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
   omsOrdenadas,
   gruposPorOM,
 }) => {
+  const contentRef = useRef<HTMLDivElement>(null);
   const registros = useMemo(() => omsOrdenadas.flatMap(om => gruposPorOM[om]), [omsOrdenadas, gruposPorOM]);
 
   const totalGeral = useMemo(() => {
@@ -81,132 +82,174 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     // Adiciona a nota sobre a diretriz de custeio (usando o texto exato do modelo)
     const notaDiretriz = "\n\nTudo conforme o DIEx nº 972-DMAvEx/COLOG, de 16 de dezembro de 2022, do Subcomandate Logístico versando sobre o valor da hora de voo para o ano de 2023. O valor foi convertido para REAIS utilizando-se da cotação do dólar (PTAX do DÓLAR).";
     
-    // CORREÇÃO: Usar a variável local 'detalhes'
     return detalhes.trim().length > 0 ? detalhes + notaDiretriz : notaDiretriz;
   }, [registros]);
 
   return (
-    <div className="p-6 space-y-8 print:p-0 print:space-y-0 print:text-[10pt] print:font-serif" id={`report-horas-voo-${ptrabData.id}`}>
+    <div className="min-h-screen bg-background">
+      {/* Botões de Exportação/Impressão padronizados (fora do ref) */}
+      {/* ... (omitted for brevity, assuming they are handled in PTrabReportManager) ... */}
+
+      {/* Conteúdo do Relatório (para impressão) */}
+      <div ref={contentRef} className="bg-white p-8 shadow-xl print:p-0 print:shadow-none" style={{ padding: '0.5cm' }}>
+        
+        {/* CABEÇALHO FORMAL - CORRIGIDO O ESPAÇAMENTO E O SUBLINHADO */}
+        <div className="ptrab-header">
+          <p className="text-[11pt] font-bold uppercase">Ministério da Defesa</p>
+          <p className="text-[11pt] font-bold uppercase">Exército Brasileiro</p>
+          <p className="text-[11pt] font-bold uppercase">{comandoMilitarArea.toUpperCase()}</p>
+          <p className="text-[11pt] font-bold uppercase">{nomeOMExtenso.toUpperCase()}</p>
+          
+          {/* Título Principal */}
+          <p className="text-[11pt] font-bold uppercase">
+            PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS OPERAÇÃO {ptrabData.nome_operacao.toUpperCase()}
+          </p>
+          
+          {/* Título do Relatório (Sublinhado e Contido) */}
+          <div className="mx-auto w-fit">
+            <p className="text-[11pt] font-bold uppercase underline">
+              PLANO DE TRABALHO LOGÍSTICO - Hora de Voo
+            </p>
+          </div>
+        </div>
+
+        {/* INFORMAÇÕES DA OPERAÇÃO - CORRIGIDO O ESPAÇAMENTO */}
+        <div className="ptrab-info">
+          <p className="info-item"><span className="font-bold">1. NOME DA OPERAÇÃO:</span> {ptrabData.nome_operacao}</p>
+          <p className="info-item"><span className="font-bold">2. PERÍODO:</span> de {formatDate(ptrabData.periodo_inicio)} a {formatDate(ptrabData.periodo_fim)} - Nr Dias: {numDias}</p>
+          <p className="info-item"><span className="font-bold">3. EFETIVO EMPREGADO:</span> {ptrabData.efetivo_empregado} militares do Exército Brasileiro</p>
+          <p className="info-item"><span className="font-bold">4. AÇÕES:</span> {ptrabData.acoes}</p>
+          <p className="info-item font-bold">5. DESPESAS OPERACIONAIS:</p>
+        </div>
+
+        {/* TABELA DE DESPESAS (CONSOLIDADA) */}
+        <section className="mb-6 print:mb-4">
+          <Table className="w-full border border-black print:border-black print:text-[9pt] [&_th]:p-1 [&_td]:p-1">
+            <TableHeader>
+              <TableRow className="h-auto bg-gray-100 print:bg-gray-100">
+                <TableHead rowSpan={2} className="w-[20%] border border-black text-center align-top font-bold">
+                  DESPESAS (ORDENAR POR CLASSE DE SUBSISTÊNCIA)
+                </TableHead>
+                <TableHead rowSpan={2} className="w-[10%] border border-black text-center align-top font-bold">
+                  OM (UGE)
+                </TableHead>
+                <TableHead rowSpan={2} className="w-[15%] border border-black text-center align-top font-bold">
+                  MUNICÍPIO(S)/ LOCALIDADE(S)
+                </TableHead>
+                <TableHead colSpan={3} className="w-[20%] border border-black text-center font-bold bg-[#B4C7E7]">
+                  NATUREZA DE DESPESA
+                </TableHead>
+                <TableHead rowSpan={2} className="w-[35%] border border-black text-center align-top font-bold">
+                  DETALHAMENTO / MEMÓRIA DE CÁLCULO
+                  <br/>
+                  <span className="font-normal text-[8pt]">(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS) OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG</span>
+                </TableHead>
+              </TableRow>
+              <TableRow className="h-auto bg-gray-100 print:bg-gray-100">
+                <TableHead className="w-[6.6%] border border-black text-center font-bold bg-[#B4C7E7]">
+                  33.90.30
+                </TableHead>
+                <TableHead className="w-[6.6%] border border-black text-center font-bold bg-[#B4C7E7]">
+                  33.90.39
+                </TableHead>
+                <TableHead className="w-[6.6%] border border-black text-center font-bold bg-[#B4C7E7]">
+                  GND 3
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {/* Linha de Dados Consolidada */}
+              <TableRow className="h-auto">
+                <TableCell className="border border-black text-left align-top">
+                  Horas de voo Anv Aviação do Exército
+                </TableCell>
+                <TableCell className="border border-black text-center align-top">
+                  {omUGDisplay}
+                </TableCell>
+                <TableCell className="border border-black text-center align-top">
+                  {municipiosConsolidados}
+                </TableCell>
+                <TableCell className={`border border-black text-center align-top bg-[#B4C7E7] ${isACargoDoCoter ? 'text-[8pt] font-bold' : ''}`}>
+                  {valorND30Display}
+                </TableCell>
+                <TableCell className={`border border-black text-center align-top bg-[#B4C7E7] ${isACargoDoCoter ? 'text-[8pt] font-bold' : ''}`}>
+                  {valorND39Display}
+                </TableCell>
+                <TableCell className={`border border-black text-center align-top bg-[#B4C7E7] font-bold ${isACargoDoCoter ? 'text-[8pt]' : ''}`}>
+                  {valorGND3Display}
+                </TableCell>
+                <TableCell className="border border-black align-top whitespace-pre-wrap text-left text-[8pt]">
+                  {detalhamentoConsolidado}
+                </TableCell>
+              </TableRow>
+              
+              {/* Linha de Total */}
+              <TableRow className="h-auto font-bold bg-[#E8E8E8] print:bg-[#E8E8E8]">
+                <TableCell colSpan={3} className="border border-black text-right">
+                  VALOR TOTAL
+                </TableCell>
+                <TableCell className="border border-black text-center bg-[#B4C7E7]">
+                  {formatCurrency(totalND30)}
+                </TableCell>
+                <TableCell className="border border-black text-center bg-[#B4C7E7]">
+                  {formatCurrency(totalND39)}
+                </TableCell>
+                <TableCell className="border border-black text-center bg-[#E8E8E8]">
+                  {formatCurrency(totalGeral)}
+                </TableCell>
+                <TableCell className="border border-black bg-[#E8E8E8]">
+                  {/* Vazio */}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </section>
+
+        {/* RODAPÉ */}
+        <footer className="mt-12 print:mt-8 text-center">
+          <p className="mb-12 print:mb-8">{localOM}, {dataAtual}.</p>
+          
+          <div className="mt-12 print:mt-8">
+            <p className="font-bold">{nomeCmtOM.toUpperCase()}</p>
+            <p className="border-t border-black inline-block pt-1">Comandante da {nomeOMExtenso}</p>
+          </div>
+        </footer>
+      </div>
       
-      {/* CABEÇALHO FORMAL - CORRIGIDO O ESPAÇAMENTO E O SUBLINHADO */}
-      <header className="text-center print:mb-4">
-        <p className="font-bold leading-tight">MINISTÉRIO DA DEFESA</p>
-        <p className="font-bold leading-tight">EXÉRCITO BRASILEIRO</p>
-        <p className="font-bold leading-tight">{comandoMilitarArea.toUpperCase()}</p>
-        <p className="font-bold leading-tight">{nomeOMExtenso.toUpperCase()}</p>
+      {/* ESTILOS CSS INLINE PARA CONTROLE FINO DE IMPRESSÃO */}
+      <style>{`
+        @page {
+          size: A4 landscape;
+          margin: 0.5cm;
+        }
         
-        {/* Linha em branco removida aqui */}
+        /* REGRAS DE ESTILO UNIFICADAS (TELA E IMPRESSÃO) */
+        .ptrab-header { text-align: center; margin-bottom: 1.5rem; line-height: 1.4; }
+        .ptrab-header p { font-size: 11pt; margin: 0; padding: 0; } /* ZERANDO MARGENS PADRÃO DO P */
+        .ptrab-info { margin-bottom: 0.3rem; font-size: 10pt; line-height: 1.3; }
+          .info-item { margin-bottom: 0.15rem; } /* Espaçamento mínimo entre itens */
         
-        <p className="font-bold mt-4 leading-tight">PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS</p>
-        <p className="font-bold leading-tight">OPERAÇÃO {ptrabData.nome_operacao.toUpperCase()}</p>
+        /* Estilos da Tabela */
+        .ptrab-table { width: 100%; border-collapse: collapse; font-size: 9pt; border: 1px solid #000; line-height: 1.1; }
+        .ptrab-table th, .ptrab-table td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; font-size: 8pt; }
+        .ptrab-table thead th { background-color: #E8E8E8; font-weight: bold; text-align: center; font-size: 9pt; }
         
-        {/* Sublinhado ajustado para ter largura fit-content */}
-        <div className="mt-4 mx-auto w-fit">
-            <p className="font-bold border-b border-black pb-1 leading-tight">PLANO DE TRABALHO LOGÍSTICO - Hora de Voo</p>
-        </div>
-      </header>
+        /* Cores específicas para Horas de Voo */
+        .bg-\\[\\#B4C7E7\\] { background-color: #B4C7E7 !important; }
+        .bg-\\[\\#E8E8E8\\] { background-color: #E8E8E8 !important; }
 
-      {/* INFORMAÇÕES DA OPERAÇÃO */}
-      <section className="space-y-1 mb-6 print:mb-4 pt-4"> {/* Adicionado pt-4 para separar do cabeçalho */}
-        <p><strong>1. NOME DA OPERAÇÃO:</strong> {ptrabData.nome_operacao} - Apoio Logísitico</p>
-        <p><strong>2. PERÍODO:</strong> de {formatDate(ptrabData.periodo_inicio)} a {formatDate(ptrabData.periodo_fim)} Nr Dias: {numDias}</p>
-        <p><strong>3. EFETIVO EMPREGADO:</strong> {ptrabData.efetivo_empregado}</p>
-        <p><strong>4. AÇÕES REALIZADAS OU A REALIZAR:</strong> {ptrabData.acoes}</p>
-      </section>
-
-      {/* TABELA DE DESPESAS (CONSOLIDADA) */}
-      <section className="mb-6 print:mb-4">
-        <p className="font-bold mb-1">5. DESPESAS OPERACIONAIS REALIZADAS OU A REALIZAR:</p>
-        <Table className="w-full border border-black print:border-black print:text-[9pt] [&_th]:p-1 [&_td]:p-1">
-          <TableHeader>
-            <TableRow className="h-auto bg-gray-100 print:bg-gray-100">
-              <TableHead rowSpan={2} className="w-[20%] border border-black text-center align-top font-bold">
-                DESPESAS (ORDENAR POR CLASSE DE SUBSISTÊNCIA)
-              </TableHead>
-              <TableHead rowSpan={2} className="w-[10%] border border-black text-center align-top font-bold">
-                OM (UGE)
-              </TableHead>
-              <TableHead rowSpan={2} className="w-[15%] border border-black text-center align-top font-bold">
-                MUNICÍPIO(S)/ LOCALIDADE(S)
-              </TableHead>
-              <TableHead colSpan={3} className="w-[20%] border border-black text-center font-bold">
-                NATUREZA DE DESPESA
-              </TableHead>
-              <TableHead rowSpan={2} className="w-[35%] border border-black text-center align-top font-bold">
-                DETALHAMENTO / MEMÓRIA DE CÁLCULO
-                <br/>
-                <span className="font-normal text-[8pt]">(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS) OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG</span>
-              </TableHead>
-            </TableRow>
-            <TableRow className="h-auto bg-gray-100 print:bg-gray-100">
-              <TableHead className="w-[6.6%] border border-black text-center font-bold">
-                33.90.30
-              </TableHead>
-              <TableHead className="w-[6.6%] border border-black text-center font-bold">
-                33.90.39
-              </TableHead>
-              <TableHead className="w-[6.6%] border border-black text-center font-bold">
-                GND 3
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {/* Linha de Dados Consolidada */}
-            <TableRow className="h-auto">
-              <TableCell className="border border-black text-left align-top">
-                Horas de voo Anv Aviação do Exército
-              </TableCell>
-              <TableCell className="border border-black text-center align-top">
-                {omUGDisplay}
-              </TableCell>
-              <TableCell className="border border-black text-center align-top">
-                {municipiosConsolidados}
-              </TableCell>
-              <TableCell className={`border border-black text-center align-top ${isACargoDoCoter ? 'text-[8pt] font-bold' : ''}`}>
-                {valorND30Display}
-              </TableCell>
-              <TableCell className={`border border-black text-center align-top ${isACargoDoCoter ? 'text-[8pt] font-bold' : ''}`}>
-                {valorND39Display}
-              </TableCell>
-              <TableCell className={`border border-black text-center align-top ${isACargoDoCoter ? 'text-[8pt] font-bold' : ''}`}>
-                {valorGND3Display}
-              </TableCell>
-              <TableCell className="border border-black align-top whitespace-pre-wrap text-left text-[8pt]">
-                {detalhamentoConsolidado}
-              </TableCell>
-            </TableRow>
-            
-            {/* Linha de Total */}
-            <TableRow className="h-auto font-bold bg-gray-50 print:bg-gray-50">
-              <TableCell colSpan={3} className="border border-black text-right">
-                VALOR TOTAL
-              </TableCell>
-              <TableCell className="border border-black text-center">
-                {formatCurrency(totalND30)}
-              </TableCell>
-              <TableCell className="border border-black text-center">
-                {formatCurrency(totalND39)}
-              </TableCell>
-              <TableCell className="border border-black text-center">
-                {formatCurrency(totalGeral)}
-              </TableCell>
-              <TableCell className="border border-black">
-                {/* Vazio */}
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </section>
-
-      {/* RODAPÉ */}
-      <footer className="mt-12 print:mt-8 text-center">
-        <p className="mb-12 print:mb-8">{localOM}, {dataAtual}.</p>
-        
-        <div className="mt-12 print:mt-8">
-          <p className="font-bold">{nomeCmtOM.toUpperCase()}</p>
-          <p className="border-t border-black inline-block pt-1">Comandante da {nomeOMExtenso}</p>
-        </div>
-      </footer>
+        /* REGRAS ESPECÍFICAS DE IMPRESSÃO */
+        @media print {
+          @page { size: landscape; margin: 0.5cm; }
+          body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
+          
+          /* Garante que as cores de fundo sejam impressas */
+          .bg-\\[\\#B4C7E7\\], .bg-\\[\\#E8E8E8\\], .bg-gray-100 {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+          }
+        }
+      `}</style>
     </div>
   );
 };
