@@ -277,9 +277,21 @@ const HorasVooForm = () => {
                 dias_operacao: prev.dias_operacao,
                 fase_atividade: prev.fase_atividade,
                 isCoterResponsibility: prev.isCoterResponsibility, // Manter estado do COTER
+                
+                // Resetar campos de item
+                municipio: "",
+                quantidade_hv: 0,
+                tipo_anv: "",
+                valor_nd_30: 0,
+                valor_nd_39: 0,
+                // Manter codug_destino e amparo (são padrões/contexto)
+                codug_destino: initialFormState.codug_destino,
+                amparo: initialFormState.amparo,
             }));
             
-            resetForm();
+            // Resetar inputs de moeda
+            setRawND30Input(numberToRawDigits(0));
+            setRawND39Input(numberToRawDigits(0));
         },
         onError: (error) => { 
             toast.error("Falha ao salvar registros.", { description: sanitizeError(error) });
@@ -761,14 +773,23 @@ const HorasVooForm = () => {
             // 1. Calcula o novo estado (resetado)
             const newFormStateAfterReset: HorasVooFormState = {
                 ...formData,
-                codug_destino: initialFormState.codug_destino, // Mantém o valor padrão
+                // Manter campos de contexto (OMs, Fase, Amparo, COTER)
+                om_favorecida: formData.om_favorecida,
+                ug_favorecida: formData.ug_favorecida,
+                om_destino: formData.om_destino,
+                ug_destino: formData.ug_destino,
+                dias_operacao: formData.dias_operacao,
+                fase_atividade: formData.fase_atividade,
+                isCoterResponsibility: formData.isCoterResponsibility,
+                amparo: formData.amparo,
+                codug_destino: formData.codug_destino,
+                
+                // Resetar campos de item
                 municipio: "",
                 quantidade_hv: 0,
                 tipo_anv: "",
-                amparo: initialFormState.amparo, // Mantém o valor padrão
                 valor_nd_30: 0,
                 valor_nd_39: 0,
-                isCoterResponsibility: initialFormState.isCoterResponsibility, // Mantém o padrão COTER
             };
             
             // 2. Atualiza o lastStagedFormData para o novo estado "limpo"
