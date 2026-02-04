@@ -24,7 +24,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
   }, [registros]);
 
   const totalND30 = useMemo(() => {
-    return registros.reduce((acc, r) => acc + r.valor_nd_30, 0);
+    return registros.reduce((acc, r => acc + r.valor_nd_30, 0);
   }, [registros]);
 
   const totalND39 = useMemo(() => {
