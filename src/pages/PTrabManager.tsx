@@ -12,7 +12,8 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
-  DialogDescription
+  DialogDescription,
+  DialogTrigger // Adicionado DialogTrigger
 } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
