@@ -54,8 +54,6 @@ const DIARIA_RANKS_CONFIG = [
 const OPERATIONAL_FIELDS = [
   // { key: 'fator_passagens_aereas', label: 'Passagens Aéreas (Fator)', type: 'factor' as const, placeholder: 'Ex: 1.5 (para 150%)' }, // REMOVIDO
   { key: 'fator_servicos_terceiros', label: 'Serviços de Terceiros (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.10 (para 10%)' },
-  { key: 'valor_verba_operacional_dia', label: 'Verba Operacional (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 50,00' },
-  { key: 'valor_suprimentos_fundo_dia', label: 'Suprimentos de Fundos (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 20,00' },
   { key: 'valor_complemento_alimentacao', label: 'Complemento de Alimentação (R$)', type: 'currency' as const, placeholder: 'Ex: 15,00' },
   { key: 'valor_fretamento_aereo_hora', label: 'Fretamento Aéreo (R$/hora)', type: 'currency' as const, placeholder: 'Ex: 1.200,00' },
   { key: 'valor_locacao_estrutura_dia', label: 'Locação de Estrutura (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 300,00' },
@@ -67,10 +65,8 @@ const OPERATIONAL_FIELDS = [
 // Valores padrão para inicialização (incluindo os novos campos de diária)
 const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   ano_referencia: year,
-  fator_passagens_aereas: 0, 
+  fator_passagens_aereas: 0,
   fator_servicos_terceiros: 0,
-  valor_verba_operacional_dia: 0,
-  valor_suprimentos_fundo_dia: 0,
   valor_complemento_alimentacao: 0,
   valor_fretamento_aereo_hora: 0,
   valor_locacao_estrutura_dia: 0,
@@ -245,8 +241,6 @@ const CustosOperacionaisPage = () => {
         fator_material_consumo: Number(loadedData.fator_material_consumo || 0),
         fator_concessionaria: Number(loadedData.fator_concessionaria || 0),
         
-        valor_verba_operacional_dia: Number(loadedData.valor_verba_operacional_dia || 0),
-        valor_suprimentos_fundo_dia: Number(loadedData.valor_suprimentos_fundo_dia || 0),
         valor_complemento_alimentacao: Number(loadedData.valor_complemento_alimentacao || 0),
         valor_fretamento_aereo_hora: Number(loadedData.valor_fretamento_aereo_hora || 0),
         valor_locacao_estrutura_dia: Number(loadedData.valor_locacao_estrutura_dia || 0),
@@ -376,8 +370,6 @@ const CustosOperacionaisPage = () => {
         ...diretrizes,
         fator_passagens_aereas: diretrizes.fator_passagens_aereas || 0,
         fator_servicos_terceiros: diretrizes.fator_servicos_terceiros || 0,
-        valor_verba_operacional_dia: diretrizes.valor_verba_operacional_dia || 0,
-        valor_suprimentos_fundo_dia: diretrizes.valor_suprimentos_fundo_dia || 0,
         valor_complemento_alimentacao: diretrizes.valor_complemento_alimentacao || 0,
         valor_fretamento_aereo_hora: diretrizes.valor_fretamento_aereo_hora || 0,
         valor_locacao_estrutura_dia: diretrizes.valor_locacao_estrutura_dia || 0,
@@ -406,8 +398,6 @@ const CustosOperacionaisPage = () => {
         ano_referencia: diretrizes.ano_referencia,
         fator_passagens_aereas: dataToValidate.fator_passagens_aereas,
         fator_servicos_terceiros: dataToValidate.fator_servicos_terceiros,
-        valor_verba_operacional_dia: dataToValidate.valor_verba_operacional_dia,
-        valor_suprimentos_fundo_dia: dataToValidate.valor_suprimentos_fundo_dia,
         valor_complemento_alimentacao: dataToValidate.valor_complemento_alimentacao,
         valor_fretamento_aereo_hora: dataToValidate.valor_fretamento_aereo_hora,
         valor_locacao_estrutura_dia: dataToValidate.valor_locacao_estrutura_dia,
