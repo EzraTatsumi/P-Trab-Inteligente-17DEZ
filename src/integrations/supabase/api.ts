@@ -1,36 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  MaterialConsumoSubitem, 
-  MaterialConsumoItem, 
-  MaterialConsumoSubitemInsert, 
-  MaterialConsumoSubitemUpdate, 
-  MaterialConsumoItemInsert, 
-  MaterialConsumoItemUpdate,
-  GlobalSubitemCatalog,
-} from "@/types/materialConsumo";
-import { Tables } from "@/integrations/supabase/types";
+import { MaterialConsumoSubitem, MaterialConsumoItem, MaterialConsumoSubitemInsert, MaterialConsumoSubitemUpdate, MaterialConsumoItemInsert, MaterialConsumoItemUpdate, GlobalSubitemCatalog } from "@/types/materialConsumo";
+import { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 // =================================================================
-// TIPOS DE COMPARTILHAMENTO
-// =================================================================
-
-export interface SharePreviewData {
-  ptrab: Tables<'p_trab'>;
-  ownerProfile: {
-    first_name: string | null;
-    last_name: string | null;
-    raw_user_meta_data: any; // Assuming JSONB structure
-  } | null;
-}
-
-// =================================================================
-// TIPOS DE COMBUSTÍVEL (NOVO)
-// =================================================================
-
-export interface RefLPC extends Tables<'p_trab_ref_lpc'> {}
-
-// =================================================================
-// FUNÇÕES DE SUBITEM (Personalizado do Usuário)
+// MaterialConsumoSubitem (Diretrizes do Usuário)
 // =================================================================
 
 export async function fetchMaterialConsumoSubitems(): Promise<MaterialConsumoSubitem[]> {
@@ -51,11 +24,9 @@ export async function createMaterialConsumoSubitem(data: MaterialConsumoSubitemI
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Usuário não autenticado.");
 
-  const insertData: Tables<'material_consumo_subitens'> = {
+  const insertData: TablesInsert<'material_consumo_subitens'> = {
     ...data,
     user_id: user.id,
-    nr_subitem: data.nr_subitem || null,
-    descricao: data.descricao || null,
   };
 
   const { data: newSubitem, error } = await supabase
@@ -71,7 +42,7 @@ export async function createMaterialConsumoSubitem(data: MaterialConsumoSubitemI
 export async function updateMaterialConsumoSubitem(id: string, data: MaterialConsumoSubitemUpdate): Promise<void> {
   const { error } = await supabase
     .from('material_consumo_subitens')
-    .update(data)
+    .update(data as TablesUpdate<'material_consumo_subitens'>)
     .eq('id', id);
 
   if (error) throw error;
@@ -87,7 +58,7 @@ export async function deleteMaterialConsumoSubitem(id: string): Promise<void> {
 }
 
 // =================================================================
-// FUNÇÕES DE ITEM (Personalizado do Usuário)
+// MaterialConsumoItem (Itens de Diretrizes do Usuário)
 // =================================================================
 
 export async function fetchMaterialConsumoItems(subitemId: string): Promise<MaterialConsumoItem[]> {
@@ -105,11 +76,9 @@ export async function createMaterialConsumoItem(data: MaterialConsumoItemInsert)
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Usuário não autenticado.");
 
-  const insertData: Tables<'material_consumo_itens'> = {
+  const insertData: TablesInsert<'material_consumo_itens'> = {
     ...data,
     user_id: user.id,
-    pregao: data.pregao || null,
-    uasg: data.uasg || null,
   };
 
   const { data: newItem, error } = await supabase
@@ -125,7 +94,7 @@ export async function createMaterialConsumoItem(data: MaterialConsumoItemInsert)
 export async function updateMaterialConsumoItem(id: string, data: MaterialConsumoItemUpdate): Promise<void> {
   const { error } = await supabase
     .from('material_consumo_itens')
-    .update(data)
+    .update(data as TablesUpdate<'material_consumo_itens'>)
     .eq('id', id);
 
   if (error) throw error;
@@ -141,84 +110,24 @@ export async function deleteMaterialConsumoItem(id: string): Promise<void> {
 }
 
 // =================================================================
-// FUNÇÃO DE CATÁLOGO GLOBAL
+// Catálogo Global (Leitura)
 // =================================================================
 
 /**
- * Busca todos os subitens do catálogo global (leitura pública).
+ * Busca todos os subitens do catálogo global (acessível por qualquer usuário autenticado).
  */
 export async function fetchGlobalSubitemCatalog(): Promise<GlobalSubitemCatalog[]> {
-  // Não precisa de user_id, pois o RLS permite leitura pública (true)
   const { data, error } = await supabase
     .from('catalogo_subitens_global')
     .select('id, nr_subitem, nome_subitem, descricao_subitem, created_at')
     .order('nome_subitem', { ascending: true });
 
   if (error) {
+    // Se a tabela não existir, este erro será capturado.
     console.error("Erro ao buscar catálogo global:", error);
-    // Retorna array vazio em caso de erro para não quebrar o app
-    return []; 
+    throw error;
   }
   
-  // Mapeia os nomes das colunas do DB para o tipo GlobalSubitemCatalog
-  return (data || []).map(d => ({
-    id: d.id,
-    nr_subitem: d.nr_subitem,
-    nome_subitem: d.nome_subitem,
-    descricao_subitem: d.descricao_subitem,
-    created_at: d.created_at,
-  })) as GlobalSubitemCatalog[];
-}
-
-// =================================================================
-// FUNÇÕES DE COMPARTILHAMENTO
-// =================================================================
-
-/**
- * Fetches PTrab data and owner profile for a share link preview.
- */
-export async function fetchSharePreview(ptrabId: string, shareToken: string): Promise<SharePreviewData> {
-  // 1. Fetch PTrab data and owner ID, verifying the share token
-  const { data: ptrabData, error: ptrabError } = await supabase
-    .from('p_trab')
-    .select('*, user_id')
-    .eq('id', ptrabId)
-    .eq('share_token', shareToken)
-    .maybeSingle();
-
-  if (ptrabError) throw ptrabError;
-  if (!ptrabData) throw new Error("P Trab não encontrado ou token inválido.");
-
-  // 2. Fetch Owner Profile
-  const { data: profileData, error: profileError } = await supabase
-    .from('profiles')
-    .select('first_name, last_name, raw_user_meta_data')
-    .eq('id', ptrabData.user_id)
-    .maybeSingle();
-
-  if (profileError) console.error("Erro ao buscar perfil do proprietário:", profileError);
-
-  return {
-    ptrab: ptrabData as Tables<'p_trab'>,
-    ownerProfile: profileData || null,
-  };
-}
-
-// =================================================================
-// FUNÇÕES DE CLASSE III (COMBUSTÍVEL) (NOVO)
-// =================================================================
-
-/**
- * Busca o registro de Referência LPC (Preços de Combustível) para um PTrab.
- */
-export async function fetchFuelPrice(ptrabId: string): Promise<RefLPC | null> {
-  const { data, error } = await supabase
-    .from('p_trab_ref_lpc')
-    .select('*')
-    .eq('p_trab_id', ptrabId)
-    .maybeSingle();
-
-  if (error) throw error;
-  
-  return data as RefLPC | null;
+  // O cast é seguro pois a RLS permite a leitura
+  return data as GlobalSubitemCatalog[];
 }
