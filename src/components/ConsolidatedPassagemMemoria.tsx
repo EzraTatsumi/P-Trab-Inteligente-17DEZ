@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2, Pencil, Save, RefreshCw, XCircle } from "lucide-react";
+import { Loader2, Pencil, RefreshCw, XCircle, Check } from "lucide-react";
 import { formatCodug } from "@/lib/formatUtils";
 import { cn } from "@/lib/utils";
 import { ConsolidatedPassagemRecord, generateConsolidatedPassagemMemoriaCalculo } from "@/lib/passagemUtils";
+import { Badge } from "@/components/ui/badge"; // Importando Badge
 
 interface ConsolidatedPassagemMemoriaProps {
     group: ConsolidatedPassagemRecord;
@@ -48,82 +49,105 @@ export const ConsolidatedPassagemMemoria = ({
     
     // O texto que está no editor (se estiver editando) ou o texto de display
     const currentMemoriaText = isEditing ? memoriaEdit : memoriaDisplay;
+    
+    const hasCustomMemoria = !!memoriaCustomizada;
 
     return (
-        <Card className="shadow-lg bg-background">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-base font-semibold">
-                    {group.organizacao} (UG: {formatCodug(group.ug)})
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                    {memoriaCustomizada && !isEditing && (
-                        <span className="text-xs text-primary font-medium">
-                            (Memória Customizada)
-                        </span>
-                    )}
-                    {isPTrabEditable && !isSaving && !isEditing && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleIniciarEdicaoMemoria(group, memoriaDisplay)}
-                            disabled={isSaving}
-                        >
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Editar Memória
-                        </Button>
-                    )}
-                </div>
-            </CardHeader>
-            <CardContent>
-                <div className="relative">
-                    <Textarea
-                        value={currentMemoriaText}
-                        onChange={(e) => setMemoriaEdit(e.target.value)}
-                        rows={15}
-                        readOnly={!isEditing}
-                        className={cn(
-                            "font-mono text-xs border-gray-300",
-                            isEditing ? "bg-white border-primary/50" : "resize-none bg-gray-50"
+        // PADRONIZAÇÃO: Cor de fundo do card da OM (bg-muted/30)
+        <div className="space-y-4 border p-4 rounded-lg bg-muted/30">
+            
+            {/* Container para H4 e Botões (Header) */}
+            <div className="flex items-start justify-between gap-4 mb-2">
+                <div className="flex flex-col flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                        <h4 className="text-base font-semibold text-foreground">
+                            {group.organizacao} (UG: {formatCodug(group.ug)})
+                        </h4>
+                        {/* BADGE DE MEMÓRIA CUSTOMIZADA */}
+                        {hasCustomMemoria && !isEditing && (
+                            <Badge variant="outline" className="text-xs">
+                                Editada manualmente
+                            </Badge>
                         )}
-                    />
-                    
-                    {isEditing && (
-                        <div className="flex justify-end gap-2 mt-2">
-                            {memoriaCustomizada && (
+                    </div>
+                </div>
+                
+                {/* Botões de Ação (PADRONIZAÇÃO: Posição e Ordem) */}
+                <div className="flex items-center justify-end gap-2 shrink-0">
+                    {!isEditing ? (
+                        <>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleIniciarEdicaoMemoria(group, memoriaDisplay)}
+                                disabled={isSaving || !isPTrabEditable}
+                                className="gap-2"
+                            >
+                                <Pencil className="h-4 w-4" />
+                                Editar Memória
+                            </Button>
+                            
+                            {hasCustomMemoria && (
                                 <Button
                                     type="button"
-                                    variant="outline"
                                     size="sm"
+                                    variant="ghost"
                                     onClick={() => handleRestaurarMemoriaAutomatica(firstRecordId)}
-                                    disabled={isSaving}
+                                    disabled={isSaving || !isPTrabEditable}
+                                    className="gap-2 text-muted-foreground"
                                 >
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                    Restaurar Padrão
+                                    <RefreshCw className="h-4 w-4" />
+                                    Restaurar Automática
                                 </Button>
                             )}
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCancelarEdicaoMemoria}
-                                disabled={isSaving}
-                            >
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Cancelar
-                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            {/* PADRONIZAÇÃO: Salvar primeiro, depois Cancelar */}
                             <Button
                                 type="button"
                                 size="sm"
+                                variant="default"
                                 onClick={() => handleSalvarMemoriaCustomizada(firstRecordId)}
                                 disabled={isSaving}
+                                className="gap-2"
                             >
-                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                Salvar Customização
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                Salvar
                             </Button>
-                        </div>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={handleCancelarEdicaoMemoria}
+                                disabled={isSaving}
+                                className="gap-2"
+                            >
+                                <XCircle className="h-4 w-4" />
+                                Cancelar
+                            </Button>
+                        </>
                     )}
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+            
+            {/* Área de Visualização/Edição da Memória */}
+            <Card className="p-4 bg-background rounded-lg border">
+                {isEditing ? (
+                    <Textarea
+                        value={memoriaEdit}
+                        onChange={(e) => setMemoriaEdit(e.target.value)}
+                        className="min-h-[300px] font-mono text-sm"
+                        placeholder="Digite a memória de cálculo..."
+                    />
+                ) : (
+                    <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
+                        {currentMemoriaText}
+                    </pre>
+                )}
+            </Card>
+            
+        </div>
     );
 };
