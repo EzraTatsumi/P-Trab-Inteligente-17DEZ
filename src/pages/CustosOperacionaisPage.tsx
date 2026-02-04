@@ -1007,11 +1007,13 @@ const CustosOperacionaisPage = () => {
               )}
               
               <div className="flex justify-end">
-                  <Button
-                      type="button"
+                  <Button 
+                      type="button" 
                       onClick={() => handleOpenNewConcessionaria(category)}
                       disabled={loading}
-                      size="sm"
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full"
                   >
                       <Plus className="mr-2 h-4 w-4" />
                       Adicionar Nova Diretriz de {category}
