@@ -35,6 +35,7 @@ interface PTrabOperacionalReportProps {
   registrosPassagem: PassagemRegistro[];
   registrosConcessionaria: ConcessionariaRegistroComDiretriz[]; // NOVO: Adicionado Concessionária
   diretrizesOperacionais: Tables<'diretrizes_operacionais'> | null;
+  diretrizesPassagens: Tables<'diretrizes_passagens'>[]; // CORREÇÃO: PROPRIEDADE ADICIONADA
   fileSuffix: string;
   generateDiariaMemoriaCalculo: (registro: DiariaRegistro, diretrizesOp: Tables<'diretrizes_operacionais'> | null) => string;
   generateVerbaOperacionalMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; 
@@ -157,6 +158,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   registrosPassagem,
   registrosConcessionaria,
   diretrizesOperacionais,
+  diretrizesPassagens, // CORREÇÃO: Desestruturando a nova propriedade
   fileSuffix,
   generateDiariaMemoriaCalculo,
   generateVerbaOperacionalMemoriaCalculo, 
@@ -1278,7 +1280,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                     const firstRecordConcessionaria = concessionariaConsolidada.records[0];
                                     memoria = firstRecordConcessionaria.detalhamento_customizado;
                                     if (!memoria) {
-                                        memoria = generateConsolidatedConcessionariaMemoriaCalculo(concessionariaConsolidada);
+                                        memoria = generateConcessionariaMemoriaCalculo(firstRecordConcessionaria);
                                     }
                                     break;
                                 case 'VERBA OPERACIONAL':
