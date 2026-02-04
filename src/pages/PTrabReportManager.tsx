@@ -21,9 +21,11 @@ import { formatCurrency, formatNumber } from "@/lib/formatUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
 import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacionalReport";
-import PTrabOperacionalReport from "@/components/reports/PTrabOperacionalReport"; // NOVO: Importar o relatório operacional
-import { 
-  generateRacaoQuenteMemoriaCalculo, 
+import PTrabOperacionalReport from "@/components/reports/PTrabOperacionalReport";
+import HorasDeVooReport from "@/components/reports/HorasDeVooReport"; // NOVO: Importar o relatório de Horas de Voo
+import {
+  generateRacaoQuenteMemoriaCalculo,
+
   generateRacaoOperacionalMemoriaCalculo,
   calculateClasseICalculations,
   ClasseIRegistro as ClasseIRegistroType,
@@ -47,14 +49,18 @@ import {
 import { 
   generateSuprimentoFundosMemoriaCalculo as generateSuprimentoFundosMemoriaCalculoUtility,
 } from "@/lib/suprimentoFundosUtils"; // NOVO: Importar utilitários de Suprimento de Fundos
-import { 
+import {
   generatePassagemMemoriaCalculo,
   PassagemRegistro as PassagemRegistroType, // Importando o tipo PassagemRegistro do utilitário
 } from "@/lib/passagemUtils"; // Importando utilitários de Passagem
-import { 
-  ConcessionariaRegistroComDiretriz, 
+import {
+  ConcessionariaRegistroComDiretriz,
   generateConcessionariaMemoriaCalculo as generateConcessionariaMemoriaCalculoUtility,
 } from "@/lib/concessionariaUtils"; // NOVO: Importando utilitários de Concessionária
+import {
+  HorasVooRegistro as HorasVooRegistroType,
+  generateHorasVooMemoriaCalculo,
+} from "@/lib/horasVooUtils"; // NOVO: Importando utilitários de Horas de Voo
 import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais, fetchDiretrizesPassagens } from "@/lib/ptrabUtils"; // IMPORTANDO fetchDiretrizesPassagens
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
@@ -262,6 +268,7 @@ export interface GrupoOMOperacional {
   suprimentoFundos: VerbaOperacionalRegistro[];
   passagens: PassagemRegistro[];
   concessionarias: ConcessionariaRegistro[];
+  horasVoo: HorasVooRegistro[]; // NOVO: Horas de Voo
 }
 
 export interface GrupoOM {
@@ -714,9 +721,9 @@ interface ReportOption {
 const REPORT_OPTIONS: ReportOption[] = [
   { value: 'logistico', label: 'P Trab Logístico', icon: Package, iconClass: 'text-orange-500', fileSuffix: 'Aba Log' },
   { value: 'racao_operacional', label: 'P Trab Cl I - Ração Operacional', icon: Utensils, iconClass: 'text-orange-500', fileSuffix: 'Aba Rç Op' },
-  { value: 'operacional', label: 'P Trab Operacional', icon: Briefcase, iconClass: 'text-blue-500', fileSuffix: 'Aba Op' }, // NOVO
+  { value: 'operacional', label: 'P Trab Operacional', icon: Briefcase, iconClass: 'text-blue-500', fileSuffix: 'Aba Op' },
   { value: 'material_permanente', label: 'P Trab Material Permanente', icon: HardHat, iconClass: 'text-green-500', fileSuffix: 'Aba Mat Perm' },
-  { value: 'hora_voo', label: 'P Trab Hora de Voo', icon: Plane, iconClass: 'text-purple-500', fileSuffix: 'Aba HV' },
+  { value: 'hora_voo', label: 'P Trab Hora de Voo', icon: Plane, iconClass: 'text-purple-500', fileSuffix: 'Aba HV' }, // NOVO
   { value: 'dor', label: 'DOR', icon: ClipboardList, iconClass: 'text-gray-500', fileSuffix: 'Aba DOR' },
 ];
 
@@ -761,9 +768,11 @@ const PTrabReportManager = () => {
   const [registrosDiaria, setRegistrosDiaria] = useState<DiariaRegistro[]>([]); 
   const [registrosVerbaOperacional, setRegistrosVerbaOperacional] = useState<VerbaOperacionalRegistro[]>([]); 
   const [registrosSuprimentoFundos, setRegistrosSuprimentoFundos] = useState<VerbaOperacionalRegistro[]>([]); 
-  const [registrosPassagem, setRegistrosPassagem] = useState<PassagemRegistro[]>([]); 
-  const [registrosConcessionaria, setRegistrosConcessionaria] = useState<ConcessionariaRegistro[]>([]); 
-  const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null); 
+  const [registrosPassagem, setRegistrosPassagem] = useState<PassagemRegistro[]>([]);
+  const [registrosConcessionaria, setRegistrosConcessionaria] = useState<ConcessionariaRegistro[]>([]);
+  const [registrosHorasVoo, setRegistrosHorasVoo] = useState<HorasVooRegistro[]>([]); // NOVO: Horas de Voo
+  const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null);
+
   const [diretrizesPassagens, setDiretrizesPassagens] = useState<Tables<'diretrizes_passagens'>[]>([]); 
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
   const [loading, setLoading] = useState(true);
@@ -807,11 +816,12 @@ const PTrabReportManager = () => {
         { data: classeIIIData },
         { data: refLPCData },
         { data: diariaData }, 
-        { data: verbaOperacionalData }, 
-        { data: passagemData }, 
+        { data: verbaOperacionalData },
+        { data: passagemData },
         { data: concessionariaData },
-        diretrizesOpData, 
-        diretrizesPassagensData, 
+        { data: horasVooData }, // NOVO: Horas de Voo
+        diretrizesOpData,
+        diretrizesPassagensData,
       ] = await Promise.all([
         supabase.from('classe_i_registros').select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3').eq('p_trab_id', ptrabId),
         supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
@@ -825,10 +835,11 @@ const PTrabReportManager = () => {
         supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", ptrabId).maybeSingle(),
         supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId), 
         supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId), 
-        supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId), 
+        supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId),
         supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId),
-        fetchDiretrizesOperacionais(year), 
-        fetchDiretrizesPassagens(year), 
+        supabase.from('horas_voo_registros').select('*').eq('p_trab_id', ptrabId), // NOVO: Horas de Voo
+        fetchDiretrizesOperacionais(year),
+        fetchDiretrizesPassagens(year),
       ]);
       
       setDiretrizesOperacionais(diretrizesOpData as Tables<'diretrizes_operacionais'> || null);
@@ -943,6 +954,15 @@ const PTrabReportManager = () => {
           fonte_consumo: null,
           fonte_custo: null,
       })) as ConcessionariaRegistro[]);
+      
+      // NOVO: Processar Horas de Voo
+      setRegistrosHorasVoo((horasVooData || []).map(r => ({
+          ...r,
+          quantidade_hv: Number(r.quantidade_hv || 0),
+          valor_nd_30: Number(r.valor_nd_30 || 0),
+          valor_nd_39: Number(r.valor_nd_39 || 0),
+          valor_total: Number(r.valor_total || 0),
+      })) as HorasVooRegistro[]);
       
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
@@ -1273,7 +1293,8 @@ const PTrabReportManager = () => {
                 verbaOperacional: [],
                 suprimentoFundos: [],
                 passagens: [],
-                concessionarias: []
+                concessionarias: [],
+                horasVoo: [] // NOVO: Horas de Voo
             };
         }
     };
@@ -1322,9 +1343,16 @@ const PTrabReportManager = () => {
         initializeGroup(om);
         grupos[om].concessionarias.push(r);
     });
+    
+    // 6. Processar Horas de Voo (Agrupamento por OM Detentora)
+    registrosHorasVoo.forEach(r => {
+        const om = getCreditRecipientOM(r, true);
+        initializeGroup(om);
+        grupos[om].horasVoo.push(r);
+    });
 
     return grupos;
-  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria]);
+  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosHorasVoo]);
 
   const omsOperacionaisOrdenadas = useMemo(() => {
     const oms = Object.keys(gruposOperacionaisPorOM);
@@ -1367,13 +1395,14 @@ const PTrabReportManager = () => {
                registrosConcessionaria.length > 0;
 
       case 'material_permanente':
-      case 'hora_voo':
       case 'dor':
         return false; // Ainda não implementados
+      case 'hora_voo':
+        return registrosHorasVoo.length > 0;
       default:
         return false;
     }
-  }, [selectedReport, registrosClasseI, registrosClasseII, registrosClasseIII, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria]);
+  }, [selectedReport, registrosClasseI, registrosClasseII, registrosClasseIII, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosHorasVoo]);
 
 
   const renderReport = () => {
@@ -1443,7 +1472,6 @@ const PTrabReportManager = () => {
             />
         );
       case 'material_permanente':
-      case 'hora_voo':
       case 'dor':
         return (
           <div className="text-center py-12">
@@ -1453,6 +1481,17 @@ const PTrabReportManager = () => {
               Este relatório ainda não está implementado.
             </p>
           </div>
+        );
+      case 'hora_voo':
+        return (
+            <HorasDeVooReport
+                ptrabData={ptrabData}
+                omsOrdenadas={omsOperacionaisOrdenadas}
+                gruposPorOM={gruposOperacionaisPorOM}
+                registrosHorasVoo={registrosHorasVoo}
+                fileSuffix={fileSuffix}
+                generateHorasVooMemoriaCalculo={generateHorasVooMemoriaCalculada}
+            />
         );
       default:
         return null;
@@ -1491,6 +1530,24 @@ const PTrabReportManager = () => {
                   <SelectItem key={option.value} value={option.value}>
                     <div className="flex items-center gap-2">
                       <option.icon className={`h-4 w-4 ${option.iconClass}`} />
+                      {option.label}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      <div className="container max-w-7xl mx-auto py-4 px-4">
+        {renderReport()}
+      </div>
+    </div>
+  );
+};
+
+export default PTrabReportManager;-4 w-4 ${option.iconClass}`} />
                       {option.label}
                     </div>
                   </SelectItem>
