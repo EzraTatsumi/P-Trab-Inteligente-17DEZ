@@ -325,6 +325,23 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
       return { ...prev, [subitemId]: !isOpen };
     });
   };
+  
+  // NOVO: Handler para seleção de subitem do catálogo
+  const handleSelectSubitemFromCatalog = (subitem: MaterialConsumoSubitem) => {
+    // Se estiver editando, limpamos o ID para forçar a criação de um novo registro
+    // baseado no catálogo, a menos que o usuário estivesse editando este subitem específico.
+    if (subitemToEdit && subitemToEdit.id !== subitem.id) {
+        setSubitemToEdit(null);
+    }
+    
+    // Preenche os campos do formulário principal
+    setNewSubitemNome(subitem.nome);
+    setNewSubitemNr(subitem.nr_subitem || '');
+    setNewSubitemDescricao(subitem.descricao || '');
+    
+    // Fecha o catálogo e mantém o formulário de subitem aberto
+    setIsCatalogOpen(false);
+  };
 
   if (isLoadingSubitems) {
     return (
@@ -492,7 +509,7 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
                 className="w-full"
               >
                 <BookOpen className="h-4 w-4 mr-2" />
-                Ver Catálogo de Subitens ({subitems.length})
+                Buscar no Catálogo de Subitens ({subitems.length})
               </Button>
             )}
             
@@ -558,6 +575,7 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
         open={isCatalogOpen}
         onOpenChange={setIsCatalogOpen}
         subitems={subitems}
+        onSelectSubitem={handleSelectSubitemFromCatalog}
       />
     </div>
   );
