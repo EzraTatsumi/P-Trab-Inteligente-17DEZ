@@ -131,7 +131,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
                   DESPESAS (ORDENAR POR CLASSE DE SUBSISTÊNCIA)
                 </TableHead>
                 <TableHead rowSpan={2} className="w-[10%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black">
-                  OM (UGE)
+                  OM (UGE)<br/>CODUG
                 </TableHead>
                 <TableHead rowSpan={2} className="w-[15%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black">
                   MUNICÍPIO(S)/ LOCALIDADE(S)
@@ -141,7 +141,6 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
                 </TableHead>
                 <TableHead rowSpan={2} className="w-[35%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black">
                   DETALHAMENTO / MEMÓRIA DE CÁLCULO
-                  <br/>
                   <span className="font-normal text-[8pt]">(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/><span className="font-bold underline">OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG</span></span>
                 </TableHead>
               </TableRow>
