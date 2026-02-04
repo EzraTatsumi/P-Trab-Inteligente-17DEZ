@@ -45,41 +45,33 @@ export const calculateHorasVooTotals = (data: HorasVooForm): { valor_total: numb
  * @returns A string da memória de cálculo.
  */
 export const generateHorasVooMemoriaCalculo = (registro: HorasVooRegistro): string => {
-    const { valor_total, valor_nd_30, valor_nd_39, quantidade_hv, tipo_anv, amparo } = registro;
+    const { valor_nd_30, valor_nd_39, quantidade_hv, tipo_anv, amparo } = registro;
     const memoria: string[] = [];
     const totalHv = quantidade_hv.toFixed(2);
     const amparoText = amparo || 'Não Informado';
+    
+    const isCoter = valor_nd_30 === 0 && valor_nd_39 === 0;
 
-    memoria.push(`MEMÓRIA DE CÁLCULO - HORAS DE VOO (AvEx)`);
-    memoria.push(`--------------------------------------------------`);
-    memoria.push(`OM Favorecida: ${registro.organizacao} (UG: ${formatCodug(registro.ug)})`);
-    memoria.push(`OM Detentora do Recurso: ${registro.om_detentora} (UG: ${formatCodug(registro.ug_detentora)})`);
-    memoria.push(`Fase da Atividade: ${registro.fase_atividade || 'Não Informada'}`);
-    memoria.push(`--------------------------------------------------`);
+    if (isCoter) {
+        // Se for COTER, retorna uma string vazia ou um placeholder mínimo,
+        // pois o usuário pediu para remover "Custeio a cargo do COTER"
+        return ''; 
+    }
 
     if (valor_nd_30 > 0) {
-        // NOVO FORMATO SOLICITADO
         memoria.push(`33.90.30 – Aquisição de Suprimento de Aviação, referente a ${totalHv} HV na Anv ${tipo_anv}.`);
         memoria.push(`Amparo: ${amparoText}`);
-        memoria.push(`Valor ND 30: ${formatCurrency(valor_nd_30)}`);
-        memoria.push(`--------------------------------------------------`);
     }
 
     if (valor_nd_39 > 0) {
-        // NOVO FORMATO SOLICITADO
+        // Adiciona uma linha em branco se já houver ND 30 para separação visual
+        if (valor_nd_30 > 0) {
+            memoria.push('');
+        }
         memoria.push(`33.90.39 – Aquisição de Serviços de Aviação, referente a ${totalHv} HV na Anv ${tipo_anv}.`);
         memoria.push(`Amparo: ${amparoText}`);
-        memoria.push(`Valor ND 39: ${formatCurrency(valor_nd_39)}`);
-        memoria.push(`--------------------------------------------------`);
     }
     
-    if (valor_nd_30 === 0 && valor_nd_39 === 0) {
-        memoria.push(`Custeio a cargo do COTER.`);
-        memoria.push(`--------------------------------------------------`);
-    }
-
-    memoria.push(`VALOR TOTAL SOLICITADO: ${formatCurrency(valor_total)}`);
-
     return memoria.join('\n');
 };
 
@@ -89,46 +81,42 @@ export const generateHorasVooMemoriaCalculo = (registro: HorasVooRegistro): stri
  * @returns A string da memória de cálculo consolidada.
  */
 export const generateConsolidatedHorasVooMemoriaCalculo = (group: ConsolidatedHorasVooRecord): string => {
-    const { totalGeral, totalND30, totalND39, records } = group;
+    const { records } = group;
 
-    const memoria = [
-        `MEMÓRIA DE CÁLCULO CONSOLIDADA - HORAS DE VOO (AvEx)`,
-        `--------------------------------------------------`,
-        `OM Favorecida: ${group.organizacao} (UG: ${formatCodug(group.ug)})`,
-        `OM Detentora do Recurso: ${group.om_detentora} (UG: ${formatCodug(group.ug_detentora)})`,
-        `Fase da Atividade: ${group.fase_atividade || 'Não Informada'}`,
-        `--------------------------------------------------`,
-        `DETALHAMENTO DOS REGISTROS (${records.length} item(ns)):`,
-    ];
+    const memoria: string[] = [];
+    
+    // Filtra registros que não são COTER para inclusão na memória
+    const nonCoterRecords = records.filter(r => r.valor_nd_30 > 0 || r.valor_nd_39 > 0);
 
-    records.forEach((registro, index) => {
-        const isCoter = registro.valor_nd_30 === 0 && registro.valor_nd_39 === 0;
+    if (nonCoterRecords.length === 0) {
+        // Se todos os registros forem COTER, retorna vazio
+        return '';
+    }
+
+    nonCoterRecords.forEach((registro, index) => {
         const totalHv = registro.quantidade_hv.toFixed(2);
         const amparo = registro.amparo || 'N/I';
         
-        memoria.push(
-            `\n[Item ${index + 1}] - Anv ${registro.tipo_anv} (${totalHv} HV) em ${registro.municipio} (CODUG: ${registro.codug_destino})`
-        );
+        // Adiciona separador entre itens se houver mais de um
+        if (index > 0) {
+            memoria.push('\n--------------------------------------------------\n');
+        }
         
-        if (isCoter) {
-            memoria.push(`  Custeio: A CARGO DO COTER`);
-        } else {
+        memoria.push(`[Item ${index + 1}] - Anv ${registro.tipo_anv} (${totalHv} HV) em ${registro.municipio} (CODUG: ${registro.codug_destino})`);
+        
+        if (registro.valor_nd_30 > 0) {
+            memoria.push(`33.90.30 – Aquisição de Suprimento de Aviação, referente a ${totalHv} HV na Anv ${registro.tipo_anv}.`);
+            memoria.push(`Amparo: ${amparo}`);
+        }
+        
+        if (registro.valor_nd_39 > 0) {
             if (registro.valor_nd_30 > 0) {
-                memoria.push(`  ND 30: ${formatCurrency(registro.valor_nd_30)}`);
+                memoria.push(''); // Linha em branco entre ND 30 e ND 39 do mesmo item
             }
-            if (registro.valor_nd_39 > 0) {
-                memoria.push(`  ND 39: ${formatCurrency(registro.valor_nd_39)}`);
-            }
-            memoria.push(`  Amparo: ${amparo}`);
+            memoria.push(`33.90.39 – Aquisição de Serviços de Aviação, referente a ${totalHv} HV na Anv ${registro.tipo_anv}.`);
+            memoria.push(`Amparo: ${amparo}`);
         }
     });
-
-    memoria.push(
-        `\n--------------------------------------------------`,
-        `TOTAL CONSOLIDADO ND 33.90.30 (Custeio): ${formatCurrency(totalND30)}`,
-        `TOTAL CONSOLIDADO ND 33.90.39 (Serviços): ${formatCurrency(totalND39)}`,
-        `VALOR TOTAL GERAL SOLICITADO: ${formatCurrency(totalGeral)}`,
-    );
 
     return memoria.join('\n');
 };
