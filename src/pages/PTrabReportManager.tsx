@@ -22,8 +22,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
 import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacionalReport";
 import PTrabOperacionalReport from "@/components/reports/PTrabOperacionalReport"; // NOVO: Importar o relatório operacional
-import { 
-  generateRacaoQuenteMemoriaCalculo, 
+import PTrabHorasVooReport from "@/components/reports/PTrabHorasVooReport"; // NOVO: Importar o relatório de Horas de Voo
+import {
+  generateRacaoQuenteMemoriaCalculo,
   generateRacaoOperacionalMemoriaCalculo,
   calculateClasseICalculations,
   ClasseIRegistro as ClasseIRegistroType,
@@ -135,6 +136,14 @@ export type PassagemRegistro = PassagemRegistroType;
 // NOVO TIPO: ConcessionariaRegistro (Exportado do utilitário)
 export type ConcessionariaRegistro = ConcessionariaRegistroComDiretriz;
 
+// NOVO TIPO: HorasVooRegistro
+export interface HorasVooRegistro extends Tables<'horas_voo_registros'> {
+  quantidade_hv: number;
+  valor_nd_30: number;
+  valor_nd_39: number;
+  valor_total: number;
+  dias_operacao: number;
+}
 
 // CORREÇÃO: Tipagem de ItemClasseIII para garantir que campos numéricos sejam number
 export interface ItemClasseIII {
@@ -276,6 +285,27 @@ export interface GrupoOM {
   linhasClasseIII: LinhaClasseIII[];
   linhasConcessionaria: LinhaConcessionaria[]; // NOVO: Inicializa Concessionária
 }
+
+// CORREÇÃO DO ERRO 3: Definindo a interface PTrabOperacionalReportProps corretamente
+export interface PTrabOperacionalReportProps {
+    ptrabData: PTrabData;
+    omsOrdenadas: string[];
+    gruposPorOM: Record<string, GrupoOMOperacional>;
+    registrosDiaria: DiariaRegistro[];
+    registrosVerbaOperacional: VerbaOperacionalRegistro[];
+    registrosSuprimentoFundos: VerbaOperacionalRegistro[];
+    registrosPassagem: PassagemRegistro[];
+    registrosConcessionaria: ConcessionariaRegistro[];
+    diretrizesOperacionais: Tables<'diretrizes_operacionais'> | null;
+    diretrizesPassagens: Tables<'diretrizes_passagens'>[]; // PROPRIEDADE FALTANTE (CORRIGIDA)
+    fileSuffix: string;
+    generateDiariaMemoriaCalculo: (registro: DiariaRegistro, diretrizesOp: Tables<'diretrizes_operacionais'> | null) => string;
+    generateVerbaOperacionalMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string;
+    generateSuprimentoFundosMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string;
+    generatePassagemMemoriaCalculo: (registro: PassagemRegistro) => string;
+    generateConcessionariaMemoriaCalculo: (registro: ConcessionariaRegistro) => string;
+}
+
 
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 export const CLASSE_VI_CATEGORIES = ["Gerador", "Embarcação", "Equipamento de Engenharia"];
@@ -760,11 +790,12 @@ const PTrabReportManager = () => {
   const [registrosClasseIII, setRegistrosClasseIII] = useState<ClasseIIIRegistro[]>([]);
   const [registrosDiaria, setRegistrosDiaria] = useState<DiariaRegistro[]>([]); 
   const [registrosVerbaOperacional, setRegistrosVerbaOperacional] = useState<VerbaOperacionalRegistro[]>([]); 
-  const [registrosSuprimentoFundos, setRegistrosSuprimentoFundos] = useState<VerbaOperacionalRegistro[]>([]); 
-  const [registrosPassagem, setRegistrosPassagem] = useState<PassagemRegistro[]>([]); 
-  const [registrosConcessionaria, setRegistrosConcessionaria] = useState<ConcessionariaRegistro[]>([]); 
-  const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null); 
-  const [diretrizesPassagens, setDiretrizesPassagens] = useState<Tables<'diretrizes_passagens'>[]>([]); 
+  const [registrosSuprimentoFundos, setRegistrosSuprimentoFundos] = useState<VerbaOperacionalRegistro[]>([]);
+  const [registrosPassagem, setRegistrosPassagem] = useState<PassagemRegistro[]>([]);
+  const [registrosConcessionaria, setRegistrosConcessionaria] = useState<ConcessionariaRegistro[]>([]);
+  const [registrosHorasVoo, setRegistrosHorasVoo] = useState<HorasVooRegistro[]>([]); // NOVO: Registros de Horas de Voo
+  const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null);
+  const [diretrizesPassagens, setDiretrizesPassagens] = useState<Tables<'diretrizes_passagens'>[]>([]);
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ReportType>('logistico');
@@ -808,10 +839,11 @@ const PTrabReportManager = () => {
         { data: refLPCData },
         { data: diariaData }, 
         { data: verbaOperacionalData }, 
-        { data: passagemData }, 
+        { data: passagemData },
         { data: concessionariaData },
-        diretrizesOpData, 
-        diretrizesPassagensData, 
+        { data: horasVooData }, // NOVO: Dados de Horas de Voo
+        diretrizesOpData,
+        diretrizesPassagensData,
       ] = await Promise.all([
         supabase.from('classe_i_registros').select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3').eq('p_trab_id', ptrabId),
         supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
@@ -825,10 +857,11 @@ const PTrabReportManager = () => {
         supabase.from("p_trab_ref_lpc").select("*").eq("p_trab_id", ptrabId).maybeSingle(),
         supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId), 
         supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId), 
-        supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId), 
+        supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId),
         supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId),
-        fetchDiretrizesOperacionais(year), 
-        fetchDiretrizesPassagens(year), 
+        supabase.from('horas_voo_registros').select('*').eq('p_trab_id', ptrabId), // NOVO: Fetch Horas de Voo
+        fetchDiretrizesOperacionais(year),
+        fetchDiretrizesPassagens(year),
       ]);
       
       setDiretrizesOperacionais(diretrizesOpData as Tables<'diretrizes_operacionais'> || null);
@@ -943,6 +976,16 @@ const PTrabReportManager = () => {
           fonte_consumo: null,
           fonte_custo: null,
       })) as ConcessionariaRegistro[]);
+      
+      // NOVO: Processar Horas de Voo
+      setRegistrosHorasVoo((horasVooData || []).map(r => ({
+          ...r,
+          quantidade_hv: Number(r.quantidade_hv || 0),
+          valor_nd_30: Number(r.valor_nd_30 || 0),
+          valor_nd_39: Number(r.valor_nd_39 || 0),
+          valor_total: Number(r.valor_total || 0),
+          dias_operacao: r.dias_operacao || 0,
+      })) as HorasVooRegistro[]);
       
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
@@ -1326,6 +1369,43 @@ const PTrabReportManager = () => {
     return grupos;
   }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria]);
 
+  // --- LÓGICA DE AGRUPAMENTO E ORDENAÇÃO HORAS DE VOO (NOVO) ---
+  const gruposHorasVooPorOM = useMemo(() => {
+    const grupos: Record<string, HorasVooRegistro[]> = {};
+    const initializeGroup = (name: string) => {
+        if (!grupos[name]) {
+            grupos[name] = [];
+        }
+    };
+
+    // Agrupamento por OM Detentora
+    registrosHorasVoo.forEach(r => {
+        const om = r.om_detentora || r.organizacao;
+        initializeGroup(om);
+        grupos[om].push(r);
+    });
+
+    return grupos;
+  }, [registrosHorasVoo]);
+
+  const omsHorasVooOrdenadas = useMemo(() => {
+    const oms = Object.keys(gruposHorasVooPorOM);
+    const rmName = nomeRM;
+    
+    return oms.sort((a, b) => {
+        const aPriority = getOMPriority(a, rmName);
+        const bPriority = getOMPriority(b, rmName);
+        
+        // 1. Ordenar por prioridade (1 < 2 < 3)
+        if (aPriority !== bPriority) {
+            return aPriority - bPriority;
+        }
+        
+        // 2. Desempate alfabético
+        return a.localeCompare(b);
+    });
+  }, [gruposHorasVooPorOM, nomeRM]);
+
   const omsOperacionaisOrdenadas = useMemo(() => {
     const oms = Object.keys(gruposOperacionaisPorOM);
     const rmName = nomeRM;
@@ -1367,13 +1447,15 @@ const PTrabReportManager = () => {
                registrosConcessionaria.length > 0;
 
       case 'material_permanente':
+        return false; // Ainda não implementados
       case 'hora_voo':
+        return registrosHorasVoo.length > 0;
       case 'dor':
         return false; // Ainda não implementados
       default:
         return false;
     }
-  }, [selectedReport, registrosClasseI, registrosClasseII, registrosClasseIII, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria]);
+  }, [selectedReport, registrosClasseI, registrosClasseII, registrosClasseIII, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosHorasVoo]);
 
 
   const renderReport = () => {
@@ -1443,7 +1525,24 @@ const PTrabReportManager = () => {
             />
         );
       case 'material_permanente':
+        return (
+          <div className="text-center py-12">
+            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold">Relatório {currentReportOption.label}</h3>
+            <p className="text-muted-foreground mt-2">
+              Este relatório ainda não está implementado.
+            </p>
+          </div>
+        );
       case 'hora_voo':
+        return (
+            <PTrabHorasVooReport
+                ptrabData={ptrabData}
+                omsOrdenadas={omsHorasVooOrdenadas}
+                gruposPorOM={gruposHorasVooPorOM}
+                fileSuffix={fileSuffix}
+            />
+        );
       case 'dor':
         return (
           <div className="text-center py-12">
