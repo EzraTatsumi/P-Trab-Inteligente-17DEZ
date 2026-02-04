@@ -53,10 +53,8 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
   const nomeOMExtenso = ptrabData.nome_om_extenso || ptrabData.nome_om;
   const comandoMilitarArea = ptrabData.comando_militar_area || 'COMANDO MILITAR DE ÁREA';
   
-  const omGestora = registros.length > 0 ? (registros[0].om_detentora || registros[0].organizacao) : ptrabData.nome_om;
-  const ugGestora = registros.length > 0 ? (registros[0].ug_detentora || registros[0].ug) : ptrabData.codug_om;
-  // Ajustado para mostrar apenas OM Gestora (UG Gestora)
-  const omUGDisplay = `${omGestora} (${ugGestora})`; 
+  // A OM Gestora para o relatório de HV é o valor completo do campo codug_destino
+  const omUGDisplay = registros.length > 0 ? registros[0].codug_destino : 'N/A'; 
 
   const municipiosConsolidados = useMemo(() => {
     return registros.map(r => r.municipio).filter((v, i, a) => a.indexOf(v) === i).join('/');
