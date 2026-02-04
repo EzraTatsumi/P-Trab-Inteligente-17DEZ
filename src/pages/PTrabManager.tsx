@@ -95,7 +95,7 @@ type PTrabLinkedTableName =
     'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' | 
     'classe_viii_saude_registros' | 'classe_viii_remonta_registros' | 
     'classe_ix_registros' | 'p_trab_ref_lpc' | 'passagem_registros' | 
-    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros'; // ADICIONADO
+    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros' | 'horas_voo_registros'; // CORRIGIDO: Adicionado 'horas_voo_registros'
 
 // Lista de Comandos Militares de Área (CMA)
 const COMANDOS_MILITARES_AREA = [
@@ -1399,7 +1399,7 @@ const PTrabManager = () => {
             'verba_operacional_registros', 
             'passagem_registros', 
             'concessionaria_registros', // NOVO: Adicionado Concessionária
-            'horas_voo_registros', // NOVO: Adicionado Horas de Voo
+            'horas_voo_registros', // CORRIGIDO: Adicionado Horas de Voo
         ];
         
         for (const tableName of tablesToConsolidate) {
@@ -1983,8 +1983,7 @@ const PTrabManager = () => {
             {loading ? (
               <div className="text-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mb-2 mx-auto" />
-                <h3 className="text-lg font-semibold text-foreground">Carregando P Trabs...</h3>
-                <p className="text-sm text-muted-foreground mt-1">Calculando totais de classes.</p>
+                <span className="ml-2 text-muted-foreground">Carregando P Trabs...</span>
               </div>
             ) : pTrabs.length === 0 ? (
               <div className="text-center py-12">

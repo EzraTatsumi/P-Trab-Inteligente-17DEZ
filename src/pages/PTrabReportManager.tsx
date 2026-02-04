@@ -286,6 +286,27 @@ export interface GrupoOM {
   linhasConcessionaria: LinhaConcessionaria[]; // NOVO: Inicializa Concessionária
 }
 
+// NOVO TIPO: Props para PTrabOperacionalReport (para resolver o erro 3)
+export interface PTrabOperacionalReportProps {
+    ptrabData: PTrabData;
+    omsOrdenadas: string[];
+    gruposPorOM: Record<string, GrupoOMOperacional>;
+    registrosDiaria: DiariaRegistro[];
+    registrosVerbaOperacional: VerbaOperacionalRegistro[];
+    registrosSuprimentoFundos: VerbaOperacionalRegistro[];
+    registrosPassagem: PassagemRegistro[];
+    registrosConcessionaria: ConcessionariaRegistro[];
+    diretrizesOperacionais: Tables<'diretrizes_operacionais'> | null;
+    diretrizesPassagens: Tables<'diretrizes_passagens'>[]; // PROPRIEDADE FALTANTE
+    fileSuffix: string;
+    generateDiariaMemoriaCalculo: (registro: DiariaRegistro, diretrizesOp: Tables<'diretrizes_operacionais'> | null) => string;
+    generateVerbaOperacionalMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string;
+    generateSuprimentoFundosMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string;
+    generatePassagemMemoriaCalculo: (registro: PassagemRegistro) => string;
+    generateConcessionariaMemoriaCalculo: (registro: ConcessionariaRegistro) => string;
+}
+
+
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 export const CLASSE_VI_CATEGORIES = ["Gerador", "Embarcação", "Equipamento de Engenharia"];
 export const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
