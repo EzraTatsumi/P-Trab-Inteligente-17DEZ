@@ -139,7 +139,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
                   NATUREZA DE DESPESA
                 </TableHead>
                 <TableHead rowSpan={2} className="w-[35%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black">
-                  DETALHAMENTO / MEMÓRIA DE CÁLCULO
+                  DETALHAMENTO / MEMÓRIA DE CÁLCULO<br/>
                   <span className="font-normal text-[8pt]">(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/><span className="font-bold underline">OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG</span></span>
                 </TableHead>
               </TableRow>
