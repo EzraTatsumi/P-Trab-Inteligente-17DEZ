@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
-import { formatDateDDMMMAA } from '@/lib/formatUtils'; // CORRIGIDO: Importação de formatDateDDMMMAA
+import { formatDateDDMMMAA } from '@/lib/formatUtils';
 
 interface PTrabHorasVooReportProps {
   ptrabData: PTrabData;
@@ -185,13 +185,17 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     const baseFontStyle = { name: 'Arial', size: 8 };
     const headerFontStyle = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF000000' } };
     const titleFontStyle = { name: 'Arial', size: 11, bold: true };
-    const corHeader = 'FFE8E8E8'; // Cinza claro para o cabeçalho da tabela
-    const corND = 'FFB4C7E7'; // Azul para as NDs
-    const corTotal = 'FFE8E8E8'; // Cinza claro para o total geral
     
-    const headerFillGray = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corHeader } };
+    // Cores padronizadas
+    const corHeader = 'FFD9D9D9'; // Cinza padrão para o cabeçalho da tabela (A, B, C, G)
+    const corND = 'FFB4C7E7'; // Azul para as NDs
+    const corSubtotal = 'FFE8E8E8'; // Cinza claro para o subtotal (Linha 1)
+    const corTotalFinal = 'FFD9D9D9'; // Cinza padrão para o total geral (Linha 2)
+    
+    const headerFillGray = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corHeader } }; // D9D9D9
     const headerFillAzul = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corND } };
-    const totalFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotal } };
+    const subtotalFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corSubtotal } }; // E8E8E8
+    const totalFinalFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: corTotalFinal } }; // D9D9D9
 
     let currentRow = 1;
     
@@ -302,9 +306,9 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
         cell2.border = cellBorder;
 
         if (col === 'A' || col === 'B' || col === 'C' || col === 'G') {
-            cell1.fill = headerFillGray;
+            cell1.fill = headerFillGray; // D9D9D9
             cell2.value = '';
-            cell2.fill = headerFillGray;
+            cell2.fill = headerFillGray; // D9D9D9
         } else {
             cell1.fill = headerFillAzul; 
             cell2.fill = headerFillAzul; 
@@ -380,7 +384,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     subtotalRow.getCell('A').value = 'SUBTOTAL';
     subtotalRow.getCell('A').alignment = rightMiddleAlignment;
     subtotalRow.getCell('A').font = headerFontStyle;
-    subtotalRow.getCell('A').fill = totalFill; 
+    subtotalRow.getCell('A').fill = subtotalFill; // E8E8E8
     subtotalRow.getCell('A').border = cellBorder;
     
     // D: 33.90.30
@@ -406,7 +410,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     
     // G: Vazio
     subtotalRow.getCell('G').value = '';
-    subtotalRow.getCell('G').fill = totalFill; 
+    subtotalRow.getCell('G').fill = subtotalFill; // E8E8E8
     subtotalRow.getCell('G').border = cellBorder;
     
     currentRow++;
@@ -419,19 +423,19 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     totalRow.getCell('A').value = 'VALOR TOTAL';
     totalRow.getCell('A').alignment = rightMiddleAlignment;
     totalRow.getCell('A').font = headerFontStyle;
-    totalRow.getCell('A').fill = totalFill; 
+    totalRow.getCell('A').fill = totalFinalFill; // D9D9D9
     totalRow.getCell('A').border = cellBorder;
     
     // F: GND 3
     totalRow.getCell('F').value = totalGeral;
     totalRow.getCell('F').alignment = dataCenterMiddleAlignment;
     totalRow.getCell('F').numFmt = 'R$ #,##0.00';
-    totalRow.getCell('F').fill = totalFill; 
+    totalRow.getCell('F').fill = totalFinalFill; // D9D9D9
     totalRow.getCell('F').border = cellBorder;
     
     // G: Vazio
     totalRow.getCell('G').value = '';
-    totalRow.getCell('G').fill = totalFill; 
+    totalRow.getCell('G').fill = totalFinalFill; // D9D9D9
     totalRow.getCell('G').border = cellBorder;
     
     currentRow++;
@@ -553,19 +557,19 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
           <Table className="w-full border border-black print:border-black print:text-[9pt] [&_th]:p-1 [&_td]:p-1">
             <TableHeader>
               <TableRow className="h-auto bg-gray-100 print:bg-gray-100">
-                <TableHead rowSpan={2} className="w-[20%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black header-font-size">
+                <TableHead rowSpan={2} className="w-[20%] border border-black text-center align-middle font-bold bg-[#D9D9D9] text-black header-font-size">
                   DESPESAS (ORDENAR POR CLASSE DE SUBSISTÊNCIA)
                 </TableHead>
-                <TableHead rowSpan={2} className="w-[10%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black header-font-size">
+                <TableHead rowSpan={2} className="w-[10%] border border-black text-center align-middle font-bold bg-[#D9D9D9] text-black header-font-size">
                   OM (UGE)<br/>CODUG
                 </TableHead>
-                <TableHead rowSpan={2} className="w-[15%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black header-font-size">
+                <TableHead rowSpan={2} className="w-[15%] border border-black text-center align-middle font-bold bg-[#D9D9D9] text-black header-font-size">
                   MUNICÍPIO(S)/ LOCALIDADE(S)
                 </TableHead>
                 <TableHead colSpan={3} className="w-[20%] border border-black text-center font-bold bg-[#B4C7E7] text-black header-font-size">
                   NATUREZA DE DESPESA
                 </TableHead>
-                <TableHead rowSpan={2} className="w-[35%] border border-black text-center align-middle font-bold bg-[#E8E8E8] text-black header-font-size">
+                <TableHead rowSpan={2} className="w-[35%] border border-black text-center align-middle font-bold bg-[#D9D9D9] text-black header-font-size">
                   DETALHAMENTO / MEMÓRIA DE CÁLCULO<br/>
                   <span className="font-normal text-[8pt]">(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/><span className="font-bold underline">OBSERVAR A DIRETRIZ DE CUSTEIO LOGÍSTICO DO COLOG</span></span>
                 </TableHead>
@@ -610,7 +614,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
               
               {/* LINHA 1: SUBTOTAL (ND 30, ND 39, GND 3) */}
               <TableRow className="h-auto font-bold bg-[#E8E8E8] print:bg-[#E8E8E8]">
-                <TableCell colSpan={3} className="border border-black text-right">
+                <TableCell colSpan={3} className="border border-black text-right bg-[#E8E8E8]">
                   SUBTOTAL
                 </TableCell>
                 <TableCell className="border border-black text-center bg-[#B4C7E7]">
@@ -628,14 +632,14 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
               </TableRow>
 
               {/* LINHA 2: VALOR TOTAL (GND 3) */}
-              <TableRow className="h-auto font-bold bg-[#E8E8E8] print:bg-[#E8E8E8]">
-                <TableCell colSpan={5} className="border border-black text-right">
+              <TableRow className="h-auto font-bold bg-[#D9D9D9] print:bg-[#D9D9D9]">
+                <TableCell colSpan={5} className="border border-black text-right bg-[#D9D9D9]">
                   VALOR TOTAL
                 </TableCell>
-                <TableCell className="border border-black text-center bg-[#E8E8E8]">
+                <TableCell className="border border-black text-center bg-[#D9D9D9]">
                   {formatCurrency(totalGeral)}
                 </TableCell>
-                <TableCell className="border border-black bg-[#E8E8E8]">
+                <TableCell className="border border-black bg-[#D9D9D9]">
                   {/* Vazio */}
                 </TableCell>
               </TableRow>
@@ -669,7 +673,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
         /* Estilos da Tabela */
         .ptrab-table { width: 100%; border-collapse: collapse; font-size: 9pt; border: 1px solid #000; line-height: 1.1; }
         .ptrab-table th, .ptrab-table td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; font-size: 8pt; }
-        .ptrab-table thead th { background-color: #E8E8E8; font-weight: bold; text-align: center; font-size: 9pt; }
+        .ptrab-table thead th { background-color: #D9D9D9; font-weight: bold; text-align: center; font-size: 9pt; }
         
         /* NOVO: Classe para ajustar o tamanho da fonte do cabeçalho da tabela para 9pt */
         .header-font-size { font-size: 9pt !important; }
@@ -677,6 +681,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
         /* Cores específicas para Horas de Voo */
         .bg-\\[\\#B4C7E7\\] { background-color: #B4C7E7 !important; }
         .bg-\\[\\#E8E8E8\\] { background-color: #E8E8E8 !important; }
+        .bg-\\[\\#D9D9D9\\] { background-color: #D9D9D9 !important; }
 
         /* RODAPÉ PADRONIZADO */
         .ptrab-footer { margin-top: 3rem; text-align: center; }
@@ -689,7 +694,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
           body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
           
           /* Garante que as cores de fundo sejam impressas */
-          .bg-\\[\\#B4C7E7\\], .bg-\\[\\#E8E8E8\\], .bg-gray-100 {
+          .bg-\\[\\#B4C7E7\\], .bg-\\[\\#E8E8E8\\], .bg-\\[\\#D9D9D9\\], .bg-gray-100 {
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
           }
