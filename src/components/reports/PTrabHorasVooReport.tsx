@@ -88,19 +88,26 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
   return (
     <div className="p-6 space-y-8 print:p-0 print:space-y-0 print:text-[10pt] print:font-serif" id={`report-horas-voo-${ptrabData.id}`}>
       
-      {/* CABEÇALHO FORMAL */}
-      <header className="text-center mb-6 print:mb-4">
-        <p className="font-bold">MINISTÉRIO DA DEFESA</p>
-        <p className="font-bold">EXÉRCITO BRASILEIRO</p>
-        <p className="font-bold">{comandoMilitarArea.toUpperCase()}</p>
-        <p className="font-bold">{nomeOMExtenso.toUpperCase()}</p>
-        <p className="font-bold mt-4">PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS</p>
-        <p className="font-bold">OPERAÇÃO {ptrabData.nome_operacao.toUpperCase()}</p>
-        <p className="font-bold mt-4 border-b border-black pb-1">PLANO DE TRABALHO LOGÍSTICO - Hora de Voo</p>
+      {/* CABEÇALHO FORMAL - CORRIGIDO O ESPAÇAMENTO E O SUBLINHADO */}
+      <header className="text-center print:mb-4">
+        <p className="font-bold leading-tight">MINISTÉRIO DA DEFESA</p>
+        <p className="font-bold leading-tight">EXÉRCITO BRASILEIRO</p>
+        <p className="font-bold leading-tight">{comandoMilitarArea.toUpperCase()}</p>
+        <p className="font-bold leading-tight">{nomeOMExtenso.toUpperCase()}</p>
+        
+        {/* Linha em branco removida aqui */}
+        
+        <p className="font-bold mt-4 leading-tight">PLANO DE TRABALHO LOGÍSTICO DE SOLICITAÇÃO DE RECURSOS ORÇAMENTÁRIOS E FINANCEIROS</p>
+        <p className="font-bold leading-tight">OPERAÇÃO {ptrabData.nome_operacao.toUpperCase()}</p>
+        
+        {/* Sublinhado ajustado para ter largura fit-content */}
+        <div className="mt-4 mx-auto w-fit">
+            <p className="font-bold border-b border-black pb-1 leading-tight">PLANO DE TRABALHO LOGÍSTICO - Hora de Voo</p>
+        </div>
       </header>
 
       {/* INFORMAÇÕES DA OPERAÇÃO */}
-      <section className="space-y-1 mb-6 print:mb-4">
+      <section className="space-y-1 mb-6 print:mb-4 pt-4"> {/* Adicionado pt-4 para separar do cabeçalho */}
         <p><strong>1. NOME DA OPERAÇÃO:</strong> {ptrabData.nome_operacao} - Apoio Logísitico</p>
         <p><strong>2. PERÍODO:</strong> de {formatDate(ptrabData.periodo_inicio)} a {formatDate(ptrabData.periodo_fim)} Nr Dias: {numDias}</p>
         <p><strong>3. EFETIVO EMPREGADO:</strong> {ptrabData.efetivo_empregado}</p>
