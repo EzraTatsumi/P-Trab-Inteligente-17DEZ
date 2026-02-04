@@ -324,7 +324,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
         
         // Detalhamento / Memória de Cálculo (Ajustado conforme solicitação)
         const memoria = registro.detalhamento_customizado || 
-                        `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${formatNumber(registro.quantidade_hv, 2)} HV na Anv ${registro.tipo_anv}. \n\nAmparo: ${registro.amparo || 'N/I'}.`;
+                        `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${formatNumber(registro.quantidade_hv, 2)} HV na Anv ${registro.tipo_anv}. \n\nAmparo: ${registro.amparo || 'N/I'}`; // Removido o ponto final fixo
         
         const dataRow = worksheet.getRow(currentRow);
         
@@ -601,7 +601,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
                 
                 // Detalhamento / Memória de Cálculo (Ajustado conforme solicitação)
                 const memoria = registro.detalhamento_customizado || 
-                                `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${formatNumber(registro.quantidade_hv, 2)} HV na Anv ${registro.tipo_anv}. \n\nAmparo: ${registro.amparo || 'N/I'}.`;
+                                `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${formatNumber(registro.quantidade_hv, 2)} HV na Anv ${registro.tipo_anv}. \n\nAmparo: ${registro.amparo || 'N/I'}`;
                 
                 // OM Gestora Fixa para a coluna B
                 const omGestoraDisplay = OM_GESTORA_HV;
