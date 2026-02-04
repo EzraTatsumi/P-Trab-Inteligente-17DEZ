@@ -175,6 +175,9 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
   const [currentSubitemId, setCurrentSubitemId] = useState<string | null>(null);
 
   const [openSubitems, setOpenSubitems] = useState<Record<string, boolean>>({});
+  
+  // CORREÇÃO: Importa e utiliza o hook useFormNavigation
+  const { handleEnterToNextField } = useFormNavigation();
 
   // Fetch Subitems
   const { data: subitems = [], isLoading: isLoadingSubitems, error: subitemsError } = useQuery<MaterialConsumoSubitem[]>({
