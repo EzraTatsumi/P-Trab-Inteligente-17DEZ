@@ -1,11 +1,10 @@
-import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, Pencil, RefreshCw, XCircle, Check } from "lucide-react";
 import { formatCodug } from "@/lib/formatUtils";
 import { cn } from "@/lib/utils";
-import { ConsolidatedHorasVooRecord, generateConsolidatedHorasVooMemoriaCalculo, generateHorasVooMemoriaCalculo } from "@/lib/horasVooUtils";
+import { ConsolidatedHorasVooRecord, generateConsolidatedHorasVooMemoriaCalculo } from "@/lib/horasVooUtils";
 import { Badge } from "@/components/ui/badge";
 
 interface ConsolidatedHorasVooMemoriaProps {
@@ -38,11 +37,8 @@ export const ConsolidatedHorasVooMemoria = ({
     const firstRecordId = group.records[0].id;
     const isEditing = editingMemoriaId === firstRecordId;
     
-    // A memória automática é gerada a partir do primeiro registro do grupo (para consistência)
-    // Se houver mais de um registro, usamos a memória consolidada
-    const memoriaAutomatica = group.records.length > 1 
-        ? generateConsolidatedHorasVooMemoriaCalculo(group)
-        : generateHorasVooMemoriaCalculo(group.records[0]);
+    // A memória automática é gerada a partir do grupo consolidado
+    const memoriaAutomatica = generateConsolidatedHorasVooMemoriaCalculo(group);
     
     // A memória customizada é armazenada no primeiro registro do grupo
     const memoriaCustomizada = group.records[0].detalhamento_customizado;
@@ -145,12 +141,16 @@ export const ConsolidatedHorasVooMemoria = ({
                         placeholder="Digite a memória de cálculo..."
                     />
                 ) : (
-                    // CORREÇÃO: Garantir que o whitespace-pre-wrap está aplicado
                     <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
                         {currentMemoriaText}
                     </pre>
                 )}
             </Card>
+            
+            {/* PADRONIZAÇÃO: Botão Restaurar Padrão movido para o header, mas se estiver editando e tiver customização, ele pode ser útil aqui também.
+                No DiariaForm, o botão Restaurar Automática só aparece no modo não-edição. Vamos manter o padrão do DiariaForm.
+                Se o usuário quiser restaurar, ele cancela a edição e clica em Restaurar Automática no header.
+            */}
             
         </div>
     );
