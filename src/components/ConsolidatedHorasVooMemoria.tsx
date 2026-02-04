@@ -50,7 +50,7 @@ export const ConsolidatedHorasVooMemoria = ({
     const currentMemoriaText = isEditing ? memoriaEdit : memoriaDisplay;
 
     return (
-        <Card className="shadow-lg bg-gray-50">
+        <Card className="shadow-lg bg-background">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-base font-semibold">
                     {group.organizacao} (UG: {formatCodug(group.ug)})
@@ -83,7 +83,7 @@ export const ConsolidatedHorasVooMemoria = ({
                         readOnly={!isEditing}
                         className={cn(
                             "font-mono text-xs border-gray-300",
-                            isEditing ? "bg-white border-primary/50" : "resize-none bg-white"
+                            isEditing ? "bg-white border-primary/50" : "resize-none bg-gray-50"
                         )}
                     />
                     
