@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      catalogo_subitens_global: {
+        Row: {
+          id: string
+          nr_subitem: string | null
+          nome_subitem: string
+          descricao_subitem: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          nr_subitem?: string | null
+          nome_subitem: string
+          descricao_subitem?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          nr_subitem?: string | null
+          nome_subitem?: string
+          descricao_subitem?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       classe_i_registros: {
         Row: {
           complemento_qr: number
@@ -1329,18 +1353,24 @@ export type Database = {
           id: string
           user_id: string
           nome: string
+          nr_subitem: string | null
+          descricao: string | null
           created_at: string
         }
         Insert: {
           id?: string
           user_id: string
           nome: string
+          nr_subitem?: string | null
+          descricao?: string | null
           created_at?: string
         }
         Update: {
           id?: string
           user_id?: string
           nome?: string
+          nr_subitem?: string | null
+          descricao?: string | null
           created_at?: string
         }
         Relationships: []
