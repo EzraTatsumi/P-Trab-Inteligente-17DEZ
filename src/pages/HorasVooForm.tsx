@@ -267,18 +267,7 @@ const HorasVooForm = () => {
             queryClient.invalidateQueries({ queryKey: ['horasVooRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
             
-            // Manter campos de contexto (OMs, Dias, Fase)
-            setFormData(prev => ({
-                ...initialFormState,
-                om_favorecida: prev.om_favorecida,
-                ug_favorecida: prev.ug_favorecida,
-                om_destino: prev.om_destino,
-                ug_destino: prev.ug_destino,
-                dias_operacao: prev.dias_operacao,
-                fase_atividade: prev.fase_atividade,
-                isCoterResponsibility: prev.isCoterResponsibility, // Manter estado do COTER
-            }));
-            
+            // O RESET COMPLETO OCORRE AQUI, APÓS O SALVAMENTO NO DB
             resetForm();
         },
         onError: (error) => { 
@@ -518,7 +507,7 @@ const HorasVooForm = () => {
         setLastStagedFormData(null);
         setEditingId(null);
         setGroupToReplace(null);
-        resetForm();
+        // Não chama resetForm() aqui, apenas limpa a lista pendente
     };
 
     const handleEdit = (group: ConsolidatedHorasVoo) => {
@@ -758,28 +747,9 @@ const HorasVooForm = () => {
             
             toast.info(`Item de Horas de Voo adicionado à lista pendente.`);
             
-            // 1. Calcula o novo estado (resetado)
-            const newFormStateAfterReset: HorasVooFormState = {
-                ...formData,
-                codug_destino: initialFormState.codug_destino, // Mantém o valor padrão
-                municipio: "",
-                quantidade_hv: 0,
-                tipo_anv: "",
-                amparo: initialFormState.amparo, // Mantém o valor padrão
-                valor_nd_30: 0,
-                valor_nd_39: 0,
-                isCoterResponsibility: initialFormState.isCoterResponsibility, // Mantém o padrão COTER
-            };
-            
-            // 2. Atualiza o lastStagedFormData para o novo estado "limpo"
-            setLastStagedFormData(newFormStateAfterReset);
-            
-            // 3. Aplica o reset ao formData
-            setFormData(newFormStateAfterReset);
-            
-            // 4. Limpa os inputs de moeda
-            setRawND30Input(numberToRawDigits(0));
-            setRawND39Input(numberToRawDigits(0));
+            // Atualiza o lastStagedFormData para o estado atual do formulário (que acabou de ser calculado)
+            // O formulário (formData) NÃO É RESETADO AQUI.
+            setLastStagedFormData(formData);
             
         } catch (err: any) {
             toast.error(err.message || "Erro desconhecido ao calcular.");
