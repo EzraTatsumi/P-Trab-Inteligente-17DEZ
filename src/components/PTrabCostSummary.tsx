@@ -102,6 +102,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     { data: verbaOperacionalData, error: verbaOperacionalError }, // Verba Operacional e Suprimento de Fundos
     { data: passagemData, error: passagemError }, // Passagens
     { data: concessionariaData, error: concessionariaError }, // NOVO: Concessionária
+    { data: horasVooData, error: horasVooError }, // NOVO: Horas de Voo
   ] = await Promise.all([
     supabase
       .from('classe_ii_registros')
@@ -152,6 +153,10 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .from('concessionaria_registros')
       .select('valor_total, valor_nd_39, dias_operacao, efetivo, categoria')
       .eq('p_trab_id', ptrabId),
+    supabase // NOVO: Horas de Voo
+      .from('horas_voo_registros')
+      .select('valor_total, valor_nd_30, valor_nd_39, quantidade_hv')
+      .eq('p_trab_id', ptrabId),
   ]);
 
   // Logar erros, mas não lançar exceção para permitir que o cálculo continue
@@ -167,6 +172,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   if (verbaOperacionalError) console.error("Erro ao carregar Verba Operacional/Suprimento:", verbaOperacionalError);
   if (passagemError) console.error("Erro ao carregar Passagens:", passagemError); 
   if (concessionariaError) console.error("Erro ao carregar Concessionária:", concessionariaError); // NOVO
+  if (horasVooError) console.error("Erro ao carregar Horas de Voo:", horasVooError); // NOVO
   
   // Usar arrays vazios se o fetch falhou
   const safeClasseIIData = classeIIData || [];
@@ -181,6 +187,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const safeVerbaOperacionalData = verbaOperacionalData || [];
   const safePassagemData = passagemData || []; 
   const safeConcessionariaData = concessionariaData || []; // NOVO
+  const safeHorasVooData = horasVooData || []; // NOVO
   
   const allClasseItemsData = [
     ...safeClasseIIData,
@@ -485,6 +492,23 @@ const fetchPTrabTotals = async (ptrabId: string) => {
           totalConcessionariaEnergia += valorND39;
       }
   });
+  
+  // 8. Processamento de Horas de Voo (ND 33.90.30 e 33.90.39) - NOVO
+  let totalHorasVooND30 = 0;
+  let totalHorasVooND39 = 0;
+  let totalHorasVoo = 0;
+  let totalQuantidadeHorasVoo = 0;
+  
+  (safeHorasVooData || []).forEach(record => {
+      const valorND30 = Number(record.valor_nd_30 || 0);
+      const valorND39 = Number(record.valor_nd_39 || 0);
+      const total = valorND30 + valorND39;
+      
+      totalHorasVooND30 += valorND30;
+      totalHorasVooND39 += valorND39;
+      totalHorasVoo += total;
+      totalQuantidadeHorasVoo += Number(record.quantidade_hv || 0);
+  });
     
   // Soma de todas as classes diversas (II, V, VI, VII, VIII, IX)
   const totalClassesDiversas = totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX;
@@ -492,13 +516,13 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
   const totalLogisticoGeral = totalClasseI + totalClassesDiversas + totalCombustivel + totalLubrificanteValor; 
   
-  // Total Operacional (Diárias + Verba Operacional + Suprimento de Fundos + Passagens + Concessionária + Outros Operacionais)
+  // Total Operacional (Diárias + Verba Operacional + Suprimento de Fundos + Passagens + Concessionária + Horas Voo)
   const totalOutrosOperacionais = 0; // Placeholder para outros itens operacionais
-  const totalOperacional = totalDiarias + totalVerbaOperacional + totalSuprimentoFundos + totalPassagensND33 + totalConcessionariaND39 + totalOutrosOperacionais; // ADICIONADO totalConcessionariaND39
+  const totalOperacional = totalDiarias + totalVerbaOperacional + totalSuprimentoFundos + totalPassagensND33 + totalConcessionariaND39 + totalHorasVoo + totalOutrosOperacionais; 
   
   // Novos totais (placeholders)
   const totalMaterialPermanente = 0;
-  const totalAviacaoExercito = 0;
+  const totalAviacaoExercito = totalHorasVoo; // Horas de Voo é o único item de AvEx por enquanto
   
   return {
     totalLogisticoGeral,
@@ -586,6 +610,12 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     totalConcessionariaRegistros,
     totalConcessionariaAgua, // NOVO
     totalConcessionariaEnergia, // NOVO
+    
+    // NOVO: Horas de Voo
+    totalHorasVoo,
+    totalHorasVooND30,
+    totalHorasVooND39,
+    totalQuantidadeHorasVoo,
   };
 };
 
@@ -680,6 +710,11 @@ export const PTrabCostSummary = ({
       totalConcessionariaRegistros: 0,
       totalConcessionariaAgua: 0, // NOVO
       totalConcessionariaEnergia: 0, // NOVO
+      // NOVO: Horas de Voo
+      totalHorasVoo: 0,
+      totalHorasVooND30: 0,
+      totalHorasVooND39: 0,
+      totalQuantidadeHorasVoo: 0,
     },
   });
   
@@ -1477,15 +1512,59 @@ export const PTrabCostSummary = ({
                     </Accordion>
                   )}
                   
+                  {/* Horas de Voo (ND 30/39) - NOVO */}
+                  {totals.totalHorasVoo > 0 && (
+                    <Accordion type="single" collapsible className="w-full pt-1">
+                        <AccordionItem value="item-horas-voo" className="border-b-0">
+                            <AccordionTrigger className="p-0 hover:no-underline">
+                                <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                                    <div className="flex items-center gap-1 text-foreground">
+                                        <Plane className="h-3 w-3 text-blue-500" />
+                                        Horas de Voo
+                                    </div>
+                                    <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                                        {formatCurrency(totals.totalHorasVoo)}
+                                    </span>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-1 pb-0">
+                                <div className="space-y-1 pl-4 text-[10px]">
+                                    {/* Detalhe 1: Total de Horas */}
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span className="w-1/2 text-left">Total de Horas</span>
+                                        <span className="w-1/4 text-right font-medium">
+                                            {formatNumber(totals.totalQuantidadeHorasVoo, 2)} h
+                                        </span>
+                                        <span className="w-1/4 text-right font-medium text-background">
+                                            {/* Vazio */}
+                                        </span>
+                                    </div>
+                                    
+                                    {/* Linha de Detalhe Consolidada (ND 30 / ND 39) */}
+                                    <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                        <span className="w-1/2 text-left font-semibold">ND 30 / ND 39</span>
+                                        <span className="w-1/4 text-right font-medium text-green-600">
+                                            {formatCurrency(totals.totalHorasVooND30)}
+                                        </span>
+                                        <span className="w-1/4 text-right font-medium text-blue-600">
+                                            {formatCurrency(totals.totalHorasVooND39)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                  )}
+                  
                   {/* Outros Operacionais (Placeholder) - Adjusted logic */}
-                  {totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33 - totals.totalConcessionariaND39 > 0 && (
+                  {totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33 - totals.totalConcessionariaND39 - totals.totalHorasVoo > 0 && (
                     <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-border/50 mt-1">
                         <span className="w-1/2 text-left">Outros Itens Operacionais</span>
                         <span className="w-1/4 text-right font-medium">
                             {/* Vazio */}
                         </span>
                         <span className="w-1/4 text-right font-medium">
-                            {formatCurrency(totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33 - totals.totalConcessionariaND39)}
+                            {formatCurrency(totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33 - totals.totalConcessionariaND39 - totals.totalHorasVoo)}
                         </span>
                     </div>
                   )}
@@ -1515,12 +1594,12 @@ export const PTrabCostSummary = ({
                     Aviação do Exército ({formatCurrency(totals.totalAviacaoExercito)})
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span className="w-1/2 text-left">Itens de Aviação</span>
+                    <span className="w-1/2 text-left">Total Horas de Voo</span>
                     <span className="w-1/4 text-right font-medium">
-                      {/* Vazio */}
+                      {formatNumber(totals.totalQuantidadeHorasVoo, 2)} h
                     </span>
                     <span className="w-1/4 text-right font-medium">
-                      {formatCurrency(totals.totalAviacaoExercito)}
+                      {formatCurrency(totals.totalHorasVoo)}
                     </span>
                   </div>
                 </div>
