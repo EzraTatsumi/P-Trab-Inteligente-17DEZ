@@ -314,30 +314,22 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     // --- LINHAS DE DADOS DESAGREGADAS ---
     
     // Variáveis para rastrear a OM Detentora atual para mesclagem
-    let currentOMDetentora = '';
     let startRowOM = currentRow;
     
     registros.forEach((registro, index) => {
         // Usamos a OM Gestora fixa para a coluna B
         const omGestoraDisplay = OM_GESTORA_HV;
         
-        // Usamos a OM Detentora real para a lógica de mesclagem (se houver agrupamento por OM Detentora)
-        const omDetentoraKey = `${registro.om_detentora || registro.organizacao} (${formatCodug(registro.ug_detentora || registro.ug)})`;
-        
-        // Lógica de Mesclagem (Se a OM Detentora mudar, mescla as células da coluna B)
-        // NOTA: Como a coluna B agora exibe a OM Gestora fixa, a mesclagem deve ser feita sobre todas as linhas de dados.
-        // Se a intenção é mesclar a coluna B para todos os registros, fazemos isso no final.
-        
         const isCoterRegistro = registro.valor_nd_30 === 0 && registro.valor_nd_39 === 0;
         
         // Detalhamento / Memória de Cálculo (Ajustado conforme solicitação)
         const memoria = registro.detalhamento_customizado || 
-                        `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${formatNumber(registro.quantidade_hv, 2)} HV na Anv ${registro.tipo_anv}. Amparo: ${registro.amparo || 'N/I'}.`;
+                        `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${formatNumber(registro.quantidade_hv, 2)} HV na Anv ${registro.tipo_anv}. \n\nAmparo: ${registro.amparo || 'N/I'}.`;
         
         const dataRow = worksheet.getRow(currentRow);
         
-        // A: DESPESAS
-        dataRow.getCell('A').value = `Horas de voo Anv Aviação do Exército - ${registro.tipo_anv}`; 
+        // A: DESPESAS (Removendo o tipo de aeronave)
+        dataRow.getCell('A').value = `Horas de voo Anv Aviação do Exército`; 
         dataRow.getCell('A').alignment = leftTopAlignment; 
         dataRow.getCell('A').font = baseFontStyle;
         
@@ -609,7 +601,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
                 
                 // Detalhamento / Memória de Cálculo (Ajustado conforme solicitação)
                 const memoria = registro.detalhamento_customizado || 
-                                `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${formatNumber(registro.quantidade_hv, 2)} HV na Anv ${registro.tipo_anv}. Amparo: ${registro.amparo || 'N/I'}.`;
+                                `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${formatNumber(registro.quantidade_hv, 2)} HV na Anv ${registro.tipo_anv}. \n\nAmparo: ${registro.amparo || 'N/I'}.`;
                 
                 // OM Gestora Fixa para a coluna B
                 const omGestoraDisplay = OM_GESTORA_HV;
@@ -617,7 +609,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
                 return (
                   <TableRow key={registro.id} className="h-auto">
                     <TableCell className="border border-black text-left align-middle text-[8pt]">
-                      Horas de voo Anv Aviação do Exército - {registro.tipo_anv}
+                      Horas de voo Anv Aviação do Exército
                     </TableCell>
                     <TableCell className="border border-black text-center align-middle text-[8pt]">
                       {omGestoraDisplay}
