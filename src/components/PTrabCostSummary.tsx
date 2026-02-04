@@ -155,7 +155,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       .eq('p_trab_id', ptrabId),
     supabase // NOVO: Horas de Voo
       .from('horas_voo_registros')
-      .select('valor_total, quantidade_hv')
+      .select('valor_total, quantidade_hv, tipo_anv') // ADDED tipo_anv
       .eq('p_trab_id', ptrabId),
   ]);
 
@@ -496,10 +496,22 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   // 8. Processamento de Horas de Voo (ND 33.90.30 + ND 33.90.39) - NOVO
   let totalHorasVoo = 0;
   let quantidadeHorasVoo = 0;
+  const groupedHorasVoo: Record<string, { totalValor: number, totalHV: number }> = {};
   
   (safeHorasVooData || []).forEach(record => {
-      totalHorasVoo += Number(record.valor_total || 0);
-      quantidadeHorasVoo += Number(record.quantidade_hv || 0);
+      const valorTotal = Number(record.valor_total || 0);
+      const quantidadeHv = Number(record.quantidade_hv || 0);
+      // Assumindo que 'tipo_anv' existe no tipo de retorno do Supabase para horas_voo_registros
+      const tipoAnv = (record as Tables<'horas_voo_registros'> & { tipo_anv: string }).tipo_anv || 'Não Especificado';
+      
+      totalHorasVoo += valorTotal;
+      quantidadeHorasVoo += quantidadeHv;
+      
+      if (!groupedHorasVoo[tipoAnv]) {
+          groupedHorasVoo[tipoAnv] = { totalValor: 0, totalHV: 0 };
+      }
+      groupedHorasVoo[tipoAnv].totalValor += valorTotal;
+      groupedHorasVoo[tipoAnv].totalHV += quantidadeHv;
   });
     
   // Soma de todas as classes diversas (II, V, VI, VII, VIII, IX)
@@ -606,6 +618,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     // Horas de Voo (AvEx)
     totalHorasVoo, // Valor monetário total (igual a totalAviacaoExercito)
     quantidadeHorasVoo, // Quantidade total de HV
+    groupedHorasVoo, // NEW
   };
 };
 
@@ -703,6 +716,7 @@ export const PTrabCostSummary = ({
       // Horas de Voo (AvEx)
       totalHorasVoo: 0,
       quantidadeHorasVoo: 0,
+      groupedHorasVoo: {},
     },
   });
   
@@ -764,6 +778,8 @@ export const PTrabCostSummary = ({
   const sortedClasseVIICategories = Object.entries(totals.groupedClasseVIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const sortedClasseVIIICategories = Object.entries(totals.groupedClasseVIIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const sortedClasseIXCategories = Object.entries(totals.groupedClasseIXCategories ?? {}).sort(([a], [b]) => a.localeCompare(b)); // NOVO
+  
+  const sortedHorasVoo = Object.entries(totals.groupedHorasVoo ?? {}).sort(([a], [b]) => a.localeCompare(b)); // NEW: Sorting HV types
 
   return (
     <Card className="shadow-lg">
@@ -1537,7 +1553,7 @@ export const PTrabCostSummary = ({
                   </div>
                 </div>
                 
-                {/* Aba Aviação do Exército (Placeholder) */}
+                {/* Aba Aviação do Exército */}
                 <div className="space-y-3 border-l-4 border-purple-500 pl-3 pt-4">
                   <div className="flex items-center justify-between text-xs font-semibold text-purple-600 mb-2">
                     <div className="flex items-center gap-2">
@@ -1546,14 +1562,33 @@ export const PTrabCostSummary = ({
                     </div>
                     <span className="font-bold text-sm">{formatCurrency(totals.totalAviacaoExercito)}</span>
                   </div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span className="w-1/2 text-left">Horas de Voo Solicitadas</span>
-                    <span className="w-1/4 text-right font-medium">
-                      {/* Vazio */}
-                    </span>
-                    <span className="w-1/4 text-right font-medium">
-                      {formatNumber(totals.quantidadeHorasVoo, 2)} HV
-                    </span>
+                  
+                  {/* Detalhes por Tipo de Aeronave */}
+                  <div className="space-y-1 pl-4 text-[10px]">
+                    {sortedHorasVoo.map(([tipoAnv, data]) => (
+                        <div key={tipoAnv} className="flex justify-between text-muted-foreground">
+                            <span className="w-1/2 text-left">{tipoAnv}</span>
+                            <span className="w-1/4 text-right font-medium">
+                                {formatNumber(data.totalHV, 2)} HV
+                            </span>
+                            <span className="w-1/4 text-right font-medium">
+                                {formatCurrency(data.totalValor)}
+                            </span>
+                        </div>
+                    ))}
+                    
+                    {/* Linha de Total Geral de HV (para manter a informação de quantidade total) */}
+                    {sortedHorasVoo.length > 1 && (
+                        <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1 font-semibold">
+                            <span className="w-1/2 text-left">Total Geral de HV</span>
+                            <span className="w-1/4 text-right font-medium">
+                                {formatNumber(totals.quantidadeHorasVoo, 2)} HV
+                            </span>
+                            <span className="w-1/4 text-right font-medium text-background">
+                                {/* Vazio */}
+                            </span>
+                        </div>
+                    )}
                   </div>
                 </div>
                 
