@@ -68,8 +68,8 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
   const nomeOMExtenso = ptrabData.nome_om_extenso || ptrabData.nome_om;
   const comandoMilitarArea = ptrabData.comando_militar_area || 'COMANDO MILITAR DE ÁREA';
   
-  // A OM Gestora para o relatório de HV é o CODUG do primeiro registro (ou N/A)
-  const omUGDisplay = registros.length > 0 ? registros[0].codug_destino : 'N/A'; 
+  // OM Gestora Fixa para o relatório de HV
+  const OM_GESTORA_HV = 'DMAvEx/COLOG Gestor (160.504)'; 
 
   // --- FUNÇÕES DE EXPORTAÇÃO ---
 
@@ -318,23 +318,21 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     let startRowOM = currentRow;
     
     registros.forEach((registro, index) => {
-        const omDetentora = `${registro.om_detentora || registro.organizacao} (${formatCodug(registro.ug_detentora || registro.ug)})`;
+        // Usamos a OM Gestora fixa para a coluna B
+        const omGestoraDisplay = OM_GESTORA_HV;
+        
+        // Usamos a OM Detentora real para a lógica de mesclagem (se houver agrupamento por OM Detentora)
+        const omDetentoraKey = `${registro.om_detentora || registro.organizacao} (${formatCodug(registro.ug_detentora || registro.ug)})`;
         
         // Lógica de Mesclagem (Se a OM Detentora mudar, mescla as células da coluna B)
-        if (omDetentora !== currentOMDetentora) {
-            if (index > 0) {
-                // Mescla a coluna B da OM anterior
-                worksheet.mergeCells(`B${startRowOM}:B${currentRow - 1}`);
-            }
-            currentOMDetentora = omDetentora;
-            startRowOM = currentRow;
-        }
+        // NOTA: Como a coluna B agora exibe a OM Gestora fixa, a mesclagem deve ser feita sobre todas as linhas de dados.
+        // Se a intenção é mesclar a coluna B para todos os registros, fazemos isso no final.
         
         const isCoterRegistro = registro.valor_nd_30 === 0 && registro.valor_nd_39 === 0;
         
-        // Detalhamento / Memória de Cálculo
+        // Detalhamento / Memória de Cálculo (Ajustado conforme solicitação)
         const memoria = registro.detalhamento_customizado || 
-                        `Horas de Voo (${registro.tipo_anv}) para ${registro.municipio}. Qtd HV: ${formatNumber(registro.quantidade_hv, 2)}h. Amparo: ${registro.amparo || 'N/I'}.`;
+                        `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${formatNumber(registro.quantidade_hv, 2)} HV na Anv ${registro.tipo_anv}. Amparo: ${registro.amparo || 'N/I'}.`;
         
         const dataRow = worksheet.getRow(currentRow);
         
@@ -343,13 +341,13 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
         dataRow.getCell('A').alignment = leftTopAlignment; 
         dataRow.getCell('A').font = baseFontStyle;
         
-        // B: OM (UGE) CODUG (Preenchido apenas na primeira linha do grupo)
-        dataRow.getCell('B').value = omDetentora;
+        // B: OM (UGE) CODUG (OM Gestora Fixa)
+        dataRow.getCell('B').value = omGestoraDisplay;
         dataRow.getCell('B').alignment = dataCenterMiddleAlignment; 
         dataRow.getCell('B').font = baseFontStyle;
         
-        // C: MUNICÍPIO
-        dataRow.getCell('C').value = `${registro.municipio} (CODUG: ${registro.codug_destino})`;
+        // C: MUNICÍPIO (Apenas o município)
+        dataRow.getCell('C').value = registro.municipio;
         dataRow.getCell('C').alignment = dataCenterMiddleAlignment; 
         dataRow.getCell('C').font = baseFontStyle;
         
@@ -384,12 +382,12 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
             dataRow.getCell(col).border = cellBorder;
         });
         currentRow++;
-        
-        // Se for o último registro, mescla a última OM Detentora
-        if (index === registros.length - 1) {
-            worksheet.mergeCells(`B${startRowOM}:B${currentRow - 1}`);
-        }
     });
+    
+    // Mescla a coluna B para todos os registros, já que agora exibe a OM Gestora fixa
+    if (registros.length > 0) {
+        worksheet.mergeCells(`B${startRowOM}:B${currentRow - 1}`);
+    }
     
     // --- LINHA 1: SUBTOTAL ---
     const subtotalRow = worksheet.getRow(currentRow);
@@ -609,12 +607,12 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
               {registros.map((registro, index) => {
                 const isCoterRegistro = registro.valor_nd_30 === 0 && registro.valor_nd_39 === 0;
                 
-                // Detalhamento / Memória de Cálculo
+                // Detalhamento / Memória de Cálculo (Ajustado conforme solicitação)
                 const memoria = registro.detalhamento_customizado || 
-                                `Horas de Voo (${registro.tipo_anv}) para ${registro.municipio}. Qtd HV: ${formatNumber(registro.quantidade_hv, 2)}h. Amparo: ${registro.amparo || 'N/I'}.`;
+                                `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${formatNumber(registro.quantidade_hv, 2)} HV na Anv ${registro.tipo_anv}. Amparo: ${registro.amparo || 'N/I'}.`;
                 
-                // OM Detentora (para a coluna B)
-                const omDetentoraDisplay = `${registro.om_detentora || registro.organizacao} (${formatCodug(registro.ug_detentora || registro.ug)})`;
+                // OM Gestora Fixa para a coluna B
+                const omGestoraDisplay = OM_GESTORA_HV;
                 
                 return (
                   <TableRow key={registro.id} className="h-auto">
@@ -622,10 +620,10 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
                       Horas de voo Anv Aviação do Exército - {registro.tipo_anv}
                     </TableCell>
                     <TableCell className="border border-black text-center align-middle text-[8pt]">
-                      {omDetentoraDisplay}
+                      {omGestoraDisplay}
                     </TableCell>
                     <TableCell className="border border-black text-center align-middle text-[8pt]">
-                      {registro.municipio} (CODUG: {registro.codug_destino})
+                      {registro.municipio}
                     </TableCell>
                     <TableCell className={`border border-black text-center align-middle bg-[#B4C7E7] text-[8pt] ${isCoterRegistro ? 'font-bold' : ''}`}>
                       {isCoterRegistro ? 'A CARGO COTER' : formatCurrency(registro.valor_nd_30)}
@@ -721,7 +719,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
         
         /* REGRAS ESPECÍFICAS DE IMPRESSÃO */
         @media print {
-          @page { size: landscape; margin: 0.5cm; }
+          @page { size: A4 landscape; margin: 0.5cm; }
           body { print-color-adjust: exact; -webkit-print-color-adjust: exact; margin: 0; padding: 0; }
           
           /* Garante que as cores de fundo sejam impressas */
