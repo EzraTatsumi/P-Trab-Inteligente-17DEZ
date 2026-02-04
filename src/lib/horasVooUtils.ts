@@ -48,6 +48,7 @@ export const generateHorasVooMemoriaCalculo = (registro: HorasVooRegistro): stri
     const { valor_total, valor_nd_30, valor_nd_39, quantidade_hv, tipo_anv, amparo } = registro;
     const memoria: string[] = [];
     const totalHv = quantidade_hv.toFixed(2);
+    const amparoText = amparo || 'Não Informado';
 
     memoria.push(`MEMÓRIA DE CÁLCULO - HORAS DE VOO (AvEx)`);
     memoria.push(`--------------------------------------------------`);
@@ -57,15 +58,17 @@ export const generateHorasVooMemoriaCalculo = (registro: HorasVooRegistro): stri
     memoria.push(`--------------------------------------------------`);
 
     if (valor_nd_30 > 0) {
+        // NOVO FORMATO SOLICITADO
         memoria.push(`33.90.30 – Aquisição de Suprimento de Aviação, referente a ${totalHv} HV na Anv ${tipo_anv}.`);
-        memoria.push(`Amparo: ${amparo || 'Não Informado'}`);
+        memoria.push(`Amparo: ${amparoText}`);
         memoria.push(`Valor ND 30: ${formatCurrency(valor_nd_30)}`);
         memoria.push(`--------------------------------------------------`);
     }
 
     if (valor_nd_39 > 0) {
+        // NOVO FORMATO SOLICITADO
         memoria.push(`33.90.39 – Aquisição de Serviços de Aviação, referente a ${totalHv} HV na Anv ${tipo_anv}.`);
-        memoria.push(`Amparo: ${amparo || 'Não Informado'}`);
+        memoria.push(`Amparo: ${amparoText}`);
         memoria.push(`Valor ND 39: ${formatCurrency(valor_nd_39)}`);
         memoria.push(`--------------------------------------------------`);
     }
@@ -103,19 +106,21 @@ export const generateConsolidatedHorasVooMemoriaCalculo = (group: ConsolidatedHo
         const totalHv = registro.quantidade_hv.toFixed(2);
         const amparo = registro.amparo || 'N/I';
         
-        let detalhe = `  Município: ${registro.municipio} (CODUG: ${registro.codug_destino}) | Tipo Anv: ${registro.tipo_anv} | Qtd HV: ${totalHv}`;
+        memoria.push(
+            `\n[Item ${index + 1}] - Anv ${registro.tipo_anv} (${totalHv} HV) em ${registro.municipio} (CODUG: ${registro.codug_destino})`
+        );
         
         if (isCoter) {
-            detalhe += ` | Custeio: A CARGO DO COTER`;
+            memoria.push(`  Custeio: A CARGO DO COTER`);
         } else {
-            detalhe += ` | ND 30: ${formatCurrency(registro.valor_nd_30)} | ND 39: ${formatCurrency(registro.valor_nd_39)} | Total: ${formatCurrency(registro.valor_total)}`;
+            if (registro.valor_nd_30 > 0) {
+                memoria.push(`  ND 30: ${formatCurrency(registro.valor_nd_30)}`);
+            }
+            if (registro.valor_nd_39 > 0) {
+                memoria.push(`  ND 39: ${formatCurrency(registro.valor_nd_39)}`);
+            }
+            memoria.push(`  Amparo: ${amparo}`);
         }
-        
-        memoria.push(
-            `\n[Item ${index + 1}]`,
-            detalhe,
-            `  Amparo: ${amparo}`
-        );
     });
 
     memoria.push(
