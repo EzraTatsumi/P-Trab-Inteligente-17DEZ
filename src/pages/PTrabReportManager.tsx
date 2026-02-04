@@ -286,7 +286,7 @@ export interface GrupoOM {
   linhasConcessionaria: LinhaConcessionaria[]; // NOVO: Inicializa Concessionária
 }
 
-// NOVO TIPO: Props para PTrabOperacionalReport (para resolver o erro 3)
+// CORREÇÃO DO ERRO 3: Definindo a interface PTrabOperacionalReportProps corretamente
 export interface PTrabOperacionalReportProps {
     ptrabData: PTrabData;
     omsOrdenadas: string[];
@@ -297,7 +297,7 @@ export interface PTrabOperacionalReportProps {
     registrosPassagem: PassagemRegistro[];
     registrosConcessionaria: ConcessionariaRegistro[];
     diretrizesOperacionais: Tables<'diretrizes_operacionais'> | null;
-    diretrizesPassagens: Tables<'diretrizes_passagens'>[]; // PROPRIEDADE FALTANTE
+    diretrizesPassagens: Tables<'diretrizes_passagens'>[]; // PROPRIEDADE FALTANTE (CORRIGIDA)
     fileSuffix: string;
     generateDiariaMemoriaCalculo: (registro: DiariaRegistro, diretrizesOp: Tables<'diretrizes_operacionais'> | null) => string;
     generateVerbaOperacionalMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string;
