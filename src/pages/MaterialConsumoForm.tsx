@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Trash2, Pencil, Loader2, ChevronDown, ChevronUp, Package, List } from 'lucide-react';
+import { Plus, Trash2, Pencil, Loader2, ChevronDown, ChevronUp, Package, List, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -31,6 +31,7 @@ import {
   MaterialConsumoItemInsert,
   MaterialConsumoItemUpdate,
 } from '@/types/materialConsumo';
+import SubitemCatalogDialog from '@/components/materialConsumo/SubitemCatalogDialog';
 
 interface MaterialConsumoFormProps {
   selectedYear: number;
@@ -161,8 +162,13 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
   const queryClient = useQueryClient();
   const [isSubitemFormOpen, setIsSubitemFormOpen] = useState(false);
   const [subitemToEdit, setSubitemToEdit] = useState<MaterialConsumoSubitem | null>(null);
+  
+  // Novos estados para os campos do subitem
   const [newSubitemNome, setNewSubitemNome] = useState('');
-  const [isSubitemReferenceOpen, setIsSubitemReferenceOpen] = useState(false); // NOVO ESTADO PARA O COLLAPSIBLE
+  const [newSubitemNr, setNewSubitemNr] = useState('');
+  const [newSubitemDescricao, setNewSubitemDescricao] = useState('');
+  
+  const [isCatalogOpen, setIsCatalogOpen] = useState(false); // Novo estado para o catálogo
 
   const [isItemFormOpen, setIsItemFormOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<MaterialConsumoItem | null>(null);
@@ -196,6 +202,8 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
       setIsSubitemFormOpen(false);
       setSubitemToEdit(null);
       setNewSubitemNome('');
+      setNewSubitemNr('');
+      setNewSubitemDescricao('');
       toast.success(subitemToEdit ? 'Subitem atualizado!' : 'Subitem criado!');
     },
     onError: (error) => {
@@ -261,12 +269,19 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
       return;
     }
 
-    subitemMutation.mutate({ id: subitemToEdit?.id, nome: trimmedName });
+    subitemMutation.mutate({ 
+      id: subitemToEdit?.id, 
+      nome: trimmedName,
+      nr_subitem: newSubitemNr.trim() || null,
+      descricao: newSubitemDescricao.trim() || null,
+    });
   };
 
   const handleEditSubitem = (subitem: MaterialConsumoSubitem) => {
     setSubitemToEdit(subitem);
     setNewSubitemNome(subitem.nome);
+    setNewSubitemNr(subitem.nr_subitem || '');
+    setNewSubitemDescricao(subitem.descricao || '');
     setIsSubitemFormOpen(true);
   };
 
@@ -331,7 +346,7 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
           <div className="flex justify-end">
             <Button
               type="button"
-              onClick={() => { setSubitemToEdit(null); setNewSubitemNome(''); setIsSubitemFormOpen(true); }}
+              onClick={() => { setSubitemToEdit(null); setNewSubitemNome(''); setNewSubitemNr(''); setNewSubitemDescricao(''); setIsSubitemFormOpen(true); }}
               disabled={subitemMutation.isPending}
               variant="outline"
               size="sm"
@@ -456,7 +471,7 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
         </CardContent>
       </Card>
 
-      {/* Diálogo de Subitem (MODIFICADO) */}
+      {/* Diálogo de Subitem */}
       <Dialog open={isSubitemFormOpen} onOpenChange={setIsSubitemFormOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -464,41 +479,51 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
           </DialogHeader>
           <div className="grid gap-4 py-4">
             
-            {/* Seção de Referência (Collapsible) */}
+            {/* Botão para abrir o Catálogo */}
             {subitems.length > 0 && (
-              <Collapsible 
-                open={isSubitemReferenceOpen} 
-                onOpenChange={setIsSubitemReferenceOpen}
-                className="border rounded-md p-3 bg-muted/50"
+              <Button 
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsCatalogOpen(true)}
+                className="w-full"
               >
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between cursor-pointer">
-                    <h4 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                      <List className="h-4 w-4" />
-                      Ver Subitens Existentes ({subitems.length})
-                    </h4>
-                    {isSubitemReferenceOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-3 pt-2 border-t border-border">
-                  <div className="max-h-[150px] overflow-y-auto space-y-1">
-                    {subitems.map(s => (
-                      <p key={s.id} className="text-xs text-foreground/80">
-                        - {s.nome}
-                      </p>
-                    ))}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+                <BookOpen className="h-4 w-4 mr-2" />
+                Ver Catálogo de Subitens ({subitems.length})
+              </Button>
             )}
             
+            <div className="space-y-2">
+              <Label htmlFor="nr_subitem">Nr Subitem (Opcional)</Label>
+              <Input
+                id="nr_subitem"
+                value={newSubitemNr}
+                onChange={(e) => setNewSubitemNr(e.target.value)}
+                placeholder="Ex: 01.01.01"
+                onKeyDown={handleEnterToNextField}
+                disabled={subitemMutation.isPending}
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="nome">Nome do Subitem</Label>
               <Input
                 id="nome"
                 value={newSubitemNome}
                 onChange={(e) => setNewSubitemNome(e.target.value)}
-                placeholder="Ex: Material de Limpeza, Material de Expediente"
+                placeholder="Ex: Material de Limpeza"
+                onKeyDown={handleEnterToNextField}
+                disabled={subitemMutation.isPending}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="descricao">Descrição do Subitem (Opcional)</Label>
+              <Input
+                id="descricao"
+                value={newSubitemDescricao}
+                onChange={(e) => setNewSubitemDescricao(e.target.value)}
+                placeholder="Detalhes sobre a categoria de consumo"
                 onKeyDown={(e) => e.key === 'Enter' && handleSaveSubitem()}
                 disabled={subitemMutation.isPending}
               />
@@ -523,6 +548,13 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
         itemToEdit={itemToEdit}
         onSave={handleSaveItem}
         loading={itemMutation.isPending || deleteItemMutation.isPending}
+      />
+
+      {/* Catálogo de Subitens */}
+      <SubitemCatalogDialog
+        open={isCatalogOpen}
+        onOpenChange={setIsCatalogOpen}
+        subitems={subitems}
       />
     </div>
   );
