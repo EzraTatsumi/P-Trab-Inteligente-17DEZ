@@ -1283,6 +1283,68 @@ export type Database = {
         }
         Relationships: []
       }
+      material_consumo_itens: {
+        Row: {
+          id: string
+          user_id: string
+          subitem_id: string
+          descricao: string
+          preco_unitario: number
+          pregao: string | null
+          uasg: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          subitem_id: string
+          descricao: string
+          preco_unitario: number
+          pregao?: string | null
+          uasg?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          subitem_id?: string
+          descricao?: string
+          preco_unitario?: number
+          pregao?: string | null
+          uasg?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_consumo_itens_subitem_id_fkey"
+            columns: ["subitem_id"]
+            isOneToOne: false
+            referencedRelation: "material_consumo_subitens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_consumo_subitens: {
+        Row: {
+          id: string
+          user_id: string
+          nome: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          nome: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          nome?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       diretrizes_concessionaria: {
         Row: {
           id: string

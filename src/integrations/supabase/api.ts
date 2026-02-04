@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 import { supabase } from "./client"; // Importar o cliente Supabase
 import { Profile } from "@/types/profiles"; // Importar o novo tipo Profile
+import { MaterialConsumoSubitem, MaterialConsumoSubitemInsert, MaterialConsumoSubitemUpdate, MaterialConsumoItem, MaterialConsumoItemInsert, MaterialConsumoItemUpdate } from "@/types/materialConsumo";
 
 // Interface para a resposta consolidada da Edge Function
 interface EdgeFunctionResponse {
@@ -140,4 +141,129 @@ export async function fetchUserProfile(): Promise<Profile> {
         ...profileData,
         om_details: null, // Força null para evitar erros de tipo, já que o JOIN falhou
     } as Profile;
+}
+
+// --- Material Consumo Subitems CRUD ---
+
+export async function fetchMaterialConsumoSubitems(): Promise<MaterialConsumoSubitem[]> {
+  const { data, error } = await supabase
+    .from('material_consumo_subitens')
+    .select('*')
+    .order('nome', { ascending: true });
+
+  if (error) {
+    console.error("Erro ao buscar subitens de material de consumo:", error);
+    throw new Error("Falha ao carregar subitens.");
+  }
+  return data;
+}
+
+export async function createMaterialConsumoSubitem(subitem: MaterialConsumoSubitemInsert): Promise<MaterialConsumoSubitem> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Usuário não autenticado.");
+
+  const { data, error } = await supabase
+    .from('material_consumo_subitens')
+    .insert({ ...subitem, user_id: user.id })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Erro ao criar subitem de material de consumo:", error);
+    throw new Error("Falha ao criar subitem.");
+  }
+  toast.success(`Subitem "${data.nome}" criado com sucesso.`);
+  return data;
+}
+
+export async function updateMaterialConsumoSubitem(id: string, subitem: MaterialConsumoSubitemUpdate): Promise<MaterialConsumoSubitem> {
+  const { data, error } = await supabase
+    .from('material_consumo_subitens')
+    .update(subitem)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Erro ao atualizar subitem de material de consumo:", error);
+    throw new Error("Falha ao atualizar subitem.");
+  }
+  toast.success(`Subitem "${data.nome}" atualizado com sucesso.`);
+  return data;
+}
+
+export async function deleteMaterialConsumoSubitem(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('material_consumo_subitens')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error("Erro ao deletar subitem de material de consumo:", error);
+    throw new Error("Falha ao deletar subitem.");
+  }
+  toast.success("Subitem deletado com sucesso.");
+}
+
+// --- Material Consumo Items CRUD ---
+
+export async function fetchMaterialConsumoItems(subitemId: string): Promise<MaterialConsumoItem[]> {
+  const { data, error } = await supabase
+    .from('material_consumo_itens')
+    .select('*')
+    .eq('subitem_id', subitemId)
+    .order('descricao', { ascending: true });
+
+  if (error) {
+    console.error("Erro ao buscar itens de material de consumo:", error);
+    throw new Error("Falha ao carregar itens.");
+  }
+  return data;
+}
+
+export async function createMaterialConsumoItem(item: MaterialConsumoItemInsert): Promise<MaterialConsumoItem> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Usuário não autenticado.");
+
+  const { data, error } = await supabase
+    .from('material_consumo_itens')
+    .insert({ ...item, user_id: user.id })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Erro ao criar item de material de consumo:", error);
+    throw new Error("Falha ao criar item.");
+  }
+  toast.success(`Item "${data.descricao}" criado com sucesso.`);
+  return data;
+}
+
+export async function updateMaterialConsumoItem(id: string, item: MaterialConsumoItemUpdate): Promise<MaterialConsumoItem> {
+  const { data, error } = await supabase
+    .from('material_consumo_itens')
+    .update(item)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Erro ao atualizar item de material de consumo:", error);
+    throw new Error("Falha ao atualizar item.");
+  }
+  toast.success(`Item "${data.descricao}" atualizado com sucesso.`);
+  return data;
+}
+
+export async function deleteMaterialConsumoItem(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('material_consumo_itens')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error("Erro ao deletar item de material de consumo:", error);
+    throw new Error("Falha ao deletar item.");
+  }
+  toast.success("Item deletado com sucesso.");
 }
