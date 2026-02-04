@@ -6,7 +6,7 @@ import { Loader2, Pencil, RefreshCw, XCircle, Check } from "lucide-react";
 import { formatCodug } from "@/lib/formatUtils";
 import { cn } from "@/lib/utils";
 import { ConsolidatedPassagemRecord, generateConsolidatedPassagemMemoriaCalculo } from "@/lib/passagemUtils";
-import { Badge } from "@/components/ui/badge"; // Importando Badge
+import { Badge } from "@/components/ui/badge";
 
 interface ConsolidatedPassagemMemoriaProps {
     group: ConsolidatedPassagemRecord;
@@ -142,6 +142,7 @@ export const ConsolidatedPassagemMemoria = ({
                         placeholder="Digite a memória de cálculo..."
                     />
                 ) : (
+                    // CORREÇÃO: Garantir que o whitespace-pre-wrap está aplicado
                     <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
                         {currentMemoriaText}
                     </pre>
