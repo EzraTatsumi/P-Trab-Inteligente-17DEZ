@@ -48,7 +48,8 @@ export const generateHorasVooMemoriaCalculo = (registro: HorasVooRegistro): stri
     const { valor_total, valor_nd_30, valor_nd_39, quantidade_hv, tipo_anv, municipio, amparo } = registro;
 
     const memoria = [
-        `MEMÓRIA DE CÁLCULO - HORAS DE VOO (AvEx)`,
+        `
+        MEMÓRIA DE CÁLCULO - HORAS DE VOO (AvEx)`,
         `--------------------------------------------------`,
         `OM Favorecida: ${registro.organizacao} (UG: ${formatCodug(registro.ug)})`,
         `OM Detentora do Recurso: ${registro.om_detentora} (UG: ${formatCodug(registro.ug_detentora)})`,
