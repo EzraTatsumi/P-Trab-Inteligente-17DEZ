@@ -30,6 +30,10 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
   const totalND39 = useMemo(() => {
     return registros.reduce((acc, r) => acc + r.valor_nd_39, 0);
   }, [registros]);
+  
+  const totalHV = useMemo(() => {
+    return registros.reduce((acc, r) => acc + r.quantidade_hv, 0);
+  }, [registros]);
 
   // Lógica para exibir "A CARGO DO COTER"
   const isACargoDoCoter = totalND30 === 0 && totalND39 === 0;
@@ -61,28 +65,20 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
   }, [registros]);
 
   const detalhamentoConsolidado = useMemo(() => {
-    // Concatena todos os detalhamentos customizados ou detalhamentos padrão
-    const detalhes = registros.map(r => {
-      const detalhe = r.detalhamento_customizado || r.detalhamento || '';
-      const ugDetentora = r.ug_detentora || r.ug;
-      
-      const tipoAnv = r.tipo_anv;
-      const quantidadeHv = formatNumber(r.quantidade_hv, 2);
-      
-      // Se houver detalhamento customizado, usá-lo.
-      if (detalhe.trim().length > 0) {
-          return detalhe;
-      }
-      
-      // Detalhamento padrão (se não houver customizado)
-      return `ND 33.90.30 – Aquisição de Suprimento de Aviação, referente a ${quantidadeHv} HV na Anv ${tipoAnv} (UG: ${ugDetentora}).`;
-    }).filter(d => d.trim().length > 0).join('\n\n');
+    if (registros.length === 0) return '';
     
-    // Adiciona a nota sobre a diretriz de custeio (usando o texto exato do modelo)
-    const notaDiretriz = "\n\nTudo conforme o DIEx nº 972-DMAvEx/COLOG, de 16 de dezembro de 2022, do Subcomandate Logístico versando sobre o valor da hora de voo para o ano de 2023. O valor foi convertido para REAIS utilizando-se da cotação do dólar (PTAX do DÓLAR).";
+    // 1. Determinar o tipo de aeronave (usando o primeiro registro como base)
+    const tipoAnv = registros[0].tipo_anv;
+    const amparo = registros[0].amparo || 'N/I';
     
-    return detalhes.trim().length > 0 ? detalhes + notaDiretriz : notaDiretriz;
-  }, [registros]);
+    // 2. Gerar o cabeçalho consolidado
+    const header = `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${formatNumber(totalHV, 2)} HV na Anv ${tipoAnv}.`;
+    
+    // 3. Adicionar o amparo legal
+    const notaDiretriz = `\n\n${amparo}`;
+    
+    return header + notaDiretriz;
+  }, [registros, totalHV]);
 
   return (
     <div className="min-h-screen bg-background">
