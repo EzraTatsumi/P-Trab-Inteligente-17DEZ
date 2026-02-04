@@ -508,7 +508,7 @@ const fetchPTrabTotals = async (ptrabId: string) => {
       quantidadeHorasVoo += quantidadeHv;
       
       if (!groupedHorasVoo[tipoAnv]) {
-          groupedHorasVoo[tipoAnv] = { totalValor: 0, totalND30: 0, totalND39: 0, totalHV: 0 };
+          groupedHorasVoo[tipoAnv] = { totalValor: 0, totalHV: 0 };
       }
       groupedHorasVoo[tipoAnv].totalValor += valorTotal;
       groupedHorasVoo[tipoAnv].totalHV += quantidadeHv;
@@ -1573,14 +1573,14 @@ export const PTrabCostSummary = ({
                             {/* Span 1570: Tipo de Aeronave */}
                             <span className="w-1/2 text-left">{tipoAnv}</span>
                             
-                            {/* Span 1574 (Antigo 1571): Quantidade de HV por ANV */}
-                            <span className="w-1/4 text-right font-medium">
-                                {formatNumber(data.totalHV, 2)} HV
+                            {/* Coluna vazia para alinhamento */}
+                            <span className="w-1/4 text-right font-medium text-background">
+                                {/* Vazio */}
                             </span>
                             
-                            {/* Span 1577 (Antigo 1574): Valor Monetário */}
+                            {/* Span 1577 (Antigo 1574): Quantidade de HV por ANV (Movido para a direita) */}
                             <span className="w-1/4 text-right font-medium">
-                                {formatCurrency(data.totalValor)}
+                                {formatNumber(data.totalHV, 2)} HV
                             </span>
                         </div>
                     ))}
