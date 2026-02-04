@@ -307,19 +307,24 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="space-y-0 pb-2">
           <CardTitle className="text-lg font-semibold">Subitens de Material de Consumo</CardTitle>
-          <Button
-            type="button"
-            onClick={() => { setSubitemToEdit(null); setNewSubitemNome(''); setIsSubitemFormOpen(true); }}
-            disabled={subitemMutation.isPending}
-            size="sm"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Subitem
-          </Button>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="pt-4 space-y-4">
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={() => { setSubitemToEdit(null); setNewSubitemNome(''); setIsSubitemFormOpen(true); }}
+              disabled={subitemMutation.isPending}
+              variant="outline"
+              size="sm"
+              className="w-full"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Subitem
+            </Button>
+          </div>
+          
           {subitems.length === 0 ? (
             <p className="text-center text-muted-foreground">Nenhum subitem cadastrado. Comece adicionando um!</p>
           ) : (
