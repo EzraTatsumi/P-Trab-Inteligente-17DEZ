@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Trash2, Pencil, Loader2, ChevronDown, ChevronUp, Package } from 'lucide-react';
+import { Plus, Trash2, Pencil, Loader2, ChevronDown, ChevronUp, Package, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -162,6 +162,7 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
   const [isSubitemFormOpen, setIsSubitemFormOpen] = useState(false);
   const [subitemToEdit, setSubitemToEdit] = useState<MaterialConsumoSubitem | null>(null);
   const [newSubitemNome, setNewSubitemNome] = useState('');
+  const [isSubitemReferenceOpen, setIsSubitemReferenceOpen] = useState(false); // NOVO ESTADO PARA O COLLAPSIBLE
 
   const [isItemFormOpen, setIsItemFormOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<MaterialConsumoItem | null>(null);
@@ -195,6 +196,7 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
       setIsSubitemFormOpen(false);
       setSubitemToEdit(null);
       setNewSubitemNome('');
+      toast.success(subitemToEdit ? 'Subitem atualizado!' : 'Subitem criado!');
     },
     onError: (error) => {
       toast.error(sanitizeError(error));
@@ -205,6 +207,7 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
     mutationFn: (id: string) => deleteMaterialConsumoSubitem(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materialConsumoSubitems'] });
+      toast.success('Subitem excluído com sucesso.');
     },
     onError: (error) => {
       toast.error(sanitizeError(error));
@@ -223,6 +226,7 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
       queryClient.invalidateQueries({ queryKey: ['materialConsumoItems', currentSubitemId] });
       setIsItemFormOpen(false);
       setItemToEdit(null);
+      toast.success(itemToEdit ? 'Item atualizado!' : 'Item criado!');
     },
     onError: (error) => {
       toast.error(sanitizeError(error));
@@ -233,6 +237,7 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
     mutationFn: (id: string) => deleteMaterialConsumoItem(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materialConsumoItems', currentSubitemId] });
+      toast.success('Item excluído com sucesso.');
     },
     onError: (error) => {
       toast.error(sanitizeError(error));
@@ -240,11 +245,23 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
   });
 
   const handleSaveSubitem = () => {
-    if (!newSubitemNome.trim()) {
+    const trimmedName = newSubitemNome.trim();
+    if (!trimmedName) {
       toast.error('O nome do subitem é obrigatório.');
       return;
     }
-    subitemMutation.mutate({ id: subitemToEdit?.id, nome: newSubitemNome.trim() });
+    
+    // Validação de duplicidade (apenas se for criação ou se o nome for alterado)
+    const isDuplicate = subitems.some(
+      (s) => s.nome.toLowerCase() === trimmedName.toLowerCase() && s.id !== subitemToEdit?.id
+    );
+
+    if (isDuplicate) {
+      toast.error('Já existe um subitem com este nome.');
+      return;
+    }
+
+    subitemMutation.mutate({ id: subitemToEdit?.id, nome: trimmedName });
   };
 
   const handleEditSubitem = (subitem: MaterialConsumoSubitem) => {
@@ -344,7 +361,8 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground hidden sm:inline">
-                          {items.length} itens
+                          {/* Nota: Não temos a contagem de itens aqui sem um fetch adicional, 
+                          então mantemos a exibição simples ou removemos se for misleading. */}
                         </span>
                         {openSubitems[subitem.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </div>
@@ -438,13 +456,42 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
         </CardContent>
       </Card>
 
-      {/* Diálogo de Subitem */}
+      {/* Diálogo de Subitem (MODIFICADO) */}
       <Dialog open={isSubitemFormOpen} onOpenChange={setIsSubitemFormOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>{subitemToEdit ? 'Editar Subitem' : 'Novo Subitem de Consumo'}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            
+            {/* Seção de Referência (Collapsible) */}
+            {subitems.length > 0 && (
+              <Collapsible 
+                open={isSubitemReferenceOpen} 
+                onOpenChange={setIsSubitemReferenceOpen}
+                className="border rounded-md p-3 bg-muted/50"
+              >
+                <CollapsibleTrigger asChild>
+                  <div className="flex items-center justify-between cursor-pointer">
+                    <h4 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                      <List className="h-4 w-4" />
+                      Ver Subitens Existentes ({subitems.length})
+                    </h4>
+                    {isSubitemReferenceOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3 pt-2 border-t border-border">
+                  <div className="max-h-[150px] overflow-y-auto space-y-1">
+                    {subitems.map(s => (
+                      <p key={s.id} className="text-xs text-foreground/80">
+                        - {s.nome}
+                      </p>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="nome">Nome do Subitem</Label>
               <Input
