@@ -39,6 +39,7 @@ import {
 } from "@/types/diretrizesConcessionaria";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MaterialConsumoForm from "@/pages/MaterialConsumoForm";
+import MaterialConsumoForm from "@/pages/MaterialConsumoForm";
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
