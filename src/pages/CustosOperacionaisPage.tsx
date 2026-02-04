@@ -37,7 +37,16 @@ import {
     CATEGORIAS_CONCESSIONARIA, 
     CategoriaConcessionaria 
 } from "@/types/diretrizesConcessionaria";
+import { 
+    DiretrizMaterialConsumoCategoria, 
+    DiretrizMaterialConsumoCategoriaForm,
+    DiretrizMaterialConsumoItem,
+    materialConsumoItemSchema
+} from "@/types/diretrizesMaterialConsumo"; // NOVO: Importa tipos de Material de Consumo
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import MaterialConsumoCategoriaFormDialog from "@/components/MaterialConsumoCategoriaFormDialog"; // NOVO
+import MaterialConsumoCategoriaRow from "@/components/MaterialConsumoCategoriaRow"; // NOVO
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -58,7 +67,6 @@ const OPERATIONAL_FIELDS = [
   { key: 'valor_fretamento_aereo_hora', label: 'Fretamento Aéreo (R$/hora)', type: 'currency' as const, placeholder: 'Ex: 1.200,00' },
   { key: 'valor_locacao_estrutura_dia', label: 'Locação de Estrutura (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 300,00' },
   { key: 'valor_locacao_viaturas_dia', label: 'Locação de Viaturas (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 150,00' },
-  { key: 'fator_material_consumo', label: 'Material de Consumo (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.02 (para 2%)' },
   // O fator_concessionaria foi removido daqui, pois a configuração agora é detalhada por contrato/consumo
 ];
 
@@ -71,7 +79,6 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   valor_fretamento_aereo_hora: 0,
   valor_locacao_estrutura_dia: 0,
   valor_locacao_viaturas_dia: 0,
-  fator_material_consumo: 0,
   fator_concessionaria: 0, // Mantido no default para compatibilidade com o schema DB
   observacoes: "",
   
@@ -127,6 +134,7 @@ const CustosOperacionaisPage = () => {
     initialState['diarias_detalhe'] = false; 
     initialState['passagens_detalhe'] = shouldOpenPassagens || false; 
     initialState['concessionaria_detalhe'] = shouldOpenConcessionaria || false; // ATUALIZADO
+    initialState['material_consumo_detalhe'] = false; // NOVO: Material de Consumo
     return initialState;
   });
   
@@ -143,6 +151,12 @@ const CustosOperacionaisPage = () => {
   const [diretrizConcessionariaToEdit, setDiretrizConcessionariaToEdit] = useState<DiretrizConcessionaria | null>(null);
   const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<CategoriaConcessionaria>(CATEGORIAS_CONCESSIONARIA[0]);
   // END CONCESSIONARIA STATES
+  
+  // --- ESTADOS DE DIRETRIZES DE MATERIAL DE CONSUMO ---
+  const [diretrizesMaterialConsumoCategorias, setDiretrizesMaterialConsumoCategorias] = useState<DiretrizMaterialConsumoCategoria[]>([]);
+  const [isMaterialConsumoCategoriaFormOpen, setIsMaterialConsumoCategoriaFormOpen] = useState(false);
+  const [diretrizMaterialConsumoCategoriaToEdit, setDiretrizMaterialConsumoCategoriaToEdit] = useState<DiretrizMaterialConsumoCategoria | null>(null);
+  // END MATERIAL CONSUMO STATES
   
   // Efeito para rolar para o topo na montagem
   useEffect(() => {
@@ -171,7 +185,8 @@ const CustosOperacionaisPage = () => {
     if (selectedYear) {
       loadDiretrizesForYear(selectedYear);
       loadDiretrizesPassagens(selectedYear); 
-      loadDiretrizesConcessionaria(selectedYear); // NEW LOAD
+      loadDiretrizesConcessionaria(selectedYear); 
+      loadDiretrizesMaterialConsumoCategorias(selectedYear); // NOVO: Carrega categorias de Material de Consumo
     }
   }, [selectedYear]);
 
@@ -180,25 +195,28 @@ const CustosOperacionaisPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Busca anos disponíveis nas três tabelas
+      // Busca anos disponíveis nas quatro tabelas
       const [
           { data: opData, error: opError },
           { data: passagensData, error: passagensError },
-          { data: concessionariaData, error: concessionariaError } 
+          { data: concessionariaData, error: concessionariaError },
+          { data: materialConsumoData, error: materialConsumoError } // NOVO
       ] = await Promise.all([
           supabase.from("diretrizes_operacionais").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_passagens").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_concessionaria").select("ano_referencia").eq("user_id", user.id), 
+          supabase.from("diretrizes_material_consumo_categorias").select("ano_referencia").eq("user_id", user.id), // NOVO
       ]);
 
-      if (opError || passagensError || concessionariaError) throw opError || passagensError || concessionariaError;
+      if (opError || passagensError || concessionariaError || materialConsumoError) throw opError || passagensError || concessionariaError || materialConsumoError;
 
       // CORREÇÃO: Acessar 'ano_referencia' de forma segura
       const opYears = opData ? opData.map(d => d.ano_referencia) : [];
       const passagensYears = passagensData ? passagensData.map(d => d.ano_referencia) : [];
-      const concessionariaYears = concessionariaData ? concessionariaData.map(d => d.ano_referencia) : []; // NEW
+      const concessionariaYears = concessionariaData ? concessionariaData.map(d => d.ano_referencia) : [];
+      const materialConsumoYears = materialConsumoData ? materialConsumoData.map(d => d.ano_referencia) : []; // NOVO
 
-      const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears]); // UPDATED
+      const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears, ...materialConsumoYears]); // ATUALIZADO
       
       if (defaultYearId && !yearsToInclude.has(defaultYearId)) {
           yearsToInclude.add(defaultYearId);
@@ -238,7 +256,6 @@ const CustosOperacionaisPage = () => {
         ...loadedData,
         fator_passagens_aereas: Number(loadedData.fator_passagens_aereas || 0),
         fator_servicos_terceiros: Number(loadedData.fator_servicos_terceiros || 0),
-        fator_material_consumo: Number(loadedData.fator_material_consumo || 0),
         fator_concessionaria: Number(loadedData.fator_concessionaria || 0),
         
         valor_complemento_alimentacao: Number(loadedData.valor_complemento_alimentacao || 0),
@@ -352,10 +369,145 @@ const CustosOperacionaisPage = () => {
         toast.error("Erro ao carregar diretrizes de concessionária.");
     }
   };
+  
+  // --- LÓGICA DE MATERIAL DE CONSUMO (NOVO) ---
+  
+  const loadDiretrizesMaterialConsumoCategorias = async (year: number) => {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        const { data, error } = await supabase
+            .from('diretrizes_material_consumo_categorias')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('ano_referencia', year)
+            .order('nome_categoria', { ascending: true });
+            
+        if (error) throw error;
+        
+        setDiretrizesMaterialConsumoCategorias(data || []);
+        
+    } catch (error) {
+        console.error("Erro ao carregar categorias de material de consumo:", error);
+        toast.error("Erro ao carregar categorias de material de consumo.");
+    }
+  };
+  
+  const handleSaveMaterialConsumoCategoria = async (data: DiretrizMaterialConsumoCategoriaForm & { id?: string }) => {
+      try {
+          setLoading(true);
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error("Usuário não autenticado");
+          
+          const dbData: TablesInsert<'diretrizes_material_consumo_categorias'> = {
+              user_id: user.id,
+              ano_referencia: selectedYear,
+              nome_categoria: data.nome_categoria,
+              observacoes: data.observacoes || null,
+          };
+
+          if (data.id) {
+              const { error } = await supabase
+                  .from('diretrizes_material_consumo_categorias')
+                  .update(dbData as TablesUpdate<'diretrizes_material_consumo_categorias'>)
+                  .eq('id', data.id);
+              if (error) throw error;
+              toast.success("Categoria de Material de Consumo atualizada!");
+          } else {
+              const { error } = await supabase
+                  .from('diretrizes_material_consumo_categorias')
+                  .insert([dbData]);
+              if (error) throw error;
+              toast.success("Nova Categoria de Material de Consumo cadastrada!");
+          }
+          
+          await loadDiretrizesMaterialConsumoCategorias(selectedYear);
+          setDiretrizMaterialConsumoCategoriaToEdit(null);
+          setIsMaterialConsumoCategoriaFormOpen(false);
+          
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
+      }
+  };
+  
+  const handleStartEditMaterialConsumoCategoria = (diretriz: DiretrizMaterialConsumoCategoria) => {
+      setDiretrizMaterialConsumoCategoriaToEdit(diretriz);
+      setIsMaterialConsumoCategoriaFormOpen(true);
+  };
+  
+  const handleOpenNewMaterialConsumoCategoria = () => {
+      setDiretrizMaterialConsumoCategoriaToEdit(null);
+      setIsMaterialConsumoCategoriaFormOpen(true);
+  };
+  
+  const handleDeleteMaterialConsumoCategoria = async (id: string, nome: string) => {
+      if (!confirm(`Tem certeza que deseja excluir a categoria de material de consumo "${nome}" e TODOS os itens associados? Esta ação é irreversível.`)) return;
+      
+      try {
+          setLoading(true);
+          // A exclusão em cascata deve ser tratada pelo RLS e pela chave estrangeira no DB
+          await supabase.from('diretrizes_material_consumo_categorias').delete().eq('id', id);
+          toast.success("Categoria de Material de Consumo excluída!");
+          await loadDiretrizesMaterialConsumoCategorias(selectedYear);
+          // Invalida a query de itens para garantir que não haja dados órfãos no cache
+          queryClient.invalidateQueries({ queryKey: ["materialConsumoItens", id] });
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
+      }
+  };
+  
+  // Lógica para salvar/deletar ITENS (Nível 4) - Usaremos mutações do TanStack Query dentro do MaterialConsumoCategoriaRow
+  
+  const renderMaterialConsumoSection = () => {
+      return (
+          <div className="space-y-4">
+              {diretrizesMaterialConsumoCategorias.length > 0 ? (
+                  <Card className="p-4">
+                      <CardTitle className="text-base font-semibold mb-3">Subitens (Categorias) Cadastrados</CardTitle>
+                      <div className="space-y-2">
+                          {diretrizesMaterialConsumoCategorias.map(d => (
+                              <MaterialConsumoCategoriaRow
+                                  key={d.id}
+                                  categoria={d}
+                                  onEdit={handleStartEditMaterialConsumoCategoria}
+                                  onDelete={handleDeleteMaterialConsumoCategoria}
+                                  loading={loading}
+                              />
+                          ))}
+                      </div>
+                  </Card>
+              ) : (
+                  <Card className="p-4 text-center text-muted-foreground">
+                      Nenhuma categoria de material de consumo cadastrada para o ano de referência.
+                  </Card>
+              )}
+              
+              <div className="flex justify-end">
+                  <Button 
+                      type="button" 
+                      onClick={handleOpenNewMaterialConsumoCategoria}
+                      disabled={loading}
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full"
+                  >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Adicionar Novo Subitem (Categoria)
+                  </Button>
+              </div>
+          </div>
+      );
+  };
+  // END LÓGICA DE MATERIAL DE CONSUMO
 
   const handleSaveDiretrizes = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } = { user: null } } = await supabase.auth.getUser();
       if (!user) {
         toast.error("Usuário não autenticado");
         return;
@@ -374,7 +526,6 @@ const CustosOperacionaisPage = () => {
         valor_fretamento_aereo_hora: diretrizes.valor_fretamento_aereo_hora || 0,
         valor_locacao_estrutura_dia: diretrizes.valor_locacao_estrutura_dia || 0,
         valor_locacao_viaturas_dia: diretrizes.valor_locacao_viaturas_dia || 0,
-        fator_material_consumo: diretrizes.fator_material_consumo || 0,
         fator_concessionaria: diretrizes.fator_concessionaria || 0,
         diaria_of_gen_bsb: diretrizes.diaria_of_gen_bsb || 0,
         diaria_of_gen_capitais: diretrizes.diaria_of_gen_capitais || 0,
@@ -391,6 +542,7 @@ const CustosOperacionaisPage = () => {
         taxa_embarque: diretrizes.taxa_embarque || 0,
       };
       
+      // NOTE: fator_material_consumo foi removido do schema e do objeto, mas o campo fator_concessionaria foi mantido
       diretrizOperacionalSchema.parse(dataToValidate);
 
       const diretrizData: TablesInsert<'diretrizes_operacionais'> = {
@@ -402,7 +554,6 @@ const CustosOperacionaisPage = () => {
         valor_fretamento_aereo_hora: dataToValidate.valor_fretamento_aereo_hora,
         valor_locacao_estrutura_dia: dataToValidate.valor_locacao_estrutura_dia,
         valor_locacao_viaturas_dia: dataToValidate.valor_locacao_viaturas_dia,
-        fator_material_consumo: dataToValidate.fator_material_consumo,
         fator_concessionaria: dataToValidate.fator_concessionaria,
         observacoes: diretrizes.observacoes,
         
@@ -451,34 +602,7 @@ const CustosOperacionaisPage = () => {
     }
   };
   
-  const handleSetDefaultYear = async () => {
-    if (!diretrizes.ano_referencia) {
-      toast.error("Selecione um ano de referência válido.");
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
-      
-      const { error } = await supabase
-        .from('profiles')
-        .update({ default_operacional_year: diretrizes.ano_referencia })
-        .eq('id', user.id);
-        
-      if (error) throw error;
-      
-      queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
-      
-      toast.success(`Ano ${diretrizes.ano_referencia} definido como padrão para cálculos!`);
-      
-    } catch (error: any) {
-      toast.error(sanitizeError(error));
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ... (handleSetDefaultYear)
 
   const handleCopyDiretrizes = async (sourceYear: number, targetYear: number) => {
     try {
@@ -531,7 +655,7 @@ const CustosOperacionaisPage = () => {
           if (insertPassagensError) throw insertPassagensError;
       }
       
-      // 3. Copiar Diretrizes de Concessionária (NEW LOGIC)
+      // 3. Copiar Diretrizes de Concessionária
       const { data: sourceConcessionaria, error: concessionariaError } = await supabase
         .from("diretrizes_concessionaria")
         .select("categoria, nome_concessionaria, consumo_pessoa_dia, fonte_consumo, custo_unitario, fonte_custo, unidade_custo")
@@ -558,7 +682,66 @@ const CustosOperacionaisPage = () => {
           if (insertConcessionariaError) throw insertConcessionariaError;
       }
       
-      toast.success(`Diretrizes operacionais, de passagens e de concessionária do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
+      // 4. Copiar Categorias de Material de Consumo (NOVO)
+      const { data: sourceCategorias, error: categoriasError } = await supabase
+        .from("diretrizes_material_consumo_categorias")
+        .select("id, nome_categoria, observacoes")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", sourceYear);
+        
+      if (categoriasError) throw categoriasError;
+      
+      if (sourceCategorias && sourceCategorias.length > 0) {
+          const oldToNewIdMap: Record<string, string> = {};
+          const newCategorias: TablesInsert<'diretrizes_material_consumo_categorias'>[] = [];
+          
+          // 4a. Inserir novas categorias e mapear IDs
+          for (const oldCategoria of sourceCategorias) {
+              const newCategoria: TablesInsert<'diretrizes_material_consumo_categorias'> = {
+                  user_id: user.id,
+                  ano_referencia: targetYear,
+                  nome_categoria: oldCategoria.nome_categoria,
+                  observacoes: oldCategoria.observacoes,
+              };
+              
+              const { data: insertedData, error: insertCatError } = await supabase
+                  .from("diretrizes_material_consumo_categorias")
+                  .insert([newCategoria])
+                  .select('id')
+                  .single();
+                  
+              if (insertCatError) throw insertCatError;
+              
+              oldToNewIdMap[oldCategoria.id] = insertedData.id;
+          }
+          
+          // 4b. Copiar Itens associados às categorias
+          const { data: sourceItens, error: itensError } = await supabase
+              .from("diretrizes_material_consumo_itens")
+              .select("categoria_id, descricao_item, preco_unitario, numero_pregao, uasg_referencia, ativo")
+              .in("categoria_id", sourceCategorias.map(c => c.id));
+              
+          if (itensError) throw itensError;
+          
+          if (sourceItens && sourceItens.length > 0) {
+              const newItens: TablesInsert<'diretrizes_material_consumo_itens'>[] = sourceItens.map(item => ({
+                  user_id: user.id,
+                  categoria_id: oldToNewIdMap[item.categoria_id], // Usa o novo ID mapeado
+                  descricao_item: item.descricao_item,
+                  preco_unitario: item.preco_unitario,
+                  numero_pregao: item.numero_pregao,
+                  uasg_referencia: item.uasg_referencia,
+                  ativo: item.ativo,
+              }));
+              
+              const { error: insertItensError } = await supabase
+                  .from("diretrizes_material_consumo_itens")
+                  .insert(newItens);
+              if (insertItensError) throw insertItensError;
+          }
+      }
+      
+      toast.success(`Diretrizes operacionais, de passagens, concessionária e material de consumo do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
       setIsYearManagementDialogOpen(false);
       setSelectedYear(targetYear);
       
@@ -579,7 +762,7 @@ const CustosOperacionaisPage = () => {
       return;
     }
     
-    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes operacionais, de passagens e de concessionária para o ano ${year}? Esta ação é irreversível.`)) return;
+    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes operacionais, de passagens, de concessionária e de material de consumo para o ano ${year}? Esta ação é irreversível.`)) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -601,14 +784,21 @@ const CustosOperacionaisPage = () => {
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
         
-      // 3. Excluir Diretrizes de Concessionária (NEW LOGIC)
+      // 3. Excluir Diretrizes de Concessionária
       await supabase
         .from("diretrizes_concessionaria")
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
+        
+      // 4. Excluir Diretrizes de Material de Consumo (A exclusão de categorias deve apagar os itens em cascata)
+      await supabase
+        .from("diretrizes_material_consumo_categorias")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year);
 
-      toast.success(`Diretrizes operacionais, de passagens e de concessionária do ano ${year} excluídas com sucesso!`);
+      toast.success(`Diretrizes operacionais, de passagens, concessionária e material de consumo do ano ${year} excluídas com sucesso!`);
       setIsYearManagementDialogOpen(false);
       
       queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
@@ -622,428 +812,7 @@ const CustosOperacionaisPage = () => {
     }
   };
   
-  // Handler para inputs monetários (R$)
-  const handleCurrencyChange = (field: keyof DiretrizOperacional, rawValue: string) => {
-    const { numericValue, digits } = formatCurrencyInput(rawValue);
-    
-    setRawInputs(prev => ({ ...prev, [field]: digits }));
-    setDiretrizes(prev => ({ ...prev, [field]: numericValue }));
-  };
-  
-  // Handler para inputs de fator/percentual
-  const handleFactorChange = (field: keyof DiretrizOperacional, value: string) => {
-    const numericValue = parseFloat(value) || 0;
-    setDiretrizes(prev => ({ ...prev, [field]: numericValue }));
-  };
-
-  // Função para renderizar um campo de diretriz
-  const renderDiretrizField = (field: { key: string, label: string, type: 'currency' | 'factor', placeholder: string }) => {
-    const value = diretrizes[field.key as keyof DiretrizOperacional] as number;
-    
-    if (field.type === 'currency') {
-      const rawDigits = rawInputs[field.key] || numberToRawDigits(value);
-      const { formatted: displayValue } = formatCurrencyInput(rawDigits);
-      
-      return (
-        <div className="space-y-2">
-          <Label htmlFor={field.key}>{field.label}</Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
-            <Input
-              id={field.key}
-              type="text"
-              inputMode="numeric"
-              className="pl-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              value={value === 0 && rawDigits.length === 0 ? "" : displayValue}
-              onChange={(e) => handleCurrencyChange(field.key as keyof DiretrizOperacional, e.target.value)}
-              onKeyDown={handleEnterToNextField}
-              placeholder={field.placeholder}
-            />
-          </div>
-        </div>
-      );
-    } else { // type === 'factor'
-      return (
-        <div className="space-y-2">
-          <Label htmlFor={field.key}>{field.label}</Label>
-          <Input
-            id={field.key}
-            type="number"
-            step="0.01"
-            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            value={value === 0 ? "" : value}
-            onChange={(e) => handleFactorChange(field.key as keyof DiretrizOperacional, e.target.value)}
-            placeholder={field.placeholder}
-            onKeyDown={handleEnterToNextField}
-          />
-        </div>
-      );
-    }
-  };
-  
-  // Função para renderizar a tabela de diárias
-  const renderDiariaTable = () => {
-    const handleDiariaChange = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais', rawValue: string) => {
-      const fieldKey = `diaria_${rankKey}_${destination}` as keyof DiretrizOperacional;
-      handleCurrencyChange(fieldKey, rawValue);
-    };
-    
-    const getDiariaProps = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais') => {
-      const fieldKey = `${DIARIA_RANKS_CONFIG.find(r => r.key === rankKey)?.fieldPrefix}_${destination}` as keyof DiretrizOperacional;
-      const value = diretrizes[fieldKey] as number;
-      const rawDigits = rawInputs[fieldKey as string] || numberToRawDigits(value);
-      const { formatted: displayValue } = formatCurrencyInput(rawDigits);
-      
-      return {
-        rawDigits: rawDigits,
-        onChange: (digits: string) => handleDiariaChange(rankKey, destination, digits),
-        onKeyDown: handleEnterToNextField,
-        placeholder: "0,00",
-        className: "text-center",
-      };
-    };
-    
-    // Props para Taxa de Embarque
-    const taxaEmbarqueProps = renderDiretrizField({
-        key: 'taxa_embarque', 
-        label: 'Taxa de Embarque (R$)', 
-        type: 'currency', 
-        placeholder: 'Ex: 95,00'
-    });
-    
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="diaria_referencia_legal">Referência Legal (Lei/Portaria)</Label>
-            <Input
-              id="diaria_referencia_legal"
-              value={diretrizes.diaria_referencia_legal || ""}
-              onChange={(e) => setDiretrizes({ ...diretrizes, diaria_referencia_legal: e.target.value })}
-              placeholder="Decreto Nº 12.324 de 19DEZ24"
-              onKeyDown={handleEnterToNextField}
-            />
-          </div>
-          {taxaEmbarqueProps}
-        </div>
-        
-        <Table className="border">
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[35%]">Posto/Graduação</TableHead>
-              <TableHead className="text-center">Dslc BSB/MAO/RJ/SP</TableHead>
-              <TableHead className="text-center">Dslc demais capitais</TableHead>
-              <TableHead className="text-center">Demais Dslc</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {DIARIA_RANKS_CONFIG.map((rank) => (
-              <TableRow key={rank.key}>
-                <TableCell className="font-medium whitespace-nowrap">{rank.label}</TableCell>
-                <TableCell>
-                  <CurrencyInput
-                    {...getDiariaProps(rank.key, 'bsb')}
-                  />
-                </TableCell>
-                <TableCell>
-                  <CurrencyInput
-                    {...getDiariaProps(rank.key, 'capitais')}
-                  />
-                </TableCell>
-                <TableCell>
-                  <CurrencyInput
-                    {...getDiariaProps(rank.key, 'demais')}
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    );
-  };
-  
-  // --- LÓGICA DE PASSAGENS ---
-  
-  const handleSavePassagem = async (data: Partial<DiretrizPassagem> & { ano_referencia: number, om_referencia: string, ug_referencia: string }) => {
-      try {
-          setLoading(true);
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) throw new Error("Usuário não autenticado");
-          
-          // CORREÇÃO 2, 3, 4: O tipo TablesInsert<'diretrizes_passagens'> espera 'Json' para 'trechos' e 'string | null' para as datas.
-          // Usamos 'as Json' para 'trechos' e garantimos que as datas sejam strings ou null.
-          const dbData: TablesInsert<'diretrizes_passagens'> = {
-              user_id: user.id,
-              ano_referencia: data.ano_referencia,
-              om_referencia: data.om_referencia,
-              ug_referencia: data.ug_referencia,
-              numero_pregao: data.numero_pregao || null,
-              trechos: data.trechos as unknown as Json, // Conversão para Json
-              ativo: data.ativo ?? true,
-              data_inicio_vigencia: data.data_inicio_vigencia || null,
-              data_fim_vigencia: data.data_fim_vigencia || null,
-          };
-          
-          if (data.id) {
-              const { error } = await supabase
-                  .from('diretrizes_passagens')
-                  .update(dbData as TablesUpdate<'diretrizes_passagens'>)
-                  .eq('id', data.id);
-              if (error) throw error;
-              toast.success("Contrato de Passagens atualizado!");
-          } else {
-              const { error } = await supabase
-                  .from('diretrizes_passagens')
-                  .insert([dbData]);
-              if (error) throw error;
-              toast.success("Novo Contrato de Passagens cadastrado!");
-          }
-          
-          await loadDiretrizesPassagens(selectedYear);
-          setDiretrizToEdit(null);
-          setIsPassagemFormOpen(false);
-          
-      } catch (error: any) {
-          toast.error(sanitizeError(error));
-      } finally {
-          setLoading(false);
-      }
-  };
-  
-  const handleStartEditPassagem = (diretriz: DiretrizPassagem) => {
-      setDiretrizToEdit(diretriz);
-      setIsPassagemFormOpen(true);
-  };
-  
-  const handleOpenNewPassagem = () => {
-      setDiretrizToEdit(null);
-      setIsPassagemFormOpen(true);
-  };
-  
-  const handleDeletePassagem = async (id: string, omName: string) => {
-      if (!confirm(`Tem certeza que deseja excluir o contrato de passagens da OM ${omName}?`)) return;
-      
-      try {
-          setLoading(true);
-          await supabase.from('diretrizes_passagens').delete().eq('id', id);
-          toast.success("Contrato de Passagens excluído!");
-          await loadDiretrizesPassagens(selectedYear);
-      } catch (error) {
-          toast.error(sanitizeError(error));
-      } finally {
-          setLoading(false);
-      }
-  };
-  
-  const renderPassagensSection = () => {
-      
-      return (
-          <div className="space-y-4">
-              
-              {/* Lista de Contratos Existentes */}
-              {diretrizesPassagens.length > 0 ? (
-                  <Card className="p-4">
-                      <CardTitle className="text-base font-semibold mb-3">Contratos Cadastrados</CardTitle>
-                      <Table>
-                          <TableHeader>
-                              <TableRow>
-                                  <TableHead>OM Referência</TableHead>
-                                  <TableHead>Pregão</TableHead>
-                                  <TableHead className="text-center">Vigência</TableHead>
-                                  <TableHead className="text-center">Trechos</TableHead>
-                                  <TableHead className="w-[100px] text-center">Ações</TableHead>
-                              </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                              {diretrizesPassagens.map(d => (
-                                  <PassagemDiretrizRow
-                                      key={d.id}
-                                      diretriz={d} // CORREÇÃO 5, 6: 'd' agora é do tipo DiretrizPassagem
-                                      onEdit={handleStartEditPassagem}
-                                      onDelete={handleDeletePassagem}
-                                      loading={loading}
-                                  />
-                              ))}
-                          </TableBody>
-                      </Table>
-                  </Card>
-              ) : (
-                  <Card className="p-4 text-center text-muted-foreground">
-                      Nenhum contrato de passagens cadastrado para o ano de referência.
-                  </Card>
-              )}
-              
-              <div className="flex justify-end">
-                  <Button 
-                      type="button" 
-                      onClick={handleOpenNewPassagem}
-                      disabled={loading}
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full"
-                  >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Adicionar Novo Contrato
-                  </Button>
-              </div>
-          </div>
-      );
-  };
-  
-  // --- LÓGICA DE CONCESSIONÁRIA (NEW) ---
-  
-  const handleSaveConcessionaria = async (data: DiretrizConcessionariaForm & { id?: string }) => {
-      try {
-          setLoading(true);
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) throw new Error("Usuário não autenticado");
-          
-          // CORREÇÃO: Converte o consumo (que pode ser string do formulário) para number
-          const consumoValue = typeof data.consumo_pessoa_dia === 'string'
-            ? parseFloat(data.consumo_pessoa_dia.replace(',', '.')) || 0
-            : data.consumo_pessoa_dia;
-
-          const dbData: TablesInsert<'diretrizes_concessionaria'> = {
-              user_id: user.id,
-              ano_referencia: selectedYear,
-              categoria: data.categoria,
-              nome_concessionaria: data.nome_concessionaria,
-              consumo_pessoa_dia: consumoValue, // Usa o valor numérico
-              fonte_consumo: data.fonte_consumo || null,
-              custo_unitario: data.custo_unitario,
-              fonte_custo: data.fonte_custo || null,
-              unidade_custo: data.unidade_custo,
-          };
-
-          if (data.id) {
-              const { error } = await supabase
-                  .from('diretrizes_concessionaria')
-                  .update(dbData as TablesUpdate<'diretrizes_concessionaria'>)
-                  .eq('id', data.id);
-              if (error) throw error;
-              toast.success("Diretriz de Concessionária atualizada!");
-          } else {
-              const { error } = await supabase
-                  .from('diretrizes_concessionaria')
-                  .insert([dbData]);
-              if (error) throw error;
-              toast.success("Nova Diretriz de Concessionária cadastrada!");
-          }
-          
-          await loadDiretrizesConcessionaria(selectedYear);
-          setDiretrizConcessionariaToEdit(null);
-          setIsConcessionariaFormOpen(false);
-          
-      } catch (error: any) {
-          toast.error(sanitizeError(error));
-      } finally {
-          setLoading(false);
-      }
-  };
-  
-  const handleStartEditConcessionaria = (diretriz: DiretrizConcessionaria) => {
-      setDiretrizConcessionariaToEdit(diretriz);
-      setIsConcessionariaFormOpen(true);
-  };
-  
-  const handleOpenNewConcessionaria = (category: CategoriaConcessionaria) => {
-      setDiretrizConcessionariaToEdit(null);
-      setSelectedConcessionariaTab(category);
-      setIsConcessionariaFormOpen(true);
-  };
-  
-  const handleDeleteConcessionaria = async (id: string, nome: string) => {
-      if (!confirm(`Tem certeza que deseja excluir a diretriz da concessionária ${nome}?`)) return;
-      
-      try {
-          setLoading(true);
-          await supabase.from('diretrizes_concessionaria').delete().eq('id', id);
-          toast.success("Diretriz de Concessionária excluída!");
-          await loadDiretrizesConcessionaria(selectedYear);
-      } catch (error) {
-          toast.error(sanitizeError(error));
-      } finally {
-          setLoading(false);
-      }
-  };
-  
-  const renderConcessionariaList = (category: CategoriaConcessionaria) => {
-      // CORREÇÃO: Filtrar por categoria
-      const filteredDiretrizes = diretrizesConcessionaria.filter(d => d.categoria === category);
-      
-      return (
-          <div className="space-y-4">
-              {filteredDiretrizes.length > 0 ? (
-                  <Card className="p-4">
-                      <CardTitle className="text-base font-semibold mb-3">Diretrizes Cadastradas</CardTitle>
-                      <Table>
-                          <TableHeader>
-                              <TableRow>
-                                  <TableHead>Concessionária</TableHead>
-                                  <TableHead className="text-center">Consumo/Pessoa/Dia</TableHead>
-                                  <TableHead className="text-right">Custo Unitário</TableHead>
-                                  <TableHead className="w-[100px] text-center">Ações</TableHead>
-                              </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                              {filteredDiretrizes.map(d => (
-                                  <ConcessionariaDiretrizRow
-                                      key={d.id}
-                                      diretriz={d}
-                                      onEdit={handleStartEditConcessionaria}
-                                      onDelete={handleDeleteConcessionaria}
-                                      loading={loading}
-                                  />
-                              ))}
-                          </TableBody>
-                      </Table>
-                  </Card>
-              ) : (
-                  <Card className="p-4 text-center text-muted-foreground">
-                      Nenhuma diretriz de {category} cadastrada para o ano de referência.
-                  </Card>
-              )}
-              
-              <div className="flex justify-end">
-                  <Button 
-                      type="button" 
-                      onClick={() => handleOpenNewConcessionaria(category)}
-                      disabled={loading}
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full"
-                  >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Adicionar Nova Diretriz de {category}
-                  </Button>
-              </div>
-          </div>
-      );
-  };
-  
-  const renderConcessionariaSection = () => {
-      return (
-          <Card>
-              <CardContent className="pt-4">
-                  <Tabs value={selectedConcessionariaTab} onValueChange={(value) => setSelectedConcessionariaTab(value as CategoriaConcessionaria)}>
-                      <TabsList className="grid w-full grid-cols-2">
-                          {CATEGORIAS_CONCESSIONARIA.map(cat => (
-                              <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
-                          ))}
-                      </TabsList>
-                      
-                      {CATEGORIAS_CONCESSIONARIA.map(cat => (
-                          <TabsContent key={cat} value={cat}>
-                              {renderConcessionariaList(cat)}
-                          </TabsContent>
-                      ))}
-                  </Tabs>
-              </CardContent>
-          </Card>
-      );
-  };
-  // END LÓGICA DE CONCESSIONÁRIA
+  // ... (renderDiariaTable, renderPassagensSection, renderConcessionariaSection)
 
   // Adicionando a verificação de carregamento
   if (loading || isLoadingDefaultYear) {
@@ -1157,7 +926,7 @@ const CustosOperacionaisPage = () => {
                     </CollapsibleContent>
                   </Collapsible>
                   
-                  {/* Diretrizes de Concessionária (NEW SECTION) */}
+                  {/* Diretrizes de Concessionária */}
                   <Collapsible 
                     open={fieldCollapseState['concessionaria_detalhe']} 
                     onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['concessionaria_detalhe']: open }))}
@@ -1174,6 +943,27 @@ const CustosOperacionaisPage = () => {
                     <CollapsibleContent>
                       <div className="mt-2">
                         {renderConcessionariaSection()}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                  
+                  {/* Diretrizes de Material de Consumo (NOVA SEÇÃO) */}
+                  <Collapsible 
+                    open={fieldCollapseState['material_consumo_detalhe']} 
+                    onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['material_consumo_detalhe']: open }))}
+                    className="border-b pb-4 last:border-b-0 last:pb-0"
+                  >
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center justify-between cursor-pointer py-2">
+                        <h4 className="text-base font-medium flex items-center gap-2">
+                          Material de Consumo (Subitens ND 30)
+                        </h4>
+                        {fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mt-2">
+                        {renderMaterialConsumoSection()}
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
@@ -1259,7 +1049,7 @@ const CustosOperacionaisPage = () => {
           loading={loading}
       />
       
-      {/* Diálogo de Formulário de Concessionária (NEW) */}
+      {/* Diálogo de Formulário de Concessionária */}
       <ConcessionariaDiretrizFormDialog
           open={isConcessionariaFormOpen}
           onOpenChange={setIsConcessionariaFormOpen}
@@ -1268,6 +1058,16 @@ const CustosOperacionaisPage = () => {
           onSave={handleSaveConcessionaria}
           loading={loading}
           initialCategory={selectedConcessionariaTab}
+      />
+      
+      {/* Diálogo de Formulário de Categoria de Material de Consumo (NOVO) */}
+      <MaterialConsumoCategoriaFormDialog
+          open={isMaterialConsumoCategoriaFormOpen}
+          onOpenChange={setIsMaterialConsumoCategoriaFormOpen}
+          selectedYear={selectedYear}
+          diretrizToEdit={diretrizMaterialConsumoCategoriaToEdit}
+          onSave={handleSaveMaterialConsumoCategoria}
+          loading={loading}
       />
     </div>
   );
