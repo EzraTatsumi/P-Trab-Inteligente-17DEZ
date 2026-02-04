@@ -818,10 +818,11 @@ const PTrabReportManager = () => {
         { data: refLPCData },
         { data: diariaData }, 
         { data: verbaOperacionalData }, 
-        { data: passagemData }, 
+        { data: passagemData },
         { data: concessionariaData },
-        diretrizesOpData, 
-        diretrizesPassagensData, 
+        { data: horasVooData }, // NOVO: Dados de Horas de Voo
+        diretrizesOpData,
+        diretrizesPassagensData,
       ] = await Promise.all([
         supabase.from('classe_i_registros').select('*, memoria_calculo_qs_customizada, memoria_calculo_qr_customizada, memoria_calculo_op_customizada, fase_atividade, categoria, quantidade_r2, quantidade_r3').eq('p_trab_id', ptrabId),
         supabase.from('classe_ii_registros').select('*, detalhamento_customizado, fase_atividade, valor_nd_30, valor_nd_39, om_detentora, ug_detentora, efetivo').eq('p_trab_id', ptrabId),
