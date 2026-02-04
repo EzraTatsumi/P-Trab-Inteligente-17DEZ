@@ -24,6 +24,7 @@ export const diretrizOperacionalSchema = z.object({
     // Fatores (0 to 10)
     fator_passagens_aereas: z.number().min(0).max(10, "Fator deve ser entre 0 e 10."),
     fator_servicos_terceiros: z.number().min(0).max(10, "Fator deve ser entre 0 e 10."),
+    fator_material_consumo: z.number().min(0).max(10, "Fator deve ser entre 0 e 10."),
     fator_concessionaria: z.number().min(0).max(10, "Fator deve ser entre 0 e 10."),
     
     // Valores Monetários (R$)
