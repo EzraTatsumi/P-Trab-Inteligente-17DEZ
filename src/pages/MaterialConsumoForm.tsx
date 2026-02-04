@@ -22,6 +22,7 @@ import {
   createMaterialConsumoItem,
   updateMaterialConsumoItem,
   deleteMaterialConsumoItem,
+  fetchGlobalSubitemCatalog, // NOVO: Importa a função de busca do catálogo global
 } from '@/integrations/supabase/api';
 import {
   MaterialConsumoSubitem,
@@ -30,6 +31,7 @@ import {
   MaterialConsumoSubitemUpdate,
   MaterialConsumoItemInsert,
   MaterialConsumoItemUpdate,
+  GlobalSubitemCatalog, // NOVO: Importa o tipo GlobalSubitemCatalog
 } from '@/types/materialConsumo';
 import SubitemCatalogDialog from '@/components/materialConsumo/SubitemCatalogDialog';
 
@@ -179,10 +181,16 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
   // CORREÇÃO: Importa e utiliza o hook useFormNavigation
   const { handleEnterToNextField } = useFormNavigation();
 
-  // Fetch Subitems
+  // Fetch Subitems (Personalizado do Usuário)
   const { data: subitems = [], isLoading: isLoadingSubitems, error: subitemsError } = useQuery<MaterialConsumoSubitem[]>({
     queryKey: ['materialConsumoSubitems'],
     queryFn: fetchMaterialConsumoSubitems,
+  });
+  
+  // NOVO: Fetch Catálogo Global
+  const { data: globalSubitems = [], isLoading: isLoadingGlobalSubitems } = useQuery<GlobalSubitemCatalog[]>({
+    queryKey: ['globalSubitemCatalog'],
+    queryFn: fetchGlobalSubitemCatalog,
   });
 
   // Fetch Items for a specific Subitem
@@ -327,17 +335,17 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
   };
   
   // NOVO: Handler para seleção de subitem do catálogo
-  const handleSelectSubitemFromCatalog = (subitem: MaterialConsumoSubitem) => {
+  const handleSelectSubitemFromCatalog = (subitem: GlobalSubitemCatalog) => {
     // Se estiver editando, limpamos o ID para forçar a criação de um novo registro
     // baseado no catálogo, a menos que o usuário estivesse editando este subitem específico.
-    if (subitemToEdit && subitemToEdit.id !== subitem.id) {
+    if (subitemToEdit) {
         setSubitemToEdit(null);
     }
     
     // Preenche os campos do formulário principal
-    setNewSubitemNome(subitem.nome);
+    setNewSubitemNome(subitem.nome_subitem);
     setNewSubitemNr(subitem.nr_subitem || '');
-    setNewSubitemDescricao(subitem.descricao || '');
+    setNewSubitemDescricao(subitem.descricao_subitem || '');
     
     // Fecha o catálogo e mantém o formulário de subitem aberto
     setIsCatalogOpen(false);
@@ -506,9 +514,14 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
               size="sm"
               onClick={() => setIsCatalogOpen(true)}
               className="w-full"
+              disabled={isLoadingGlobalSubitems}
             >
-              <BookOpen className="h-4 w-4 mr-2" />
-              Buscar no Catálogo de Subitens ({subitems.length})
+              {isLoadingGlobalSubitems ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <BookOpen className="h-4 w-4 mr-2" />
+              )}
+              Buscar no Catálogo Global ({globalSubitems.length})
             </Button>
             
             <div className="space-y-2">
@@ -572,7 +585,7 @@ const MaterialConsumoForm: React.FC<MaterialConsumoFormProps> = ({ selectedYear 
       <SubitemCatalogDialog
         open={isCatalogOpen}
         onOpenChange={setIsCatalogOpen}
-        subitems={subitems}
+        subitems={globalSubitems} // Passa os subitens globais
         onSelectSubitem={handleSelectSubitemFromCatalog}
       />
     </div>

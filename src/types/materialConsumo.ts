@@ -25,3 +25,12 @@ export interface MaterialConsumoItem {
 
 export type MaterialConsumoItemInsert = Omit<MaterialConsumoItem, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type MaterialConsumoItemUpdate = Partial<MaterialConsumoItemInsert>;
+
+// NOVO TIPO: Para o catálogo global (sem user_id)
+export interface GlobalSubitemCatalog {
+  id: string;
+  nr_subitem: string | null;
+  nome_subitem: string;
+  descricao_subitem: string | null;
+  created_at: string;
+}
