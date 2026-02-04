@@ -1393,7 +1393,7 @@ const HorasVooForm = () => {
                                         const totalHv = totalHvByGroup[group.groupKey] || 0;
 
                                         return (
-                                            <Card key={group.groupKey} className="p-4 bg-muted/50 border-muted">
+                                            <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
                                                 <div className="flex items-center justify-between mb-3 border-b pb-2">
                                                     <h3 className="font-bold text-lg text-primary flex items-center gap-2">
                                                         {omName} (UG: {formatCodug(ug)})
