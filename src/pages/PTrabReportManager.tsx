@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { formatCurrency, formatNumber } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, formatDate } from "@/lib/formatUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
 import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacionalReport";
@@ -60,28 +60,19 @@ import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais, fetchDiretrizesPassagens } from "@/lib/ptrabUtils"; // IMPORTANDO fetchDiretrizesPassagens
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { Tables, Json } from "@/integrations/supabase/types"; // Importar Tables e Json
+import { 
+  PTrabData, 
+  DiariaRegistro, 
+  VerbaOperacionalRegistro, 
+  PassagemRegistro, 
+  ConcessionariaRegistro, 
+  GrupoOMOperacional, 
+  PTrabOperacionalReportProps 
+} from "@/types/reportTypes"; // NOVO: Importar tipos de relatório
 
 // =================================================================
 // TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
 // =================================================================
-
-export interface PTrabData {
-  id: string;
-  numero_ptrab: string;
-  comando_militar_area: string;
-  nome_om: string;
-  nome_om_extenso?: string;
-  nome_operacao: string;
-  periodo_inicio: string;
-  periodo_fim: string;
-  efetivo_empregado: string;
-  acoes: string;
-  status: string;
-  nome_cmt_om?: string;
-  local_om?: string;
-  updated_at: string;
-  rm_vinculacao: string;
-}
 
 // Usando o tipo importado do Supabase e adicionando as propriedades em camelCase
 export interface ClasseIRegistro extends Tables<'classe_i_registros'> {
@@ -109,32 +100,6 @@ export interface ClasseIRegistro extends Tables<'classe_i_registros'> {
     // Propriedades calculadas
     calculos: ReturnType<typeof calculateClasseICalculations>;
 }
-
-// NOVO TIPO: DiariaRegistro (Mantido como estava, pois já usa snake_case do DB)
-export interface DiariaRegistro extends Tables<'diaria_registros'> {
-  destino: DestinoDiaria;
-  quantidades_por_posto: QuantidadesPorPosto;
-  valor_total: number;
-  valor_nd_15: number;
-  valor_nd_30: number;
-  valor_taxa_embarque: number;
-  is_aereo: boolean;
-}
-
-// NOVO TIPO: VerbaOperacionalRegistro (Mantido como estava)
-export interface VerbaOperacionalRegistro extends Tables<'verba_operacional_registros'> {
-  valor_total_solicitado: number;
-  valor_nd_30: number;
-  valor_nd_39: number;
-  dias_operacao: number;
-  quantidade_equipes: number;
-}
-
-// NOVO TIPO: PassagemRegistro (Exportado do utilitário)
-export type PassagemRegistro = PassagemRegistroType;
-
-// NOVO TIPO: ConcessionariaRegistro (Exportado do utilitário)
-export type ConcessionariaRegistro = ConcessionariaRegistroComDiretriz;
 
 // NOVO TIPO: HorasVooRegistro
 export interface HorasVooRegistro extends Tables<'horas_voo_registros'> {
@@ -264,15 +229,6 @@ interface GranularDisplayItem {
   detailed_items: ItemClasseIII[];
 }
 
-// NOVO TIPO: Estrutura de agrupamento para o Relatório Operacional
-export interface GrupoOMOperacional {
-  diarias: DiariaRegistro[];
-  verbaOperacional: VerbaOperacionalRegistro[];
-  suprimentoFundos: VerbaOperacionalRegistro[];
-  passagens: PassagemRegistro[];
-  concessionarias: ConcessionariaRegistro[];
-}
-
 export interface GrupoOM {
   linhasQS: LinhaTabela[];
   linhasQR: LinhaTabela[];
@@ -285,27 +241,6 @@ export interface GrupoOM {
   linhasClasseIII: LinhaClasseIII[];
   linhasConcessionaria: LinhaConcessionaria[]; // NOVO: Inicializa Concessionária
 }
-
-// CORREÇÃO DO ERRO 3: Definindo a interface PTrabOperacionalReportProps corretamente
-export interface PTrabOperacionalReportProps {
-    ptrabData: PTrabData;
-    omsOrdenadas: string[];
-    gruposPorOM: Record<string, GrupoOMOperacional>;
-    registrosDiaria: DiariaRegistro[];
-    registrosVerbaOperacional: VerbaOperacionalRegistro[];
-    registrosSuprimentoFundos: VerbaOperacionalRegistro[];
-    registrosPassagem: PassagemRegistro[];
-    registrosConcessionaria: ConcessionariaRegistro[];
-    diretrizesOperacionais: Tables<'diretrizes_operacionais'> | null;
-    diretrizesPassagens: Tables<'diretrizes_passagens'>[]; // PROPRIEDADE FALTANTE (CORRIGIDA)
-    fileSuffix: string;
-    generateDiariaMemoriaCalculo: (registro: DiariaRegistro, diretrizesOp: Tables<'diretrizes_operacionais'> | null) => string;
-    generateVerbaOperacionalMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string;
-    generateSuprimentoFundosMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string;
-    generatePassagemMemoriaCalculo: (registro: PassagemRegistro) => string;
-    generateConcessionariaMemoriaCalculo: (registro: ConcessionariaRegistro) => string;
-}
-
 
 export const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 export const CLASSE_VI_CATEGORIES = ["Gerador", "Embarcação", "Equipamento de Engenharia"];
