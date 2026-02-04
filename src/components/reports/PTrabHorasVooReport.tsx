@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useCallback } from 'react';
 import { PTrabData, HorasVooRegistro, calculateDays, formatDate } from '@/pages/PTrabReportManager';
-import { formatCurrency, formatNumber } from '@/lib/formatUtils';
+import { formatCurrency, formatNumber, formatCodug } from '@/lib/formatUtils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plane, FileSpreadsheet, Printer, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,11 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
-  const registros = useMemo(() => omsOrdenadas.flatMap(om => gruposPorOM[om]), [omsOrdenadas, gruposPorOM]);
+  
+  // Registros desagregados, ordenados por OM
+  const registros = useMemo(() => {
+    return omsOrdenadas.flatMap(om => gruposPorOM[om] || []);
+  }, [omsOrdenadas, gruposPorOM]);
 
   const totalGeral = useMemo(() => {
     return registros.reduce((acc, r) => acc + r.valor_total, 0);
@@ -44,17 +48,16 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
   }, [registros]);
 
   // Lógica para exibir "A CARGO DO COTER"
-  const isACargoDoCoter = totalND30 === 0 && totalND39 === 0;
-  const valorND30Display = isACargoDoCoter ? 'Será definido pelo COTER' : formatCurrency(totalND30);
-  const valorND39Display = isACargoDoCoter ? 'Será definido pelo COTER' : formatCurrency(totalND39);
-  const valorGND3Display = isACargoDoCoter ? 'Será definido pelo COTER' : formatCurrency(totalGeral);
+  const isACargoDoCoter = totalND30 === 0 && totalND39 === 0 && totalHV > 0;
+  const valorND30Display = isACargoDoCoter ? 'A CARGO COTER' : formatCurrency(totalND30);
+  const valorND39Display = isACargoDoCoter ? 'A CARGO COTER' : formatCurrency(totalND39);
+  const valorGND3Display = isACargoDoCoter ? 'A CARGO COTER' : formatCurrency(totalGeral);
   
   const numDias = useMemo(() => {
     return calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim);
   }, [ptrabData.periodo_inicio, ptrabData.periodo_fim]);
   
   const dataAtual = useMemo(() => {
-    // Usa a data de atualização do PTrab para consistência, formatada como "dd de mês de aaaa"
     const date = new Date(ptrabData.updated_at);
     const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'long', year: 'numeric' };
     return date.toLocaleDateString('pt-BR', options);
@@ -65,29 +68,9 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
   const nomeOMExtenso = ptrabData.nome_om_extenso || ptrabData.nome_om;
   const comandoMilitarArea = ptrabData.comando_militar_area || 'COMANDO MILITAR DE ÁREA';
   
-  // A OM Gestora para o relatório de HV é o valor completo do campo codug_destino
+  // A OM Gestora para o relatório de HV é o CODUG do primeiro registro (ou N/A)
   const omUGDisplay = registros.length > 0 ? registros[0].codug_destino : 'N/A'; 
 
-  const municipiosConsolidados = useMemo(() => {
-    return registros.map(r => r.municipio).filter((v, i, a) => a.indexOf(v) === i).join('/');
-  }, [registros]);
-
-  const detalhamentoConsolidado = useMemo(() => {
-    if (registros.length === 0) return '';
-    
-    // 1. Determinar o tipo de aeronave (usando o primeiro registro como base)
-    const tipoAnv = registros[0].tipo_anv;
-    const amparo = registros[0].amparo || 'N/I';
-    
-    // 2. Gerar o cabeçalho consolidado
-    const header = `33.90.30 – Aquisição de Suprimento de Aviação, referente a ${formatNumber(totalHV, 2)} HV na Anv ${tipoAnv}.`;
-    
-    // 3. Adicionar o amparo legal
-    const notaDiretriz = `\n\n${amparo}`;
-    
-    return header + notaDiretriz;
-  }, [registros, totalHV]);
-  
   // --- FUNÇÕES DE EXPORTAÇÃO ---
 
   const generateFileName = useCallback((reportType: 'PDF' | 'Excel') => {
@@ -328,55 +311,85 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     
     currentRow += 2; 
 
-    // --- LINHA DE DADOS CONSOLIDADA ---
-    const dataRow = worksheet.getRow(currentRow);
+    // --- LINHAS DE DADOS DESAGREGADAS ---
     
-    // A: DESPESAS
-    dataRow.getCell('A').value = 'Horas de voo Anv Aviação do Exército'; 
-    dataRow.getCell('A').alignment = leftTopAlignment; 
-    dataRow.getCell('A').font = baseFontStyle; // Aplicando 8pt
+    // Variáveis para rastrear a OM Detentora atual para mesclagem
+    let currentOMDetentora = '';
+    let startRowOM = currentRow;
     
-    // B: OM (UGE) CODUG
-    dataRow.getCell('B').value = omUGDisplay;
-    dataRow.getCell('B').alignment = dataCenterMiddleAlignment; 
-    dataRow.getCell('B').font = baseFontStyle; // Aplicando 8pt
-    
-    // C: MUNICÍPIO
-    dataRow.getCell('C').value = municipiosConsolidados;
-    dataRow.getCell('C').alignment = dataCenterMiddleAlignment; 
-    dataRow.getCell('C').font = baseFontStyle; // Aplicando 8pt
-    
-    // D: 33.90.30
-    dataRow.getCell('D').value = totalND30;
-    dataRow.getCell('D').alignment = dataCenterMiddleAlignment;
-    dataRow.getCell('D').numFmt = 'R$ #,##0.00';
-    dataRow.getCell('D').fill = headerFillAzul; 
-    dataRow.getCell('D').font = baseFontStyle; // Aplicando 8pt
-    
-    // E: 33.90.39
-    dataRow.getCell('E').value = totalND39;
-    dataRow.getCell('E').alignment = dataCenterMiddleAlignment;
-    dataRow.getCell('E').numFmt = 'R$ #,##0.00';
-    dataRow.getCell('E').fill = headerFillAzul; 
-    dataRow.getCell('E').font = baseFontStyle; // Aplicando 8pt
-    
-    // F: GND 3
-    dataRow.getCell('F').value = totalGeral;
-    dataRow.getCell('F').alignment = dataCenterMiddleAlignment;
-    dataRow.getCell('F').numFmt = 'R$ #,##0.00';
-    dataRow.getCell('F').fill = headerFillAzul; 
-    dataRow.getCell('F').font = baseFontStyle; // Aplicando 8pt
-    
-    // G: DETALHAMENTO
-    dataRow.getCell('G').value = detalhamentoConsolidado;
-    dataRow.getCell('G').alignment = leftTopAlignment; 
-    dataRow.getCell('G').font = { name: 'Arial', size: 6.5 }; // Mantendo 6.5pt para detalhamento
-    
-    // Apply borders
-    headerCols.forEach(col => {
-        dataRow.getCell(col).border = cellBorder;
+    registros.forEach((registro, index) => {
+        const omDetentora = `${registro.om_detentora || registro.organizacao} (${formatCodug(registro.ug_detentora || registro.ug)})`;
+        
+        // Lógica de Mesclagem (Se a OM Detentora mudar, mescla as células da coluna B)
+        if (omDetentora !== currentOMDetentora) {
+            if (index > 0) {
+                // Mescla a coluna B da OM anterior
+                worksheet.mergeCells(`B${startRowOM}:B${currentRow - 1}`);
+            }
+            currentOMDetentora = omDetentora;
+            startRowOM = currentRow;
+        }
+        
+        const isCoterRegistro = registro.valor_nd_30 === 0 && registro.valor_nd_39 === 0;
+        
+        // Detalhamento / Memória de Cálculo
+        const memoria = registro.detalhamento_customizado || 
+                        `Horas de Voo (${registro.tipo_anv}) para ${registro.municipio}. Qtd HV: ${formatNumber(registro.quantidade_hv, 2)}h. Amparo: ${registro.amparo || 'N/I'}.`;
+        
+        const dataRow = worksheet.getRow(currentRow);
+        
+        // A: DESPESAS
+        dataRow.getCell('A').value = `Horas de voo Anv Aviação do Exército - ${registro.tipo_anv}`; 
+        dataRow.getCell('A').alignment = leftTopAlignment; 
+        dataRow.getCell('A').font = baseFontStyle;
+        
+        // B: OM (UGE) CODUG (Preenchido apenas na primeira linha do grupo)
+        dataRow.getCell('B').value = omDetentora;
+        dataRow.getCell('B').alignment = dataCenterMiddleAlignment; 
+        dataRow.getCell('B').font = baseFontStyle;
+        
+        // C: MUNICÍPIO
+        dataRow.getCell('C').value = `${registro.municipio} (CODUG: ${registro.codug_destino})`;
+        dataRow.getCell('C').alignment = dataCenterMiddleAlignment; 
+        dataRow.getCell('C').font = baseFontStyle;
+        
+        // D: 33.90.30
+        dataRow.getCell('D').value = registro.valor_nd_30;
+        dataRow.getCell('D').alignment = dataCenterMiddleAlignment;
+        dataRow.getCell('D').numFmt = 'R$ #,##0.00';
+        dataRow.getCell('D').fill = headerFillAzul; 
+        dataRow.getCell('D').font = baseFontStyle;
+        
+        // E: 33.90.39
+        dataRow.getCell('E').value = registro.valor_nd_39;
+        dataRow.getCell('E').alignment = dataCenterMiddleAlignment;
+        dataRow.getCell('E').numFmt = 'R$ #,##0.00';
+        dataRow.getCell('E').fill = headerFillAzul; 
+        dataRow.getCell('E').font = baseFontStyle;
+        
+        // F: GND 3
+        dataRow.getCell('F').value = registro.valor_total;
+        dataRow.getCell('F').alignment = dataCenterMiddleAlignment;
+        dataRow.getCell('F').numFmt = 'R$ #,##0.00';
+        dataRow.getCell('F').fill = headerFillAzul; 
+        dataRow.getCell('F').font = baseFontStyle;
+        
+        // G: DETALHAMENTO
+        dataRow.getCell('G').value = memoria;
+        dataRow.getCell('G').alignment = leftTopAlignment; 
+        dataRow.getCell('G').font = { name: 'Arial', size: 6.5 };
+        
+        // Apply borders
+        headerCols.forEach(col => {
+            dataRow.getCell(col).border = cellBorder;
+        });
+        currentRow++;
+        
+        // Se for o último registro, mescla a última OM Detentora
+        if (index === registros.length - 1) {
+            worksheet.mergeCells(`B${startRowOM}:B${currentRow - 1}`);
+        }
     });
-    currentRow++;
     
     // --- LINHA 1: SUBTOTAL ---
     const subtotalRow = worksheet.getRow(currentRow);
@@ -395,7 +408,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     subtotalRow.getCell('D').numFmt = 'R$ #,##0.00';
     subtotalRow.getCell('D').fill = headerFillAzul; 
     subtotalRow.getCell('D').border = cellBorder;
-    subtotalRow.getCell('D').font = baseFontStyle; // Aplicando 8pt
+    subtotalRow.getCell('D').font = baseFontStyle;
     
     // E: 33.90.39
     subtotalRow.getCell('E').value = totalND39;
@@ -403,7 +416,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     subtotalRow.getCell('E').numFmt = 'R$ #,##0.00';
     subtotalRow.getCell('E').fill = headerFillAzul; 
     subtotalRow.getCell('E').border = cellBorder;
-    subtotalRow.getCell('E').font = baseFontStyle; // Aplicando 8pt
+    subtotalRow.getCell('E').font = baseFontStyle;
     
     // F: GND 3
     subtotalRow.getCell('F').value = totalGeral;
@@ -411,7 +424,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     subtotalRow.getCell('F').numFmt = 'R$ #,##0.00';
     subtotalRow.getCell('F').fill = headerFillAzul; 
     subtotalRow.getCell('F').border = cellBorder;
-    subtotalRow.getCell('F').font = baseFontStyle; // Aplicando 8pt
+    subtotalRow.getCell('F').font = baseFontStyle;
     
     // G: Vazio
     subtotalRow.getCell('G').value = '';
@@ -437,7 +450,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
     totalRow.getCell('F').numFmt = 'R$ #,##0.00';
     totalRow.getCell('F').fill = totalFinalFill; // D9D9D9
     totalRow.getCell('F').border = cellBorder;
-    totalRow.getCell('F').font = headerFontStyle; // Mantendo negrito para o total final
+    totalRow.getCell('F').font = headerFontStyle;
     
     // G: Vazio
     totalRow.getCell('G').value = '';
@@ -484,7 +497,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
       description: "O relatório Hora de Voo foi salvo com sucesso.",
       duration: 3000,
     });
-  }, [ptrabData, totalGeral, totalND30, totalND39, totalHV, generateFileName, localOM, nomeCmtOM, nomeOMExtenso, comandoMilitarArea, omUGDisplay, municipiosConsolidados, detalhamentoConsolidado, dataAtual, numDias, toast]);
+  }, [ptrabData, totalGeral, totalND30, totalND39, totalHV, generateFileName, localOM, nomeCmtOM, nomeOMExtenso, comandoMilitarArea, numDias, dataAtual, toast, registros]);
 
   // Função para Imprimir (Abre a caixa de diálogo de impressão)
   const handlePrint = useCallback(() => {
@@ -558,7 +571,7 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
           <p className="info-item font-bold">5. DESPESAS OPERACIONAIS:</p>
         </div>
 
-        {/* TABELA DE DESPESAS (CONSOLIDADA) */}
+        {/* TABELA DE DESPESAS (DESAGREGADA) */}
         <section className="mb-6 print:mb-4">
           <Table className="w-full border border-black print:border-black [&_th]:p-1 [&_td]:p-1">
             <TableHeader>
@@ -593,30 +606,42 @@ const PTrabHorasVooReport: React.FC<PTrabHorasVooReportProps> = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* Linha de Dados Consolidada */}
-              <TableRow className="h-auto">
-                <TableCell className="border border-black text-left align-middle text-[8pt]">
-                  Horas de voo Anv Aviação do Exército
-                </TableCell>
-                <TableCell className="border border-black text-center align-middle text-[8pt]">
-                  {omUGDisplay}
-                </TableCell>
-                <TableCell className="border border-black text-center align-middle text-[8pt]">
-                  {municipiosConsolidados}
-                </TableCell>
-                <TableCell className={`border border-black text-center align-middle bg-[#B4C7E7] text-[8pt] ${isACargoDoCoter ? 'font-bold' : ''}`}>
-                  {valorND30Display}
-                </TableCell>
-                <TableCell className={`border border-black text-center align-middle bg-[#B4C7E7] text-[8pt] ${isACargoDoCoter ? 'font-bold' : ''}`}>
-                  {valorND39Display}
-                </TableCell>
-                <TableCell className={`border border-black text-center align-middle bg-[#B4C7E7] font-bold text-[8pt] ${isACargoDoCoter ? 'text-[8pt]' : ''}`}>
-                  {valorGND3Display}
-                </TableCell>
-                <TableCell className="border border-black align-middle whitespace-pre-wrap text-left text-[8pt]">
-                  {detalhamentoConsolidado}
-                </TableCell>
-              </TableRow>
+              {registros.map((registro, index) => {
+                const isCoterRegistro = registro.valor_nd_30 === 0 && registro.valor_nd_39 === 0;
+                
+                // Detalhamento / Memória de Cálculo
+                const memoria = registro.detalhamento_customizado || 
+                                `Horas de Voo (${registro.tipo_anv}) para ${registro.municipio}. Qtd HV: ${formatNumber(registro.quantidade_hv, 2)}h. Amparo: ${registro.amparo || 'N/I'}.`;
+                
+                // OM Detentora (para a coluna B)
+                const omDetentoraDisplay = `${registro.om_detentora || registro.organizacao} (${formatCodug(registro.ug_detentora || registro.ug)})`;
+                
+                return (
+                  <TableRow key={registro.id} className="h-auto">
+                    <TableCell className="border border-black text-left align-middle text-[8pt]">
+                      Horas de voo Anv Aviação do Exército - {registro.tipo_anv}
+                    </TableCell>
+                    <TableCell className="border border-black text-center align-middle text-[8pt]">
+                      {omDetentoraDisplay}
+                    </TableCell>
+                    <TableCell className="border border-black text-center align-middle text-[8pt]">
+                      {registro.municipio} (CODUG: {registro.codug_destino})
+                    </TableCell>
+                    <TableCell className={`border border-black text-center align-middle bg-[#B4C7E7] text-[8pt] ${isCoterRegistro ? 'font-bold' : ''}`}>
+                      {isCoterRegistro ? 'A CARGO COTER' : formatCurrency(registro.valor_nd_30)}
+                    </TableCell>
+                    <TableCell className={`border border-black text-center align-middle bg-[#B4C7E7] text-[8pt] ${isCoterRegistro ? 'font-bold' : ''}`}>
+                      {isCoterRegistro ? 'A CARGO COTER' : formatCurrency(registro.valor_nd_39)}
+                    </TableCell>
+                    <TableCell className={`border border-black text-center align-middle bg-[#B4C7E7] font-bold text-[8pt] ${isCoterRegistro ? 'text-[8pt]' : ''}`}>
+                      {isCoterRegistro ? 'A CARGO COTER' : formatCurrency(registro.valor_total)}
+                    </TableCell>
+                    <TableCell className="border border-black align-middle whitespace-pre-wrap text-left text-[8pt]">
+                      {memoria}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
               
               {/* LINHA 1: SUBTOTAL (ND 30, ND 39, GND 3) */}
               <TableRow className="h-auto font-bold bg-[#E8E8E8] print:bg-[#E8E8E8]">
