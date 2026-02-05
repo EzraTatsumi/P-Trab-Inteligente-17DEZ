@@ -20,7 +20,10 @@ interface PassagemDiretrizRowProps {
 }
 
 const getTransportIcon = (tipo: TipoTransporte) => {
-    switch (tipo) {
+    // Normaliza o tipo para garantir que 'AÉREO' ou 'aereo' sejam tratados como 'AEREO'
+    const normalizedTipo = String(tipo).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    switch (normalizedTipo) {
         case 'AEREO': return <Plane className="h-4 w-4 text-blue-600" />;
         case 'TERRESTRE': return <Bus className="h-4 w-4 text-green-600" />;
         case 'FLUVIAL': return <Ship className="h-4 w-4 text-cyan-600" />;
