@@ -118,3 +118,22 @@ export async function fetchSharePreview(ptrabId: string, shareToken: string): Pr
         ownerProfile: profileData,
     };
 }
+
+/**
+ * Fetches the LPC (Local Price Consultation) reference for a specific PTrab.
+ * @param ptrabId The ID of the PTrab.
+ * @returns A promise that resolves to the RefLPC record or null.
+ */
+export async function fetchFuelPrice(ptrabId: string): Promise<Tables<'p_trab_ref_lpc'> | null> {
+    const { data, error } = await supabase
+        .from('p_trab_ref_lpc')
+        .select('*')
+        .eq('p_trab_id', ptrabId)
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+}
