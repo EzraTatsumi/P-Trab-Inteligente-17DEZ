@@ -5,13 +5,14 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Save, Plus, Pencil, Trash2, Loader2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import CurrencyInput from "@/components/CurrencyInput";
 import { formatCurrencyInput, numberToRawDigits, formatCurrency } from "@/lib/formatUtils";
+import SubitemCatalogDialog from './SubitemCatalogDialog'; // NOVO: Importação do Catálogo
 
 interface MaterialConsumoDiretrizFormDialogProps {
     open: boolean;
@@ -72,6 +73,9 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     
     const [itemForm, setItemForm] = useState<typeof initialItemForm>(initialItemForm);
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
+    
+    // NOVO ESTADO: Controle do diálogo do catálogo
+    const [isCatalogOpen, setIsCatalogOpen] = useState(false);
 
     useEffect(() => {
         setSubitemForm(getInitialFormState(diretrizToEdit));
@@ -152,6 +156,17 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         onOpenChange(false);
     };
 
+    // NOVO: Função para receber dados do catálogo e atualizar o formulário
+    const handleCatalogSelect = (catalogItem: { nr_subitem: string, nome_subitem: string, descricao_subitem: string | null }) => {
+        setSubitemForm(prev => ({
+            ...prev,
+            nr_subitem: catalogItem.nr_subitem,
+            nome_subitem: catalogItem.nome_subitem,
+            descricao_subitem: catalogItem.descricao_subitem,
+        }));
+        setIsCatalogOpen(false);
+    };
+
     const isEditingSubitem = !!subitemForm.id;
 
     return (
@@ -169,9 +184,21 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                 <div className="space-y-6 py-2">
                     {/* Seção de Dados do Subitem (Card 266 equivalente) */}
                     <Card className="p-4">
-                        <CardTitle className="text-base mb-4">
-                            Dados do Subitem da ND
-                        </CardTitle>
+                        <div className="flex justify-between items-center mb-4">
+                            <CardTitle className="text-base">
+                                Dados do Subitem da ND
+                            </CardTitle>
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => setIsCatalogOpen(true)}
+                                disabled={loading}
+                            >
+                                <BookOpen className="h-4 w-4 mr-2" />
+                                Selecionar do Catálogo
+                            </Button>
+                        </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
@@ -333,6 +360,13 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                     </Button>
                 </div>
             </DialogContent>
+            
+            {/* NOVO: Diálogo do Catálogo */}
+            <SubitemCatalogDialog 
+                open={isCatalogOpen}
+                onOpenChange={setIsCatalogOpen}
+                onSelect={handleCatalogSelect}
+            />
         </Dialog>
     );
 };
