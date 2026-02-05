@@ -683,6 +683,217 @@ const CustosOperacionaisPage = () => {
     }
   };
 
+  // --- CRUD DE DETALHE (Passagens) ---
+  
+  const handleStartEditPassagem = useCallback((diretriz: DiretrizPassagem) => {
+      setDiretrizToEdit(diretriz);
+      setIsPassagemFormOpen(true);
+  }, []);
+  
+  const handleOpenNewPassagem = useCallback(() => {
+      setDiretrizToEdit(null);
+      setIsPassagemFormOpen(true);
+  }, []);
+  
+  const handleDeletePassagem = useCallback(async (id: string, omName: string) => {
+      if (!confirm(`Tem certeza que deseja excluir o contrato de passagens da OM ${omName}?`)) return;
+      
+      try {
+          setLoading(true);
+          await supabase.from('diretrizes_passagens').delete().eq('id', id);
+          toast.success("Contrato de Passagens excluído!");
+          await loadDiretrizesPassagens(selectedYear);
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
+      }
+  }, [loadDiretrizesPassagens, selectedYear]);
+  
+  const handleSavePassagem = async (data: Partial<DiretrizPassagem> & { ano_referencia: number, om_referencia: string, ug_referencia: string }) => {
+      try {
+          setLoading(true);
+          if (!user?.id) throw new Error("Usuário não autenticado");
+          
+          const dbData: TablesInsert<'diretrizes_passagens'> = {
+              user_id: user.id,
+              ano_referencia: data.ano_referencia,
+              om_referencia: data.om_referencia,
+              ug_referencia: data.ug_referencia,
+              numero_pregao: data.numero_pregao || null,
+              trechos: data.trechos as unknown as Json,
+              ativo: data.ativo ?? true,
+              data_inicio_vigencia: data.data_inicio_vigencia || null,
+              data_fim_vigencia: data.data_fim_vigencia || null,
+          };
+          
+          if (data.id) {
+              const { error } = await supabase
+                  .from('diretrizes_passagens')
+                  .update(dbData as TablesUpdate<'diretrizes_passagens'>)
+                  .eq('id', data.id);
+              if (error) throw error;
+              toast.success("Contrato de Passagens atualizado!");
+          } else {
+              const { error } = await supabase
+                  .from('diretrizes_passagens')
+                  .insert([dbData]);
+              if (error) throw error;
+              toast.success("Novo Contrato de Passagens cadastrado!");
+          }
+          
+          await loadDiretrizesPassagens(selectedYear);
+          setDiretrizToEdit(null);
+          setIsPassagemFormOpen(false);
+          
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
+      }
+  };
+  
+  // --- CRUD DE DETALHE (Concessionária) ---
+  
+  const handleStartEditConcessionaria = useCallback((diretriz: DiretrizConcessionaria) => {
+      setDiretrizConcessionariaToEdit(diretriz);
+      setIsConcessionariaFormOpen(true);
+  }, []);
+  
+  const handleOpenNewConcessionaria = useCallback((category: CategoriaConcessionaria) => {
+      setDiretrizConcessionariaToEdit(null);
+      setSelectedConcessionariaTab(category);
+      setIsConcessionariaFormOpen(true);
+  }, []);
+  
+  const handleDeleteConcessionaria = useCallback(async (id: string, nome: string) => {
+      if (!confirm(`Tem certeza que deseja excluir a diretriz da concessionária ${nome}?`)) return;
+      
+      try {
+          setLoading(true);
+          await supabase.from('diretrizes_concessionaria').delete().eq('id', id);
+          toast.success("Diretriz de Concessionária excluída!");
+          await loadDiretrizesConcessionaria(selectedYear);
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
+      }
+  }, [loadDiretrizesConcessionaria, selectedYear]);
+  
+  const handleSaveConcessionaria = async (data: DiretrizConcessionariaForm & { id?: string }) => {
+      try {
+          setLoading(true);
+          if (!user?.id) throw new Error("Usuário não autenticado");
+          
+          const consumoValue = Number(data.consumo_pessoa_dia);
+
+          const dbData: TablesInsert<'diretrizes_concessionaria'> = {
+              user_id: user.id,
+              ano_referencia: selectedYear,
+              categoria: data.categoria,
+              nome_concessionaria: data.nome_concessionaria,
+              consumo_pessoa_dia: consumoValue,
+              fonte_consumo: data.fonte_consumo || null,
+              custo_unitario: data.custo_unitario,
+              fonte_custo: data.fonte_custo || null,
+              unidade_custo: data.unidade_custo,
+          };
+
+          if (data.id) {
+              const { error } = await supabase
+                  .from('diretrizes_concessionaria')
+                  .update(dbData as TablesUpdate<'diretrizes_concessionaria'>)
+                  .eq('id', data.id);
+              if (error) throw error;
+              toast.success("Diretriz de Concessionária atualizada!");
+          } else {
+              const { error } = await supabase
+                  .from('diretrizes_concessionaria')
+                  .insert([dbData]);
+              if (error) throw error;
+              toast.success("Nova Diretriz de Concessionária cadastrada!");
+          }
+          
+          await loadDiretrizesConcessionaria(selectedYear);
+          setDiretrizConcessionariaToEdit(null);
+          setIsConcessionariaFormOpen(false);
+          
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
+      }
+  };
+  
+  // --- CRUD DE DETALHE (Material de Consumo) ---
+  
+  const handleStartEditMaterialConsumo = useCallback((diretriz: DiretrizMaterialConsumo) => {
+      setDiretrizMaterialConsumoToEdit(diretriz);
+      setIsMaterialConsumoFormOpen(true);
+  }, []);
+  
+  const handleOpenNewMaterialConsumo = useCallback(() => {
+      setDiretrizMaterialConsumoToEdit(null);
+      setIsMaterialConsumoFormOpen(true);
+  }, []);
+  
+  const handleDeleteMaterialConsumo = useCallback(async (id: string, nome: string) => {
+      if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
+      
+      try {
+          setLoading(true);
+          await supabase.from('diretrizes_material_consumo').delete().eq('id', id);
+          toast.success("Subitem da ND excluído!");
+          await loadDiretrizesMaterialConsumo(selectedYear);
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
+      }
+  }, [loadDiretrizesMaterialConsumo, selectedYear]);
+  
+  const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
+      try {
+          setLoading(true);
+          if (!user?.id) throw new Error("Usuário não autenticado");
+          
+          const dbData: TablesInsert<'diretrizes_material_consumo'> = {
+              user_id: user.id,
+              ano_referencia: data.ano_referencia,
+              nr_subitem: data.nr_subitem!,
+              nome_subitem: data.nome_subitem!,
+              descricao_subitem: data.descricao_subitem || null,
+              itens_aquisicao: data.itens_aquisicao as unknown as Json,
+              ativo: data.ativo ?? true,
+          };
+
+          if (data.id) {
+              const { error } = await supabase
+                  .from('diretrizes_material_consumo')
+                  .update(dbData as TablesUpdate<'diretrizes_material_consumo'>)
+                  .eq('id', data.id);
+              if (error) throw error;
+              toast.success("Subitem da ND atualizado!");
+          } else {
+              const { error } = await supabase
+                  .from('diretrizes_material_consumo')
+                  .insert([dbData]);
+              if (error) throw error;
+              toast.success("Novo Subitem da ND cadastrado!");
+          }
+          
+          await loadDiretrizesMaterialConsumo(selectedYear);
+          setDiretrizMaterialConsumoToEdit(null);
+          setIsMaterialConsumoFormOpen(false);
+          
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
+      }
+  };
+
   // --- RENDERIZAÇÃO DE SEÇÕES ---
   
   const renderDiretrizField = (field: { key: string, label: string, type: 'currency' | 'factor', placeholder: string }) => {
@@ -988,141 +1199,6 @@ const CustosOperacionaisPage = () => {
               </div>
           </div>
       );
-  };
-  
-  // --- CRUD DE DETALHE (Passagens) ---
-  
-  const handleSavePassagem = async (data: Partial<DiretrizPassagem> & { ano_referencia: number, om_referencia: string, ug_referencia: string }) => {
-      try {
-          setLoading(true);
-          if (!user?.id) throw new Error("Usuário não autenticado");
-          
-          const dbData: TablesInsert<'diretrizes_passagens'> = {
-              user_id: user.id,
-              ano_referencia: data.ano_referencia,
-              om_referencia: data.om_referencia,
-              ug_referencia: data.ug_referencia,
-              numero_pregao: data.numero_pregao || null,
-              trechos: data.trechos as unknown as Json,
-              ativo: data.ativo ?? true,
-              data_inicio_vigencia: data.data_inicio_vigencia || null,
-              data_fim_vigencia: data.data_fim_vigencia || null,
-          };
-          
-          if (data.id) {
-              const { error } = await supabase
-                  .from('diretrizes_passagens')
-                  .update(dbData as TablesUpdate<'diretrizes_passagens'>)
-                  .eq('id', data.id);
-              if (error) throw error;
-              toast.success("Contrato de Passagens atualizado!");
-          } else {
-              const { error } = await supabase
-                  .from('diretrizes_passagens')
-                  .insert([dbData]);
-              if (error) throw error;
-              toast.success("Novo Contrato de Passagens cadastrado!");
-          }
-          
-          await loadDiretrizesPassagens(selectedYear);
-          setDiretrizToEdit(null);
-          setIsPassagemFormOpen(false);
-          
-      } catch (error: any) {
-          toast.error(sanitizeError(error));
-      } finally {
-          setLoading(false);
-      }
-  };
-  
-  // --- CRUD DE DETALHE (Concessionária) ---
-  
-  const handleSaveConcessionaria = async (data: DiretrizConcessionariaForm & { id?: string }) => {
-      try {
-          setLoading(true);
-          if (!user?.id) throw new Error("Usuário não autenticado");
-          
-          const consumoValue = Number(data.consumo_pessoa_dia);
-
-          const dbData: TablesInsert<'diretrizes_concessionaria'> = {
-              user_id: user.id,
-              ano_referencia: selectedYear,
-              categoria: data.categoria,
-              nome_concessionaria: data.nome_concessionaria,
-              consumo_pessoa_dia: consumoValue,
-              fonte_consumo: data.fonte_consumo || null,
-              custo_unitario: data.custo_unitario,
-              fonte_custo: data.fonte_custo || null,
-              unidade_custo: data.unidade_custo,
-          };
-
-          if (data.id) {
-              const { error } = await supabase
-                  .from('diretrizes_concessionaria')
-                  .update(dbData as TablesUpdate<'diretrizes_concessionaria'>)
-                  .eq('id', data.id);
-              if (error) throw error;
-              toast.success("Diretriz de Concessionária atualizada!");
-          } else {
-              const { error } = await supabase
-                  .from('diretrizes_concessionaria')
-                  .insert([dbData]);
-              if (error) throw error;
-              toast.success("Nova Diretriz de Concessionária cadastrada!");
-          }
-          
-          await loadDiretrizesConcessionaria(selectedYear);
-          setDiretrizConcessionariaToEdit(null);
-          setIsConcessionariaFormOpen(false);
-          
-      } catch (error: any) {
-          toast.error(sanitizeError(error));
-      } finally {
-          setLoading(false);
-      }
-  };
-  
-  // --- CRUD DE DETALHE (Material de Consumo) ---
-  
-  const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
-      try {
-          setLoading(true);
-          if (!user?.id) throw new Error("Usuário não autenticado");
-          
-          const dbData: TablesInsert<'diretrizes_material_consumo'> = {
-              user_id: user.id,
-              ano_referencia: data.ano_referencia,
-              nr_subitem: data.nr_subitem!,
-              nome_subitem: data.nome_subitem!,
-              descricao_subitem: data.descricao_subitem || null,
-              itens_aquisicao: data.itens_aquisicao as unknown as Json,
-              ativo: data.ativo ?? true,
-          };
-
-          if (data.id) {
-              const { error } = await supabase
-                  .from('diretrizes_material_consumo')
-                  .update(dbData as TablesUpdate<'diretrizes_material_consumo'>)
-                  .eq('id', data.id);
-              if (error) throw error;
-              toast.success("Subitem da ND atualizado!");
-          } else {
-              const { error } = await supabase
-                  .from('diretrizes_material_consumo')
-                  .insert([dbData]);
-              if (error) throw error;
-              toast.success("Novo Subitem da ND cadastrado!");
-          }
-          
-          await loadDiretrizesMaterialConsumo(selectedYear);
-          setDiretrizMaterialConsumoToEdit(null);
-          setIsMaterialConsumoFormOpen(false);
-          
-      } catch (error: any) {
-          toast.error(sanitizeError(error));
-      } finally {
-          setLoading(false);
-      }
   };
 
   // Adicionando a verificação de carregamento
