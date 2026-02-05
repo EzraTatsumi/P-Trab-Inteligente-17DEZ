@@ -30,7 +30,6 @@ const getTransportIcon = (tipo: TipoTransporte) => {
 
 const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onEdit, onDelete, loading }) => {
     const [isOpen, setIsOpen] = useState(false);
-    // CORREÇÃO: O campo trechos é TrechoPassagem[] no tipo DiretrizPassagem
     const trechos = diretriz.trechos;
     const hasTrechos = trechos.length > 0;
     
@@ -46,10 +45,13 @@ const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onE
 
     return (
         <React.Fragment>
-            <TableRow className={cn(
-                "hover:bg-muted/50 transition-colors",
-                isOpen && "bg-muted/50 border-b-0"
-            )}>
+            <TableRow 
+                className={cn(
+                    "hover:bg-muted/50 transition-colors cursor-pointer",
+                    isOpen && "bg-muted/50 border-b-0"
+                )}
+                onClick={() => hasTrechos && setIsOpen(!isOpen)} // Habilita clique na linha para expandir
+            >
                 {/* OM Referência (2 linhas) */}
                 <TableCell className="font-medium">
                     <div className="flex flex-col">
@@ -69,26 +71,24 @@ const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onE
                     </div>
                 </TableCell>
                 
-                {/* Trechos (com botão de colapsar próximo) */}
+                {/* Trechos (Agora inclui o ícone de expansão) */}
                 <TableCell className="text-center flex items-center justify-center h-[60px]">
                     <span className="mr-1">{trechos.length}</span>
-                    {/* Botão de Colapsar/Expandir */}
-                    <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => hasTrechos && setIsOpen(!isOpen)}
-                        disabled={!hasTrechos}
-                        className={cn("h-8 w-8", !hasTrechos && "opacity-50 cursor-not-allowed")}
-                    >
+                    {/* Ícone de Colapsar/Expandir (Visual, não clicável) */}
+                    <span className={cn("h-8 w-8 flex items-center justify-center", !hasTrechos && "opacity-50")}>
                         {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
+                    </span>
                 </TableCell>
                 
                 {/* Ações (Centralizado) */}
                 <TableCell className="text-center">
                     <div className="flex justify-center gap-1">
                         {/* Botão de Edição */}
-                        <Button variant="ghost" size="icon" onClick={() => onEdit(diretriz)}>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={(e) => { e.stopPropagation(); onEdit(diretriz); }} // Stop propagation
+                        >
                             <Pencil className="h-4 w-4" />
                         </Button>
                         
@@ -96,7 +96,7 @@ const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onE
                         <Button 
                             variant="ghost" 
                             size="icon" 
-                            onClick={() => onDelete(diretriz.id, diretriz.om_referencia)} 
+                            onClick={(e) => { e.stopPropagation(); onDelete(diretriz.id, diretriz.om_referencia); }} // Stop propagation
                             disabled={loading} 
                             className="text-destructive hover:bg-destructive/10"
                         >
@@ -126,7 +126,7 @@ const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onE
                                                 </div>
                                                 <div className="flex items-center gap-4 text-right">
                                                     <span className="text-xs text-muted-foreground">
-                                                        {trecho.is_ida_volta ? 'Ida/Volta' : 'Somente Ida'} ({trecho.quantidade_passagens}x)
+                                                        {trecho.is_ida_volta ? 'Ida/Volta' : 'Somente Ida'}
                                                     </span>
                                                     <span className="font-bold text-primary">
                                                         {formatCurrency(trecho.valor)}
