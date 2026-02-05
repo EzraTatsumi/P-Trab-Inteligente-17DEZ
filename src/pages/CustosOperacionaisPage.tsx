@@ -1380,7 +1380,7 @@ const CustosOperacionaisPage = () => {
       return (
           <Card className="p-4">
               <CardTitle className="text-base font-semibold mb-3">
-                  Resultados da Busca ({filteredItems.length})
+                   Resultados da Busca ({filteredItems.length})
               </CardTitle>
               <Table>
                   <TableHeader>
@@ -1404,7 +1404,7 @@ const CustosOperacionaisPage = () => {
                                   </p>
                                   {/* Linha 2: Pregão e UASG */}
                                   <p className="text-xs text-muted-foreground truncate">
-                                      Pregão: {item.numero_pregao} | UASG: {item.uasg || 'N/A'}
+                                      Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}
                                   </p>
                               </TableCell>
                               {/* Coluna Subitem ND (Largura aumentada) */}
@@ -1760,7 +1760,8 @@ const CustosOperacionaisPage = () => {
           open={isConcessionariaFormOpen}
           onOpenChange={setIsConcessionariaFormOpen}
           selectedYear={selectedYear}
-          diretrizConcessionariaToEdit={diretrizConcessionariaToEdit}
+          // CORREÇÃO: diretrizConcessionariaToEdit é a prop correta
+          diretrizToEdit={diretrizConcessionariaToEdit} 
           onSave={handleSaveConcessionaria}
           loading={loading}
           initialCategory={selectedConcessionariaTab}

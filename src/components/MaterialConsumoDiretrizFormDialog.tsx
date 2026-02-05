@@ -63,6 +63,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         }
         
         return { 
+            id: undefined, // Adiciona 'id' opcional
             nr_subitem: '', 
             nome_subitem: '', 
             descricao_subitem: '', 

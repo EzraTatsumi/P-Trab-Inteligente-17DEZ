@@ -11,7 +11,7 @@ export interface ItemAquisicao {
 }
 
 // Estrutura base da diretriz (Subitem da ND)
-export interface DiretrizMaterialConsumo extends Tables<'diretrizes_material_consumo'> {
+export interface DiretrizMaterialConsumo extends Omit<Tables<'diretrizes_material_consumo'>, 'itens_aquisicao'> {
     // Sobrescreve o tipo JSONB para garantir que seja ItemAquisicao[]
     itens_aquisicao: ItemAquisicao[];
 }

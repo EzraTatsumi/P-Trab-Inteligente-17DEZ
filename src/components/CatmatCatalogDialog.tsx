@@ -1,16 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Check, Search, Import, BookOpen } from "lucide-react";
+import { Loader2, Check, Search, Import } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
-import { Tables } from '@/integrations/supabase/types';
-
-// Definindo o tipo de item do catálogo CATMAT
-export interface CatmatItem extends Tables<'catalogo_catmat'> {}
+import { CatmatItem } from '@/types/catalogoCatmat'; // Importa o tipo correto
 
 // Definindo o tipo de item selecionável para o estado
 type SelectedItem = { code: string, description: string } | null;
@@ -21,20 +18,11 @@ interface CatmatCatalogDialogProps {
     onSelect: (item: { code: string, description: string }) => void;
 }
 
-/**
- * Fetches CATMAT items from Supabase, applying server-side filtering.
- * @param searchTerm Termo de busca fornecido pelo usuário.
- */
-const fetchCatmatItems = async (searchTerm: string): Promise<CatmatItem[]> => {
-    // A busca deve ser case-insensitive e buscar em código ou descrição
-    const searchPattern = `%${searchTerm.toLowerCase()}%`;
-    
+const fetchCatalogItems = async (): Promise<CatmatItem[]> => {
     const { data, error } = await supabase
         .from('catalogo_catmat')
         .select('*')
-        .or(`code.ilike.${searchPattern},description.ilike.${searchPattern}`)
-        .order('code', { ascending: true })
-        .limit(100); // Limita o resultado da busca para evitar sobrecarga, mesmo com filtro
+        .order('code', { ascending: true });
 
     if (error) {
         console.error("Erro ao buscar catálogo CATMAT:", error);
@@ -49,17 +37,19 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
     onOpenChange,
     onSelect,
 }) => {
+    const { data: items, isLoading, error } = useQuery({
+        queryKey: ['catmatCatalog'],
+        queryFn: fetchCatalogItems,
+        enabled: open,
+    });
+    
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
     
-    // Condição para habilitar a query: diálogo aberto E termo de busca com pelo menos 3 caracteres
-    const isSearchEnabled = open && searchTerm.length >= 3;
-
-    const { data: items, isLoading, error } = useQuery({
-        queryKey: ['catmatCatalog', searchTerm],
-        queryFn: () => fetchCatmatItems(searchTerm),
-        enabled: isSearchEnabled,
-    });
+    const displayItems = (items || []).filter(item => 
+        item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchTerm.toLowerCase())
+    );
     
     const handlePreSelect = (item: CatmatItem) => {
         const newItem = {
@@ -80,26 +70,21 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
         if (selectedItem) {
             onSelect(selectedItem);
             onOpenChange(false);
-            toast.success(`Item CATMAT ${selectedItem.code} importado com sucesso.`);
+            toast.success(`CATMAT ${selectedItem.code} importado com sucesso.`);
         }
     };
 
     if (error) {
         toast.error(error.message);
     }
-    
-    const displayItems = items || [];
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <BookOpen className="h-5 w-5 text-primary" />
-                        Catálogo CATMAT
-                    </DialogTitle>
+                    <DialogTitle>Catálogo CATMAT</DialogTitle>
                     <DialogDescription>
-                        Busque por código ou descrição para encontrar itens de material de consumo.
+                        Selecione um código CATMAT de referência e confirme a importação.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -107,7 +92,7 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Digite pelo menos 3 caracteres para buscar (Ex: CANETA, 4410)"
+                            placeholder="Buscar por código ou descrição..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-10"
@@ -117,16 +102,11 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
                     {isLoading ? (
                         <div className="text-center py-8">
                             <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
-                            <p className="text-sm text-muted-foreground mt-2">Buscando itens...</p>
-                        </div>
-                    ) : !isSearchEnabled ? (
-                        <div className="text-center py-8 text-muted-foreground border border-dashed rounded-md">
-                            <Search className="h-8 w-8 mx-auto mb-2" />
-                            <p className="font-medium">Digite pelo menos 3 caracteres para iniciar a busca no catálogo.</p>
+                            <p className="text-sm text-muted-foreground mt-2">Carregando catálogo...</p>
                         </div>
                     ) : displayItems.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground border border-dashed rounded-md">
-                            <p className="font-medium">Nenhum item encontrado para o termo "{searchTerm}".</p>
+                        <div className="text-center py-8 text-muted-foreground">
+                            Nenhum item CATMAT encontrado.
                         </div>
                     ) : (
                         <div className="max-h-[50vh] overflow-y-auto border rounded-md">
@@ -134,7 +114,7 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
                                 <TableHeader className="sticky top-0 bg-background z-10">
                                     <TableRow>
                                         <TableHead className="w-[150px] text-center">Código</TableHead>
-                                        <TableHead>Descrição</TableHead>
+                                        <TableHead className="text-center">Descrição</TableHead>
                                         <TableHead className="w-[120px] text-center">Ação</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -154,6 +134,7 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
                                                         variant={isSelected ? "default" : "outline"}
                                                         size="sm"
                                                         onClick={(e) => {
+                                                            // Previne que o clique na linha dispare duas vezes
                                                             e.stopPropagation(); 
                                                             handlePreSelect(item);
                                                         }}
@@ -180,6 +161,7 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
                     )}
                 </div>
 
+                {/* Ajuste do rodapé para alinhar à direita */}
                 <div className="flex justify-end gap-2 pt-4 border-t">
                     <Button 
                         type="button" 

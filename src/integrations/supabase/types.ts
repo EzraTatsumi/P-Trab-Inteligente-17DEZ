@@ -1808,6 +1808,60 @@ export type Database = {
           },
         ]
       }
+      catalogo_catmat: {
+        Row: {
+          id: string
+          code: string
+          description: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          code: string
+          description: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          code?: string
+          description?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      catalogo_subitens_nd: {
+        Row: {
+          id: string
+          nr_subitem: string
+          nome_subitem: string
+          descricao_subitem: string | null
+          ativo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nr_subitem: string
+          nome_subitem: string
+          descricao_subitem?: string | null
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nr_subitem?: string
+          nome_subitem?: string
+          descricao_subitem?: string | null
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
