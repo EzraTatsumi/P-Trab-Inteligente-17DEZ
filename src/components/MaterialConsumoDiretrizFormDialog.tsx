@@ -292,6 +292,9 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         onKeyDown={handleEnterToNextField}
                                         required
                                     />
+                                    <p className="text-xs text-muted-foreground">
+                                        Se o valor for desconhecido, use um valor estimado.
+                                    </p>
                                 </div>
                                 
                                 {/* Campo Pregão (2 colunas) */}
@@ -304,6 +307,9 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         placeholder="Ex: 01/2024"
                                         onKeyDown={handleEnterToNextField}
                                     />
+                                    <p className="text-xs text-muted-foreground">
+                                        Se não houver pregão, escreva "EM PROCESSO DE ABERTURA".
+                                    </p>
                                 </div>
                                 
                                 {/* Campo UASG (1 coluna) */}
