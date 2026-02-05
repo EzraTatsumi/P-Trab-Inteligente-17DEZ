@@ -11,7 +11,7 @@ import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import CurrencyInput from "@/components/CurrencyInput";
-import { formatCurrencyInput, numberToRawDigits, formatCurrency } from "@/lib/formatUtils";
+import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodug } from "@/lib/formatUtils";
 import SubitemCatalogDialog from './SubitemCatalogDialog';
 import CatmatCatalogDialog from './CatmatCatalogDialog'; // NOVO: Importação do Catálogo CATMAT
 import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog'; // NOVO: Importação do Diálogo de Importação
@@ -100,6 +100,14 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             rawValor: digits,
         }));
     };
+    
+    // Função para lidar com a mudança do input UASG, aplicando a formatação
+    const handleUasgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const rawValue = e.target.value;
+        // Remove caracteres não numéricos e aplica a formatação
+        const formattedValue = formatCodug(rawValue);
+        setItemForm({ ...itemForm, uasg: formattedValue });
+    };
 
     const handleAddItem = () => {
         if (!itemForm.descricao_item || itemForm.valor_unitario <= 0) {
@@ -113,8 +121,9 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             return;
         }
 
-        if (!itemForm.uasg || itemForm.uasg.trim() === '') {
-            toast.error("O campo 'UASG' é obrigatório.");
+        // Validação da UASG após a formatação
+        if (!itemForm.uasg || itemForm.uasg.trim() === '' || itemForm.uasg.length !== 6) {
+            toast.error("O campo 'UASG' é obrigatório e deve ter 6 dígitos.");
             return;
         }
         // -------------------------------------
@@ -374,9 +383,10 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     <Input
                                         id="item-uasg"
                                         value={itemForm.uasg}
-                                        onChange={(e) => setItemForm({ ...itemForm, uasg: e.target.value })}
+                                        onChange={handleUasgChange} // Usando a nova função de tratamento
                                         placeholder="Ex: 160001"
                                         onKeyDown={handleEnterToNextField}
+                                        maxLength={6} // Limita o tamanho após a formatação
                                         required
                                     />
                                 </div>
@@ -403,7 +413,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                             !itemForm.descricao_item || 
                                             itemForm.valor_unitario <= 0 ||
                                             !itemForm.numero_pregao || 
-                                            !itemForm.uasg
+                                            itemForm.uasg.length !== 6 // Validação ajustada para 6 dígitos
                                         }
                                     >
                                         {editingItemId ? <Pencil className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
@@ -432,7 +442,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                             <TableCell className="font-medium">{item.descricao_item}</TableCell>
                                             <TableCell className="text-center text-xs">{item.codigo_catmat || 'N/A'}</TableCell>
                                             <TableCell className="text-center">{item.numero_pregao || 'N/A'}</TableCell>
-                                            <TableCell className="text-center">{item.uasg || 'N/A'}</TableCell>
+                                            <TableCell className="text-center">{formatCodug(item.uasg) || 'N/A'}</TableCell>
                                             <TableCell className="text-right font-bold text-primary">
                                                 {formatCurrency(item.valor_unitario)}
                                             </TableCell>
