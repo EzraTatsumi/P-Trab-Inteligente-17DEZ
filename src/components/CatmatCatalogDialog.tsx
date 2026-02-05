@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Search, Check } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Loader2, Check, Search, Import, BookOpen } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Tables } from "@/integrations/supabase/types";
+import { Input } from "@/components/ui/input";
+import { Tables } from '@/integrations/supabase/types';
 
-// Tipo de item do catálogo CATMAT
-type CatmatItem = Tables<'catalogo_catmat'>;
+// Definindo o tipo de item do catálogo CATMAT
+export interface CatmatItem extends Tables<'catalogo_catmat'> {}
+
+// Definindo o tipo de item selecionável para o estado
+type SelectedItem = { code: string, description: string } | null;
 
 interface CatmatCatalogDialogProps {
     open: boolean;
@@ -18,11 +21,20 @@ interface CatmatCatalogDialogProps {
     onSelect: (item: { code: string, description: string }) => void;
 }
 
-const fetchCatmatItems = async (): Promise<CatmatItem[]> => {
+/**
+ * Fetches CATMAT items from Supabase, applying server-side filtering.
+ * @param searchTerm Termo de busca fornecido pelo usuário.
+ */
+const fetchCatmatItems = async (searchTerm: string): Promise<CatmatItem[]> => {
+    // A busca deve ser case-insensitive e buscar em código ou descrição
+    const searchPattern = `%${searchTerm.toLowerCase()}%`;
+    
     const { data, error } = await supabase
         .from('catalogo_catmat')
         .select('*')
-        .limit(50); // Limita para evitar sobrecarga
+        .or(`code.ilike.${searchPattern},description.ilike.${searchPattern}`)
+        .order('code', { ascending: true })
+        .limit(100); // Limita o resultado da busca para evitar sobrecarga, mesmo com filtro
 
     if (error) {
         console.error("Erro ao buscar catálogo CATMAT:", error);
@@ -37,19 +49,17 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
     onOpenChange,
     onSelect,
 }) => {
-    const { data: items, isLoading, error } = useQuery({
-        queryKey: ['catmatCatalog'],
-        queryFn: fetchCatmatItems,
-        enabled: open,
-    });
-    
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedItem, setSelectedItem] = useState<{ code: string, description: string } | null>(null);
+    const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
     
-    const filteredItems = (items || []).filter(item => 
-        item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.description.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Condição para habilitar a query: diálogo aberto E termo de busca com pelo menos 3 caracteres
+    const isSearchEnabled = open && searchTerm.length >= 3;
+
+    const { data: items, isLoading, error } = useQuery({
+        queryKey: ['catmatCatalog', searchTerm],
+        queryFn: () => fetchCatmatItems(searchTerm),
+        enabled: isSearchEnabled,
+    });
     
     const handlePreSelect = (item: CatmatItem) => {
         const newItem = {
@@ -58,27 +68,38 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
         };
 
         if (selectedItem?.code === item.code) {
+            // Desselecionar se já estiver selecionado
             setSelectedItem(null);
         } else {
+            // Selecionar o novo item
             setSelectedItem(newItem);
         }
     };
 
-    const handleConfirmSelect = () => {
+    const handleConfirmImport = () => {
         if (selectedItem) {
             onSelect(selectedItem);
             onOpenChange(false);
-            setSelectedItem(null);
+            toast.success(`Item CATMAT ${selectedItem.code} importado com sucesso.`);
         }
     };
 
+    if (error) {
+        toast.error(error.message);
+    }
+    
+    const displayItems = items || [];
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Catálogo CATMAT</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                        <BookOpen className="h-5 w-5 text-primary" />
+                        Catálogo CATMAT
+                    </DialogTitle>
                     <DialogDescription>
-                        Selecione um código CATMAT para preencher o item de aquisição.
+                        Busque por código ou descrição para encontrar itens de material de consumo.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -86,7 +107,7 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Buscar por código ou descrição..."
+                            placeholder="Digite pelo menos 3 caracteres para buscar (Ex: CANETA, 4410)"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-10"
@@ -96,11 +117,16 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
                     {isLoading ? (
                         <div className="text-center py-8">
                             <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
-                            <p className="text-sm text-muted-foreground mt-2">Carregando catálogo...</p>
+                            <p className="text-sm text-muted-foreground mt-2">Buscando itens...</p>
                         </div>
-                    ) : filteredItems.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                            Nenhum item encontrado.
+                    ) : !isSearchEnabled ? (
+                        <div className="text-center py-8 text-muted-foreground border border-dashed rounded-md">
+                            <Search className="h-8 w-8 mx-auto mb-2" />
+                            <p className="font-medium">Digite pelo menos 3 caracteres para iniciar a busca no catálogo.</p>
+                        </div>
+                    ) : displayItems.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground border border-dashed rounded-md">
+                            <p className="font-medium">Nenhum item encontrado para o termo "{searchTerm}".</p>
                         </div>
                     ) : (
                         <div className="max-h-[50vh] overflow-y-auto border rounded-md">
@@ -113,7 +139,7 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredItems.map(item => {
+                                    {displayItems.map(item => {
                                         const isSelected = selectedItem?.code === item.code;
                                         return (
                                             <TableRow 
@@ -122,9 +148,7 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
                                                 onClick={() => handlePreSelect(item)}
                                             >
                                                 <TableCell className="font-semibold text-center">{item.code}</TableCell>
-                                                <TableCell className="text-sm text-muted-foreground max-w-lg whitespace-normal">
-                                                    <span className="block">{item.description}</span>
-                                                </TableCell>
+                                                <TableCell className="font-medium text-sm">{item.description}</TableCell>
                                                 <TableCell className="text-center">
                                                     <Button
                                                         variant={isSelected ? "default" : "outline"}
@@ -159,11 +183,11 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
                 <div className="flex justify-end gap-2 pt-4 border-t">
                     <Button 
                         type="button" 
-                        onClick={handleConfirmSelect}
+                        onClick={handleConfirmImport}
                         disabled={!selectedItem}
                     >
-                        <Check className="h-4 w-4 mr-2" />
-                        Confirmar Seleção
+                        <Import className="h-4 w-4 mr-2" />
+                        Confirmar Importação
                     </Button>
                     <Button 
                         type="button" 
