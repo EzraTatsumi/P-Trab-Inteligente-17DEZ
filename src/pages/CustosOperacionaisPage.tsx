@@ -251,6 +251,9 @@ const CustosOperacionaisPage = () => {
   const [isMaterialConsumoFormOpen, setIsMaterialConsumoFormOpen] = useState(false);
   const [diretrizMaterialConsumoToEdit, setDiretrizMaterialConsumoToEdit] = useState<DiretrizMaterialConsumo | null>(null);
   const [searchTerm, setSearchTerm] = useState(""); // NOVO: Estado para o termo de busca
+  
+  // NOVO ESTADO: ID do subitem que deve ser aberto após a busca
+  const [subitemToOpenId, setSubitemToOpenId] = useState<string | null>(null);
   // END MATERIAL CONSUMO STATES
   
   // Efeito para rolar para o topo na montagem
@@ -1331,15 +1334,14 @@ const CustosOperacionaisPage = () => {
       // 1. Abrir o Collapsible principal de Material de Consumo
       setFieldCollapseState(prev => ({ ...prev, ['material_consumo_detalhe']: true }));
       
-      // 2. Rolar até o elemento
-      // Usamos um pequeno atraso para garantir que o Collapsible principal tenha aberto
+      // 2. Define o ID do subitem que deve ser aberto
+      setSubitemToOpenId(diretrizId);
+      
+      // 3. Rolar até o elemento (com atraso para permitir a abertura do Collapsible principal)
       setTimeout(() => {
           const element = document.getElementById(`diretriz-material-consumo-${diretrizId}`);
           if (element) {
               element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              
-              // Opcional: Adicionar um destaque temporário ao elemento
-              // Isso exigiria manipulação de classes ou estado temporário no MaterialConsumoDiretrizRow
           } else {
               toast.warning("Subitem encontrado, mas não visível na tela.");
           }
@@ -1347,6 +1349,15 @@ const CustosOperacionaisPage = () => {
       
       setSearchTerm(""); // Limpa a busca após a navegação
   };
+  
+  // Efeito para limpar o subitemToOpenId após a abertura
+  useEffect(() => {
+      if (subitemToOpenId) {
+          // Limpa o ID após um pequeno atraso para garantir que o MaterialConsumoDiretrizRow tenha processado a abertura
+          const timer = setTimeout(() => setSubitemToOpenId(null), 500);
+          return () => clearTimeout(timer);
+      }
+  }, [subitemToOpenId]);
 
   // NOVO: 4. Renderização da Tabela de Resultados de Busca
   const renderSearchResults = () => {
@@ -1460,6 +1471,8 @@ const CustosOperacionaisPage = () => {
                                           onMoveItem={handleMoveItem}
                                           // NOVO: Adiciona ID para rolagem
                                           id={`diretriz-material-consumo-${d.id}`} 
+                                          // NOVO: Propriedade para forçar a abertura
+                                          forceOpen={subitemToOpenId === d.id}
                                       />
                                   ))}
                               </TableBody>

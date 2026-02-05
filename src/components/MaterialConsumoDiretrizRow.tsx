@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { TableCell, TableRow, Table } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, ChevronDown, ChevronUp, GripVertical } from "lucide-react";
@@ -18,6 +18,8 @@ interface MaterialConsumoDiretrizRowProps {
     onMoveItem: (item: ItemAquisicao, sourceDiretrizId: string, targetDiretrizId: string) => void;
     // NOVO: ID para rolagem
     id: string;
+    // NOVO: Propriedade para forçar a abertura (usada pela busca)
+    forceOpen: boolean;
 }
 
 const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
@@ -27,12 +29,20 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
     loading,
     onMoveItem, // NOVO
     id, // NOVO
+    forceOpen, // NOVO
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isDragOver, setIsDragOver] = useState(false);
     
     // Ref para o temporizador de expansão automática
     const expandTimerRef = useRef<number | null>(null); 
+    
+    // Efeito para forçar a abertura quando a prop forceOpen muda para true
+    useEffect(() => {
+        if (forceOpen && !isOpen) {
+            setIsOpen(true);
+        }
+    }, [forceOpen]);
     
     const itensAquisicao = diretriz.itens_aquisicao || [];
     
