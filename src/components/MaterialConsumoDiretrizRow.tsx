@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { formatCurrency } from "@/lib/formatUtils";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { cn } from '@/lib/utils';
 
@@ -106,7 +106,8 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                                 <p className="text-sm text-muted-foreground">Nenhum item de aquisição detalhado para este subitem.</p>
                             )}
                         </div>
-                    </CollapsibleContent>
+                        </CollapsibleContent>
+                    </Collapsible>
                 </TableCell>
             </TableRow>
         </React.Fragment>
