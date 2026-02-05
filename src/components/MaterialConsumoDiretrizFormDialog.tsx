@@ -214,7 +214,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 disabled={loading}
                             >
                                 <BookOpen className="h-4 w-4 mr-2" />
-                                Selecionar do Catálogo
+                                Catálogo ND
                             </Button>
                         </div>
                         
@@ -271,24 +271,13 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 {/* Campo Código CATMAT (1 coluna) */}
                                 <div className="space-y-2 col-span-1">
                                     <Label htmlFor="item-catmat">Cód. CATMAT</Label>
-                                    <div className="flex gap-2">
-                                        <Input
-                                            id="item-catmat"
-                                            value={itemForm.codigo_catmat}
-                                            onChange={(e) => setItemForm({ ...itemForm, codigo_catmat: e.target.value })}
-                                            placeholder="Ex: 123456789"
-                                            onKeyDown={handleEnterToNextField}
-                                        />
-                                        <Button 
-                                            type="button" 
-                                            variant="outline" 
-                                            size="icon" 
-                                            onClick={() => setIsCatmatCatalogOpen(true)}
-                                            disabled={loading}
-                                        >
-                                            <BookOpen className="h-4 w-4" />
-                                        </Button>
-                                    </div>
+                                    <Input
+                                        id="item-catmat"
+                                        value={itemForm.codigo_catmat}
+                                        onChange={(e) => setItemForm({ ...itemForm, codigo_catmat: e.target.value })}
+                                        placeholder="Ex: 123456789"
+                                        onKeyDown={handleEnterToNextField}
+                                    />
                                 </div>
                                 
                                 {/* Campo Descrição do Item (3 colunas) */}
@@ -305,7 +294,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 </div>
                             </div>
 
-                            {/* SEGUNDA LINHA: Valor, Pregão, UASG e Botão */}
+                            {/* SEGUNDA LINHA: Valor, Pregão, UASG e Botões */}
                             <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                                 {/* Campo Valor Unitário (2 colunas) */}
                                 <div className="space-y-2 col-span-2">
@@ -350,14 +339,27 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     />
                                 </div>
                                 
-                                {/* Botão Adicionar (1 coluna) */}
-                                <div className="space-y-2 col-span-1 flex flex-col justify-end">
+                                {/* Botões de Ação (1 coluna) */}
+                                <div className="space-y-2 col-span-1 flex flex-col justify-end gap-2">
+                                    {/* Botão de Catálogo CATMAT */}
+                                    <Button 
+                                        type="button" 
+                                        variant="outline" 
+                                        size="sm" 
+                                        onClick={() => setIsCatmatCatalogOpen(true)}
+                                        disabled={loading}
+                                    >
+                                        <BookOpen className="h-4 w-4 mr-1" />
+                                        Catálogo CATMAT
+                                    </Button>
+                                    
+                                    {/* Botão Adicionar/Atualizar Item */}
                                     <Button 
                                         type="button" 
                                         onClick={handleAddItem}
                                         disabled={!itemForm.descricao_item || itemForm.valor_unitario <= 0}
                                     >
-                                        {editingItemId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                        {editingItemId ? <Pencil className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
                                         {editingItemId ? "Atualizar" : "Adicionar"}
                                     </Button>
                                 </div>
