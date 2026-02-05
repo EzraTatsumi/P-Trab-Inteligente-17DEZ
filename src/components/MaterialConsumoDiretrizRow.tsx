@@ -22,7 +22,7 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
     
     return (
         <TableRow>
-            <TableCell className="font-semibold w-[100px]">{diretriz.nr_subitem}</TableCell>
+            <TableCell className="font-semibold w-[100px] text-center">{diretriz.nr_subitem}</TableCell>
             <TableCell className="font-medium">{diretriz.nome_subitem}</TableCell>
             <TableCell className="text-right">
                 <div className="flex justify-end gap-1">

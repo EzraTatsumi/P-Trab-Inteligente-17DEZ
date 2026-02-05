@@ -1204,7 +1204,7 @@ const CustosOperacionaisPage = () => {
                       <Table>
                           <TableHeader>
                               <TableRow>
-                                  <TableHead className="w-[100px]">Nr Subitem</TableHead>
+                                  <TableHead className="w-[150px]">Nr Subitem</TableHead>
                                   <TableHead>Nome do Subitem</TableHead>
                                   <TableHead className="w-[100px] text-center">Ações</TableHead>
                               </TableRow>
@@ -1388,7 +1388,6 @@ const CustosOperacionaisPage = () => {
                     <CollapsibleTrigger asChild>
                       <div className="flex items-center justify-between cursor-pointer py-2">
                         <h4 className="text-base font-medium flex items-center gap-2">
-                          <Package className="h-4 w-4 mr-1 text-orange-500" />
                           Material de Consumo (33.90.30)
                         </h4>
                         {fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
