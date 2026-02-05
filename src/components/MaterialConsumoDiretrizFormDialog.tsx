@@ -11,7 +11,7 @@ import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import CurrencyInput from "@/components/CurrencyInput";
-import { formatCurrencyInput, numberToRawDigits, formatCurrency } from "@/lib/formatUtils";
+import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodeXXX_XXX } from "@/lib/formatUtils";
 import SubitemCatalogDialog from './SubitemCatalogDialog';
 import CatmatCatalogDialog from './CatmatCatalogDialog'; // NOVO: Importação do Catálogo CATMAT
 import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog'; // NOVO: Importação do Diálogo de Importação
@@ -100,6 +100,13 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             rawValor: digits,
         }));
     };
+    
+    // NOVA FUNÇÃO: Lida com a mudança e formatação do campo UASG
+    const handleUASGChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const rawValue = e.target.value.replace(/\D/g, ''); // Remove não dígitos
+        const formattedValue = formatCodeXXX_XXX(rawValue);
+        setItemForm(prev => ({ ...prev, uasg: formattedValue }));
+    };
 
     const handleAddItem = () => {
         if (!itemForm.descricao_item || itemForm.valor_unitario <= 0) {
@@ -113,8 +120,10 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             return;
         }
 
-        if (!itemForm.uasg || itemForm.uasg.trim() === '') {
-            toast.error("O campo 'UASG' é obrigatório.");
+        // Validação da UASG formatada
+        const rawUASG = itemForm.uasg.replace(/\D/g, '');
+        if (rawUASG.length !== 6) {
+            toast.error("O campo 'UASG' deve conter 6 dígitos.");
             return;
         }
         // -------------------------------------
@@ -146,7 +155,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             valor_unitario: item.valor_unitario,
             rawValor: numberToRawDigits(item.valor_unitario),
             numero_pregao: item.numero_pregao,
-            uasg: item.uasg,
+            uasg: item.uasg, // A UASG já deve estar formatada se veio do banco ou de uma edição anterior
             codigo_catmat: item.codigo_catmat, // NOVO: Carregando o código CATMAT
         });
     };
@@ -214,6 +223,13 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     };
 
     const isEditingSubitem = !!subitemForm.id;
+    
+    // Função auxiliar para formatar UASG na tabela
+    const displayUASG = (uasg: string | undefined) => {
+        if (!uasg) return 'N/A';
+        // Garante que a UASG seja formatada corretamente, mesmo que tenha vindo sem o ponto
+        return formatCodeXXX_XXX(uasg);
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -373,9 +389,10 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     <Label htmlFor="item-uasg">UASG *</Label>
                                     <Input
                                         id="item-uasg"
-                                        value={itemForm.uasg}
-                                        onChange={(e) => setItemForm({ ...itemForm, uasg: e.target.value })}
-                                        placeholder="Ex: 160001"
+                                        value={displayUASG(itemForm.uasg)} // Exibe o valor formatado
+                                        onChange={handleUASGChange} // Usa a nova função de formatação
+                                        placeholder="Ex: 160.001"
+                                        maxLength={7} // Limita o tamanho para XXX.XXX
                                         onKeyDown={handleEnterToNextField}
                                         required
                                     />
@@ -403,7 +420,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                             !itemForm.descricao_item || 
                                             itemForm.valor_unitario <= 0 ||
                                             !itemForm.numero_pregao || 
-                                            !itemForm.uasg
+                                            itemForm.uasg.replace(/\D/g, '').length !== 6 // Valida 6 dígitos brutos
                                         }
                                     >
                                         {editingItemId ? <Pencil className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
@@ -432,7 +449,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                             <TableCell className="font-medium">{item.descricao_item}</TableCell>
                                             <TableCell className="text-center text-xs">{item.codigo_catmat || 'N/A'}</TableCell>
                                             <TableCell className="text-center">{item.numero_pregao || 'N/A'}</TableCell>
-                                            <TableCell className="text-center">{item.uasg || 'N/A'}</TableCell>
+                                            <TableCell className="text-center">{displayUASG(item.uasg) || 'N/A'}</TableCell> {/* Usando a função auxiliar */}
                                             <TableCell className="text-right font-bold text-primary">
                                                 {formatCurrency(item.valor_unitario)}
                                             </TableCell>

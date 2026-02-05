@@ -1,212 +1,99 @@
-import { subWeeks, startOfWeek, endOfWeek } from 'date-fns';
-
 /**
- * Formata um número ou string de 6 dígitos (CODUG) para o formato XXX.XXX.
- * Se o valor não for uma string de 6 dígitos, retorna o valor original.
- * @param codug O código da UG (Unidade Gestora).
- * @returns O CODUG formatado (ex: 123.456) ou a string original.
- */
-export const formatCodug = (codug: string | number | null | undefined): string => {
-    if (codug === null || codug === undefined) {
-        return '';
-    }
-    const strCodug = String(codug).trim();
-    
-    // Verifica se a string tem 6 caracteres e contém apenas dígitos
-    if (strCodug.length === 6 && /^\d+$/.test(strCodug)) {
-        return `${strCodug.substring(0, 3)}.${strCodug.substring(3)}`;
-    }
-    
-    // Se já estiver formatado (ex: 123.456), retorna como está
-    if (strCodug.length === 7 && /^\d{3}\.\d{3}$/.test(strCodug)) {
-        return strCodug;
-    }
-
-    // Caso contrário, retorna a string original
-    return strCodug;
-};
-
-/**
- * Formata um valor numérico para o padrão monetário brasileiro (R$ X.XXX,XX).
+ * Converte um valor numérico (string ou number) para o formato de moeda brasileira (R$ X.XXX,XX).
  * @param value O valor numérico.
  * @returns A string formatada.
  */
-export const formatCurrency = (value: number | null | undefined): string => {
-    if (value === null || value === undefined) {
+export const formatCurrency = (value: number): string => {
+    if (typeof value !== 'number' || isNaN(value)) {
         return 'R$ 0,00';
     }
     return new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: 'BRL',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
     }).format(value);
 };
 
 /**
- * Formata um número para o padrão brasileiro (X.XXX,XX).
- * @param value O valor numérico.
- * @param decimals O número máximo de casas decimais (padrão: 2).
- * @returns A string formatada.
+ * Remove todos os caracteres não numéricos de uma string.
+ * @param value A string de entrada.
+ * @returns A string contendo apenas dígitos.
  */
-export const formatNumber = (value: number | null | undefined, decimals: number = 2): string => {
-    if (value === null || value === undefined) {
-        return '0';
+export const numberToRawDigits = (value: string | number): string => {
+    if (typeof value === 'number') {
+        // Converte o número para string, tratando o ponto decimal
+        value = value.toFixed(2).replace('.', ',');
     }
-    
-    const options: Intl.NumberFormatOptions = {
-        maximumFractionDigits: decimals,
-    };
-    
-    // Se o número de casas decimais for 2, garante que 2 casas sejam exibidas (ex: 7.00)
-    if (decimals === 2) {
-        options.minimumFractionDigits = 2;
-    } else {
-        options.minimumFractionDigits = 0;
-    }
-    
-    return new Intl.NumberFormat('pt-BR', options).format(value);
+    return value.replace(/\D/g, '');
 };
 
 /**
- * Formata uma data ISO para o formato DD/MM/AAAA.
- * @param dateString A string de data ISO.
- * @returns A string de data formatada.
+ * Formata uma string de dígitos brutos para o formato de moeda (ex: 12345 -> 123,45).
+ * @param rawDigits String contendo apenas dígitos.
+ * @returns Um objeto com o valor numérico e a string formatada.
  */
-export const formatDate = (dateString: string | null | undefined): string => {
-    if (!dateString) return '';
-    try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-    } catch (e) {
-        return dateString;
-    }
-};
+export const formatCurrencyInput = (rawDigits: string): { numericValue: number, digits: string, formatted: string } => {
+    const digits = rawDigits.replace(/\D/g, '');
+    
+    let numericValue = 0;
+    let formatted = '0,00';
 
-/**
- * Formata uma data ISO para o formato DDMMMAA (ex: 25DEZ24).
- * @param dateString A string de data ISO.
- * @returns A string de data formatada sem barras.
- */
-export const formatDateDDMMMAA = (dateString: string | null | undefined): string => {
-    if (!dateString) return '';
-    try {
-        const date = new Date(dateString);
-        const day = date.getUTCDate().toString().padStart(2, '0');
-        const month = date.toLocaleString('pt-BR', { month: 'short', timeZone: 'UTC' }).toUpperCase().replace('.', '');
-        const year = date.getUTCFullYear().toString().slice(-2);
-        // Retorna a string sem as barras
-        return `${day}${month}${year}`;
-    } catch (e) {
-        return dateString;
+    if (digits.length > 0) {
+        // Adiciona zeros à esquerda se necessário (mínimo 3 dígitos para centavos)
+        const paddedDigits = digits.padStart(3, '0');
+        
+        // Separa a parte inteira e decimal
+        const integerPart = paddedDigits.slice(0, -2);
+        const decimalPart = paddedDigits.slice(-2);
+        
+        // Formata a parte inteira com separador de milhares
+        const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        
+        formatted = `${formattedInteger},${decimalPart}`;
+        
+        // Calcula o valor numérico real
+        numericValue = parseInt(integerPart) + parseInt(decimalPart) / 100;
     }
-};
 
-/**
- * Calculates the date range for the previous week (Sunday to Saturday).
- * @returns An object containing the start and end dates as ISO strings.
- */
-export const getPreviousWeekRange = (): { start: string, end: string } => {
-    const now = new Date();
-    // Go back one week
-    const previousWeek = subWeeks(now, 1);
-    
-    // Start of the week (Sunday, locale 0)
-    const start = startOfWeek(previousWeek, { weekStartsOn: 0 }); 
-    
-    // End of the week (Saturday)
-    const end = endOfWeek(previousWeek, { weekStartsOn: 0 });
-    
-    // Return as ISO strings
     return {
-        start: start.toISOString(),
-        end: end.toISOString(),
+        numericValue,
+        digits,
+        formatted,
     };
 };
 
-// --- Funções de Formatação de Input (Restauradas) ---
-
 /**
- * Converte uma string de entrada formatada (ex: "1.234,56") para um número.
- * @param inputString A string de entrada formatada.
+ * Converte uma string de entrada formatada (ex: '1.250,00') para um número.
+ * @param input A string de entrada.
  * @returns O valor numérico.
  */
-export const parseInputToNumber = (inputString: string): number => {
-    if (!inputString) return 0;
-    // Remove pontos de milhar e substitui vírgula decimal por ponto
-    const cleanedString = String(inputString).replace(/\./g, '').replace(',', '.');
-    const number = parseFloat(cleanedString);
-    return isNaN(number) ? 0 : number;
+export const parseInputToNumber = (input: string): number => {
+    if (!input) return 0;
+    // Remove separadores de milhar (pontos) e substitui a vírgula decimal por ponto
+    const cleanedInput = input.replace(/\./g, '').replace(',', '.');
+    const numberValue = parseFloat(cleanedInput);
+    return isNaN(numberValue) ? 0 : numberValue;
 };
 
 /**
- * Formata um número para exibição em inputs, usando separador de milhar (ponto) e decimal (vírgula).
- * @param value O valor numérico.
- * @param decimals Número de casas decimais.
+ * Formata um código numérico (como UASG ou CODUG) no padrão XXX.XXX.
+ * Limita a 6 dígitos e insere o ponto após o terceiro dígito.
+ * @param code A string do código (apenas dígitos).
  * @returns A string formatada.
  */
-export const formatNumberForInput = (value: number | null | undefined, decimals: number = 2): string => {
-    if (value === null || value === undefined || isNaN(value)) {
-        return '';
-    }
-    return value.toLocaleString('pt-BR', {
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals,
-    });
-};
-
-/**
- * Formata uma string de dígitos brutos (ex: "123456") para o formato monetário brasileiro.
- * @param rawDigits String contendo apenas dígitos (centavos).
- * @returns Objeto com a string formatada e o valor numérico.
- */
-export const formatCurrencyInput = (rawDigits: string | null | undefined): { formatted: string, numericValue: number, digits: string } => {
-    // Garante que rawDigits é uma string antes de usar replace
-    const inputString = String(rawDigits || '');
+export const formatCodeXXX_XXX = (code: string): string => {
+    // 1. Remove tudo que não for dígito
+    const rawDigits = code.replace(/\D/g, '');
     
-    // Remove tudo que não for dígito
-    const digits = inputString.replace(/\D/g, '');
-    
-    if (digits.length === 0) {
-        return { formatted: '', numericValue: 0, digits: '' };
+    // 2. Limita a 6 dígitos
+    const limitedDigits = rawDigits.slice(0, 6);
+
+    if (limitedDigits.length <= 3) {
+        return limitedDigits;
     }
 
-    // Converte para centavos e depois para reais
-    const numericValue = parseInt(digits, 10) / 100;
+    // 3. Aplica a máscara XXX.XXX
+    const part1 = limitedDigits.slice(0, 3);
+    const part2 = limitedDigits.slice(3);
 
-    // Formata para exibição (ex: 1.234,56)
-    const formatted = numericValue.toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-
-    return { formatted, numericValue, digits };
-};
-
-/**
- * Formata um número para o formato de entrada com separador de milhar.
- * @param value O valor numérico.
- * @returns A string formatada.
- */
-export const formatInputWithThousands = (value: number | null | undefined): string => {
-    if (value === null || value === undefined || isNaN(value)) {
-        return '';
-    }
-    return value.toLocaleString('pt-BR', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    });
-};
-
-/**
- * Converte um número para uma string de dígitos brutos (centavos).
- * @param value O valor numérico.
- * @returns A string de dígitos.
- */
-export const numberToRawDigits = (value: number | null | undefined): string => {
-    if (value === null || value === undefined || isNaN(value)) {
-        return '';
-    }
-    // Multiplica por 100 e arredonda para evitar problemas de ponto flutuante
-    return String(Math.round(value * 100));
+    return `${part1}.${part2}`;
 };
