@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import CurrencyInput from "@/components/CurrencyInput";
 import { formatCurrencyInput, numberToRawDigits, formatCurrency } from "@/lib/formatUtils";
-import SubitemCatalogDialog from './SubitemCatalogDialog'; // NOVO: Importação do Catálogo
+import SubitemCatalogDialog from './SubitemCatalogDialog';
+import CatmatCatalogDialog from './CatmatCatalogDialog'; // NOVO: Importação do Catálogo CATMAT
 
 interface MaterialConsumoDiretrizFormDialogProps {
     open: boolean;
@@ -75,8 +76,11 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     const [itemForm, setItemForm] = useState<typeof initialItemForm>(initialItemForm);
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     
-    // NOVO ESTADO: Controle do diálogo do catálogo
+    // NOVO ESTADO: Controle do diálogo do catálogo de Subitem
     const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+    
+    // NOVO ESTADO: Controle do diálogo do catálogo CATMAT
+    const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
 
     useEffect(() => {
         setSubitemForm(getInitialFormState(diretrizToEdit));
@@ -159,7 +163,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         onOpenChange(false);
     };
 
-    // NOVO: Função para receber dados do catálogo e atualizar o formulário
+    // NOVO: Função para receber dados do catálogo de Subitem e atualizar o formulário
     const handleCatalogSelect = (catalogItem: { nr_subitem: string, nome_subitem: string, descricao_subitem: string | null }) => {
         setSubitemForm(prev => ({
             ...prev,
@@ -168,6 +172,17 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             descricao_subitem: catalogItem.descricao_subitem,
         }));
         setIsCatalogOpen(false);
+    };
+    
+    // NOVO: Função para receber dados do catálogo CATMAT e atualizar o formulário de item
+    const handleCatmatSelect = (catmatItem: { code: string, description: string }) => {
+        setItemForm(prev => ({
+            ...prev,
+            codigo_catmat: catmatItem.code,
+            // Preenche a descrição do item se estiver vazia
+            descricao_item: prev.descricao_item || catmatItem.description, 
+        }));
+        setIsCatmatCatalogOpen(false);
     };
 
     const isEditingSubitem = !!subitemForm.id;
@@ -256,13 +271,24 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 {/* Campo Código CATMAT (1 coluna) */}
                                 <div className="space-y-2 col-span-1">
                                     <Label htmlFor="item-catmat">Cód. CATMAT</Label>
-                                    <Input
-                                        id="item-catmat"
-                                        value={itemForm.codigo_catmat}
-                                        onChange={(e) => setItemForm({ ...itemForm, codigo_catmat: e.target.value })}
-                                        placeholder="Ex: 123456789"
-                                        onKeyDown={handleEnterToNextField}
-                                    />
+                                    <div className="flex gap-2">
+                                        <Input
+                                            id="item-catmat"
+                                            value={itemForm.codigo_catmat}
+                                            onChange={(e) => setItemForm({ ...itemForm, codigo_catmat: e.target.value })}
+                                            placeholder="Ex: 123456789"
+                                            onKeyDown={handleEnterToNextField}
+                                        />
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            size="icon" 
+                                            onClick={() => setIsCatmatCatalogOpen(true)}
+                                            disabled={loading}
+                                        >
+                                            <BookOpen className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                                 
                                 {/* Campo Descrição do Item (3 colunas) */}
@@ -396,11 +422,18 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                 </div>
             </DialogContent>
             
-            {/* NOVO: Diálogo do Catálogo */}
+            {/* Diálogo do Catálogo de Subitem */}
             <SubitemCatalogDialog 
                 open={isCatalogOpen}
                 onOpenChange={setIsCatalogOpen}
                 onSelect={handleCatalogSelect}
+            />
+            
+            {/* NOVO: Diálogo do Catálogo CATMAT */}
+            <CatmatCatalogDialog
+                open={isCatmatCatalogOpen}
+                onOpenChange={setIsCatmatCatalogOpen}
+                onSelect={handleCatmatSelect}
             />
         </Dialog>
     );
