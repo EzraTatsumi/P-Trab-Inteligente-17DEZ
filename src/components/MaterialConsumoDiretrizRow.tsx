@@ -6,6 +6,7 @@ import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMateri
 import { formatCurrency } from "@/lib/formatUtils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
+import { cn } from '@/lib/utils';
 
 interface MaterialConsumoDiretrizRowProps {
     diretriz: DiretrizMaterialConsumo;
@@ -27,7 +28,12 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
     return (
         <React.Fragment>
             <Collapsible asChild open={isOpen} onOpenChange={setIsOpen}>
-                <TableRow className="hover:bg-muted/50 transition-colors data-[state=open]:bg-muted/50">
+                {/* A linha principal (TableRow) agora é o elemento que contém o CollapsibleTrigger */}
+                <TableRow className={cn(
+                    "hover:bg-muted/50 transition-colors",
+                    isOpen ? "bg-muted/50" : "cursor-pointer"
+                )}>
+                    {/* Coluna Nr Subitem (Trigger) */}
                     <CollapsibleTrigger asChild>
                         <TableCell className="font-semibold w-[150px] text-center cursor-pointer">
                             <div className="flex items-center justify-center gap-2">
@@ -37,11 +43,13 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                         </TableCell>
                     </CollapsibleTrigger>
                     
-                    <TableCell className="font-medium">
+                    {/* Coluna Nome do Subitem */}
+                    <TableCell className="font-medium" onClick={() => setIsOpen(!isOpen)}>
                         {diretriz.nome_subitem}
                         {!diretriz.ativo && <Badge variant="destructive" className="ml-2">Inativo</Badge>}
                     </TableCell>
                     
+                    {/* Coluna Ações */}
                     <TableCell className="text-right w-[100px]">
                         <div className="flex justify-end gap-1">
                             <Button 
@@ -66,6 +74,7 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                 </TableRow>
             </Collapsible>
             
+            {/* Linha de Conteúdo Colapsável */}
             <TableRow className="p-0">
                 <TableCell colSpan={3} className="p-0">
                     <CollapsibleContent>

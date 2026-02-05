@@ -1209,17 +1209,16 @@ const CustosOperacionaisPage = () => {
                                   <TableHead className="w-[100px] text-center">Ações</TableHead>
                               </TableRow>
                           </TableHeader>
-                          <TableBody>
-                              {diretrizesMaterialConsumo.map(d => (
-                                  <MaterialConsumoDiretrizRow
-                                      key={d.id}
-                                      diretriz={d}
-                                      onEdit={handleStartEditMaterialConsumo}
-                                      onDelete={handleDeleteMaterialConsumo}
-                                      loading={loading}
-                                  />
-                              ))}
-                          </TableBody>
+                          {/* Removendo TableBody para que MaterialConsumoDiretrizRow possa renderizar diretamente as linhas */}
+                          {diretrizesMaterialConsumo.map(d => (
+                              <MaterialConsumoDiretrizRow
+                                  key={d.id}
+                                  diretriz={d}
+                                  onEdit={handleStartEditMaterialConsumo}
+                                  onDelete={handleDeleteMaterialConsumo}
+                                  loading={loading}
+                              />
+                          ))}
                       </Table>
                   </Card>
               ) : (
