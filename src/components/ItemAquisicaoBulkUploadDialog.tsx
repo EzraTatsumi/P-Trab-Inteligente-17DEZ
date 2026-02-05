@@ -10,7 +10,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
-import { parseInputToNumber } from '@/lib/formatUtils';
+import { parseInputToNumber, formatCurrencyInput, numberToRawDigits } from '@/lib/formatUtils';
 
 interface ItemAquisicaoBulkUploadDialogProps {
     open: boolean;
