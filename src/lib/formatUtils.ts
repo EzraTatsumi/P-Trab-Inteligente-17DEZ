@@ -27,6 +27,20 @@ export const formatCurrency = (value: number): string => {
 };
 
 /**
+ * Formata um número para o formato brasileiro (X.XXX,XX) sem o símbolo de moeda.
+ * @param value - O valor numérico.
+ * @param decimals - Número de casas decimais (padrão: 2).
+ * @returns A string formatada.
+ */
+export const formatNumber = (value: number, decimals: number = 2): string => {
+    if (typeof value !== 'number' || isNaN(value)) return '0,00';
+    return new Intl.NumberFormat('pt-BR', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+    }).format(value);
+};
+
+/**
  * Extrai apenas os dígitos de uma string de entrada de moeda.
  * @param rawValue - A string de entrada (pode conter formatação).
  * @returns A string contendo apenas dígitos.
