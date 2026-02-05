@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Import, Loader2, Upload, XCircle, Download } from "lucide-react";
+import { AlertCircle, Import, Loader2, Upload, XCircle, Download, CheckCircle } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
@@ -16,6 +16,18 @@ interface ItemAquisicaoBulkUploadDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onImport: (items: ItemAquisicao[]) => void;
+}
+
+// Tipos para o resumo da importação
+interface ImportError {
+    lineNumber: number;
+    errorMessage: string;
+}
+
+interface ImportSummary {
+    totalLines: number;
+    validItems: ItemAquisicao[];
+    errorItems: ImportError[];
 }
 
 // Cabeçalhos do template
@@ -51,7 +63,8 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
     onImport,
 }) => {
     const [file, setFile] = useState<File | null>(null);
-    const [data, setData] = useState<ItemAquisicao[]>([]);
+    // NOVO ESTADO: Armazena o resumo da importação
+    const [summary, setSummary] = useState<ImportSummary>({ totalLines: 0, validItems: [], errorItems: [] });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -61,6 +74,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
             if (selectedFile.name.endsWith('.xlsx')) {
                 setFile(selectedFile);
                 setError(null);
+                setSummary({ totalLines: 0, validItems: [], errorItems: [] }); // Limpa o resumo ao selecionar novo arquivo
             } else {
                 setFile(null);
                 setError("Formato de arquivo inválido. Por favor, use um arquivo .xlsx.");
@@ -76,7 +90,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
 
         setLoading(true);
         setError(null);
-        setData([]);
+        setSummary({ totalLines: 0, validItems: [], errorItems: [] });
 
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -89,13 +103,12 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                 // Converte a planilha para JSON, mantendo os cabeçalhos
                 const json: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-                if (json.length === 0) {
-                    throw new Error("O arquivo Excel está vazio.");
+                if (json.length <= 1) { // Deve ter pelo menos cabeçalho e uma linha de dados
+                    throw new Error("O arquivo Excel está vazio ou contém apenas o cabeçalho.");
                 }
 
                 const headers = json[0] as string[];
                 
-                // NOVOS CABEÇALHOS SEM CARACTERES ESPECIAIS
                 const requiredHeaders = ['Descricao do Item', 'Valor Unitario (R$)', 'Numero do Pregao/Ref. Preco', 'UASG'];
                 const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
 
@@ -103,72 +116,99 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                     throw new Error(`Cabeçalhos obrigatórios ausentes: ${missingHeaders.join(', ')}`);
                 }
                 
-                const importedItems: ItemAquisicao[] = [];
+                const validItems: ItemAquisicao[] = [];
+                const errorItems: ImportError[] = [];
                 
                 // Mapeamento de índices de coluna
                 const headerMap: Record<string, number> = {};
                 headers.forEach((h, index) => {
                     headerMap[h.trim()] = index;
                 });
+                
+                let totalLines = 0;
 
                 // Processa as linhas de dados (a partir da segunda linha)
                 for (let i = 1; i < json.length; i++) {
                     const row = json[i];
+                    const lineNumber = i + 1;
                     
                     // Pula linhas vazias
                     if (!row || row.every((cell: any) => cell === null || cell === undefined || String(cell).trim() === '')) {
                         continue;
                     }
-
-                    // CORREÇÃO: Usando os novos nomes de cabeçalho
-                    const descricao_item = String(row[headerMap['Descricao do Item']] || '').trim();
-                    const valor_unitario_raw = String(row[headerMap['Valor Unitario (R$)']] || '0').trim();
-                    const numero_pregao = String(row[headerMap['Numero do Pregao/Ref. Preco']] || '').trim();
-                    const uasg = String(row[headerMap['UASG']] || '').trim();
-                    const codigo_catmat = String(row[headerMap['Codigo CATMAT']] || '').trim();
-
-                    if (!descricao_item) {
-                        setError(`Linha ${i + 1}: Descricao do Item não pode ser vazia.`);
-                        setLoading(false);
-                        return;
-                    }
                     
-                    if (!numero_pregao) {
-                        setError(`Linha ${i + 1}: Numero do Pregao/Ref. Preco não pode ser vazio.`);
-                        setLoading(false);
-                        return;
-                    }
-
-                    if (!uasg) {
-                        setError(`Linha ${i + 1}: UASG não pode ser vazia.`);
-                        setLoading(false);
-                        return;
-                    }
+                    totalLines++;
                     
-                    const valor_unitario = parseInputToNumber(valor_unitario_raw);
-
-                    if (valor_unitario <= 0) {
-                        setError(`Linha ${i + 1}: Valor Unitario inválido ou zero.`);
-                        setLoading(false);
-                        return;
+                    // 1. VERIFICAÇÃO DA LINHA DE EXEMPLO (Apenas para a primeira linha de dados)
+                    if (i === 1) {
+                        const isExampleRow = row.length === EXAMPLE_ROW.length && row.every((cell: any, idx: number) => {
+                            // Compara o valor da célula com o valor de exemplo, ignorando diferenças de tipo (ex: número vs string)
+                            return String(cell || '').trim() === String(EXAMPLE_ROW[idx] || '').trim();
+                        });
+                        
+                        if (isExampleRow) {
+                            // Se for a linha de exemplo exata, pula a importação desta linha
+                            continue;
+                        }
                     }
 
-                    importedItems.push({
-                        id: Math.random().toString(36).substring(2, 9), // ID temporário
-                        descricao_item,
-                        valor_unitario,
-                        numero_pregao,
-                        uasg,
-                        codigo_catmat,
-                    });
+                    try {
+                        const descricao_item = String(row[headerMap['Descricao do Item']] || '').trim();
+                        const valor_unitario_raw = String(row[headerMap['Valor Unitario (R$)']] || '0').trim();
+                        const numero_pregao = String(row[headerMap['Numero do Pregao/Ref. Preco']] || '').trim();
+                        const uasg = String(row[headerMap['UASG']] || '').trim();
+                        const codigo_catmat = String(row[headerMap['Codigo CATMAT']] || '').trim();
+                        
+                        if (!descricao_item) {
+                            throw new Error("Descrição do Item não pode ser vazia.");
+                        }
+                        
+                        if (!numero_pregao) {
+                            throw new Error("Número do Pregão/Ref. Preço não pode ser vazio.");
+                        }
+
+                        if (!uasg) {
+                            throw new Error("UASG não pode ser vazia.");
+                        }
+                        
+                        const valor_unitario = parseInputToNumber(valor_unitario_raw);
+
+                        if (valor_unitario <= 0) {
+                            throw new Error("Valor Unitário inválido ou zero.");
+                        }
+
+                        validItems.push({
+                            id: Math.random().toString(36).substring(2, 9), // ID temporário
+                            descricao_item,
+                            valor_unitario,
+                            numero_pregao,
+                            uasg,
+                            codigo_catmat,
+                        });
+                        
+                    } catch (e: any) {
+                        errorItems.push({
+                            lineNumber,
+                            errorMessage: e.message,
+                        });
+                    }
                 }
 
-                if (importedItems.length === 0) {
+                if (totalLines === 0) {
                     throw new Error("Nenhum item válido encontrado no arquivo.");
                 }
+                
+                setSummary({
+                    totalLines,
+                    validItems,
+                    errorItems,
+                });
 
-                setData(importedItems);
-                toast.success(`${importedItems.length} itens prontos para importação.`);
+                if (validItems.length > 0) {
+                    toast.success(`${validItems.length} itens prontos para importação.`);
+                } else {
+                    toast.warning("Nenhum item válido encontrado. Verifique os erros abaixo.");
+                }
 
             } catch (e: any) {
                 setError(e.message || "Erro desconhecido ao processar o arquivo.");
@@ -180,43 +220,36 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
     };
 
     const handleConfirmImport = () => {
-        if (data.length > 0) {
-            onImport(data);
+        if (summary.validItems.length > 0) {
+            onImport(summary.validItems);
             handleClose();
         }
     };
     
     const handleClose = () => {
         setFile(null);
-        setData([]);
+        setSummary({ totalLines: 0, validItems: [], errorItems: [] });
         setError(null);
         setLoading(false);
         onOpenChange(false);
     };
     
-    // CORREÇÃO: Função para gerar e baixar o template Excel
     const handleDownloadTemplate = () => {
         try {
-            // 1. Dados a exportar (Cabeçalhos + Linha de Exemplo)
             const dataToExport = [
                 TEMPLATE_HEADERS,
                 EXAMPLE_ROW
             ];
             
-            // 2. Criar a folha de trabalho
             const workbook = XLSX.utils.book_new();
             const worksheet = XLSX.utils.aoa_to_sheet(dataToExport);
             
-            // 3. Aplicar larguras de coluna (Sintaxe correta para XLSX)
             worksheet['!cols'] = COLUMN_WIDTHS;
             
-            // 4. Adicionar a folha de trabalho ao livro
             XLSX.utils.book_append_sheet(workbook, worksheet, "Itens de Aquisição");
             
-            // 5. Gerar o buffer do arquivo
             const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
             
-            // 6. Criar um Blob e forçar o download
             const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
             saveAs(data, "template_itens_aquisicao.xlsx");
             
@@ -226,6 +259,10 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
             toast.error("Falha ao gerar o template Excel.");
         }
     };
+
+    const { validItems, errorItems, totalLines } = summary;
+    const hasProcessedData = totalLines > 0;
+    const hasErrors = errorItems.length > 0;
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
@@ -296,51 +333,87 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                         {error && (
                             <Alert variant="destructive" className="mt-4">
                                 <XCircle className="h-4 w-4" />
-                                <AlertTitle>Erro no Processamento</AlertTitle>
+                                <AlertTitle>Erro Crítico</AlertTitle>
                                 <AlertDescription>{error}</AlertDescription>
                             </Alert>
                         )}
                     </Card>
 
                     {/* Passo 2: Pré-visualização e Confirmação */}
-                    {data.length > 0 && (
+                    {hasProcessedData && (
                         <Card className="p-4 space-y-4">
-                            <h4 className="text-base font-semibold">Passo 2: Pré-visualização ({data.length} itens)</h4>
+                            <h4 className="text-base font-semibold">Passo 2: Resumo e Pré-visualização</h4>
                             
-                            <div className="max-h-60 overflow-y-auto border rounded-md">
-                                <table className="w-full text-sm">
-                                    <thead className="sticky top-0 bg-muted/80 border-b">
-                                        <tr>
-                                            {/* Ajuste de largura das colunas */}
-                                            <th className="p-2 text-left font-medium w-[35%]">Descricao do Item</th>
-                                            <th className="p-2 text-right font-medium w-[15%]">Valor Unitario (R$)</th>
-                                            <th className="p-2 text-center font-medium w-[15%]">Numero do Pregao/Ref. Preco</th>
-                                            <th className="p-2 text-center font-medium w-[15%]">UASG</th>
-                                            <th className="p-2 text-center font-medium w-[20%]">Codigo CATMAT</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {data.map((item, index) => (
-                                            <tr key={index} className="border-b last:border-b-0 hover:bg-muted/50">
-                                                <td className="p-2">{item.descricao_item}</td>
-                                                <td className="p-2 text-right font-mono">{formatCurrencyInput(numberToRawDigits(item.valor_unitario)).formatted}</td>
-                                                <td className="p-2 text-center text-xs">{item.numero_pregao || 'N/A'}</td>
-                                                <td className="p-2 text-center text-xs">{item.uasg || 'N/A'}</td>
-                                                <td className="p-2 text-center text-xs">{item.codigo_catmat || 'N/A'}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                            {/* Resumo Estatístico */}
+                            <div className="grid grid-cols-3 gap-4 text-center">
+                                <div className="p-3 border rounded-lg bg-muted/50">
+                                    <p className="text-2xl font-bold text-foreground">{totalLines}</p>
+                                    <p className="text-sm text-muted-foreground">Linhas Processadas</p>
+                                </div>
+                                <div className="p-3 border rounded-lg bg-green-50/50 border-green-200 dark:bg-green-950/50 dark:border-green-800">
+                                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{validItems.length}</p>
+                                    <p className="text-sm text-muted-foreground">Itens Válidos</p>
+                                </div>
+                                <div className="p-3 border rounded-lg bg-red-50/50 border-red-200 dark:bg-red-950/50 dark:border-red-800">
+                                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">{errorItems.length}</p>
+                                    <p className="text-sm text-muted-foreground">Itens com Erro</p>
+                                </div>
                             </div>
+                            
+                            {/* Lista de Erros */}
+                            {hasErrors && (
+                                <Alert variant="destructive" className="mt-4">
+                                    <XCircle className="h-4 w-4" />
+                                    <AlertTitle>Erros de Validação ({errorItems.length})</AlertTitle>
+                                    <AlertDescription className="max-h-32 overflow-y-auto text-sm">
+                                        <ul className="list-disc list-inside space-y-1 mt-2">
+                                            {errorItems.map((err, index) => (
+                                                <li key={index}>
+                                                    <span className="font-semibold">Linha {err.lineNumber}:</span> {err.errorMessage}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                            
+                            {/* Tabela de Itens Válidos */}
+                            {validItems.length > 0 && (
+                                <div className="max-h-60 overflow-y-auto border rounded-md">
+                                    <table className="w-full text-sm">
+                                        <thead className="sticky top-0 bg-muted/80 border-b">
+                                            <tr>
+                                                {/* Ajuste de largura das colunas */}
+                                                <th className="p-2 text-left font-medium w-[35%]">Descricao do Item</th>
+                                                <th className="p-2 text-right font-medium w-[15%]">Valor Unitario (R$)</th>
+                                                <th className="p-2 text-center font-medium w-[15%]">Numero do Pregao/Ref. Preco</th>
+                                                <th className="p-2 text-center font-medium w-[15%]">UASG</th>
+                                                <th className="p-2 text-center font-medium w-[20%]">Codigo CATMAT</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {validItems.map((item, index) => (
+                                                <tr key={index} className="border-b last:border-b-0 hover:bg-muted/50">
+                                                    <td className="p-2">{item.descricao_item}</td>
+                                                    <td className="p-2 text-right font-mono">{formatCurrencyInput(numberToRawDigits(item.valor_unitario)).formatted}</td>
+                                                    <td className="p-2 text-center text-xs">{item.numero_pregao || 'N/A'}</td>
+                                                    <td className="p-2 text-center text-xs">{item.uasg || 'N/A'}</td>
+                                                    <td className="p-2 text-center text-xs">{item.codigo_catmat || 'N/A'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                             
                             <DialogFooter className="mt-4">
                                 <Button 
                                     type="button" 
                                     onClick={handleConfirmImport}
-                                    disabled={loading || data.length === 0}
+                                    disabled={loading || validItems.length === 0}
                                 >
                                     <Import className="mr-2 h-4 w-4" />
-                                    Confirmar Importação de {data.length} Itens
+                                    Confirmar Importação de {validItems.length} Itens
                                 </Button>
                             </DialogFooter>
                         </Card>
