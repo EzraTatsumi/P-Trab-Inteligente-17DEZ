@@ -972,6 +972,36 @@ export type Database = {
           },
         ]
       }
+      material_consumo_subitens: {
+        Row: {
+          id: string
+          user_id: string
+          nome: string
+          codigo: string | null
+          unidade_medida: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          nome: string
+          codigo?: string | null
+          unidade_medida?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          nome?: string
+          codigo?: string | null
+          unidade_medida?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       diretrizes_classe_ii: {
         Row: {
           ano_referencia: number
