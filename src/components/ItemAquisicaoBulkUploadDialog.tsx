@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Import, Loader2, Upload, XCircle, Download } from "lucide-react";
 import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver'; // Importando file-saver
+import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
 import { parseInputToNumber } from '@/lib/formatUtils';
@@ -25,6 +25,24 @@ const TEMPLATE_HEADERS = [
     'Numero do Pregao/Ref. Preco', 
     'UASG', 
     'Codigo CATMAT'
+];
+
+// Linha de exemplo
+const EXAMPLE_ROW = [
+    'SABÃO PÓ/ ASPECTO FÍSICO:PÓ/ COMPOSIÇÃO:ÁGUA/ ALQUIL BENZENO SULFATO DE SÓDIO/ CORANTE/ CA/ CARACTERÍSTICAS ADICIONAIS:AMACIANTE',
+    '1,25', // Valor Unitário
+    '90.001/25', // Número do Pregão
+    '160.170', // UASG
+    '419551' // CATMAT
+];
+
+// Larguras das colunas (em unidades de largura de caractere)
+const COLUMN_WIDTHS = [
+    { wch: 60 }, // Descricao do Item
+    { wch: 20 }, // Valor Unitario (R$)
+    { wch: 25 }, // Numero do Pregao/Ref. Preco
+    { wch: 15 }, // UASG
+    { wch: 20 }  // Codigo CATMAT
 ];
 
 const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps> = ({
@@ -179,11 +197,17 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
     // NOVO: Função para gerar e baixar o template Excel
     const handleDownloadTemplate = () => {
         try {
-            // 1. Criar uma nova planilha
-            const workbook = XLSX.utils.book_new();
+            // 1. Criar uma nova planilha com cabeçalhos e linha de exemplo
+            const dataToExport = [
+                TEMPLATE_HEADERS,
+                EXAMPLE_ROW
+            ];
             
-            // 2. Criar a folha de trabalho com os cabeçalhos
-            const worksheet = XLSX.utils.aoa_to_sheet([TEMPLATE_HEADERS]);
+            const workbook = XLSX.utils.book_new();
+            const worksheet = XLSX.utils.aoa_to_sheet(dataToExport);
+            
+            // 2. Aplicar larguras de coluna
+            worksheet['!cols'] = COLUMN_WIDTHS;
             
             // 3. Adicionar a folha de trabalho ao livro
             XLSX.utils.book_append_sheet(workbook, worksheet, "Itens de Aquisição");
