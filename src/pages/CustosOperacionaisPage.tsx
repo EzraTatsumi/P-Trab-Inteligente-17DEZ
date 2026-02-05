@@ -1374,9 +1374,9 @@ const CustosOperacionaisPage = () => {
               <Table>
                   <TableHeader>
                       <TableRow>
-                          <TableHead>Item de Aquisição</TableHead>
-                          <TableHead className="w-[150px]">Subitem ND</TableHead>
-                          <TableHead className="w-[100px] text-center">Ações</TableHead>
+                          <TableHead className="w-[45%]">Item de Aquisição</TableHead>
+                          <TableHead className="w-[35%]">Subitem ND</TableHead>
+                          <TableHead className="w-[20%] text-center">Ações</TableHead>
                       </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1388,15 +1388,18 @@ const CustosOperacionaisPage = () => {
                                       Cód. CATMAT: {item.codigo_catmat || 'N/A'} | Pregão: {item.numero_pregao}
                                   </p>
                               </TableCell>
-                              <TableCell className="text-center">
-                                  {item.subitemNr}
-                                  <p className="text-xs text-muted-foreground truncate">{item.subitemNome}</p>
+                              {/* AJUSTE AQUI: Combinando Nr Subitem e Nome Subitem */}
+                              <TableCell className="text-left">
+                                  <span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span>
+                                  <span className="text-sm text-muted-foreground">{item.subitemNome}</span>
                               </TableCell>
-                              <TableCell className="text-center">
+                              {/* AJUSTE AQUI: Botão 'Ver Local' mais à esquerda */}
+                              <TableCell className="text-right">
                                   <Button 
                                       variant="outline" 
                                       size="sm" 
                                       onClick={() => handleGoToSubitem(item.diretrizId)}
+                                      className="w-full justify-start"
                                   >
                                       <Package className="h-4 w-4 mr-1" />
                                       Ver Local
