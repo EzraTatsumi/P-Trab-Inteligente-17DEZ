@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CatalogoSubitem } from "@/types/catalogoSubitens";
 import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface SubitemCatalogDialogProps {
     open: boolean;
@@ -105,27 +104,18 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
                                 </TableHeader>
                                 <TableBody>
                                     {filteredItems.map(item => (
-                                        <TableRow key={item.id}>
+                                        <TableRow key={item.id} className="group">
                                             <TableCell className="font-semibold text-center">{item.nr_subitem}</TableCell>
                                             <TableCell className="font-medium">{item.nome_subitem}</TableCell>
                                             <TableCell className="text-sm text-muted-foreground max-w-lg whitespace-normal">
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            {/* Usando div para permitir quebra de linha e overflow visível */}
-                                                            <div className="overflow-hidden max-h-[4.5rem] relative"> 
-                                                                <span className="block">{item.descricao_subitem || 'N/A'}</span>
-                                                                {/* Adiciona um gradiente se o texto for cortado (simulação de line-clamp) */}
-                                                                {item.descricao_subitem && item.descricao_subitem.length > 100 && (
-                                                                    <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-background to-transparent pointer-events-none" />
-                                                                )}
-                                                            </div>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p className="max-w-xs">{item.descricao_subitem || 'N/A'}</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
+                                                {/* Container que expande no hover da linha (group-hover) */}
+                                                <div className="overflow-hidden max-h-[4.5rem] relative transition-all duration-300 group-hover:max-h-[20rem] group-hover:overflow-visible"> 
+                                                    <span className="block">{item.descricao_subitem || 'N/A'}</span>
+                                                    {/* Gradiente que desaparece no hover */}
+                                                    {item.descricao_subitem && item.descricao_subitem.length > 100 && (
+                                                        <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-background to-transparent pointer-events-none transition-opacity duration-300 group-hover:opacity-0" />
+                                                    )}
+                                                </div>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <Button 
