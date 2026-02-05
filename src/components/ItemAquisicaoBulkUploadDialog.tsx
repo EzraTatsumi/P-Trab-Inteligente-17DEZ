@@ -75,7 +75,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                 ];
                 
                 // Verifica se os cabeçalhos obrigatórios existem
-                const requiredHeaders = ['Descrição do Item', 'Valor Unitário (R$)'];
+                const requiredHeaders = ['Descrição do Item', 'Valor Unitário (R$)', 'Número do Pregão/Ref. Preço', 'UASG'];
                 const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
 
                 if (missingHeaders.length > 0) {
@@ -107,6 +107,18 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
 
                     if (!descricao_item) {
                         setError(`Linha ${i + 1}: Descrição do Item não pode ser vazia.`);
+                        setLoading(false);
+                        return;
+                    }
+                    
+                    if (!numero_pregao) {
+                        setError(`Linha ${i + 1}: Número do Pregão/Ref. Preço não pode ser vazio.`);
+                        setLoading(false);
+                        return;
+                    }
+
+                    if (!uasg) {
+                        setError(`Linha ${i + 1}: UASG não pode ser vazia.`);
                         setLoading(false);
                         return;
                     }
@@ -185,7 +197,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                                 'Descrição do Item', 'Valor Unitário (R$)', 'Número do Pregão/Ref. Preço', 'UASG', 'Código CATMAT'
                             </span>
                             <span className="text-xs mt-2 block">
-                                Atenção: Apenas as colunas 'Descrição do Item' e 'Valor Unitário (R$)' são obrigatórias.
+                                Atenção: As colunas 'Descrição do Item', 'Valor Unitário (R$)', 'Número do Pregão/Ref. Preço' e 'UASG' são obrigatórias.
                             </span>
                         </AlertDescription>
                     </Alert>
@@ -195,8 +207,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                             <h4 className="text-base font-semibold">Passo 1: Carregar Arquivo</h4>
                             <Button 
                                 type="button" 
-                                variant="link" 
-                                size="sm" 
+                                variant="outline" 
                                 onClick={() => {
                                     // Lógica para download de template (simulada)
                                     toast.info("Download do template em desenvolvimento.");
