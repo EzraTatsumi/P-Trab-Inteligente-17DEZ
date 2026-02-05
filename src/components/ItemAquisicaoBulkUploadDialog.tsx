@@ -66,16 +66,18 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                 }
 
                 const headers = json[0] as string[];
+                
+                // NOVOS CABEÇALHOS SEM CARACTERES ESPECIAIS
                 const expectedHeaders = [
-                    'Descrição do Item', 
-                    'Valor Unitário (R$)', 
-                    'Número do Pregão/Ref. Preço', 
+                    'Descricao do Item', 
+                    'Valor Unitario (R$)', 
+                    'Numero do Pregao/Ref. Preco', 
                     'UASG', 
-                    'Código CATMAT'
+                    'Codigo CATMAT'
                 ];
                 
                 // Verifica se os cabeçalhos obrigatórios existem
-                const requiredHeaders = ['Descrição do Item', 'Valor Unitário (R$)', 'Número do Pregão/Ref. Preço', 'UASG'];
+                const requiredHeaders = ['Descricao do Item', 'Valor Unitario (R$)', 'Numero do Pregao/Ref. Preco', 'UASG'];
                 const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
 
                 if (missingHeaders.length > 0) {
@@ -99,20 +101,21 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                         continue;
                     }
 
-                    const descricao_item = String(row[headerMap['Descrição do Item']] || '').trim();
-                    const valor_unitario_raw = String(row[headerMap['Valor Unitário (R$)']] || '0').trim();
-                    const numero_pregao = String(row[headerMap['Número do Pregão/Ref. Preço']] || '').trim();
+                    // CORREÇÃO: Usando os novos nomes de cabeçalho
+                    const descricao_item = String(row[headerMap['Descricao do Item']] || '').trim();
+                    const valor_unitario_raw = String(row[headerMap['Valor Unitario (R$)']] || '0').trim();
+                    const numero_pregao = String(row[headerMap['Numero do Pregao/Ref. Preco']] || '').trim();
                     const uasg = String(row[headerMap['UASG']] || '').trim();
-                    const codigo_catmat = String(row[headerMap['Código CATMAT']] || '').trim();
+                    const codigo_catmat = String(row[headerMap['Codigo CATMAT']] || '').trim();
 
                     if (!descricao_item) {
-                        setError(`Linha ${i + 1}: Descrição do Item não pode ser vazia.`);
+                        setError(`Linha ${i + 1}: Descricao do Item não pode ser vazia.`);
                         setLoading(false);
                         return;
                     }
                     
                     if (!numero_pregao) {
-                        setError(`Linha ${i + 1}: Número do Pregão/Ref. Preço não pode ser vazio.`);
+                        setError(`Linha ${i + 1}: Numero do Pregao/Ref. Preco não pode ser vazio.`);
                         setLoading(false);
                         return;
                     }
@@ -126,7 +129,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                     const valor_unitario = parseInputToNumber(valor_unitario_raw);
 
                     if (valor_unitario <= 0) {
-                        setError(`Linha ${i + 1}: Valor Unitário inválido ou zero.`);
+                        setError(`Linha ${i + 1}: Valor Unitario inválido ou zero.`);
                         setLoading(false);
                         return;
                     }
@@ -194,10 +197,10 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                         <AlertDescription>
                             O arquivo deve ser **.xlsx** e conter as colunas exatas na primeira linha:
                             <span className="font-mono text-sm block mt-1">
-                                'Descrição do Item', 'Valor Unitário (R$)', 'Número do Pregão/Ref. Preço', 'UASG', 'Código CATMAT'
+                                'Descricao do Item', 'Valor Unitario (R$)', 'Numero do Pregao/Ref. Preco', 'UASG', 'Codigo CATMAT'
                             </span>
                             <span className="text-xs mt-2 block">
-                                Atenção: As colunas 'Descrição do Item', 'Valor Unitário (R$)', 'Número do Pregão/Ref. Preço' e 'UASG' são obrigatórias.
+                                Atenção: As colunas 'Descricao do Item', 'Valor Unitario (R$)', 'Numero do Pregao/Ref. Preco' e 'UASG' são obrigatórias.
                             </span>
                         </AlertDescription>
                     </Alert>
@@ -258,11 +261,12 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                                 <table className="w-full text-sm">
                                     <thead className="sticky top-0 bg-muted/80 border-b">
                                         <tr>
-                                            <th className="p-2 text-left font-medium w-[40%]">Descrição</th>
-                                            <th className="p-2 text-right font-medium w-[15%]">Valor Unitário</th>
-                                            <th className="p-2 text-center font-medium w-[15%]">Pregão</th>
+                                            {/* Ajuste de largura das colunas */}
+                                            <th className="p-2 text-left font-medium w-[35%]">Descricao do Item</th>
+                                            <th className="p-2 text-right font-medium w-[15%]">Valor Unitario (R$)</th>
+                                            <th className="p-2 text-center font-medium w-[15%]">Numero do Pregao/Ref. Preco</th>
                                             <th className="p-2 text-center font-medium w-[15%]">UASG</th>
-                                            <th className="p-2 text-center font-medium w-[15%]">Cód. CATMAT</th>
+                                            <th className="p-2 text-center font-medium w-[20%]">Codigo CATMAT</th>
                                         </tr>
                                     </thead>
                                     <tbody>
