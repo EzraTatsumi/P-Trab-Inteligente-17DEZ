@@ -194,28 +194,29 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
         onOpenChange(false);
     };
     
-    // NOVO: Função para gerar e baixar o template Excel
+    // CORREÇÃO: Função para gerar e baixar o template Excel
     const handleDownloadTemplate = () => {
         try {
-            // 1. Criar uma nova planilha com cabeçalhos e linha de exemplo
+            // 1. Dados a exportar (Cabeçalhos + Linha de Exemplo)
             const dataToExport = [
                 TEMPLATE_HEADERS,
                 EXAMPLE_ROW
             ];
             
+            // 2. Criar a folha de trabalho
             const workbook = XLSX.utils.book_new();
             const worksheet = XLSX.utils.aoa_to_sheet(dataToExport);
             
-            // 2. Aplicar larguras de coluna
+            // 3. Aplicar larguras de coluna (Sintaxe correta para XLSX)
             worksheet['!cols'] = COLUMN_WIDTHS;
             
-            // 3. Adicionar a folha de trabalho ao livro
+            // 4. Adicionar a folha de trabalho ao livro
             XLSX.utils.book_append_sheet(workbook, worksheet, "Itens de Aquisição");
             
-            // 4. Gerar o buffer do arquivo
+            // 5. Gerar o buffer do arquivo
             const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
             
-            // 5. Criar um Blob e forçar o download
+            // 6. Criar um Blob e forçar o download
             const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
             saveAs(data, "template_itens_aquisicao.xlsx");
             
