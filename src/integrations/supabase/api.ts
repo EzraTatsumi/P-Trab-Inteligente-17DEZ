@@ -80,3 +80,41 @@ export async function deleteRecord<T extends TableName>(tableName: T, id: string
         throw error;
     }
 }
+
+/**
+ * Fetches PTrab and owner profile data for a share link preview.
+ * @param ptrabId The ID of the PTrab.
+ * @param shareToken The share token associated with the PTrab.
+ * @returns A promise that resolves to PTrab and owner data, or null if invalid.
+ */
+export async function fetchSharePreview(ptrabId: string, shareToken: string): Promise<{ ptrab: Tables<'p_trab'>, ownerProfile: Tables<'profiles'> } | null> {
+    // 1. Fetch PTrab data using both ID and token
+    const { data: ptrabData, error: ptrabError } = await supabase
+        .from('p_trab')
+        .select('*, user_id')
+        .eq('id', ptrabId)
+        .eq('share_token', shareToken)
+        .maybeSingle();
+
+    if (ptrabError || !ptrabData) {
+        console.error("[fetchSharePreview] PTrab not found or token invalid:", ptrabError);
+        return null;
+    }
+
+    // 2. Fetch owner profile data
+    const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', ptrabData.user_id)
+        .maybeSingle();
+
+    if (profileError || !profileData) {
+        console.error("[fetchSharePreview] Owner profile not found:", profileError);
+        return null;
+    }
+
+    return {
+        ptrab: ptrabData,
+        ownerProfile: profileData,
+    };
+}
