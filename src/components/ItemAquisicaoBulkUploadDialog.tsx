@@ -297,17 +297,11 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                     <Card className="p-4">
                         <div className="flex justify-between items-center mb-4">
                             <h4 className="text-base font-semibold">Passo 1: Carregar Arquivo</h4>
-                            <Button 
-                                type="button" 
-                                variant="outline" 
-                                onClick={handleDownloadTemplate} // Chamando a nova função
-                            >
-                                <Download className="mr-2 h-4 w-4" />
-                                Baixar Template (.xlsx)
-                            </Button>
+                            {/* O botão de download foi removido daqui */}
                         </div>
                         
                         <div className="grid grid-cols-3 gap-4 items-end">
+                            {/* Botão de Download movido para cima do botão Processar Arquivo */}
                             <div className="space-y-2 col-span-2">
                                 <Label htmlFor="file-upload">Selecione o arquivo (.xlsx)</Label>
                                 <Input
@@ -319,15 +313,26 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                                     className="rounded-full border-primary/50 bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer file:bg-primary file:text-primary-foreground file:font-medium file:rounded-full file:border-0 file:cursor-pointer file:hover:bg-primary/90"
                                 />
                             </div>
-                            <Button 
-                                type="button" 
-                                onClick={processFile}
-                                disabled={!file || loading}
-                                className="col-span-1"
-                            >
-                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                                Processar Arquivo
-                            </Button>
+                            <div className="space-y-2 col-span-1">
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    onClick={handleDownloadTemplate}
+                                    className="w-full"
+                                >
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Baixar Template (.xlsx)
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    onClick={processFile}
+                                    disabled={!file || loading}
+                                    className="w-full"
+                                >
+                                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                    Processar Arquivo
+                                </Button>
+                            </div>
                         </div>
                         
                         {error && (
