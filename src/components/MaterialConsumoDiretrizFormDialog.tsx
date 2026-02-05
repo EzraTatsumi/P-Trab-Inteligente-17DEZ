@@ -368,7 +368,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         id="item-pregao"
                                         value={itemForm.numero_pregao}
                                         onChange={(e) => setItemForm({ ...itemForm, numero_pregao: e.target.value })}
-                                        placeholder="Ex: 01/24"
+                                        placeholder="Ex: 90.001/24"
                                         onKeyDown={handleEnterToNextField}
                                         required
                                     />
