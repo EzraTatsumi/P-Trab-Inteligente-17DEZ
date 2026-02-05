@@ -350,7 +350,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         disabled={loading}
                                     >
                                         <BookOpen className="h-4 w-4 mr-1" />
-                                        Catálogo CATMAT
+                                         CATMAT
                                     </Button>
                                     
                                     {/* Botão Adicionar/Atualizar Item */}
