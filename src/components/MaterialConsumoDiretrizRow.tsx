@@ -82,26 +82,33 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                             <h5 className="text-sm font-semibold mb-2">Itens de Aquisição ({itensAquisicao.length})</h5>
                             
                             {itensAquisicao.length > 0 ? (
-                                <Table className="bg-background border">
-                                    <thead>
-                                        <TableRow className="text-xs text-muted-foreground hover:bg-background">
-                                            <th className="px-4 py-2 text-left font-normal w-[40%]">Descrição do Item</th>
-                                            <th className="px-4 py-2 text-right font-normal w-[20%]">Valor Unitário</th>
-                                            <th className="px-4 py-2 text-center font-normal w-[20%]">Pregão/Ref.</th>
-                                            <th className="px-4 py-2 text-center font-normal w-[20%]">UASG</th>
-                                        </TableRow>
-                                    </thead>
-                                    <tbody>
-                                        {itensAquisicao.map((item) => (
-                                            <TableRow key={item.id} className="text-sm">
-                                                <td className="px-4 py-2">{item.descricao_item}</td>
-                                                <td className="px-4 py-2 text-right font-mono">{formatCurrency(item.valor_unitario)}</td>
-                                                <td className="px-4 py-2 text-center">{item.numero_pregao || 'N/A'}</td>
-                                                <td className="px-4 py-2 text-center">{item.uasg || 'N/A'}</td>
-                                            </TableRow>
-                                        ))}
-                                    </tbody>
-                                </Table>
+                                <div className="space-y-2">
+                                    {itensAquisicao.map((item) => (
+                                        <div 
+                                            key={item.id} 
+                                            className="flex items-center justify-between text-sm p-2 bg-background rounded-md shadow-sm border"
+                                        >
+                                            {/* Lado Esquerdo: Descrição do Item */}
+                                            <div className="flex items-center gap-3 font-medium max-w-[50%]">
+                                                <span>{item.descricao_item}</span>
+                                            </div>
+                                            
+                                            {/* Lado Direito: Detalhes (Pregão/UASG) e Valor Unitário */}
+                                            <div className="flex items-center gap-4 text-right">
+                                                {/* Detalhes de Referência */}
+                                                <div className="flex flex-col text-xs text-muted-foreground">
+                                                    <span>Pregão: {item.numero_pregao || 'N/A'}</span>
+                                                    <span>UASG: {item.uasg || 'N/A'}</span>
+                                                </div>
+                                                
+                                                {/* Valor Unitário */}
+                                                <span className="font-bold text-primary whitespace-nowrap">
+                                                    {formatCurrency(item.valor_unitario)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             ) : (
                                 <p className="text-sm text-muted-foreground">Nenhum item de aquisição detalhado para este subitem.</p>
                             )}
