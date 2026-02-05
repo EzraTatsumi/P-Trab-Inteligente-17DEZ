@@ -14,6 +14,22 @@ export const formatCurrency = (value: number): string => {
 };
 
 /**
+ * Formata um valor numérico para o formato de número brasileiro (X.XXX,XX).
+ * @param value O valor numérico.
+ * @param decimals Número de casas decimais (padrão 2).
+ * @returns A string formatada.
+ */
+export const formatNumber = (value: number, decimals: number = 2): string => {
+    if (typeof value !== 'number' || isNaN(value)) {
+        return '0,00';
+    }
+    return new Intl.NumberFormat('pt-BR', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+    }).format(value);
+};
+
+/**
  * Remove todos os caracteres não numéricos de uma string.
  * @param value A string de entrada.
  * @returns A string contendo apenas dígitos.
