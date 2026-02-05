@@ -27,77 +27,77 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
 
     return (
         <React.Fragment>
-            <Collapsible asChild open={isOpen} onOpenChange={setIsOpen}>
-                {/* A linha principal (TableRow) agora é o elemento que contém o CollapsibleTrigger */}
-                <TableRow className={cn(
-                    "hover:bg-muted/50 transition-colors",
-                    isOpen ? "bg-muted/50" : "cursor-pointer"
-                )}>
-                    {/* Coluna Nr Subitem (Trigger) */}
-                    <CollapsibleTrigger asChild>
-                        <TableCell className="font-semibold w-[150px] text-center cursor-pointer">
-                            <div className="flex items-center justify-center gap-2">
-                                {diretriz.nr_subitem}
-                                {isOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
-                            </div>
-                        </TableCell>
-                    </CollapsibleTrigger>
-                    
-                    {/* Coluna Nome do Subitem */}
-                    <TableCell className="font-medium" onClick={() => setIsOpen(!isOpen)}>
-                        {diretriz.nome_subitem}
-                        {!diretriz.ativo && <Badge variant="destructive" className="ml-2">Inativo</Badge>}
-                    </TableCell>
-                    
-                    {/* Coluna Ações */}
-                    <TableCell className="text-right w-[100px]">
-                        <div className="flex justify-end gap-1">
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={(e) => { e.stopPropagation(); onEdit(diretriz); }}
-                                disabled={loading}
-                            >
-                                <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={(e) => { e.stopPropagation(); onDelete(diretriz.id, diretriz.nome_subitem); }} 
-                                disabled={loading}
-                                className="text-destructive hover:bg-destructive/10"
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </TableCell>
-                </TableRow>
-            </Collapsible>
+            {/* A linha principal (TableRow) agora é o elemento que contém o CollapsibleTrigger */}
+            <TableRow
+                className={cn(
+                    "hover:bg-muted/50 transition-colors cursor-pointer",
+                    isOpen && "bg-muted/50"
+                )}
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                {/* Coluna Nr Subitem */}
+                <TableCell className="font-semibold w-[150px] text-center">
+                    <div className="flex items-center justify-center gap-2">
+                        {diretriz.nr_subitem}
+                        {isOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                    </div>
+                </TableCell>
+                
+                {/* Coluna Nome do Subitem */}
+                <TableCell className="font-medium">
+                    {diretriz.nome_subitem}
+                    {!diretriz.ativo && <Badge variant="destructive" className="ml-2">Inativo</Badge>}
+                </TableCell>
+                
+                {/* Coluna Ações */}
+                <TableCell className="text-right w-[100px]" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex justify-end gap-1">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onEdit(diretriz)}
+                            disabled={loading}
+                        >
+                            <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onDelete(diretriz.id, diretriz.nome_subitem)}
+                            disabled={loading}
+                            className="text-destructive hover:bg-destructive/10"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </TableCell>
+            </TableRow>
             
             {/* Linha de Conteúdo Colapsável */}
             <TableRow className="p-0">
                 <TableCell colSpan={3} className="p-0">
-                    <CollapsibleContent>
-                        <div className="p-4 bg-gray-50 dark:bg-gray-900 border-t">
+                    <Collapsible open={isOpen}>
+                        <CollapsibleContent>
+                            <div className="p-4 bg-gray-50 dark:bg-gray-900 border-t">
                             <h5 className="text-sm font-semibold mb-2">Itens de Aquisição ({itensAquisicao.length})</h5>
                             
                             {itensAquisicao.length > 0 ? (
                                 <Table className="bg-white dark:bg-gray-800 border">
                                     <thead>
                                         <TableRow className="text-xs text-muted-foreground hover:bg-white dark:hover:bg-gray-800">
-                                            <th className="px-4 py-2 text-left font-normal w-[50%]">Descrição</th>
-                                            <th className="px-4 py-2 text-center font-normal w-[15%]">Unidade</th>
-                                            <th className="px-4 py-2 text-right font-normal w-[15%]">Preço Unitário</th>
-                                            <th className="px-4 py-2 text-right font-normal w-[15%]">Fator Mnt</th>
+                                            <th className="px-4 py-2 text-left font-normal w-[40%]">Descrição do Item</th>
+                                            <th className="px-4 py-2 text-right font-normal w-[20%]">Valor Unitário</th>
+                                            <th className="px-4 py-2 text-center font-normal w-[20%]">Pregão/Ref.</th>
+                                            <th className="px-4 py-2 text-center font-normal w-[20%]">UASG</th>
                                         </TableRow>
                                     </thead>
                                     <tbody>
-                                        {itensAquisicao.map((item, index) => (
-                                            <TableRow key={index} className="text-sm">
-                                                <td className="px-4 py-2">{item.descricao}</td>
-                                                <td className="px-4 py-2 text-center">{item.unidade}</td>
-                                                <td className="px-4 py-2 text-right font-mono">{formatCurrency(item.preco_unitario)}</td>
-                                                <td className="px-4 py-2 text-right font-mono">{item.fator_manutencao}</td>
+                                        {itensAquisicao.map((item) => (
+                                            <TableRow key={item.id} className="text-sm">
+                                                <td className="px-4 py-2">{item.descricao_item}</td>
+                                                <td className="px-4 py-2 text-right font-mono">{formatCurrency(item.valor_unitario)}</td>
+                                                <td className="px-4 py-2 text-center">{item.numero_pregao || 'N/A'}</td>
+                                                <td className="px-4 py-2 text-center">{item.uasg || 'N/A'}</td>
                                             </TableRow>
                                         ))}
                                     </tbody>
