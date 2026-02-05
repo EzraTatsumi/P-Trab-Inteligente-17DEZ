@@ -25,10 +25,13 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
             <TableCell className="font-medium w-[100px]">
                 <span className="font-semibold">{diretriz.nr_subitem}</span>
             </TableCell>
-            <TableCell className="text-left font-medium">
+            <TableCell className="text-left font-medium w-[40%]">
                 {diretriz.nome_subitem}
             </TableCell>
-            <TableCell className="text-right">
+            <TableCell className="text-left text-sm text-muted-foreground max-w-lg whitespace-normal">
+                {diretriz.descricao_subitem || 'N/A'}
+            </TableCell>
+            <TableCell className="text-right w-[100px]">
                 <div className="flex justify-end gap-1">
                     <Button 
                         variant="ghost" 
