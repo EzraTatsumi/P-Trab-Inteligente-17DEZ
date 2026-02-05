@@ -153,7 +153,7 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <Import className="h-4 w-4 mr-1" />
+                                                                <Check className="h-4 w-4 mr-1" />
                                                                 Selecionar
                                                             </>
                                                         )}
