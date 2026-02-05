@@ -98,7 +98,7 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                                                 <TableCell className="px-4 py-2 text-center">{item.codigo_catmat || 'N/A'}</TableCell>
                                                 <TableCell className="px-4 py-2 text-center">{item.numero_pregao || 'N/A'}</TableCell>
                                                 <TableCell className="px-4 py-2 text-center">{item.uasg || 'N/A'}</TableCell>
-                                                <TableCell className="px-4 py-2 text-right font-mono font-semibold text-primary">
+                                                <TableCell className="px-4 py-2 text-right font-bold text-primary">
                                                     {formatCurrency(item.valor_unitario)}
                                                 </TableCell>
                                             </TableRow>
