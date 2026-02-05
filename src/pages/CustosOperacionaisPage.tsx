@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp, Plus, Trash2, Pencil, Plane } from "lucide-react";
+import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp, Plus, Trash2, Pencil, Plane, Package } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -37,6 +37,13 @@ import {
     CATEGORIAS_CONCESSIONARIA, 
     CategoriaConcessionaria 
 } from "@/types/diretrizesConcessionaria";
+import { 
+    DiretrizMaterialConsumo, 
+    DiretrizMaterialConsumoForm, 
+    ItemAquisicao 
+} from "@/types/diretrizesMaterialConsumo"; // NOVO: Importar tipos de Material de Consumo
+import MaterialConsumoDiretrizFormDialog from "@/components/MaterialConsumoDiretrizFormDialog"; // NOVO: Importar Diálogo
+import MaterialConsumoDiretrizRow from "@/components/MaterialConsumoDiretrizRow"; // NOVO: Importar Linha
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Tipo derivado da nova tabela
@@ -123,10 +130,13 @@ const CustosOperacionaisPage = () => {
     const shouldOpenPassagens = location.state && (location.state as { openPassagens?: boolean }).openPassagens;
     // NOVO: Verifica se o estado de navegação pede para abrir a seção de concessionária
     const shouldOpenConcessionaria = location.state && (location.state as { openConcessionaria?: boolean }).openConcessionaria;
+    // NOVO: Verifica se o estado de navegação pede para abrir a seção de material de consumo
+    const shouldOpenMaterialConsumo = location.state && (location.state as { openMaterialConsumo?: boolean }).openMaterialConsumo;
     
     initialState['diarias_detalhe'] = false; 
     initialState['passagens_detalhe'] = shouldOpenPassagens || false; 
-    initialState['concessionaria_detalhe'] = shouldOpenConcessionaria || false; // ATUALIZADO
+    initialState['concessionaria_detalhe'] = shouldOpenConcessionaria || false;
+    initialState['material_consumo_detalhe'] = shouldOpenMaterialConsumo || false; // NOVO
     return initialState;
   });
   
@@ -142,7 +152,12 @@ const CustosOperacionaisPage = () => {
   const [isConcessionariaFormOpen, setIsConcessionariaFormOpen] = useState(false);
   const [diretrizConcessionariaToEdit, setDiretrizConcessionariaToEdit] = useState<DiretrizConcessionaria | null>(null);
   const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<CategoriaConcessionaria>(CATEGORIAS_CONCESSIONARIA[0]);
-  // END CONCESSIONARIA STATES
+  
+  // --- ESTADOS DE DIRETRIZES DE MATERIAL DE CONSUMO (NOVO) ---
+  const [diretrizesMaterialConsumo, setDiretrizesMaterialConsumo] = useState<DiretrizMaterialConsumo[]>([]);
+  const [isMaterialConsumoFormOpen, setIsMaterialConsumoFormOpen] = useState(false);
+  const [diretrizMaterialConsumoToEdit, setDiretrizMaterialConsumoToEdit] = useState<DiretrizMaterialConsumo | null>(null);
+  // END MATERIAL CONSUMO STATES
   
   // Efeito para rolar para o topo na montagem
   useEffect(() => {
@@ -171,7 +186,8 @@ const CustosOperacionaisPage = () => {
     if (selectedYear) {
       loadDiretrizesForYear(selectedYear);
       loadDiretrizesPassagens(selectedYear); 
-      loadDiretrizesConcessionaria(selectedYear); // NEW LOAD
+      loadDiretrizesConcessionaria(selectedYear);
+      loadDiretrizesMaterialConsumo(selectedYear); // NOVO: Carregar Material de Consumo
     }
   }, [selectedYear]);
 
@@ -180,25 +196,28 @@ const CustosOperacionaisPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Busca anos disponíveis nas três tabelas
+      // Busca anos disponíveis nas quatro tabelas
       const [
           { data: opData, error: opError },
           { data: passagensData, error: passagensError },
-          { data: concessionariaData, error: concessionariaError } 
+          { data: concessionariaData, error: concessionariaError },
+          { data: materialConsumoData, error: materialConsumoError } // NOVO
       ] = await Promise.all([
           supabase.from("diretrizes_operacionais").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_passagens").select("ano_referencia").eq("user_id", user.id),
-          supabase.from("diretrizes_concessionaria").select("ano_referencia").eq("user_id", user.id), 
+          supabase.from("diretrizes_concessionaria").select("ano_referencia").eq("user_id", user.id),
+          supabase.from("diretrizes_material_consumo").select("ano_referencia").eq("user_id", user.id), // NOVO
       ]);
 
-      if (opError || passagensError || concessionariaError) throw opError || passagensError || concessionariaError;
+      if (opError || passagensError || concessionariaError || materialConsumoError) throw opError || passagensError || concessionariaError || materialConsumoError;
 
       // CORREÇÃO: Acessar 'ano_referencia' de forma segura
       const opYears = opData ? opData.map(d => d.ano_referencia) : [];
       const passagensYears = passagensData ? passagensData.map(d => d.ano_referencia) : [];
-      const concessionariaYears = concessionariaData ? concessionariaData.map(d => d.ano_referencia) : []; // NEW
+      const concessionariaYears = concessionariaData ? concessionariaData.map(d => d.ano_referencia) : [];
+      const materialConsumoYears = materialConsumoData ? materialConsumoData.map(d => d.ano_referencia) : []; // NOVO
 
-      const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears]); // UPDATED
+      const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears, ...materialConsumoYears]); // UPDATED
       
       if (defaultYearId && !yearsToInclude.has(defaultYearId)) {
           yearsToInclude.add(defaultYearId);
@@ -350,6 +369,34 @@ const CustosOperacionaisPage = () => {
     } catch (error) {
         console.error("Erro ao carregar diretrizes de concessionária:", error);
         toast.error("Erro ao carregar diretrizes de concessionária.");
+    }
+  };
+  
+  // NOVO: Função para carregar diretrizes de Material de Consumo
+  const loadDiretrizesMaterialConsumo = async (year: number) => {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        const { data, error } = await supabase
+            .from('diretrizes_material_consumo')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('ano_referencia', year)
+            .order('nr_subitem', { ascending: true });
+            
+        if (error) throw error;
+        
+        const typedData: DiretrizMaterialConsumo[] = (data || []).map(d => ({
+            ...d,
+            itens_aquisicao: (d.itens_aquisicao as unknown as ItemAquisicao[]) || [],
+        }));
+        
+        setDiretrizesMaterialConsumo(typedData);
+        
+    } catch (error) {
+        console.error("Erro ao carregar diretrizes de material de consumo:", error);
+        toast.error("Erro ao carregar diretrizes de material de consumo.");
     }
   };
 
@@ -531,7 +578,7 @@ const CustosOperacionaisPage = () => {
           if (insertPassagensError) throw insertPassagensError;
       }
       
-      // 3. Copiar Diretrizes de Concessionária (NEW LOGIC)
+      // 3. Copiar Diretrizes de Concessionária
       const { data: sourceConcessionaria, error: concessionariaError } = await supabase
         .from("diretrizes_concessionaria")
         .select("categoria, nome_concessionaria, consumo_pessoa_dia, fonte_consumo, custo_unitario, fonte_custo, unidade_custo")
@@ -558,7 +605,33 @@ const CustosOperacionaisPage = () => {
           if (insertConcessionariaError) throw insertConcessionariaError;
       }
       
-      toast.success(`Diretrizes operacionais, de passagens e de concessionária do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
+      // 4. Copiar Diretrizes de Material de Consumo (NOVO)
+      const { data: sourceMaterialConsumo, error: materialConsumoError } = await supabase
+        .from("diretrizes_material_consumo")
+        .select("nr_subitem, nome_subitem, descricao_subitem, itens_aquisicao, ativo")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", sourceYear);
+        
+      if (materialConsumoError) throw materialConsumoError;
+      
+      if (sourceMaterialConsumo && sourceMaterialConsumo.length > 0) {
+          const newMaterialConsumo = (sourceMaterialConsumo as Tables<'diretrizes_material_consumo'>[]).map(m => {
+              const { id, created_at, updated_at, ...restOfMaterialConsumo } = m as any;
+              return {
+                  ...restOfMaterialConsumo,
+                  ano_referencia: targetYear,
+                  user_id: user.id,
+                  itens_aquisicao: m.itens_aquisicao, // JSONB copiado
+              };
+          });
+          
+          const { error: insertMaterialConsumoError } = await supabase
+            .from("diretrizes_material_consumo")
+            .insert(newMaterialConsumo as TablesInsert<'diretrizes_material_consumo'>[]);
+          if (insertMaterialConsumoError) throw insertMaterialConsumoError;
+      }
+      
+      toast.success(`Diretrizes operacionais, de passagens, concessionária e material de consumo do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
       setIsYearManagementDialogOpen(false);
       setSelectedYear(targetYear);
       
@@ -579,7 +652,7 @@ const CustosOperacionaisPage = () => {
       return;
     }
     
-    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes operacionais, de passagens e de concessionária para o ano ${year}? Esta ação é irreversível.`)) return;
+    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes operacionais, de passagens, concessionária e material de consumo para o ano ${year}? Esta ação é irreversível.`)) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -601,14 +674,21 @@ const CustosOperacionaisPage = () => {
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
         
-      // 3. Excluir Diretrizes de Concessionária (NEW LOGIC)
+      // 3. Excluir Diretrizes de Concessionária
       await supabase
         .from("diretrizes_concessionaria")
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
+        
+      // 4. Excluir Diretrizes de Material de Consumo (NOVO)
+      await supabase
+        .from("diretrizes_material_consumo")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year);
 
-      toast.success(`Diretrizes operacionais, de passagens e de concessionária do ano ${year} excluídas com sucesso!`);
+      toast.success(`Diretrizes operacionais, de passagens, concessionária e material de consumo do ano ${year} excluídas com sucesso!`);
       setIsYearManagementDialogOpen(false);
       
       queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
@@ -841,7 +921,7 @@ const CustosOperacionaisPage = () => {
       return (
           <div className="space-y-4">
               
-              {/* Lista de Contratos Existentes */}
+              {/* Lista de Contratos Existentes (Card 846) */}
               {diretrizesPassagens.length > 0 ? (
                   <Card className="p-4">
                       <CardTitle className="text-base font-semibold mb-3">Contratos Cadastrados</CardTitle>
@@ -891,7 +971,7 @@ const CustosOperacionaisPage = () => {
       );
   };
   
-  // --- LÓGICA DE CONCESSIONÁRIA (NEW) ---
+  // --- LÓGICA DE CONCESSIONÁRIA ---
   
   const handleSaveConcessionaria = async (data: DiretrizConcessionariaForm & { id?: string }) => {
       try {
@@ -1043,7 +1123,129 @@ const CustosOperacionaisPage = () => {
           </Card>
       );
   };
-  // END LÓGICA DE CONCESSIONÁRIA
+  
+  // --- LÓGICA DE MATERIAL DE CONSUMO (NOVO) ---
+  
+  const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
+      try {
+          setLoading(true);
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error("Usuário não autenticado");
+          
+          const dbData: TablesInsert<'diretrizes_material_consumo'> = {
+              user_id: user.id,
+              ano_referencia: data.ano_referencia,
+              nr_subitem: data.nr_subitem!,
+              nome_subitem: data.nome_subitem!,
+              descricao_subitem: data.descricao_subitem || null,
+              itens_aquisicao: data.itens_aquisicao as unknown as Json,
+              ativo: data.ativo ?? true,
+          };
+
+          if (data.id) {
+              const { error } = await supabase
+                  .from('diretrizes_material_consumo')
+                  .update(dbData as TablesUpdate<'diretrizes_material_consumo'>)
+                  .eq('id', data.id);
+              if (error) throw error;
+              toast.success("Subitem da ND atualizado!");
+          } else {
+              const { error } = await supabase
+                  .from('diretrizes_material_consumo')
+                  .insert([dbData]);
+              if (error) throw error;
+              toast.success("Novo Subitem da ND cadastrado!");
+          }
+          
+          await loadDiretrizesMaterialConsumo(selectedYear);
+          setDiretrizMaterialConsumoToEdit(null);
+          setIsMaterialConsumoFormOpen(false);
+          
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
+      }
+  };
+  
+  const handleStartEditMaterialConsumo = (diretriz: DiretrizMaterialConsumo) => {
+      setDiretrizMaterialConsumoToEdit(diretriz);
+      setIsMaterialConsumoFormOpen(true);
+  };
+  
+  const handleOpenNewMaterialConsumo = () => {
+      setDiretrizMaterialConsumoToEdit(null);
+      setIsMaterialConsumoFormOpen(true);
+  };
+  
+  const handleDeleteMaterialConsumo = async (id: string, nome: string) => {
+      if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
+      
+      try {
+          setLoading(true);
+          await supabase.from('diretrizes_material_consumo').delete().eq('id', id);
+          toast.success("Subitem da ND excluído!");
+          await loadDiretrizesMaterialConsumo(selectedYear);
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
+      }
+  };
+  
+  const renderMaterialConsumoSection = () => {
+      return (
+          <div className="space-y-4">
+              
+              {/* Lista de Subitens Existentes (Card 846 equivalente) */}
+              {diretrizesMaterialConsumo.length > 0 ? (
+                  <Card className="p-4">
+                      <CardTitle className="text-base font-semibold mb-3">Subitens da ND Cadastrados</CardTitle>
+                      <Table>
+                          <TableHeader>
+                              <TableRow>
+                                  <TableHead>Subitem ND</TableHead>
+                                  <TableHead className="w-[40%]">Descrição</TableHead>
+                                  <TableHead className="text-center">Itens</TableHead>
+                                  <TableHead className="w-[100px] text-center">Ações</TableHead>
+                              </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                              {diretrizesMaterialConsumo.map(d => (
+                                  <MaterialConsumoDiretrizRow
+                                      key={d.id}
+                                      diretriz={d}
+                                      onEdit={handleStartEditMaterialConsumo}
+                                      onDelete={handleDeleteMaterialConsumo}
+                                      loading={loading}
+                                  />
+                              ))}
+                          </TableBody>
+                      </Table>
+                  </Card>
+              ) : (
+                  <Card className="p-4 text-center text-muted-foreground">
+                      Nenhum subitem da ND cadastrado para o ano de referência.
+                  </Card>
+              )}
+              
+              <div className="flex justify-end">
+                  <Button 
+                      type="button" 
+                      onClick={handleOpenNewMaterialConsumo}
+                      disabled={loading}
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full"
+                  >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Adicionar Novo Subitem da ND
+                  </Button>
+              </div>
+          </div>
+      );
+  };
+  // END LÓGICA DE MATERIAL DE CONSUMO
 
   // Adicionando a verificação de carregamento
   if (loading || isLoadingDefaultYear) {
@@ -1157,7 +1359,7 @@ const CustosOperacionaisPage = () => {
                     </CollapsibleContent>
                   </Collapsible>
                   
-                  {/* Diretrizes de Concessionária (NEW SECTION) */}
+                  {/* Diretrizes de Concessionária */}
                   <Collapsible 
                     open={fieldCollapseState['concessionaria_detalhe']} 
                     onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['concessionaria_detalhe']: open }))}
@@ -1178,8 +1380,30 @@ const CustosOperacionaisPage = () => {
                     </CollapsibleContent>
                   </Collapsible>
                   
-                  {/* OUTROS CAMPOS OPERACIONAIS */}
-                  {OPERATIONAL_FIELDS.map(field => {
+                  {/* Diretrizes de Material de Consumo (NOVO) */}
+                  <Collapsible 
+                    open={fieldCollapseState['material_consumo_detalhe']} 
+                    onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['material_consumo_detalhe']: open }))}
+                    className="border-b pb-4 last:border-b-0 last:pb-0"
+                  >
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center justify-between cursor-pointer py-2">
+                        <h4 className="text-base font-medium flex items-center gap-2">
+                          <Package className="h-4 w-4 mr-1 text-orange-500" />
+                          Material de Consumo (Subitens da ND)
+                        </h4>
+                        {fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mt-2">
+                        {renderMaterialConsumoSection()}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                  
+                  {/* OUTROS CAMPOS OPERACIONAIS (Fatores e Valores Simples) */}
+                  {OPERATIONAL_FIELDS.filter(f => f.key !== 'fator_material_consumo').map(field => {
                     const fieldKey = field.key as string;
                     const isOpen = fieldCollapseState[fieldKey] ?? false;
                     
@@ -1259,7 +1483,7 @@ const CustosOperacionaisPage = () => {
           loading={loading}
       />
       
-      {/* Diálogo de Formulário de Concessionária (NEW) */}
+      {/* Diálogo de Formulário de Concessionária */}
       <ConcessionariaDiretrizFormDialog
           open={isConcessionariaFormOpen}
           onOpenChange={setIsConcessionariaFormOpen}
@@ -1268,6 +1492,16 @@ const CustosOperacionaisPage = () => {
           onSave={handleSaveConcessionaria}
           loading={loading}
           initialCategory={selectedConcessionariaTab}
+      />
+      
+      {/* Diálogo de Formulário de Material de Consumo (NOVO) */}
+      <MaterialConsumoDiretrizFormDialog
+          open={isMaterialConsumoFormOpen}
+          onOpenChange={setIsMaterialConsumoFormOpen}
+          selectedYear={selectedYear}
+          diretrizToEdit={diretrizMaterialConsumoToEdit}
+          onSave={handleSaveMaterialConsumo}
+          loading={loading}
       />
     </div>
   );

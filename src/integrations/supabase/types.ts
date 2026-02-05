@@ -1328,6 +1328,53 @@ export type Database = {
         }
         Relationships: []
       }
+      diretrizes_material_consumo: {
+        Row: {
+          id: string
+          user_id: string
+          ano_referencia: number
+          nr_subitem: string
+          nome_subitem: string
+          descricao_subitem: string | null
+          itens_aquisicao: Json
+          ativo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          ano_referencia: number
+          nr_subitem: string
+          nome_subitem: string
+          descricao_subitem?: string | null
+          itens_aquisicao?: Json
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          ano_referencia?: number
+          nr_subitem?: string
+          nome_subitem?: string
+          descricao_subitem?: string | null
+          itens_aquisicao?: Json
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diretrizes_material_consumo_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizacoes_militares: {
         Row: {
           ativo: boolean | null
