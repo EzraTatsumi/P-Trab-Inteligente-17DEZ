@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import { useSession } from "@/components/SessionContextProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchUserCredits, updateUserCredits } from "@/lib/creditUtils";
 import { CreditPromptDialog } from "@/components/CreditPromptDialog";
+import PageMetadata from "@/components/PageMetadata"; // NOVO: Importar PageMetadata
 
 interface PTrabData {
   numero_ptrab: string;
@@ -215,6 +216,10 @@ const PTrabForm = () => {
     }
   };
 
+  const pageTitle = ptrabData?.numero_ptrab && ptrabData?.nome_operacao 
+    ? `${ptrabData.numero_ptrab} - ${ptrabData.nome_operacao}` 
+    : "Preenchimento do P Trab";
+
   if (loadingSession || loadingPTrab || isLoadingCredits || isLoadingTotals) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -237,6 +242,13 @@ const PTrabForm = () => {
 
   return (
     <div className="min-h-screen bg-background py-4 px-4">
+      {/* NOVO: Adicionar PageMetadata */}
+      <PageMetadata 
+        title={pageTitle} 
+        description={`Preenchimento e detalhamento de custos para o Plano de Trabalho ${ptrabData?.numero_ptrab} - ${ptrabData?.nome_operacao}.`}
+        canonicalPath={`/ptrab/form?ptrabId=${ptrabId}`}
+      />
+      
       <div className="container max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-4">
           <Button
@@ -247,16 +259,20 @@ const PTrabForm = () => {
             Voltar para Gerenciamento
           </Button>
         </div>
+        
+        {/* CORREÇÃO H1: Título principal da página */}
+        <h1 className="text-2xl font-bold mb-6">{pageTitle}</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Coluna Esquerda: Dados do P Trab, Resumo de Custos e Crédito Disponível */}
           <div className="lg:col-span-1 space-y-4">
             <Card className="shadow-lg">
               <CardHeader className="pb-1 pt-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
+                {/* CORREÇÃO H2: Título da seção */}
+                <h2 className="flex items-center gap-2 text-lg font-semibold">
                   <FileText className="h-5 w-5 text-primary" />
                   Dados do P Trab
-                </CardTitle>
+                </h2>
               </CardHeader>
               <CardContent className="pt-2 pb-3">
                 <div className="grid grid-cols-2 gap-y-1 gap-x-4">
@@ -290,7 +306,7 @@ const PTrabForm = () => {
               </CardContent>
             </Card>
             
-            {/* Resumo de Custos */}
+            {/* Resumo de Custos (O componente PTrabCostSummary já deve usar H3/H4 internamente) */}
             {ptrabId && (
               <PTrabCostSummary 
                 ptrabId={ptrabId} 
@@ -306,7 +322,8 @@ const PTrabForm = () => {
           <div className="lg:col-span-2">
             <Card className="shadow-lg">
               <CardHeader>
-                <CardTitle>Selecione o Tipo de Material</CardTitle>
+                {/* CORREÇÃO H2: Título da seção */}
+                <h2 className="text-xl font-bold">Selecione o Tipo de Material</h2>
                 <CardDescription>
                   Escolha entre logística ou operacional
                 </CardDescription>
@@ -326,6 +343,7 @@ const PTrabForm = () => {
                   </TabsList>
 
                   <TabsContent value="logistica" className="space-y-4">
+                    {/* CORREÇÃO H3: Subtítulo da aba */}
                     <h3 className="text-lg font-semibold text-foreground mb-4">
                       Selecione a Classe de Material
                     </h3>
@@ -350,6 +368,7 @@ const PTrabForm = () => {
                   </TabsContent>
 
                   <TabsContent value="operacional" className="space-y-4">
+                    {/* CORREÇÃO H3: Subtítulo da aba */}
                     <h3 className="text-lg font-semibold text-foreground mb-4">
                       Selecione o Item Operacional
                     </h3>

@@ -46,6 +46,7 @@ import MaterialConsumoDiretrizFormDialog from "@/components/MaterialConsumoDiret
 import MaterialConsumoDiretrizRow from "@/components/MaterialConsumoDiretrizRow";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMaterialConsumoDiretrizes } from "@/hooks/useMaterialConsumoDiretrizes"; // NOVO HOOK
+import PageMetadata from "@/components/PageMetadata"; // NOVO: Importar PageMetadata
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -1532,6 +1533,13 @@ const CustosOperacionaisPage = () => {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
+      {/* NOVO: Adicionar PageMetadata */}
+      <PageMetadata 
+        title="Configurações de Custos Operacionais" 
+        description="Defina os valores de diárias, contratos de passagens, concessionárias e fatores de custeio operacional para o cálculo do P Trab."
+        canonicalPath="/config/custos-operacionais"
+      />
+      
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <Button variant="ghost" onClick={() => navigate("/ptrab")} className="mb-2">
@@ -1550,7 +1558,8 @@ const CustosOperacionaisPage = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Configurações de Custos Operacionais</CardTitle>
+            {/* CORREÇÃO H1: Título principal da página */}
+            <h1 className="text-2xl font-bold">Configurações de Custos Operacionais</h1>
             <CardDescription>
               Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3).
             </CardDescription>
@@ -1598,9 +1607,10 @@ const CustosOperacionaisPage = () => {
                   >
                     <CollapsibleTrigger asChild>
                       <div className="flex items-center justify-between cursor-pointer py-2">
-                        <h4 className="text-base font-medium">
+                        {/* CORREÇÃO H2: Título da seção */}
+                        <h2 className="text-base font-medium">
                           Pagamento de Diárias
-                        </h4>
+                        </h2>
                         {fieldCollapseState['diarias_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </div>
                     </CollapsibleTrigger>
@@ -1619,9 +1629,10 @@ const CustosOperacionaisPage = () => {
                   >
                     <CollapsibleTrigger asChild>
                       <div className="flex items-center justify-between cursor-pointer py-2">
-                        <h4 className="text-base font-medium flex items-center gap-2">
+                        {/* CORREÇÃO H2: Título da seção */}
+                        <h2 className="text-base font-medium flex items-center gap-2">
                           Passagens (Contratos/Trechos)
-                        </h4>
+                        </h2>
                         {fieldCollapseState['passagens_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </div>
                     </CollapsibleTrigger>
@@ -1640,9 +1651,10 @@ const CustosOperacionaisPage = () => {
                   >
                     <CollapsibleTrigger asChild>
                       <div className="flex items-center justify-between cursor-pointer py-2">
-                        <h4 className="text-base font-medium flex items-center gap-2">
+                        {/* CORREÇÃO H2: Título da seção */}
+                        <h2 className="text-base font-medium flex items-center gap-2">
                           Concessionária (Água/Esgoto e Energia Elétrica)
-                        </h4>
+                        </h2>
                         {fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </div>
                     </CollapsibleTrigger>
@@ -1661,9 +1673,10 @@ const CustosOperacionaisPage = () => {
                   >
                     <CollapsibleTrigger asChild>
                       <div className="flex items-center justify-between cursor-pointer py-2">
-                        <h4 className="text-base font-medium flex items-center gap-2">
+                        {/* CORREÇÃO H2: Título da seção */}
+                        <h2 className="text-base font-medium flex items-center gap-2">
                           Material de Consumo (33.90.30)
-                        </h4>
+                        </h2>
                         {fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </div>
                     </CollapsibleTrigger>
@@ -1688,9 +1701,10 @@ const CustosOperacionaisPage = () => {
                       >
                         <CollapsibleTrigger asChild>
                           <div className="flex items-center justify-between cursor-pointer py-2">
-                            <h4 className="text-base font-medium">
+                            {/* CORREÇÃO H2: Título da seção */}
+                            <h2 className="text-base font-medium">
                               {field.label}
-                            </h4>
+                            </h2>
                             {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </div>
                         </CollapsibleTrigger>

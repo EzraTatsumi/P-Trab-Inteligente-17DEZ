@@ -6,6 +6,7 @@ import { RouterProvider } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { SessionContextProvider } from "./components/SessionContextProvider";
 import { router } from "./router"; // Importa o roteador configurado
+import MetadataUpdater from "./components/MetadataUpdater"; // NOVO: Importar o MetadataUpdater
 
 const queryClient = new QueryClient();
 
@@ -16,7 +17,9 @@ const App = () => (
         <Toaster />
         <Sonner />
         <SessionContextProvider>
-          <RouterProvider router={router} />
+          <MetadataUpdater>
+            <RouterProvider router={router} />
+          </MetadataUpdater>
         </SessionContextProvider>
       </TooltipProvider>
     </ThemeProvider>

@@ -54,6 +54,7 @@ import ShareLinkDialog from "@/components/ShareLinkDialog";
 import LinkPTrabDialog from "@/components/LinkPTrabDialog";
 import ManageSharingDialog from "@/components/ManageSharingDialog";
 import UnlinkPTrabDialog from "@/components/UnlinkPTrabDialog";
+import PageMetadata from "@/components/PageMetadata"; // NOVO: Importar PageMetadata
 
 // Define a base type for PTrab data fetched from DB, including the missing 'origem' field
 type PTrabDB = Tables<'p_trab'> & {
@@ -1661,10 +1662,18 @@ const PTrabManager = () => {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
+      {/* NOVO: Adicionar PageMetadata */}
+      <PageMetadata 
+        title="Gerenciamento de Planos de Trabalho" 
+        description="Visualize, crie, edite e gerencie todos os seus Planos de Trabalho (P Trabs) e seus custos associados."
+        canonicalPath="/ptrab"
+      />
+      
       <div className="max-w-7xl mx-auto space-y-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
             <div>
+              {/* CORREÇÃO H1: Título principal da página */}
               <h1 className="text-3xl font-bold">Planos de Trabalho</h1>
               <p className="text-muted-foreground">Gerencie seu P Trab</p>
             </div>
@@ -1977,7 +1986,8 @@ const PTrabManager = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Planos de Trabalho Cadastrados</CardTitle>
+            {/* CORREÇÃO H2: Título da seção de listagem */}
+            <h2 className="text-xl font-bold">Planos de Trabalho Cadastrados</h2>
           </CardHeader>
           <CardContent>
             {loading ? (
