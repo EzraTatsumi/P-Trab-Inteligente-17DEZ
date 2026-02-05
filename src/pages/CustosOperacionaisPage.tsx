@@ -1204,7 +1204,7 @@ const CustosOperacionaisPage = () => {
                       <Table>
                           <TableHeader>
                               <TableRow>
-                                  <TableHead className="w-[150px]">Nr Subitem</TableHead>
+                                  <TableHead className="w-[150px] text-center">Nr Subitem</TableHead>
                                   <TableHead>Nome do Subitem</TableHead>
                                   <TableHead className="w-[100px] text-center">Ações</TableHead>
                               </TableRow>
