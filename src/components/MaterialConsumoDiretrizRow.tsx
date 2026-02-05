@@ -3,7 +3,7 @@ import { TableCell, TableRow, Table } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { formatCurrency } from "@/lib/formatUtils";
+import { formatCurrency, formatCodug } from "@/lib/formatUtils";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { cn } from '@/lib/utils';
@@ -97,7 +97,7 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                                                 <TableCell className="px-4 py-2">{item.descricao_item}</TableCell>
                                                 <TableCell className="px-4 py-2 text-center">{item.codigo_catmat || 'N/A'}</TableCell>
                                                 <TableCell className="px-4 py-2 text-center">{item.numero_pregao || 'N/A'}</TableCell>
-                                                <TableCell className="px-4 py-2 text-center">{item.uasg || 'N/A'}</TableCell>
+                                                <TableCell className="px-4 py-2 text-center">{formatCodug(item.uasg) || 'N/A'}</TableCell>
                                                 <TableCell className="px-4 py-2 text-right font-bold text-primary">
                                                     {formatCurrency(item.valor_unitario)}
                                                 </TableCell>
