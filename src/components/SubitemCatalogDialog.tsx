@@ -119,7 +119,7 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
                                         <TableHead className="w-[100px] text-center">Nr Subitem</TableHead>
                                         <TableHead className="w-[200px] text-center">Nome do Subitem</TableHead>
                                         <TableHead className="text-center">Descrição</TableHead>
-                                        <TableHead className="w-[80px] text-center">Status</TableHead>
+                                        <TableHead className="w-[120px] text-center">Ação</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -129,7 +129,7 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
                                             <TableRow 
                                                 key={item.id} 
                                                 className={`cursor-pointer transition-colors ${isSelected ? "bg-primary/10 hover:bg-primary/20" : "hover:bg-muted/50"}`}
-                                                onClick={() => handlePreSelect(item)} // Adicionando o clique na linha
+                                                onClick={() => handlePreSelect(item)}
                                             >
                                                 <TableCell className="font-semibold text-center">{item.nr_subitem}</TableCell>
                                                 <TableCell className="font-medium">{item.nome_subitem}</TableCell>
@@ -137,16 +137,27 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
                                                     <span className="block">{item.descricao_subitem || 'N/A'}</span>
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    {isSelected ? (
-                                                        <span className="inline-flex items-center text-primary font-medium text-sm">
-                                                            <Check className="h-4 w-4 mr-1" />
-                                                            Selecionado
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-muted-foreground text-sm">
-                                                            Selecionar
-                                                        </span>
-                                                    )}
+                                                    <Button
+                                                        variant={isSelected ? "default" : "outline"}
+                                                        size="sm"
+                                                        onClick={(e) => {
+                                                            // Previne que o clique na linha dispare duas vezes
+                                                            e.stopPropagation(); 
+                                                            handlePreSelect(item);
+                                                        }}
+                                                    >
+                                                        {isSelected ? (
+                                                            <>
+                                                                <Check className="h-4 w-4 mr-1" />
+                                                                Selecionado
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Import className="h-4 w-4 mr-1" />
+                                                                Selecionar
+                                                            </>
+                                                        )}
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         );
