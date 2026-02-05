@@ -11,7 +11,7 @@ import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import CurrencyInput from "@/components/CurrencyInput";
-import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodeXXX_XXX } from "@/lib/formatUtils";
+import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodug } from "@/lib/formatUtils";
 import SubitemCatalogDialog from './SubitemCatalogDialog';
 import CatmatCatalogDialog from './CatmatCatalogDialog'; // NOVO: Importação do Catálogo CATMAT
 import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog'; // NOVO: Importação do Diálogo de Importação
@@ -104,7 +104,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     // NOVA FUNÇÃO: Lida com a mudança e formatação do campo UASG
     const handleUASGChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const rawValue = e.target.value.replace(/\D/g, ''); // Remove não dígitos
-        const formattedValue = formatCodeXXX_XXX(rawValue);
+        const formattedValue = formatCodug(rawValue);
         setItemForm(prev => ({ ...prev, uasg: formattedValue }));
     };
 
@@ -228,7 +228,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     const displayUASG = (uasg: string | undefined) => {
         if (!uasg) return 'N/A';
         // Garante que a UASG seja formatada corretamente, mesmo que tenha vindo sem o ponto
-        return formatCodeXXX_XXX(uasg);
+        return formatCodug(uasg);
     };
 
     return (

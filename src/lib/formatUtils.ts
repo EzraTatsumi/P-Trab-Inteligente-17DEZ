@@ -80,7 +80,7 @@ export const parseInputToNumber = (input: string): number => {
  * @param code A string do código (apenas dígitos).
  * @returns A string formatada.
  */
-export const formatCodeXXX_XXX = (code: string): string => {
+export const formatCodug = (code: string): string => {
     // 1. Remove tudo que não for dígito
     const rawDigits = code.replace(/\D/g, '');
     
