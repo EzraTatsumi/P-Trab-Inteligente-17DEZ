@@ -31,13 +31,16 @@ import PassagemDiretrizFormDialog from "@/components/PassagemDiretrizFormDialog"
 import PassagemDiretrizRow from "@/components/PassagemDiretrizRow"; 
 import ConcessionariaDiretrizFormDialog from "@/components/ConcessionariaDiretrizFormDialog";
 import ConcessionariaDiretrizRow from "@/components/ConcessionariaDiretrizRow";
+import MaterialConsumoSubitemFormDialog from "@/components/MaterialConsumoSubitemFormDialog"; // NOVO
 import { 
     DiretrizConcessionaria, 
     DiretrizConcessionariaForm, 
     CATEGORIAS_CONCESSIONARIA, 
     CategoriaConcessionaria 
 } from "@/types/diretrizesConcessionaria";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// Tipo derivado da nova tabela
+type MaterialConsumoSubitem = Tables<'material_consumo_subitens'>; // NOVO
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -112,6 +115,12 @@ const CustosOperacionaisPage = () => {
   // Estado para armazenar os inputs brutos (apenas dígitos) para campos monetários
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
   
+  // --- ESTADOS DE MATERIAL DE CONSUMO (NOVO) ---
+  const [subitensList, setSubitensList] = useState<MaterialConsumoSubitem[]>([]);
+  const [isSubitemFormOpen, setIsSubitemFormOpen] = useState(false);
+  const [subitemToEdit, setSubitemToEdit] = useState<MaterialConsumoSubitem | null>(null);
+  // --- FIM ESTADOS DE MATERIAL DE CONSUMO ---
+  
   // Estado para controlar a expansão individual de cada campo
   const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => {
     const initialState: Record<string, boolean> = {};
@@ -126,7 +135,8 @@ const CustosOperacionaisPage = () => {
     
     initialState['diarias_detalhe'] = false; 
     initialState['passagens_detalhe'] = shouldOpenPassagens || false; 
-    initialState['concessionaria_detalhe'] = shouldOpenConcessionaria || false; // ATUALIZADO
+    initialState['concessionaria_detalhe'] = shouldOpenConcessionaria || false; 
+    initialState['material_consumo_detalhe'] = false; // NOVO: Estado inicial para Material de Consumo
     return initialState;
   });
   
@@ -171,7 +181,8 @@ const CustosOperacionaisPage = () => {
     if (selectedYear) {
       loadDiretrizesForYear(selectedYear);
       loadDiretrizesPassagens(selectedYear); 
-      loadDiretrizesConcessionaria(selectedYear); // NEW LOAD
+      loadDiretrizesConcessionaria(selectedYear); 
+      loadMaterialConsumoSubitens(); // NOVO: Carrega subitens
     }
   }, [selectedYear]);
 
@@ -352,6 +363,165 @@ const CustosOperacionaisPage = () => {
         toast.error("Erro ao carregar diretrizes de concessionária.");
     }
   };
+  
+  // --- LÓGICA DE MATERIAL DE CONSUMO (NOVO) ---
+  const loadMaterialConsumoSubitens = async () => {
+      try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          
+          const { data, error } = await supabase
+              .from('material_consumo_subitens')
+              .select('*')
+              .eq('user_id', user.id)
+              .order('nome', { ascending: true });
+              
+          if (error) throw error;
+          
+          setSubitensList(data as MaterialConsumoSubitem[]);
+          
+      } catch (error) {
+          console.error("Erro ao carregar subitens de material de consumo:", error);
+          toast.error("Erro ao carregar subitens de material de consumo.");
+      }
+  };
+  
+  const handleOpenNewSubitem = () => {
+      setSubitemToEdit(null);
+      setIsSubitemFormOpen(true);
+  };
+  
+  const handleStartEditSubitem = (subitem: MaterialConsumoSubitem) => {
+      setSubitemToEdit(subitem);
+      setIsSubitemFormOpen(true);
+  };
+  
+  const handleSaveSubitem = async (data: z.infer<typeof subitemSchema>) => {
+      try {
+          setLoading(true);
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error("Usuário não autenticado");
+          
+          const dbData: TablesInsert<'material_consumo_subitens'> = {
+              user_id: user.id,
+              nome: data.nome,
+              codigo: data.codigo || null,
+              unidade_medida: data.unidade_medida,
+          };
+
+          if (data.id) {
+              const { error } = await supabase
+                  .from('material_consumo_subitens')
+                  .update(dbData as TablesUpdate<'material_consumo_subitens'>)
+                  .eq('id', data.id);
+              if (error) throw error;
+              toast.success("Subitem atualizado!");
+          } else {
+              const { error } = await supabase
+                  .from('material_consumo_subitens')
+                  .insert([dbData]);
+              if (error) throw error;
+              toast.success("Novo subitem cadastrado!");
+          }
+          
+          await loadMaterialConsumoSubitens();
+          setSubitemToEdit(null);
+          setIsSubitemFormOpen(false);
+          
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+          throw error; // Re-throw para que o formulário saiba que falhou
+      } finally {
+          setLoading(false);
+      }
+  };
+  
+  const handleDeleteSubitem = async (id: string, nome: string) => {
+      if (!confirm(`Tem certeza que deseja excluir o subitem "${nome}"?`)) return;
+      
+      try {
+          setLoading(true);
+          await supabase.from('material_consumo_subitens').delete().eq('id', id);
+          toast.success("Subitem excluído!");
+          await loadMaterialConsumoSubitens();
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
+      }
+  };
+  
+  const renderMaterialConsumoSection = () => {
+      return (
+          <div className="space-y-4">
+              
+              {/* Lista de Subitens Existentes */}
+              {subitensList.length > 0 ? (
+                  <Card className="p-4">
+                      <CardTitle className="text-base font-semibold mb-3">Subitens Cadastrados</CardTitle>
+                      <Table>
+                          <TableHeader>
+                              <TableRow>
+                                  <TableHead>Nome</TableHead>
+                                  <TableHead className="text-center">Código</TableHead>
+                                  <TableHead className="text-center">Unidade</TableHead>
+                                  <TableHead className="w-[100px] text-center">Ações</TableHead>
+                              </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                              {subitensList.map(d => (
+                                  <TableRow key={d.id}>
+                                      <TableCell className="font-medium">{d.nome}</TableCell>
+                                      <TableCell className="text-center text-muted-foreground">{d.codigo || '-'}</TableCell>
+                                      <TableCell className="text-center">{d.unidade_medida}</TableCell>
+                                      <TableCell className="text-center">
+                                          <div className="flex justify-center gap-2">
+                                              <Button 
+                                                  variant="ghost" 
+                                                  size="icon" 
+                                                  onClick={() => handleStartEditSubitem(d)}
+                                                  disabled={loading}
+                                              >
+                                                  <Pencil className="h-4 w-4" />
+                                              </Button>
+                                              <Button 
+                                                  variant="ghost" 
+                                                  size="icon" 
+                                                  onClick={() => handleDeleteSubitem(d.id, d.nome)}
+                                                  disabled={loading}
+                                              >
+                                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                              </Button>
+                                          </div>
+                                      </TableCell>
+                                  </TableRow>
+                              ))}
+                          </TableBody>
+                      </Table>
+                  </Card>
+              ) : (
+                  <Card className="p-4 text-center text-muted-foreground">
+                      Nenhum subitem de material de consumo cadastrado.
+                  </Card>
+              )}
+              
+              <div className="flex justify-end">
+                  <Button 
+                      type="button" 
+                      onClick={handleOpenNewSubitem}
+                      disabled={loading}
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full" // Botão 1009 como referência
+                  >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Adicionar Novo Subitem
+                  </Button>
+              </div>
+          </div>
+      );
+  };
+  // --- FIM LÓGICA DE MATERIAL DE CONSUMO ---
 
   const handleSaveDiretrizes = async () => {
     try {
@@ -370,12 +540,14 @@ const CustosOperacionaisPage = () => {
         ...diretrizes,
         fator_passagens_aereas: diretrizes.fator_passagens_aereas || 0,
         fator_servicos_terceiros: diretrizes.fator_servicos_terceiros || 0,
+        fator_material_consumo: diretrizes.fator_material_consumo || 0,
+        fator_concessionaria: diretrizes.fator_concessionaria || 0,
+        
         valor_complemento_alimentacao: diretrizes.valor_complemento_alimentacao || 0,
         valor_fretamento_aereo_hora: diretrizes.valor_fretamento_aereo_hora || 0,
         valor_locacao_estrutura_dia: diretrizes.valor_locacao_estrutura_dia || 0,
         valor_locacao_viaturas_dia: diretrizes.valor_locacao_viaturas_dia || 0,
-        fator_material_consumo: diretrizes.fator_material_consumo || 0,
-        fator_concessionaria: diretrizes.fator_concessionaria || 0,
+        
         diaria_of_gen_bsb: diretrizes.diaria_of_gen_bsb || 0,
         diaria_of_gen_capitais: diretrizes.diaria_of_gen_capitais || 0,
         diaria_of_gen_demais: diretrizes.diaria_of_gen_demais || 0,
@@ -531,7 +703,7 @@ const CustosOperacionaisPage = () => {
           if (insertPassagensError) throw insertPassagensError;
       }
       
-      // 3. Copiar Diretrizes de Concessionária (NEW LOGIC)
+      // 3. Copiar Diretrizes de Concessionária
       const { data: sourceConcessionaria, error: concessionariaError } = await supabase
         .from("diretrizes_concessionaria")
         .select("categoria, nome_concessionaria, consumo_pessoa_dia, fonte_consumo, custo_unitario, fonte_custo, unidade_custo")
@@ -601,7 +773,7 @@ const CustosOperacionaisPage = () => {
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
         
-      // 3. Excluir Diretrizes de Concessionária (NEW LOGIC)
+      // 3. Excluir Diretrizes de Concessionária
       await supabase
         .from("diretrizes_concessionaria")
         .delete()
@@ -1157,7 +1329,7 @@ const CustosOperacionaisPage = () => {
                     </CollapsibleContent>
                   </Collapsible>
                   
-                  {/* Diretrizes de Concessionária (NEW SECTION) */}
+                  {/* Diretrizes de Concessionária */}
                   <Collapsible 
                     open={fieldCollapseState['concessionaria_detalhe']} 
                     onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['concessionaria_detalhe']: open }))}
@@ -1174,6 +1346,27 @@ const CustosOperacionaisPage = () => {
                     <CollapsibleContent>
                       <div className="mt-2">
                         {renderConcessionariaSection()}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                  
+                  {/* NOVO: Material de Consumo (ND 33.90.30) */}
+                  <Collapsible 
+                    open={fieldCollapseState['material_consumo_detalhe']} 
+                    onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['material_consumo_detalhe']: open }))}
+                    className="border-b pb-4 last:border-b-0 last:pb-0"
+                  >
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center justify-between cursor-pointer py-2">
+                        <h4 className="text-base font-medium flex items-center gap-2">
+                          Material de Consumo (ND 33.90.30)
+                        </h4>
+                        {fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mt-2">
+                        {renderMaterialConsumoSection()}
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
@@ -1259,7 +1452,7 @@ const CustosOperacionaisPage = () => {
           loading={loading}
       />
       
-      {/* Diálogo de Formulário de Concessionária (NEW) */}
+      {/* Diálogo de Formulário de Concessionária */}
       <ConcessionariaDiretrizFormDialog
           open={isConcessionariaFormOpen}
           onOpenChange={setIsConcessionariaFormOpen}
@@ -1268,6 +1461,15 @@ const CustosOperacionaisPage = () => {
           onSave={handleSaveConcessionaria}
           loading={loading}
           initialCategory={selectedConcessionariaTab}
+      />
+      
+      {/* NOVO: Diálogo de Formulário de Subitem de Material de Consumo */}
+      <MaterialConsumoSubitemFormDialog
+          open={isSubitemFormOpen}
+          onOpenChange={setIsSubitemFormOpen}
+          subitemToEdit={subitemToEdit}
+          onSave={handleSaveSubitem}
+          loading={loading}
       />
     </div>
   );
