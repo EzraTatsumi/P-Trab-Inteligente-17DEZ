@@ -176,8 +176,8 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                 <div className="space-y-4 py-2">
                     
                     {/* Alert com estilo customizado para contraste suave */}
-                    <Alert variant="default" className="bg-blue-50/50 border-blue-200 text-blue-700 dark:bg-blue-950/50 dark:border-blue-800 dark:text-blue-300">
-                        <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <Alert variant="default" className="bg-blue-50/50 border-blue-200 text-blue-900 dark:bg-blue-950/50 dark:border-blue-800 dark:text-blue-300">
+                        <AlertCircle className="h-4 w-4 text-blue-900 dark:text-blue-400" />
                         <AlertTitle>Formato Obrigatório</AlertTitle>
                         <AlertDescription>
                             O arquivo deve ser **.xlsx** e conter as colunas exatas na primeira linha:
