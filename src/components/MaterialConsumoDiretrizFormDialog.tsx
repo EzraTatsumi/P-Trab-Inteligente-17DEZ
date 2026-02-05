@@ -251,8 +251,20 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                         
                         {/* Formulário de Item - Reorganizado em duas linhas lógicas */}
                         <div className="border p-3 rounded-lg bg-muted/50 space-y-4">
-                            {/* PRIMEIRA LINHA: Descrição e CATMAT */}
+                            {/* PRIMEIRA LINHA: CATMAT e Descrição */}
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                {/* Campo Código CATMAT (1 coluna) */}
+                                <div className="space-y-2 col-span-1">
+                                    <Label htmlFor="item-catmat">Cód. CATMAT</Label>
+                                    <Input
+                                        id="item-catmat"
+                                        value={itemForm.codigo_catmat}
+                                        onChange={(e) => setItemForm({ ...itemForm, codigo_catmat: e.target.value })}
+                                        placeholder="Ex: 123456789"
+                                        onKeyDown={handleEnterToNextField}
+                                    />
+                                </div>
+                                
                                 {/* Campo Descrição do Item (3 colunas) */}
                                 <div className="space-y-2 col-span-3">
                                     <Label htmlFor="item-descricao">Descrição do Item *</Label>
@@ -263,18 +275,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         placeholder="Ex: Caneta Esferográfica Azul"
                                         onKeyDown={handleEnterToNextField}
                                         required
-                                    />
-                                </div>
-                                
-                                {/* Campo Código CATMAT (1 coluna) */}
-                                <div className="space-y-2 col-span-1">
-                                    <Label htmlFor="item-catmat">Cód. CATMAT</Label>
-                                    <Input
-                                        id="item-catmat"
-                                        value={itemForm.codigo_catmat}
-                                        onChange={(e) => setItemForm({ ...itemForm, codigo_catmat: e.target.value })}
-                                        placeholder="Ex: 123456789"
-                                        onKeyDown={handleEnterToNextField}
                                     />
                                 </div>
                             </div>
@@ -352,7 +352,9 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                             <TableCell className="text-center text-xs">{item.codigo_catmat || 'N/A'}</TableCell>
                                             <TableCell className="text-center">{item.numero_pregao || 'N/A'}</TableCell>
                                             <TableCell className="text-center">{item.uasg || 'N/A'}</TableCell>
-                                            <TableCell className="text-right font-semibold">{formatCurrency(item.valor_unitario)}</TableCell>
+                                            <TableCell className="text-right font-mono font-semibold text-primary">
+                                                {formatCurrency(item.valor_unitario)}
+                                            </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
                                                     <Button variant="ghost" size="icon" onClick={() => handleEditItem(item)}>
