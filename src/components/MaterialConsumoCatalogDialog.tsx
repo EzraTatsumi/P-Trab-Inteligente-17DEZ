@@ -10,20 +10,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 
-// Tipo derivado da tabela, incluindo o novo campo 'descricao'
-type MaterialConsumoSubitem = Tables<'material_consumo_subitens'>;
+// Tipo derivado da nova tabela de catálogo
+type CatalogSubitem = Tables<'catalogo_material_consumo'>;
 
 interface MaterialConsumoCatalogDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSelect: (subitem: MaterialConsumoSubitem) => void;
+    onSelect: (subitem: CatalogSubitem) => void;
 }
 
-const fetchCatalogSubitems = async (): Promise<MaterialConsumoSubitem[]> => {
-    // Nota: Devido ao RLS, esta consulta só retornará os itens criados pelo usuário.
-    // Se o catálogo fosse global, a política RLS precisaria ser ajustada.
+const fetchCatalogSubitems = async (): Promise<CatalogSubitem[]> => {
+    // Busca dados da tabela de catálogo mestre (catalogo_material_consumo)
+    // Assumimos que o RLS está configurado para permitir leitura pública por usuários autenticados.
     const { data, error } = await supabase
-        .from('material_consumo_subitens')
+        .from('catalogo_material_consumo')
         .select('*')
         .order('nome', { ascending: true });
 
@@ -31,7 +31,7 @@ const fetchCatalogSubitems = async (): Promise<MaterialConsumoSubitem[]> => {
         console.error("Erro ao buscar catálogo de subitens:", error);
         throw new Error("Falha ao carregar o catálogo.");
     }
-    return data as MaterialConsumoSubitem[];
+    return data as CatalogSubitem[];
 };
 
 const MaterialConsumoCatalogDialog = ({
@@ -41,7 +41,7 @@ const MaterialConsumoCatalogDialog = ({
 }: MaterialConsumoCatalogDialogProps) => {
     const [searchTerm, setSearchTerm] = useState("");
 
-    const { data: subitems = [], isLoading, error } = useQuery<MaterialConsumoSubitem[]>({
+    const { data: subitems = [], isLoading, error } = useQuery<CatalogSubitem[]>({
         queryKey: ['materialConsumoCatalog'],
         queryFn: fetchCatalogSubitems,
         enabled: open,
@@ -61,7 +61,7 @@ const MaterialConsumoCatalogDialog = ({
         );
     }, [subitems, searchTerm]);
 
-    const handleSelect = (item: MaterialConsumoSubitem) => {
+    const handleSelect = (item: CatalogSubitem) => {
         onSelect(item);
         onOpenChange(false);
         setSearchTerm(""); // Limpa a busca ao fechar

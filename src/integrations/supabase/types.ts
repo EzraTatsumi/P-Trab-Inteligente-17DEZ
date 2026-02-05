@@ -1005,6 +1005,33 @@ export type Database = {
         }
         Relationships: []
       }
+      catalogo_material_consumo: {
+        Row: {
+          id: string
+          nome: string
+          codigo: string | null
+          unidade_medida: string
+          descricao: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          nome: string
+          codigo?: string | null
+          unidade_medida: string
+          descricao?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          nome?: string
+          codigo?: string | null
+          unidade_medida?: string
+          descricao?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       diretrizes_classe_ii: {
         Row: {
           ano_referencia: number
