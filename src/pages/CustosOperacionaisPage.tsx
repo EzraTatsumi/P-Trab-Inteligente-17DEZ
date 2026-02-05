@@ -32,6 +32,7 @@ import PassagemDiretrizRow from "@/components/PassagemDiretrizRow";
 import ConcessionariaDiretrizFormDialog from "@/components/ConcessionariaDiretrizFormDialog";
 import ConcessionariaDiretrizRow from "@/components/ConcessionariaDiretrizRow";
 import MaterialConsumoSubitemFormDialog from "@/components/MaterialConsumoSubitemFormDialog"; // NOVO
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // ADICIONADO
 import { 
     DiretrizConcessionaria, 
     DiretrizConcessionariaForm, 
