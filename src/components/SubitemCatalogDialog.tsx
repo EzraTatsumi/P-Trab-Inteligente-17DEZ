@@ -124,7 +124,6 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
                                             >
                                                 <TableCell className="font-semibold text-center">{item.nr_subitem}</TableCell>
                                                 <TableCell className="font-medium">{item.nome_subitem}</TableCell>
-                                                {/* Removemos as classes de limitação de altura e hover para exibir o texto completo */}
                                                 <TableCell className="text-sm text-muted-foreground max-w-lg whitespace-normal">
                                                     <span className="block">{item.descricao_subitem || 'N/A'}</span>
                                                 </TableCell>
@@ -157,14 +156,8 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
                     )}
                 </div>
 
-                <div className="flex justify-between pt-4 border-t">
-                    <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={() => onOpenChange(false)}
-                    >
-                        Fechar
-                    </Button>
+                {/* Ajuste do rodapé para alinhar à direita */}
+                <div className="flex justify-end gap-2 pt-4 border-t">
                     <Button 
                         type="button" 
                         onClick={handleConfirmImport}
@@ -172,6 +165,13 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
                     >
                         <Import className="h-4 w-4 mr-2" />
                         Confirmar Importação
+                    </Button>
+                    <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => onOpenChange(false)}
+                    >
+                        Fechar
                     </Button>
                 </div>
             </DialogContent>
