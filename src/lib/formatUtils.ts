@@ -41,6 +41,28 @@ export const formatNumber = (value: number, decimals: number = 2): string => {
 };
 
 /**
+ * Formata uma string de data (ISO ou YYYY-MM-DD) para o formato DD MMM AA (ex: 01 JAN 25).
+ * @param dateString - A string de data.
+ * @returns A string de data formatada.
+ */
+export const formatDateDDMMMAA = (dateString: string): string => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+
+    const day = date.getDate().toString().padStart(2, '0');
+    const year = date.getFullYear().toString().slice(-2);
+    
+    const monthNames = [
+        'JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN',
+        'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'
+    ];
+    const month = monthNames[date.getMonth()];
+
+    return `${day} ${month} ${year}`;
+};
+
+/**
  * Extrai apenas os dígitos de uma string de entrada de moeda.
  * @param rawValue - A string de entrada (pode conter formatação).
  * @returns A string contendo apenas dígitos.
