@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { YearManagementDialog } from "@/components/YearManagementDialog";
-import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodug } from "@/lib/formatUtils";
+import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodeXXX_XXX } from "@/lib/formatUtils";
 import { useSession } from "@/components/SessionContextProvider";
 import { Tables, TablesInsert, TablesUpdate, Json, TableName } from "@/integrations/supabase/types";
 import { diretrizOperacionalSchema } from "@/lib/validationSchemas";
