@@ -5,7 +5,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Plus, Pencil, Trash2, Loader2, BookOpen, FileSpreadsheet } from "lucide-react";
+import { Save, Plus, Pencil, Trash2, Loader2, BookOpen, FileSpreadsheet, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
