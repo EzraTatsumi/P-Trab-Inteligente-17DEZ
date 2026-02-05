@@ -115,14 +115,14 @@ const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onE
                     "p-0 border-t-0",
                     !isOpen && "hidden"
                 )}>
-                    <TableCell colSpan={5} className="p-4 pt-0">
+                    <TableCell colSpan={5} className="p-0 border-t-0">
                         <Collapsible open={isOpen}>
                             <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-                                <div className="p-4 bg-background rounded-lg shadow-md border">
+                                <div className="p-4 bg-muted/50 border-t border-border">
                                     <h5 className="text-sm font-semibold mb-2">Trechos Cadastrados ({trechos.length})</h5>
                                     <div className="space-y-2">
                                         {trechos.map((trecho, index) => (
-                                            <div key={trecho.id} className="flex items-center justify-between text-sm p-2 bg-muted rounded-md shadow-sm border">
+                                            <div key={trecho.id} className="flex items-center justify-between text-sm p-2 bg-background rounded-md shadow-sm border">
                                                 <div className="flex items-center gap-3 font-medium">
                                                     {getTransportIcon(trecho.tipo_transporte)}
                                                     <span>{trecho.origem} &rarr; {trecho.destino}</span>
