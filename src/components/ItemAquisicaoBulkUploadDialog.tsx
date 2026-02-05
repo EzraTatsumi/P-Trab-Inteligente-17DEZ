@@ -5,8 +5,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Import, Loader2, Upload, XCircle } from "lucide-react";
+import { AlertCircle, Import, Loader2, Upload, XCircle, Download } from "lucide-react";
 import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver'; // Importando file-saver
 import { toast } from 'sonner';
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
 import { parseInputToNumber } from '@/lib/formatUtils';
@@ -16,6 +17,15 @@ interface ItemAquisicaoBulkUploadDialogProps {
     onOpenChange: (open: boolean) => void;
     onImport: (items: ItemAquisicao[]) => void;
 }
+
+// Cabeçalhos do template
+const TEMPLATE_HEADERS = [
+    'Descricao do Item', 
+    'Valor Unitario (R$)', 
+    'Numero do Pregao/Ref. Preco', 
+    'UASG', 
+    'Codigo CATMAT'
+];
 
 const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps> = ({
     open,
@@ -68,15 +78,6 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                 const headers = json[0] as string[];
                 
                 // NOVOS CABEÇALHOS SEM CARACTERES ESPECIAIS
-                const expectedHeaders = [
-                    'Descricao do Item', 
-                    'Valor Unitario (R$)', 
-                    'Numero do Pregao/Ref. Preco', 
-                    'UASG', 
-                    'Codigo CATMAT'
-                ];
-                
-                // Verifica se os cabeçalhos obrigatórios existem
                 const requiredHeaders = ['Descricao do Item', 'Valor Unitario (R$)', 'Numero do Pregao/Ref. Preco', 'UASG'];
                 const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
 
@@ -174,6 +175,32 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
         setLoading(false);
         onOpenChange(false);
     };
+    
+    // NOVO: Função para gerar e baixar o template Excel
+    const handleDownloadTemplate = () => {
+        try {
+            // 1. Criar uma nova planilha
+            const workbook = XLSX.utils.book_new();
+            
+            // 2. Criar a folha de trabalho com os cabeçalhos
+            const worksheet = XLSX.utils.aoa_to_sheet([TEMPLATE_HEADERS]);
+            
+            // 3. Adicionar a folha de trabalho ao livro
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Itens de Aquisição");
+            
+            // 4. Gerar o buffer do arquivo
+            const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            
+            // 5. Criar um Blob e forçar o download
+            const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
+            saveAs(data, "template_itens_aquisicao.xlsx");
+            
+            toast.success("Template Excel baixado com sucesso!");
+        } catch (e) {
+            console.error("Erro ao gerar template:", e);
+            toast.error("Falha ao gerar o template Excel.");
+        }
+    };
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
@@ -211,11 +238,9 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                             <Button 
                                 type="button" 
                                 variant="outline" 
-                                onClick={() => {
-                                    // Lógica para download de template (simulada)
-                                    toast.info("Download do template em desenvolvimento.");
-                                }}
+                                onClick={handleDownloadTemplate} // Chamando a nova função
                             >
+                                <Download className="mr-2 h-4 w-4" />
                                 Baixar Template (.xlsx)
                             </Button>
                         </div>
