@@ -972,66 +972,6 @@ export type Database = {
           },
         ]
       }
-      material_consumo_subitens: {
-        Row: {
-          id: string
-          user_id: string
-          nome: string
-          codigo: string | null
-          unidade_medida: string | null
-          descricao: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          nome: string
-          codigo?: string | null
-          unidade_medida?: string | null
-          descricao?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          nome?: string
-          codigo?: string | null
-          unidade_medida?: string | null
-          descricao?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      catalogo_material_consumo: {
-        Row: {
-          id: string
-          nome: string
-          codigo: string | null
-          unidade_medida: string
-          descricao: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          nome: string
-          codigo?: string | null
-          unidade_medida: string
-          descricao?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          nome?: string
-          codigo?: string | null
-          unidade_medida?: string
-          descricao?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
       diretrizes_classe_ii: {
         Row: {
           ano_referencia: number
