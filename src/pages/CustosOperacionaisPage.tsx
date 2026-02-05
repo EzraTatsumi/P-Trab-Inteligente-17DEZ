@@ -1385,8 +1385,11 @@ const CustosOperacionaisPage = () => {
               <Table>
                   <TableHeader>
                       <TableRow>
-                          <TableHead className="w-[45%]">Item de Aquisição</TableHead>
-                          <TableHead className="w-[35%]">Subitem ND</TableHead>
+                          {/* Ajuste de Largura: Item de Aquisição de 45% para 40% */}
+                          <TableHead className="w-[40%]">Item de Aquisição</TableHead>
+                          {/* Ajuste de Largura: Subitem ND de 35% para 40% */}
+                          <TableHead className="w-[40%]">Subitem ND</TableHead>
+                          {/* Ajuste de Largura: Ações de 20% para 20% (mantido, mas o botão é ajustado) */}
                           <TableHead className="w-[20%] text-center">Ações</TableHead>
                       </TableRow>
                   </TableHeader>
@@ -1395,16 +1398,21 @@ const CustosOperacionaisPage = () => {
                           <TableRow key={`${item.diretrizId}-${index}`}>
                               <TableCell className="font-medium">
                                   {item.descricao_item}
+                                  {/* Linha 1: CATMAT */}
+                                  <p className="text-xs text-muted-foreground">
+                                      Cód. CATMAT: {item.codigo_catmat || 'N/A'}
+                                  </p>
+                                  {/* Linha 2: Pregão e UASG */}
                                   <p className="text-xs text-muted-foreground truncate">
-                                      Cód. CATMAT: {item.codigo_catmat || 'N/A'} | Pregão: {item.numero_pregao}
+                                      Pregão: {item.numero_pregao} | UASG: {item.uasg || 'N/A'}
                                   </p>
                               </TableCell>
-                              {/* AJUSTE AQUI: Combinando Nr Subitem e Nome Subitem */}
+                              {/* Coluna Subitem ND (Largura aumentada) */}
                               <TableCell className="text-left">
                                   <span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span>
                                   <span className="text-sm text-muted-foreground">{item.subitemNome}</span>
                               </TableCell>
-                              {/* AJUSTE AQUI: Botão 'Ver Local' mais à esquerda */}
+                              {/* Coluna Ações (Botão ajustado para ocupar a largura total da célula) */}
                               <TableCell className="text-right">
                                   <Button 
                                       variant="outline" 
