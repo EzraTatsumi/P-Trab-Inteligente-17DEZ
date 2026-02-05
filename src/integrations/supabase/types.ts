@@ -979,6 +979,7 @@ export type Database = {
           nome: string
           codigo: string | null
           unidade_medida: string | null
+          descricao: string | null
           created_at: string
           updated_at: string
         }
@@ -988,6 +989,7 @@ export type Database = {
           nome: string
           codigo?: string | null
           unidade_medida?: string | null
+          descricao?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -997,6 +999,7 @@ export type Database = {
           nome?: string
           codigo?: string | null
           unidade_medida?: string | null
+          descricao?: string | null
           created_at?: string
           updated_at?: string
         }
