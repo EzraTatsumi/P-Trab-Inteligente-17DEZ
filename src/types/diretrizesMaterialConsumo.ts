@@ -7,6 +7,7 @@ export interface ItemAquisicao {
     valor_unitario: number;
     numero_pregao: string;
     uasg: string;
+    codigo_catmat: string; // NOVO: Código do Catálogo de Material
 }
 
 // Estrutura base da diretriz (Subitem da ND)

@@ -32,6 +32,7 @@ const initialItemForm: Omit<ItemAquisicao, 'id'> & { rawValor: string } = {
     rawValor: numberToRawDigits(0),
     numero_pregao: '',
     uasg: '',
+    codigo_catmat: '', // NOVO CAMPO
 };
 
 // Definindo o tipo interno do formulário
@@ -104,6 +105,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             valor_unitario: itemForm.valor_unitario,
             numero_pregao: itemForm.numero_pregao,
             uasg: itemForm.uasg,
+            codigo_catmat: itemForm.codigo_catmat, // NOVO: Adicionando o código CATMAT
         };
 
         const updatedItens = editingItemId
@@ -125,6 +127,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             rawValor: numberToRawDigits(item.valor_unitario),
             numero_pregao: item.numero_pregao,
             uasg: item.uasg,
+            codigo_catmat: item.codigo_catmat, // NOVO: Carregando o código CATMAT
         });
     };
 
@@ -246,7 +249,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                             {editingItemId ? "Editar Item de Aquisição" : "Adicionar Novo Item de Aquisição"}
                         </CardTitle>
                         
-                        {/* Formulário de Item */}
+                        {/* Formulário de Item - Ajustado para 5 colunas + 1 para o botão */}
                         <div className="grid grid-cols-1 md:grid-cols-6 gap-4 border p-3 rounded-lg bg-muted/50">
                             {/* Campo Descrição do Item (2 colunas) */}
                             <div className="space-y-2 col-span-2">
@@ -260,6 +263,19 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     required
                                 />
                             </div>
+                            
+                            {/* NOVO CAMPO: Código CATMAT (1 coluna) */}
+                            <div className="space-y-2 col-span-1">
+                                <Label htmlFor="item-catmat">Cód. CATMAT</Label>
+                                <Input
+                                    id="item-catmat"
+                                    value={itemForm.codigo_catmat}
+                                    onChange={(e) => setItemForm({ ...itemForm, codigo_catmat: e.target.value })}
+                                    placeholder="Ex: 123456789"
+                                    onKeyDown={handleEnterToNextField}
+                                />
+                            </div>
+                            
                             {/* Campo Valor Unitário (1 coluna) */}
                             <div className="space-y-2 col-span-1">
                                 <Label htmlFor="item-valor">Valor Unitário (R$) *</Label>
@@ -272,6 +288,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     required
                                 />
                             </div>
+                            
                             {/* Campo Pregão (1 coluna) */}
                             <div className="space-y-2 col-span-1">
                                 <Label htmlFor="item-pregao">Pregão/Ref. Preço</Label>
@@ -283,6 +300,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     onKeyDown={handleEnterToNextField}
                                 />
                             </div>
+                            
                             {/* Campo UASG (1 coluna) */}
                             <div className="space-y-2 col-span-1">
                                 <Label htmlFor="item-uasg">UASG</Label>
@@ -294,6 +312,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     onKeyDown={handleEnterToNextField}
                                 />
                             </div>
+                            
                             {/* Botão Adicionar (1 coluna) */}
                             <div className="space-y-2 col-span-1 flex flex-col justify-end">
                                 <Button 
@@ -312,20 +331,22 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[40%]">Descrição do Item</TableHead>
-                                        <TableHead className="text-right">Valor Unitário</TableHead>
-                                        <TableHead className="text-center">Pregão/Ref.</TableHead>
-                                        <TableHead className="text-center">UASG</TableHead>
-                                        <TableHead className="w-[100px] text-right">Ações</TableHead>
+                                        <TableHead className="w-[30%]">Descrição do Item</TableHead>
+                                        <TableHead className="w-[15%] text-center">Cód. CATMAT</TableHead>
+                                        <TableHead className="w-[15%] text-center">Pregão/Ref.</TableHead>
+                                        <TableHead className="w-[15%] text-center">UASG</TableHead>
+                                        <TableHead className="w-[15%] text-right">Valor Unitário</TableHead>
+                                        <TableHead className="w-[10%] text-right">Ações</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {subitemForm.itens_aquisicao.map(item => (
                                         <TableRow key={item.id}>
                                             <TableCell className="font-medium">{item.descricao_item}</TableCell>
-                                            <TableCell className="text-right font-semibold">{formatCurrency(item.valor_unitario)}</TableCell>
+                                            <TableCell className="text-center text-xs">{item.codigo_catmat || 'N/A'}</TableCell>
                                             <TableCell className="text-center">{item.numero_pregao || 'N/A'}</TableCell>
                                             <TableCell className="text-center">{item.uasg || 'N/A'}</TableCell>
+                                            <TableCell className="text-right font-semibold">{formatCurrency(item.valor_unitario)}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-1">
                                                     <Button variant="ghost" size="icon" onClick={() => handleEditItem(item)}>
