@@ -75,35 +75,33 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
             
             {/* Linha de Conteúdo Colapsável */}
             <TableRow className="p-0">
-                <TableCell colSpan={3} className="p-0">
+                <TableCell colSpan={3} className="p-4 pt-0">
                     <Collapsible open={isOpen}>
                         <CollapsibleContent>
-                            <div className="p-4 bg-gray-50 dark:bg-gray-900 border-t">
-                            <h5 className="text-sm font-semibold mb-2">Itens de Aquisição ({itensAquisicao.length})</h5>
+                            <div className="p-4 bg-background rounded-lg shadow-md border">
+                            <h5 className="text-sm font-semibold mb-4">Itens de Aquisição ({itensAquisicao.length})</h5>
                             
                             {itensAquisicao.length > 0 ? (
-                                <Table className="bg-white dark:bg-gray-800 border">
-                                    <thead>
-                                        <TableRow className="text-xs text-muted-foreground hover:bg-white dark:hover:bg-gray-800">
-                                            <th className="px-4 py-2 text-left font-normal w-[40%]">Descrição do Item</th>
-                                            <th className="px-4 py-2 text-right font-normal w-[20%]">Valor Unitário</th>
-                                            <th className="px-4 py-2 text-center font-normal w-[20%]">Pregão/Ref.</th>
-                                            <th className="px-4 py-2 text-center font-normal w-[20%]">UASG</th>
-                                        </TableRow>
-                                    </thead>
-                                    <tbody>
-                                        {itensAquisicao.map((item) => (
-                                            <TableRow key={item.id} className="text-sm">
-                                                <td className="px-4 py-2">{item.descricao_item}</td>
-                                                <td className="px-4 py-2 text-right font-mono">{formatCurrency(item.valor_unitario)}</td>
-                                                <td className="px-4 py-2 text-center">{item.numero_pregao || 'N/A'}</td>
-                                                <td className="px-4 py-2 text-center">{item.uasg || 'N/A'}</td>
-                                            </TableRow>
-                                        ))}
-                                    </tbody>
-                                </Table>
+                                <div className="space-y-2">
+                                    {itensAquisicao.map((item) => (
+                                        <div key={item.id} className="flex items-center justify-between text-sm p-3 bg-gray-50 dark:bg-gray-900 rounded-md border">
+                                            <div className="w-[40%] font-medium text-foreground">
+                                                {item.descricao_item}
+                                            </div>
+                                            <div className="w-[20%] text-right font-mono text-primary">
+                                                {formatCurrency(item.valor_unitario)}
+                                            </div>
+                                            <div className="w-[20%] text-center text-muted-foreground text-xs">
+                                                {item.numero_pregao || 'N/A'}
+                                            </div>
+                                            <div className="w-[20%] text-center text-muted-foreground text-xs">
+                                                {item.uasg || 'N/A'}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             ) : (
-                                <p className="text-sm text-muted-foreground">Nenhum item de aquisição detalhado para este subitem.</p>
+                                <p className="text-sm text-muted-foreground p-3 border rounded-md bg-gray-50 dark:bg-gray-900">Nenhum item de aquisição detalhado para este subitem.</p>
                             )}
                         </div>
                         </CollapsibleContent>
