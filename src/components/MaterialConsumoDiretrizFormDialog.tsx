@@ -433,7 +433,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                             <TableCell className="text-center text-xs">{item.codigo_catmat || 'N/A'}</TableCell>
                                             <TableCell className="text-center">{item.numero_pregao || 'N/A'}</TableCell>
                                             <TableCell className="text-center">{item.uasg || 'N/A'}</TableCell>
-                                            <TableCell className="text-right font-mono font-semibold text-primary">
+                                            <TableCell className="text-right font-mono font-bold text-primary">
                                                 {formatCurrency(item.valor_unitario)}
                                             </TableCell>
                                             <TableCell className="text-right">
