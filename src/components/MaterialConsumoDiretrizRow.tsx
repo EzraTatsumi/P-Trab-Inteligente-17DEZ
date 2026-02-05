@@ -3,7 +3,6 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
 import { DiretrizMaterialConsumo } from "@/types/diretrizesMaterialConsumo";
-import { format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface MaterialConsumoDiretrizRowProps {
@@ -13,36 +12,21 @@ interface MaterialConsumoDiretrizRowProps {
     loading: boolean;
 }
 
-const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowRowProps> = ({
+const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
     diretriz,
     onEdit,
     onDelete,
     loading,
 }) => {
-    const totalItens = diretriz.itens_aquisicao.length;
+    // Removido totalItens
     
     return (
         <TableRow>
-            <TableCell className="font-medium">
-                <div className="flex flex-col">
-                    <span className="font-semibold">{diretriz.nr_subitem}</span>
-                    <span className="text-sm text-muted-foreground">{diretriz.nome_subitem}</span>
-                </div>
+            <TableCell className="font-medium w-[100px]">
+                <span className="font-semibold">{diretriz.nr_subitem}</span>
             </TableCell>
-            <TableCell className="text-left max-w-[300px] truncate">
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <span className="truncate block">{diretriz.descricao_subitem || 'N/A'}</span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p className="max-w-xs">{diretriz.descricao_subitem || 'N/A'}</p>
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            </TableCell>
-            <TableCell className="text-center font-medium">
-                {totalItens} {totalItens === 1 ? 'Item' : 'Itens'}
+            <TableCell className="text-left font-medium">
+                {diretriz.nome_subitem}
             </TableCell>
             <TableCell className="text-right">
                 <div className="flex justify-end gap-1">
