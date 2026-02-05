@@ -28,7 +28,7 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
     return (
         <React.Fragment>
             {/* A linha principal (TableRow) agora é o elemento que contém o CollapsibleTrigger */}
-            <TableRow
+            <TableRow 
                 className={cn(
                     "hover:bg-muted/50 transition-colors cursor-pointer",
                     isOpen && "bg-muted/50"
