@@ -384,7 +384,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         id="item-uasg"
                                         value={itemForm.uasg}
                                         onChange={handleUasgChange} // Usando a nova função de tratamento
-                                        placeholder="Ex: 160001"
+                                        placeholder="Ex: 160.001"
                                         onKeyDown={handleEnterToNextField}
                                         maxLength={6} // Limita o tamanho após a formatação
                                         required
