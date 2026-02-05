@@ -110,6 +110,29 @@ export async function deleteMaterialConsumoItem(id: string): Promise<void> {
 }
 
 // =================================================================
+// Share Preview (Leitura Pública/Compartilhada)
+// =================================================================
+
+/**
+ * Busca um subitem específico para visualização de compartilhamento.
+ * Assume que a RLS está configurada para permitir a leitura por ID.
+ */
+export async function fetchSharePreview(subitemId: string): Promise<MaterialConsumoSubitem | null> {
+  const { data, error } = await supabase
+    .from('material_consumo_subitens')
+    .select('*')
+    .eq('id', subitemId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows found"
+    console.error("Erro ao buscar preview de compartilhamento:", error);
+    throw error;
+  }
+
+  return data as MaterialConsumoSubitem | null;
+}
+
+// =================================================================
 // Catálogo Global (Leitura)
 // =================================================================
 
