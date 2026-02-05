@@ -3,13 +3,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, FileText, CheckCircle, AlertTriangle, Upload, Download, XCircle, Import } from "lucide-react";
+import { Loader2, FileText, CheckCircle, AlertTriangle, Upload, Download, XCircle, Import, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import ExcelJS from 'exceljs';
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { formatCurrency, parseInputToNumber } from "@/lib/formatUtils";
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Importando Alert
 
 interface ItemAquisicaoBulkUploadDialogProps {
     open: boolean;
@@ -193,13 +194,31 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Importação em Massa de Itens de Aquisição</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Import className="h-5 w-5 text-primary" />
+                        Importação em Massa de Itens de Aquisição
+                    </DialogTitle>
                     <DialogDescription>
-                        Importe itens de aquisição para o subitem da ND a partir de um arquivo Excel (.xlsx). O arquivo deve conter as colunas: Descrição do Item, Valor Unitário (R$), Número do Pregão, UASG e Código CATMAT.
+                        Carregue uma planilha (.xlsx) para adicionar itens de aquisição ao subitem da ND.
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4 py-2">
+                    
+                    <Alert variant="default">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Formato Obrigatório</AlertTitle>
+                        <AlertDescription>
+                            O arquivo deve ser **.xlsx** e conter as colunas exatas na primeira linha:
+                            <span className="font-mono text-sm block mt-1">
+                                'Descrição do Item', 'Valor Unitário (R$)', 'Número do Pregão/Ref. Preço', 'UASG', 'Código CATMAT'
+                            </span>
+                            <span className="text-xs mt-2 block">
+                                Atenção: Apenas as colunas 'Descrição do Item' e 'Valor Unitário (R$)' são obrigatórias.
+                            </span>
+                        </AlertDescription>
+                    </Alert>
+                    
                     <Card className="p-4">
                         <div className="flex justify-between items-center mb-4">
                             <h4 className="text-base font-semibold">Passo 1: Carregar Arquivo</h4>
