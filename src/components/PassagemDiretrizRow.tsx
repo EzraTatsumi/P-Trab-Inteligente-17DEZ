@@ -30,6 +30,7 @@ const getTransportIcon = (tipo: TipoTransporte) => {
 
 const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onEdit, onDelete, loading }) => {
     const [isOpen, setIsOpen] = useState(false);
+    // CORREÇÃO: O campo trechos é TrechoPassagem[] no tipo DiretrizPassagem
     const trechos = diretriz.trechos;
     const hasTrechos = trechos.length > 0;
     
@@ -112,7 +113,6 @@ const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onE
                     !isOpen && "hidden"
                 )}>
                     <TableCell colSpan={5} className="p-0 border-t-0">
-                        {/* Usamos Collapsible aqui para a animação, controlada pelo estado 'isOpen' */}
                         <Collapsible open={isOpen}>
                             <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
                                 <div className="p-4 bg-muted/50 border-t border-border">
