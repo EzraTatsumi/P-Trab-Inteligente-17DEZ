@@ -16,6 +16,8 @@ interface MaterialConsumoDiretrizRowProps {
     loading: boolean;
     // NOVO: Função de movimentação injetada pelo hook
     onMoveItem: (item: ItemAquisicao, sourceDiretrizId: string, targetDiretrizId: string) => void;
+    // NOVO: ID para rolagem
+    id: string;
 }
 
 const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
@@ -24,6 +26,7 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
     onDelete,
     loading,
     onMoveItem, // NOVO
+    id, // NOVO
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isDragOver, setIsDragOver] = useState(false);
@@ -107,6 +110,7 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
         <React.Fragment>
             {/* A linha principal (TableRow) agora é o elemento que contém o CollapsibleTrigger */}
             <TableRow 
+                id={id} // NOVO: Adiciona o ID para rolagem
                 className={cn(
                     "hover:bg-muted/50 transition-colors cursor-pointer",
                     isOpen && "bg-muted/50"

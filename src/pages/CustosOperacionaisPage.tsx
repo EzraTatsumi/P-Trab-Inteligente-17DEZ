@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp, Plus, Trash2, Pencil, Plane, Package } from "lucide-react";
+import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp, Plus, Trash2, Pencil, Plane, Package, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -177,6 +177,13 @@ const handleGlobalDragEnd = () => {
 // FIM LÓGICA DE AUTO-SCROLLING
 // =================================================================
 
+// NOVO: Estrutura para o item indexado
+type IndexedItemAquisicao = ItemAquisicao & {
+    diretrizId: string;
+    subitemNr: string;
+    subitemNome: string;
+};
+
 
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
@@ -243,6 +250,7 @@ const CustosOperacionaisPage = () => {
   
   const [isMaterialConsumoFormOpen, setIsMaterialConsumoFormOpen] = useState(false);
   const [diretrizMaterialConsumoToEdit, setDiretrizMaterialConsumoToEdit] = useState<DiretrizMaterialConsumo | null>(null);
+  const [searchTerm, setSearchTerm] = useState(""); // NOVO: Estado para o termo de busca
   // END MATERIAL CONSUMO STATES
   
   // Efeito para rolar para o topo na montagem
@@ -1280,6 +1288,128 @@ const CustosOperacionaisPage = () => {
       }
   };
   
+  // NOVO: 1. Indexação de todos os itens de aquisição
+  const indexedItems = useMemo<IndexedItemAquisicao[]>(() => {
+    if (!diretrizesMaterialConsumo) return [];
+    
+    return diretrizesMaterialConsumo.flatMap(diretriz => {
+        // Garantir que itens_aquisicao é um array
+        const itens = (diretriz.itens_aquisicao || []) as ItemAquisicao[];
+        
+        return itens.map(item => ({
+            ...item,
+            diretrizId: diretriz.id,
+            subitemNr: diretriz.nr_subitem,
+            subitemNome: diretriz.nome_subitem,
+        }));
+    });
+  }, [diretrizesMaterialConsumo]);
+
+  // NOVO: 2. Filtragem dos itens indexados
+  const filteredItems = useMemo(() => {
+    if (!searchTerm) return [];
+    const lowerCaseSearch = searchTerm.toLowerCase().trim();
+    
+    if (lowerCaseSearch.length < 3) return []; // Evita buscas muito amplas
+    
+    return indexedItems.filter(item => {
+        const searchString = [
+            item.descricao_item, // CORREÇÃO: Usar descricao_item
+            item.codigo_catmat,
+            item.numero_pregao,
+            item.uasg,
+            item.subitemNr,
+            item.subitemNome,
+        ].join(' ').toLowerCase();
+        
+        return searchString.includes(lowerCaseSearch);
+    });
+  }, [searchTerm, indexedItems]);
+
+  // NOVO: 3. Função para navegar e abrir o subitem encontrado
+  const handleGoToSubitem = (diretrizId: string) => {
+      // 1. Abrir o Collapsible principal de Material de Consumo
+      setFieldCollapseState(prev => ({ ...prev, ['material_consumo_detalhe']: true }));
+      
+      // 2. Rolar até o elemento
+      // Usamos um pequeno atraso para garantir que o Collapsible principal tenha aberto
+      setTimeout(() => {
+          const element = document.getElementById(`diretriz-material-consumo-${diretrizId}`);
+          if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              
+              // Opcional: Adicionar um destaque temporário ao elemento
+              // Isso exigiria manipulação de classes ou estado temporário no MaterialConsumoDiretrizRow
+          } else {
+              toast.warning("Subitem encontrado, mas não visível na tela.");
+          }
+      }, 100);
+      
+      setSearchTerm(""); // Limpa a busca após a navegação
+  };
+
+  // NOVO: 4. Renderização da Tabela de Resultados de Busca
+  const renderSearchResults = () => {
+      if (searchTerm.length < 3) {
+          return (
+              <Card className="p-4 text-center text-muted-foreground">
+                  Digite pelo menos 3 caracteres para iniciar a busca.
+              </Card>
+          );
+      }
+      
+      if (filteredItems.length === 0) {
+          return (
+              <Card className="p-4 text-center text-muted-foreground">
+                  Nenhum item de aquisição encontrado com este termo.
+              </Card>
+          );
+      }
+      
+      return (
+          <Card className="p-4">
+              <CardTitle className="text-base font-semibold mb-3">
+                  Resultados da Busca ({filteredItems.length})
+              </CardTitle>
+              <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead>Item de Aquisição</TableHead>
+                          <TableHead className="w-[150px]">Subitem ND</TableHead>
+                          <TableHead className="w-[100px] text-center">Ações</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {filteredItems.map((item, index) => (
+                          <TableRow key={`${item.diretrizId}-${index}`}>
+                              <TableCell className="font-medium">
+                                  {item.descricao_item}
+                                  <p className="text-xs text-muted-foreground truncate">
+                                      Cód. CATMAT: {item.codigo_catmat || 'N/A'} | Pregão: {item.numero_pregao}
+                                  </p>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                  {item.subitemNr}
+                                  <p className="text-xs text-muted-foreground truncate">{item.subitemNome}</p>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                  <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      onClick={() => handleGoToSubitem(item.diretrizId)}
+                                  >
+                                      <Package className="h-4 w-4 mr-1" />
+                                      Ver Local
+                                  </Button>
+                              </TableCell>
+                          </TableRow>
+                      ))}
+                  </TableBody>
+              </Table>
+          </Card>
+      );
+  };
+  
   const renderMaterialConsumoSection = () => {
       const isDataLoading = isLoadingMaterialConsumo || isMovingMaterialConsumo;
       
@@ -1287,42 +1417,63 @@ const CustosOperacionaisPage = () => {
           <div className="space-y-4">
               
               {/* Lista de Subitens Existentes (Card 846 equivalente) */}
-              {diretrizesMaterialConsumo.length > 0 ? (
-                  <Card className="p-4">
-                      <CardTitle className="text-base font-semibold mb-3">Subitens da ND Cadastrados</CardTitle>
-                      <Table>
-                          <TableHeader>
-                              <TableRow>
-                                  <TableHead className="w-[150px] text-center">Nr Subitem</TableHead>
-                                  <TableHead>Nome do Subitem</TableHead>
-                                  <TableHead className="w-[100px] text-center">Ações</TableHead>
-                              </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                              {diretrizesMaterialConsumo.map(d => (
-                                  <MaterialConsumoDiretrizRow
-                                      key={d.id}
-                                      diretriz={d}
-                                      onEdit={handleStartEditMaterialConsumo}
-                                      onDelete={handleDeleteMaterialConsumo}
-                                      loading={loading || isDataLoading}
-                                      onMoveItem={handleMoveItem} // NOVO: Passando a função de movimentação
-                                  />
-                              ))}
-                          </TableBody>
-                      </Table>
-                  </Card>
-              ) : (
-                  <Card className="p-4 text-center text-muted-foreground">
-                      Nenhum subitem da ND cadastrado para o ano de referência.
-                  </Card>
-              )}
+              <Card className="p-4">
+                  <CardTitle className="text-base font-semibold mb-3">Subitens da ND Cadastrados</CardTitle>
+                  
+                  {/* NOVO: Campo de Busca */}
+                  <div className="mb-4 relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                          placeholder="Buscar item de aquisição (nome, CATMAT, pregão, subitem...)"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          disabled={isDataLoading}
+                          className="pl-10"
+                      />
+                  </div>
+                  
+                  {searchTerm ? (
+                      // Se houver termo de busca, renderiza os resultados
+                      renderSearchResults()
+                  ) : (
+                      // Se não houver termo de busca, renderiza a lista normal
+                      diretrizesMaterialConsumo.length > 0 ? (
+                          <Table>
+                              <TableHeader>
+                                  <TableRow>
+                                      <TableHead className="w-[150px] text-center">Nr Subitem</TableHead>
+                                      <TableHead>Nome do Subitem</TableHead>
+                                      <TableHead className="w-[100px] text-center">Ações</TableHead>
+                                  </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                  {diretrizesMaterialConsumo.map(d => (
+                                      <MaterialConsumoDiretrizRow
+                                          key={d.id}
+                                          diretriz={d}
+                                          onEdit={handleStartEditMaterialConsumo}
+                                          onDelete={handleDeleteMaterialConsumo}
+                                          loading={loading || isDataLoading}
+                                          onMoveItem={handleMoveItem}
+                                          // NOVO: Adiciona ID para rolagem
+                                          id={`diretriz-material-consumo-${d.id}`} 
+                                      />
+                                  ))}
+                              </TableBody>
+                          </Table>
+                      ) : (
+                          <Card className="p-4 text-center text-muted-foreground">
+                              Nenhum subitem da ND cadastrado para o ano de referência.
+                          </Card>
+                      )
+                  )}
+              </Card>
               
               <div className="flex justify-end">
                   <Button 
                       type="button" 
                       onClick={handleOpenNewMaterialConsumo}
-                      disabled={loading || isDataLoading}
+                      disabled={loading || isDataLoading || !!searchTerm} // Desabilita se estiver buscando
                       variant="outline" 
                       size="sm" 
                       className="w-full"
@@ -1585,7 +1736,7 @@ const CustosOperacionaisPage = () => {
           open={isConcessionariaFormOpen}
           onOpenChange={setIsConcessionariaFormOpen}
           selectedYear={selectedYear}
-          diretrizToEdit={diretrizConcessionariaToEdit}
+          diretrizConcessionariaToEdit={diretrizConcessionariaToEdit}
           onSave={handleSaveConcessionaria}
           loading={loading}
           initialCategory={selectedConcessionariaTab}
