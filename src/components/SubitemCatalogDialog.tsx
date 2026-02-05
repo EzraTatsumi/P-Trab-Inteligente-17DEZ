@@ -54,11 +54,19 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
     );
     
     const handlePreSelect = (item: CatalogoSubitem) => {
-        setSelectedItem({
+        const newItem = {
             nr_subitem: item.nr_subitem,
             nome_subitem: item.nome_subitem,
             descricao_subitem: item.descricao_subitem,
-        });
+        };
+
+        if (selectedItem?.nr_subitem === item.nr_subitem) {
+            // Desselecionar se já estiver selecionado
+            setSelectedItem(null);
+        } else {
+            // Selecionar o novo item
+            setSelectedItem(newItem);
+        }
     };
 
     const handleConfirmImport = () => {
@@ -111,7 +119,7 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
                                         <TableHead className="w-[100px] text-center">Nr Subitem</TableHead>
                                         <TableHead className="w-[200px] text-center">Nome do Subitem</TableHead>
                                         <TableHead className="text-center">Descrição</TableHead>
-                                        <TableHead className="w-[80px] text-right text-center">Ação</TableHead>
+                                        <TableHead className="w-[80px] text-center">Status</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -120,32 +128,25 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
                                         return (
                                             <TableRow 
                                                 key={item.id} 
-                                                className={isSelected ? "bg-primary/10 hover:bg-primary/20 transition-colors" : ""}
+                                                className={`cursor-pointer transition-colors ${isSelected ? "bg-primary/10 hover:bg-primary/20" : "hover:bg-muted/50"}`}
+                                                onClick={() => handlePreSelect(item)} // Adicionando o clique na linha
                                             >
                                                 <TableCell className="font-semibold text-center">{item.nr_subitem}</TableCell>
                                                 <TableCell className="font-medium">{item.nome_subitem}</TableCell>
                                                 <TableCell className="text-sm text-muted-foreground max-w-lg whitespace-normal">
                                                     <span className="block">{item.descricao_subitem || 'N/A'}</span>
                                                 </TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button 
-                                                        variant={isSelected ? "default" : "secondary"} 
-                                                        size="sm" 
-                                                        onClick={() => handlePreSelect(item)}
-                                                        disabled={isSelected}
-                                                    >
-                                                        {isSelected ? (
-                                                            <>
-                                                                <Check className="h-4 w-4 mr-1" />
-                                                                Selecionado
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Check className="h-4 w-4 mr-1" />
-                                                                Selecionar
-                                                            </>
-                                                        )}
-                                                    </Button>
+                                                <TableCell className="text-center">
+                                                    {isSelected ? (
+                                                        <span className="inline-flex items-center text-primary font-medium text-sm">
+                                                            <Check className="h-4 w-4 mr-1" />
+                                                            Selecionado
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted-foreground text-sm">
+                                                            Selecionar
+                                                        </span>
+                                                    )}
                                                 </TableCell>
                                             </TableRow>
                                         );
