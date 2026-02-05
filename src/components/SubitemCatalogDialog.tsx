@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Check, Search } from "lucide-react";
+import { Loader2, Check, Search, Import } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CatalogoSubitem } from "@/types/catalogoSubitens";
 import { Input } from "@/components/ui/input";
+
+// Definindo o tipo de item selecionável para o estado
+type SelectedItem = { nr_subitem: string, nome_subitem: string, descricao_subitem: string | null } | null;
 
 interface SubitemCatalogDialogProps {
     open: boolean;
@@ -42,6 +45,7 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
     });
     
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
     
     const filteredItems = (items || []).filter(item => 
         item.nr_subitem.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -49,12 +53,20 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
         item.descricao_subitem?.toLowerCase().includes(searchTerm.toLowerCase())
     );
     
-    const handleSelect = (item: CatalogoSubitem) => {
-        onSelect({
+    const handlePreSelect = (item: CatalogoSubitem) => {
+        setSelectedItem({
             nr_subitem: item.nr_subitem,
             nome_subitem: item.nome_subitem,
             descricao_subitem: item.descricao_subitem,
         });
+    };
+
+    const handleConfirmImport = () => {
+        if (selectedItem) {
+            onSelect(selectedItem);
+            onOpenChange(false);
+            toast.success(`Subitem ${selectedItem.nr_subitem} importado com sucesso.`);
+        }
     };
 
     if (error) {
@@ -67,7 +79,7 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
                 <DialogHeader>
                     <DialogTitle>Catálogo de Subitens da ND</DialogTitle>
                     <DialogDescription>
-                        Selecione um subitem de referência para preencher os dados básicos do seu registro.
+                        Selecione um subitem de referência e confirme a importação para o seu registro.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -103,41 +115,63 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredItems.map(item => (
-                                        <TableRow key={item.id} className="group">
-                                            <TableCell className="font-semibold text-center">{item.nr_subitem}</TableCell>
-                                            <TableCell className="font-medium">{item.nome_subitem}</TableCell>
-                                            <TableCell className="text-sm text-muted-foreground max-w-lg whitespace-normal">
-                                                {/* Container que expande no hover da linha (group-hover) */}
-                                                <div className="overflow-hidden max-h-[4.5rem] relative transition-all duration-300 group-hover:max-h-[20rem] group-hover:overflow-visible"> 
+                                    {filteredItems.map(item => {
+                                        const isSelected = selectedItem?.nr_subitem === item.nr_subitem;
+                                        return (
+                                            <TableRow 
+                                                key={item.id} 
+                                                className={isSelected ? "bg-primary/10 hover:bg-primary/20 transition-colors" : ""}
+                                            >
+                                                <TableCell className="font-semibold text-center">{item.nr_subitem}</TableCell>
+                                                <TableCell className="font-medium">{item.nome_subitem}</TableCell>
+                                                {/* Removemos as classes de limitação de altura e hover para exibir o texto completo */}
+                                                <TableCell className="text-sm text-muted-foreground max-w-lg whitespace-normal">
                                                     <span className="block">{item.descricao_subitem || 'N/A'}</span>
-                                                    {/* Gradiente que desaparece no hover */}
-                                                    {item.descricao_subitem && item.descricao_subitem.length > 100 && (
-                                                        <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-background to-transparent pointer-events-none transition-opacity duration-300 group-hover:opacity-0" />
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button 
-                                                    variant="secondary" 
-                                                    size="sm" 
-                                                    onClick={() => handleSelect(item)}
-                                                >
-                                                    <Check className="h-4 w-4 mr-1" />
-                                                    Selecionar
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button 
+                                                        variant={isSelected ? "default" : "secondary"} 
+                                                        size="sm" 
+                                                        onClick={() => handlePreSelect(item)}
+                                                        disabled={isSelected}
+                                                    >
+                                                        {isSelected ? (
+                                                            <>
+                                                                <Check className="h-4 w-4 mr-1" />
+                                                                Selecionado
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Check className="h-4 w-4 mr-1" />
+                                                                Selecionar
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
                         </div>
                     )}
                 </div>
 
-                <div className="flex justify-end pt-4 border-t">
-                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                <div className="flex justify-between pt-4 border-t">
+                    <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => onOpenChange(false)}
+                    >
                         Fechar
+                    </Button>
+                    <Button 
+                        type="button" 
+                        onClick={handleConfirmImport}
+                        disabled={!selectedItem}
+                    >
+                        <Import className="h-4 w-4 mr-2" />
+                        Confirmar Importação
                     </Button>
                 </div>
             </DialogContent>
