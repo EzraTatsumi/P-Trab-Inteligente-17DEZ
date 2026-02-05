@@ -106,6 +106,18 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             toast.error("Preencha a Descrição do Item e o Valor Unitário.");
             return;
         }
+        
+        // --- NOVAS VALIDAÇÕES OBRIGATÓRIAS ---
+        if (!itemForm.numero_pregao || itemForm.numero_pregao.trim() === '') {
+            toast.error("O campo 'Pregão/Ref. Preço' é obrigatório.");
+            return;
+        }
+
+        if (!itemForm.uasg || itemForm.uasg.trim() === '') {
+            toast.error("O campo 'UASG' é obrigatório.");
+            return;
+        }
+        // -------------------------------------
 
         const newItem: ItemAquisicao = {
             id: editingItemId || Math.random().toString(36).substring(2, 9),
@@ -342,13 +354,14 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 
                                 {/* Campo Pregão (2 colunas) */}
                                 <div className="space-y-2 col-span-2">
-                                    <Label htmlFor="item-pregao">Pregão/Ref. Preço</Label>
+                                    <Label htmlFor="item-pregao">Pregão/Ref. Preço *</Label>
                                     <Input
                                         id="item-pregao"
                                         value={itemForm.numero_pregao}
                                         onChange={(e) => setItemForm({ ...itemForm, numero_pregao: e.target.value })}
                                         placeholder="Ex: 01/2024"
                                         onKeyDown={handleEnterToNextField}
+                                        required
                                     />
                                     <p className="text-xs text-muted-foreground">
                                         *Em processo de abertura.
@@ -357,13 +370,14 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 
                                 {/* Campo UASG (1 coluna) */}
                                 <div className="space-y-2 col-span-1">
-                                    <Label htmlFor="item-uasg">UASG</Label>
+                                    <Label htmlFor="item-uasg">UASG *</Label>
                                     <Input
                                         id="item-uasg"
                                         value={itemForm.uasg}
                                         onChange={(e) => setItemForm({ ...itemForm, uasg: e.target.value })}
                                         placeholder="Ex: 160001"
                                         onKeyDown={handleEnterToNextField}
+                                        required
                                     />
                                 </div>
                                 
@@ -385,7 +399,12 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     <Button 
                                         type="button" 
                                         onClick={handleAddItem}
-                                        disabled={!itemForm.descricao_item || itemForm.valor_unitario <= 0}
+                                        disabled={
+                                            !itemForm.descricao_item || 
+                                            itemForm.valor_unitario <= 0 ||
+                                            !itemForm.numero_pregao || 
+                                            !itemForm.uasg
+                                        }
                                     >
                                         {editingItemId ? <Pencil className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
                                         {editingItemId ? "Atualizar" : "Adicionar"}
