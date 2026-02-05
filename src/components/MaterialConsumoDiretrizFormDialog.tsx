@@ -5,7 +5,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Plus, Pencil, Trash2, Loader2, BookOpen } from "lucide-react";
+import { Save, Plus, Pencil, Trash2, Loader2, BookOpen, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,6 +14,7 @@ import CurrencyInput from "@/components/CurrencyInput";
 import { formatCurrencyInput, numberToRawDigits, formatCurrency } from "@/lib/formatUtils";
 import SubitemCatalogDialog from './SubitemCatalogDialog';
 import CatmatCatalogDialog from './CatmatCatalogDialog'; // NOVO: Importação do Catálogo CATMAT
+import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog'; // NOVO: Importação do Diálogo de Importação
 
 interface MaterialConsumoDiretrizFormDialogProps {
     open: boolean;
@@ -81,6 +82,9 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     
     // NOVO ESTADO: Controle do diálogo do catálogo CATMAT
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
+    
+    // NOVO ESTADO: Controle do diálogo de importação em massa
+    const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
 
     useEffect(() => {
         setSubitemForm(getInitialFormState(diretrizToEdit));
@@ -184,6 +188,18 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         }));
         setIsCatmatCatalogOpen(false);
     };
+    
+    // NOVO: Função para receber dados da importação em massa
+    const handleBulkImport = (newItems: ItemAquisicao[]) => {
+        // Adiciona os novos itens aos existentes
+        setSubitemForm(prev => ({
+            ...prev,
+            itens_aquisicao: [...prev.itens_aquisicao, ...newItems],
+        }));
+        // Limpa o formulário de item individual
+        setItemForm(initialItemForm);
+        setEditingItemId(null);
+    };
 
     const isEditingSubitem = !!subitemForm.id;
 
@@ -260,9 +276,21 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
 
                     {/* Seção de Gerenciamento de Itens de Aquisição (Card 325 equivalente) */}
                     <Card className="p-4 space-y-4">
-                        <CardTitle className="text-base font-semibold">
-                            {editingItemId ? "Editar Item de Aquisição" : "Adicionar Novo Item de Aquisição"}
-                        </CardTitle>
+                        <div className="flex justify-between items-center">
+                            <CardTitle className="text-base font-semibold">
+                                {editingItemId ? "Editar Item de Aquisição" : "Adicionar Novo Item de Aquisição"}
+                            </CardTitle>
+                            <Button 
+                                type="button" 
+                                variant="secondary" 
+                                size="sm" 
+                                onClick={() => setIsBulkUploadOpen(true)}
+                                disabled={loading}
+                            >
+                                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                                Importar Excel
+                            </Button>
+                        </div>
                         
                         {/* Formulário de Item - Reorganizado em duas linhas lógicas */}
                         <div className="border p-3 rounded-lg bg-muted/50 space-y-4">
@@ -404,7 +432,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 </TableBody>
                             </Table>
                         ) : (
-                            <p className="text-muted-foreground text-center py-4">Nenhum item de aquisição cadastrado. Adicione itens acima.</p>
+                            <p className="text-muted-foreground text-center py-4">Nenhum item de aquisição cadastrado. Adicione itens acima ou importe via Excel.</p>
                         )}
                     </Card>
                 </div>
@@ -431,11 +459,18 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                 onSelect={handleCatalogSelect}
             />
             
-            {/* NOVO: Diálogo do Catálogo CATMAT */}
+            {/* Diálogo do Catálogo CATMAT */}
             <CatmatCatalogDialog
                 open={isCatmatCatalogOpen}
                 onOpenChange={setIsCatmatCatalogOpen}
                 onSelect={handleCatmatSelect}
+            />
+            
+            {/* NOVO: Diálogo de Importação em Massa */}
+            <ItemAquisicaoBulkUploadDialog
+                open={isBulkUploadOpen}
+                onOpenChange={setIsBulkUploadOpen}
+                onImport={handleBulkImport}
             />
         </Dialog>
     );
