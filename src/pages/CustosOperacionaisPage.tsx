@@ -38,7 +38,6 @@ import {
     CategoriaConcessionaria 
 } from "@/types/diretrizesConcessionaria";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import MaterialConsumoForm from "@/pages/MaterialConsumoForm";
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -59,6 +58,7 @@ const OPERATIONAL_FIELDS = [
   { key: 'valor_fretamento_aereo_hora', label: 'Fretamento Aéreo (R$/hora)', type: 'currency' as const, placeholder: 'Ex: 1.200,00' },
   { key: 'valor_locacao_estrutura_dia', label: 'Locação de Estrutura (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 300,00' },
   { key: 'valor_locacao_viaturas_dia', label: 'Locação de Viaturas (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 150,00' },
+  { key: 'fator_material_consumo', label: 'Material de Consumo (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.02 (para 2%)' },
   // O fator_concessionaria foi removido daqui, pois a configuração agora é detalhada por contrato/consumo
 ];
 
@@ -124,10 +124,9 @@ const CustosOperacionaisPage = () => {
     // NOVO: Verifica se o estado de navegação pede para abrir a seção de concessionária
     const shouldOpenConcessionaria = location.state && (location.state as { openConcessionaria?: boolean }).openConcessionaria;
     
-    initialState['diarias_detalhe'] = false;
-    initialState['passagens_detalhe'] = shouldOpenPassagens || false;
+    initialState['diarias_detalhe'] = false; 
+    initialState['passagens_detalhe'] = shouldOpenPassagens || false; 
     initialState['concessionaria_detalhe'] = shouldOpenConcessionaria || false; // ATUALIZADO
-    initialState['material_consumo_detalhe'] = false; // NOVO
     return initialState;
   });
   
@@ -1159,8 +1158,8 @@ const CustosOperacionaisPage = () => {
                   </Collapsible>
                   
                   {/* Diretrizes de Concessionária (NEW SECTION) */}
-                  <Collapsible
-                    open={fieldCollapseState['concessionaria_detalhe']}
+                  <Collapsible 
+                    open={fieldCollapseState['concessionaria_detalhe']} 
                     onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['concessionaria_detalhe']: open }))}
                     className="border-b pb-4 last:border-b-0 last:pb-0"
                   >
@@ -1175,27 +1174,6 @@ const CustosOperacionaisPage = () => {
                     <CollapsibleContent>
                       <div className="mt-2">
                         {renderConcessionariaSection()}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                  
-                  {/* Diretrizes de Material de Consumo (NEW SECTION) */}
-                  <Collapsible
-                    open={fieldCollapseState['material_consumo_detalhe']}
-                    onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['material_consumo_detalhe']: open }))}
-                    className="border-b pb-4 last:border-b-0 last:pb-0"
-                  >
-                    <CollapsibleTrigger asChild>
-                      <div className="flex items-center justify-between cursor-pointer py-2">
-                        <h4 className="text-base font-medium flex items-center gap-2">
-                          Material de Consumo
-                        </h4>
-                        {fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="mt-2">
-                        <MaterialConsumoForm selectedYear={selectedYear} />
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
