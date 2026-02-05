@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { TableCell, TableRow, Table } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, ChevronDown, ChevronUp, GripVertical } from "lucide-react";
@@ -28,12 +28,21 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
     const [isOpen, setIsOpen] = useState(false);
     const [isDragOver, setIsDragOver] = useState(false);
     
+    // Ref para o temporizador de expansão automática
+    const expandTimerRef = useRef<number | null>(null); 
+    
     const itensAquisicao = diretriz.itens_aquisicao || [];
     
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault(); // Necessário para permitir o drop
         e.dataTransfer.dropEffect = "move";
         setIsDragOver(true);
+        
+        // Se estiver arrastando sobre o alvo de drop (o div interno), cancela o temporizador de expansão
+        if (expandTimerRef.current) {
+            clearTimeout(expandTimerRef.current);
+            expandTimerRef.current = null;
+        }
     };
     
     const handleDragLeave = () => {
@@ -55,11 +64,42 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                 return;
             }
             
+            // Garante que o alvo permaneça aberto após o drop
+            setIsOpen(true); 
+            
             // Chama a função de movimentação centralizada
             onMoveItem(item, sourceDiretrizId, diretriz.id);
             
         } catch (error) {
             console.error("Erro ao processar dados de drop:", error);
+        }
+    };
+    
+    // Handler para Drag Enter na linha principal (trigger)
+    const handleDragEnterTrigger = (e: React.DragEvent<HTMLTableRowElement>) => {
+        // Verifica se o item arrastado é um item de aquisição (heurística)
+        const data = e.dataTransfer.types.includes("application/json");
+        if (!data) return;
+        
+        // Se já estiver aberto, não faz nada
+        if (isOpen) return;
+        
+        // Se já houver um timer, não cria outro
+        if (expandTimerRef.current) return;
+        
+        // Inicia o temporizador para abrir após 300ms
+        expandTimerRef.current = setTimeout(() => {
+            setIsOpen(true);
+            expandTimerRef.current = null;
+        }, 300) as unknown as number; // Casting para number para compatibilidade com window.setTimeout
+    };
+    
+    // Handler para Drag Leave na linha principal (trigger)
+    const handleDragLeaveTrigger = (e: React.DragEvent<HTMLTableRowElement>) => {
+        // Cancela o temporizador se o mouse sair da área do trigger
+        if (expandTimerRef.current) {
+            clearTimeout(expandTimerRef.current);
+            expandTimerRef.current = null;
         }
     };
 
@@ -72,6 +112,9 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                     isOpen && "bg-muted/50"
                 )}
                 onClick={() => setIsOpen(!isOpen)}
+                // Adiciona os handlers de Drag Enter/Leave para o trigger
+                onDragEnter={handleDragEnterTrigger}
+                onDragLeave={handleDragLeaveTrigger}
             >
                 {/* Coluna Nr Subitem */}
                 <TableCell className="font-semibold w-[150px] text-center">

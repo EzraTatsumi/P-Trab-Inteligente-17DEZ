@@ -100,6 +100,84 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   taxa_embarque: 95.00,
 });
 
+// =================================================================
+// LÓGICA DE AUTO-SCROLLING (FORA DO COMPONENTE)
+// =================================================================
+const SCROLL_ZONE_HEIGHT = 50; // pixels from top/bottom edge
+const SCROLL_SPEED = 10; // pixels per frame
+let scrollAnimationFrame: number | null = null;
+let scrollDirection: 'up' | 'down' | null = null;
+
+// Função para executar o loop de rolagem
+const autoScroll = () => {
+    if (scrollDirection === 'up') {
+        window.scrollBy(0, -SCROLL_SPEED);
+    } else if (scrollDirection === 'down') {
+        window.scrollBy(0, SCROLL_SPEED);
+    }
+
+    if (scrollDirection) {
+        scrollAnimationFrame = requestAnimationFrame(autoScroll);
+    } else {
+        scrollAnimationFrame = null;
+    }
+};
+
+// Função para lidar com o evento global drag over
+const handleGlobalDragOver = (e: DragEvent) => {
+    // Verifica se o item arrastado é um item de aquisição (heurística)
+    if (!e.dataTransfer?.types.includes("application/json")) {
+        return;
+    }
+    
+    e.preventDefault(); // Permite a operação de drop
+
+    const viewportHeight = window.innerHeight;
+    const cursorY = e.clientY;
+
+    // Verifica zona superior
+    if (cursorY < SCROLL_ZONE_HEIGHT) {
+        if (scrollDirection !== 'up') {
+            scrollDirection = 'up';
+            if (!scrollAnimationFrame) {
+                scrollAnimationFrame = requestAnimationFrame(autoScroll);
+            }
+        }
+    } 
+    // Verifica zona inferior
+    else if (cursorY > viewportHeight - SCROLL_ZONE_HEIGHT) {
+        if (scrollDirection !== 'down') {
+            scrollDirection = 'down';
+            if (!scrollAnimationFrame) {
+                scrollAnimationFrame = requestAnimationFrame(autoScroll);
+            }
+        }
+    } 
+    // Cursor no meio, para a rolagem
+    else {
+        if (scrollDirection) {
+            scrollDirection = null;
+            if (scrollAnimationFrame) {
+                cancelAnimationFrame(scrollAnimationFrame);
+                scrollAnimationFrame = null;
+            }
+        }
+    }
+};
+
+// Função para lidar com o fim do arrasto (limpeza)
+const handleGlobalDragEnd = () => {
+    scrollDirection = null;
+    if (scrollAnimationFrame) {
+        cancelAnimationFrame(scrollAnimationFrame);
+        scrollAnimationFrame = null;
+    }
+};
+// =================================================================
+// FIM LÓGICA DE AUTO-SCROLLING
+// =================================================================
+
+
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Hook para acessar o estado de navegação
@@ -170,6 +248,22 @@ const CustosOperacionaisPage = () => {
   // Efeito para rolar para o topo na montagem
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+  
+  // NOVO: Efeito para gerenciar os listeners globais de Drag and Drop para auto-scrolling
+  useEffect(() => {
+    // Adiciona listeners globais ao montar
+    window.addEventListener('dragover', handleGlobalDragOver);
+    window.addEventListener('dragend', handleGlobalDragEnd);
+    window.addEventListener('drop', handleGlobalDragEnd); // Limpa o scroll se o drop ocorrer fora de um alvo válido
+
+    // Remove listeners ao desmontar
+    return () => {
+      window.removeEventListener('dragover', handleGlobalDragOver);
+      window.removeEventListener('dragend', handleGlobalDragEnd);
+      window.removeEventListener('drop', handleGlobalDragEnd);
+      handleGlobalDragEnd(); // Garante que qualquer animação pendente seja cancelada
+    };
   }, []);
 
   // Efeito para carregar anos disponíveis e definir o ano selecionado
