@@ -64,7 +64,7 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Catálogo de Subitens da ND</DialogTitle>
                     <DialogDescription>
@@ -97,22 +97,29 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
                             <Table>
                                 <TableHeader className="sticky top-0 bg-background z-10">
                                     <TableRow>
-                                        <TableHead className="w-[100px]">Nr Subitem</TableHead>
-                                        <TableHead className="w-[200px]">Nome do Subitem</TableHead>
-                                        <TableHead>Descrição</TableHead>
-                                        <TableHead className="w-[80px] text-right">Ação</TableHead>
+                                        <TableHead className="w-[100px] text-center">Nr Subitem</TableHead>
+                                        <TableHead className="w-[200px] text-center">Nome do Subitem</TableHead>
+                                        <TableHead className="text-center">Descrição</TableHead>
+                                        <TableHead className="w-[80px] text-right text-center">Ação</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {filteredItems.map(item => (
                                         <TableRow key={item.id}>
-                                            <TableCell className="font-semibold">{item.nr_subitem}</TableCell>
+                                            <TableCell className="font-semibold text-center">{item.nr_subitem}</TableCell>
                                             <TableCell className="font-medium">{item.nome_subitem}</TableCell>
-                                            <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
+                                            <TableCell className="text-sm text-muted-foreground max-w-lg whitespace-normal">
                                                 <TooltipProvider>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
-                                                            <span className="truncate block">{item.descricao_subitem || 'N/A'}</span>
+                                                            {/* Usando div para permitir quebra de linha e overflow visível */}
+                                                            <div className="overflow-hidden max-h-[4.5rem] relative"> 
+                                                                <span className="block">{item.descricao_subitem || 'N/A'}</span>
+                                                                {/* Adiciona um gradiente se o texto for cortado (simulação de line-clamp) */}
+                                                                {item.descricao_subitem && item.descricao_subitem.length > 100 && (
+                                                                    <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+                                                                )}
+                                                            </div>
                                                         </TooltipTrigger>
                                                         <TooltipContent>
                                                             <p className="max-w-xs">{item.descricao_subitem || 'N/A'}</p>
