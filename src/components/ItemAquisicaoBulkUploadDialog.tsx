@@ -203,7 +203,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-4 py-2">
+                <div className="space-y-4 py-2 mb-4">
                     
                     <Alert variant="warning">
                         <AlertCircle className="h-4 w-4" />
