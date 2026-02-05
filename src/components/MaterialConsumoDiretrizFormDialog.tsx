@@ -13,8 +13,8 @@ import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMateri
 import CurrencyInput from "@/components/CurrencyInput";
 import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodug } from "@/lib/formatUtils";
 import SubitemCatalogDialog from './SubitemCatalogDialog';
-import CatmatCatalogDialog from './CatmatCatalogDialog'; // NOVO: Importação do Catálogo CATMAT
-import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog'; // NOVO: Importação do Diálogo de Importação
+import CatmatCatalogDialog from './CatmatCatalogDialog';
+import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog';
 
 interface MaterialConsumoDiretrizFormDialogProps {
     open: boolean;
@@ -34,7 +34,7 @@ const initialItemForm: Omit<ItemAquisicao, 'id'> & { rawValor: string } = {
     rawValor: numberToRawDigits(0),
     numero_pregao: '',
     uasg: '',
-    codigo_catmat: '', // NOVO CAMPO
+    codigo_catmat: '',
 };
 
 // Definindo o tipo interno do formulário
@@ -105,8 +105,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     const handleUasgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const rawValue = e.target.value;
         // Remove caracteres não numéricos e aplica a formatação
-        const formattedValue = formatCodug(rawValue);
-        setItemForm({ ...itemForm, uasg: formattedValue });
+        const rawDigits = rawValue.replace(/\D/g, '');
+        setItemForm({ ...itemForm, uasg: rawDigits }); // Armazena apenas os dígitos
     };
 
     const handleAddItem = () => {
@@ -384,9 +384,9 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         id="item-uasg"
                                         value={itemForm.uasg}
                                         onChange={handleUasgChange} // Usando a nova função de tratamento
-                                        placeholder="Ex: 160.001"
+                                        placeholder="Ex: 160001"
                                         onKeyDown={handleEnterToNextField}
-                                        maxLength={6} // Limita o tamanho após a formatação
+                                        maxLength={6}
                                         required
                                     />
                                 </div>
@@ -413,7 +413,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                             !itemForm.descricao_item || 
                                             itemForm.valor_unitario <= 0 ||
                                             !itemForm.numero_pregao || 
-                                            itemForm.uasg.length !== 6 // Validação ajustada para 6 dígitos
+                                            itemForm.uasg.length !== 6
                                         }
                                     >
                                         {editingItemId ? <Pencil className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
@@ -428,17 +428,21 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[45%]">Descrição do Item</TableHead>
+                                        <TableHead className="w-[5%]"></TableHead> {/* Coluna para o ícone de arrastar (vazio no formulário) */}
+                                        <TableHead className="w-[40%]">Descrição do Item</TableHead>
                                         <TableHead className="w-[15%] text-center">Cód. CATMAT</TableHead>
                                         <TableHead className="w-[10%] text-center">Pregão/Ref.</TableHead>
                                         <TableHead className="w-[10%] text-center">UASG</TableHead>
-                                        <TableHead className="w-[20%] text-right">Valor Unitário</TableHead>
-                                        <TableHead className="w-[10%] text-right">Ações</TableHead>
+                                        <TableHead className="w-[15%] text-right">Valor Unitário</TableHead>
+                                        <TableHead className="w-[5%] text-right">Ações</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {subitemForm.itens_aquisicao.map(item => (
                                         <TableRow key={item.id}>
+                                            <TableCell className="w-[5%] text-center p-2">
+                                                <GripVertical className="h-4 w-4 text-muted-foreground mx-auto" />
+                                            </TableCell>
                                             <TableCell className="font-medium">{item.descricao_item}</TableCell>
                                             <TableCell className="text-center text-xs">{item.codigo_catmat || 'N/A'}</TableCell>
                                             <TableCell className="text-center">{item.numero_pregao || 'N/A'}</TableCell>

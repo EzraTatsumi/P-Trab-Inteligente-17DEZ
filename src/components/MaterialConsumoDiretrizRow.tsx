@@ -1,21 +1,20 @@
 import React, { useState } from 'react';
 import { TableCell, TableRow, Table } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Pencil, Trash2, ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import ItemAquisicaoDraggableRow from "./ItemAquisicaoDraggableRow";
 import { formatCurrency, formatCodug } from "@/lib/formatUtils";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { cn } from '@/lib/utils';
-import { cn } from '@/lib/utils';
-import ItemAquisicaoDraggableRow from "./ItemAquisicaoDraggableRow";
 
 interface MaterialConsumoDiretrizRowProps {
     diretriz: DiretrizMaterialConsumo;
     onEdit: (diretriz: DiretrizMaterialConsumo) => void;
     onDelete: (id: string, nome: string) => Promise<void>;
     loading: boolean;
+    // NOVO: Função de movimentação injetada pelo hook
     onMoveItem: (item: ItemAquisicao, sourceDiretrizId: string, targetDiretrizId: string) => void;
 }
 
@@ -24,7 +23,7 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
     onEdit,
     onDelete,
     loading,
-    onMoveItem,
+    onMoveItem, // NOVO
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isDragOver, setIsDragOver] = useState(false);
@@ -56,6 +55,7 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                 return;
             }
             
+            // Chama a função de movimentação centralizada
             onMoveItem(item, sourceDiretrizId, diretriz.id);
             
         } catch (error) {
@@ -130,7 +130,8 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                                     <Table className="bg-background border rounded-md overflow-hidden">
                                         <thead>
                                             <TableRow className="text-xs text-muted-foreground hover:bg-background">
-                                                <th className="px-4 py-2 text-left font-normal w-[55%]">Descrição do Item</th>
+                                                <th className="px-4 py-2 text-left font-normal w-[20px]"></th> {/* Coluna para o ícone de arrastar */}
+                                                <th className="px-4 py-2 text-left font-normal w-[45%]">Descrição do Item</th>
                                                 <th className="px-4 py-2 text-center font-normal w-[15%]">Cód. CATMAT</th>
                                                 <th className="px-4 py-2 text-center font-normal w-[10%]">Pregão</th>
                                                 <th className="px-4 py-2 text-center font-normal w-[10%]">UASG</th>
@@ -148,7 +149,7 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                                         </tbody>
                                     </Table>
                                 ) : (
-                                    <p className="text-sm text-muted-foreground">
+                                    <p className="text-sm text-muted-foreground text-center py-4">
                                         {isDragOver ? "Solte o item aqui para movê-lo para este subitem." : "Nenhum item de aquisição detalhado para este subitem."}
                                     </p>
                                 )}

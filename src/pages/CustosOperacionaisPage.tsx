@@ -41,10 +41,11 @@ import {
     DiretrizMaterialConsumo, 
     DiretrizMaterialConsumoForm, 
     ItemAquisicao 
-} from "@/types/diretrizesMaterialConsumo"; // NOVO: Importar tipos de Material de Consumo
-import MaterialConsumoDiretrizFormDialog from "@/components/MaterialConsumoDiretrizFormDialog"; // NOVO: Importar Diálogo
-import MaterialConsumoDiretrizRow from "@/components/MaterialConsumoDiretrizRow"; // NOVO: Importar Linha
+} from "@/types/diretrizesMaterialConsumo";
+import MaterialConsumoDiretrizFormDialog from "@/components/MaterialConsumoDiretrizFormDialog";
+import MaterialConsumoDiretrizRow from "@/components/MaterialConsumoDiretrizRow";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useMaterialConsumoDiretrizes } from "@/hooks/useMaterialConsumoDiretrizes"; // NOVO HOOK
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -154,7 +155,14 @@ const CustosOperacionaisPage = () => {
   const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<CategoriaConcessionaria>(CATEGORIAS_CONCESSIONARIA[0]);
   
   // --- ESTADOS DE DIRETRIZES DE MATERIAL DE CONSUMO (NOVO) ---
-  const [diretrizesMaterialConsumo, setDiretrizesMaterialConsumo] = useState<DiretrizMaterialConsumo[]>([]);
+  // Substituído pelo hook useMaterialConsumoDiretrizes
+  const { 
+      diretrizes: diretrizesMaterialConsumo, 
+      isLoading: isLoadingMaterialConsumo, 
+      handleMoveItem,
+      isMoving: isMovingMaterialConsumo,
+  } = useMaterialConsumoDiretrizes(selectedYear);
+  
   const [isMaterialConsumoFormOpen, setIsMaterialConsumoFormOpen] = useState(false);
   const [diretrizMaterialConsumoToEdit, setDiretrizMaterialConsumoToEdit] = useState<DiretrizMaterialConsumo | null>(null);
   // END MATERIAL CONSUMO STATES
@@ -187,7 +195,7 @@ const CustosOperacionaisPage = () => {
       loadDiretrizesForYear(selectedYear);
       loadDiretrizesPassagens(selectedYear); 
       loadDiretrizesConcessionaria(selectedYear);
-      loadDiretrizesMaterialConsumo(selectedYear); // NOVO: Carregar Material de Consumo
+      // loadDiretrizesMaterialConsumo(selectedYear); // REMOVIDO: Agora gerenciado pelo hook
     }
   }, [selectedYear]);
 
@@ -372,31 +380,14 @@ const CustosOperacionaisPage = () => {
     }
   };
   
-  // NOVO: Função para carregar diretrizes de Material de Consumo
+  // NOVO: Função para carregar diretrizes de Material de Consumo (AGORA USANDO O HOOK)
   const loadDiretrizesMaterialConsumo = async (year: number) => {
-    try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        
-        const { data, error } = await supabase
-            .from('diretrizes_material_consumo')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('ano_referencia', year)
-            .order('nr_subitem', { ascending: true });
-            
-        if (error) throw error;
-        
-        const typedData: DiretrizMaterialConsumo[] = (data || []).map(d => ({
-            ...d,
-            itens_aquisicao: (d.itens_aquisicao as unknown as ItemAquisicao[]) || [],
-        }));
-        
-        setDiretrizesMaterialConsumo(typedData);
-        
-    } catch (error) {
-        console.error("Erro ao carregar diretrizes de material de consumo:", error);
-        toast.error("Erro ao carregar diretrizes de material de consumo.");
+    // A busca agora é feita pelo hook useMaterialConsumoDiretrizes
+    // Esta função é mantida apenas para fins de compatibilidade com o fluxo de cópia/exclusão de anos,
+    // mas o estado principal é gerenciado pelo hook.
+    if (user?.id && year > 0) {
+        // Força a revalidação da query do hook
+        queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', year, user.id] });
     }
   };
 
@@ -1157,7 +1148,8 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
-          await loadDiretrizesMaterialConsumo(selectedYear);
+          // Força a revalidação do hook
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user.id] });
           setDiretrizMaterialConsumoToEdit(null);
           setIsMaterialConsumoFormOpen(false);
           
@@ -1185,7 +1177,8 @@ const CustosOperacionaisPage = () => {
           setLoading(true);
           await supabase.from('diretrizes_material_consumo').delete().eq('id', id);
           toast.success("Subitem da ND excluído!");
-          await loadDiretrizesMaterialConsumo(selectedYear);
+          // Força a revalidação do hook
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
       } catch (error) {
           toast.error(sanitizeError(error));
       } finally {
@@ -1194,6 +1187,8 @@ const CustosOperacionaisPage = () => {
   };
   
   const renderMaterialConsumoSection = () => {
+      const isDataLoading = isLoadingMaterialConsumo || isMovingMaterialConsumo;
+      
       return (
           <div className="space-y-4">
               
@@ -1209,16 +1204,18 @@ const CustosOperacionaisPage = () => {
                                   <TableHead className="w-[100px] text-center">Ações</TableHead>
                               </TableRow>
                           </TableHeader>
-                          {/* Removendo TableBody para que MaterialConsumoDiretrizRow possa renderizar diretamente as linhas */}
-                          {diretrizesMaterialConsumo.map(d => (
-                              <MaterialConsumoDiretrizRow
-                                  key={d.id}
-                                  diretriz={d}
-                                  onEdit={handleStartEditMaterialConsumo}
-                                  onDelete={handleDeleteMaterialConsumo}
-                                  loading={loading}
-                              />
-                          ))}
+                          <TableBody>
+                              {diretrizesMaterialConsumo.map(d => (
+                                  <MaterialConsumoDiretrizRow
+                                      key={d.id}
+                                      diretriz={d}
+                                      onEdit={handleStartEditMaterialConsumo}
+                                      onDelete={handleDeleteMaterialConsumo}
+                                      loading={loading || isDataLoading}
+                                      onMoveItem={handleMoveItem} // NOVO: Passando a função de movimentação
+                                  />
+                              ))}
+                          </TableBody>
                       </Table>
                   </Card>
               ) : (
@@ -1231,7 +1228,7 @@ const CustosOperacionaisPage = () => {
                   <Button 
                       type="button" 
                       onClick={handleOpenNewMaterialConsumo}
-                      disabled={loading}
+                      disabled={loading || isDataLoading}
                       variant="outline" 
                       size="sm" 
                       className="w-full"
@@ -1240,6 +1237,15 @@ const CustosOperacionaisPage = () => {
                       Adicionar Novo Subitem da ND
                   </Button>
               </div>
+              
+              {(isLoadingMaterialConsumo || isMovingMaterialConsumo) && (
+                  <div className="text-center py-2">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
+                      <p className="text-xs text-muted-foreground mt-1">
+                          {isMovingMaterialConsumo ? "Movendo item..." : "Carregando subitens..."}
+                      </p>
+                  </div>
+              )}
           </div>
       );
   };
