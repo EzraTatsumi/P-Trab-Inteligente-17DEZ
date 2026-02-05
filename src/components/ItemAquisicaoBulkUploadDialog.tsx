@@ -215,6 +215,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                                     accept=".xlsx"
                                     onChange={handleFileChange}
                                     disabled={loading}
+                                    className="rounded-full border-primary/50 bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer file:bg-primary file:text-primary-foreground file:font-medium file:rounded-full file:border-0 file:cursor-pointer file:hover:bg-primary/90"
                                 />
                             </div>
                             <Button 
