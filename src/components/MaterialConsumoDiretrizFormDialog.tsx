@@ -293,7 +293,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         required
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                        Se o valor for desconhecido, use um valor estimado.
+                                        * Valor estimado.
                                     </p>
                                 </div>
                                 
@@ -308,7 +308,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         onKeyDown={handleEnterToNextField}
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                        Se não houver pregão, escreva "EM PROCESSO DE ABERTURA".
+                                        Se for o caso, usar "EM PROCESSO DE ABERTURA".
                                     </p>
                                 </div>
                                 
