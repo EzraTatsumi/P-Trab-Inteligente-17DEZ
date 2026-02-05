@@ -131,7 +131,7 @@ const PassagemDiretrizRow: React.FC<PassagemDiretrizRowProps> = ({ diretriz, onE
                                                     <span className="text-xs text-muted-foreground">
                                                         {trecho.is_ida_volta ? 'Ida/Volta' : 'Somente Ida'}
                                                     </span>
-                                                    <span className="font-bold text-primary font-mono">
+                                                    <span className="font-bold text-primary">
                                                         {formatCurrency(trecho.valor)}
                                                     </span>
                                                 </div>
