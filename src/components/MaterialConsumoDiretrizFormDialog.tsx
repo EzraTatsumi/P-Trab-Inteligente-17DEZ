@@ -249,80 +249,86 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                             {editingItemId ? "Editar Item de Aquisição" : "Adicionar Novo Item de Aquisição"}
                         </CardTitle>
                         
-                        {/* Formulário de Item - Ajustado para 5 colunas + 1 para o botão */}
-                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 border p-3 rounded-lg bg-muted/50">
-                            {/* Campo Descrição do Item (2 colunas) */}
-                            <div className="space-y-2 col-span-2">
-                                <Label htmlFor="item-descricao">Descrição do Item *</Label>
-                                <Input
-                                    id="item-descricao"
-                                    value={itemForm.descricao_item}
-                                    onChange={(e) => setItemForm({ ...itemForm, descricao_item: e.target.value })}
-                                    placeholder="Ex: Caneta Esferográfica Azul"
-                                    onKeyDown={handleEnterToNextField}
-                                    required
-                                />
+                        {/* Formulário de Item - Reorganizado em duas linhas lógicas */}
+                        <div className="border p-3 rounded-lg bg-muted/50 space-y-4">
+                            {/* PRIMEIRA LINHA: Descrição e CATMAT */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                {/* Campo Descrição do Item (3 colunas) */}
+                                <div className="space-y-2 col-span-3">
+                                    <Label htmlFor="item-descricao">Descrição do Item *</Label>
+                                    <Input
+                                        id="item-descricao"
+                                        value={itemForm.descricao_item}
+                                        onChange={(e) => setItemForm({ ...itemForm, descricao_item: e.target.value })}
+                                        placeholder="Ex: Caneta Esferográfica Azul"
+                                        onKeyDown={handleEnterToNextField}
+                                        required
+                                    />
+                                </div>
+                                
+                                {/* Campo Código CATMAT (1 coluna) */}
+                                <div className="space-y-2 col-span-1">
+                                    <Label htmlFor="item-catmat">Cód. CATMAT</Label>
+                                    <Input
+                                        id="item-catmat"
+                                        value={itemForm.codigo_catmat}
+                                        onChange={(e) => setItemForm({ ...itemForm, codigo_catmat: e.target.value })}
+                                        placeholder="Ex: 123456789"
+                                        onKeyDown={handleEnterToNextField}
+                                    />
+                                </div>
                             </div>
-                            
-                            {/* NOVO CAMPO: Código CATMAT (1 coluna) */}
-                            <div className="space-y-2 col-span-1">
-                                <Label htmlFor="item-catmat">Cód. CATMAT</Label>
-                                <Input
-                                    id="item-catmat"
-                                    value={itemForm.codigo_catmat}
-                                    onChange={(e) => setItemForm({ ...itemForm, codigo_catmat: e.target.value })}
-                                    placeholder="Ex: 123456789"
-                                    onKeyDown={handleEnterToNextField}
-                                />
-                            </div>
-                            
-                            {/* Campo Valor Unitário (1 coluna) */}
-                            <div className="space-y-2 col-span-1">
-                                <Label htmlFor="item-valor">Valor Unitário (R$) *</Label>
-                                <CurrencyInput
-                                    id="item-valor"
-                                    rawDigits={itemForm.rawValor}
-                                    onChange={handleItemCurrencyChange}
-                                    placeholder="0,00"
-                                    onKeyDown={handleEnterToNextField}
-                                    required
-                                />
-                            </div>
-                            
-                            {/* Campo Pregão (1 coluna) */}
-                            <div className="space-y-2 col-span-1">
-                                <Label htmlFor="item-pregao">Pregão/Ref. Preço</Label>
-                                <Input
-                                    id="item-pregao"
-                                    value={itemForm.numero_pregao}
-                                    onChange={(e) => setItemForm({ ...itemForm, numero_pregao: e.target.value })}
-                                    placeholder="Ex: 01/2024"
-                                    onKeyDown={handleEnterToNextField}
-                                />
-                            </div>
-                            
-                            {/* Campo UASG (1 coluna) */}
-                            <div className="space-y-2 col-span-1">
-                                <Label htmlFor="item-uasg">UASG</Label>
-                                <Input
-                                    id="item-uasg"
-                                    value={itemForm.uasg}
-                                    onChange={(e) => setItemForm({ ...itemForm, uasg: e.target.value })}
-                                    placeholder="Ex: 160001"
-                                    onKeyDown={handleEnterToNextField}
-                                />
-                            </div>
-                            
-                            {/* Botão Adicionar (1 coluna) */}
-                            <div className="space-y-2 col-span-1 flex flex-col justify-end">
-                                <Button 
-                                    type="button" 
-                                    onClick={handleAddItem}
-                                    disabled={!itemForm.descricao_item || itemForm.valor_unitario <= 0}
-                                >
-                                    {editingItemId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                                    {editingItemId ? "Atualizar" : "Adicionar"}
-                                </Button>
+
+                            {/* SEGUNDA LINHA: Valor, Pregão, UASG e Botão */}
+                            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                                {/* Campo Valor Unitário (2 colunas) */}
+                                <div className="space-y-2 col-span-2">
+                                    <Label htmlFor="item-valor">Valor Unitário (R$) *</Label>
+                                    <CurrencyInput
+                                        id="item-valor"
+                                        rawDigits={itemForm.rawValor}
+                                        onChange={handleItemCurrencyChange}
+                                        placeholder="0,00"
+                                        onKeyDown={handleEnterToNextField}
+                                        required
+                                    />
+                                </div>
+                                
+                                {/* Campo Pregão (2 colunas) */}
+                                <div className="space-y-2 col-span-2">
+                                    <Label htmlFor="item-pregao">Pregão/Ref. Preço</Label>
+                                    <Input
+                                        id="item-pregao"
+                                        value={itemForm.numero_pregao}
+                                        onChange={(e) => setItemForm({ ...itemForm, numero_pregao: e.target.value })}
+                                        placeholder="Ex: 01/2024"
+                                        onKeyDown={handleEnterToNextField}
+                                    />
+                                </div>
+                                
+                                {/* Campo UASG (1 coluna) */}
+                                <div className="space-y-2 col-span-1">
+                                    <Label htmlFor="item-uasg">UASG</Label>
+                                    <Input
+                                        id="item-uasg"
+                                        value={itemForm.uasg}
+                                        onChange={(e) => setItemForm({ ...itemForm, uasg: e.target.value })}
+                                        placeholder="Ex: 160001"
+                                        onKeyDown={handleEnterToNextField}
+                                    />
+                                </div>
+                                
+                                {/* Botão Adicionar (1 coluna) */}
+                                <div className="space-y-2 col-span-1 flex flex-col justify-end">
+                                    <Button 
+                                        type="button" 
+                                        onClick={handleAddItem}
+                                        disabled={!itemForm.descricao_item || itemForm.valor_unitario <= 0}
+                                    >
+                                        {editingItemId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                        {editingItemId ? "Atualizar" : "Adicionar"}
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                         
@@ -331,11 +337,11 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[30%]">Descrição do Item</TableHead>
+                                        <TableHead className="w-[45%]">Descrição do Item</TableHead>
                                         <TableHead className="w-[15%] text-center">Cód. CATMAT</TableHead>
-                                        <TableHead className="w-[15%] text-center">Pregão/Ref.</TableHead>
-                                        <TableHead className="w-[15%] text-center">UASG</TableHead>
-                                        <TableHead className="w-[15%] text-right">Valor Unitário</TableHead>
+                                        <TableHead className="w-[10%] text-center">Pregão/Ref.</TableHead>
+                                        <TableHead className="w-[10%] text-center">UASG</TableHead>
+                                        <TableHead className="w-[20%] text-right">Valor Unitário</TableHead>
                                         <TableHead className="w-[10%] text-right">Ações</TableHead>
                                     </TableRow>
                                 </TableHeader>
