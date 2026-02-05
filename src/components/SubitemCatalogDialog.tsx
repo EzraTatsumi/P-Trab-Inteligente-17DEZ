@@ -66,7 +66,7 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Catálogo de Subitens da ND</DialogesaTitle>
+                    <DialogTitle>Catálogo de Subitens da ND</DialogTitle>
                     <DialogDescription>
                         Selecione um subitem de referência para preencher os dados básicos do seu registro.
                     </DialogDescription>
