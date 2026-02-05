@@ -308,7 +308,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         onKeyDown={handleEnterToNextField}
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                        *"EM PROCESSO DE ABERTURA".
+                                        *Em processo de abertura.
                                     </p>
                                 </div>
                                 
