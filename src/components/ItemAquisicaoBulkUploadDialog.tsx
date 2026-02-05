@@ -205,7 +205,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
 
                 <div className="space-y-4 py-2">
                     
-                    <Alert variant="default">
+                    <Alert variant="warning">
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>Formato Obrigatório</AlertTitle>
                         <AlertDescription>
