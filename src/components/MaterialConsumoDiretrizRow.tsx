@@ -3,16 +3,20 @@ import { TableCell, TableRow, Table } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
+import ItemAquisicaoDraggableRow from "./ItemAquisicaoDraggableRow";
 import { formatCurrency, formatCodug } from "@/lib/formatUtils";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import ItemAquisicaoDraggableRow from "./ItemAquisicaoDraggableRow";
 
 interface MaterialConsumoDiretrizRowProps {
     diretriz: DiretrizMaterialConsumo;
     onEdit: (diretriz: DiretrizMaterialConsumo) => void;
     onDelete: (id: string, nome: string) => Promise<void>;
     loading: boolean;
+    onMoveItem: (item: ItemAquisicao, sourceDiretrizId: string, targetDiretrizId: string) => void;
 }
 
 const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
@@ -20,10 +24,44 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
     onEdit,
     onDelete,
     loading,
+    onMoveItem,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [isDragOver, setIsDragOver] = useState(false);
     
     const itensAquisicao = diretriz.itens_aquisicao || [];
+    
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault(); // Necessário para permitir o drop
+        e.dataTransfer.dropEffect = "move";
+        setIsDragOver(true);
+    };
+    
+    const handleDragLeave = () => {
+        setIsDragOver(false);
+    };
+    
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        
+        const data = e.dataTransfer.getData("application/json");
+        if (!data) return;
+        
+        try {
+            const { item, sourceDiretrizId } = JSON.parse(data) as { item: ItemAquisicao, sourceDiretrizId: string };
+            
+            // Previne o drop na mesma diretriz
+            if (sourceDiretrizId === diretriz.id) {
+                return;
+            }
+            
+            onMoveItem(item, sourceDiretrizId, diretriz.id);
+            
+        } catch (error) {
+            console.error("Erro ao processar dados de drop:", error);
+        }
+    };
 
     return (
         <React.Fragment>
@@ -78,38 +116,44 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                 <TableCell colSpan={3} className="p-0">
                     <Collapsible open={isOpen}>
                         <CollapsibleContent>
-                            <div className="p-4 bg-muted/50 border-t border-border">
-                            
-                            {itensAquisicao.length > 0 ? (
-                                <Table className="bg-background border rounded-md overflow-hidden">
-                                    <thead>
-                                        <TableRow className="text-xs text-muted-foreground hover:bg-background">
-                                            <th className="px-4 py-2 text-left font-normal w-[55%]">Descrição do Item</th>
-                                            <th className="px-4 py-2 text-center font-normal w-[15%]">Cód. CATMAT</th>
-                                            <th className="px-4 py-2 text-center font-normal w-[10%]">Pregão</th>
-                                            <th className="px-4 py-2 text-center font-normal w-[10%]">UASG</th>
-                                            <th className="px-4 py-2 text-right font-normal w-[10%]">Valor Unitário</th>
-                                        </TableRow>
-                                    </thead>
-                                    <tbody>
-                                        {itensAquisicao.map((item) => (
-                                            <TableRow key={item.id} className="text-sm">
-                                                <TableCell className="px-4 py-2">{item.descricao_item}</TableCell>
-                                                <TableCell className="px-4 py-2 text-center">{item.codigo_catmat || 'N/A'}</TableCell>
-                                                <TableCell className="px-4 py-2 text-center">{item.numero_pregao || 'N/A'}</TableCell>
-                                                <TableCell className="px-4 py-2 text-center">{formatCodug(item.uasg) || 'N/A'}</TableCell>
-                                                <TableCell className="px-4 py-2 text-right font-bold text-primary">
-                                                    {formatCurrency(item.valor_unitario)}
-                                                </TableCell>
+                            <div
+                                className={cn(
+                                    "p-4 bg-muted/50 border-t border-border transition-colors",
+                                    isDragOver && "bg-primary/10 border-primary ring-2 ring-primary/50"
+                                )}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
+                            >
+                                
+                                {itensAquisicao.length > 0 ? (
+                                    <Table className="bg-background border rounded-md overflow-hidden">
+                                        <thead>
+                                            <TableRow className="text-xs text-muted-foreground hover:bg-background">
+                                                <th className="px-4 py-2 text-left font-normal w-[55%]">Descrição do Item</th>
+                                                <th className="px-4 py-2 text-center font-normal w-[15%]">Cód. CATMAT</th>
+                                                <th className="px-4 py-2 text-center font-normal w-[10%]">Pregão</th>
+                                                <th className="px-4 py-2 text-center font-normal w-[10%]">UASG</th>
+                                                <th className="px-4 py-2 text-right font-normal w-[10%]">Valor Unitário</th>
                                             </TableRow>
-                                        ))}
-                                    </tbody>
-                                </Table>
-                            ) : (
-                                <p className="text-sm text-muted-foreground">Nenhum item de aquisição detalhado para este subitem.</p>
-                            )}
-                        </div>
-                        </CollapsibleContent>
+                                        </thead>
+                                        <tbody>
+                                            {itensAquisicao.map((item) => (
+                                                <ItemAquisicaoDraggableRow
+                                                    key={item.id}
+                                                    item={item}
+                                                    diretrizId={diretriz.id}
+                                                />
+                                            ))}
+                                        </tbody>
+                                    </Table>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">
+                                        {isDragOver ? "Solte o item aqui para movê-lo para este subitem." : "Nenhum item de aquisição detalhado para este subitem."}
+                                    </p>
+                                )}
+                            </div>
+                            </CollapsibleContent>
                     </Collapsible>
                 </TableCell>
             </TableRow>
