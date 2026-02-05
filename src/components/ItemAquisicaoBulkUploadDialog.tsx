@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
+import React, { useState, useCallback } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Import, AlertCircle, Download, Loader2, FileSpreadsheet } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, FileText, CheckCircle, AlertTriangle, Upload, Download, XCircle, Import, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { parseInputToNumber } from "@/lib/formatUtils";
-import { cn } from '@/lib/utils';
+import { formatCurrency, parseInputToNumber } from "@/lib/formatUtils";
+import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Importando Alert
 
 interface ItemAquisicaoBulkUploadDialogProps {
     open: boolean;
@@ -16,14 +18,11 @@ interface ItemAquisicaoBulkUploadDialogProps {
     onImport: (items: ItemAquisicao[]) => void;
 }
 
-// Cabeçalhos simplificados para o template CSV/Excel
-const TEMPLATE_HEADERS = [
-    "Descricao do Item (Obrigatorio)",
-    "Valor Unitario (R$ - Obrigatorio)",
-    "Numero do Pregao/Ref. Preco",
-    "UASG",
-    "Codigo CATMAT",
-];
+interface ValidationResult {
+    success: boolean;
+    message: string;
+    rowNumber: number;
+}
 
 const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps> = ({
     open,
@@ -32,157 +31,164 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
 }) => {
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
-    const [parsedItems, setParsedItems] = useState<ItemAquisicao[]>([]);
-    const [errorDetails, setErrorDetails] = useState<string | null>(null);
+    const [processedItems, setProcessedItems] = useState<ItemAquisicao[]>([]);
+    const [validationResults, setValidationResults] = useState<ValidationResult[]>([]);
+    const [isProcessed, setIsProcessed] = useState(false);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = event.target.files?.[0] || null;
-        setFile(selectedFile);
-        setParsedItems([]);
-        setErrorDetails(null);
+        const selectedFile = event.target.files?.[0];
+        if (selectedFile) {
+            if (selectedFile.type !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+                toast.error("Formato de arquivo inválido. Por favor, use um arquivo .xlsx.");
+                setFile(null);
+                setProcessedItems([]);
+                setValidationResults([]);
+                setIsProcessed(false);
+                return;
+            }
+            setFile(selectedFile);
+            setProcessedItems([]);
+            setValidationResults([]);
+            setIsProcessed(false);
+        }
     };
 
-    const handleDownloadTemplate = () => {
-        const templateContent = TEMPLATE_HEADERS.join('\t'); // Usando tab para CSV simples
-        
-        const blob = new Blob([templateContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', 'template_itens_aquisicao.xlsx');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        toast.info("Template de importação baixado. Use-o para preencher os dados.");
-    };
-
-    const parseExcel = (file: File) => {
-        return new Promise<ItemAquisicao[]>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = e.target?.result;
-                    const workbook = XLSX.read(data, { type: 'binary' });
-                    const sheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[sheetName];
-                    
-                    // Converte para JSON, usando a primeira linha como cabeçalho
-                    const json: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                    
-                    if (json.length < 2) {
-                        return reject("O arquivo está vazio ou contém apenas o cabeçalho.");
-                    }
-                    
-                    // Mapeia os cabeçalhos da planilha para os nomes esperados
-                    const headers = json[0] as string[];
-                    const dataRows = json.slice(1);
-                    
-                    const expectedHeadersMap: Record<string, string> = {
-                        "Descricao do Item (Obrigatorio)": "descricao_item",
-                        "Valor Unitario (R$ - Obrigatorio)": "valor_unitario",
-                        "Numero do Pregao/Ref. Preco": "numero_pregao",
-                        "UASG": "uasg",
-                        "Codigo CATMAT": "codigo_catmat",
-                    };
-                    
-                    const headerIndices: Record<string, number> = {};
-                    
-                    // Encontra os índices dos cabeçalhos esperados
-                    TEMPLATE_HEADERS.forEach(expectedHeader => {
-                        const index = headers.findIndex(h => h.trim() === expectedHeader);
-                        if (index !== -1) {
-                            headerIndices[expectedHeader] = index;
-                        }
-                    });
-                    
-                    // Verifica se os cabeçalhos obrigatórios estão presentes
-                    const missingHeaders = TEMPLATE_HEADERS.filter(h => h.includes('(Obrigatorio)') && headerIndices[h] === undefined);
-                    if (missingHeaders.length > 0) {
-                        return reject(`Cabeçalhos obrigatórios ausentes: ${missingHeaders.join(', ')}`);
-                    }
-
-                    const items: ItemAquisicao[] = [];
-                    
-                    dataRows.forEach((row: any[], index: number) => {
-                        const rowNumber = index + 2; // Linha 2 é a primeira linha de dados
-                        
-                        const rawDescricao = row[headerIndices[TEMPLATE_HEADERS[0]]] || '';
-                        const rawValor = row[headerIndices[TEMPLATE_HEADERS[1]]] || '';
-                        const rawPregao = row[headerIndices[TEMPLATE_HEADERS[2]]] || '';
-                        const rawUASG = row[headerIndices[TEMPLATE_HEADERS[3]]] || '';
-                        const rawCatmat = row[headerIndices[TEMPLATE_HEADERS[4]]] || '';
-
-                        const descricao_item = String(rawDescricao).trim();
-                        
-                        // O valor pode vir como número (se formatado como moeda no Excel) ou string
-                        let valor_unitario = 0;
-                        if (typeof rawValor === 'number') {
-                            valor_unitario = rawValor;
-                        } else {
-                            valor_unitario = parseInputToNumber(String(rawValor));
-                        }
-                        
-                        if (!descricao_item) {
-                            throw new Error(`Linha ${rowNumber}: Descrição do Item é obrigatória.`);
-                        }
-                        if (valor_unitario <= 0) {
-                            throw new Error(`Linha ${rowNumber}: Valor Unitário deve ser maior que zero.`);
-                        }
-
-                        items.push({
-                            id: Math.random().toString(36).substring(2, 9), // ID temporário
-                            descricao_item: descricao_item,
-                            valor_unitario: valor_unitario,
-                            numero_pregao: String(rawPregao).trim(),
-                            uasg: String(rawUASG).trim(),
-                            codigo_catmat: String(rawCatmat).trim(),
-                        });
-                    });
-
-                    resolve(items);
-                } catch (error: any) {
-                    reject(error.message || "Erro ao processar o arquivo Excel.");
-                }
-            };
-            reader.onerror = (error) => reject("Falha ao ler o arquivo.");
-            reader.readAsBinaryString(file);
-        });
-    };
-
-    const handleProcessFile = async () => {
+    const processExcel = useCallback(async () => {
         if (!file) {
             toast.error("Selecione um arquivo Excel (.xlsx) para importar.");
             return;
         }
 
         setLoading(true);
-        setParsedItems([]);
-        setErrorDetails(null);
+        setProcessedItems([]);
+        setValidationResults([]);
+        setIsProcessed(false);
 
         try {
-            const items = await parseExcel(file);
-            setParsedItems(items);
-            toast.success(`Arquivo processado! ${items.length} itens prontos para importação.`);
+            const workbook = new ExcelJS.Workbook();
+            const buffer = await file.arrayBuffer();
+            await workbook.xlsx.load(buffer);
+
+            const worksheet = workbook.worksheets[0];
+            if (!worksheet) {
+                throw new Error("O arquivo Excel não contém nenhuma planilha.");
+            }
+
+            const newItems: ItemAquisicao[] = [];
+            const results: ValidationResult[] = [];
+            let hasErrors = false;
+
+            // Iterar sobre as linhas, começando da segunda linha (índice 2) para ignorar o cabeçalho
+            worksheet.eachRow((row, rowNumber) => {
+                if (rowNumber === 1) return; // Ignorar cabeçalho
+
+                const rawData = {
+                    descricao_item: row.getCell(1).value?.toString()?.trim() || '', // Coluna A
+                    valor_unitario_raw: row.getCell(2).value, // Coluna B (Pode ser número ou string formatada)
+                    numero_pregao: row.getCell(3).value?.toString()?.trim() || '', // Coluna C
+                    uasg: row.getCell(4).value?.toString()?.trim() || '', // Coluna D
+                    codigo_catmat: row.getCell(5).value?.toString()?.trim() || '', // Coluna E
+                };
+                
+                // Se todas as colunas estiverem vazias, ignora a linha
+                if (!rawData.descricao_item && !rawData.valor_unitario_raw && !rawData.numero_pregao && !rawData.uasg && !rawData.codigo_catmat) {
+                    return;
+                }
+                
+                let valorUnitario = 0;
+                let rowHasError = false;
+                
+                // 1. Validação de Descrição
+                if (!rawData.descricao_item) {
+                    results.push({ success: false, message: "Descrição do Item (Coluna A) é obrigatória.", rowNumber });
+                    rowHasError = true;
+                }
+                
+                // 2. Validação de Valor Unitário
+                if (rawData.valor_unitario_raw === null || rawData.valor_unitario_raw === undefined || rawData.valor_unitario_raw === '') {
+                    results.push({ success: false, message: "Valor Unitário (Coluna B) é obrigatório.", rowNumber });
+                    rowHasError = true;
+                } else {
+                    // Tenta parsear o valor. Se for string, usa parseInputToNumber (que lida com R$ e vírgulas)
+                    if (typeof rawData.valor_unitario_raw === 'string') {
+                        valorUnitario = parseInputToNumber(rawData.valor_unitario_raw);
+                    } else if (typeof rawData.valor_unitario_raw === 'number') {
+                        valorUnitario = rawData.valor_unitario_raw;
+                    }
+                    
+                    if (isNaN(valorUnitario) || valorUnitario <= 0) {
+                        results.push({ success: false, message: "Valor Unitário (Coluna B) deve ser um número positivo.", rowNumber });
+                        rowHasError = true;
+                    }
+                }
+                
+                if (rowHasError) {
+                    hasErrors = true;
+                } else {
+                    // Se não houver erros, adiciona o item processado
+                    newItems.push({
+                        id: Math.random().toString(36).substring(2, 9), // ID temporário para o React
+                        descricao_item: rawData.descricao_item,
+                        valor_unitario: valorUnitario,
+                        numero_pregao: rawData.numero_pregao,
+                        uasg: rawData.uasg,
+                        codigo_catmat: rawData.codigo_catmat,
+                    });
+                    results.push({ success: true, message: "Item validado com sucesso.", rowNumber });
+                }
+            });
+
+            setProcessedItems(newItems);
+            setValidationResults(results);
+            setIsProcessed(true);
+
+            if (hasErrors) {
+                toast.warning("Importação concluída com erros. Verifique a tabela de validação.");
+            } else if (newItems.length > 0) {
+                toast.success(`Processamento concluído! ${newItems.length} itens prontos para importação.`);
+            } else {
+                toast.info("Nenhuma linha de dados válida encontrada no arquivo.");
+            }
+
         } catch (error: any) {
-            setErrorDetails(error);
-            toast.error("Erro ao processar o arquivo.", { description: error });
+            console.error("Erro ao processar Excel:", error);
+            toast.error(error.message || "Erro desconhecido ao processar o arquivo.");
+            setValidationResults([{ success: false, message: error.message || "Erro desconhecido.", rowNumber: 0 }]);
         } finally {
             setLoading(false);
         }
-    };
+    }, [file]);
 
     const handleConfirmImport = () => {
-        if (parsedItems.length === 0) {
+        if (processedItems.length === 0) {
             toast.error("Nenhum item válido para importar.");
             return;
         }
-        onImport(parsedItems);
+        onImport(processedItems);
         onOpenChange(false);
+        // Reset state after successful import
         setFile(null);
-        setParsedItems([]);
-        setErrorDetails(null);
+        setProcessedItems([]);
+        setValidationResults([]);
+        setIsProcessed(false);
     };
+    
+    const handleDownloadTemplate = () => {
+        // Cria um link temporário para download do template CSV
+        const templateContent = "Descrição do Item (Obrigatório);Valor Unitário (R$ - Obrigatório);Número do Pregão/Ref. Preço;UASG;Código CATMAT\n";
+        const blob = new Blob([templateContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'template_material_consumo.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.info("Baixando template CSV. Use o formato XLSX para importação.");
+    };
+
+    const totalErrors = validationResults.filter(r => !r.success && r.rowNumber > 0).length;
+    const totalSuccess = processedItems.length;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -193,118 +199,143 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                         Importação em Massa de Itens de Aquisição
                     </DialogTitle>
                     <DialogDescription>
-                        Importe itens de aquisição a partir de uma planilha Excel (.xlsx).
+                        Carregue uma planilha (.xlsx) para adicionar itens de aquisição ao subitem da ND.
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-4 py-4">
+                <div className="space-y-4 py-2">
                     
-                    {/* Seção de Template e Formato */}
-                    <Alert variant="secondary">
+                    <Alert variant="default">
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>Formato Obrigatório</AlertTitle>
                         <AlertDescription>
-                            <p className="mb-2">
-                                O arquivo deve ser um Excel (.xlsx) e conter exatamente os seguintes cabeçalhos na primeira linha:
-                            </p>
-                            <div className="bg-background p-2 rounded-md border text-sm font-mono overflow-x-auto">
-                                {TEMPLATE_HEADERS.join(' | ')}
-                            </div>
-                            <Button 
-                                variant="link" 
-                                size="sm" 
-                                onClick={handleDownloadTemplate}
-                                className="p-0 h-auto mt-2 text-primary"
-                            >
-                                <Download className="h-4 w-4 mr-1" />
-                                Baixar Template de Exemplo
-                            </Button>
+                            O arquivo deve ser **.xlsx** e conter as colunas exatas na primeira linha:
+                            <span className="font-mono text-sm block mt-1">
+                                'Descrição do Item', 'Valor Unitário (R$)', 'Número do Pregão/Ref. Preço', 'UASG', 'Código CATMAT'
+                            </span>
+                            <span className="text-xs mt-2 block">
+                                Atenção: Apenas as colunas 'Descrição do Item' e 'Valor Unitário (R$)' são obrigatórias.
+                            </span>
                         </AlertDescription>
                     </Alert>
-
-                    {/* Seção de Upload */}
-                    <div className="flex items-center space-x-4 border p-4 rounded-lg bg-muted/50">
-                        <div className="flex-1 space-y-2">
-                            <Label htmlFor="excel-file" className="text-base font-medium">
-                                Selecione o Arquivo (.xlsx)
-                            </Label>
-                            <div className="flex items-center space-x-2">
-                                <Input
-                                    id="excel-file"
-                                    type="file"
-                                    accept=".xlsx"
-                                    onChange={handleFileChange}
-                                    className={cn(
-                                        "flex-1 cursor-pointer file:bg-blue-600 file:text-white file:font-semibold file:border-blue-600 file:hover:bg-blue-700 file:transition-colors",
-                                        "border-blue-500 focus-visible:ring-blue-500"
-                                    )}
-                                />
-                                <Button 
-                                    type="button" 
-                                    onClick={handleProcessFile}
-                                    disabled={!file || loading}
-                                >
-                                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileSpreadsheet className="h-4 w-4 mr-2" />}
-                                    Processar Arquivo
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
                     
-                    {/* Detalhes do Processamento */}
-                    {errorDetails && (
-                        <Alert variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>Erro de Processamento</AlertTitle>
-                            <AlertDescription>
-                                {errorDetails}
-                            </AlertDescription>
-                        </Alert>
-                    )}
+                    <Card className="p-4">
+                        <div className="flex justify-between items-center mb-4">
+                            <h4 className="text-base font-semibold">Passo 1: Carregar Arquivo</h4>
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={handleDownloadTemplate}
+                            >
+                                <Download className="h-4 w-4 mr-2" />
+                                Baixar Template
+                            </Button>
+                        </div>
+                        
+                        <div className="flex items-center space-x-4">
+                            <Input
+                                id="excel-file"
+                                type="file"
+                                accept=".xlsx"
+                                onChange={handleFileChange}
+                                className="flex-grow"
+                                disabled={loading}
+                            />
+                            <Button 
+                                onClick={processExcel} 
+                                disabled={!file || loading}
+                            >
+                                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                                Processar
+                            </Button>
+                        </div>
+                        {file && (
+                            <p className="text-sm text-muted-foreground mt-2">
+                                Arquivo selecionado: <span className="font-medium">{file.name}</span>
+                            </p>
+                        )}
+                    </Card>
 
-                    {parsedItems.length > 0 && (
-                        <div className="space-y-2">
-                            <h4 className="font-semibold text-sm">Pré-visualização ({parsedItems.length} itens)</h4>
+                    {isProcessed && (
+                        <Card className="p-4">
+                            <h4 className="text-base font-semibold mb-4">Passo 2: Resultados da Validação</h4>
+                            
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center text-green-600 font-medium">
+                                        <CheckCircle className="h-4 w-4 mr-1" />
+                                        Sucesso: {totalSuccess} itens
+                                    </div>
+                                    <div className="flex items-center text-red-600 font-medium">
+                                        <XCircle className="h-4 w-4 mr-1" />
+                                        Erros: {totalErrors} linhas
+                                    </div>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    Total de linhas processadas: {validationResults.length}
+                                </p>
+                            </div>
+
                             <div className="max-h-60 overflow-y-auto border rounded-md">
                                 <Table>
-                                    <TableHeader>
+                                    <TableHeader className="sticky top-0 bg-background z-10">
                                         <TableRow>
-                                            <TableHead className="w-[40%]">Descrição</TableHead>
-                                            <TableHead className="w-[20%] text-right">Valor Unitário</TableHead>
-                                            <TableHead className="w-[15%] text-center">Pregão</TableHead>
-                                            <TableHead className="w-[15%] text-center">CATMAT</TableHead>
+                                            <TableHead className="w-[10%] text-center">Linha</TableHead>
+                                            <TableHead className="w-[10%] text-center">Status</TableHead>
+                                            <TableHead className="w-[80%]">Mensagem / Item</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {parsedItems.map((item, index) => (
-                                            <TableRow key={index}>
-                                                <TableCell className="text-sm">{item.descricao_item}</TableCell>
-                                                <TableCell className="text-right font-mono">{item.valor_unitario.toFixed(2).replace('.', ',')}</TableCell>
-                                                <TableCell className="text-center text-xs">{item.numero_pregao || 'N/A'}</TableCell>
-                                                <TableCell className="text-center text-xs">{item.codigo_catmat || 'N/A'}</TableCell>
+                                        {validationResults.map((result, index) => (
+                                            <TableRow key={index} className={result.success ? "bg-green-500/5" : "bg-red-500/5"}>
+                                                <TableCell className="text-center font-mono text-xs">{result.rowNumber}</TableCell>
+                                                <TableCell className="text-center">
+                                                    {result.success ? (
+                                                        <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />
+                                                    ) : (
+                                                        <AlertTriangle className="h-4 w-4 text-red-600 mx-auto" />
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-sm">
+                                                    {result.success ? (
+                                                        <span className="text-muted-foreground">
+                                                            {/* Encontra o item correspondente para exibir a descrição */}
+                                                            {processedItems.find(item => 
+                                                                // A lógica de indexação é complexa devido aos erros, mas podemos tentar mapear pelo índice de sucesso
+                                                                validationResults.slice(0, index + 1).filter(r => r.success).length - 1 === processedItems.findIndex(p => p.id === processedItems[validationResults.slice(0, index + 1).filter(r => r.success).length - 1]?.id)
+                                                            )?.descricao_item || "Item validado."}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-red-600 font-medium">{result.message}</span>
+                                                    )}
+                                                </TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
                                 </Table>
                             </div>
-                        </div>
+                        </Card>
                     )}
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="mt-4">
                     <Button 
                         type="button" 
                         onClick={handleConfirmImport}
-                        disabled={parsedItems.length === 0 || loading}
+                        disabled={loading || processedItems.length === 0}
                     >
                         <Import className="h-4 w-4 mr-2" />
-                        Importar {parsedItems.length} Itens
+                        Importar {processedItems.length} Itens
                     </Button>
-                    <DialogClose asChild>
-                        <Button type="button" variant="outline" onClick={() => { setFile(null); setParsedItems([]); setErrorDetails(null); }}>
-                            Cancelar
-                        </Button>
-                    </DialogClose>
+                    <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => onOpenChange(false)}
+                        disabled={loading}
+                    >
+                        Cancelar
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
