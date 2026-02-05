@@ -390,7 +390,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                                             <tr>
                                                 {/* Ajuste de largura das colunas */}
                                                 <th className="p-2 text-left font-medium w-[35%]">Descricao do Item</th>
-                                                <th className="p-2 text-right font-medium w-[15%]">Valor Unitario (R$)</th>
+                                                <th className="p-2 text-center font-medium w-[15%]">Valor Unitario (R$)</th>
                                                 <th className="p-2 text-center font-medium w-[15%]">Numero do Pregao/Ref. Preco</th>
                                                 <th className="p-2 text-center font-medium w-[15%]">UASG</th>
                                                 <th className="p-2 text-center font-medium w-[20%]">Codigo CATMAT</th>
