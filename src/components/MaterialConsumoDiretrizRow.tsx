@@ -78,13 +78,13 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                 <TableCell colSpan={3} className="p-0">
                     <Collapsible open={isOpen}>
                         <CollapsibleContent>
-                            <div className="p-4 bg-gray-50 dark:bg-gray-900 border-t">
+                            <div className="p-4 bg-muted/50 border-t border-border">
                             <h5 className="text-sm font-semibold mb-2">Itens de Aquisição ({itensAquisicao.length})</h5>
                             
                             {itensAquisicao.length > 0 ? (
-                                <Table className="bg-white dark:bg-gray-800 border">
+                                <Table className="bg-background border">
                                     <thead>
-                                        <TableRow className="text-xs text-muted-foreground hover:bg-white dark:hover:bg-gray-800">
+                                        <TableRow className="text-xs text-muted-foreground hover:bg-background">
                                             <th className="px-4 py-2 text-left font-normal w-[40%]">Descrição do Item</th>
                                             <th className="px-4 py-2 text-right font-normal w-[20%]">Valor Unitário</th>
                                             <th className="px-4 py-2 text-center font-normal w-[20%]">Pregão/Ref.</th>
