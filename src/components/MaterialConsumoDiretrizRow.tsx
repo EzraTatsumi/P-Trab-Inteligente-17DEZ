@@ -84,11 +84,11 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                                 <Table className="bg-background border rounded-md overflow-hidden">
                                     <thead>
                                         <TableRow className="text-xs text-muted-foreground hover:bg-background">
-                                            <th className="px-4 py-2 text-left font-normal w-[40%]">Descrição do Item</th>
+                                            <th className="px-4 py-2 text-left font-normal w-[45%]">Descrição do Item</th>
                                             <th className="px-4 py-2 text-center font-normal w-[15%]">Cód. CATMAT</th>
                                             <th className="px-4 py-2 text-center font-normal w-[10%]">Pregão</th>
                                             <th className="px-4 py-2 text-center font-normal w-[10%]">UASG</th>
-                                            <th className="px-4 py-2 text-right font-normal w-[25%]">Valor Unitário</th>
+                                            <th className="px-4 py-2 text-right font-normal w-[20%]">Valor Unitário</th>
                                         </TableRow>
                                     </thead>
                                     <tbody>
