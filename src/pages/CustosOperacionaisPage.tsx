@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp, Plus, Trash2, Pencil, Plane, Package, Search } from "lucide-react";
+import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp, Plus, Trash2, Pencil, Plane, Package, Search, FileSpreadsheet } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -45,8 +45,9 @@ import {
 import MaterialConsumoDiretrizFormDialog from "@/components/MaterialConsumoDiretrizFormDialog";
 import MaterialConsumoDiretrizRow from "@/components/MaterialConsumoDiretrizRow";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useMaterialConsumoDiretrizes } from "@/hooks/useMaterialConsumoDiretrizes"; // NOVO HOOK
-import PageMetadata from "@/components/PageMetadata"; // NOVO: Importar PageMetadata
+import { useMaterialConsumoDiretrizes } from "@/hooks/useMaterialConsumoDiretrizes";
+import PageMetadata from "@/components/PageMetadata";
+import MaterialConsumoExportImportDialog from "@/components/MaterialConsumoExportImportDialog"; // NOVO IMPORT
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -241,7 +242,6 @@ const CustosOperacionaisPage = () => {
   const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<CategoriaConcessionaria>(CATEGORIAS_CONCESSIONARIA[0]);
   
   // --- ESTADOS DE DIRETRIZES DE MATERIAL DE CONSUMO (NOVO) ---
-  // Substituído pelo hook useMaterialConsumoDiretrizes
   const { 
       diretrizes: diretrizesMaterialConsumo, 
       isLoading: isLoadingMaterialConsumo, 
@@ -251,10 +251,12 @@ const CustosOperacionaisPage = () => {
   
   const [isMaterialConsumoFormOpen, setIsMaterialConsumoFormOpen] = useState(false);
   const [diretrizMaterialConsumoToEdit, setDiretrizMaterialConsumoToEdit] = useState<DiretrizMaterialConsumo | null>(null);
-  const [searchTerm, setSearchTerm] = useState(""); // NOVO: Estado para o termo de busca
+  const [searchTerm, setSearchTerm] = useState("");
   
-  // NOVO ESTADO: ID do subitem que deve ser aberto após a busca
   const [subitemToOpenId, setSubitemToOpenId] = useState<string | null>(null);
+  
+  // NOVO ESTADO: Diálogo de Export/Import
+  const [isExportImportDialogOpen, setIsExportImportDialogOpen] = useState(false);
   // END MATERIAL CONSUMO STATES
   
   // Efeito para rolar para o topo na montagem
@@ -486,15 +488,11 @@ const CustosOperacionaisPage = () => {
     }
   };
   
-  // NOVO: Função para carregar diretrizes de Material de Consumo (AGORA USANDO O HOOK)
-  const loadDiretrizesMaterialConsumo = async (year: number) => {
-    // A busca agora é feita pelo hook useMaterialConsumoDiretrizes
-    // Esta função é mantida apenas para fins de compatibilidade com o fluxo de cópia/exclusão de anos,
-    // mas o estado principal é gerenciado pelo hook.
-    if (user?.id && year > 0) {
-        // Força a revalidação da query do hook
-        queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', year, user.id] });
-    }
+  // Função para forçar a revalidação da query de Material de Consumo após importação
+  const handleMaterialConsumoImportSuccess = () => {
+      if (user?.id && selectedYear > 0) {
+          queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user.id] });
+      }
   };
 
   const handleSaveDiretrizes = async () => {
@@ -1441,7 +1439,22 @@ const CustosOperacionaisPage = () => {
               
               {/* Lista de Subitens Existentes (Card 846 equivalente) */}
               <Card className="p-4">
-                  <CardTitle className="text-base font-semibold mb-3">Subitens da ND Cadastrados</CardTitle>
+                  <div className="flex justify-between items-center mb-4">
+                      <CardTitle className="text-base font-semibold">
+                          Subitens da ND Cadastrados
+                      </CardTitle>
+                      {/* NOVO BOTÃO DE EXPORT/IMPORT */}
+                      <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setIsExportImportDialogOpen(true)}
+                          disabled={loading || isDataLoading}
+                      >
+                          <FileSpreadsheet className="h-4 w-4 mr-2" />
+                          Exportar/Importar
+                      </Button>
+                  </div>
                   
                   {/* NOVO: Campo de Busca */}
                   <div className="mb-4 relative">
@@ -1789,6 +1802,15 @@ const CustosOperacionaisPage = () => {
           diretrizToEdit={diretrizMaterialConsumoToEdit}
           onSave={handleSaveMaterialConsumo}
           loading={loading}
+      />
+      
+      {/* NOVO: Diálogo de Exportação/Importação de Material de Consumo */}
+      <MaterialConsumoExportImportDialog
+          open={isExportImportDialogOpen}
+          onOpenChange={setIsExportImportDialogOpen}
+          selectedYear={selectedYear}
+          diretrizes={diretrizesMaterialConsumo}
+          onImportSuccess={handleMaterialConsumoImportSuccess}
       />
     </div>
   );
