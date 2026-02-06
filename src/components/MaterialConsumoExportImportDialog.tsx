@@ -7,7 +7,7 @@ import { DiretrizMaterialConsumo, StagingRow } from "@/types/diretrizesMaterialC
 import { exportMaterialConsumoToExcel, processMaterialConsumoImport, persistMaterialConsumoImport } from '@/lib/materialConsumoExportImport';
 import { useSession } from '@/components/SessionContextProvider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatCodug } from '@/lib/formatUtils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -193,7 +193,7 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                 <Button 
                     onClick={handleProcessFile}
                     disabled={isProcessing || !selectedFile}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    className="bg-blue-600 hover:bg-blue-700 text-white" // CORREÇÃO APLICADA AQUI
                 >
                     {isProcessing ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -358,7 +358,6 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                     <Button 
                         onClick={handleExport} 
                         disabled={isProcessing || diretrizes.length === 0}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
                         {isProcessing ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
