@@ -219,7 +219,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     // NOVO: Função simplificada para receber APENAS os itens válidos do diálogo de importação
     const handleBulkImport = (newItems: ItemAquisicao[]) => {
         if (newItems.length === 0) {
-            // O diálogo de importação já deve ter avisado o usuário se não houver itens válidos
+            toast.info("Nenhum item novo para adicionar.");
+            setIsBulkUploadOpen(false); // CORREÇÃO: Fechar o diálogo aqui
             return;
         }
         
@@ -234,6 +235,9 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         // 2. Limpa o formulário de item individual
         setItemForm(initialItemForm);
         setEditingItemId(null);
+        
+        // 3. FECHAR O DIÁLOGO DE IMPORTAÇÃO EM MASSA
+        setIsBulkUploadOpen(false); // CORREÇÃO: Fechar o diálogo aqui
     };
 
     // NOVO: Função para receber dados do catálogo de Subitem e atualizar o formulário
