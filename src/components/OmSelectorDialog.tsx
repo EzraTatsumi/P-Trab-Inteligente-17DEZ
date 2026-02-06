@@ -81,7 +81,7 @@ const OmSelectorDialog: React.FC<OmSelectorDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Catálogo de Unidades Gestoras (UASG)</DialogTitle>
                     <DialogDescription>
@@ -114,9 +114,8 @@ const OmSelectorDialog: React.FC<OmSelectorDialogProps> = ({
                             <Table>
                                 <TableHeader className="sticky top-0 bg-background z-10">
                                     <TableRow>
-                                        <TableHead className="w-[100px] text-center">CODUG (UASG)</TableHead>
-                                        <TableHead className="w-[150px] text-center">Sigla OM</TableHead>
-                                        <TableHead className="text-center">RM Vinculação</TableHead>
+                                        <TableHead className="w-[150px] text-center">CODUG (UASG)</TableHead>
+                                        <TableHead className="text-center">Sigla OM</TableHead>
                                         <TableHead className="w-[120px] text-center">Ação</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -131,9 +130,6 @@ const OmSelectorDialog: React.FC<OmSelectorDialogProps> = ({
                                             >
                                                 <TableCell className="font-semibold text-center">{formatCodug(item.codug_om)}</TableCell>
                                                 <TableCell className="font-medium text-center">{item.nome_om}</TableCell>
-                                                <TableCell className="text-sm text-muted-foreground text-center">
-                                                    {item.rm_vinculacao} ({formatCodug(item.codug_rm_vinculacao)})
-                                                </TableCell>
                                                 <TableCell className="text-center">
                                                     <Button
                                                         variant={isSelected ? "default" : "outline"}
