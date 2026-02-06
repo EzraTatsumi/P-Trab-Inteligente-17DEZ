@@ -11,6 +11,7 @@ export interface ItemAquisicao {
     numero_pregao: string;
     uasg: string;
     codigo_catmat: string;
+    unidade_medida: string; // NOVO CAMPO
 }
 
 /**
@@ -19,4 +20,30 @@ export interface ItemAquisicao {
 export interface DiretrizMaterialConsumo extends Omit<Tables<'diretrizes_material_consumo'>, 'itens_aquisicao'> {
     // Sobrescreve itens_aquisicao para usar o tipo ItemAquisicao[]
     itens_aquisicao: ItemAquisicao[];
+}
+
+/**
+ * Estrutura de uma linha lida do Excel, com status de validação, antes de ser agrupada.
+ */
+export interface StagingRow {
+    // Dados do Subitem ND
+    nr_subitem: string;
+    nome_subitem: string;
+    descricao_subitem: string | null;
+
+    // Dados do Item de Aquisição
+    codigo_catmat: string;
+    descricao_item: string;
+    descricao_reduzida: string;
+    valor_unitario: number;
+    numero_pregao: string;
+    uasg: string;
+    unidade_medida: string; // NOVO CAMPO
+
+    // Status de Validação
+    isValid: boolean;
+    errors: string[];
+    isDuplicateInternal: boolean; // Duplicidade dentro do arquivo
+    isDuplicateExternal: boolean; // Duplicidade de Subitem ND no DB (apenas para o primeiro item do grupo)
+    originalRowIndex: number; // Linha original no Excel
 }

@@ -30,12 +30,13 @@ interface MaterialConsumoDiretrizFormDialogProps {
 // Estado inicial para o formulário de Item de Aquisição
 const initialItemForm: Omit<ItemAquisicao, 'id'> & { rawValor: string } = {
     descricao_item: '',
-    descricao_reduzida: '', // NOVO CAMPO
+    descricao_reduzida: '', 
     valor_unitario: 0,
     rawValor: numberToRawDigits(0),
     numero_pregao: '',
     uasg: '',
     codigo_catmat: '',
+    unidade_medida: '', // NOVO CAMPO
 };
 
 // Definindo o tipo interno do formulário
@@ -148,6 +149,11 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             toast.error("O campo 'Pregão/Ref. Preço' é obrigatório.");
             return;
         }
+        
+        if (!itemForm.unidade_medida || itemForm.unidade_medida.trim() === '') {
+            toast.error("O campo 'Unidade de Medida' é obrigatório.");
+            return;
+        }
 
         if (!itemForm.uasg || itemForm.uasg.trim() === '' || itemForm.uasg.length !== 6) {
             toast.error("O campo 'UASG' é obrigatório e deve ter 6 dígitos.");
@@ -157,11 +163,12 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         const newItem: ItemAquisicao = {
             id: editingItemId || Math.random().toString(36).substring(2, 9),
             descricao_item: itemForm.descricao_item,
-            descricao_reduzida: itemForm.descricao_reduzida, // NOVO CAMPO
+            descricao_reduzida: itemForm.descricao_reduzida, 
             valor_unitario: itemForm.valor_unitario,
             numero_pregao: itemForm.numero_pregao,
             uasg: itemForm.uasg,
             codigo_catmat: itemForm.codigo_catmat, 
+            unidade_medida: itemForm.unidade_medida, // NOVO CAMPO
         };
         
         // 1. Verificar duplicidade antes de adicionar/atualizar
@@ -192,12 +199,13 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         setEditingItemId(item.id);
         setItemForm({
             descricao_item: item.descricao_item,
-            descricao_reduzida: item.descricao_reduzida, // NOVO CAMPO
+            descricao_reduzida: item.descricao_reduzida, 
             valor_unitario: item.valor_unitario,
             rawValor: numberToRawDigits(item.valor_unitario),
             numero_pregao: item.numero_pregao,
             uasg: item.uasg,
             codigo_catmat: item.codigo_catmat, 
+            unidade_medida: item.unidade_medida, // NOVO CAMPO
         });
     };
 
@@ -413,10 +421,10 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 </div>
                             </div>
 
-                            {/* SEGUNDA LINHA: Descrição Reduzida, Valor, Pregão, UASG */}
+                            {/* SEGUNDA LINHA: Descrição Reduzida, Valor, Pregão, UASG, UNIDADE MEDIDA */}
                             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                                {/* Campo Descrição Reduzida (2 colunas) */}
-                                <div className="space-y-2 col-span-2">
+                                {/* Campo Descrição Reduzida (1 coluna) */}
+                                <div className="space-y-2 col-span-1">
                                     <Label htmlFor="item-descricao-reduzida">Descrição Reduzida</Label>
                                     <Input
                                         id="item-descricao-reduzida"
@@ -424,6 +432,19 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         onChange={(e) => setItemForm({ ...itemForm, descricao_reduzida: e.target.value })}
                                         placeholder="Ex: Caneta Azul"
                                         onKeyDown={handleEnterToNextField}
+                                    />
+                                </div>
+                                
+                                {/* Campo Unidade de Medida (1 coluna) */}
+                                <div className="space-y-2 col-span-1">
+                                    <Label htmlFor="item-unidade">Unidade de Medida *</Label>
+                                    <Input
+                                        id="item-unidade"
+                                        value={itemForm.unidade_medida}
+                                        onChange={(e) => setItemForm({ ...itemForm, unidade_medida: e.target.value })}
+                                        placeholder="Ex: UN, CX, PCT"
+                                        onKeyDown={handleEnterToNextField}
+                                        required
                                     />
                                 </div>
                                 
@@ -483,6 +504,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         !itemForm.descricao_item || 
                                         itemForm.valor_unitario <= 0 ||
                                         !itemForm.numero_pregao || 
+                                        !itemForm.unidade_medida ||
                                         itemForm.uasg.length !== 6
                                     }
                                 >
@@ -497,9 +519,10 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[25%]">Descrição Reduzida</TableHead>
-                                        <TableHead className="w-[25%]">Descrição Completa</TableHead>
+                                        <TableHead className="w-[20%]">Descrição Reduzida</TableHead>
+                                        <TableHead className="w-[20%]">Descrição Completa</TableHead>
                                         <TableHead className="w-[10%] text-center">Cód. CATMAT</TableHead>
+                                        <TableHead className="w-[10%] text-center">Unidade</TableHead>
                                         <TableHead className="w-[10%] text-center">Pregão/Ref.</TableHead>
                                         <TableHead className="w-[10%] text-center">UASG</TableHead>
                                         <TableHead className="w-[10%] text-right">Valor Unitário</TableHead>
@@ -512,6 +535,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                             <TableCell className="font-medium text-sm">{item.descricao_reduzida || 'N/A'}</TableCell>
                                             <TableCell className="font-medium text-sm">{item.descricao_item}</TableCell>
                                             <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
+                                            <TableCell className="text-center text-sm">{item.unidade_medida}</TableCell>
                                             <TableCell className="text-center text-sm">{item.numero_pregao || 'N/A'}</TableCell>
                                             <TableCell className="text-center text-sm">{formatCodug(item.uasg) || 'N/A'}</TableCell>
                                             <TableCell className="text-right font-bold text-primary text-sm">
