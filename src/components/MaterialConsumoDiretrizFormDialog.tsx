@@ -510,8 +510,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                             <TableCell className="w-[5%] text-center p-2">
                                                 <GripVertical className="h-4 w-4 text-muted-foreground mx-auto" />
                                             </TableCell>
-                                            <TableCell className="font-medium text-sm">{item.descricao_reduzida || 'N/A'}</TableCell>
-                                            <TableCell className="font-medium text-sm">{item.descricao_item}</TableCell>
+                                            <TableCell className="font-center text-sm">{item.descricao_reduzida || 'N/A'}</TableCell>
+                                            <TableCell className="font-center text-sm">{item.descricao_item}</TableCell>
                                             <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
                                             <TableCell className="text-center text-sm">{item.numero_pregao || 'N/A'}</TableCell>
                                             <TableCell className="text-right font-bold text-primary">
