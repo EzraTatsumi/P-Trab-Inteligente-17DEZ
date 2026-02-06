@@ -33,7 +33,6 @@ const ItemAquisicaoDraggableRow: React.FC<ItemAquisicaoDraggableRowProps> = ({ i
             </TableCell>
             <TableCell className="font-center font-bold text-xs w-[35%] p-2">{item.descricao_reduzida || item.descricao_item}</TableCell>
             <TableCell className="w-[10%] text-center text-xs p-2">{item.codigo_catmat || 'N/A'}</TableCell>
-            <TableCell className="w-[10%] text-center text-xs p-2">{item.unidade_medida}</TableCell>
             <TableCell className="w-[10%] text-center text-xs p-2">{item.numero_pregao || 'N/A'}</TableCell>
             <TableCell className="w-[10%] text-center text-xs p-2">{formatCodug(item.uasg) || 'N/A'}</TableCell>
             <TableCell className="w-[15%] text-right font-bold text-xs p-2">

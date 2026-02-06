@@ -20,7 +20,7 @@ export async function exportMaterialConsumoToExcel(
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Itens de Aquisição');
 
-    // 1. Definir Colunas
+    // 1. Definir Colunas (Conforme o layout desejado)
     worksheet.columns = [
         // Subitem ND (Chaves de Agrupamento)
         { header: 'NR_SUBITEM', key: 'nr_subitem', width: 15 },
@@ -31,7 +31,6 @@ export async function exportMaterialConsumoToExcel(
         { header: 'CODIGO_CATMAT', key: 'codigo_catmat', width: 15 },
         { header: 'DESCRICAO_ITEM', key: 'descricao_item', width: 60 },
         { header: 'DESCRICAO_REDUZIDA', key: 'descricao_reduzida', width: 30 },
-        { header: 'UNIDADE_MEDIDA', key: 'unidade_medida', width: 15 }, // NOVO CAMPO
         { header: 'VALOR_UNITARIO', key: 'valor_unitario', width: 15 },
         { header: 'NUMERO_PREGAO', key: 'numero_pregao', width: 20 },
         { header: 'UASG', key: 'uasg', width: 10 },
@@ -53,7 +52,6 @@ export async function exportMaterialConsumoToExcel(
                 codigo_catmat: item.codigo_catmat || '',
                 descricao_item: item.descricao_item,
                 descricao_reduzida: item.descricao_reduzida || '',
-                unidade_medida: item.unidade_medida || '', // NOVO CAMPO
                 valor_unitario: item.valor_unitario,
                 numero_pregao: item.numero_pregao,
                 uasg: item.uasg,
@@ -86,10 +84,10 @@ interface FlatImportRow {
     CODIGO_CATMAT?: string;
     DESCRICAO_ITEM: string;
     DESCRICAO_REDUZIDA?: string;
-    UNIDADE_MEDIDA: string; // NOVO CAMPO
     VALOR_UNITARIO: number;
     NUMERO_PREGAO: string;
     UASG: string;
+    // UNIDADE_MEDIDA: string; // REMOVIDO
 }
 
 /**
@@ -111,7 +109,7 @@ const validateRow = (row: FlatImportRow, rowIndex: number): StagingRow => {
     const descricaoItem = normalizeString(row.DESCRICAO_ITEM);
     const numeroPregao = normalizeString(row.NUMERO_PREGAO);
     const uasgRaw = String(row.UASG || '').replace(/\D/g, '').trim();
-    const unidadeMedida = normalizeString(row.UNIDADE_MEDIDA);
+    // const unidadeMedida = normalizeString(row.UNIDADE_MEDIDA); // REMOVIDO
     
     // Tenta converter o valor unitário para número
     let valorUnitario = 0;
@@ -129,7 +127,7 @@ const validateRow = (row: FlatImportRow, rowIndex: number): StagingRow => {
     if (!nomeSubitem) errors.push("NOME_SUBITEM é obrigatório.");
     if (!descricaoItem) errors.push("DESCRICAO_ITEM é obrigatória.");
     if (!numeroPregao) errors.push("NUMERO_PREGAO é obrigatório.");
-    if (!unidadeMedida) errors.push("UNIDADE_MEDIDA é obrigatória.");
+    // if (!unidadeMedida) errors.push("UNIDADE_MEDIDA é obrigatória."); // REMOVIDO
     
     // --- Validação de Formato ---
     if (uasgRaw.length !== 6 || !/^\d+$/.test(uasgRaw)) {
@@ -148,7 +146,7 @@ const validateRow = (row: FlatImportRow, rowIndex: number): StagingRow => {
         codigo_catmat: normalizeString(row.CODIGO_CATMAT),
         descricao_item: descricaoItem,
         descricao_reduzida: normalizeString(row.DESCRICAO_REDUZIDA),
-        unidade_medida: unidadeMedida,
+        // unidade_medida: unidadeMedida, // REMOVIDO
         valor_unitario: valorUnitario,
         numero_pregao: numeroPregao,
         uasg: uasgRaw,
@@ -201,6 +199,7 @@ export async function processMaterialConsumoImport(
                 
                 // Mapeamento de cabeçalhos (assumindo que a primeira linha é o cabeçalho)
                 const headers = rawJson[0] as string[];
+                // CORREÇÃO: Removendo UNIDADE_MEDIDA dos cabeçalhos esperados
                 const expectedHeaders = ['NR_SUBITEM', 'NOME_SUBITEM', 'DESCRICAO_ITEM', 'VALOR_UNITARIO', 'NUMERO_PREGAO', 'UASG'];
                 
                 if (!expectedHeaders.every(h => headers.includes(h))) {
@@ -230,6 +229,7 @@ export async function processMaterialConsumoImport(
                     if (!row.isValid) return row;
                     
                     // Chave de unicidade do Item de Aquisição (dentro do arquivo)
+                    // CORREÇÃO: Removendo unidade_medida da chave de unicidade
                     const itemKey = `${row.nr_subitem}|${row.nome_subitem}|${row.descricao_item}|${row.codigo_catmat}|${row.numero_pregao}|${row.uasg}`;
                     
                     if (internalItemKeys.has(itemKey)) {
@@ -319,7 +319,6 @@ export async function persistMaterialConsumoImport(
             codigo_catmat: row.codigo_catmat,
             descricao_item: row.descricao_item,
             descricao_reduzida: row.descricao_reduzida,
-            unidade_medida: row.unidade_medida, // NOVO CAMPO
             valor_unitario: row.valor_unitario,
             numero_pregao: row.numero_pregao,
             uasg: row.uasg,

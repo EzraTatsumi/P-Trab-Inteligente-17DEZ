@@ -36,7 +36,7 @@ const initialItemForm: Omit<ItemAquisicao, 'id'> & { rawValor: string } = {
     numero_pregao: '',
     uasg: '',
     codigo_catmat: '',
-    unidade_medida: '', // NOVO CAMPO
+    // unidade_medida: '', // REMOVIDO
 };
 
 // Definindo o tipo interno do formulário
@@ -150,10 +150,10 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             return;
         }
         
-        if (!itemForm.unidade_medida || itemForm.unidade_medida.trim() === '') {
-            toast.error("O campo 'Unidade de Medida' é obrigatório.");
-            return;
-        }
+        // if (!itemForm.unidade_medida || itemForm.unidade_medida.trim() === '') {
+        //     toast.error("O campo 'Unidade de Medida' é obrigatório.");
+        //     return;
+        // } // REMOVIDO
 
         if (!itemForm.uasg || itemForm.uasg.trim() === '' || itemForm.uasg.length !== 6) {
             toast.error("O campo 'UASG' é obrigatório e deve ter 6 dígitos.");
@@ -168,7 +168,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             numero_pregao: itemForm.numero_pregao,
             uasg: itemForm.uasg,
             codigo_catmat: itemForm.codigo_catmat, 
-            unidade_medida: itemForm.unidade_medida, // NOVO CAMPO
+            // unidade_medida: itemForm.unidade_medida, // REMOVIDO
         };
         
         // 1. Verificar duplicidade antes de adicionar/atualizar
@@ -205,7 +205,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             numero_pregao: item.numero_pregao,
             uasg: item.uasg,
             codigo_catmat: item.codigo_catmat, 
-            unidade_medida: item.unidade_medida, // NOVO CAMPO
+            // unidade_medida: item.unidade_medida, // REMOVIDO
         });
     };
 
@@ -421,8 +421,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 </div>
                             </div>
 
-                            {/* SEGUNDA LINHA: Descrição Reduzida, Valor, Pregão, UASG, UNIDADE MEDIDA */}
-                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                            {/* SEGUNDA LINHA: Descrição Reduzida, Valor, Pregão, UASG */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 {/* Campo Descrição Reduzida (1 coluna) */}
                                 <div className="space-y-2 col-span-1">
                                     <Label htmlFor="item-descricao-reduzida">Descrição Reduzida</Label>
@@ -432,19 +432,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         onChange={(e) => setItemForm({ ...itemForm, descricao_reduzida: e.target.value })}
                                         placeholder="Ex: Caneta Azul"
                                         onKeyDown={handleEnterToNextField}
-                                    />
-                                </div>
-                                
-                                {/* Campo Unidade de Medida (1 coluna) */}
-                                <div className="space-y-2 col-span-1">
-                                    <Label htmlFor="item-unidade">Unidade de Medida *</Label>
-                                    <Input
-                                        id="item-unidade"
-                                        value={itemForm.unidade_medida}
-                                        onChange={(e) => setItemForm({ ...itemForm, unidade_medida: e.target.value })}
-                                        placeholder="Ex: UN, CX, PCT"
-                                        onKeyDown={handleEnterToNextField}
-                                        required
                                     />
                                 </div>
                                 
@@ -504,7 +491,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         !itemForm.descricao_item || 
                                         itemForm.valor_unitario <= 0 ||
                                         !itemForm.numero_pregao || 
-                                        !itemForm.unidade_medida ||
                                         itemForm.uasg.length !== 6
                                     }
                                 >
@@ -522,7 +508,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         <TableHead className="w-[20%]">Descrição Reduzida</TableHead>
                                         <TableHead className="w-[20%]">Descrição Completa</TableHead>
                                         <TableHead className="w-[10%] text-center">Cód. CATMAT</TableHead>
-                                        <TableHead className="w-[10%] text-center">Unidade</TableHead>
                                         <TableHead className="w-[10%] text-center">Pregão/Ref.</TableHead>
                                         <TableHead className="w-[10%] text-center">UASG</TableHead>
                                         <TableHead className="w-[10%] text-right">Valor Unitário</TableHead>
@@ -535,7 +520,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                             <TableCell className="font-medium text-sm">{item.descricao_reduzida || 'N/A'}</TableCell>
                                             <TableCell className="font-medium text-sm">{item.descricao_item}</TableCell>
                                             <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
-                                            <TableCell className="text-center text-sm">{item.unidade_medida}</TableCell>
                                             <TableCell className="text-center text-sm">{item.numero_pregao || 'N/A'}</TableCell>
                                             <TableCell className="text-center text-sm">{formatCodug(item.uasg) || 'N/A'}</TableCell>
                                             <TableCell className="text-right font-bold text-primary text-sm">

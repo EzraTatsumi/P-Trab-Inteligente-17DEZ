@@ -11,7 +11,7 @@ export interface ItemAquisicao {
     numero_pregao: string;
     uasg: string;
     codigo_catmat: string;
-    unidade_medida: string; // NOVO CAMPO
+    // unidade_medida: string; // REMOVIDO
 }
 
 /**
@@ -38,7 +38,7 @@ export interface StagingRow {
     valor_unitario: number;
     numero_pregao: string;
     uasg: string;
-    unidade_medida: string; // NOVO CAMPO
+    // unidade_medida: string; // REMOVIDO
 
     // Status de Validação
     isValid: boolean;
