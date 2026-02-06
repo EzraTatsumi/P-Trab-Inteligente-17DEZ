@@ -193,7 +193,7 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                 <Button 
                     onClick={handleProcessFile}
                     disabled={isProcessing || !selectedFile}
-                    className="bg-blue-600 hover:bg-blue-700 text-white" // CORREÇÃO APLICADA AQUI
+                    // REMOVIDO: Classes de cor explícitas para usar o estilo primário padrão
                 >
                     {isProcessing ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
