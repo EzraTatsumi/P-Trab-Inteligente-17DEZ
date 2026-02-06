@@ -57,7 +57,7 @@ export type Database = {
           memoria_calculo_qr_customizada?: string | null
           memoria_calculo_qs_customizada?: string | null
           memoria_calculo_op_customizada?: string | null
-          nr_ref_int: number
+          nr_ref_int?: number
           om_qs: string
           organizacao: string
           p_trab_id: string
@@ -1813,6 +1813,7 @@ export type Database = {
           id: string
           code: string
           description: string
+          short_description: string | null
           created_at: string
           updated_at: string
         }
@@ -1820,6 +1821,7 @@ export type Database = {
           id?: string
           code: string
           description: string
+          short_description?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1827,6 +1829,7 @@ export type Database = {
           id?: string
           code?: string
           description?: string
+          short_description?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1985,9 +1988,9 @@ export type CompositeTypes<
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DefaultSchema["CompositeTypes"]
 }
-  ? (DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"])[CompositeTypeName]
+  ? (DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions])
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never

@@ -216,7 +216,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         onOpenChange(false);
     };
 
-    // NOVO: Função simplificada para receber APENAS os itens válidos do diálogo de importação
+    // Função simplificada para receber APENAS os itens válidos do diálogo de importação
     const handleBulkImport = (newItems: ItemAquisicao[]) => {
         if (newItems.length === 0) {
             toast.info("Nenhum item novo para adicionar.");
@@ -240,7 +240,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         setIsBulkUploadOpen(false); // CORREÇÃO: Fechar o diálogo aqui
     };
 
-    // NOVO: Função para receber dados do catálogo de Subitem e atualizar o formulário
+    // Função para receber dados do catálogo de Subitem e atualizar o formulário
     const handleCatalogSelect = (catalogItem: { nr_subitem: string, nome_subitem: string, descricao_subitem: string | null }) => {
         setSubitemForm(prev => ({
             ...prev,
@@ -251,13 +251,13 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         setIsCatalogOpen(false);
     };
     
-    // NOVO: Função para receber dados do catálogo CATMAT e atualizar o formulário de item
-    const handleCatmatSelect = (catmatItem: { code: string, description: string }) => {
+    // Função para receber dados do catálogo CATMAT e atualizar o formulário de item
+    const handleCatmatSelect = (catmatItem: { code: string, description: string, short_description: string | null }) => {
         setItemForm(prev => ({
             ...prev,
             codigo_catmat: catmatItem.code,
-            // Preenche a descrição do item se estiver vazia
-            descricao_item: prev.descricao_item || catmatItem.description, 
+            // Preenche a descrição do item se estiver vazia, priorizando o nome reduzido se existir
+            descricao_item: prev.descricao_item || catmatItem.short_description || catmatItem.description, 
         }));
         setIsCatmatCatalogOpen(false);
     };
@@ -341,16 +341,28 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                             <CardTitle className="text-base font-semibold">
                                 {editingItemId ? "Editar Item de Aquisição" : "Adicionar Novo Item de Aquisição"}
                             </CardTitle>
-                            <Button 
-                                type="button" 
-                                variant="secondary" 
-                                size="sm" 
-                                onClick={() => setIsBulkUploadOpen(true)}
-                                disabled={loading}
-                            >
-                                <FileSpreadsheet className="h-4 w-4 mr-2" />
-                                Importar Excel
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => setIsCatmatCatalogOpen(true)}
+                                    disabled={loading}
+                                >
+                                    <BookOpen className="h-4 w-4 mr-2" />
+                                    Catálogo CATMAT
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    variant="secondary" 
+                                    size="sm" 
+                                    onClick={() => setIsBulkUploadOpen(true)}
+                                    disabled={loading}
+                                >
+                                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                                    Importar Excel
+                                </Button>
+                            </div>
                         </div>
                         
                         {/* Formulário de Item - Reorganizado em duas linhas lógicas */}
@@ -433,18 +445,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 
                                 {/* Botões de Ação (1 coluna) */}
                                 <div className="space-y-2 col-span-1 flex flex-col justify-end gap-2">
-                                    {/* Botão de Catálogo CATMAT */}
-                                    <Button 
-                                        type="button" 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => setIsCatmatCatalogOpen(true)}
-                                        disabled={loading}
-                                    >
-                                        <BookOpen className="h-4 w-4 mr-1" />
-                                         CATMAT
-                                    </Button>
-                                    
                                     {/* Botão Adicionar/Atualizar Item */}
                                     <Button 
                                         type="button" 

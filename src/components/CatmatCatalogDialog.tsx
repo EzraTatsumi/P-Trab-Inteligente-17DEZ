@@ -7,18 +7,18 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
-import { CatmatItem } from '@/types/catalogoCatmat'; // Importa o tipo correto
+import { CatalogoCatmat } from "@/types/catalogoCatmat";
 
 // Definindo o tipo de item selecionável para o estado
-type SelectedItem = { code: string, description: string } | null;
+type SelectedItem = { code: string, description: string, short_description: string | null } | null;
 
 interface CatmatCatalogDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSelect: (item: { code: string, description: string }) => void;
+    onSelect: (item: { code: string, description: string, short_description: string | null }) => void;
 }
 
-const fetchCatalogItems = async (): Promise<CatmatItem[]> => {
+const fetchCatalogItems = async (): Promise<CatalogoCatmat[]> => {
     const { data, error } = await supabase
         .from('catalogo_catmat')
         .select('*')
@@ -29,7 +29,7 @@ const fetchCatalogItems = async (): Promise<CatmatItem[]> => {
         throw new Error("Falha ao carregar o catálogo CATMAT.");
     }
     
-    return data as CatmatItem[];
+    return data as CatalogoCatmat[];
 };
 
 const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
@@ -46,15 +46,17 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
     
-    const displayItems = (items || []).filter(item => 
+    const filteredItems = (items || []).filter(item => 
         item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.description.toLowerCase().includes(searchTerm.toLowerCase())
+        item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.short_description?.toLowerCase().includes(searchTerm.toLowerCase())
     );
     
-    const handlePreSelect = (item: CatmatItem) => {
+    const handlePreSelect = (item: CatalogoCatmat) => {
         const newItem = {
             code: item.code,
             description: item.description,
+            short_description: item.short_description,
         };
 
         if (selectedItem?.code === item.code) {
@@ -70,7 +72,7 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
         if (selectedItem) {
             onSelect(selectedItem);
             onOpenChange(false);
-            toast.success(`CATMAT ${selectedItem.code} importado com sucesso.`);
+            toast.success(`Item CATMAT ${selectedItem.code} importado com sucesso.`);
         }
     };
 
@@ -82,9 +84,9 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Catálogo CATMAT</DialogTitle>
+                    <DialogTitle>Catálogo de Material (CATMAT)</DialogTitle>
                     <DialogDescription>
-                        Selecione um código CATMAT de referência e confirme a importação.
+                        Selecione um item do catálogo para preencher o código e a descrição.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -92,7 +94,7 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Buscar por código ou descrição..."
+                            placeholder="Buscar por código, descrição ou nome reduzido..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-10"
@@ -104,7 +106,7 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
                             <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
                             <p className="text-sm text-muted-foreground mt-2">Carregando catálogo...</p>
                         </div>
-                    ) : displayItems.length === 0 ? (
+                    ) : filteredItems.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                             Nenhum item CATMAT encontrado.
                         </div>
@@ -113,13 +115,14 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
                             <Table>
                                 <TableHeader className="sticky top-0 bg-background z-10">
                                     <TableRow>
-                                        <TableHead className="w-[150px] text-center">Código</TableHead>
-                                        <TableHead className="text-center">Descrição</TableHead>
+                                        <TableHead className="w-[120px] text-center">Código</TableHead>
+                                        <TableHead className="w-[200px] text-center">Nome Reduzido</TableHead>
+                                        <TableHead className="text-center">Descrição Completa</TableHead>
                                         <TableHead className="w-[120px] text-center">Ação</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {displayItems.map(item => {
+                                    {filteredItems.map(item => {
                                         const isSelected = selectedItem?.code === item.code;
                                         return (
                                             <TableRow 
@@ -128,13 +131,15 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
                                                 onClick={() => handlePreSelect(item)}
                                             >
                                                 <TableCell className="font-semibold text-center">{item.code}</TableCell>
-                                                <TableCell className="font-medium text-sm">{item.description}</TableCell>
+                                                <TableCell className="font-medium">{item.short_description || 'N/A'}</TableCell>
+                                                <TableCell className="text-sm text-muted-foreground max-w-lg whitespace-normal">
+                                                    <span className="block">{item.description || 'N/A'}</span>
+                                                </TableCell>
                                                 <TableCell className="text-center">
                                                     <Button
                                                         variant={isSelected ? "default" : "outline"}
                                                         size="sm"
                                                         onClick={(e) => {
-                                                            // Previne que o clique na linha dispare duas vezes
                                                             e.stopPropagation(); 
                                                             handlePreSelect(item);
                                                         }}
