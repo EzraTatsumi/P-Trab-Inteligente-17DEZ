@@ -37,6 +37,7 @@ interface ImportSummary {
 // Cabeçalhos do template
 const TEMPLATE_HEADERS = [
     'Descricao do Item', 
+    'Descricao Reduzida', // NOVO: Adicionado
     'Valor Unitario (R$)', 
     'Numero do Pregao/Ref. Preco', 
     'UASG', 
@@ -46,6 +47,7 @@ const TEMPLATE_HEADERS = [
 // Linha de exemplo
 const EXAMPLE_ROW = [
     'SABÃO PÓ/ ASPECTO FÍSICO:PÓ/ COMPOSIÇÃO:ÁGUA/ ALQUIL BENZENO SULFATO DE SÓDIO/ CORANTE/ CA/ CARACTERÍSTICAS ADICIONAIS:AMACIANTE',
+    'SABÃO PÓ C/ AMACIANTE', // NOVO: Adicionado
     '1,25', // Valor Unitário
     '90.001/25', // Número do Pregão
     '160.170', // UASG
@@ -55,6 +57,7 @@ const EXAMPLE_ROW = [
 // Larguras das colunas (em unidades de largura de caractere)
 const COLUMN_WIDTHS = [
     { wch: 60 }, // Descricao do Item
+    { wch: 30 }, // Descricao Reduzida (NOVO)
     { wch: 20 }, // Valor Unitario (R$)
     { wch: 25 }, // Numero do Pregao/Ref. Preco
     { wch: 15 }, // UASG
@@ -75,6 +78,7 @@ const generateItemKey = (item: { descricao_item: string, codigo_catmat: string, 
     const pregao = normalize(item.numero_pregao);
     const uasg = normalize(item.uasg);
     
+    // A chave de unicidade NÃO inclui a descrição reduzida, pois ela é apenas um rótulo auxiliar.
     return `${desc}|${catmat}|${pregao}|${uasg}`;
 };
 
@@ -131,11 +135,18 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
 
                 const headers = json[0] as string[];
                 
+                // 'Descricao Reduzida' não é obrigatória para a validação mínima, mas deve estar presente no arquivo.
                 const requiredHeaders = ['Descricao do Item', 'Valor Unitario (R$)', 'Numero do Pregao/Ref. Preco', 'UASG'];
-                const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+                const expectedHeaders = [...requiredHeaders, 'Descricao Reduzida', 'Codigo CATMAT'];
+                
+                const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
 
                 if (missingHeaders.length > 0) {
-                    throw new Error(`Cabeçalhos obrigatórios ausentes: ${missingHeaders.join(', ')}`);
+                    // Se faltar apenas 'Descricao Reduzida' ou 'Codigo CATMAT', permite, mas avisa.
+                    const criticalMissing = requiredHeaders.filter(h => !headers.includes(h));
+                    if (criticalMissing.length > 0) {
+                        throw new Error(`Cabeçalhos obrigatórios ausentes: ${criticalMissing.join(', ')}`);
+                    }
                 }
                 
                 const validItems: ItemAquisicao[] = [];
@@ -184,6 +195,9 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                     try {
                         // Extração e normalização dos dados
                         const descricao_item = String(row[headerMap['Descricao do Item']] || '').trim();
+                        // NOVO: Extração da Descrição Reduzida
+                        const descricao_reduzida = String(row[headerMap['Descricao Reduzida']] || '').trim();
+                        
                         const valor_unitario_raw = String(row[headerMap['Valor Unitario (R$)']] || '0').trim();
                         const numero_pregao = String(row[headerMap['Numero do Pregao/Ref. Preco']] || '').trim();
                         // Remove formatação de UASG (ex: 160.170 -> 160170)
@@ -210,12 +224,14 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                         
                         const newItemData = {
                             descricao_item,
+                            descricao_reduzida, // NOVO: Incluído
                             valor_unitario,
                             numero_pregao,
                             uasg,
                             codigo_catmat,
                         };
                         
+                        // A chave de unicidade continua usando os campos principais
                         const key = generateItemKey(newItemData);
 
                         // 1. VERIFICAÇÃO DE DUPLICIDADE INTERNA (NO ARQUIVO)
@@ -351,7 +367,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                         <AlertDescription>
                             O arquivo deve ser **.xlsx** e conter as colunas exatas na primeira linha:
                             <span className="font-mono text-sm block mt-1">
-                                'Descricao do Item', 'Valor Unitario (R$)', 'Numero do Pregao/Ref. Preco', 'UASG', 'Codigo CATMAT'
+                                'Descricao do Item', 'Descricao Reduzida', 'Valor Unitario (R$)', 'Numero do Pregao/Ref. Preco', 'UASG', 'Codigo CATMAT'
                             </span>
                             <span className="text-xs mt-2 block">
                                 Atenção: As colunas 'Descricao do Item', 'Valor Unitario (R$)', 'Numero do Pregao/Ref. Preco' e 'UASG' são obrigatórias.
@@ -498,10 +514,11 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                                         <thead className="sticky top-0 bg-muted/80 border-b">
                                             <tr>
                                                 {/* Ajuste de largura das colunas */}
-                                                <th className="p-2 text-left font-medium w-[35%]">Descricao do Item</th>
+                                                <th className="p-2 text-left font-medium w-[25%]">Descricao do Item</th>
+                                                <th className="p-2 text-left font-medium w-[15%]">Descricao Reduzida</th> {/* NOVO */}
                                                 <th className="p-2 text-center font-medium w-[15%]">Valor Unitario (R$)</th>
                                                 <th className="p-2 text-center font-medium w-[15%]">Numero do Pregao/Ref. Preco</th>
-                                                <th className="p-2 text-center font-medium w-[15%]">UASG</th>
+                                                <th className="p-2 text-center font-medium w-[10%]">UASG</th>
                                                 <th className="p-2 text-center font-medium w-[20%]">Codigo CATMAT</th>
                                             </tr>
                                         </thead>
@@ -509,6 +526,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                                             {validItems.map((item, index) => (
                                                 <tr key={index} className="border-b last:border-b-0 hover:bg-muted/50">
                                                     <td className="p-2">{item.descricao_item}</td>
+                                                    <td className="p-2 text-xs">{item.descricao_reduzida || 'N/A'}</td> {/* NOVO */}
                                                     <td className="p-2 text-right font-mono">{formatCurrencyInput(numberToRawDigits(item.valor_unitario)).formatted}</td>
                                                     <td className="p-2 text-center text-xs">{item.numero_pregao || 'N/A'}</td>
                                                     <td className="p-2 text-center text-xs">{item.uasg || 'N/A'}</td>
