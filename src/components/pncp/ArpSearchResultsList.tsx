@@ -32,28 +32,27 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
         const groupsMap = new Map<string, ArpGroup>();
 
         results.forEach(arp => {
-            // Garantir que os campos de data e número existam como strings
+            // 1. Sanitização e Fallback para campos chave
             const numeroCompraStr = String(arp.numeroCompra || '').trim();
             const anoCompraStr = String(arp.anoCompra || '').trim();
+            const uasgStr = String(arp.codigoUnidadeGerenciadora || '').replace(/\D/g, '');
             
-            // Se faltar o número da compra ou o ano, pulamos o registro ou usamos um fallback
-            if (!numeroCompraStr || !anoCompraStr) {
-                console.warn("ARP sem número de compra ou ano, pulando:", arp);
-                return;
+            // Se faltar o número da compra ou o ano, usamos um fallback para agrupar
+            let pregaoKey: string;
+            if (numeroCompraStr && anoCompraStr) {
+                const numeroCompraFormatado = formatCodug(numeroCompraStr);
+                const anoCompraDoisDigitos = anoCompraStr.slice(-2);
+                pregaoKey = `${numeroCompraFormatado}/${anoCompraDoisDigitos}`;
+            } else {
+                // Agrupa registros incompletos em uma chave única
+                pregaoKey = 'DADOS_INCOMPLETOS';
             }
             
-            // 1. Calcular a chave de agrupamento (Pregão)
-            const numeroCompraFormatado = formatCodug(numeroCompraStr);
-            const anoCompraDoisDigitos = anoCompraStr.slice(-2);
-            const pregaoKey = `${numeroCompraFormatado}/${anoCompraDoisDigitos}`;
-            
-            // 2. Normalizar a UASG (apenas dígitos)
-            const uasg = String(arp.codigoUnidadeGerenciadora || '').replace(/\D/g, '');
-
+            // 2. Criação ou atualização do grupo
             if (!groupsMap.has(pregaoKey)) {
                 groupsMap.set(pregaoKey, {
                     pregao: pregaoKey,
-                    uasg: uasg,
+                    uasg: uasgStr,
                     omNome: arp.nomeUnidadeGerenciadora || 'OM Desconhecida',
                     itens: [],
                     totalValor: 0,
@@ -136,6 +135,12 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                     <TableBody>
                         {groupedArps.map(group => {
                             const isGroupOpen = openGroups[group.pregao];
+                            
+                            // Se a chave for DADOS_INCOMPLETOS, exibe um rótulo de aviso
+                            const displayPregao = group.pregao === 'DADOS_INCOMPLETOS' 
+                                ? <span className="text-red-500 font-bold">DADOS INCOMPLETOS</span> 
+                                : group.pregao;
+                                
                             return (
                                 <React.Fragment key={group.pregao}>
                                     <TableRow 
@@ -144,7 +149,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                     >
                                         <TableCell className="font-semibold">
                                             <div className="flex items-center gap-2">
-                                                {group.pregao}
+                                                {displayPregao}
                                                 {isGroupOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
                                             </div>
                                         </TableCell>
@@ -183,9 +188,9 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                                                             className={`cursor-pointer transition-colors ${isSelected ? "bg-green-100/50 hover:bg-green-100/70" : "hover:bg-muted/50"}`}
                                                                             onClick={() => handlePreSelect(arp)}
                                                                         >
-                                                                            <TableCell className="text-sm max-w-xs truncate">{arp.objeto}</TableCell>
+                                                                            <TableCell className="text-sm max-w-xs truncate">{arp.objeto || 'N/A'}</TableCell>
                                                                             <TableCell className="text-center text-xs">
-                                                                                {formatDate(arp.dataVigenciaInicial)} - {formatDate(arp.dataVigenciaFinal)}
+                                                                                {formatDate(arp.dataVigenciaInicial || '')} - {formatDate(arp.dataVigenciaFinal || '')}
                                                                             </TableCell>
                                                                             <TableCell className="text-right text-sm">
                                                                                 {formatCurrency(arp.valorTotal)}
