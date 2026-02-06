@@ -110,6 +110,17 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         setItemForm({ ...itemForm, uasg: rawDigits }); // Armazena apenas os dígitos
     };
 
+    // Função auxiliar para gerar a chave de unicidade de um item
+    const generateItemKey = (item: ItemAquisicao | typeof initialItemForm): string => {
+        // Normaliza e concatena os campos chave
+        const desc = (item.descricao_item || '').trim().toUpperCase();
+        const catmat = (item.codigo_catmat || '').trim().toUpperCase();
+        const pregao = (item.numero_pregao || '').trim().toUpperCase();
+        const uasg = (item.uasg || '').trim().toUpperCase();
+        
+        return `${desc}|${catmat}|${pregao}|${uasg}`;
+    };
+
     const handleAddItem = () => {
         if (!itemForm.descricao_item || itemForm.valor_unitario <= 0) {
             toast.error("Preencha a Descrição do Item e o Valor Unitário.");
@@ -137,6 +148,19 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             uasg: itemForm.uasg,
             codigo_catmat: itemForm.codigo_catmat, // NOVO: Adicionando o código CATMAT
         };
+        
+        // 1. Verificar duplicidade antes de adicionar/atualizar
+        const newItemKey = generateItemKey(newItem);
+        const isDuplicate = subitemForm.itens_aquisicao.some(existingItem => {
+            // Se estiver editando, permite que o item atual mantenha sua chave
+            if (editingItemId && existingItem.id === editingItemId) return false;
+            return generateItemKey(existingItem) === newItemKey;
+        });
+        
+        if (isDuplicate) {
+            toast.error("Este item de aquisição já existe nesta diretriz (duplicidade de Descrição, CATMAT, Pregão e UASG).");
+            return;
+        }
 
         const updatedItens = editingItemId
             ? subitemForm.itens_aquisicao.map(t => t.id === editingItemId ? newItem : t)
@@ -211,13 +235,41 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         setIsCatmatCatalogOpen(false);
     };
     
-    // NOVO: Função para receber dados da importação em massa
+    // NOVO: Função para receber dados da importação em massa (COM VERIFICAÇÃO DE DUPLICIDADE)
     const handleBulkImport = (newItems: ItemAquisicao[]) => {
-        // Adiciona os novos itens aos existentes
-        setSubitemForm(prev => ({
-            ...prev,
-            itens_aquisicao: [...prev.itens_aquisicao, ...newItems],
-        }));
+        const existingKeys = new Set(subitemForm.itens_aquisicao.map(generateItemKey));
+        const itemsToImport: ItemAquisicao[] = [];
+        let duplicatesCount = 0;
+        
+        newItems.forEach(item => {
+            const key = generateItemKey(item);
+            
+            if (existingKeys.has(key)) {
+                duplicatesCount++;
+            } else {
+                itemsToImport.push(item);
+                existingKeys.add(key); // Adiciona a chave para evitar duplicidade dentro do próprio lote
+            }
+        });
+        
+        if (itemsToImport.length > 0) {
+            // Adiciona os novos itens válidos aos existentes
+            setSubitemForm(prev => ({
+                ...prev,
+                itens_aquisicao: [...prev.itens_aquisicao, ...itemsToImport],
+            }));
+            
+            toast.success(`${itemsToImport.length} itens importados com sucesso!`);
+        }
+        
+        if (duplicatesCount > 0) {
+            toast.warning(`${duplicatesCount} itens foram ignorados por serem duplicados.`);
+        }
+        
+        if (itemsToImport.length === 0 && duplicatesCount === 0) {
+            toast.info("Nenhum item válido para importação foi encontrado.");
+        }
+
         // Limpa o formulário de item individual
         setItemForm(initialItemForm);
         setEditingItemId(null);
