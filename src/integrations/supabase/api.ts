@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 import { supabase } from "./client"; // Importar o cliente Supabase
 import { Profile } from "@/types/profiles"; // Importar o novo tipo Profile
+import { ArpUasgSearchParams, ArpItemResult } from "@/types/pncp"; // Importa os novos tipos PNCP
 
 // Interface para a resposta consolidada da Edge Function
 interface EdgeFunctionResponse {
@@ -140,4 +141,59 @@ export async function fetchUserProfile(): Promise<Profile> {
         ...profileData,
         om_details: null, // Força null para evitar erros de tipo, já que o JOIN falhou
     } as Profile;
+}
+
+// =================================================================
+// NOVAS FUNÇÕES PARA CONSULTA PNCP (ARP)
+// =================================================================
+
+/**
+ * Busca Atas de Registro de Preços (ARPs) por UASG e período de vigência.
+ * @param params Os parâmetros de busca (UASG e datas).
+ * @returns Uma lista de resultados de ARP.
+ */
+export async function fetchArpsByUasg(params: ArpUasgSearchParams): Promise<ArpItemResult[]> {
+    try {
+        const { data, error } = await supabase.functions.invoke('fetch-arps-by-uasg', {
+            body: params,
+        });
+
+        if (error) {
+            throw new Error(error.message || "Falha na execução da Edge Function de busca de ARPs.");
+        }
+        
+        // A API externa retorna um array de objetos.
+        const responseData = data as any[]; 
+        
+        if (!Array.isArray(responseData)) {
+            // Se a API retornar um objeto de erro ou vazio, tratamos como array vazio
+            if (responseData && responseData.error) {
+                throw new Error(responseData.error);
+            }
+            return [];
+        }
+        
+        // Mapeamento e sanitização dos dados para o tipo ArpItemResult
+        const results: ArpItemResult[] = responseData.map((item: any) => ({
+            // Usamos o código da ata como ID, ou um fallback
+            id: item.codigoAta || item.numeroAta || Math.random().toString(36).substring(2, 9), 
+            numeroAta: item.numeroAta || 'N/A',
+            objeto: item.objeto || 'Objeto não especificado',
+            uasg: item.codigoUnidadeGerenciadora || params.codigoUnidadeGerenciadora,
+            dataVigenciaInicial: item.dataVigenciaInicial || 'N/A',
+            dataVigenciaFinal: item.dataVigenciaFinal || 'N/A',
+            // Garantir que os valores sejam numéricos, caindo para 0 se inválidos
+            valorTotalEstimado: parseFloat(item.valorTotalEstimado || 0),
+            quantidadeItens: parseInt(item.quantidadeItens || 0),
+        }));
+        
+        return results;
+
+    } catch (error) {
+        console.error("Erro ao buscar ARPs por UASG:", error);
+        const errorMessage = error instanceof Error ? error.message : "Erro desconhecido.";
+        
+        // Não exibe toast aqui, o componente que usa useQuery fará isso.
+        throw new Error(`Falha ao buscar ARPs: ${errorMessage}`);
+    }
 }

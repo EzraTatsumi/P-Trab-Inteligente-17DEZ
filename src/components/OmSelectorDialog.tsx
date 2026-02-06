@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Search, Check } from "lucide-react";
+import { Loader2, Check, Search, Import } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { OMData } from './OmSelector'; // Reutiliza o tipo OMData
+import { Input } from "@/components/ui/input";
 import { formatCodug } from '@/lib/formatUtils';
+import { Tables } from '@/integrations/supabase/types';
+
+// Tipo para a OM (Unidade Gestora)
+type OmItem = Tables<'organizacoes_militares'>;
 
 interface OmSelectorDialogProps {
     open: boolean;
@@ -16,20 +19,24 @@ interface OmSelectorDialogProps {
     onSelect: (uasg: string) => void;
 }
 
-// Função de busca de OMs (reutilizada do OmSelector)
-const fetchOms = async (): Promise<OMData[]> => {
+const fetchOmItems = async (): Promise<OmItem[]> => {
+    // Busca OMs criadas pelo usuário (user_id IS NOT NULL) e OMs padrão (user_id IS NULL)
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
     
+    // A política de RLS já garante que o usuário veja suas OMs e as OMs padrão (user_id IS NULL)
     const { data, error } = await supabase
         .from('organizacoes_militares')
         .select('*')
-        .or(`user_id.eq.${user.id},user_id.is.null`)
         .eq('ativo', true)
         .order('nome_om', { ascending: true });
 
-    if (error) throw error;
-    return data as OMData[];
+    if (error) {
+        console.error("Erro ao buscar catálogo de OMs:", error);
+        throw new Error("Falha ao carregar o catálogo de OMs.");
+    }
+    
+    return data as OmItem[];
 };
 
 const OmSelectorDialog: React.FC<OmSelectorDialogProps> = ({
@@ -38,46 +45,47 @@ const OmSelectorDialog: React.FC<OmSelectorDialogProps> = ({
     onSelect,
 }) => {
     const { data: items, isLoading, error } = useQuery({
-        queryKey: ['organizacoesMilitares'],
-        queryFn: fetchOms,
+        queryKey: ['omCatalog'],
+        queryFn: fetchOmItems,
         enabled: open,
     });
     
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedUasg, setSelectedUasg] = useState<string | null>(null);
+    const [selectedItem, setSelectedItem] = useState<OmItem | null>(null);
     
     const filteredItems = (items || []).filter(item => 
+        item.codug_om.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.nome_om.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.codug_om.includes(searchTerm)
+        item.cidade?.toLowerCase().includes(searchTerm.toLowerCase())
     );
     
-    const handlePreSelect = (item: OMData) => {
-        if (selectedUasg === item.codug_om) {
-            setSelectedUasg(null);
+    const handlePreSelect = (item: OmItem) => {
+        if (selectedItem?.id === item.id) {
+            setSelectedItem(null);
         } else {
-            setSelectedUasg(item.codug_om);
+            setSelectedItem(item);
         }
     };
 
     const handleConfirmImport = () => {
-        if (selectedUasg) {
-            onSelect(selectedUasg);
+        if (selectedItem) {
+            onSelect(selectedItem.codug_om);
             onOpenChange(false);
-            toast.success(`UASG ${formatCodug(selectedUasg)} importada com sucesso.`);
+            toast.success(`UASG ${formatCodug(selectedItem.codug_om)} selecionada.`);
         }
     };
 
     if (error) {
-        toast.error(error.message || "Erro ao carregar OMs.");
+        toast.error(error.message);
     }
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Catálogo de Organizações Militares (UASG)</DialogTitle>
+                    <DialogTitle>Catálogo de Unidades Gestoras (UASG)</DialogTitle>
                     <DialogDescription>
-                        Selecione uma OM para importar o Código da Unidade Gestora (CODUG) como UASG.
+                        Selecione uma OM para preencher o campo UASG (CODUG) na busca PNCP.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -85,7 +93,7 @@ const OmSelectorDialog: React.FC<OmSelectorDialogProps> = ({
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Buscar por sigla, nome ou CODUG..."
+                            placeholder="Buscar por sigla, CODUG ou cidade..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-10"
@@ -95,7 +103,7 @@ const OmSelectorDialog: React.FC<OmSelectorDialogProps> = ({
                     {isLoading ? (
                         <div className="text-center py-8">
                             <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
-                            <p className="text-sm text-muted-foreground mt-2">Carregando OMs...</p>
+                            <p className="text-sm text-muted-foreground mt-2">Carregando catálogo de OMs...</p>
                         </div>
                     ) : filteredItems.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
@@ -106,15 +114,15 @@ const OmSelectorDialog: React.FC<OmSelectorDialogProps> = ({
                             <Table>
                                 <TableHeader className="sticky top-0 bg-background z-10">
                                     <TableRow>
-                                        <TableHead className="w-[150px] text-center">CODUG (UASG)</TableHead>
-                                        <TableHead className="w-[250px]">Sigla</TableHead>
-                                        <TableHead>RM Vinculação</TableHead>
+                                        <TableHead className="w-[100px] text-center">CODUG (UASG)</TableHead>
+                                        <TableHead className="w-[150px] text-center">Sigla OM</TableHead>
+                                        <TableHead className="text-center">RM Vinculação</TableHead>
                                         <TableHead className="w-[120px] text-center">Ação</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {filteredItems.map(item => {
-                                        const isSelected = selectedUasg === item.codug_om;
+                                        const isSelected = selectedItem?.id === item.id;
                                         return (
                                             <TableRow 
                                                 key={item.id} 
@@ -122,8 +130,10 @@ const OmSelectorDialog: React.FC<OmSelectorDialogProps> = ({
                                                 onClick={() => handlePreSelect(item)}
                                             >
                                                 <TableCell className="font-semibold text-center">{formatCodug(item.codug_om)}</TableCell>
-                                                <TableCell className="font-medium">{item.nome_om}</TableCell>
-                                                <TableCell className="text-sm text-muted-foreground">{item.rm_vinculacao}</TableCell>
+                                                <TableCell className="font-medium text-center">{item.nome_om}</TableCell>
+                                                <TableCell className="text-sm text-muted-foreground text-center">
+                                                    {item.rm_vinculacao} ({formatCodug(item.codug_rm_vinculacao)})
+                                                </TableCell>
                                                 <TableCell className="text-center">
                                                     <Button
                                                         variant={isSelected ? "default" : "outline"}
@@ -133,8 +143,17 @@ const OmSelectorDialog: React.FC<OmSelectorDialogProps> = ({
                                                             handlePreSelect(item);
                                                         }}
                                                     >
-                                                        <Check className="h-4 w-4 mr-1" />
-                                                        {isSelected ? "Selecionado" : "Selecionar"}
+                                                        {isSelected ? (
+                                                            <>
+                                                                <Check className="h-4 w-4 mr-1" />
+                                                                Selecionado
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Check className="h-4 w-4 mr-1" />
+                                                                Selecionar
+                                                            </>
+                                                        )}
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>
@@ -146,14 +165,15 @@ const OmSelectorDialog: React.FC<OmSelectorDialogProps> = ({
                     )}
                 </div>
 
+                {/* Ajuste do rodapé para alinhar à direita */}
                 <div className="flex justify-end gap-2 pt-4 border-t">
                     <Button 
                         type="button" 
                         onClick={handleConfirmImport}
-                        disabled={!selectedUasg}
+                        disabled={!selectedItem}
                     >
-                        <Check className="h-4 w-4 mr-2" />
-                        Importar UASG
+                        <Import className="h-4 w-4 mr-2" />
+                        Confirmar Seleção
                     </Button>
                     <Button 
                         type="button" 
