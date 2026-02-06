@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,14 @@ import { Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { formatCodug } from '@/lib/formatUtils';
+import { OmSelector, OMData } from '@/components/OmSelector'; // Importa OmSelector e OMData
 
 // 1. Esquema de Validação
 const formSchema = z.object({
     uasg: z.string()
-        .min(6, { message: "A UASG deve ter 6 dígitos." })
-        .max(6, { message: "A UASG deve ter 6 dígitos." })
-        .regex(/^\d{6}$/, { message: "A UASG deve conter apenas números." }),
+        .min(6, { message: "Selecione uma OM válida (UASG deve ter 6 dígitos)." })
+        .max(6, { message: "Selecione uma OM válida (UASG deve ter 6 dígitos)." })
+        .regex(/^\d{6}$/, { message: "Selecione uma OM válida (UASG deve conter apenas números)." }),
     dataInicio: z.string().min(1, { message: "Data de Início é obrigatória." }),
     dataFim: z.string().min(1, { message: "Data de Fim é obrigatória." }),
 }).refine(data => new Date(data.dataFim) >= new Date(data.dataInicio), {
@@ -42,12 +43,6 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
         },
     });
     
-    // Função para formatar a UASG no input (XXX.XXX)
-    const handleUasgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const rawValue = e.target.value.replace(/\D/g, '');
-        form.setValue('uasg', rawValue, { shouldValidate: true });
-    };
-
     const onSubmit = async (values: ArpUasgFormValues) => {
         setIsSearching(true);
         toast.info(`Buscando ARPs para UASG ${formatCodug(values.uasg)}...`);
@@ -57,18 +52,6 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
         // Placeholder de simulação de busca
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Simulação de sucesso (apenas para teste inicial)
-        // const simulatedItem: ItemAquisicao = {
-        //     id: Math.random().toString(36).substring(2, 9),
-        //     descricao_item: "Simulação: Item de ARP encontrado",
-        //     descricao_reduzida: "Simulação ARP",
-        //     valor_unitario: 150.75,
-        //     numero_pregao: "ARP-PNCP/2024",
-        //     uasg: values.uasg,
-        //     codigo_catmat: "99999999",
-        // };
-        // onSelect(simulatedItem);
-        
         toast.warning("A busca PNCP ainda não está conectada à API real.");
         setIsSearching(false);
     };
@@ -77,27 +60,30 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Campo UASG */}
-                    <FormField
-                        control={form.control}
-                        name="uasg"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>UASG *</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        {...field}
-                                        onChange={handleUasgChange}
-                                        value={field.value}
-                                        placeholder="Ex: 160001"
-                                        maxLength={6}
-                                        disabled={isSearching}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                    {/* Campo UASG (Substituído pelo OmSelector) */}
+                    <div className="space-y-2 col-span-3">
+                        <FormLabel>UASG (Unidade Gestora) *</FormLabel>
+                        <Controller
+                            name="uasg"
+                            control={form.control}
+                            render={({ field }) => (
+                                <OmSelector
+                                    // O valor inicial é o CODUG/UASG atual do campo
+                                    initialOmCodug={field.value} 
+                                    onChange={(omData: OMData | undefined) => {
+                                        // Quando uma OM é selecionada, atualiza o valor do campo 'uasg' com o CODUG
+                                        field.onChange(omData?.codug_om || ''); 
+                                    }}
+                                    placeholder="Buscar OM pela sigla ou nome..."
+                                    disabled={isSearching}
+                                />
+                            )}
+                        />
+                        <FormMessage>{form.formState.errors.uasg?.message}</FormMessage>
+                        <p className="text-xs text-muted-foreground">
+                            Selecione a OM para preencher a UASG (CODUG) automaticamente.
+                        </p>
+                    </div>
                     
                     {/* Campo Data de Início */}
                     <FormField
