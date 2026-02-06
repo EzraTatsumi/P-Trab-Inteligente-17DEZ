@@ -357,7 +357,17 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 {editingItemId ? "Editar Item de Aquisição" : "Adicionar Novo Item de Aquisição"}
                             </CardTitle>
                             <div className="flex gap-2">
-                                {/* Botão Importar Excel permanece no cabeçalho do card */}
+                                {/* Botão CATMAT movido para dentro do Card */}
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => setIsCatmatCatalogOpen(true)}
+                                    disabled={loading}
+                                >
+                                    <BookOpen className="h-4 w-4 mr-2" />
+                                    Catálogo CATMAT
+                                </Button>
                                 <Button 
                                     type="button" 
                                     variant="secondary" 
@@ -373,7 +383,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                         
                         {/* Formulário de Item - Reorganizado em três linhas lógicas */}
                         <div className="border p-3 rounded-lg bg-muted/50 space-y-4">
-                            {/* PRIMEIRA LINHA: CATMAT, Botão CATMAT e Descrição Completa */}
+                            {/* PRIMEIRA LINHA: CATMAT e Descrição Completa */}
                             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                                 {/* Campo Código CATMAT (1 coluna) */}
                                 <div className="space-y-2 col-span-1">
@@ -385,29 +395,17 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         placeholder="Ex: 123456789"
                                         onKeyDown={handleEnterToNextField}
                                     />
-                                    {/* NOVO: Botão Catálogo CATMAT movido para baixo do input Cód. CATMAT */}
-                                    <Button 
-                                        type="button" 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => setIsCatmatCatalogOpen(true)}
-                                        disabled={loading}
-                                        className="w-full mt-2" // w-full para ocupar a largura da coluna
-                                    >
-                                        <BookOpen className="h-4 w-4 mr-2" />
-                                        Catálogo CATMAT
-                                    </Button>
                                 </div>
                                 
                                 {/* Campo Descrição Completa (4 colunas) */}
                                 <div className="space-y-2 col-span-4">
                                     <Label htmlFor="item-descricao">Descrição Completa *</Label>
-                                    <Textarea 
+                                    <Textarea // Alterado de Input para Textarea
                                         id="item-descricao"
                                         value={itemForm.descricao_item}
                                         onChange={(e) => setItemForm({ ...itemForm, descricao_item: e.target.value })}
                                         placeholder="Ex: Caneta Esferográfica Azul 1.0mm"
-                                        rows={2} 
+                                        rows={2} // Define a altura mínima para 2 linhas
                                         required
                                     />
                                 </div>
@@ -455,7 +453,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         required
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                        *Em processo de abertura.
+                                        *Em abertura.
                                     </p>
                                 </div>
                                 
@@ -512,8 +510,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                             <TableCell className="w-[5%] text-center p-2">
                                                 <GripVertical className="h-4 w-4 text-muted-foreground mx-auto" />
                                             </TableCell>
-                                            <TableCell className="font-medium text-sm">{item.descricao_reduzida || 'N/A'}</TableCell>
-                                            <TableCell className="font-medium text-sm">{item.descricao_item}</TableCell>
+                                            <TableCell className="font-center text-sm">{item.descricao_reduzida || 'N/A'}</TableCell>
+                                            <TableCell className="font-center text-sm">{item.descricao_item}</TableCell>
                                             <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
                                             <TableCell className="text-center text-sm">{item.numero_pregao || 'N/A'}</TableCell>
                                             <TableCell className="text-right font-bold text-primary">
