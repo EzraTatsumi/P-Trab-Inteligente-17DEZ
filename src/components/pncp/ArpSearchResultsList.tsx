@@ -82,6 +82,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
         }));
     };
     
+    // Mantemos a pré-seleção, mas o botão de importação será o único ponto de ação
     const handlePreSelect = (arp: ArpRawResult) => {
         setSelectedArp(arp.idCompra === selectedArp?.idCompra ? null : arp);
     };
@@ -127,7 +128,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
 
     return (
         <div className="p-4 space-y-4">
-            {/* NOVO CABEÇALHO DA PESQUISA */}
+            {/* CABEÇALHO DA PESQUISA */}
             <h3 className="text-lg font-semibold">
                 Resultados de ARP para UASG {formatCodug(searchedUasg)} ({searchedOmName})
                 <span className="text-sm font-normal text-muted-foreground ml-2">
@@ -176,6 +177,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                     
                                     {/* Conteúdo Colapsável com a lista de ARPs individuais (Nível 2) */}
                                     <TableRow className="p-0">
+                                        {/* Colspan ajustado para 4 colunas */}
                                         <TableCell colSpan={4} className="p-0">
                                             <Collapsible open={isGroupOpen}>
                                                 <CollapsibleContent>
@@ -183,10 +185,9 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                                         <Table className="bg-background border rounded-md">
                                                             <thead>
                                                                 <TableRow className="text-xs text-muted-foreground hover:bg-background">
-                                                                    <th className="px-4 py-2 text-left font-normal w-[50%]">Número da ARP</th>
-                                                                    <th className="px-4 py-2 text-center font-normal w-[20%]">Qtd. Itens</th>
-                                                                    <th className="px-4 py-2 text-right font-normal w-[20%]">Valor Total</th>
-                                                                    <th className="px-4 py-2 text-center font-normal w-[10%]">Ação</th>
+                                                                    <th className="px-4 py-2 text-left font-normal w-[70%]">Número da ARP</th>
+                                                                    <th className="px-4 py-2 text-center font-normal w-[30%]">Qtd. Itens</th>
+                                                                    {/* Removidas colunas Valor Total e Ação */}
                                                                 </TableRow>
                                                             </thead>
                                                             <TableBody>
@@ -204,21 +205,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                                                             <TableCell className="text-center text-sm">
                                                                                 {arp.quantidadeItens || 0}
                                                                             </TableCell>
-                                                                            <TableCell className="text-right text-sm">
-                                                                                {formatCurrency(arp.valorTotal)}
-                                                                            </TableCell>
-                                                                            <TableCell className="text-center">
-                                                                                <Button
-                                                                                    variant={isSelected ? "default" : "outline"}
-                                                                                    size="sm"
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation(); 
-                                                                                        handlePreSelect(arp);
-                                                                                    }}
-                                                                                >
-                                                                                    {isSelected ? <Check className="h-4 w-4" /> : <Import className="h-4 w-4" />}
-                                                                                </Button>
-                                                                            </TableCell>
+                                                                            {/* Removidas células Valor Total e Ação */}
                                                                         </TableRow>
                                                                     );
                                                                 })}
