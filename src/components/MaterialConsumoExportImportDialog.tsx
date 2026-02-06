@@ -161,7 +161,7 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                     1. Selecionar Arquivo
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                    Carregue um arquivo Excel (.xlsx) contendo as colunas: NR_SUBITEM, NOME_SUBITEM, DESCRICAO_ITEM, UNIDADE_MEDIDA, VALOR_UNITARIO, NUMERO_PREGAO, UASG.
+                    Carregue um arquivo Excel (.xlsx) contendo as colunas: NR_SUBITEM, NOME_SUBITEM, DESCRICAO_SUBITEM, CODIGO_CATMAT, DESCRICAO_ITEM, DESCRICAO_REDUZIDA, VALOR_UNITARIO, NUMERO_PREGAO, UASG.
                 </p>
                 
                 <input
@@ -244,11 +244,12 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
                             <TableHead className="w-[5%] text-center">Linha</TableHead>
-                            <TableHead className="w-[15%]">Subitem ND</TableHead>
+                            <TableHead className="w-[20%]">Subitem ND</TableHead>
                             <TableHead className="w-[30%]">Item de Aquisição</TableHead>
+                            <TableHead className="w-[10%] text-center">Pregão</TableHead>
                             <TableHead className="w-[10%] text-center">UASG</TableHead>
                             <TableHead className="w-[10%] text-right">Valor</TableHead>
-                            <TableHead className="w-[30%]">Status/Erros</TableHead>
+                            <TableHead className="w-[15%]">Status/Erros</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -260,14 +261,20 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                                 <TableCell className="text-center text-xs p-2">{row.originalRowIndex}</TableCell>
                                 <TableCell className="text-xs font-medium p-2">
                                     {row.nr_subitem} - {row.nome_subitem}
+                                    <p className="text-muted-foreground/70 text-[10px] whitespace-normal">
+                                        {row.descricao_subitem}
+                                    </p>
                                     {row.isDuplicateExternal && (
-                                        <Badge variant="secondary" className="ml-1 bg-yellow-200 text-yellow-800">Existente no DB</Badge>
+                                        <Badge variant="secondary" className="mt-1 bg-yellow-200 text-yellow-800">Existente no DB</Badge>
                                     )}
                                 </TableCell>
                                 <TableCell className="text-xs p-2">
                                     {row.descricao_item}
-                                    <p className="text-muted-foreground/70 text-[10px]">{row.codigo_catmat} | {row.unidade_medida}</p>
+                                    <p className="text-muted-foreground/70 text-[10px]">
+                                        Reduzida: {row.descricao_reduzida || 'N/A'} | CATMAT: {row.codigo_catmat}
+                                    </p>
                                 </TableCell>
+                                <TableCell className="text-center text-xs p-2">{row.numero_pregao}</TableCell>
                                 <TableCell className="text-center text-xs p-2">{formatCodug(row.uasg)}</TableCell>
                                 <TableCell className="text-right font-bold text-xs p-2">{formatCurrency(row.valor_unitario)}</TableCell>
                                 <TableCell className="p-2">
