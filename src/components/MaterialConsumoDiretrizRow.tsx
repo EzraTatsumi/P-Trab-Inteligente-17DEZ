@@ -176,7 +176,7 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                             <div
                                 className={cn(
                                     "p-4 bg-muted/50 border-t border-border transition-colors",
-                                    isDragOver && "bg-primary/10 border-primary ring-2 ring-primary/50"
+                                    isDragOver && "bg-primary/10 border-primary ring-2 ring-2 ring-primary/50"
                                 )}
                                 onDragOver={handleDragOver}
                                 onDragLeave={handleDragLeave}
@@ -188,7 +188,7 @@ const MaterialConsumoDiretrizRow: React.FC<MaterialConsumoDiretrizRowProps> = ({
                                         <thead>
                                             <TableRow className="text-xs text-muted-foreground hover:bg-background">
                                                 <th className="px-4 py-2 text-left font-normal w-[20px]"></th> {/* Coluna para o ícone de arrastar */}
-                                                <th className="px-4 py-2 text-left font-normal w-[45%]">Descrição do Item</th>
+                                                <th className="px-4 py-2 text-left font-normal w-[45%]">Descrição Reduzida</th>
                                                 <th className="px-4 py-2 text-center font-normal w-[15%]">Cód. CATMAT</th>
                                                 <th className="px-4 py-2 text-center font-normal w-[10%]">Pregão</th>
                                                 <th className="px-4 py-2 text-center font-normal w-[10%]">UASG</th>
