@@ -31,10 +31,10 @@ const ItemAquisicaoDraggableRow: React.FC<ItemAquisicaoDraggableRowProps> = ({ i
             <TableCell className="w-[20px] text-center p-2">
                 <GripVertical className="h-4 w-4 text-muted-foreground" />
             </TableCell>
-            <TableCell className="font-medium w-[45%] p-2">{item.descricao_reduzida || item.descricao_item}</TableCell>
+            <TableCell className="font-center text-xs w-[45%] p-2">{item.descricao_reduzida || item.descricao_item}</TableCell>
             <TableCell className="w-[15%] text-center text-xs p-2">{item.codigo_catmat || 'N/A'}</TableCell>
             <TableCell className="w-[10%] text-center text-xs p-2">{item.numero_pregao || 'N/A'}</TableCell>
-            <TableCell className="w-[10%] text-center p-2">{formatCodug(item.uasg) || 'N/A'}</TableCell>
+            <TableCell className="w-[10%] text-center text-xs p-2">{formatCodug(item.uasg) || 'N/A'}</TableCell>
             <TableCell className="w-[10%] text-right font-bold text-primary p-2">
                 {formatCurrency(item.valor_unitario)}
             </TableCell>
