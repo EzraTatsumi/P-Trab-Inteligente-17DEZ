@@ -32,19 +32,29 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
         const groupsMap = new Map<string, ArpGroup>();
 
         results.forEach(arp => {
+            // Garantir que os campos de data e número existam como strings
+            const numeroCompraStr = String(arp.numeroCompra || '').trim();
+            const anoCompraStr = String(arp.anoCompra || '').trim();
+            
+            // Se faltar o número da compra ou o ano, pulamos o registro ou usamos um fallback
+            if (!numeroCompraStr || !anoCompraStr) {
+                console.warn("ARP sem número de compra ou ano, pulando:", arp);
+                return;
+            }
+            
             // 1. Calcular a chave de agrupamento (Pregão)
-            const numeroCompraFormatado = formatCodug(arp.numeroCompra);
-            const anoCompraDoisDigitos = arp.anoCompra.slice(-2);
+            const numeroCompraFormatado = formatCodug(numeroCompraStr);
+            const anoCompraDoisDigitos = anoCompraStr.slice(-2);
             const pregaoKey = `${numeroCompraFormatado}/${anoCompraDoisDigitos}`;
             
             // 2. Normalizar a UASG (apenas dígitos)
-            const uasg = arp.codigoUnidadeGerenciadora.replace(/\D/g, '');
+            const uasg = String(arp.codigoUnidadeGerenciadora || '').replace(/\D/g, '');
 
             if (!groupsMap.has(pregaoKey)) {
                 groupsMap.set(pregaoKey, {
                     pregao: pregaoKey,
                     uasg: uasg,
-                    omNome: arp.nomeUnidadeGerenciadora,
+                    omNome: arp.nomeUnidadeGerenciadora || 'OM Desconhecida',
                     itens: [],
                     totalValor: 0,
                 });
@@ -76,17 +86,25 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
             return;
         }
         
+        // Garantir que os campos necessários para ItemAquisicao não sejam nulos
+        const numeroCompraStr = String(selectedArp.numeroCompra || '').trim();
+        const anoCompraStr = String(selectedArp.anoCompra || '').trim();
+        const uasgStr = String(selectedArp.codigoUnidadeGerenciadora || '').replace(/\D/g, '');
+        
+        if (!numeroCompraStr || !anoCompraStr || !uasgStr) {
+            toast.error("Dados da ARP incompletos (Número da Compra, Ano ou UASG). Não é possível importar.");
+            return;
+        }
+        
         // Mapeamento do ArpRawResult para ItemAquisicao
-        // Usamos o valor total da ARP como valor unitário para fins de referência inicial.
-        // O usuário deverá ajustar o valor unitário e a descrição do item individualmente.
         const itemAquisicao: ItemAquisicao = {
             id: selectedArp.idCompra, // Usar ID da Compra como ID temporário
-            descricao_item: `ARP ${selectedArp.numeroAtaRegistroPreco} - ${selectedArp.objeto}`,
-            descricao_reduzida: `ARP ${selectedArp.numeroAtaRegistroPreco}`,
+            descricao_item: `ARP ${selectedArp.numeroAtaRegistroPreco || 'N/A'} - ${selectedArp.objeto || 'Objeto não especificado'}`,
+            descricao_reduzida: `ARP ${selectedArp.numeroAtaRegistroPreco || 'N/A'}`,
             // Valor médio por item (se quantidadeItens for 0, evita divisão por zero)
             valor_unitario: selectedArp.valorTotal / (selectedArp.quantidadeItens || 1), 
-            numero_pregao: `${formatCodug(selectedArp.numeroCompra)}/${selectedArp.anoCompra.slice(-2)}`,
-            uasg: selectedArp.codigoUnidadeGerenciadora.replace(/\D/g, ''),
+            numero_pregao: `${formatCodug(numeroCompraStr)}/${anoCompraStr.slice(-2)}`,
+            uasg: uasgStr,
             codigo_catmat: 'PNCP_REF', // Placeholder
         };
         
