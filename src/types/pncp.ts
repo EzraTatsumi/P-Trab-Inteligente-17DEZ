@@ -7,16 +7,34 @@ export interface ArpUasgSearchParams {
 }
 
 /**
- * Estrutura simplificada de um item ARP retornado pela API externa.
- * Os nomes dos campos são mapeados para o que é esperado no frontend.
+ * Estrutura bruta de um item ARP retornado pela API externa (dentro da chave 'resultado').
+ */
+export interface ArpRawResult {
+    numeroAtaRegistroPreco: string;
+    codigoUnidadeGerenciadora: string;
+    nomeUnidadeGerenciadora: string;
+    numeroCompra: string;
+    anoCompra: string;
+    dataVigenciaInicial: string;
+    dataVigenciaFinal: string;
+    valorTotal: number;
+    objeto: string;
+    quantidadeItens: number;
+    idCompra: string; // Usado como ID único
+}
+
+/**
+ * Estrutura simplificada e mapeada para uso no frontend.
  */
 export interface ArpItemResult {
-    id: string; // ID da ARP (pode ser o código da ata)
+    id: string;
     numeroAta: string;
     objeto: string;
     uasg: string;
+    omNome: string;
     dataVigenciaInicial: string;
     dataVigenciaFinal: string;
     valorTotalEstimado: number;
     quantidadeItens: number;
+    pregaoFormatado: string;
 }

@@ -50,9 +50,13 @@ serve(async (req) => {
 
     const data = await response.json();
     
-    console.log(`[fetch-arps-by-uasg] Successfully fetched ${data.length || 0} records.`);
+    // CORREÇÃO: Extrair o array de resultados da chave 'resultado'
+    const resultsArray = data.resultado || [];
+    
+    console.log(`[fetch-arps-by-uasg] Successfully fetched ${resultsArray.length} records.`);
 
-    return new Response(JSON.stringify(data), {
+    // Retorna apenas o array de resultados
+    return new Response(JSON.stringify(resultsArray), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
