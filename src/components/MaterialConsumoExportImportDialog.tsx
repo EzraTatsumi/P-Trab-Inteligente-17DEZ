@@ -330,7 +330,7 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                     Confirmar Importação ({importSummary.totalValid} Itens)
                 </Button>
                 <Button variant="outline" onClick={() => setStep('select_file')} disabled={isProcessing}>
-                    Voltar e Corrigir Arquivo
+                    Voltar
                 </Button>
             </DialogFooter>
         </div>
