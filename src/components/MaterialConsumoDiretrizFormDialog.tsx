@@ -497,12 +497,13 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[5%]"></TableHead> {/* Coluna para o ícone de arrastar (vazio no formulário) */}
-                                        <TableHead className="w-[30%]">Descrição Reduzida</TableHead>
-                                        <TableHead className="w-[30%]">Descrição Completa</TableHead>
+                                        <TableHead className="w-[5%]"></TableHead> {/* Coluna para o ícone de arrastar (placeholder) */}
+                                        <TableHead className="w-[25%]">Descrição Reduzida</TableHead>
+                                        <TableHead className="w-[25%]">Descrição Completa</TableHead>
                                         <TableHead className="w-[10%] text-center">Cód. CATMAT</TableHead>
                                         <TableHead className="w-[10%] text-center">Pregão/Ref.</TableHead>
-                                        <TableHead className="w-[10%] text-center">Valor Unitário</TableHead>
+                                        <TableHead className="w-[10%] text-center">UASG</TableHead> {/* NOVA COLUNA */}
+                                        <TableHead className="w-[10%] text-right">Valor Unitário</TableHead>
                                         <TableHead className="w-[5%] text-right">Ações</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -516,6 +517,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                             <TableCell className="font-medium text-sm">{item.descricao_item}</TableCell>
                                             <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
                                             <TableCell className="text-center text-sm">{item.numero_pregao || 'N/A'}</TableCell>
+                                            <TableCell className="text-center text-sm">{formatCodug(item.uasg) || 'N/A'}</TableCell> {/* NOVO CAMPO */}
                                             <TableCell className="text-right font-bold text-primary">
                                                 {formatCurrency(item.valor_unitario)}
                                             </TableCell>
