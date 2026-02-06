@@ -39,7 +39,6 @@ import {
 } from "@/types/diretrizesConcessionaria";
 import { 
     DiretrizMaterialConsumo, 
-    DiretrizMaterialConsumoForm, 
     ItemAquisicao 
 } from "@/types/diretrizesMaterialConsumo";
 import MaterialConsumoDiretrizFormDialog from "@/components/MaterialConsumoDiretrizFormDialog";

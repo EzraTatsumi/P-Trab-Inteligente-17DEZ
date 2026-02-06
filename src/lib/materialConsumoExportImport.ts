@@ -154,8 +154,9 @@ export async function processMaterialConsumoImport(file: File, year: number, use
     }
     
     const existingItemKeys = new Set<string>();
-    (existingDiretrizes || []).forEach(diretriz => {
-        const itens = diretriz.itens_aquisicao as unknown as ItemAquisicao[] || [];
+    // CORREÇÃO: Cast para unknown antes de DiretrizMaterialConsumo[]
+    (existingDiretrizes as unknown as DiretrizMaterialConsumo[] || []).forEach(diretriz => {
+        const itens = diretriz.itens_aquisicao || [];
         itens.forEach(item => {
             existingItemKeys.add(generateItemKey(item));
         });
@@ -272,7 +273,8 @@ export async function persistMaterialConsumoImport(stagedData: StagingRow[], yea
     
     // Mapear diretrizes existentes por chave de subitem (nr_subitem|nome_subitem)
     const existingMap = new Map<string, DiretrizMaterialConsumo>();
-    (existingDiretrizes as DiretrizMaterialConsumo[] || []).forEach(d => {
+    // CORREÇÃO: Cast para unknown antes de DiretrizMaterialConsumo[]
+    (existingDiretrizes as unknown as DiretrizMaterialConsumo[] || []).forEach(d => {
         const key = `${d.nr_subitem}|${d.nome_subitem}`;
         existingMap.set(key, d);
     });

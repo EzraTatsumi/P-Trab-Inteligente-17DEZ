@@ -285,7 +285,7 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                                 <TableCell className="text-right font-bold text-xs p-2">{formatCurrency(row.valor_unitario)}</TableCell>
                                 <TableCell className="p-2">
                                     {row.isValid ? (
-                                        <Badge variant="success" className="text-xs">Válido</Badge>
+                                        <Badge variant="ptrab-aprovado" className="text-xs">Válido</Badge>
                                     ) : (
                                         <div className="space-y-1">
                                             <Badge variant="destructive" className="text-xs flex items-center justify-center">

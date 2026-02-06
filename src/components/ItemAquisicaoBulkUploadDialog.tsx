@@ -473,7 +473,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                             
                             {/* Lista de Duplicatas Internas */}
                             {hasDuplicates && (
-                                <Alert variant="warning" className="mt-4 bg-yellow-50/50 border-yellow-200 text-yellow-900 dark:bg-yellow-950/50 dark:border-yellow-800 dark:text-yellow-300">
+                                <Alert variant="default" className="mt-4 bg-yellow-50/50 border-yellow-200 text-yellow-900 dark:bg-yellow-950/50 dark:border-yellow-800 dark:text-yellow-300">
                                     <AlertCircle className="h-4 w-4 text-yellow-900 dark:text-yellow-400" />
                                     <AlertTitle>Itens Duplicados (Interno ao Arquivo) ({duplicateItems.length})</AlertTitle>
                                     <AlertDescription className="max-h-32 overflow-y-auto text-sm">
@@ -491,7 +491,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                             
                             {/* NOVO: Alerta de Itens Já Cadastrados (Externos) */}
                             {hasExisting && (
-                                <Alert className="mt-4 bg-orange-50/50 border-orange-200 text-orange-900 dark:bg-orange-950/50 dark:border-orange-800 dark:text-orange-300">
+                                <Alert variant="default" className="mt-4 bg-orange-50/50 border-orange-200 text-orange-900 dark:bg-orange-950/50 dark:border-orange-800 dark:text-orange-300">
                                     <AlertTriangle className="h-4 w-4 text-orange-900 dark:text-orange-400" />
                                     <AlertTitle>Itens Já Cadastrados ({existingItems.length})</AlertTitle>
                                     <AlertDescription className="max-h-32 overflow-y-auto text-sm">
