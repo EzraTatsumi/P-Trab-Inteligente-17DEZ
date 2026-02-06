@@ -325,7 +325,7 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                     {isProcessing ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
-                        <Upload className="mr-2 h-4 w-4" />
+                        <Donwload className="mr-2 h-4 w-4" />
                     )}
                     Confirmar Importação ({importSummary.totalValid} Itens)
                 </Button>
@@ -362,7 +362,7 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                         {isProcessing ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         ) : (
-                            <Download className="mr-2 h-4 w-4" />
+                            <Upload className="mr-2 h-4 w-4" />
                         )}
                         Exportar ({diretrizes.length} Subitens)
                     </Button>
