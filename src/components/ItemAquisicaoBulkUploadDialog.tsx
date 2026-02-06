@@ -14,7 +14,7 @@ import { parseInputToNumber, formatCurrencyInput, numberToRawDigits } from '@/li
 
 interface ItemAquisicaoBulkUploadDialogProps {
     open: boolean;
-    onOpenChange: (open: boolean) => void;
+    onOpenChange: (open: (open: boolean) => void) => void;
     onImport: (items: ItemAquisicao[]) => void;
 }
 
@@ -28,7 +28,7 @@ interface ImportSummary {
     totalLines: number;
     validItems: ItemAquisicao[];
     errorItems: ImportError[];
-    duplicateItems: ImportError[]; // NOVO: Rastreia duplicatas encontradas no arquivo
+    duplicateItems: ImportError[]; // Rastreia duplicatas encontradas no arquivo
 }
 
 // Cabeçalhos do template
@@ -60,10 +60,18 @@ const COLUMN_WIDTHS = [
 
 // Função auxiliar para gerar a chave de unicidade de um item
 const generateItemKey = (item: { descricao_item: string, codigo_catmat: string, numero_pregao: string, uasg: string }): string => {
-    const desc = (item.descricao_item || '').trim().toUpperCase();
-    const catmat = (item.codigo_catmat || '').trim().toUpperCase();
-    const pregao = (item.numero_pregao || '').trim().toUpperCase();
-    const uasg = (item.uasg || '').trim().toUpperCase();
+    // Normaliza e remove espaços extras
+    const normalize = (str: string) => 
+        (str || '')
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, ' '); // Substitui múltiplos espaços por um único espaço
+        
+    const desc = normalize(item.descricao_item);
+    const catmat = normalize(item.codigo_catmat);
+    const pregao = normalize(item.numero_pregao);
+    const uasg = normalize(item.uasg);
+    
     return `${desc}|${catmat}|${pregao}|${uasg}`;
 };
 
@@ -128,8 +136,8 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                 
                 const validItems: ItemAquisicao[] = [];
                 const errorItems: ImportError[] = [];
-                const duplicateItems: ImportError[] = []; // NOVO: Array para duplicatas
-                const encounteredKeys = new Set<string>(); // NOVO: Set para rastrear chaves únicas
+                const duplicateItems: ImportError[] = []; 
+                const encounteredKeys = new Set<string>(); 
                 
                 // Mapeamento de índices de coluna
                 const headerMap: Record<string, number> = {};
@@ -165,10 +173,12 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                     }
 
                     try {
+                        // Extração e normalização dos dados
                         const descricao_item = String(row[headerMap['Descricao do Item']] || '').trim();
                         const valor_unitario_raw = String(row[headerMap['Valor Unitario (R$)']] || '0').trim();
                         const numero_pregao = String(row[headerMap['Numero do Pregao/Ref. Preco']] || '').trim();
-                        const uasg = String(row[headerMap['UASG']] || '').trim();
+                        // Remove formatação de UASG (ex: 160.170 -> 160170)
+                        const uasg = String(row[headerMap['UASG']] || '').trim().replace(/\D/g, ''); 
                         const codigo_catmat = String(row[headerMap['Codigo CATMAT']] || '').trim();
                         
                         if (!descricao_item) {
@@ -179,8 +189,8 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                             throw new Error("Número do Pregão/Ref. Preço não pode ser vazio.");
                         }
 
-                        if (!uasg) {
-                            throw new Error("UASG não pode ser vazia.");
+                        if (!uasg || uasg.length !== 6) {
+                            throw new Error("UASG deve ter 6 dígitos.");
                         }
                         
                         const valor_unitario = parseInputToNumber(valor_unitario_raw);
@@ -189,7 +199,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                             throw new Error("Valor Unitário inválido ou zero.");
                         }
                         
-                        // NOVO: Checagem de duplicidade dentro do arquivo
+                        // Checagem de duplicidade dentro do arquivo
                         const newItemData = {
                             descricao_item,
                             valor_unitario,
