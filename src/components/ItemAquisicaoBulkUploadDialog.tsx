@@ -28,6 +28,7 @@ interface ImportSummary {
     totalLines: number;
     validItems: ItemAquisicao[];
     errorItems: ImportError[];
+    duplicateItems: ImportError[]; // NOVO: Rastreia duplicatas encontradas no arquivo
 }
 
 // Cabeçalhos do template
@@ -57,6 +58,15 @@ const COLUMN_WIDTHS = [
     { wch: 20 }  // Codigo CATMAT
 ];
 
+// Função auxiliar para gerar a chave de unicidade de um item
+const generateItemKey = (item: { descricao_item: string, codigo_catmat: string, numero_pregao: string, uasg: string }): string => {
+    const desc = (item.descricao_item || '').trim().toUpperCase();
+    const catmat = (item.codigo_catmat || '').trim().toUpperCase();
+    const pregao = (item.numero_pregao || '').trim().toUpperCase();
+    const uasg = (item.uasg || '').trim().toUpperCase();
+    return `${desc}|${catmat}|${pregao}|${uasg}`;
+};
+
 const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps> = ({
     open,
     onOpenChange,
@@ -64,7 +74,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
 }) => {
     const [file, setFile] = useState<File | null>(null);
     // NOVO ESTADO: Armazena o resumo da importação
-    const [summary, setSummary] = useState<ImportSummary>({ totalLines: 0, validItems: [], errorItems: [] });
+    const [summary, setSummary] = useState<ImportSummary>({ totalLines: 0, validItems: [], errorItems: [], duplicateItems: [] });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -74,7 +84,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
             if (selectedFile.name.endsWith('.xlsx')) {
                 setFile(selectedFile);
                 setError(null);
-                setSummary({ totalLines: 0, validItems: [], errorItems: [] }); // Limpa o resumo ao selecionar novo arquivo
+                setSummary({ totalLines: 0, validItems: [], errorItems: [], duplicateItems: [] }); // Limpa o resumo ao selecionar novo arquivo
             } else {
                 setFile(null);
                 setError("Formato de arquivo inválido. Por favor, use um arquivo .xlsx.");
@@ -90,7 +100,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
 
         setLoading(true);
         setError(null);
-        setSummary({ totalLines: 0, validItems: [], errorItems: [] });
+        setSummary({ totalLines: 0, validItems: [], errorItems: [], duplicateItems: [] });
 
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -118,6 +128,8 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                 
                 const validItems: ItemAquisicao[] = [];
                 const errorItems: ImportError[] = [];
+                const duplicateItems: ImportError[] = []; // NOVO: Array para duplicatas
+                const encounteredKeys = new Set<string>(); // NOVO: Set para rastrear chaves únicas
                 
                 // Mapeamento de índices de coluna
                 const headerMap: Record<string, number> = {};
@@ -176,15 +188,30 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                         if (valor_unitario <= 0) {
                             throw new Error("Valor Unitário inválido ou zero.");
                         }
-
-                        validItems.push({
-                            id: Math.random().toString(36).substring(2, 9), // ID temporário
+                        
+                        // NOVO: Checagem de duplicidade dentro do arquivo
+                        const newItemData = {
                             descricao_item,
                             valor_unitario,
                             numero_pregao,
                             uasg,
                             codigo_catmat,
-                        });
+                        };
+                        
+                        const key = generateItemKey(newItemData);
+
+                        if (encounteredKeys.has(key)) {
+                            duplicateItems.push({
+                                lineNumber,
+                                errorMessage: "Item duplicado (Descrição, CATMAT, Pregão e UASG) encontrado no arquivo.",
+                            });
+                        } else {
+                            encounteredKeys.add(key);
+                            validItems.push({
+                                id: Math.random().toString(36).substring(2, 9), // ID temporário
+                                ...newItemData,
+                            });
+                        }
                         
                     } catch (e: any) {
                         errorItems.push({
@@ -202,12 +229,13 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                     totalLines,
                     validItems,
                     errorItems,
+                    duplicateItems, // Inclui duplicatas no resumo
                 });
 
                 if (validItems.length > 0) {
-                    toast.success(`${validItems.length} itens prontos para importação.`);
+                    toast.success(`${validItems.length} itens prontos para importação. ${duplicateItems.length > 0 ? `(${duplicateItems.length} duplicados ignorados)` : ''}`);
                 } else {
-                    toast.warning("Nenhum item válido encontrado. Verifique os erros abaixo.");
+                    toast.warning("Nenhum item válido encontrado. Verifique os erros e duplicatas abaixo.");
                 }
 
             } catch (e: any) {
@@ -228,7 +256,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
     
     const handleClose = () => {
         setFile(null);
-        setSummary({ totalLines: 0, validItems: [], errorItems: [] });
+        setSummary({ totalLines: 0, validItems: [], errorItems: [], duplicateItems: [] });
         setError(null);
         setLoading(false);
         onOpenChange(false);
@@ -260,9 +288,10 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
         }
     };
 
-    const { validItems, errorItems, totalLines } = summary;
+    const { validItems, errorItems, duplicateItems, totalLines } = summary;
     const hasProcessedData = totalLines > 0;
     const hasErrors = errorItems.length > 0;
+    const hasDuplicates = duplicateItems.length > 0;
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
@@ -350,7 +379,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                             <h4 className="text-base font-semibold">Passo 2: Resumo e Pré-visualização</h4>
                             
                             {/* Resumo Estatístico */}
-                            <div className="grid grid-cols-3 gap-4 text-center">
+                            <div className="grid grid-cols-4 gap-4 text-center">
                                 <div className="p-3 border rounded-lg bg-muted/50">
                                     <p className="text-2xl font-bold text-foreground">{totalLines}</p>
                                     <p className="text-sm text-muted-foreground">Linhas Processadas</p>
@@ -363,6 +392,11 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                                     <p className="text-2xl font-bold text-red-600 dark:text-red-400">{errorItems.length}</p>
                                     <p className="text-sm text-muted-foreground">Itens com Erro</p>
                                 </div>
+                                {/* NOVO: Contagem de Duplicatas */}
+                                <div className="p-3 border rounded-lg bg-yellow-50/50 border-yellow-200 dark:bg-yellow-950/50 dark:border-yellow-800">
+                                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{duplicateItems.length}</p>
+                                    <p className="text-sm text-muted-foreground">Itens Duplicados</p>
+                                </div>
                             </div>
                             
                             {/* Lista de Erros */}
@@ -373,6 +407,24 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                                     <AlertDescription className="max-h-32 overflow-y-auto text-sm">
                                         <ul className="list-disc list-inside space-y-1 mt-2">
                                             {errorItems.map((err, index) => (
+                                                <li key={index}>
+                                                    <span className="font-semibold">Linha {err.lineNumber}:</span> {err.errorMessage}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                            
+                            {/* NOVO: Lista de Duplicatas */}
+                            {hasDuplicates && (
+                                <Alert variant="warning" className="mt-4 bg-yellow-50/50 border-yellow-200 text-yellow-900 dark:bg-yellow-950/50 dark:border-yellow-800 dark:text-yellow-300">
+                                    <AlertCircle className="h-4 w-4 text-yellow-900 dark:text-yellow-400" />
+                                    <AlertTitle>Itens Duplicados ({duplicateItems.length})</AlertTitle>
+                                    <AlertDescription className="max-h-32 overflow-y-auto text-sm">
+                                        <p className="mb-2">Os itens abaixo foram ignorados, pois já existem no arquivo com a mesma chave de identificação (Descrição, CATMAT, Pregão e UASG).</p>
+                                        <ul className="list-disc list-inside space-y-1 mt-2">
+                                            {duplicateItems.map((err, index) => (
                                                 <li key={index}>
                                                     <span className="font-semibold">Linha {err.lineNumber}:</span> {err.errorMessage}
                                                 </li>
