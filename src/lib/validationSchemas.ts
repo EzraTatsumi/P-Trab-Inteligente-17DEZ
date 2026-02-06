@@ -133,3 +133,8 @@ export const diariaSchema = z.object({
     message: "Informe a quantidade de militares por posto/graduação.",
     path: ["quantidades_por_posto"],
 });
+
+// --- Item Code Search Schema (NOVO) ---
+export const itemCodeSearchSchema = z.object({
+    query: z.string().min(3, "A pesquisa deve ter pelo menos 3 caracteres."),
+});
