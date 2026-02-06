@@ -502,8 +502,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         <TableHead className="w-[10%] text-center">Cód. CATMAT</TableHead>
                                         <TableHead className="w-[10%] text-center">Pregão/Ref.</TableHead>
                                         <TableHead className="w-[10%] text-center">UASG</TableHead>
-                                        <TableHead className="w-[10%] text-right">Valor Unitário</TableHead>
-                                        <TableHead className="w-[10%] text-right">Ações</TableHead>
+                                        <TableHead className="w-[10%] text-center">Valor Unitário</TableHead>
+                                        <TableHead className="w-[10%] text-center">Ações</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
