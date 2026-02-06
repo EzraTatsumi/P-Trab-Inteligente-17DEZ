@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,11 +18,24 @@ interface CatmatCatalogDialogProps {
     onSelect: (item: { code: string, description: string, short_description: string | null }) => void;
 }
 
-const fetchCatalogItems = async (): Promise<CatalogoCatmat[]> => {
-    const { data, error } = await supabase
+// Limite de resultados para evitar sobrecarga
+const RESULT_LIMIT = 500;
+
+const fetchCatalogItems = async (searchTerm: string): Promise<CatalogoCatmat[]> => {
+    let query = supabase
         .from('catalogo_catmat')
         .select('*')
-        .order('code', { ascending: true });
+        .order('code', { ascending: true })
+        .limit(RESULT_LIMIT);
+
+    const search = searchTerm.trim();
+
+    if (search) {
+        // Implementa a busca no lado do servidor usando ilike para código, descrição ou nome reduzido
+        query = query.or(`code.ilike.%${search}%,description.ilike.%${search}%,short_description.ilike.%${search}%`);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error("Erro ao buscar catálogo CATMAT:", error);
@@ -37,20 +50,29 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
     onOpenChange,
     onSelect,
 }) => {
-    const { data: items, isLoading, error } = useQuery({
-        queryKey: ['catmatCatalog'],
-        queryFn: fetchCatalogItems,
-        enabled: open,
-    });
-    
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
     
-    const filteredItems = (items || []).filter(item => 
-        item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.short_description?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Usamos um debounce para evitar consultas excessivas enquanto o usuário digita
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+        }, 300); // 300ms de debounce
+
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const { data: items, isLoading, error } = useQuery({
+        queryKey: ['catmatCatalog', debouncedSearchTerm],
+        queryFn: () => fetchCatalogItems(debouncedSearchTerm),
+        // Só executa a query se o diálogo estiver aberto
+        enabled: open,
+    });
+    
+    // A filtragem agora é feita no backend, então 'items' já contém os resultados filtrados.
+    const filteredItems = items || [];
     
     const handlePreSelect = (item: CatalogoCatmat) => {
         const newItem = {
@@ -77,6 +99,7 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
     };
 
     if (error) {
+        // Exibir erro apenas se houver um erro de carregamento
         toast.error(error.message);
     }
 
@@ -111,58 +134,63 @@ const CatmatCatalogDialog: React.FC<CatmatCatalogDialogProps> = ({
                             Nenhum item CATMAT encontrado.
                         </div>
                     ) : (
-                        <div className="max-h-[50vh] overflow-y-auto border rounded-md">
-                            <Table>
-                                <TableHeader className="sticky top-0 bg-background z-10">
-                                    <TableRow>
-                                        <TableHead className="w-[120px] text-center">Código</TableHead>
-                                        <TableHead className="w-[200px] text-center">Nome Reduzido</TableHead>
-                                        <TableHead className="text-center">Descrição Completa</TableHead>
-                                        <TableHead className="w-[120px] text-center">Ação</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredItems.map(item => {
-                                        const isSelected = selectedItem?.code === item.code;
-                                        return (
-                                            <TableRow 
-                                                key={item.id} 
-                                                className={`cursor-pointer transition-colors ${isSelected ? "bg-primary/10 hover:bg-primary/20" : "hover:bg-muted/50"}`}
-                                                onClick={() => handlePreSelect(item)}
-                                            >
-                                                <TableCell className="font-semibold text-center">{item.code}</TableCell>
-                                                <TableCell className="font-medium">{item.short_description || 'N/A'}</TableCell>
-                                                <TableCell className="text-sm text-muted-foreground max-w-lg whitespace-normal">
-                                                    <span className="block">{item.description || 'N/A'}</span>
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    <Button
-                                                        variant={isSelected ? "default" : "outline"}
-                                                        size="sm"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation(); 
-                                                            handlePreSelect(item);
-                                                        }}
-                                                    >
-                                                        {isSelected ? (
-                                                            <>
-                                                                <Check className="h-4 w-4 mr-1" />
-                                                                Selecionado
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Check className="h-4 w-4 mr-1" />
-                                                                Selecionar
-                                                            </>
-                                                        )}
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </div>
+                        <>
+                            <p className="text-sm text-muted-foreground">
+                                Exibindo {filteredItems.length} resultados. Refine sua busca se não encontrar o item desejado.
+                            </p>
+                            <div className="max-h-[50vh] overflow-y-auto border rounded-md">
+                                <Table>
+                                    <TableHeader className="sticky top-0 bg-background z-10">
+                                        <TableRow>
+                                            <TableHead className="w-[120px] text-center">Código</TableHead>
+                                            <TableHead className="w-[200px] text-center">Nome Reduzido</TableHead>
+                                            <TableHead className="text-center">Descrição Completa</TableHead>
+                                            <TableHead className="w-[120px] text-center">Ação</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredItems.map(item => {
+                                            const isSelected = selectedItem?.code === item.code;
+                                            return (
+                                                <TableRow 
+                                                    key={item.id} 
+                                                    className={`cursor-pointer transition-colors ${isSelected ? "bg-primary/10 hover:bg-primary/20" : "hover:bg-muted/50"}`}
+                                                    onClick={() => handlePreSelect(item)}
+                                                >
+                                                    <TableCell className="font-semibold text-center">{item.code}</TableCell>
+                                                    <TableCell className="font-medium">{item.short_description || 'N/A'}</TableCell>
+                                                    <TableCell className="text-sm text-muted-foreground max-w-lg whitespace-normal">
+                                                        <span className="block">{item.description || 'N/A'}</span>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Button
+                                                            variant={isSelected ? "default" : "outline"}
+                                                            size="sm"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation(); 
+                                                                handlePreSelect(item);
+                                                            }}
+                                                        >
+                                                            {isSelected ? (
+                                                                <>
+                                                                    <Check className="h-4 w-4 mr-1" />
+                                                                    Selecionado
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Check className="h-4 w-4 mr-1" />
+                                                                    Selecionar
+                                                                </>
+                                                            )}
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </>
                     )}
                 </div>
 
