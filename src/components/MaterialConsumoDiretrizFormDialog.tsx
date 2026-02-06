@@ -5,7 +5,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Plus, Pencil, Trash2, Loader2, BookOpen, FileSpreadsheet, GripVertical } from "lucide-react";
+import { Save, Plus, Pencil, Trash2, Loader2, BookOpen, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -497,27 +497,23 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[5%]"></TableHead> {/* Coluna para o ícone de arrastar (placeholder) */}
                                         <TableHead className="w-[25%]">Descrição Reduzida</TableHead>
                                         <TableHead className="w-[25%]">Descrição Completa</TableHead>
                                         <TableHead className="w-[10%] text-center">Cód. CATMAT</TableHead>
                                         <TableHead className="w-[10%] text-center">Pregão/Ref.</TableHead>
-                                        <TableHead className="w-[10%] text-center">UASG</TableHead> {/* NOVA COLUNA */}
+                                        <TableHead className="w-[10%] text-center">UASG</TableHead>
                                         <TableHead className="w-[10%] text-right">Valor Unitário</TableHead>
-                                        <TableHead className="w-[5%] text-right">Ações</TableHead>
+                                        <TableHead className="w-[10%] text-right">Ações</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {subitemForm.itens_aquisicao.map(item => (
                                         <TableRow key={item.id}>
-                                            <TableCell className="w-[5%] text-center p-2">
-                                                <GripVertical className="h-4 w-4 text-muted-foreground mx-auto" />
-                                            </TableCell>
                                             <TableCell className="font-medium text-sm">{item.descricao_reduzida || 'N/A'}</TableCell>
                                             <TableCell className="font-medium text-sm">{item.descricao_item}</TableCell>
                                             <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
                                             <TableCell className="text-center text-sm">{item.numero_pregao || 'N/A'}</TableCell>
-                                            <TableCell className="text-center text-sm">{formatCodug(item.uasg) || 'N/A'}</TableCell> {/* NOVO CAMPO */}
+                                            <TableCell className="text-center text-sm">{formatCodug(item.uasg) || 'N/A'}</TableCell>
                                             <TableCell className="text-right font-bold text-primary">
                                                 {formatCurrency(item.valor_unitario)}
                                             </TableCell>
