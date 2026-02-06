@@ -125,7 +125,7 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
             return;
         }
         
-        if (!confirm(`Atenção: Você está prestes a substituir TODAS as diretrizes de Material de Consumo do ano ${selectedYear} por ${importSummary.totalValid} itens válidos. Deseja continuar?`)) {
+        if (!confirm(`Atenção: Você está prestes a mesclar ${importSummary.totalValid} itens válidos às diretrizes de Material de Consumo do ano ${selectedYear}. Deseja continuar?`)) {
             return;
         }
 
@@ -160,7 +160,7 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
         <div className="space-y-4">
             <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Upload className="h-5 w-5 text-primary" />
+                    <Download className="h-5 w-5 text-primary" /> {/* Ícone de Download (seta para baixo) para Importar */}
                     1. Selecionar Arquivo
                 </h3>
                 <p className="text-sm text-muted-foreground">
@@ -325,7 +325,7 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                     {isProcessing ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
-                        <Upload className="mr-2 h-4 w-4" />
+                        <Download className="mr-2 h-4 w-4" /> // Ícone de Download (seta para baixo) para Confirmar Importação
                     )}
                     Confirmar Importação ({importSummary.totalValid} Itens)
                 </Button>
@@ -352,7 +352,7 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                 {/* Seção de Exportação (Sempre visível) */}
                 <div className="p-4 border rounded-lg bg-muted/50 flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                        <Download className="h-5 w-5 text-primary" />
+                        <Upload className="h-5 w-5 text-primary" /> {/* Ícone de Upload (seta para cima) para Exportar */}
                         <h3 className="text-lg font-semibold">Exportar Dados</h3>
                     </div>
                     <Button 
@@ -362,7 +362,7 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                         {isProcessing ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         ) : (
-                            <Download className="mr-2 h-4 w-4" />
+                            <Upload className="mr-2 h-4 w-4" /> {/* Ícone de Upload (seta para cima) para Exportar */}
                         )}
                         Exportar ({diretrizes.length} Subitens)
                     </Button>
