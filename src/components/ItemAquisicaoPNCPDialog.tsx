@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, FileText, DollarSign, Loader2 } from "lucide-react";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { toast } from "sonner";
+import ArpUasgSearch from './pncp/ArpUasgSearch'; // Importa o novo componente
 
 interface ItemAquisicaoPNCPDialogProps {
     open: boolean;
@@ -13,18 +14,7 @@ interface ItemAquisicaoPNCPDialogProps {
 }
 
 // Placeholder components for future implementation
-const ArpUasgSearch: React.FC<{ onSelect: (item: ItemAquisicao) => void }> = ({ onSelect }) => (
-    <div className="p-4 space-y-4">
-        <p className="text-muted-foreground">
-            Funcionalidade de Busca de ARP por UASG será implementada aqui.
-        </p>
-        <Button disabled>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            Buscar ARP (Em desenvolvimento)
-        </Button>
-    </div>
-);
-
+// REMOVIDO: ArpUasgSearch placeholder
 const ArpCatmatSearch: React.FC<{ onSelect: (item: ItemAquisicao) => void }> = ({ onSelect }) => (
     <div className="p-4 space-y-4">
         <p className="text-muted-foreground">
