@@ -74,8 +74,8 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
         <>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4">
-                    {/* Grid principal com 4 colunas para alinhar os elementos */}
-                    <div className="grid grid-cols-4 gap-4 items-end">
+                    {/* Grid principal com 4 colunas. Removido items-end para alinhar ao topo. */}
+                    <div className="grid grid-cols-4 gap-4">
                         
                         {/* Campo UASG + Botão (Ocupa 2 colunas) */}
                         <FormField
