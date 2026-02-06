@@ -400,12 +400,12 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 {/* Campo Descrição Completa (4 colunas) */}
                                 <div className="space-y-2 col-span-4">
                                     <Label htmlFor="item-descricao">Descrição Completa *</Label>
-                                    <Input
+                                    <Textarea // Alterado de Input para Textarea
                                         id="item-descricao"
                                         value={itemForm.descricao_item}
                                         onChange={(e) => setItemForm({ ...itemForm, descricao_item: e.target.value })}
                                         placeholder="Ex: Caneta Esferográfica Azul 1.0mm"
-                                        onKeyDown={handleEnterToNextField}
+                                        rows={2} // Define a altura mínima para 2 linhas
                                         required
                                     />
                                 </div>
@@ -413,7 +413,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
 
                             {/* SEGUNDA LINHA: Descrição Reduzida, Valor, Pregão, UASG */}
                             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                                {/* Campo Descrição Reduzida (2 colunas) - Aumentado para 2 colunas */}
+                                {/* Campo Descrição Reduzida (2 colunas) */}
                                 <div className="space-y-2 col-span-2">
                                     <Label htmlFor="item-descricao-reduzida">Descrição Reduzida</Label>
                                     <Input
