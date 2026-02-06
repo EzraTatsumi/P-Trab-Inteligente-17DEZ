@@ -87,7 +87,6 @@ interface FlatImportRow {
     VALOR_UNITARIO: number;
     NUMERO_PREGAO: string;
     UASG: string;
-    // UNIDADE_MEDIDA: string; // REMOVIDO
 }
 
 /**
@@ -109,7 +108,6 @@ const validateRow = (row: FlatImportRow, rowIndex: number): StagingRow => {
     const descricaoItem = normalizeString(row.DESCRICAO_ITEM);
     const numeroPregao = normalizeString(row.NUMERO_PREGAO);
     const uasgRaw = String(row.UASG || '').replace(/\D/g, '').trim();
-    // const unidadeMedida = normalizeString(row.UNIDADE_MEDIDA); // REMOVIDO
     
     // Tenta converter o valor unitário para número
     let valorUnitario = 0;
@@ -127,7 +125,6 @@ const validateRow = (row: FlatImportRow, rowIndex: number): StagingRow => {
     if (!nomeSubitem) errors.push("NOME_SUBITEM é obrigatório.");
     if (!descricaoItem) errors.push("DESCRICAO_ITEM é obrigatória.");
     if (!numeroPregao) errors.push("NUMERO_PREGAO é obrigatório.");
-    // if (!unidadeMedida) errors.push("UNIDADE_MEDIDA é obrigatória."); // REMOVIDO
     
     // --- Validação de Formato ---
     if (uasgRaw.length !== 6 || !/^\d+$/.test(uasgRaw)) {
@@ -146,7 +143,6 @@ const validateRow = (row: FlatImportRow, rowIndex: number): StagingRow => {
         codigo_catmat: normalizeString(row.CODIGO_CATMAT),
         descricao_item: descricaoItem,
         descricao_reduzida: normalizeString(row.DESCRICAO_REDUZIDA),
-        // unidade_medida: unidadeMedida, // REMOVIDO
         valor_unitario: valorUnitario,
         numero_pregao: numeroPregao,
         uasg: uasgRaw,
@@ -170,10 +166,19 @@ export async function processMaterialConsumoImport(
     file: File, 
     year: number, 
     userId: string
-): Promise<{ stagedData: StagingRow[], totalValid: number, totalInvalid: number, totalDuplicates: number }> {
+): Promise<{ stagedData: StagingRow[], totalValid: number, totalInvalid: number, totalDuplicates: number, totalExisting: number }> {
     
     const existingDiretrizes = await fetchExistingDiretrizes(year, userId);
-    const existingSubitemKeys = new Set(existingDiretrizes.map(d => `${d.nr_subitem}|${d.nome_subitem}`));
+    
+    // Cria um Set de chaves de Item de Aquisição já existentes no DB
+    const existingItemKeys = new Set<string>();
+    existingDiretrizes.forEach(diretriz => {
+        (diretriz.itens_aquisicao || []).forEach(item => {
+            // Chave de unicidade: Descrição Item | CATMAT | Pregão | UASG
+            const key = `${normalizeString(item.descricao_item)}|${normalizeString(item.codigo_catmat)}|${normalizeString(item.numero_pregao)}|${normalizeString(item.uasg)}`;
+            existingItemKeys.add(key);
+        });
+    });
 
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -199,7 +204,6 @@ export async function processMaterialConsumoImport(
                 
                 // Mapeamento de cabeçalhos (assumindo que a primeira linha é o cabeçalho)
                 const headers = rawJson[0] as string[];
-                // CORREÇÃO: Removendo UNIDADE_MEDIDA dos cabeçalhos esperados
                 const expectedHeaders = ['NR_SUBITEM', 'NOME_SUBITEM', 'DESCRICAO_ITEM', 'VALOR_UNITARIO', 'NUMERO_PREGAO', 'UASG'];
                 
                 if (!expectedHeaders.every(h => headers.includes(h))) {
@@ -221,44 +225,43 @@ export async function processMaterialConsumoImport(
                     stagedData.push(validateRow(row, index + 2)); // +2 para compensar o índice 0 e o cabeçalho
                 });
                 
-                // 2. Validação de Duplicidade Interna (Item de Aquisição)
-                const internalItemKeys = new Set<string>();
                 let totalDuplicates = 0;
+                let totalExisting = 0;
+                const internalItemKeys = new Set<string>();
                 
+                // 2. Validação de Duplicidade (Interna e Externa)
                 stagedData = stagedData.map(row => {
                     if (!row.isValid) return row;
                     
-                    // Chave de unicidade do Item de Aquisição (dentro do arquivo)
-                    // CORREÇÃO: Removendo unidade_medida da chave de unicidade
-                    const itemKey = `${row.nr_subitem}|${row.nome_subitem}|${row.descricao_item}|${row.codigo_catmat}|${row.numero_pregao}|${row.uasg}`;
+                    // Chave de unicidade do Item de Aquisição (Descrição Item | CATMAT | Pregão | UASG)
+                    const itemKey = `${row.descricao_item}|${row.codigo_catmat}|${row.numero_pregao}|${row.uasg}`;
                     
+                    // A. Duplicidade Interna (no arquivo)
                     if (internalItemKeys.has(itemKey)) {
                         row.isDuplicateInternal = true;
                         row.isValid = false;
-                        row.errors.push("Duplicata interna: Este item de aquisição já aparece em outra linha do arquivo para o mesmo Subitem ND.");
+                        row.errors.push("Duplicata interna: Este item de aquisição já aparece em outra linha do arquivo.");
                         totalDuplicates++;
-                    } else {
-                        internalItemKeys.add(itemKey);
+                        return row;
                     }
-                    return row;
-                });
-                
-                // 3. Validação de Duplicidade Externa (Subitem ND)
-                // Esta validação é apenas informativa, pois a importação fará a substituição completa.
-                stagedData = stagedData.map(row => {
-                    if (!row.isValid) return row;
+                    internalItemKeys.add(itemKey);
                     
-                    const subitemKey = `${row.nr_subitem}|${row.nome_subitem}`;
-                    if (existingSubitemKeys.has(subitemKey)) {
+                    // B. Duplicidade Externa (já cadastrado no DB)
+                    if (existingItemKeys.has(itemKey)) {
                         row.isDuplicateExternal = true;
+                        row.isValid = false; // NÃO PERMITE IMPORTAR SE JÁ EXISTE
+                        row.errors.push("Item já cadastrado em uma diretriz existente.");
+                        totalExisting++;
+                        return row;
                     }
+                    
                     return row;
                 });
                 
                 const totalValid = stagedData.filter(r => r.isValid).length;
-                const totalInvalid = stagedData.length - totalValid;
+                const totalInvalid = stagedData.length - totalValid; // Agora inclui duplicatas internas e externas
 
-                resolve({ stagedData, totalValid, totalInvalid, totalDuplicates });
+                resolve({ stagedData, totalValid, totalInvalid, totalDuplicates, totalExisting });
 
             } catch (error) {
                 console.error("Erro durante o processamento do arquivo:", error);
@@ -286,6 +289,7 @@ export async function persistMaterialConsumoImport(
     userId: string
 ): Promise<void> {
     
+    // A persistência só deve considerar itens que são válidos (isValid = true)
     const validRows = stagedData.filter(r => r.isValid);
     if (validRows.length === 0) {
         throw new Error("Nenhuma linha válida para importação.");
@@ -295,6 +299,7 @@ export async function persistMaterialConsumoImport(
     const groupedDiretrizes = new Map<string, DiretrizMaterialConsumo>();
 
     validRows.forEach((row) => {
+        // A chave de agrupamento é o Subitem ND
         const diretrizKey = `${row.nr_subitem}|${row.nome_subitem}`;
 
         if (!groupedDiretrizes.has(diretrizKey)) {

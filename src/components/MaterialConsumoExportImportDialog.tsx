@@ -43,7 +43,8 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
         totalRows: 0,
         totalValid: 0,
         totalInvalid: 0,
-        totalDuplicates: 0,
+        totalDuplicates: 0, // Duplicatas internas (no arquivo)
+        totalExisting: 0, // Itens já cadastrados (no DB)
     });
 
     // Limpa o estado ao fechar
@@ -104,6 +105,7 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                 totalValid: result.totalValid,
                 totalInvalid: result.totalInvalid,
                 totalDuplicates: result.totalDuplicates,
+                totalExisting: result.totalExisting,
             });
             
             setStep('review');
@@ -206,22 +208,29 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
     
     const renderReviewStep = () => (
         <div className="space-y-4">
-            <div className="grid grid-cols-4 gap-4 text-center">
-                <div className="p-3 border rounded-lg bg-gray-50">
-                    <p className="text-xs text-muted-foreground">Linhas Analisadas</p>
-                    <p className="text-xl font-bold">{importSummary.totalRows}</p>
+            {/* Resumo Estatístico (Baseado no ItemAquisicaoBulkUploadDialog) */}
+            <div className="grid grid-cols-5 gap-4 text-center">
+                <div className="p-3 border rounded-lg bg-muted/50">
+                    <p className="text-2xl font-bold text-foreground">{importSummary.totalRows}</p>
+                    <p className="text-sm text-muted-foreground">Linhas Processadas</p>
                 </div>
-                <div className="p-3 border rounded-lg bg-green-50">
-                    <p className="text-xs text-muted-foreground">Linhas Válidas</p>
-                    <p className="text-xl font-bold text-green-600">{importSummary.totalValid}</p>
+                <div className="p-3 border rounded-lg bg-green-50/50 border-green-200 dark:bg-green-950/50 dark:border-green-800">
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{importSummary.totalValid}</p>
+                    <p className="text-sm text-muted-foreground">Itens Válidos</p>
                 </div>
-                <div className="p-3 border rounded-lg bg-red-50">
-                    <p className="text-xs text-muted-foreground">Linhas com Erro</p>
-                    <p className="text-xl font-bold text-red-600">{importSummary.totalInvalid}</p>
+                <div className="p-3 border rounded-lg bg-red-50/50 border-red-200 dark:bg-red-950/50 dark:border-red-800">
+                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">{importSummary.totalInvalid}</p>
+                    <p className="text-sm text-muted-foreground">Itens com Erro</p>
                 </div>
-                <div className="p-3 border rounded-lg bg-yellow-50">
-                    <p className="text-xs text-muted-foreground">Subitens Agrupados</p>
-                    <p className="text-xl font-bold text-yellow-700">{totalSubitensAgrupados}</p>
+                {/* Duplicados (Internos) */}
+                <div className="p-3 border rounded-lg bg-yellow-50/50 border-yellow-200 dark:bg-yellow-950/50 dark:border-yellow-800">
+                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{importSummary.totalDuplicates}</p>
+                    <p className="text-sm text-muted-foreground">Duplicados (Arquivo)</p>
+                </div>
+                {/* Já Cadastrados (Externos) */}
+                <div className="p-3 border rounded-lg bg-orange-50/50 border-orange-200 dark:bg-orange-950/50 dark:border-orange-800">
+                    <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{importSummary.totalExisting}</p>
+                    <p className="text-sm text-muted-foreground">Já Cadastrados</p>
                 </div>
             </div>
             
@@ -229,7 +238,7 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                 <div className="flex items-center p-3 bg-red-100 border border-red-300 rounded-md text-red-800">
                     <FileWarning className="h-5 w-5 mr-2 flex-shrink-0" />
                     <p className="text-sm font-medium">
-                        {importSummary.totalInvalid} linhas possuem erros e serão ignoradas na importação. Corrija o arquivo e tente novamente para incluir todos os dados.
+                        {importSummary.totalInvalid} linhas possuem erros, são duplicatas internas ou já estão cadastradas e serão ignoradas na importação.
                     </p>
                 </div>
             )}
@@ -256,17 +265,14 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                         {stagedData.map((row, index) => (
                             <TableRow key={index} className={cn(
                                 !row.isValid && "bg-red-50/50",
-                                row.isDuplicateInternal && "bg-yellow-50/50"
+                                row.isDuplicateInternal && "bg-yellow-50/50",
+                                row.isDuplicateExternal && "bg-orange-50/50"
                             )}>
                                 <TableCell className="text-center text-xs p-2">{row.originalRowIndex}</TableCell>
                                 <TableCell className="text-xs font-medium p-2">
                                     {row.nr_subitem} - {row.nome_subitem}
-                                    <p className="text-muted-foreground/70 text-[10px] whitespace-normal">
-                                        {row.descricao_subitem}
-                                    </p>
-                                    {row.isDuplicateExternal && (
-                                        <Badge variant="secondary" className="mt-1 bg-yellow-200 text-yellow-800">Existente no DB</Badge>
-                                    )}
+                                    {/* REMOVIDO: Descrição do subitem */}
+                                    {/* REMOVIDO: Badge de Existente no DB, pois agora é tratado no Status/Erros */}
                                 </TableCell>
                                 <TableCell className="text-xs p-2">
                                     {row.descricao_item}
@@ -291,6 +297,16 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
                                                     - {err}
                                                 </p>
                                             ))}
+                                            {row.isDuplicateInternal && (
+                                                <p className="text-[10px] text-yellow-700">
+                                                    - Duplicata no arquivo
+                                                </p>
+                                            )}
+                                            {row.isDuplicateExternal && (
+                                                <p className="text-[10px] text-orange-700">
+                                                    - Já cadastrado no DB
+                                                </p>
+                                            )}
                                         </div>
                                     )}
                                 </TableCell>
