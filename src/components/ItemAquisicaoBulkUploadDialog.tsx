@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Import, Loader2, Upload, XCircle, Download, CheckCircle } from "lucide-react";
+import { AlertCircle, Import, Loader2, Upload, XCircle, Download, CheckCircle, AlertTriangle } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
@@ -14,8 +14,10 @@ import { parseInputToNumber, formatCurrencyInput, numberToRawDigits } from '@/li
 
 interface ItemAquisicaoBulkUploadDialogProps {
     open: boolean;
-    onOpenChange: (open: (open: boolean) => void) => void;
+    onOpenChange: (open: boolean) => void;
     onImport: (items: ItemAquisicao[]) => void;
+    // NOVO: Lista de itens já existentes na diretriz atual
+    existingItemsInDiretriz: ItemAquisicao[]; 
 }
 
 // Tipos para o resumo da importação
@@ -28,7 +30,8 @@ interface ImportSummary {
     totalLines: number;
     validItems: ItemAquisicao[];
     errorItems: ImportError[];
-    duplicateItems: ImportError[]; // Rastreia duplicatas encontradas no arquivo
+    duplicateItems: ImportError[]; // Duplicatas internas ao arquivo
+    existingItems: ImportError[]; // NOVO: Itens já cadastrados na diretriz
 }
 
 // Cabeçalhos do template
@@ -79,10 +82,11 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
     open,
     onOpenChange,
     onImport,
+    existingItemsInDiretriz, // NOVO
 }) => {
     const [file, setFile] = useState<File | null>(null);
     // NOVO ESTADO: Armazena o resumo da importação
-    const [summary, setSummary] = useState<ImportSummary>({ totalLines: 0, validItems: [], errorItems: [], duplicateItems: [] });
+    const [summary, setSummary] = useState<ImportSummary>({ totalLines: 0, validItems: [], errorItems: [], duplicateItems: [], existingItems: [] });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -92,7 +96,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
             if (selectedFile.name.endsWith('.xlsx')) {
                 setFile(selectedFile);
                 setError(null);
-                setSummary({ totalLines: 0, validItems: [], errorItems: [], duplicateItems: [] }); // Limpa o resumo ao selecionar novo arquivo
+                setSummary({ totalLines: 0, validItems: [], errorItems: [], duplicateItems: [], existingItems: [] }); // Limpa o resumo ao selecionar novo arquivo
             } else {
                 setFile(null);
                 setError("Formato de arquivo inválido. Por favor, use um arquivo .xlsx.");
@@ -108,7 +112,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
 
         setLoading(true);
         setError(null);
-        setSummary({ totalLines: 0, validItems: [], errorItems: [], duplicateItems: [] });
+        setSummary({ totalLines: 0, validItems: [], errorItems: [], duplicateItems: [], existingItems: [] });
 
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -137,7 +141,12 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                 const validItems: ItemAquisicao[] = [];
                 const errorItems: ImportError[] = [];
                 const duplicateItems: ImportError[] = []; 
+                const existingItems: ImportError[] = []; // NOVO: Para itens já cadastrados
+                
                 const encounteredKeys = new Set<string>(); 
+                
+                // Pré-carrega as chaves dos itens já existentes na diretriz
+                const existingKeysInDiretriz = new Set<string>(existingItemsInDiretriz.map(generateItemKey));
                 
                 // Mapeamento de índices de coluna
                 const headerMap: Record<string, number> = {};
@@ -199,7 +208,6 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                             throw new Error("Valor Unitário inválido ou zero.");
                         }
                         
-                        // Checagem de duplicidade dentro do arquivo
                         const newItemData = {
                             descricao_item,
                             valor_unitario,
@@ -210,18 +218,32 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                         
                         const key = generateItemKey(newItemData);
 
+                        // 1. VERIFICAÇÃO DE DUPLICIDADE INTERNA (NO ARQUIVO)
                         if (encounteredKeys.has(key)) {
                             duplicateItems.push({
                                 lineNumber,
                                 errorMessage: "Item duplicado (Descrição, CATMAT, Pregão e UASG) encontrado no arquivo.",
                             });
-                        } else {
-                            encounteredKeys.add(key);
-                            validItems.push({
-                                id: Math.random().toString(36).substring(2, 9), // ID temporário
-                                ...newItemData,
-                            });
+                            continue;
                         }
+                        
+                        // 2. VERIFICAÇÃO DE DUPLICIDADE EXTERNA (JÁ CADASTRADO) - NOVO
+                        if (existingKeysInDiretriz.has(key)) {
+                            existingItems.push({
+                                lineNumber,
+                                errorMessage: "Item já cadastrado nesta diretriz.",
+                            });
+                            // Adiciona a chave ao encounteredKeys para evitar que seja listado como duplicata interna se aparecer novamente
+                            encounteredKeys.add(key); 
+                            continue;
+                        }
+
+                        // Se passou nas duas verificações de duplicidade
+                        encounteredKeys.add(key);
+                        validItems.push({
+                            id: Math.random().toString(36).substring(2, 9), // ID temporário
+                            ...newItemData,
+                        });
                         
                     } catch (e: any) {
                         errorItems.push({
@@ -239,7 +261,8 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                     totalLines,
                     validItems,
                     errorItems,
-                    duplicateItems, // Inclui duplicatas no resumo
+                    duplicateItems, 
+                    existingItems, // Inclui duplicatas externas no resumo
                 });
 
                 if (validItems.length > 0) {
@@ -260,13 +283,15 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
     const handleConfirmImport = () => {
         if (summary.validItems.length > 0) {
             onImport(summary.validItems);
-            handleClose();
+            // Não fechar aqui, o onImport do pai fará isso se for bem-sucedido
+        } else {
+            toast.error("Nenhum item válido para importação.");
         }
     };
     
     const handleClose = () => {
         setFile(null);
-        setSummary({ totalLines: 0, validItems: [], errorItems: [], duplicateItems: [] });
+        setSummary({ totalLines: 0, validItems: [], errorItems: [], duplicateItems: [], existingItems: [] });
         setError(null);
         setLoading(false);
         onOpenChange(false);
@@ -298,10 +323,11 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
         }
     };
 
-    const { validItems, errorItems, duplicateItems, totalLines } = summary;
+    const { validItems, errorItems, duplicateItems, existingItems, totalLines } = summary;
     const hasProcessedData = totalLines > 0;
     const hasErrors = errorItems.length > 0;
     const hasDuplicates = duplicateItems.length > 0;
+    const hasExisting = existingItems.length > 0;
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
@@ -336,11 +362,9 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                     <Card className="p-4">
                         <div className="flex justify-between items-center mb-4">
                             <h4 className="text-base font-semibold">Passo 1: Carregar Arquivo</h4>
-                            {/* O botão de download foi removido daqui */}
                         </div>
                         
                         <div className="grid grid-cols-3 gap-4 items-end">
-                            {/* Botão de Download movido para cima do botão Processar Arquivo */}
                             <div className="space-y-2 col-span-2">
                                 <Label htmlFor="file-upload">Selecione o arquivo (.xlsx)</Label>
                                 <Input
@@ -389,7 +413,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                             <h4 className="text-base font-semibold">Passo 2: Resumo e Pré-visualização</h4>
                             
                             {/* Resumo Estatístico */}
-                            <div className="grid grid-cols-4 gap-4 text-center">
+                            <div className="grid grid-cols-5 gap-4 text-center">
                                 <div className="p-3 border rounded-lg bg-muted/50">
                                     <p className="text-2xl font-bold text-foreground">{totalLines}</p>
                                     <p className="text-sm text-muted-foreground">Linhas Processadas</p>
@@ -402,10 +426,15 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                                     <p className="text-2xl font-bold text-red-600 dark:text-red-400">{errorItems.length}</p>
                                     <p className="text-sm text-muted-foreground">Itens com Erro</p>
                                 </div>
-                                {/* NOVO: Contagem de Duplicatas */}
+                                {/* Itens Duplicados (Internos) */}
                                 <div className="p-3 border rounded-lg bg-yellow-50/50 border-yellow-200 dark:bg-yellow-950/50 dark:border-yellow-800">
                                     <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{duplicateItems.length}</p>
-                                    <p className="text-sm text-muted-foreground">Itens Duplicados</p>
+                                    <p className="text-sm text-muted-foreground">Duplicados (Arquivo)</p>
+                                </div>
+                                {/* NOVO: Itens Já Cadastrados (Externos) */}
+                                <div className="p-3 border rounded-lg bg-orange-50/50 border-orange-200 dark:bg-orange-950/50 dark:border-orange-800">
+                                    <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{existingItems.length}</p>
+                                    <p className="text-sm text-muted-foreground">Já Cadastrados</p>
                                 </div>
                             </div>
                             
@@ -426,15 +455,33 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                                 </Alert>
                             )}
                             
-                            {/* NOVO: Lista de Duplicatas */}
+                            {/* Lista de Duplicatas Internas */}
                             {hasDuplicates && (
                                 <Alert variant="warning" className="mt-4 bg-yellow-50/50 border-yellow-200 text-yellow-900 dark:bg-yellow-950/50 dark:border-yellow-800 dark:text-yellow-300">
                                     <AlertCircle className="h-4 w-4 text-yellow-900 dark:text-yellow-400" />
-                                    <AlertTitle>Itens Duplicados ({duplicateItems.length})</AlertTitle>
+                                    <AlertTitle>Itens Duplicados (Interno ao Arquivo) ({duplicateItems.length})</AlertTitle>
                                     <AlertDescription className="max-h-32 overflow-y-auto text-sm">
                                         <p className="mb-2">Os itens abaixo foram ignorados, pois já existem no arquivo com a mesma chave de identificação (Descrição, CATMAT, Pregão e UASG).</p>
                                         <ul className="list-disc list-inside space-y-1 mt-2">
                                             {duplicateItems.map((err, index) => (
+                                                <li key={index}>
+                                                    <span className="font-semibold">Linha {err.lineNumber}:</span> {err.errorMessage}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                            
+                            {/* NOVO: Alerta de Itens Já Cadastrados (Externos) */}
+                            {hasExisting && (
+                                <Alert className="mt-4 bg-orange-50/50 border-orange-200 text-orange-900 dark:bg-orange-950/50 dark:border-orange-800 dark:text-orange-300">
+                                    <AlertTriangle className="h-4 w-4 text-orange-900 dark:text-orange-400" />
+                                    <AlertTitle>Itens Já Cadastrados ({existingItems.length})</AlertTitle>
+                                    <AlertDescription className="max-h-32 overflow-y-auto text-sm">
+                                        <p className="mb-2">Os itens abaixo foram ignorados, pois já estão cadastrados nesta diretriz. Eles não serão importados novamente.</p>
+                                        <ul className="list-disc list-inside space-y-1 mt-2">
+                                            {existingItems.map((err, index) => (
                                                 <li key={index}>
                                                     <span className="font-semibold">Linha {err.lineNumber}:</span> {err.errorMessage}
                                                 </li>

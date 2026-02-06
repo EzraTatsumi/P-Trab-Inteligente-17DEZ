@@ -105,18 +105,24 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     // Função para lidar com a mudança do input UASG, aplicando a formatação
     const handleUasgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const rawValue = e.target.value;
-        // Remove caracteres não numéricos e aplica a formatação
+        // Remove caracteres não numéricos e armazena apenas os dígitos
         const rawDigits = rawValue.replace(/\D/g, '');
-        setItemForm({ ...itemForm, uasg: rawDigits }); // Armazena apenas os dígitos
+        setItemForm({ ...itemForm, uasg: rawDigits }); 
     };
 
     // Função auxiliar para gerar a chave de unicidade de um item
     const generateItemKey = (item: ItemAquisicao | typeof initialItemForm): string => {
-        // Normaliza e concatena os campos chave
-        const desc = (item.descricao_item || '').trim().toUpperCase();
-        const catmat = (item.codigo_catmat || '').trim().toUpperCase();
-        const pregao = (item.numero_pregao || '').trim().toUpperCase();
-        const uasg = (item.uasg || '').trim().toUpperCase();
+        // Normaliza e remove espaços extras
+        const normalize = (str: string) => 
+            (str || '')
+            .trim()
+            .toUpperCase()
+            .replace(/\s+/g, ' ');
+            
+        const desc = normalize(item.descricao_item);
+        const catmat = normalize(item.codigo_catmat);
+        const pregao = normalize(item.numero_pregao);
+        const uasg = normalize(item.uasg);
         
         return `${desc}|${catmat}|${pregao}|${uasg}`;
     };
@@ -127,18 +133,15 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             return;
         }
         
-        // --- NOVAS VALIDAÇÕES OBRIGATÓRIAS ---
         if (!itemForm.numero_pregao || itemForm.numero_pregao.trim() === '') {
             toast.error("O campo 'Pregão/Ref. Preço' é obrigatório.");
             return;
         }
 
-        // Validação da UASG após a formatação
         if (!itemForm.uasg || itemForm.uasg.trim() === '' || itemForm.uasg.length !== 6) {
             toast.error("O campo 'UASG' é obrigatório e deve ter 6 dígitos.");
             return;
         }
-        // -------------------------------------
 
         const newItem: ItemAquisicao = {
             id: editingItemId || Math.random().toString(36).substring(2, 9),
@@ -146,7 +149,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             valor_unitario: itemForm.valor_unitario,
             numero_pregao: itemForm.numero_pregao,
             uasg: itemForm.uasg,
-            codigo_catmat: itemForm.codigo_catmat, // NOVO: Adicionando o código CATMAT
+            codigo_catmat: itemForm.codigo_catmat, 
         };
         
         // 1. Verificar duplicidade antes de adicionar/atualizar
@@ -181,7 +184,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             rawValor: numberToRawDigits(item.valor_unitario),
             numero_pregao: item.numero_pregao,
             uasg: item.uasg,
-            codigo_catmat: item.codigo_catmat, // NOVO: Carregando o código CATMAT
+            codigo_catmat: item.codigo_catmat, 
         });
     };
 
@@ -213,6 +216,26 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         onOpenChange(false);
     };
 
+    // NOVO: Função simplificada para receber APENAS os itens válidos do diálogo de importação
+    const handleBulkImport = (newItems: ItemAquisicao[]) => {
+        if (newItems.length === 0) {
+            // O diálogo de importação já deve ter avisado o usuário se não houver itens válidos
+            return;
+        }
+        
+        // 1. Adiciona os novos itens válidos aos existentes
+        setSubitemForm(prev => ({
+            ...prev,
+            itens_aquisicao: [...prev.itens_aquisicao, ...newItems],
+        }));
+        
+        toast.success(`${newItems.length} itens importados com sucesso e adicionados à lista.`);
+
+        // 2. Limpa o formulário de item individual
+        setItemForm(initialItemForm);
+        setEditingItemId(null);
+    };
+
     // NOVO: Função para receber dados do catálogo de Subitem e atualizar o formulário
     const handleCatalogSelect = (catalogItem: { nr_subitem: string, nome_subitem: string, descricao_subitem: string | null }) => {
         setSubitemForm(prev => ({
@@ -235,46 +258,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         setIsCatmatCatalogOpen(false);
     };
     
-    // NOVO: Função para receber dados da importação em massa (COM VERIFICAÇÃO DE DUPLICIDADE)
-    const handleBulkImport = (newItems: ItemAquisicao[]) => {
-        const existingKeys = new Set(subitemForm.itens_aquisicao.map(generateItemKey));
-        const itemsToImport: ItemAquisicao[] = [];
-        let duplicatesCount = 0;
-        
-        newItems.forEach(item => {
-            const key = generateItemKey(item);
-            
-            if (existingKeys.has(key)) {
-                duplicatesCount++;
-            } else {
-                itemsToImport.push(item);
-                existingKeys.add(key); // Adiciona a chave para evitar duplicidade dentro do próprio lote
-            }
-        });
-        
-        if (itemsToImport.length > 0) {
-            // Adiciona os novos itens válidos aos existentes
-            setSubitemForm(prev => ({
-                ...prev,
-                itens_aquisicao: [...prev.itens_aquisicao, ...itemsToImport],
-            }));
-            
-            toast.success(`${itemsToImport.length} itens importados com sucesso!`);
-        }
-        
-        if (duplicatesCount > 0) {
-            toast.warning(`${duplicatesCount} itens foram ignorados por serem duplicados.`);
-        }
-        
-        if (itemsToImport.length === 0 && duplicatesCount === 0) {
-            toast.info("Nenhum item válido para importação foi encontrado.");
-        }
-
-        // Limpa o formulário de item individual
-        setItemForm(initialItemForm);
-        setEditingItemId(null);
-    };
-
     const isEditingSubitem = !!subitemForm.id;
 
     return (
@@ -436,7 +419,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     <Input
                                         id="item-uasg"
                                         value={itemForm.uasg}
-                                        onChange={handleUasgChange} // Usando a nova função de tratamento
+                                        onChange={handleUasgChange} 
                                         placeholder="Ex: 160001"
                                         onKeyDown={handleEnterToNextField}
                                         maxLength={6}
@@ -557,6 +540,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                 open={isBulkUploadOpen}
                 onOpenChange={setIsBulkUploadOpen}
                 onImport={handleBulkImport}
+                // NOVO: Passa a lista de itens já existentes na diretriz atual
+                existingItemsInDiretriz={subitemForm.itens_aquisicao} 
             />
         </Dialog>
     );
