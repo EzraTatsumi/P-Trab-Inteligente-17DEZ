@@ -5,7 +5,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Plus, Pencil, Trash2, Loader2, BookOpen, FileSpreadsheet } from "lucide-react";
+import { Save, Plus, Pencil, Trash2, Loader2, BookOpen, FileSpreadsheet, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,6 +15,7 @@ import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodug } f
 import SubitemCatalogDialog from './SubitemCatalogDialog';
 import CatmatCatalogDialog from './CatmatCatalogDialog';
 import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog';
+import ItemAquisicaoPNCPDialog from './ItemAquisicaoPNCPDialog';
 
 interface MaterialConsumoDiretrizFormDialogProps {
     open: boolean;
@@ -88,6 +89,9 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     
     // NOVO ESTADO: Controle do diálogo de importação em massa
     const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+    
+    // NOVO ESTADO: Controle do diálogo de importação PNCP
+    const [isPNCPSearchOpen, setIsPNCPSearchOpen] = useState(false);
 
     useEffect(() => {
         setSubitemForm(getInitialFormState(diretrizToEdit));
@@ -149,11 +153,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             toast.error("O campo 'Pregão/Ref. Preço' é obrigatório.");
             return;
         }
-        
-        // if (!itemForm.unidade_medida || itemForm.unidade_medida.trim() === '') {
-        //     toast.error("O campo 'Unidade de Medida' é obrigatório.");
-        //     return;
-        // } // REMOVIDO
 
         if (!itemForm.uasg || itemForm.uasg.trim() === '' || itemForm.uasg.length !== 6) {
             toast.error("O campo 'UASG' é obrigatório e deve ter 6 dígitos.");
@@ -237,7 +236,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         onOpenChange(false);
     };
 
-    // Função simplificada para receber APENAS os itens válidos do diálogo de importação
+    // Função para receber itens importados do Excel
     const handleBulkImport = (newItems: ItemAquisicao[]) => {
         if (newItems.length === 0) {
             toast.info("Nenhum item novo para adicionar.");
@@ -260,6 +259,31 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         // 3. FECHAR O DIÁLOGO DE IMPORTAÇÃO EM MASSA
         setIsBulkUploadOpen(false); 
     };
+    
+    // NOVO: Função para receber itens importados do PNCP
+    const handlePNCPImport = (newItems: ItemAquisicao[]) => {
+        if (newItems.length === 0) {
+            toast.info("Nenhum item novo para adicionar.");
+            setIsPNCPSearchOpen(false); 
+            return;
+        }
+        
+        // 1. Adiciona os novos itens válidos aos existentes
+        setSubitemForm(prev => ({
+            ...prev,
+            itens_aquisicao: [...prev.itens_aquisicao, ...newItems],
+        }));
+        
+        toast.success(`${newItems.length} itens importados do PNCP com sucesso e adicionados à lista.`);
+
+        // 2. Limpa o formulário de item individual
+        setItemForm(initialItemForm);
+        setEditingItemId(null);
+        
+        // 3. FECHAR O DIÁLOGO PNCP
+        setIsPNCPSearchOpen(false); 
+    };
+
 
     // Função para receber dados do catálogo de Subitem e atualizar o formulário
     const handleCatalogSelect = (catalogItem: { nr_subitem: string, nome_subitem: string, descricao_subitem: string | null }) => {
@@ -365,7 +389,19 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 {editingItemId ? "Editar Item de Aquisição" : "Adicionar Novo Item de Aquisição"}
                             </CardTitle>
                             <div className="flex gap-2">
-                                {/* Botão Importar Excel permanece no cabeçalho do card */}
+                                {/* NOVO BOTÃO: Importar API PNCP */}
+                                <Button 
+                                    type="button" 
+                                    variant="secondary" 
+                                    size="sm" 
+                                    onClick={() => setIsPNCPSearchOpen(true)}
+                                    disabled={loading}
+                                >
+                                    <Search className="h-4 w-4 mr-2" />
+                                    Importar API PNCP
+                                </Button>
+                                
+                                {/* Botão Importar Excel */}
                                 <Button 
                                     type="button" 
                                     variant="secondary" 
@@ -574,13 +610,20 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                 onSelect={handleCatmatSelect}
             />
             
-            {/* NOVO: Diálogo de Importação em Massa */}
+            {/* Diálogo de Importação em Massa */}
             <ItemAquisicaoBulkUploadDialog
                 open={isBulkUploadOpen}
                 onOpenChange={setIsBulkUploadOpen}
                 onImport={handleBulkImport}
                 // NOVO: Passa a lista de itens já existentes na diretriz atual
                 existingItemsInDiretriz={subitemForm.itens_aquisicao} 
+            />
+            
+            {/* NOVO: Diálogo de Importação PNCP */}
+            <ItemAquisicaoPNCPDialog
+                open={isPNCPSearchOpen}
+                onOpenChange={setIsPNCPSearchOpen}
+                onImport={handlePNCPImport}
             />
         </Dialog>
     );
