@@ -502,8 +502,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         <TableHead className="w-[10%] text-center">Cód. CATMAT</TableHead>
                                         <TableHead className="w-[10%] text-center">Pregão/Ref.</TableHead>
                                         <TableHead className="w-[10%] text-center">UASG</TableHead>
-                                        <TableHead className="w-[10%] text-center">Valor Unitário</TableHead>
-                                        <TableHead className="w-[10%] text-center">Ações</TableHead>
+                                        <TableHead className="w-[10%] text-right">Valor Unitário</TableHead>
+                                        <TableHead className="w-[10%] text-right">Ações</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -514,7 +514,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                             <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
                                             <TableCell className="text-center text-sm">{item.numero_pregao || 'N/A'}</TableCell>
                                             <TableCell className="text-center text-sm">{formatCodug(item.uasg) || 'N/A'}</TableCell>
-                                            <TableCell className="text-right font-bold text-primary">
+                                            <TableCell className="text-right font-bold text-primary text-sm">
                                                 {formatCurrency(item.valor_unitario)}
                                             </TableCell>
                                             <TableCell className="text-right">
