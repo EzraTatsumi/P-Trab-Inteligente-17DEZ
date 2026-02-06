@@ -382,7 +382,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                         
                         {/* Formulário de Item - Reorganizado em duas linhas lógicas */}
                         <div className="border p-3 rounded-lg bg-muted/50 space-y-4">
-                            {/* PRIMEIRA LINHA: CATMAT e Descrições */}
+                            {/* PRIMEIRA LINHA: CATMAT e Descrição Completa */}
                             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                                 {/* Campo Código CATMAT (1 coluna) */}
                                 <div className="space-y-2 col-span-1">
@@ -396,20 +396,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     />
                                 </div>
                                 
-                                {/* Campo Descrição Reduzida (2 colunas) */}
-                                <div className="space-y-2 col-span-2">
-                                    <Label htmlFor="item-descricao-reduzida">Descrição Reduzida</Label>
-                                    <Input
-                                        id="item-descricao-reduzida"
-                                        value={itemForm.descricao_reduzida}
-                                        onChange={(e) => setItemForm({ ...itemForm, descricao_reduzida: e.target.value })}
-                                        placeholder="Ex: Caneta Azul"
-                                        onKeyDown={handleEnterToNextField}
-                                    />
-                                </div>
-
-                                {/* Campo Descrição Completa (2 colunas) */}
-                                <div className="space-y-2 col-span-2">
+                                {/* Campo Descrição Completa (4 colunas) */}
+                                <div className="space-y-2 col-span-4">
                                     <Label htmlFor="item-descricao">Descrição Completa *</Label>
                                     <Input
                                         id="item-descricao"
@@ -422,10 +410,22 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 </div>
                             </div>
 
-                            {/* SEGUNDA LINHA: Valor, Pregão, UASG e Botões */}
+                            {/* SEGUNDA LINHA: Descrição Reduzida, Valor, Pregão, UASG e Botões */}
                             <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                                {/* Campo Valor Unitário (2 colunas) */}
+                                {/* Campo Descrição Reduzida (2 colunas) */}
                                 <div className="space-y-2 col-span-2">
+                                    <Label htmlFor="item-descricao-reduzida">Descrição Reduzida</Label>
+                                    <Input
+                                        id="item-descricao-reduzida"
+                                        value={itemForm.descricao_reduzida}
+                                        onChange={(e) => setItemForm({ ...itemForm, descricao_reduzida: e.target.value })}
+                                        placeholder="Ex: Caneta Azul"
+                                        onKeyDown={handleEnterToNextField}
+                                    />
+                                </div>
+                                
+                                {/* Campo Valor Unitário (1 coluna) */}
+                                <div className="space-y-2 col-span-1">
                                     <Label htmlFor="item-valor">Valor Unitário (R$) *</Label>
                                     <CurrencyInput
                                         id="item-valor"
@@ -440,8 +440,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     </p>
                                 </div>
                                 
-                                {/* Campo Pregão (2 colunas) */}
-                                <div className="space-y-2 col-span-2">
+                                {/* Campo Pregão (1 coluna) */}
+                                <div className="space-y-2 col-span-1">
                                     <Label htmlFor="item-pregao">Pregão/Ref. Preço *</Label>
                                     <Input
                                         id="item-pregao"
