@@ -74,13 +74,15 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
         <>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* Campo UASG (Revertido para Input + Botão) */}
+                    {/* Grid principal com 4 colunas para alinhar os elementos */}
+                    <div className="grid grid-cols-4 gap-4 items-end">
+                        
+                        {/* Campo UASG + Botão (Ocupa 2 colunas) */}
                         <FormField
                             control={form.control}
                             name="uasg"
                             render={({ field }) => (
-                                <FormItem className="col-span-3">
+                                <FormItem className="col-span-2">
                                     <FormLabel>UASG (Unidade Gestora) *</FormLabel>
                                     <div className="flex gap-2">
                                         <FormControl>
@@ -104,19 +106,19 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
                                         </Button>
                                     </div>
                                     <FormMessage />
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground mt-1">
                                         Insira o CODUG da OM ou use o botão para selecionar no catálogo.
                                     </p>
                                 </FormItem>
                             )}
                         />
                         
-                        {/* Campo Data de Início */}
+                        {/* Campo Data de Início (Ocupa 1 coluna) */}
                         <FormField
                             control={form.control}
                             name="dataInicio"
                             render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="col-span-1">
                                     <FormLabel>Data de Início *</FormLabel>
                                     <FormControl>
                                         <Input
@@ -130,12 +132,12 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
                             )}
                         />
                         
-                        {/* Campo Data de Fim */}
+                        {/* Campo Data de Fim (Ocupa 1 coluna) */}
                         <FormField
                             control={form.control}
                             name="dataFim"
                             render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="col-span-1">
                                     <FormLabel>Data de Fim *</FormLabel>
                                     <FormControl>
                                         <Input
@@ -150,7 +152,8 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
                         />
                     </div>
                     
-                    <Button type="submit" disabled={isSearching}>
+                    {/* Botão de Busca (Ocupa a largura total) */}
+                    <Button type="submit" disabled={isSearching} className="w-full">
                         {isSearching ? (
                             <>
                                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
