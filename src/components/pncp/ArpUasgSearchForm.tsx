@@ -10,7 +10,8 @@ import { Search, Loader2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { formatCodug } from '@/lib/formatUtils';
-import OmSelectorDialog from '@/components/OmSelectorDialog'; // Importa o novo diálogo
+import OmSelectorDialog from '@/components/OmSelectorDialog';
+import { format, subDays } from 'date-fns'; // Importa as funções de data
 
 // 1. Esquema de Validação
 const formSchema = z.object({
@@ -31,6 +32,15 @@ interface ArpUasgSearchFormProps {
     onSelect: (item: ItemAquisicao) => void;
 }
 
+// Calcula as datas padrão
+const today = new Date();
+const oneYearAgo = subDays(today, 365);
+
+// Formata as datas para o formato 'YYYY-MM-DD' exigido pelo input type="date"
+const defaultDataFim = format(today, 'yyyy-MM-dd');
+const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
+
+
 const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isOmSelectorOpen, setIsOmSelectorOpen] = useState(false); // Novo estado para o diálogo
@@ -39,8 +49,8 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
         resolver: zodResolver(formSchema),
         defaultValues: {
             uasg: "",
-            dataInicio: "",
-            dataFim: "",
+            dataInicio: defaultDataInicio, // Define a data de início padrão
+            dataFim: defaultDataFim,       // Define a data de fim padrão
         },
     });
     
