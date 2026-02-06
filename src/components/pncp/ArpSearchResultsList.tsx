@@ -1,3 +1,4 @@
+ARP Individual) e ajustando as colunas da tabela.">
 import React, { useState, useMemo } from 'react';
 import { ArpRawResult } from '@/types/pncp';
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
@@ -15,15 +16,21 @@ interface ArpGroup {
     uasg: string;
     omNome: string;
     itens: ArpRawResult[];
-    totalValor: number;
+    // Dados representativos do grupo (do primeiro item)
+    objetoRepresentativo: string;
+    dataVigenciaInicial: string;
+    dataVigenciaFinal: string;
 }
 
 interface ArpSearchResultsListProps {
     results: ArpRawResult[];
     onSelect: (item: ItemAquisicao) => void;
+    // NOVAS PROPS para o cabeçalho
+    searchedUasg: string;
+    searchedOmName: string;
 }
 
-const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, onSelect }) => {
+const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, onSelect, searchedUasg, searchedOmName }) => {
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
     const [selectedArp, setSelectedArp] = useState<ArpRawResult | null>(null);
 
@@ -37,7 +44,6 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
             const anoCompraStr = String(arp.anoCompra || '').trim();
             const uasgStr = String(arp.codigoUnidadeGerenciadora || '').replace(/\D/g, '');
             
-            // Se faltar o número da compra ou o ano, usamos um fallback para agrupar
             let pregaoKey: string;
             if (numeroCompraStr && anoCompraStr) {
                 const numeroCompraFormatado = formatCodug(numeroCompraStr);
@@ -55,13 +61,15 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                     uasg: uasgStr,
                     omNome: arp.nomeUnidadeGerenciadora || 'OM Desconhecida',
                     itens: [],
-                    totalValor: 0,
+                    // Captura os dados representativos do primeiro item
+                    objetoRepresentativo: arp.objeto || 'Objeto não especificado',
+                    dataVigenciaInicial: arp.dataVigenciaInicial || '',
+                    dataVigenciaFinal: arp.dataVigenciaFinal || '',
                 });
             }
 
             const group = groupsMap.get(pregaoKey)!;
             group.itens.push(arp);
-            group.totalValor += arp.valorTotal;
         });
 
         // Converte o mapa de volta para um array e ordena por Pregão
@@ -120,16 +128,22 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
 
     return (
         <div className="p-4 space-y-4">
-            <h3 className="text-lg font-semibold">Resultados Agrupados por Pregão ({groupedArps.length} Pregões)</h3>
+            {/* NOVO CABEÇALHO DA PESQUISA */}
+            <h3 className="text-lg font-semibold">
+                Resultados de ARP para UASG {formatCodug(searchedUasg)} ({searchedOmName})
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                    (Agrupados em {groupedArps.length} Pregões)
+                </span>
+            </h3>
             
             <div className="max-h-[400px] overflow-y-auto border rounded-md">
                 <Table>
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
-                            <TableHead className="w-[200px]">Pregão</TableHead>
-                            <TableHead>OM Gerenciadora</TableHead>
-                            <TableHead className="w-[150px] text-right">Valor Total</TableHead>
-                            <TableHead className="w-[100px] text-center">ARPs</TableHead>
+                            <TableHead className="w-[150px]">Pregão</TableHead>
+                            <TableHead>Objeto</TableHead>
+                            <TableHead className="w-[200px] text-center">Vigência (Início - Fim)</TableHead>
+                            <TableHead className="w-[50px]"></TableHead> {/* Coluna para o ícone de expansão */}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -148,23 +162,20 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                         onClick={() => handleToggleGroup(group.pregao)}
                                     >
                                         <TableCell className="font-semibold">
-                                            <div className="flex items-center gap-2">
-                                                {displayPregao}
-                                                {isGroupOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
-                                            </div>
+                                            {displayPregao}
                                         </TableCell>
-                                        <TableCell className="text-sm">
-                                            {group.omNome} ({formatCodug(group.uasg)})
+                                        <TableCell className="text-sm max-w-xs truncate">
+                                            {group.objetoRepresentativo}
                                         </TableCell>
-                                        <TableCell className="text-right font-medium text-primary">
-                                            {formatCurrency(group.totalValor)}
+                                        <TableCell className="text-center text-sm">
+                                            {formatDate(group.dataVigenciaInicial)} - {formatDate(group.dataVigenciaFinal)}
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            {group.itens.length}
+                                            {isGroupOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
                                         </TableCell>
                                     </TableRow>
                                     
-                                    {/* Conteúdo Colapsável com a lista de ARPs individuais */}
+                                    {/* Conteúdo Colapsável com a lista de ARPs individuais (Nível 2) */}
                                     <TableRow className="p-0">
                                         <TableCell colSpan={4} className="p-0">
                                             <Collapsible open={isGroupOpen}>
@@ -173,9 +184,9 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                                         <Table className="bg-background border rounded-md">
                                                             <thead>
                                                                 <TableRow className="text-xs text-muted-foreground hover:bg-background">
-                                                                    <th className="px-4 py-2 text-left font-normal w-[50%]">Objeto da Ata</th>
-                                                                    <th className="px-4 py-2 text-center font-normal w-[15%]">Vigência</th>
-                                                                    <th className="px-4 py-2 text-right font-normal w-[15%]">Valor Total</th>
+                                                                    <th className="px-4 py-2 text-left font-normal w-[50%]">Número da ARP</th>
+                                                                    <th className="px-4 py-2 text-center font-normal w-[20%]">Qtd. Itens</th>
+                                                                    <th className="px-4 py-2 text-right font-normal w-[20%]">Valor Total</th>
                                                                     <th className="px-4 py-2 text-center font-normal w-[10%]">Ação</th>
                                                                 </TableRow>
                                                             </thead>
@@ -188,9 +199,11 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                                                             className={`cursor-pointer transition-colors ${isSelected ? "bg-green-100/50 hover:bg-green-100/70" : "hover:bg-muted/50"}`}
                                                                             onClick={() => handlePreSelect(arp)}
                                                                         >
-                                                                            <TableCell className="text-sm max-w-xs truncate">{arp.objeto || 'N/A'}</TableCell>
-                                                                            <TableCell className="text-center text-xs">
-                                                                                {formatDate(arp.dataVigenciaInicial || '')} - {formatDate(arp.dataVigenciaFinal || '')}
+                                                                            <TableCell className="text-sm font-medium">
+                                                                                {arp.numeroAtaRegistroPreco || 'N/A'}
+                                                                            </TableCell>
+                                                                            <TableCell className="text-center text-sm">
+                                                                                {arp.quantidadeItens || 0}
                                                                             </TableCell>
                                                                             <TableCell className="text-right text-sm">
                                                                                 {formatCurrency(arp.valorTotal)}

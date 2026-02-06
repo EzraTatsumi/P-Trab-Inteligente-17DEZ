@@ -14,6 +14,7 @@ import { format, subDays } from 'date-fns';
 import { fetchArpsByUasg } from '@/integrations/supabase/api';
 import { ArpRawResult } from '@/types/pncp'; // Importando o tipo Raw
 import ArpSearchResultsList from './ArpSearchResultsList'; // Importando o novo componente
+import { OMData } from '@/lib/omUtils'; // Importando OMData
 
 // 1. Esquema de Validação
 const formSchema = z.object({
@@ -47,7 +48,9 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isOmSelectorOpen, setIsOmSelectorOpen] = useState(false);
     const [arpResults, setArpResults] = useState<ArpRawResult[]>([]); // Usando ArpRawResult
-    // Removido selectedArp e handlePreSelect, pois a lógica de seleção foi movida para ArpSearchResultsList
+    
+    // NOVO ESTADO: Armazena o nome da OM para o cabeçalho
+    const [searchedOmName, setSearchedOmName] = useState<string>(""); 
 
     const form = useForm<ArpUasgFormValues>({
         resolver: zodResolver(formSchema),
@@ -62,10 +65,13 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
         const rawValue = e.target.value.replace(/\D/g, '');
         const limitedValue = rawValue.slice(0, 6); 
         form.setValue('uasg', limitedValue, { shouldValidate: true });
+        // Limpa o nome da OM se o usuário digitar manualmente
+        setSearchedOmName(""); 
     };
     
-    const handleOmSelect = (uasg: string) => {
-        form.setValue('uasg', uasg, { shouldValidate: true });
+    const handleOmSelect = (omData: OMData) => {
+        form.setValue('uasg', omData.codug_om, { shouldValidate: true });
+        setSearchedOmName(omData.nome_om); // Salva o nome da OM
     };
 
     const onSubmit = async (values: ArpUasgFormValues) => {
@@ -74,6 +80,11 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
         
         try {
             toast.info(`Buscando ARPs para UASG ${formatCodug(values.uasg)}...`);
+            
+            // Se o nome da OM não foi preenchido via seletor, usa a UASG como fallback
+            if (!searchedOmName) {
+                setSearchedOmName(`UASG ${values.uasg}`);
+            }
             
             const params = {
                 codigoUnidadeGerenciadora: values.uasg,
@@ -195,11 +206,13 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
                 </form>
             </Form>
             
-            {/* Seção de Resultados - Usando o novo componente */}
+            {/* Seção de Resultados - Passando as novas props */}
             {arpResults.length > 0 && (
                 <ArpSearchResultsList 
                     results={arpResults} 
                     onSelect={onSelect} 
+                    searchedUasg={form.getValues('uasg')}
+                    searchedOmName={searchedOmName}
                 />
             )}
 
