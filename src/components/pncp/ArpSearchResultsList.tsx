@@ -191,6 +191,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                                         </Table>
                                                     </div>
                                                 </CollapsibleContent>
+                                            </Collapsible>
                                         </TableCell>
                                     </TableRow>
                                 </React.Fragment>
