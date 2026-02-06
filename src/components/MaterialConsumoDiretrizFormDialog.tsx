@@ -30,6 +30,7 @@ interface MaterialConsumoDiretrizFormDialogProps {
 // Estado inicial para o formulário de Item de Aquisição
 const initialItemForm: Omit<ItemAquisicao, 'id'> & { rawValor: string } = {
     descricao_item: '',
+    descricao_reduzida: '', // NOVO CAMPO
     valor_unitario: 0,
     rawValor: numberToRawDigits(0),
     numero_pregao: '',
@@ -89,7 +90,16 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
 
     useEffect(() => {
         setSubitemForm(getInitialFormState(diretrizToEdit));
-        setItemForm(initialItemForm);
+        
+        // Ao editar, precisamos garantir que o itemForm reflita a estrutura ItemAquisicao
+        if (diretrizToEdit && editingItemId) {
+            const item = diretrizToEdit.itens_aquisicao.find(i => i.id === editingItemId);
+            if (item) {
+                handleEditItem(item);
+            }
+        } else {
+            setItemForm(initialItemForm);
+        }
         setEditingItemId(null);
     }, [diretrizToEdit, open, selectedYear]);
 
@@ -119,7 +129,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             .toUpperCase()
             .replace(/\s+/g, ' ');
             
-        const desc = normalize(item.descricao_item);
+        // Usamos a descrição completa para a chave de unicidade, mas mantemos os outros campos
+        const desc = normalize(item.descricao_item); 
         const catmat = normalize(item.codigo_catmat);
         const pregao = normalize(item.numero_pregao);
         const uasg = normalize(item.uasg);
@@ -129,7 +140,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
 
     const handleAddItem = () => {
         if (!itemForm.descricao_item || itemForm.valor_unitario <= 0) {
-            toast.error("Preencha a Descrição do Item e o Valor Unitário.");
+            toast.error("Preencha a Descrição Completa do Item e o Valor Unitário.");
             return;
         }
         
@@ -146,6 +157,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         const newItem: ItemAquisicao = {
             id: editingItemId || Math.random().toString(36).substring(2, 9),
             descricao_item: itemForm.descricao_item,
+            descricao_reduzida: itemForm.descricao_reduzida, // NOVO CAMPO
             valor_unitario: itemForm.valor_unitario,
             numero_pregao: itemForm.numero_pregao,
             uasg: itemForm.uasg,
@@ -161,7 +173,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         });
         
         if (isDuplicate) {
-            toast.error("Este item de aquisição já existe nesta diretriz (duplicidade de Descrição, CATMAT, Pregão e UASG).");
+            toast.error("Este item de aquisição já existe nesta diretriz (duplicidade de Descrição Completa, CATMAT, Pregão e UASG).");
             return;
         }
 
@@ -180,6 +192,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         setEditingItemId(item.id);
         setItemForm({
             descricao_item: item.descricao_item,
+            descricao_reduzida: item.descricao_reduzida, // NOVO CAMPO
             valor_unitario: item.valor_unitario,
             rawValor: numberToRawDigits(item.valor_unitario),
             numero_pregao: item.numero_pregao,
@@ -220,7 +233,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     const handleBulkImport = (newItems: ItemAquisicao[]) => {
         if (newItems.length === 0) {
             toast.info("Nenhum item novo para adicionar.");
-            setIsBulkUploadOpen(false); // CORREÇÃO: Fechar o diálogo aqui
+            setIsBulkUploadOpen(false); 
             return;
         }
         
@@ -237,7 +250,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         setEditingItemId(null);
         
         // 3. FECHAR O DIÁLOGO DE IMPORTAÇÃO EM MASSA
-        setIsBulkUploadOpen(false); // CORREÇÃO: Fechar o diálogo aqui
+        setIsBulkUploadOpen(false); 
     };
 
     // Função para receber dados do catálogo de Subitem e atualizar o formulário
@@ -256,8 +269,10 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         setItemForm(prev => ({
             ...prev,
             codigo_catmat: catmatItem.code,
-            // Preenche a descrição do item se estiver vazia, priorizando o nome reduzido se existir
-            descricao_item: prev.descricao_item || catmatItem.short_description || catmatItem.description, 
+            // Descrição Completa recebe a descrição completa do CATMAT
+            descricao_item: catmatItem.description, 
+            // Descrição Reduzida recebe o nome reduzido do CATMAT
+            descricao_reduzida: catmatItem.short_description || '', 
         }));
         setIsCatmatCatalogOpen(false);
     };
@@ -367,8 +382,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                         
                         {/* Formulário de Item - Reorganizado em duas linhas lógicas */}
                         <div className="border p-3 rounded-lg bg-muted/50 space-y-4">
-                            {/* PRIMEIRA LINHA: CATMAT e Descrição */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            {/* PRIMEIRA LINHA: CATMAT e Descrições */}
+                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                                 {/* Campo Código CATMAT (1 coluna) */}
                                 <div className="space-y-2 col-span-1">
                                     <Label htmlFor="item-catmat">Cód. CATMAT</Label>
@@ -381,14 +396,26 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     />
                                 </div>
                                 
-                                {/* Campo Descrição do Item (3 colunas) */}
-                                <div className="space-y-2 col-span-3">
-                                    <Label htmlFor="item-descricao">Descrição do Item *</Label>
+                                {/* Campo Descrição Reduzida (2 colunas) */}
+                                <div className="space-y-2 col-span-2">
+                                    <Label htmlFor="item-descricao-reduzida">Descrição Reduzida</Label>
+                                    <Input
+                                        id="item-descricao-reduzida"
+                                        value={itemForm.descricao_reduzida}
+                                        onChange={(e) => setItemForm({ ...itemForm, descricao_reduzida: e.target.value })}
+                                        placeholder="Ex: Caneta Azul"
+                                        onKeyDown={handleEnterToNextField}
+                                    />
+                                </div>
+
+                                {/* Campo Descrição Completa (2 colunas) */}
+                                <div className="space-y-2 col-span-2">
+                                    <Label htmlFor="item-descricao">Descrição Completa *</Label>
                                     <Input
                                         id="item-descricao"
                                         value={itemForm.descricao_item}
                                         onChange={(e) => setItemForm({ ...itemForm, descricao_item: e.target.value })}
-                                        placeholder="Ex: Caneta Esferográfica Azul"
+                                        placeholder="Ex: Caneta Esferográfica Azul 1.0mm"
                                         onKeyDown={handleEnterToNextField}
                                         required
                                     />
@@ -469,11 +496,11 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead className="w-[5%]"></TableHead> {/* Coluna para o ícone de arrastar (vazio no formulário) */}
-                                        <TableHead className="w-[40%]">Descrição do Item</TableHead>
-                                        <TableHead className="w-[15%] text-center">Cód. CATMAT</TableHead>
+                                        <TableHead className="w-[30%]">Descrição Reduzida</TableHead>
+                                        <TableHead className="w-[30%]">Descrição Completa</TableHead>
+                                        <TableHead className="w-[10%] text-center">Cód. CATMAT</TableHead>
                                         <TableHead className="w-[10%] text-center">Pregão/Ref.</TableHead>
-                                        <TableHead className="w-[10%] text-center">UASG</TableHead>
-                                        <TableHead className="w-[15%] text-right">Valor Unitário</TableHead>
+                                        <TableHead className="w-[10%] text-right">Valor Unitário</TableHead>
                                         <TableHead className="w-[5%] text-right">Ações</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -483,10 +510,10 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                             <TableCell className="w-[5%] text-center p-2">
                                                 <GripVertical className="h-4 w-4 text-muted-foreground mx-auto" />
                                             </TableCell>
-                                            <TableCell className="font-medium">{item.descricao_item}</TableCell>
+                                            <TableCell className="font-medium text-sm">{item.descricao_reduzida || 'N/A'}</TableCell>
+                                            <TableCell className="font-medium text-sm">{item.descricao_item}</TableCell>
                                             <TableCell className="text-center text-xs">{item.codigo_catmat || 'N/A'}</TableCell>
-                                            <TableCell className="text-center">{item.numero_pregao || 'N/A'}</TableCell>
-                                            <TableCell className="text-center">{formatCodug(item.uasg) || 'N/A'}</TableCell>
+                                            <TableCell className="text-center text-xs">{item.numero_pregao || 'N/A'}</TableCell>
                                             <TableCell className="text-right font-bold text-primary">
                                                 {formatCurrency(item.valor_unitario)}
                                             </TableCell>

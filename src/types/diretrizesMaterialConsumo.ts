@@ -1,22 +1,22 @@
 import { Tables } from "@/integrations/supabase/types";
 
-// Estrutura do Item de Aquisição (dentro do JSONB)
+/**
+ * Estrutura de um item de aquisição dentro de uma Diretriz de Material de Consumo.
+ */
 export interface ItemAquisicao {
-    id: string; // ID local para gerenciamento no React
-    descricao_item: string;
+    id: string; // ID local temporário para manipulação no frontend
+    descricao_item: string; // Descrição completa do item
+    descricao_reduzida: string; // Novo campo: Descrição reduzida do item
     valor_unitario: number;
     numero_pregao: string;
     uasg: string;
-    codigo_catmat: string; // NOVO: Código do Catálogo de Material
+    codigo_catmat: string;
 }
 
-// Estrutura base da diretriz (Subitem da ND)
+/**
+ * Estrutura da Diretriz de Material de Consumo (Tabela diretrizes_material_consumo).
+ */
 export interface DiretrizMaterialConsumo extends Omit<Tables<'diretrizes_material_consumo'>, 'itens_aquisicao'> {
-    // Sobrescreve o tipo JSONB para garantir que seja ItemAquisicao[]
+    // Sobrescreve itens_aquisicao para usar o tipo ItemAquisicao[]
     itens_aquisicao: ItemAquisicao[];
-}
-
-// Estrutura do formulário (sem campos de sistema)
-export interface DiretrizMaterialConsumoForm extends Omit<DiretrizMaterialConsumo, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'ano_referencia'> {
-    // O ano de referência será injetado pelo componente pai
 }
