@@ -125,14 +125,18 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
             </Card>
         );
     }
+    
+    // Usar o nome da OM do primeiro grupo como referência, se disponível
+    const omNameFromApi = groupedArps.length > 0 ? groupedArps[0].omNome : searchedOmName;
+    const omUasg = searchedUasg;
 
     return (
         <div className="p-4 space-y-4">
             {/* CABEÇALHO DA PESQUISA */}
             <h3 className="text-lg font-semibold">
-                Resultados de ARP para UASG {formatCodug(searchedUasg)} ({searchedOmName})
+                Resultado para {omNameFromApi} ({formatCodug(omUasg)})
                 <span className="text-sm font-normal text-muted-foreground ml-2">
-                    (Agrupados em {groupedArps.length} Pregões)
+                    - {groupedArps.length} Pregões encontrados
                 </span>
             </h3>
             
@@ -177,7 +181,6 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                     
                                     {/* Conteúdo Colapsável com a lista de ARPs individuais (Nível 2) */}
                                     <TableRow className="p-0">
-                                        {/* Colspan ajustado para 4 colunas */}
                                         <TableCell colSpan={4} className="p-0">
                                             <Collapsible open={isGroupOpen}>
                                                 <CollapsibleContent>
