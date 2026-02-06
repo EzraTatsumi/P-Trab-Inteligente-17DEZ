@@ -357,6 +357,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 {editingItemId ? "Editar Item de Aquisição" : "Adicionar Novo Item de Aquisição"}
                             </CardTitle>
                             <div className="flex gap-2">
+                                {/* Botão CATMAT movido para dentro do Card */}
                                 <Button 
                                     type="button" 
                                     variant="outline" 
@@ -380,7 +381,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                             </div>
                         </div>
                         
-                        {/* Formulário de Item - Reorganizado em duas linhas lógicas */}
+                        {/* Formulário de Item - Reorganizado em três linhas lógicas */}
                         <div className="border p-3 rounded-lg bg-muted/50 space-y-4">
                             {/* PRIMEIRA LINHA: CATMAT e Descrição Completa */}
                             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -410,9 +411,9 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 </div>
                             </div>
 
-                            {/* SEGUNDA LINHA: Descrição Reduzida, Valor, Pregão, UASG e Botões */}
-                            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                                {/* Campo Descrição Reduzida (2 colunas) */}
+                            {/* SEGUNDA LINHA: Descrição Reduzida, Valor, Pregão, UASG */}
+                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                                {/* Campo Descrição Reduzida (2 colunas) - Aumentado para 2 colunas */}
                                 <div className="space-y-2 col-span-2">
                                     <Label htmlFor="item-descricao-reduzida">Descrição Reduzida</Label>
                                     <Input
@@ -469,24 +470,23 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         required
                                     />
                                 </div>
-                                
-                                {/* Botões de Ação (1 coluna) */}
-                                <div className="space-y-2 col-span-1 flex flex-col justify-end gap-2">
-                                    {/* Botão Adicionar/Atualizar Item */}
-                                    <Button 
-                                        type="button" 
-                                        onClick={handleAddItem}
-                                        disabled={
-                                            !itemForm.descricao_item || 
-                                            itemForm.valor_unitario <= 0 ||
-                                            !itemForm.numero_pregao || 
-                                            itemForm.uasg.length !== 6
-                                        }
-                                    >
-                                        {editingItemId ? <Pencil className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
-                                        {editingItemId ? "Atualizar" : "Adicionar"}
-                                    </Button>
-                                </div>
+                            </div>
+                            
+                            {/* TERCEIRA LINHA: Botão de Ação */}
+                            <div className="grid grid-cols-1">
+                                <Button 
+                                    type="button" 
+                                    onClick={handleAddItem}
+                                    disabled={
+                                        !itemForm.descricao_item || 
+                                        itemForm.valor_unitario <= 0 ||
+                                        !itemForm.numero_pregao || 
+                                        itemForm.uasg.length !== 6
+                                    }
+                                >
+                                    {editingItemId ? <Pencil className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+                                    {editingItemId ? "Atualizar Item" : "Adicionar Item"}
+                                </Button>
                             </div>
                         </div>
                         
