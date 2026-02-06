@@ -395,7 +395,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         className="w-full" // w-full para ocupar a largura da coluna
                                     >
                                         <BookOpen className="h-4 w-4 mr-2" />
-                                        Catálogo CATMAT
+                                        CATMAT
                                     </Button>
                                 </div>
                                 
