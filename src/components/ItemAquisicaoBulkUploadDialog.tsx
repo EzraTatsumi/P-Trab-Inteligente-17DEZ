@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Import, Loader2, Upload, XCircle, Download, CheckCircle, AlertTriangle } from "lucide-react";
+import { AlertCircle, Import, Loader2, Upload, XCircle, Download, CheckCircle, AlertTriangle, List } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
@@ -408,7 +408,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                                     disabled={!file || loading}
                                     className="w-full"
                                 >
-                                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <List className="mr-2 h-4 w-4" />}
                                     Processar Arquivo
                                 </Button>
                             </div>
