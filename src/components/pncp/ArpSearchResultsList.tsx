@@ -1,4 +1,3 @@
-ARP Individual) e ajustando as colunas da tabela.">
 import React, { useState, useMemo } from 'react';
 import { ArpRawResult } from '@/types/pncp';
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
