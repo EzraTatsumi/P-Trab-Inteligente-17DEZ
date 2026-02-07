@@ -224,10 +224,16 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                             // Lógica de exibição da Descrição Oficial (PNCP)
                             const officialDescription = item.officialPncpDescription;
                             
-                            // Simplificando a lógica de exibição para garantir que o valor da API seja mostrado
-                            const displayOfficialDescription = officialDescription && officialDescription !== "Falha ao carregar descrição oficial." && status !== 'duplicate'
-                                ? officialDescription
-                                : 'N/A';
+                            // NOVO: Detectar a string de fallback da Edge Function e a mensagem de falha do frontend
+                            const isFallbackMessage = officialDescription && (
+                                officialDescription.startsWith("Descrição oficial para") || 
+                                officialDescription === "Falha ao carregar descrição oficial."
+                            );
+                            
+                            // Se for duplicado ou se for a mensagem de fallback, exibe 'N/A'
+                            const displayOfficialDescription = status === 'duplicate' || !officialDescription || isFallbackMessage
+                                ? 'N/A'
+                                : officialDescription;
 
                             return (
                                 <TableRow key={item.originalPncpItem.id}>
