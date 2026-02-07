@@ -7,7 +7,7 @@ import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { DetailedArpItem } from '@/types/pncp';
 import { InspectionItem, InspectionStatus } from '@/types/pncpInspection'; // NOVO: Importar tipos de inspeção
 import { toast } from "sonner";
-import ArpUasgSearch from './pncp/ArpUpSearch'; // Importa o novo componente
+import ArpUasgSearch from './pncp/ArpUasgSearch'; // Importa o novo componente
 import { fetchCatmatShortDescription, fetchCatmatFullDescription, fetchAllExistingAcquisitionItems } from '@/integrations/supabase/api'; // Importa as funções de busca CATMAT e a nova função de busca de itens
 import PNCPInspectionDialog from './pncp/PNCPInspectionDialog'; // NOVO: Importar o diálogo de inspeção
 import { supabase } from '@/integrations/supabase/client'; // Importar o cliente Supabase para obter o user ID
