@@ -195,13 +195,11 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
         }
         
         // Ajuste de largura das colunas:
-        // Reduzindo Ações (actionWidth) e Status/ShortDesc (statusOrShortDescWidth)
-        // Aumentando Descrição ARP (arpDescWidth) e Descrição PNCP (pncpDescWidth)
         const catmatWidth = 'w-[8%]'; // 8%
-        const arpDescWidth = 'w-[38%]'; // 38% (Aumentou de 35%)
-        const pncpDescWidth = 'w-[38%]'; // 38% (Aumentou de 35%)
-        const actionWidth = 'w-[8%]'; // 8% (Reduziu de 10%)
-        const statusOrShortDescWidth = 'w-[8%]'; // 8% (Reduziu de 12%)
+        const arpDescWidth = 'w-[38%]'; // 38%
+        const pncpDescWidth = 'w-[38%]'; // 38%
+        const actionWidth = 'w-[8%]'; // 8%
+        const statusOrShortDescWidth = 'w-[8%]'; // 8%
         // Total: 8 + 38 + 38 + 8 + 8 = 100%
 
         return (
@@ -216,7 +214,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                             
                             {/* Lógica Condicional para o Cabeçalho */}
                             {status === 'needs_catmat_info' ? (
-                                <TableHead className={cn(statusOrShortDescWidth, "text-center")}>Descrição Reduzida *</TableHead>
+                                <TableHead className={cn(statusOrShortDescWidth, "text-center")}>Nome Reduzido *</TableHead>
                             ) : status === 'valid' ? (
                                 <TableHead className={cn(statusOrShortDescWidth, "text-center")}>Nome Reduzido</TableHead>
                             ) : (
@@ -355,24 +353,27 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                             Duplicados ({totalDuplicates})
                         </TabsTrigger>
                     </TabsList>
-
-                    <TabsContent value="valid">
-                        {renderInspectionTable('valid')}
-                    </TabsContent>
                     
-                    <TabsContent value="needs_catmat_info">
-                        <p className="text-sm text-muted-foreground mb-3">
-                            Estes itens possuem códigos CATMAT válidos, mas não têm uma descrição reduzida cadastrada no seu catálogo. Por favor, forneça um nome curto para facilitar a identificação e clique em "Validar".
-                        </p>
-                        {renderInspectionTable('needs_catmat_info')}
-                    </TabsContent>
-                    
-                    <TabsContent value="duplicate">
-                        <p className="text-sm text-muted-foreground mb-3 text-red-600">
-                            Estes itens já existem na diretriz de destino (mesma Descrição Completa, CATMAT, Pregão e UASG). Remova-os para evitar duplicidade.
-                        </p>
-                        {renderInspectionTable('duplicate')}
-                    </TabsContent>
+                    {/* Container com altura mínima para estabilizar o layout */}
+                    <div className="min-h-[55vh]">
+                        <TabsContent value="valid">
+                            {renderInspectionTable('valid')}
+                        </TabsContent>
+                        
+                        <TabsContent value="needs_catmat_info">
+                            <p className="text-sm text-muted-foreground mb-3">
+                                Estes itens possuem códigos CATMAT válidos, mas não têm um nome reduzido cadastrado no seu catálogo. Por favor, forneça um nome curto para facilitar a identificação e clique em "Validar".
+                            </p>
+                            {renderInspectionTable('needs_catmat_info')}
+                        </TabsContent>
+                        
+                        <TabsContent value="duplicate">
+                            <p className="text-sm text-muted-foreground mb-3 text-red-600">
+                                Estes itens já existem na diretriz de destino (mesma Descrição Completa, CATMAT, Pregão e UASG). Remova-os para evitar duplicidade.
+                            </p>
+                            {renderInspectionTable('duplicate')}
+                        </TabsContent>
+                    </div>
                 </Tabs>
 
                 <div className="flex justify-between items-center pt-4 border-t">
