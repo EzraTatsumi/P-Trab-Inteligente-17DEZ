@@ -166,7 +166,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         <ArpUasgSearch 
                             onItemPreSelect={handleItemPreSelect} 
                             selectedItemIds={selectedItemIds}
-                            onClearSelection={handleClearSelection} // NOVO: Passando a função de limpeza
+                            onClearSelection={handleClearSelection} 
                         />
                     </TabsContent>
                     
@@ -180,34 +180,22 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 </Tabs>
 
                 {/* Rodapé com o botão de importação movido */}
-                <div className="flex justify-between gap-2 pt-4 border-t">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                        {/* MUDANÇA: Removido o indicador de item único */}
-                        {selectedItemsState.length > 0 ? (
-                            <p className="text-green-600 font-medium">
-                                {selectedItemsState.length} item(ns) selecionado(s) para importação.
-                            </p>
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                    <Button 
+                        type="button" 
+                        onClick={handleConfirmImport}
+                        disabled={selectedItemsState.length === 0 || isImporting}
+                    >
+                        {isImporting ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         ) : (
-                            <p>Nenhum item selecionado.</p>
+                            <Import className="h-4 w-4 mr-2" />
                         )}
-                    </div>
-                    <div className="flex gap-2">
-                        <Button 
-                            type="button" 
-                            onClick={handleConfirmImport}
-                            disabled={selectedItemsState.length === 0 || isImporting}
-                        >
-                            {isImporting ? (
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                                <Import className="h-4 w-4 mr-2" />
-                            )}
-                            Importar Item Selecionado ({selectedItemsState.length})
-                        </Button>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isImporting}>
-                            Fechar
-                        </Button>
-                    </div>
+                        Importar Item Selecionado ({selectedItemsState.length})
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isImporting}>
+                        Fechar
+                    </Button>
                 </div>
             </DialogContent>
         </Dialog>

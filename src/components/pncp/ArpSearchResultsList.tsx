@@ -105,7 +105,7 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelec
 
     return (
         <div className="p-4 bg-muted/50 border-t border-border space-y-3">
-            <Table className="bg-background border rounded-md">
+            <Table className="bg-background border rounded-lg">
                 <thead>
                     <TableRow className="text-xs text-muted-foreground hover:bg-background">
                         <th className="px-4 py-2 text-left font-normal w-[10%]">ARP</th> {/* NOVO: Coluna ARP */}
