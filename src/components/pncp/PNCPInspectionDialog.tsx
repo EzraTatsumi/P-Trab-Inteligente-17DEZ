@@ -263,12 +263,22 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
         }
         
         // Ajuste de largura das colunas conforme solicitado:
-        const catmatWidth = 'w-[5%]'; // 5%
-        const arpDescWidth = 'w-[33%]'; // 33%
-        const pncpDescWidth = 'w-[33%]'; // 33% -> Será usado para Nome Reduzido na aba Duplicados
-        const statusOrShortDescWidth = 'w-[24%]'; // 24%
-        const actionWidth = 'w-[5%]'; // 5%
-        // Total: 5 + 33 + 33 + 24 + 5 = 100%
+        let catmatWidth = 'w-[5%]';
+        let arpDescWidth = 'w-[33%]';
+        let pncpDescWidth = 'w-[33%]';
+        let statusOrShortDescWidth = 'w-[24%]';
+        let actionWidth = 'w-[5%]';
+
+        // Se for Duplicado, remove a coluna Ações e redistribui a largura
+        if (status === 'duplicate') {
+            actionWidth = 'w-[0%]'; // Remove a coluna
+            catmatWidth = 'w-[10%]'; // 5% -> 10%
+            arpDescWidth = 'w-[35%]'; // 33% -> 35%
+            pncpDescWidth = 'w-[35%]'; // 33% -> 35%
+            statusOrShortDescWidth = 'w-[20%]'; // 24% -> 20%
+            // Total: 10 + 35 + 35 + 20 = 100%
+        }
+
 
         return (
             <div className="max-h-[50vh] overflow-y-auto border rounded-md">
@@ -281,7 +291,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                             
                             {/* MUDANÇA 2: Coluna Descrição Completa (PNCP) -> Nome Reduzido se for Duplicado */}
                             {status === 'duplicate' ? (
-                                <TableHead className={cn(pncpDescWidth, "text-center")}>Nome Reduzido</TableHead>
+                                <TableHead className={cn(pncpDescWidth, "text-center")}>Nome Reduzido (PNCP)</TableHead>
                             ) : (
                                 <TableHead className={cn(pncpDescWidth, "text-center")}>Descrição Completa (PNCP)</TableHead>
                             )}
@@ -295,7 +305,9 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                 <TableHead className={cn(statusOrShortDescWidth, "text-center")}>Status</TableHead>
                             )}
                             
-                            <TableHead className={actionWidth + " text-center"}>Ações</TableHead>
+                            {status !== 'duplicate' && (
+                                <TableHead className={actionWidth + " text-center"}>Ações</TableHead>
+                            )}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -329,7 +341,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                     <TableCell className={cn("text-sm max-w-xs whitespace-normal text-muted-foreground text-center")}>
                                         {status === 'duplicate' ? (
                                             <span className="text-gray-800 font-medium">
-                                                {item.mappedItem.descricao_reduzida || 'N/A'}
+                                                {item.nomePdm || 'N/A'} {/* Mostrar nomePdm para duplicados */}
                                             </span>
                                         ) : (
                                             item.fullPncpDescription
@@ -357,64 +369,67 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                             {item.mappedItem.descricao_reduzida}
                                         </TableCell>
                                     ) : (
-                                        /* Coluna Status para Duplicados (MUDANÇA 3: Adiciona observação de catálogo) */
+                                        /* Coluna Status para Duplicados (Ajustada) */
                                         <TableCell className={cn("py-2 text-center")}>
                                             <div className="flex flex-col items-center justify-center gap-1">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <X className="h-4 w-4 text-red-600" />
-                                                    <span className="text-sm text-red-600">
-                                                        {item.messages[0]}
-                                                    </span>
-                                                </div>
-                                                <p className="text-xs text-muted-foreground mt-1">
+                                                {/* Remove o ícone X */}
+                                                <span className="text-sm text-red-600 font-medium">
+                                                    {item.messages[0]} {/* Mensagem de duplicidade */}
+                                                </span>
+                                                
+                                                {/* Status do Catálogo com cores */}
+                                                <p className={cn("text-xs mt-1", hasShortDescription ? "text-green-600" : "text-red-600")}>
                                                     {hasShortDescription ? 
-                                                        "Catálogo: Descrição Reduzida EXISTENTE" : 
-                                                        "Catálogo: Descrição Reduzida AUSENTE"
+                                                        "Item presente no Catálogo CATMAT nativo" : 
+                                                        "Item não presente no Catálogo CATMAT nativo"
                                                     }
                                                 </p>
                                             </div>
                                         </TableCell>
                                     )}
                                     
-                                    <TableCell className="text-right space-y-1">
-                                        {/* Botão Validar (Apenas na aba Requer Revisão) */}
-                                        {status === 'needs_catmat_info' && (
-                                            <Button
-                                                variant="secondary"
-                                                size="sm"
-                                                className="w-full"
-                                                onClick={() => handleMarkAsValid(item)}
-                                                disabled={isSavingCatmat || !item.userShortDescription.trim()}
-                                            >
-                                                <Check className="h-4 w-4 mr-2" />
-                                                Validar
-                                            </Button>
-                                        )}
+                                    {/* Coluna Ações (Visível apenas se não for Duplicado) */}
+                                    {status !== 'duplicate' && (
+                                        <TableCell className="text-right space-y-1">
+                                            {/* Botão Validar (Apenas na aba Requer Revisão) */}
+                                            {status === 'needs_catmat_info' && (
+                                                <Button
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    className="w-full"
+                                                    onClick={() => handleMarkAsValid(item)}
+                                                    disabled={isSavingCatmat || !item.userShortDescription.trim()}
+                                                >
+                                                    <Check className="h-4 w-4 mr-2" />
+                                                    Validar
+                                                </Button>
+                                            )}
 
-                                        {/* Botão Revisar (Apenas nas abas Prontos e Duplicados) */}
-                                        {status !== 'needs_catmat_info' && (
+                                            {/* Botão Revisar (Apenas na aba Prontos) */}
+                                            {status === 'valid' && (
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    onClick={() => handleReviewItemLocal(item)}
+                                                    className="w-full"
+                                                >
+                                                    <Pencil className="h-4 w-4 mr-1" />
+                                                    Revisar
+                                                </Button>
+                                            )}
+                                            
+                                            {/* Botão Remover */}
                                             <Button 
                                                 variant="outline" 
                                                 size="sm" 
-                                                onClick={() => handleReviewItemLocal(item)}
-                                                className="w-full"
+                                                onClick={() => handleRemoveItem(item.originalPncpItem.id)}
+                                                className="w-full text-red-600 border-red-300 hover:bg-red-100 hover:text-red-700"
                                             >
-                                                <Pencil className="h-4 w-4 mr-1" />
-                                                Revisar
+                                                <Trash2 className="h-4 w-4 mr-1" />
+                                                Remover
                                             </Button>
-                                        )}
-                                        
-                                        {/* Botão Remover (Com ícone de Lixeira) */}
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm" 
-                                            onClick={() => handleRemoveItem(item.originalPncpItem.id)}
-                                            className="w-full text-red-600 border-red-300 hover:bg-red-100 hover:text-red-700"
-                                        >
-                                            <Trash2 className="h-4 w-4 mr-1" />
-                                            Remover
-                                        </Button>
-                                    </TableCell>
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                             );
                         })}
@@ -468,9 +483,9 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                         </TabsContent>
                         
                         <TabsContent value="duplicate">
-                            {/* MUDANÇA 1: Descrição detalhada dos critérios de duplicidade */}
+                            {/* Ajuste do texto da descrição da aba Duplicados */}
                             <p className="text-sm text-muted-foreground mb-3 text-red-600">
-                                Estes itens são considerados duplicados pois possuem a mesma **Chave de Contrato** (Pregão, UASG e Valor Unitário) e pelo menos uma **Chave de Item** (CATMAT, Descrição Completa ou Descrição Reduzida) idêntica a um item já existente. Remova-os para evitar duplicidade.
+                                Estes itens foram identificados como duplicados e serão descartados da importação. Eles possuem a mesma **Chave de Contrato** (Pregão, UASG e Valor Unitário) e pelo menos uma **Chave de Item** (CATMAT, Descrição Completa ou Nome Reduzido) idêntica a um item já existente.
                             </p>
                             {renderInspectionTable('duplicate')}
                         </TabsContent>
