@@ -226,7 +226,7 @@ export async function saveNewCatmatEntry(code: string, description: string, shor
 }
 
 /**
- * NOVO: Busca a descrição oficial e o nome PDM de um item no Catálogo de Material do PNCP.
+ * Busca a descrição oficial e o nome PDM de um item no Catálogo de Material do PNCP.
  * @param codigoItem O código CATMAT (string).
  * @returns Os detalhes do item.
  */
@@ -240,7 +240,17 @@ export async function fetchPncpCatmatDetails(codigoItem: string): Promise<Catmat
             throw new Error(error.message || "Falha na execução da Edge Function de busca de detalhes do CATMAT.");
         }
         
-        const responseData = data as CatmatDetails;
+        const responseData = data as CatmatDetails & { error?: string };
+        
+        if (responseData.error) {
+            // Se a Edge Function retornou um erro interno (status 500)
+            throw new Error(responseData.error);
+        }
+        
+        // NOVO: Se a descrição oficial for o placeholder de falha, lançamos um erro.
+        if (responseData.descricaoItem === "Falha ao carregar descrição oficial.") {
+            throw new Error("A API externa do PNCP falhou ao retornar a descrição oficial.");
+        }
         
         if (!responseData.codigoItem) {
             throw new Error("Item não encontrado no Catálogo de Material do PNCP.");
@@ -250,18 +260,10 @@ export async function fetchPncpCatmatDetails(codigoItem: string): Promise<Catmat
 
     } catch (error) {
         console.error("Erro ao buscar detalhes do CATMAT no PNCP:", error);
-        // Retorna um objeto de fallback em caso de erro de API externa
-        return {
-            codigoItem: codigoItem,
-            descricaoItem: "Falha ao carregar descrição oficial.",
-            nomePdm: null,
-        } as CatmatDetails;
+        // Lançamos o erro para que o componente de inspeção possa forçar a revisão.
+        throw error;
     }
 }
-
-// =================================================================
-// FUNÇÕES PARA CONSULTA PNCP (ARP)
-// =================================================================
 
 /**
  * Busca Atas de Registro de Preços (ARPs) por UASG e período de vigência.
