@@ -102,20 +102,18 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
         }));
     };
     
+    // Função corrigida para chamar a mutação
     const handleSaveAndValidateCatmat = (item: InspectionItem) => {
-        if (!item.userShortDescription.trim()) {
+        // Garante que userShortDescription é uma string e remove espaços
+        const shortDescription = (item.userShortDescription || '').trim();
+        
+        if (!shortDescription) {
             toast.error("A descrição reduzida não pode ser vazia.");
             return;
         }
-        handleSaveAndValidateCatmatMutation.mutate({ item, shortDescription: item.userShortDescription });
+        
+        saveCatmatMutation.mutate({ item, shortDescription });
     };
-    
-    // Renomeando a mutação para evitar conflito de nome
-    const handleSaveAndValidateCatmatMutation = useMutation({
-        mutationFn: saveCatmatMutation.options.mutationFn,
-        onSuccess: saveCatmatMutation.options.onSuccess,
-        onError: saveCatmatMutation.options.onError,
-    });
 
     const handleRemoveItem = (itemId: string) => {
         setInspectionList(prev => prev.filter(item => item.originalPncpItem.id !== itemId));
@@ -179,16 +177,16 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                                 value={item.userShortDescription}
                                                 onChange={(e) => handleUpdateShortDescription(item.originalPncpItem.id, e.target.value)}
                                                 placeholder="Nome curto para o catálogo"
-                                                disabled={handleSaveAndValidateCatmatMutation.isPending}
+                                                disabled={saveCatmatMutation.isPending}
                                             />
                                             <Button
                                                 variant="secondary"
                                                 size="sm"
                                                 className="w-full"
                                                 onClick={() => handleSaveAndValidateCatmat(item)}
-                                                disabled={handleSaveAndValidateCatmatMutation.isPending || !item.userShortDescription.trim()}
+                                                disabled={saveCatmatMutation.isPending || !item.userShortDescription.trim()}
                                             >
-                                                {handleSaveAndValidateCatmatMutation.isPending ? (
+                                                {saveCatmatMutation.isPending ? (
                                                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                                 ) : (
                                                     <Save className="h-4 w-4 mr-2" />
@@ -285,12 +283,12 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                         <Button 
                             type="button" 
                             onClick={handleFinalImport}
-                            disabled={totalValid === 0 || totalNeedsInfo > 0 || handleSaveAndValidateCatmatMutation.isPending}
+                            disabled={totalValid === 0 || totalNeedsInfo > 0 || saveCatmatMutation.isPending}
                         >
                             <Import className="h-4 w-4 mr-2" />
                             Importar {totalValid} Itens Válidos
                         </Button>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={handleSaveAndValidateCatmatMutation.isPending}>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saveCatmatMutation.isPending}>
                             Cancelar
                         </Button>
                     </div>
