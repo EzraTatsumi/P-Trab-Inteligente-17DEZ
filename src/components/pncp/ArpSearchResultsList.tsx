@@ -112,12 +112,12 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
     }
     
     // Lógica de exibição do nome da OM no cabeçalho:
-    // 1. Tenta usar o nome da OM do primeiro resultado (que veio da API)
-    const omNameFromApi = groupedArps.length > 0 ? groupedArps[0].omNome : searchedOmName;
+    // 1. Pega o nome da OM do primeiro resultado (que veio da API)
+    const omNameFromApi = groupedArps.length > 0 ? groupedArps[0].omNome : '';
     
     // 2. Define o nome a ser exibido:
-    // Se o nome da API for válido (não vazio e não for o fallback genérico 'UASG XXX.XXX'), usa ele.
-    // Caso contrário, usa o nome pesquisado (que pode ser o nome do catálogo ou 'UASG XXX.XXX').
+    // Prioriza o nome da API se ele for diferente do nome genérico 'UASG XXX.XXX'
+    // Caso contrário, usa o nome pesquisado (que pode ser o nome do catálogo ou o fallback 'UASG XXX.XXX' do formulário).
     const omNameDisplay = (omNameFromApi && !omNameFromApi.startsWith('UASG ')) 
         ? omNameFromApi 
         : searchedOmName;
