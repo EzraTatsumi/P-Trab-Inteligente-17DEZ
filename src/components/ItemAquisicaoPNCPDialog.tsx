@@ -280,21 +280,21 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 let fullPncpDescription: string | null = null; 
                 let nomePdm: string | null = null; 
                 
-                // 5. Verificação de Duplicidade Global (Nova Lógica)
-                // Verifica se o item PNCP é duplicado em relação a QUALQUER item existente no COMBINADO.
+                // --- NOVO FLUXO: Busca de Detalhes PNCP (nomePdm) SEMPRE ---
+                // 5. Busca da Descrição Completa e PDM no PNCP (API externa)
+                const pncpDetails = await fetchCatmatFullDescription(item.codigoItem);
+                fullPncpDescription = pncpDetails.fullDescription;
+                nomePdm = pncpDetails.nomePdm; 
+                
+                // 6. Verificação de Duplicidade Global (Nova Lógica)
                 const isDuplicate = combinedExistingItems.some(existingItem => isFlexibleDuplicate(initialMappedItem, existingItem));
                 
                 if (isDuplicate) {
                     status = 'duplicate';
                     messages.push('Item duplicado em uma diretriz existente para o ano selecionado.');
                 } else {
-                    // 6. Busca da Descrição Reduzida no Catálogo CATMAT (DB local)
+                    // 7. Busca da Descrição Reduzida no Catálogo CATMAT (DB local)
                     shortDescription = await fetchCatmatShortDescription(item.codigoItem);
-                    
-                    // 7. Busca da Descrição Completa e PDM no PNCP (API externa)
-                    const pncpDetails = await fetchCatmatFullDescription(item.codigoItem);
-                    fullPncpDescription = pncpDetails.fullDescription;
-                    nomePdm = pncpDetails.nomePdm; 
                     
                     if (shortDescription) {
                         // CATMAT encontrado e tem descrição reduzida
