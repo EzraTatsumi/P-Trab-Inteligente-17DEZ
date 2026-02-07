@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Import, Check, X, AlertTriangle, Save, BookOpen } from "lucide-react";
+import { Loader2, Import, Check, X, AlertTriangle, Save, BookOpen, Info } from "lucide-react";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { InspectionItem, InspectionStatus } from "@/types/pncpInspection";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { saveNewCatmatEntry } from '@/integrations/supabase/api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface PNCPInspectionDialogProps {
     open: boolean;
@@ -80,6 +81,8 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                             descricao_reduzida: item.userShortDescription,
                         },
                         messages: ['Pronto para importação.'],
+                        // Limpa a sugestão PDM após a validação
+                        pdmSuggestion: null, 
                     };
                 }
                 return item;
@@ -152,22 +155,45 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                 <Table>
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
-                            <TableHead className="w-[15%]">Cód. CATMAT</TableHead>
-                            <TableHead className="w-[40%]">Descrição Completa (PNCP)</TableHead>
-                            {status === 'needs_catmat_info' && <TableHead className="w-[30%]">Descrição Reduzida *</TableHead>}
-                            {status !== 'needs_catmat_info' && <TableHead className="w-[30%]">Status</TableHead>}
-                            <TableHead className="w-[15%] text-right">Ações</TableHead>
+                            <TableHead className="w-[10%]">Cód. CATMAT</TableHead>
+                            <TableHead className="w-[35%]">Descrição da ARP</TableHead>
+                            {/* NOVO: Coluna para Descrição Oficial (PNCP) */}
+                            <TableHead className="w-[35%]">Descrição Oficial (PNCP)</TableHead> 
+                            {status === 'needs_catmat_info' && <TableHead className="w-[10%]">Descrição Reduzida *</TableHead>}
+                            {status !== 'needs_catmat_info' && <TableHead className="w-[10%]">Status</TableHead>}
+                            <TableHead className="w-[10%] text-right">Ações</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {items.map(item => (
                             <TableRow key={item.originalPncpItem.id}>
                                 <TableCell className="font-semibold text-sm">{item.mappedItem.codigo_catmat}</TableCell>
+                                
+                                {/* Descrição da ARP (Original) */}
                                 <TableCell className="text-sm max-w-xs whitespace-normal">
-                                    {item.mappedItem.descricao_item}
+                                    <div className="flex items-start gap-1">
+                                        {item.descriptionMismatch && (
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <AlertTriangle className="h-4 w-4 text-yellow-600 mt-1 flex-shrink-0" />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent className="max-w-xs">
+                                                        <p>Divergência: A descrição da ARP difere da descrição oficial do Catálogo de Material do PNCP.</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        )}
+                                        <span>{item.mappedItem.descricao_item}</span>
+                                    </div>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Pregão: {item.mappedItem.numero_pregao} | UASG: {item.mappedItem.uasg} | R$: {item.mappedItem.valor_unitario}
+                                        Pregão: {item.mappedItem.numero_pregao} | UASG: {item.mappedItem.uasg}
                                     </p>
+                                </TableCell>
+                                
+                                {/* Descrição Oficial (PNCP) */}
+                                <TableCell className="text-sm max-w-xs whitespace-normal text-muted-foreground">
+                                    {item.officialPncpDescription || 'N/A'}
                                 </TableCell>
                                 
                                 {status === 'needs_catmat_info' && (
@@ -176,9 +202,15 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                             <Input
                                                 value={item.userShortDescription}
                                                 onChange={(e) => handleUpdateShortDescription(item.originalPncpItem.id, e.target.value)}
-                                                placeholder="Nome curto para o catálogo"
+                                                placeholder={item.pdmSuggestion || "Nome curto para o catálogo"}
                                                 disabled={saveCatmatMutation.isPending}
                                             />
+                                            {item.pdmSuggestion && (
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    <Info className="h-3 w-3" />
+                                                    Sugestão PDM: {item.pdmSuggestion}
+                                                </p>
+                                            )}
                                             <Button
                                                 variant="secondary"
                                                 size="sm"

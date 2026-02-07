@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,7 +8,7 @@ import { DetailedArpItem } from '@/types/pncp';
 import { InspectionItem, InspectionStatus } from '@/types/pncpInspection'; // NOVO: Importar tipos de inspeção
 import { toast } from "sonner";
 import ArpUasgSearch from './pncp/ArpUasgSearch'; // Importa o novo componente
-import { fetchCatmatShortDescription } from '@/integrations/supabase/api'; // Importa a função de busca CATMAT
+import { fetchCatmatShortDescription, fetchPncpCatmatDetails } from '@/integrations/supabase/api'; // Importa as funções de busca CATMAT e detalhes PNCP
 import PNCPInspectionDialog from './pncp/PNCPInspectionDialog'; // NOVO: Importar o diálogo de inspeção
 
 interface ItemAquisicaoPNCPDialogProps {
@@ -52,7 +52,7 @@ interface SelectedItemState {
 }
 
 // Função auxiliar para gerar a chave de unicidade de um item (copiada de MaterialConsumoDiretrizFormDialog.tsx)
-const generateItemKey = (item: ItemAquisicao | Omit<ItemAquisicao, 'id'>): string => {
+const generateItemKey = (item: ItemAquisicao): string => {
     const normalize = (str: string) => 
         (str || '')
         .trim()
@@ -81,9 +81,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     // NOVO ESTADO: Gerencia a lista de itens para inspeção
     const [inspectionList, setInspectionList] = useState<InspectionItem[]>([]);
     const [isInspectionDialogOpen, setIsInspectionDialogOpen] = useState(false);
-    
-    // NOVO: Ref para o DialogContent (o container de rolagem)
-    const dialogContentRef = useRef<HTMLDivElement>(null);
 
     // Limpa o estado de seleção sempre que o diálogo é aberto
     useEffect(() => {
@@ -154,7 +151,20 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     status = 'duplicate';
                     messages.push('Item duplicado na diretriz de destino.');
                 } else {
-                    // 3. Busca da Descrição Reduzida no Catálogo CATMAT
+                    // 3. Busca de Detalhes do Catálogo de Material do PNCP
+                    const catmatDetails = await fetchPncpCatmatDetails(item.codigoItem);
+                    
+                    const officialDescription = catmatDetails.descricaoItem;
+                    const pdmSuggestion = catmatDetails.nomePdm;
+                    
+                    // 4. Comparação de Descrição (ARP vs Catálogo Oficial)
+                    const descriptionMismatch = officialDescription && officialDescription !== "Falha ao carregar descrição oficial." && officialDescription.trim() !== itemDescription.trim();
+                    
+                    if (descriptionMismatch) {
+                        messages.push('Atenção: Descrição da ARP difere da descrição oficial do Catálogo de Material do PNCP.');
+                    }
+                    
+                    // 5. Busca da Descrição Reduzida no Catálogo Local
                     shortDescription = await fetchCatmatShortDescription(item.codigoItem);
                     
                     if (shortDescription) {
@@ -166,24 +176,40 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         // CATMAT não encontrado ou não tem descrição reduzida
                         status = 'needs_catmat_info';
                         messages.push('Requer descrição reduzida para o catálogo CATMAT.');
-                        // Fallback seguro para descrição reduzida (primeiras 50 letras da descrição completa)
-                        initialMappedItem.descricao_reduzida = itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : '');
+                        
+                        // Sugere o nome PDM se disponível, senão usa o fallback
+                        initialMappedItem.descricao_reduzida = pdmSuggestion || itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : '');
                     }
+                    
+                    return {
+                        originalPncpItem: item,
+                        mappedItem: initialMappedItem,
+                        status: status,
+                        messages: messages,
+                        userShortDescription: shortDescription || pdmSuggestion || '', // Sugestão PDM como valor inicial
+                        officialPncpDescription: officialDescription,
+                        pdmSuggestion: pdmSuggestion,
+                        descriptionMismatch: descriptionMismatch,
+                    } as InspectionItem;
                 }
                 
+                // Retorno para item duplicado
                 return {
                     originalPncpItem: item,
                     mappedItem: initialMappedItem,
                     status: status,
                     messages: messages,
-                    userShortDescription: shortDescription || '', // Campo para preenchimento do usuário
+                    userShortDescription: '',
+                    officialPncpDescription: null,
+                    pdmSuggestion: null,
+                    descriptionMismatch: false,
                 } as InspectionItem;
             });
             
             const results = await Promise.all(inspectionPromises);
             setInspectionList(results);
             
-            // 4. Abrir o diálogo de inspeção
+            // 6. Abrir o diálogo de inspeção
             setIsInspectionDialogOpen(true);
             
         } catch (error) {
@@ -203,8 +229,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            {/* Adiciona a ref ao DialogContent */}
-            <DialogContent ref={dialogContentRef} className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Search className="h-5 w-5" />
@@ -236,8 +261,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                             onItemPreSelect={handleItemPreSelect} 
                             selectedItemIds={selectedItemIds}
                             onClearSelection={handleClearSelection} 
-                            // NOVO: Passa a ref do container de rolagem
-                            scrollContainerRef={dialogContentRef}
                         />
                     </TabsContent>
                     

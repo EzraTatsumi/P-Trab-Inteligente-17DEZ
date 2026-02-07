@@ -128,6 +128,7 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelec
                                 <TableCell className="text-sm font-medium">{item.numeroAta}</TableCell> {/* NOVO: Exibe o número da ARP */}
                                 <TableCell className="text-sm font-medium">{item.codigoItem}</TableCell>
                                 <TableCell className="text-sm max-w-lg whitespace-normal">
+                                    {/* CORREÇÃO: Capitaliza a primeira letra da descrição */}
                                     {capitalizeFirstLetter(item.descricaoItem)}
                                 </TableCell>
                                 <TableCell className="text-center text-sm">
