@@ -166,7 +166,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 }
                 
                 // 3. Busca da Descrição Reduzida e Completa no Catálogo Local
-                // CORREÇÃO: Usar o cliente supabase importado
                 const { data: catmatData, error: catmatError } = await supabase
                     .from('catalogo_catmat')
                     .select('description, short_description')
@@ -186,14 +185,16 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                                             officialDescription !== "Falha ao carregar descrição oficial." && 
                                             normalizedOfficial !== normalizedArp;
                 
-                if (catmatData?.short_description && catmatData.description) {
+                // --- LÓGICA CORRIGIDA PARA A HIPÓTESE 1 ---
+                if (catmatData) {
                     // HIPÓTESE 1: CATMAT EXISTE NO CATÁLOGO LOCAL (PRONTO PARA IMPORTAR)
                     status = 'valid';
                     messages.push('Pronto para importação.');
                     
                     // Mapeia o item para usar os dados padronizados do catálogo local
-                    initialMappedItem.descricao_reduzida = catmatData.short_description;
-                    initialMappedItem.descricao_item = catmatData.description; // Usa a descrição completa padronizada
+                    // Se o catálogo local tiver short_description e description, usa-os.
+                    initialMappedItem.descricao_reduzida = catmatData.short_description || '';
+                    initialMappedItem.descricao_item = catmatData.description || itemDescription; // Usa a descrição completa padronizada, fallback para ARP
                     
                     if (descriptionMismatch) {
                         messages.push('Divergência: Descrição da ARP difere da descrição oficial do PNCP.');
@@ -204,14 +205,15 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         mappedItem: initialMappedItem,
                         status: status,
                         messages: messages,
-                        userShortDescription: catmatData.short_description, // Valor inicial para edição
+                        // userShortDescription é o valor inicial para o caso de o usuário querer revisar
+                        userShortDescription: catmatData.short_description || '', 
                         officialPncpDescription: officialDescription,
                         pdmSuggestion: pdmSuggestion,
                         descriptionMismatch: descriptionMismatch,
                     } as InspectionItem;
                     
                 } else {
-                    // HIPÓTESE 2: CATMAT AUSENTE OU SEM DESCRIÇÃO REDUZIDA (REQUER REVISÃO)
+                    // HIPÓTESE 2: CATMAT AUSENTE (REQUER REVISÃO)
                     status = 'needs_catmat_info';
                     messages.push('Requer descrição reduzida para o catálogo CATMAT.');
                     
