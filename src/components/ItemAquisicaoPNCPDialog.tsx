@@ -58,16 +58,49 @@ interface SelectedItemState {
 
 // Função auxiliar para normalizar strings para comparação (Incluindo normalização Unicode)
 const normalizeString = (str: string | number | null | undefined): string => {
+    // 1. Converte para string, trata null/undefined como string vazia
     const s = String(str || '').trim();
+    
+    // 2. Normaliza caracteres Unicode (NFD) e remove diacríticos (acentos)
     const normalized = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    // 3. Converte para maiúsculas e colapsa múltiplos espaços internos em um único espaço
     return normalized.toUpperCase().replace(/\s+/g, ' ');
 };
 
-// NOVO: Função para normalizar strings removendo todos os caracteres não-dígitos (para Pregão e UASG)
+// Função para normalizar strings removendo todos os caracteres não-dígitos (para CATMAT e UASG)
 const normalizeDigits = (value: string | number | null | undefined) =>
     normalizeString(value).replace(/[^\d]/g, "");
 
-// NOVO: Função para parsear valores monetários de forma robusta
+// Função para normalizar o Pregão, padronizando o ano para 2 dígitos
+const normalizePregao = (value: string | number | null | undefined): string => {
+    const s = normalizeString(value); 
+    
+    // Remove todos os caracteres não-dígitos
+    let digits = s.replace(/[^\d]/g, ''); 
+    
+    if (digits.length < 3) return digits; 
+
+    // Heurística para separar o ano (assume que os últimos 2 ou 4 dígitos são o ano)
+    let yearPart = '';
+    let numberPart = digits;
+
+    // Tenta extrair 4 dígitos de ano (Ex: 2025)
+    if (digits.length >= 4 && digits.slice(-4).startsWith('20')) {
+        yearPart = digits.slice(-4).slice(-2); // "25"
+        numberPart = digits.slice(0, -4); // "90001"
+    } 
+    // Tenta extrai 2 dígitos de ano (Ex: 25)
+    else if (digits.length >= 2) {
+        yearPart = digits.slice(-2); // "25"
+        numberPart = digits.slice(0, -2); // "90001"
+    }
+    
+    // Retorna o número sem zeros à esquerda + ano de 2 dígitos
+    return `${numberPart.replace(/^0+/, '')}${yearPart}`; // Ex: "9000125"
+};
+
+// Função para parsear valores monetários de forma robusta
 const parseMoney = (value: any): number => {
     if (typeof value === "number") return value;
 
@@ -84,10 +117,6 @@ const parseMoney = (value: any): number => {
 /**
  * Implementa a lógica de verificação de duplicidade flexível (4 de 6).
  * 
- * Um item é considerado duplicado se:
- * 1. Chave de Contrato (Obrigatória): numero_pregao, uasg, valor_unitario são idênticos.
- * 2. Chave de Item (Pelo menos uma): codigo_catmat OU descricao_item OU descricao_reduzida é idêntica.
- * 
  * @param newItem O item que está sendo importado (PNCP).
  * @param existingItem O item já existente no banco de dados.
  * @returns true se for considerado duplicado.
@@ -95,20 +124,21 @@ const parseMoney = (value: any): number => {
 const isFlexibleDuplicate = (newItem: ItemAquisicao, existingItem: ItemAquisicao): boolean => {
     // --- 1. Critérios Obrigatórios (Chave de Contrato) ---
     
-    // Comparação de Pregão (Normalizada para dígitos)
+    // Comparação de Pregão (Normalizada para dígitos e ano de 2 dígitos)
     const pregaoMatch =
-        normalizeDigits(newItem.numero_pregao) ===
-        normalizeDigits(existingItem.numero_pregao);
+        normalizePregao(newItem.numero_pregao) ===
+        normalizePregao(existingItem.numero_pregao);
     
-    // Comparação de UASG (Normalizada para dígitos)
+    // Comparação de UASG (Normalizada para 6 dígitos brutos)
     const uasgMatch =
-        normalizeDigits(newItem.uasg) ===
-        normalizeDigits(existingItem.uasg);
+        normalizeDigits(newItem.uasg).slice(0, 6) ===
+        normalizeDigits(existingItem.uasg).slice(0, 6);
     
     // Comparação numérica exata para valor unitário (após parse e arredondamento)
     const newValue = parseMoney(newItem.valor_unitario);
     const existingValue = parseMoney(existingItem.valor_unitario);
 
+    // Arredondar para 2 casas decimais antes de comparar para evitar erros de ponto flutuante.
     const valorMatch =
         Math.round(newValue * 100) === Math.round(existingValue * 100);
 
@@ -118,10 +148,10 @@ const isFlexibleDuplicate = (newItem: ItemAquisicao, existingItem: ItemAquisicao
 
     // --- 2. Critérios Opcionais (Pelo menos um deve ser igual) ---
     
-    // Comparação de CATMAT (Normalizada)
+    // Comparação de CATMAT (Normalizada para dígitos)
     const catmatMatch =
-        normalizeString(newItem.codigo_catmat) ===
-        normalizeString(existingItem.codigo_catmat);
+        normalizeDigits(newItem.codigo_catmat) ===
+        normalizeDigits(existingItem.codigo_catmat);
     
     // Comparação de Descrição Completa (Normalizada)
     const descCompletaMatch =
