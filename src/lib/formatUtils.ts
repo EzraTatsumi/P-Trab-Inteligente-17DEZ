@@ -1,5 +1,5 @@
 import { subWeeks, startOfWeek, endOfWeek, format } from 'date-fns';
-import { ptBR } from 'date-fns/locale'; // Adicionado ptBR para uso em formatDate
+import { ptBR } from 'date-fns/locale';
 
 /**
  * Formata um número ou string de 6 dígitos (CODUG) para o formato XXX.XXX.
@@ -125,7 +125,7 @@ export const getPreviousWeekRange = (): { start: string, end: string } => {
     };
 };
 
-// --- Funções de Formatação de Input (Restauradas) ---
+// --- Funções de Formatação de Input ---
 
 /**
  * Converte uma string de entrada formatada (ex: "1.234,56") para um número.
@@ -182,6 +182,21 @@ export const formatCurrencyInput = (rawDigits: string | null | undefined): { for
     });
 
     return { formatted, numericValue, digits };
+};
+
+/**
+ * Formata um número para o formato de entrada com separador de milhar.
+ * @param value O valor numérico.
+ * @returns A string formatada.
+ */
+export const formatInputWithThousands = (value: number | null | undefined): string => {
+    if (value === null || value === undefined || isNaN(value)) {
+        return '';
+    }
+    return value.toLocaleString('pt-BR', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    });
 };
 
 /**
