@@ -1,18 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, FileText, DollarSign, Loader2, Import } from "lucide-react";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { DetailedArpItem } from '@/types/pncp';
+import { InspectionItem, InspectionStatus } from '@/types/pncpInspection'; // NOVO: Importar tipos de inspeção
 import { toast } from "sonner";
 import ArpUasgSearch from './pncp/ArpUasgSearch'; // Importa o novo componente
-import { fetchCatmatShortDescription } from '@/integrations/supabase/api'; // NOVO: Importa a função de busca CATMAT
+import { fetchCatmatShortDescription } from '@/integrations/supabase/api'; // Importa a função de busca CATMAT
+import PNCPInspectionDialog from './pncp/PNCPInspectionDialog'; // NOVO: Importar o diálogo de inspeção
 
 interface ItemAquisicaoPNCPDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onImport: (items: ItemAquisicao[]) => void;
+    // NOVO: Lista de itens já existentes na diretriz de destino
+    existingItemsInDiretriz: ItemAquisicao[]; 
 }
 
 // Placeholder components for future implementation
@@ -47,20 +51,43 @@ interface SelectedItemState {
     uasg: string;
 }
 
+// Função auxiliar para gerar a chave de unicidade de um item (copiada de MaterialConsumoDiretrizFormDialog.tsx)
+const generateItemKey = (item: ItemAquisicao): string => {
+    const normalize = (str: string) => 
+        (str || '')
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, ' ');
+        
+    const desc = normalize(item.descricao_item); 
+    const catmat = normalize(item.codigo_catmat);
+    const pregao = normalize(item.numero_pregao);
+    const uasg = normalize(item.uasg);
+    
+    return `${desc}|${catmat}|${pregao}|${uasg}`;
+};
+
+
 const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     open,
     onOpenChange,
     onImport,
+    existingItemsInDiretriz, // NOVO
 }) => {
     const [selectedTab, setSelectedTab] = useState("arp-uasg");
-    // MUDANÇA: selectedItemState agora é um array
     const [selectedItemsState, setSelectedItemsState] = useState<SelectedItemState[]>([]);
-    const [isImporting, setIsImporting] = useState(false);
+    const [isInspecting, setIsInspecting] = useState(false); // Mudança de isImporting para isInspecting
     
+    // NOVO ESTADO: Gerencia a lista de itens para inspeção
+    const [inspectionList, setInspectionList] = useState<InspectionItem[]>([]);
+    const [isInspectionDialogOpen, setIsInspectionDialogOpen] = useState(false);
+
     // Limpa o estado de seleção sempre que o diálogo é aberto
     useEffect(() => {
         if (open) {
             setSelectedItemsState([]);
+            setInspectionList([]);
+            setIsInspectionDialogOpen(false);
         }
     }, [open]);
     
@@ -69,7 +96,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         setSelectedItemsState([]);
     };
     
-    // MUDANÇA: Função para alternar a seleção de um item detalhado
+    // Função para alternar a seleção de um item detalhado
     const handleItemPreSelect = (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => {
         setSelectedItemsState(prev => {
             const existingIndex = prev.findIndex(s => s.item.id === item.id);
@@ -87,50 +114,88 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     // Mapeia apenas os IDs para passar para os componentes de busca
     const selectedItemIds = selectedItemsState.map(s => s.item.id);
 
-    // Função para confirmar a importação (disparada pelo botão no rodapé)
-    const handleConfirmImport = async () => {
+    // NOVO: Função para iniciar a inspeção
+    const handleStartInspection = async () => {
         if (selectedItemsState.length === 0) {
             toast.error("Selecione pelo menos um item detalhado para importar.");
             return;
         }
         
-        setIsImporting(true);
+        setIsInspecting(true);
+        toast.info("Iniciando inspeção e validação dos itens selecionados...");
         
         try {
-            const importPromises = selectedItemsState.map(async ({ item, pregaoFormatado, uasg }) => {
-                // 1. Buscar a descrição reduzida no catálogo CATMAT
-                const shortDescription = await fetchCatmatShortDescription(item.codigoItem);
+            const inspectionPromises = selectedItemsState.map(async ({ item, pregaoFormatado, uasg }) => {
                 
-                // Garante que a descrição do item seja uma string para evitar o erro de substring
+                // 1. Mapeamento inicial para ItemAquisicao
                 const itemDescription = item.descricaoItem || ''; 
-                
-                // 2. Mapeamento final do DetailedArpItem para ItemAquisicao
-                const itemAquisicao: ItemAquisicao = {
-                    // Usamos o ID do item detalhado do PNCP como ID local
+                const initialMappedItem: ItemAquisicao = {
                     id: item.id, 
                     descricao_item: itemDescription,
-                    // Usa a descrição reduzida do CATMAT, ou um fallback seguro
-                    descricao_reduzida: shortDescription || itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : ''),
+                    descricao_reduzida: '', // Será preenchido na inspeção ou busca CATMAT
                     valor_unitario: item.valorUnitario, 
                     numero_pregao: pregaoFormatado, 
                     uasg: uasg, 
                     codigo_catmat: item.codigoItem, 
                 };
-                return itemAquisicao;
+                
+                let status: InspectionStatus = 'pending';
+                let messages: string[] = [];
+                let shortDescription: string | null = null;
+                
+                // 2. Verificação de Duplicidade Local
+                const itemKey = generateItemKey(initialMappedItem);
+                const isDuplicate = existingItemsInDiretriz.some(existingItem => generateItemKey(existingItem) === itemKey);
+                
+                if (isDuplicate) {
+                    status = 'duplicate';
+                    messages.push('Item duplicado na diretriz de destino.');
+                } else {
+                    // 3. Busca da Descrição Reduzida no Catálogo CATMAT
+                    shortDescription = await fetchCatmatShortDescription(item.codigoItem);
+                    
+                    if (shortDescription) {
+                        // CATMAT encontrado e tem descrição reduzida
+                        status = 'valid';
+                        messages.push('Pronto para importação.');
+                        initialMappedItem.descricao_reduzida = shortDescription;
+                    } else {
+                        // CATMAT não encontrado ou não tem descrição reduzida
+                        status = 'needs_catmat_info';
+                        messages.push('Requer descrição reduzida para o catálogo CATMAT.');
+                        // Fallback seguro para descrição reduzida (primeiras 50 letras da descrição completa)
+                        initialMappedItem.descricao_reduzida = itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : '');
+                    }
+                }
+                
+                return {
+                    originalPncpItem: item,
+                    mappedItem: initialMappedItem,
+                    status: status,
+                    messages: messages,
+                    userShortDescription: shortDescription || '', // Campo para preenchimento do usuário
+                } as InspectionItem;
             });
             
-            const importedItems = await Promise.all(importPromises);
+            const results = await Promise.all(inspectionPromises);
+            setInspectionList(results);
             
-            onImport(importedItems);
-            onOpenChange(false);
-            toast.success(`${importedItems.length} itens importados do PNCP com sucesso.`);
+            // 4. Abrir o diálogo de inspeção
+            setIsInspectionDialogOpen(true);
             
         } catch (error) {
-            console.error("Erro durante a importação PNCP:", error);
-            toast.error("Falha ao importar itens. Tente novamente.");
+            console.error("Erro durante a inspeção PNCP:", error);
+            toast.error("Falha ao inspecionar itens. Tente novamente.");
         } finally {
-            setIsImporting(false);
+            setIsInspecting(false);
         }
+    };
+    
+    // Função chamada pelo PNCPInspectionDialog após a validação/resolução
+    const handleFinalImport = (items: ItemAquisicao[]) => {
+        onImport(items);
+        // Fechar o diálogo principal
+        onOpenChange(false);
     };
 
     return (
@@ -183,21 +248,31 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 <div className="flex justify-end gap-2 pt-4 border-t">
                     <Button 
                         type="button" 
-                        onClick={handleConfirmImport}
-                        disabled={selectedItemsState.length === 0 || isImporting}
+                        onClick={handleStartInspection}
+                        disabled={selectedItemsState.length === 0 || isInspecting}
                     >
-                        {isImporting ? (
+                        {isInspecting ? (
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         ) : (
                             <Import className="h-4 w-4 mr-2" />
                         )}
-                        Importar Item Selecionado ({selectedItemsState.length})
+                        Inspecionar e Importar ({selectedItemsState.length})
                     </Button>
-                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isImporting}>
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isInspecting}>
                         Fechar
                     </Button>
                 </div>
             </DialogContent>
+            
+            {/* Diálogo de Inspeção */}
+            {isInspectionDialogOpen && (
+                <PNCPInspectionDialog
+                    open={isInspectionDialogOpen}
+                    onOpenChange={setIsInspectionDialogOpen}
+                    inspectionList={inspectionList}
+                    onFinalImport={handleFinalImport}
+                />
+            )}
         </Dialog>
     );
 };

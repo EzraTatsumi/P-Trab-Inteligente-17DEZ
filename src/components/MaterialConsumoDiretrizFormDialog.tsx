@@ -260,7 +260,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         setIsBulkUploadOpen(false); 
     };
     
-    // NOVO: Função para receber itens importados do PNCP
+    // NOVO: Função para receber itens importados do PNCP (após inspeção)
     const handlePNCPImport = (newItems: ItemAquisicao[]) => {
         if (newItems.length === 0) {
             toast.info("Nenhum item novo para adicionar.");
@@ -624,6 +624,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                 open={isPNCPSearchOpen}
                 onOpenChange={setIsPNCPSearchOpen}
                 onImport={handlePNCPImport}
+                // NOVO: Passa a lista de itens já existentes na diretriz atual
+                existingItemsInDiretriz={subitemForm.itens_aquisicao}
             />
         </Dialog>
     );

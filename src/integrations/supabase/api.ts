@@ -3,6 +3,7 @@ import { supabase } from "./client"; // Importar o cliente Supabase
 import { Profile } from "@/types/profiles"; // Importar o novo tipo Profile
 import { ArpUasgSearchParams, ArpItemResult, ArpRawResult, DetailedArpItem, DetailedArpRawResult } from "@/types/pncp"; // Importa os novos tipos PNCP
 import { formatPregao } from "@/lib/formatUtils";
+import { TablesInsert } from "./types"; // Importar TablesInsert
 
 // Interface para a resposta consolidada da Edge Function
 interface EdgeFunctionResponse {
@@ -152,7 +153,7 @@ export async function fetchUserProfile(): Promise<Profile> {
 export async function fetchCatmatShortDescription(codigoCatmat: string): Promise<string | null> {
     if (!codigoCatmat) return null;
     
-    // Remove caracteres não numéricos. REMOVIDO .padStart(9, '0') para maior compatibilidade.
+    // Remove caracteres não numéricos.
     const cleanCode = codigoCatmat.replace(/\D/g, '');
     
     // Se o código limpo for vazio, retorna null
@@ -188,6 +189,31 @@ export async function fetchCatmatShortDescription(codigoCatmat: string): Promise
         console.error("Erro ao buscar descrição reduzida do CATMAT:", error);
         // Não lança erro fatal, apenas retorna null para que o processo de importação continue
         return null;
+    }
+}
+
+/**
+ * Saves a new or updates an existing CATMAT entry with a short description.
+ * This is used when importing PNCP items where the CATMAT code is new or lacks a short description.
+ * @param code The CATMAT code (string).
+ * @param description The full description (from PNCP).
+ * @param shortDescription The user-provided short description.
+ */
+export async function saveNewCatmatEntry(code: string, description: string, shortDescription: string): Promise<void> {
+    const dbData: TablesInsert<'catalogo_catmat'> = {
+        code: code.replace(/\D/g, ''), // Ensure code is clean digits
+        description: description,
+        short_description: shortDescription,
+    };
+
+    // Use upsert to handle both new entries and updates (onConflict: 'code' assumes 'code' is unique)
+    const { error } = await supabase
+        .from('catalogo_catmat')
+        .upsert(dbData, { onConflict: 'code' });
+
+    if (error) {
+        console.error("Erro ao salvar nova entrada CATMAT:", error);
+        throw new Error("Falha ao salvar o item no catálogo CATMAT.");
     }
 }
 
