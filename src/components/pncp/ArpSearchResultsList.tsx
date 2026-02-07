@@ -115,11 +115,12 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
     // 1. Tenta usar o nome da OM do primeiro resultado (que veio da API)
     const omNameFromApi = groupedArps.length > 0 ? groupedArps[0].omNome : searchedOmName;
     
-    // 2. Se o nome da API for genérico (UASG XXX.XXX), usa o nome pesquisado (se for mais informativo)
-    // Adicionando a verificação de nulidade/undefined antes de chamar startsWith
-    const omNameDisplay = (omNameFromApi || '').startsWith('UASG ') && omNameFromApi !== searchedOmName 
-        ? searchedOmName 
-        : omNameFromApi;
+    // 2. Define o nome a ser exibido:
+    // Se o nome da API for válido (não vazio e não for o fallback genérico 'UASG XXX.XXX'), usa ele.
+    // Caso contrário, usa o nome pesquisado (que pode ser o nome do catálogo ou 'UASG XXX.XXX').
+    const omNameDisplay = (omNameFromApi && !omNameFromApi.startsWith('UASG ')) 
+        ? omNameFromApi 
+        : searchedOmName;
     
     const omUasg = searchedUasg;
 
