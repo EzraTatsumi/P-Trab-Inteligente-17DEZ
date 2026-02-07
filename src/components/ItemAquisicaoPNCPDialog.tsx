@@ -17,11 +17,11 @@ interface ItemAquisicaoPNCPDialogProps {
     onOpenChange: (open: boolean) => void;
     onImport: (items: ItemAquisicao[]) => void;
     // NOVO: Lista de itens já existentes na diretriz de destino
-    existingItemsInDiretriz: ItemAquisicao[];
+    existingItemsInDiretriz: ItemAquisicao[]; 
     // NOVO: Função para iniciar a edição de um item no formulário principal
     onReviewItem: (item: ItemAquisicao) => void;
     // NOVO: Ano de referência para a busca de duplicidade global
-    selectedYear: number;
+    selectedYear: number; 
 }
 
 // Placeholder components for future implementation
@@ -65,29 +65,34 @@ const normalizeString = (str: string | number | null | undefined): string =>
     .replace(/[^A-Z0-9]/g, '')); // Remove caracteres especiais para comparação mais robusta
 
 /**
- * Implementa a nova lógica de verificação de duplicidade flexível.
- * Critérios Obrigatórios: numero_pregao, uasg, valor_unitario (devem ser idênticos).
- * Critérios Opcionais: descricao_item, codigo_catmat, descricao_reduzida (pelo menos um deve ser igual).
+ * Implementa a nova lógica de verificação de duplicidade flexível (4 de 6).
+ * 
+ * Um item é considerado duplicado se:
+ * 1. Chave de Contrato (Obrigatória): numero_pregao, uasg, valor_unitario são idênticos.
+ * 2. Chave de Item (Pelo menos uma): codigo_catmat OU descricao_item OU descricao_reduzida é idêntica.
+ * 
+ * @param newItem O item que está sendo importado (PNCP).
+ * @param existingItem O item já existente no banco de dados.
+ * @returns true se for considerado duplicado.
  */
 const isFlexibleDuplicate = (newItem: ItemAquisicao, existingItem: ItemAquisicao): boolean => {
-    // 1. Critérios Obrigatórios (Chave Base)
-    const baseMatch =
-        normalizeString(newItem.numero_pregao) === normalizeString(existingItem.numero_pregao) &&
-        normalizeString(newItem.uasg) === normalizeString(existingItem.uasg) &&
-        newItem.valor_unitario === existingItem.valor_unitario; // Comparação numérica exata
+    // 1. Critérios Obrigatórios (Chave de Contrato)
+    const pregaoMatch = normalizeString(newItem.numero_pregao) === normalizeString(existingItem.numero_pregao);
+    const uasgMatch = normalizeString(newItem.uasg) === normalizeString(existingItem.uasg);
+    // Comparação numérica exata para valor unitário
+    const valorMatch = newItem.valor_unitario === existingItem.valor_unitario; 
 
-    if (!baseMatch) {
-        return false;
+    if (!pregaoMatch || !uasgMatch || !valorMatch) {
+        return false; // Falha na Chave de Contrato
     }
 
     // 2. Critérios Opcionais (Pelo menos um deve ser igual)
-    const optionalMatch =
-        // Descrição Completa
-        normalizeString(newItem.descricao_item) === normalizeString(existingItem.descricao_item) ||
-        // Código CATMAT
-        normalizeString(newItem.codigo_catmat) === normalizeString(existingItem.codigo_catmat) ||
-        // Descrição Reduzida (PDM)
-        normalizeString(newItem.descricao_reduzida) === normalizeString(existingItem.descricao_reduzida);
+    const catmatMatch = normalizeString(newItem.codigo_catmat) === normalizeString(existingItem.codigo_catmat);
+    const descCompletaMatch = normalizeString(newItem.descricao_item) === normalizeString(existingItem.descricao_item);
+    const descReduzidaMatch = normalizeString(newItem.descricao_reduzida) === normalizeString(existingItem.descricao_reduzida);
+
+    // Se a Chave de Contrato for idêntica, verifica se pelo menos uma Chave de Item é idêntica.
+    const optionalMatch = catmatMatch || descCompletaMatch || descReduzidaMatch;
 
     return optionalMatch;
 };
@@ -165,31 +170,32 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
             const userId = user.id;
 
             // 2. Buscar todos os itens existentes do usuário para o ano selecionado
+            // Esta lista inclui itens de TODAS as diretrizes do usuário para o ano.
             const allExistingItems = await fetchAllExistingAcquisitionItems(selectedYear, userId);
             
             const inspectionPromises = selectedItemsState.map(async ({ item, pregaoFormatado, uasg }) => {
                 
                 // 3. Mapeamento inicial para ItemAquisicao
-                const itemDescription = item.descricaoItem || '';
+                const itemDescription = item.descricaoItem || ''; 
                 const initialMappedItem: ItemAquisicao = {
-                    id: item.id,
+                    id: item.id, 
                     descricao_item: itemDescription,
                     descricao_reduzida: '', // Será preenchido na inspeção ou busca CATMAT
-                    valor_unitario: item.valorUnitario,
-                    numero_pregao: pregaoFormatado,
-                    uasg: uasg,
-                    codigo_catmat: item.codigoItem,
+                    valor_unitario: item.valorUnitario, 
+                    numero_pregao: pregaoFormatado, 
+                    uasg: uasg, 
+                    codigo_catmat: item.codigoItem, 
                 };
                 
                 let status: InspectionStatus = 'pending';
                 let messages: string[] = [];
                 let shortDescription: string | null = null;
                 
-                // MUDANÇA: Variáveis para armazenar os resultados da busca completa
-                let fullPncpDescription: string | null = null;
-                let nomePdm: string | null = null; // NOVO
+                let fullPncpDescription: string | null = null; 
+                let nomePdm: string | null = null; 
                 
                 // 4. Verificação de Duplicidade Global (Nova Lógica)
+                // Verifica se o item PNCP é duplicado em relação a QUALQUER item existente no DB do usuário para o ano.
                 const isDuplicate = allExistingItems.some(existingItem => isFlexibleDuplicate(initialMappedItem, existingItem));
                 
                 if (isDuplicate) {
@@ -202,7 +208,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     // 6. Busca da Descrição Completa e PDM no PNCP (API externa)
                     const pncpDetails = await fetchCatmatFullDescription(item.codigoItem);
                     fullPncpDescription = pncpDetails.fullDescription;
-                    nomePdm = pncpDetails.nomePdm; // NOVO: Captura o nome PDM
+                    nomePdm = pncpDetails.nomePdm; 
                     
                     if (shortDescription) {
                         // CATMAT encontrado e tem descrição reduzida
@@ -224,7 +230,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     status: status,
                     messages: messages,
                     userShortDescription: shortDescription || '', // Campo para preenchimento do usuário
-                    fullPncpDescription: fullPncpDescription || 'Descrição completa não encontrada no PNCP.', // NOVO
+                    fullPncpDescription: fullPncpDescription || 'Descrição completa não encontrada no PNCP.', 
                     nomePdm: nomePdm, // NOVO: Adiciona nomePdm ao objeto de inspeção
                 } as InspectionItem;
             });
