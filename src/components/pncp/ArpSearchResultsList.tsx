@@ -207,19 +207,25 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
     
     const handleToggleGroup = (pregaoKey: string) => {
         setOpenGroups(prev => {
+            const isCurrentlyOpen = prev[pregaoKey];
             const newState = {
                 ...prev,
-                [pregaoKey]: !prev[pregaoKey],
+                [pregaoKey]: !isCurrentlyOpen,
             };
             
-            // Se o grupo estiver sendo ABERTO, rola o container para o topo (top: 0)
-            if (newState[pregaoKey] && scrollContainerRef.current) {
-                // Usamos setTimeout para garantir que o Collapsible tenha tempo de expandir
+            // Se o grupo estiver sendo ABERTO, rola a linha do grupo para o topo do container
+            if (!isCurrentlyOpen && scrollContainerRef.current) {
+                // Usamos setTimeout para garantir que o DOM tenha tempo de renderizar a linha
                 setTimeout(() => {
-                    scrollContainerRef.current?.scrollTo({
-                        top: 0,
-                        behavior: "smooth",
-                    });
+                    const rowElement = document.getElementById(`arp-group-row-${pregaoKey}`);
+                    
+                    if (rowElement) {
+                        // Usa scrollIntoView no elemento da linha, alinhando-o ao topo do container de rolagem
+                        rowElement.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
                 }, 100);
             }
             
