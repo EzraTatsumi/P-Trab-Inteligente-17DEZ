@@ -125,16 +125,16 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelec
                                 className={`cursor-pointer transition-colors ${isSelected ? "bg-green-100/50 hover:bg-green-100/70" : "hover:bg-muted/50"}`}
                                 onClick={() => handlePreSelectDetailedItem(item)}
                             >
-                                {/* Aplicando padding vertical reduzido (py-1) a todas as células */}
-                                <TableCell className="text-xs font-medium py-1">{item.numeroAta}</TableCell>
-                                <TableCell className="text-xs font-medium py-1">{item.codigoItem}</TableCell>
-                                <TableCell className="text-[0.7rem] max-w-lg whitespace-normal py-1">
+                                {/* Aplicando padding vertical reduzido (py-2) a todas as células */}
+                                <TableCell className="text-xs font-medium py-2">{item.numeroAta}</TableCell>
+                                <TableCell className="text-xs font-medium py-2">{item.codigoItem}</TableCell>
+                                <TableCell className="text-[0.7rem] max-w-lg whitespace-normal py-2">
                                     {capitalizeFirstLetter(item.descricaoItem)}
                                 </TableCell>
-                                <TableCell className="text-center text-xs py-1">
+                                <TableCell className="text-center text-xs py-2">
                                     {item.quantidadeHomologada.toLocaleString('pt-BR')}
                                 </TableCell>
-                                <TableCell className="text-right text-xs font-bold text-primary py-1">
+                                <TableCell className="text-right text-xs font-bold text-primary py-2">
                                     {formatCurrency(item.valorUnitario)}
                                 </TableCell>
                             </TableRow>
