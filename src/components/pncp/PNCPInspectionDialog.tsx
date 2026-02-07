@@ -13,6 +13,7 @@ import { saveNewCatmatEntry } from '@/integrations/supabase/api';
 import { useQueryClient } from '@tanstack/react-query'; // Mantém useQueryClient para invalidar o cache após a importação final
 import { cn } from '@/lib/utils';
 import { formatCodug, formatCurrency } from '@/lib/formatUtils';
+import { Textarea } from '@/components/ui/textarea'; // Importar Textarea
 
 interface PNCPInspectionDialogProps {
     open: boolean;
@@ -267,10 +268,11 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                 {/* Coluna Descrição Completa (ARP) - EDITÁVEL SE needs_catmat_info */}
                                 <TableCell className={cn("text-sm max-w-xs whitespace-normal text-center", status !== 'needs_catmat_info' && "py-4")}>
                                     {status === 'needs_catmat_info' ? (
-                                        <Input
+                                        <Textarea // SUBSTITUÍDO Input POR Textarea
                                             value={item.mappedItem.descricao_item}
                                             onChange={(e) => handleUpdateFullDescription(item.originalPncpItem.id, e.target.value)}
-                                            className="text-center h-8"
+                                            className="text-center text-sm min-h-[80px]" // Altura mínima para 3 linhas
+                                            rows={3}
                                             disabled={isSavingCatmat}
                                         />
                                     ) : (
