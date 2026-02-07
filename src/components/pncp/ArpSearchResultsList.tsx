@@ -128,7 +128,6 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelec
                                 <TableCell className="text-sm font-medium">{item.numeroAta}</TableCell> {/* NOVO: Exibe o número da ARP */}
                                 <TableCell className="text-sm font-medium">{item.codigoItem}</TableCell>
                                 <TableCell className="text-sm max-w-lg whitespace-normal">
-                                    {/* CORREÇÃO: Capitaliza a primeira letra da descrição */}
                                     {capitalizeFirstLetter(item.descricaoItem)}
                                 </TableCell>
                                 <TableCell className="text-center text-sm">
@@ -228,7 +227,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                         Resultado para {omNameDisplay} ({formatCodug(omUasg)})
                     </span>
                     <span className="text-sm font-normal text-muted-foreground mt-1">
-                        {groupedArps.length} Pregões encontrados ({totalArpItems} ARPs)
+                        {groupedArp.length} Pregões encontrados ({totalArpItems} ARPs)
                     </span>
                 </h3>
             </div>
@@ -245,7 +244,8 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                     </TableHeader>
                     <TableBody>
                         {groupedArps.map(group => {
-                            const isGroupOpen = openGroups[group.pregao];
+                            // CORREÇÃO APLICADA AQUI: Garante que é sempre um booleano
+                            const isGroupOpen = openGroups[group.pregao] ?? false; 
                             
                             const displayPregao = group.pregao === 'N/A' 
                                 ? <span className="text-red-500 font-bold">DADOS INCOMPLETOS</span> 
