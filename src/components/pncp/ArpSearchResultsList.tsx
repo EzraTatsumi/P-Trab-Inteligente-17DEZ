@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ArpItemResult, DetailedArpItem } from '@/types/pncp';
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
 import { formatCodug, formatCurrency, formatDate, formatPregao, capitalizeFirstLetter } from '@/lib/formatUtils';
@@ -149,6 +149,22 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelec
 const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, onItemPreSelect, searchedUasg, searchedOmName, selectedItemIds }) => {
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
     
+    // NOVO: Ref para o cabeçalho dos resultados (âncora de rolagem)
+    const resultHeaderRef = useRef<HTMLDivElement>(null);
+    
+    // Efeito para rolar para o topo dos resultados quando a lista é carregada
+    useEffect(() => {
+        if (results.length > 0 && resultHeaderRef.current) {
+            // Usamos setTimeout para garantir que o DialogContent tenha expandido
+            setTimeout(() => {
+                resultHeaderRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                });
+            }, 100);
+        }
+    }, [results]);
+    
     // 1. Lógica de Agrupamento
     const groupedArps = useMemo(() => {
         const groupsMap = new Map<string, ArpGroup>();
@@ -204,15 +220,17 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
 
     return (
         <div className="p-4 space-y-4">
-            {/* CABEÇALHO DA PESQUISA */}
-            <h3 className="text-lg font-semibold flex flex-col">
-                <span>
-                    Resultado para {omNameDisplay} ({formatCodug(omUasg)})
-                </span>
-                <span className="text-sm font-normal text-muted-foreground mt-1">
-                    {groupedArps.length} Pregões encontrados ({totalArpItems} ARPs)
-                </span>
-            </h3>
+            {/* CABEÇALHO DA PESQUISA (ÂNCORA DE SCROLL) */}
+            <div ref={resultHeaderRef}>
+                <h3 className="text-lg font-semibold flex flex-col">
+                    <span>
+                        Resultado para {omNameDisplay} ({formatCodug(omUasg)})
+                    </span>
+                    <span className="text-sm font-normal text-muted-foreground mt-1">
+                        {groupedArps.length} Pregões encontrados ({totalArpItems} ARPs)
+                    </span>
+                </h3>
+            </div>
             
             <div className="max-h-[400px] overflow-y-auto border rounded-md">
                 <Table>
