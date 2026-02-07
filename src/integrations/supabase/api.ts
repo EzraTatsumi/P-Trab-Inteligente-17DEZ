@@ -196,12 +196,13 @@ export async function fetchCatmatShortDescription(codigoCatmat: string): Promise
  * Saves a new or updates an existing CATMAT entry with a short description.
  * This is used when importing PNCP items where the CATMAT code is new or lacks a short description.
  * @param code The CATMAT code (string).
- * @param description The full description (from PNCP).
+ * @param description The full description (from PNCP or user edit).
  * @param shortDescription The user-provided short description.
  */
 export async function saveNewCatmatEntry(code: string, description: string, shortDescription: string): Promise<void> {
     
     // 1. Padronizar a descrição completa para CAIXA ALTA (padrão do BD)
+    // A descrição completa pode vir da ARP ou ser editada pelo usuário.
     const standardizedDescription = normalizeTextForComparison(description);
     
     // 2. Padronizar a descrição reduzida (Capitalização de Palavras)

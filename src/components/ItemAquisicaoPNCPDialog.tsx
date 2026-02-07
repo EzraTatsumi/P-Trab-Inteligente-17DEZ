@@ -60,12 +60,12 @@ const generateItemKey = (item: ItemAquisicao): string => {
         .toUpperCase()
         .replace(/\s+/g, ' ');
         
-    const desc = normalize(item.descricao_item); 
+    // CRITÉRIO DE DUPLICIDADE SIMPLIFICADO: CATMAT, Pregão e UASG
     const catmat = normalize(item.codigo_catmat);
     const pregao = normalize(item.numero_pregao);
     const uasg = normalize(item.uasg);
     
-    return `${desc}|${catmat}|${pregao}|${uasg}`;
+    return `${catmat}|${pregao}|${uasg}`;
 };
 
 
@@ -128,12 +128,12 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         try {
             const inspectionPromises = selectedItemsState.map(async ({ item, pregaoFormatado, uasg }) => {
                 
-                // 1. Mapeamento inicial para ItemAquisicao
+                // 1. Mapeamento inicial para ItemAquisicao (usando dados da ARP)
                 const itemDescription = item.descricaoItem || ''; 
                 const initialMappedItem: ItemAquisicao = {
                     id: item.id, 
                     descricao_item: itemDescription,
-                    descricao_reduzida: '', // Será preenchido na inspeção ou busca CATMAT
+                    descricao_reduzida: '', 
                     valor_unitario: item.valorUnitario, 
                     numero_pregao: pregaoFormatado, 
                     uasg: uasg, 
@@ -142,50 +142,59 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 
                 let status: InspectionStatus = 'pending';
                 let messages: string[] = [];
-                let shortDescription: string | null = null;
                 
-                // 2. Verificação de Duplicidade Local
+                // 2. Verificação de Duplicidade Local (Critério: CATMAT, Pregão, UASG)
                 const itemKey = generateItemKey(initialMappedItem);
                 const isDuplicate = existingItemsInDiretriz.some(existingItem => generateItemKey(existingItem) === itemKey);
                 
                 if (isDuplicate) {
+                    // HIPÓTESE 3: DUPLICADO
                     status = 'duplicate';
                     messages.push('Item duplicado na diretriz de destino.');
-                } else {
-                    // 3. Busca de Detalhes do Catálogo de Material do PNCP
-                    const catmatDetails = await fetchPncpCatmatDetails(item.codigoItem);
                     
-                    const officialDescription = catmatDetails.descricaoItem;
-                    const pdmSuggestion = catmatDetails.nomePdm;
+                    return {
+                        originalPncpItem: item,
+                        mappedItem: initialMappedItem,
+                        status: status,
+                        messages: messages,
+                        userShortDescription: '',
+                        officialPncpDescription: null,
+                        pdmSuggestion: null,
+                        descriptionMismatch: false,
+                    } as InspectionItem;
+                }
+                
+                // 3. Busca da Descrição Reduzida e Completa no Catálogo Local
+                const { data: catmatData, error: catmatError } = await supabase
+                    .from('catalogo_catmat')
+                    .select('description, short_description')
+                    .eq('code', item.codigoItem.replace(/\D/g, '').padStart(9, '0')) // Busca com padding
+                    .maybeSingle();
+                
+                // 4. Busca de Detalhes do Catálogo de Material do PNCP (para descrição oficial e PDM)
+                const catmatDetails = await fetchPncpCatmatDetails(item.codigoItem);
+                const officialDescription = catmatDetails.descricaoItem;
+                const pdmSuggestion = catmatDetails.nomePdm;
+                
+                // 5. Comparação de Descrição (ARP vs Catálogo Oficial)
+                const normalizedOfficial = normalizeTextForComparison(officialDescription);
+                const normalizedArp = normalizeTextForComparison(itemDescription);
+                
+                const descriptionMismatch = officialDescription && 
+                                            officialDescription !== "Falha ao carregar descrição oficial." && 
+                                            normalizedOfficial !== normalizedArp;
+                
+                if (catmatData?.short_description && catmatData.description) {
+                    // HIPÓTESE 1: CATMAT EXISTE NO CATÁLOGO LOCAL (PRONTO PARA IMPORTAR)
+                    status = 'valid';
+                    messages.push('Pronto para importação.');
                     
-                    // 4. Comparação de Descrição (ARP vs Catálogo Oficial)
-                    // Aplicar normalização para ignorar diferenças de pontuação e metadados
-                    const normalizedOfficial = normalizeTextForComparison(officialDescription);
-                    const normalizedArp = normalizeTextForComparison(itemDescription);
-                    
-                    const descriptionMismatch = officialDescription && 
-                                                officialDescription !== "Falha ao carregar descrição oficial." && 
-                                                normalizedOfficial !== normalizedArp; // <-- USANDO NORMALIZAÇÃO
+                    // Mapeia o item para usar os dados padronizados do catálogo local
+                    initialMappedItem.descricao_reduzida = catmatData.short_description;
+                    initialMappedItem.descricao_item = catmatData.description; // Usa a descrição completa padronizada
                     
                     if (descriptionMismatch) {
-                        messages.push('Atenção: Descrição da ARP difere da descrição oficial do Catálogo de Material do PNCP.');
-                    }
-                    
-                    // 5. Busca da Descrição Reduzida no Catálogo Local
-                    shortDescription = await fetchCatmatShortDescription(item.codigoItem);
-                    
-                    if (shortDescription) {
-                        // CATMAT encontrado e tem descrição reduzida
-                        status = 'valid';
-                        messages.push('Pronto para importação.');
-                        initialMappedItem.descricao_reduzida = shortDescription;
-                    } else {
-                        // CATMAT não encontrado ou não tem descrição reduzida
-                        status = 'needs_catmat_info';
-                        messages.push('Requer descrição reduzida para o catálogo CATMAT.');
-                        
-                        // Sugere o nome PDM (que já vem limpo da Edge Function)
-                        initialMappedItem.descricao_reduzida = pdmSuggestion || itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : '');
+                        messages.push('Divergência: Descrição da ARP difere da descrição oficial do PNCP.');
                     }
                     
                     return {
@@ -193,24 +202,31 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         mappedItem: initialMappedItem,
                         status: status,
                         messages: messages,
-                        userShortDescription: shortDescription || pdmSuggestion || '', // Sugestão PDM como valor inicial
+                        userShortDescription: catmatData.short_description, // Valor inicial para edição
+                        officialPncpDescription: officialDescription,
+                        pdmSuggestion: pdmSuggestion,
+                        descriptionMismatch: descriptionMismatch,
+                    } as InspectionItem;
+                    
+                } else {
+                    // HIPÓTESE 2: CATMAT AUSENTE OU SEM DESCRIÇÃO REDUZIDA (REQUER REVISÃO)
+                    status = 'needs_catmat_info';
+                    messages.push('Requer descrição reduzida para o catálogo CATMAT.');
+                    
+                    // Valor inicial para Descrição Reduzida: Sugestão PDM (bruta) ou Descrição da ARP (truncada)
+                    const initialShortDesc = pdmSuggestion || itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : '');
+                    
+                    return {
+                        originalPncpItem: item,
+                        mappedItem: initialMappedItem, // Mantém a descrição da ARP como descrição completa inicial
+                        status: status,
+                        messages: messages,
+                        userShortDescription: initialShortDesc,
                         officialPncpDescription: officialDescription,
                         pdmSuggestion: pdmSuggestion,
                         descriptionMismatch: descriptionMismatch,
                     } as InspectionItem;
                 }
-                
-                // Retorno para item duplicado
-                return {
-                    originalPncpItem: item,
-                    mappedItem: initialMappedItem,
-                    status: status,
-                    messages: messages,
-                    userShortDescription: '',
-                    officialPncpDescription: null,
-                    pdmSuggestion: null,
-                    descriptionMismatch: false,
-                } as InspectionItem;
             });
             
             const results = await Promise.all(inspectionPromises);
