@@ -203,19 +203,10 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
     }, [results]);
     
     const handleToggleGroup = (pregaoKey: string) => {
-        setOpenGroups(prev => {
-            const isOpening = !prev[pregaoKey];
-            
-            // Se estiver abrindo o grupo, rola o container para o topo
-            if (isOpening && scrollContainerRef.current) {
-                scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-            
-            return {
-                ...prev,
-                [pregaoKey]: isOpening,
-            };
-        });
+        setOpenGroups(prev => ({
+            ...prev,
+            [pregaoKey]: !prev[pregaoKey],
+        }));
     };
     
     // Lógica de exibição do nome da OM no cabeçalho:
@@ -241,7 +232,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                 </h3>
             </div>
             
-            <div className="max-h-[400px] overflow-y-auto border rounded-md" ref={scrollContainerRef}>
+            <div className="max-h-[400px] overflow-y-auto border rounded-md">
                 <Table>
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
@@ -301,13 +292,6 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                             );
                         })}
                     </TableBody>
-                </Table>
-            </div>
-        </div>
-    );
-};
-
-export default ArpSearchResultsList;
                 </Table>
             </div>
         </div>
