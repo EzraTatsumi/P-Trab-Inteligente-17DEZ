@@ -221,7 +221,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatFormProps> = ({ onItemPreSelect, se
                 <div ref={resultsRef}>
                     <h3 className="text-lg font-semibold flex flex-col">
                         <span>
-                            Resultado para {capitalizeFirstLetter(searchedDescription)} ({searchedCode})
+                            Resultado para {capitalizeFirstLetter(searchedDescription)} (Cód. {searchedCode})
                         </span>
                         <span className="text-sm font-normal text-muted-foreground mt-1">
                             {groupedByPregao.length} Pregões encontrados ({results.length} itens de ARP)
