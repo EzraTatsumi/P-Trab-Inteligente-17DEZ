@@ -250,7 +250,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                             <Input
                                                 value={item.userShortDescription}
                                                 onChange={(e) => handleUpdateShortDescription(item.originalPncpItem.id, e.target.value)}
-                                                placeholder="Nome curto para o catálogo"
+                                                placeholder={item.mappedItem.nome_pdm || "Nome curto para o catálogo"}
                                                 disabled={saveCatmatMutation.isPending}
                                             />
                                             <Button
