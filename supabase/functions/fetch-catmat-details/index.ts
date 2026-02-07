@@ -5,7 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const API_URL = 'https://dadosabertos.compras.gov.br/modulo-catalogo/1_consultarItem_Id';
+// CORREÇÃO: Usando a API 4_consultarItemMaterial que se mostrou funcional
+const API_URL = 'https://dadosabertos.compras.gov.br/modulo-material/4_consultarItemMaterial';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -24,11 +25,15 @@ serve(async (req) => {
 
     const params = new URLSearchParams({
         codigoItem: codigoItem,
+        // Adicionando parâmetros de paginação necessários para esta API
+        pagina: '1',
+        tamanhoPagina: '1',
+        bps: 'false',
     });
 
     const fullUrl = `${API_URL}?${params.toString()}`;
     
-    console.log(`[fetch-catmat-details] Fetching details for item: ${codigoItem}`);
+    console.log(`[fetch-catmat-details] Fetching details for item: ${codigoItem} using API 4.`);
 
     const response = await fetch(fullUrl, {
         method: 'GET',
@@ -38,7 +43,7 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-        // NOVO: Se a API externa retornar 404, tratamos como 'Item não encontrado' e retornamos 200.
+        // Se a API externa retornar 404, tratamos como 'Item não encontrado' e retornamos 200.
         if (response.status === 404) {
             console.warn(`[fetch-catmat-details] Item ${codigoItem} returned 404 from external API (Not Found).`);
             return new Response(JSON.stringify({
@@ -47,7 +52,7 @@ serve(async (req) => {
                 nomePdm: null,
             }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 200, // Retorna 200 para o cliente, indicando sucesso na busca (mas item não encontrado)
+                status: 200,
             });
         }
         
@@ -59,7 +64,7 @@ serve(async (req) => {
 
     const data = await response.json();
     
-    // A API do catálogo retorna um array de resultados
+    // A API 4_consultarItemMaterial retorna um array de resultados
     const itemData = data.resultado?.[0];
 
     if (!itemData) {
@@ -78,7 +83,8 @@ serve(async (req) => {
     const result = {
         codigoItem: String(itemData.codigoItem || codigoItem),
         descricaoItem: itemData.descricaoItem || 'Descrição oficial não disponível',
-        nomePdm: itemData.nomePdm || null,
+        // O campo nomePdm é o que precisamos para a sugestão de descrição reduzida
+        nomePdm: itemData.nomePdm || null, 
     };
 
     return new Response(JSON.stringify(result), {
