@@ -149,10 +149,10 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelec
 const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, onItemPreSelect, searchedUasg, searchedOmName, selectedItemIds }) => {
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
     
-    // NOVO: Ref para o cabeçalho dos resultados (âncora de rolagem)
+    // Ref para o cabeçalho dos resultados (âncora de rolagem)
     const resultHeaderRef = useRef<HTMLDivElement>(null);
     
-    // NOVO: Ref para o container de rolagem (div 235)
+    // Ref para o container de rolagem
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     // Efeito para rolar para o topo dos resultados quando a lista é carregada
@@ -212,28 +212,15 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                 [pregaoKey]: !prev[pregaoKey],
             };
             
-            // Se o grupo estiver sendo ABERTO, rola o container para o topo
+            // Se o grupo estiver sendo ABERTO, rola o container para o topo (top: 0)
             if (newState[pregaoKey] && scrollContainerRef.current) {
-                // Encontra a linha do grupo que está sendo aberta
-                const rowElement = document.getElementById(`arp-group-row-${pregaoKey}`);
-                
-                if (rowElement) {
-                    // Calcula a posição da linha em relação ao topo do container de rolagem
-                    const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
-                    const rowTop = rowElement.getBoundingClientRect().top;
-                    
-                    // Calcula a quantidade de rolagem necessária
-                    const scrollAmount = rowTop - containerTop;
-                    
-                    // Rola o container
-                    scrollContainerRef.current.scrollBy({
-                        top: scrollAmount,
-                        behavior: 'smooth'
+                // Usamos setTimeout para garantir que o Collapsible tenha tempo de expandir
+                setTimeout(() => {
+                    scrollContainerRef.current?.scrollTo({
+                        top: 0,
+                        behavior: "smooth",
                     });
-                } else {
-                    // Fallback: rola para o topo do container
-                    scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-                }
+                }, 100);
             }
             
             return newState;
@@ -285,7 +272,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                             return (
                                 <React.Fragment key={group.pregao}>
                                     <TableRow 
-                                        id={`arp-group-row-${group.pregao}`} /* NOVO: ID para rolagem */
+                                        id={`arp-group-row-${group.pregao}`} /* ID para rolagem */
                                         className="cursor-pointer hover:bg-muted/50 transition-colors"
                                         onClick={() => handleToggleGroup(group.pregao)}
                                     >
