@@ -131,11 +131,12 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
     // 5. Renderização dos resultados (Componente interno para CATMAT)
     const CatmatSearchResultsList = ({ results, searchedDescription, searchedCode }: { results: DetailedArpItem[], searchedDescription: string, searchedCode: string }) => {
         
-        // Agrupamento por Pregão
+        // Agrupamento por Pregão e UASG
         const groupedByPregao = useMemo(() => {
             const groupsMap = new Map<string, DetailedArpItem[]>();
             results.forEach(item => {
-                const pregaoKey = item.pregaoFormatado;
+                // Chave de agrupamento: Pregão + UASG
+                const pregaoKey = `${item.pregaoFormatado}-${item.uasg}`;
                 if (!groupsMap.has(pregaoKey)) {
                     groupsMap.set(pregaoKey, []);
                 }
@@ -245,9 +246,9 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                                 const isGroupOpen = openGroups[pregaoKey];
                                 const representativeItem = items[0];
                                 
-                                const displayPregao = pregaoKey === 'N/A' 
+                                const displayPregao = representativeItem.pregaoFormatado === 'N/A' 
                                     ? <span className="text-red-500 font-bold">DADOS INCOMPLETOS</span> 
-                                    : formatPregao(pregaoKey); 
+                                    : formatPregao(representativeItem.pregaoFormatado); 
                                     
                                 return (
                                     <React.Fragment key={pregaoKey}>
@@ -279,7 +280,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                                                     <CollapsibleContent>
                                                         <DetailedCatmatItems 
                                                             items={items}
-                                                            pregaoFormatado={pregaoKey}
+                                                            pregaoFormatado={representativeItem.pregaoFormatado}
                                                         />
                                                     </CollapsibleContent>
                                                 </Collapsible>
