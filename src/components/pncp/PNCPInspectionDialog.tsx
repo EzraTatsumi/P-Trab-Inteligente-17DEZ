@@ -195,6 +195,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
         }
         
         // Ajuste de largura das colunas:
+        // Aumentando Descrição ARP e PNCP, mantendo CATMAT, Ações e Nome Reduzido estáveis.
         const catmatWidth = 'w-[8%]'; // 8%
         const arpDescWidth = 'w-[38%]'; // 38%
         const pncpDescWidth = 'w-[38%]'; // 38%
@@ -330,7 +331,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
+            <DialogContent className="max-w-7xl">
                 <DialogHeader>
                     <DialogTitle>Inspeção de Itens PNCP</DialogTitle>
                     <DialogDescription>
