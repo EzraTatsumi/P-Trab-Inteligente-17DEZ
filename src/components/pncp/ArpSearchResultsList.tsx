@@ -8,20 +8,25 @@ import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp, Import, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { fetchArpItemsById } from '@/integrations/supabase/api';
+
+// NOVO TIPO: Referência de uma ARP dentro de um Pregão
+interface ArpReference {
+    numeroControlePncpAta: string;
+    numeroAta: string;
+}
 
 // Tipo para o grupo de ARPs (agrupado por Pregão)
 interface ArpGroup {
     pregao: string;
     uasg: string;
     omNome: string;
-    itens: ArpItemResult[]; 
+    // Lista de referências de ARP que compõem este Pregão
+    arpReferences: ArpReference[]; 
     objetoRepresentativo: string;
     dataVigenciaInicial: string;
     dataVigenciaFinal: string;
-    // Adicionando o controle PNCP do primeiro item do grupo para a busca detalhada
-    numeroControlePncpAta: string; 
 }
 
 interface ArpSearchResultsListProps {
@@ -32,21 +37,35 @@ interface ArpSearchResultsListProps {
 }
 
 // Componente para buscar e exibir os itens detalhados de uma ARP
-const DetailedArpItems = ({ numeroControlePncpAta, pregaoFormatado, uasg, onSelect, isGroupOpen }: { 
-    numeroControlePncpAta: string, 
-    pregaoFormatado: string, 
-    uasg: string, 
-    onSelect: (item: ItemAquisicao) => void,
-    isGroupOpen: boolean,
+const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onSelect, isGroupOpen }: { 
+    arpReferences: ArpReference[]; 
+    pregaoFormatado: string; 
+    uasg: string; 
+    onSelect: (item: ItemAquisicao) => void;
+    isGroupOpen: boolean;
 }) => {
     const [selectedDetailedItem, setSelectedDetailedItem] = useState<DetailedArpItem | null>(null);
 
-    // Query para buscar os itens detalhados
-    const { data: detailedItems, isLoading, error } = useQuery({
-        queryKey: ['arpDetailedItems', numeroControlePncpAta],
-        queryFn: () => fetchArpItemsById(numeroControlePncpAta),
-        enabled: isGroupOpen && !!numeroControlePncpAta, // Só busca se o grupo estiver aberto
+    // Usa useQueries para disparar buscas paralelas para cada ARP
+    const arpQueries = useQueries({
+        queries: arpReferences.map(ref => ({
+            queryKey: ['arpDetailedItems', ref.numeroControlePncpAta],
+            queryFn: () => fetchArpItemsById(ref.numeroControlePncpAta),
+            enabled: isGroupOpen && !!ref.numeroControlePncpAta,
+            staleTime: 1000 * 60 * 5, // 5 minutos de cache
+        })),
     });
+    
+    // Consolidação dos resultados
+    const isLoading = arpQueries.some(query => query.isLoading);
+    const isError = arpQueries.some(query => query.isError);
+    
+    const detailedItems: DetailedArpItem[] = useMemo(() => {
+        if (isLoading || isError) return [];
+        
+        // Mapeia e achata os resultados de todas as queries
+        return arpQueries.flatMap(query => query.data || []);
+    }, [arpQueries, isLoading, isError]);
     
     const handlePreSelectDetailedItem = (item: DetailedArpItem) => {
         setSelectedDetailedItem(item.id === selectedDetailedItem?.id ? null : item);
@@ -77,15 +96,15 @@ const DetailedArpItems = ({ numeroControlePncpAta, pregaoFormatado, uasg, onSele
         return (
             <div className="text-center py-4">
                 <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
-                <p className="text-sm text-muted-foreground mt-1">Carregando itens detalhados...</p>
+                <p className="text-sm text-muted-foreground mt-1">Carregando itens detalhados de {arpReferences.length} ARPs...</p>
             </div>
         );
     }
     
-    if (error) {
+    if (isError) {
         return (
             <div className="text-center py-4 text-red-500 text-sm">
-                Erro ao carregar itens: {error.message}
+                Erro ao carregar itens detalhados de uma ou mais ARPs.
             </div>
         );
     }
@@ -93,7 +112,7 @@ const DetailedArpItems = ({ numeroControlePncpAta, pregaoFormatado, uasg, onSele
     if (!detailedItems || detailedItems.length === 0) {
         return (
             <div className="text-center py-4 text-muted-foreground text-sm">
-                Nenhum item detalhado encontrado nesta ARP.
+                Nenhum item detalhado encontrado nas ARPs deste Pregão.
             </div>
         );
     }
@@ -103,8 +122,9 @@ const DetailedArpItems = ({ numeroControlePncpAta, pregaoFormatado, uasg, onSele
             <Table className="bg-background border rounded-md">
                 <thead>
                     <TableRow className="text-xs text-muted-foreground hover:bg-background">
+                        <th className="px-4 py-2 text-left font-normal w-[10%]">ARP</th> {/* NOVO: Coluna ARP */}
                         <th className="px-4 py-2 text-left font-normal w-[15%]">Cód. Item</th>
-                        <th className="px-4 py-2 text-left font-normal w-[55%]">Descrição Item</th>
+                        <th className="px-4 py-2 text-left font-normal w-[45%]">Descrição Item</th>
                         <th className="px-4 py-2 text-center font-normal w-[15%]">Qtd. Homologada</th>
                         <th className="px-4 py-2 text-right font-normal w-[15%]">Valor Unitário</th>
                     </TableRow>
@@ -118,6 +138,7 @@ const DetailedArpItems = ({ numeroControlePncpAta, pregaoFormatado, uasg, onSele
                                 className={`cursor-pointer transition-colors ${isSelected ? "bg-green-100/50 hover:bg-green-100/70" : "hover:bg-muted/50"}`}
                                 onClick={() => handlePreSelectDetailedItem(item)}
                             >
+                                <TableCell className="text-sm font-medium">{item.numeroAta}</TableCell> {/* NOVO: Exibe o número da ARP */}
                                 <TableCell className="text-sm font-medium">{item.codigoItem}</TableCell>
                                 <TableCell className="text-sm max-w-lg whitespace-normal">
                                     {capitalizeFirstLetter(item.descricaoItem)}
@@ -165,17 +186,25 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                     pregao: pregaoKey,
                     uasg: arp.uasg,
                     omNome: arp.omNome,
-                    itens: [],
+                    arpReferences: [], // Inicializa a lista de referências
                     objetoRepresentativo: arp.objeto || 'Objeto não especificado',
                     dataVigenciaInicial: arp.dataVigenciaInicial || '',
                     dataVigenciaFinal: arp.dataVigenciaFinal || '',
-                    // Captura o controle PNCP da primeira ARP do grupo
-                    numeroControlePncpAta: arp.numeroControlePncpAta, 
                 });
             }
 
             const group = groupsMap.get(pregaoKey)!;
-            group.itens.push(arp);
+            
+            // Adiciona a referência da ARP atual ao grupo
+            group.arpReferences.push({
+                numeroControlePncpAta: arp.numeroControlePncpAta,
+                numeroAta: arp.numeroAta,
+            });
+            
+            // Atualiza o objeto representativo (opcional, mas mantém a consistência)
+            if (arp.objeto && arp.objeto.length > group.objetoRepresentativo.length) {
+                group.objetoRepresentativo = arp.objeto;
+            }
         });
 
         return Array.from(groupsMap.values()).sort((a, b) => a.pregao.localeCompare(b.pregao));
@@ -253,7 +282,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                             <Collapsible open={isGroupOpen}>
                                                 <CollapsibleContent>
                                                     <DetailedArpItems 
-                                                        numeroControlePncpAta={group.numeroControlePncpAta}
+                                                        arpReferences={group.arpReferences} // PASSANDO TODAS AS REFERÊNCIAS
                                                         pregaoFormatado={group.pregao}
                                                         uasg={group.uasg}
                                                         onSelect={onSelect}
