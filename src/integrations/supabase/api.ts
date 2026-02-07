@@ -1,7 +1,7 @@
 import { toast } from "sonner";
 import { supabase } from "./client"; // Importar o cliente Supabase
 import { Profile } from "@/types/profiles"; // Importar o novo tipo Profile
-import { ArpUasgSearchParams, ArpItemResult } from "@/types/pncp"; // Importa os novos tipos PNCP
+import { ArpUasgSearchParams, ArpItemResult, ArpRawResult } from "@/types/pncp"; // Importa os novos tipos PNCP
 
 // Interface para a resposta consolidada da Edge Function
 interface EdgeFunctionResponse {
@@ -163,29 +163,49 @@ export async function fetchArpsByUasg(params: ArpUasgSearchParams): Promise<ArpI
         }
         
         // A API externa retorna um array de objetos.
-        const responseData = data as any[]; 
+        const responseData = data as ArpRawResult[]; 
         
         if (!Array.isArray(responseData)) {
             // Se a API retornar um objeto de erro ou vazio, tratamos como array vazio
-            if (responseData && responseData.error) {
-                throw new Error(responseData.error);
+            if (responseData && (responseData as any).error) {
+                throw new Error((responseData as any).error);
             }
             return [];
         }
         
         // Mapeamento e sanitização dos dados para o tipo ArpItemResult
-        const results: ArpItemResult[] = responseData.map((item: any) => ({
-            // Usamos o código da ata como ID, ou um fallback
-            id: item.codigoAta || item.numeroAta || Math.random().toString(36).substring(2, 9), 
-            numeroAta: item.numeroAta || 'N/A',
-            objeto: item.objeto || 'Objeto não especificado',
-            uasg: item.codigoUnidadeGerenciadora || params.codigoUnidadeGerenciadora,
-            dataVigenciaInicial: item.dataVigenciaInicial || 'N/A',
-            dataVigenciaFinal: item.dataVigenciaFinal || 'N/A',
-            // Garantir que os valores sejam numéricos, caindo para 0 se inválidos
-            valorTotalEstimado: parseFloat(item.valorTotalEstimado || 0),
-            quantidadeItens: parseInt(item.quantidadeItens || 0),
-        }));
+        const results: ArpItemResult[] = responseData.map((item: ArpRawResult) => {
+            // Sanitização e Fallback para campos chave
+            const numeroCompraStr = String(item.numeroCompra || '').trim();
+            const anoCompraStr = String(item.anoCompra || '').trim();
+            const uasgStr = String(item.codigoUnidadeGerenciadora || '').replace(/\D/g, '');
+            
+            let pregaoFormatado: string;
+            if (numeroCompraStr && anoCompraStr) {
+                // Formata o número da compra (ex: 00001) para 000.001
+                const numeroCompraFormatado = numeroCompraStr.padStart(6, '0').replace(/(\d{3})(\d{3})/, '$1.$2');
+                const anoCompraDoisDigitos = anoCompraStr.slice(-2);
+                pregaoFormatado = `${numeroCompraFormatado}/${anoCompraDoisDigitos}`;
+            } else {
+                pregaoFormatado = 'N/A';
+            }
+            
+            return {
+                // Usamos o idCompra como ID, ou um fallback
+                id: item.idCompra || Math.random().toString(36).substring(2, 9), 
+                numeroAta: item.numeroAtaRegistroPreco || 'N/A',
+                objeto: item.objeto || 'Objeto não especificado',
+                uasg: uasgStr,
+                // CORREÇÃO APLICADA AQUI: Mapeando nomeUnidadeGerenciadora para omNome
+                omNome: item.nomeUnidadeGerenciadora || `UASG ${uasgStr}`, 
+                dataVigenciaInicial: item.dataVigenciaInicial || 'N/A',
+                dataVigenciaFinal: item.dataVigenciaFinal || 'N/A',
+                // Garantir que os valores sejam numéricos, caindo para 0 se inválidos
+                valorTotalEstimado: parseFloat(String(item.valorTotal || 0)),
+                quantidadeItens: parseInt(String(item.quantidadeItens || 0)),
+                pregaoFormatado: pregaoFormatado,
+            };
+        });
         
         return results;
 
