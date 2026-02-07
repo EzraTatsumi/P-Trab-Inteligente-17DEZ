@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -57,13 +57,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     const [selectedItemsState, setSelectedItemsState] = useState<SelectedItemState[]>([]);
     const [isImporting, setIsImporting] = useState(false);
     
-    // NOVO EFEITO: Limpa a seleção ao abrir o diálogo
-    useEffect(() => {
-        if (open) {
-            setSelectedItemsState([]);
-        }
-    }, [open]);
-    
     // MUDANÇA: Função para alternar a seleção de um item detalhado
     const handleItemPreSelect = (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => {
         setSelectedItemsState(prev => {
@@ -94,8 +87,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         try {
             const importPromises = selectedItemsState.map(async ({ item, pregaoFormatado, uasg }) => {
                 // 1. Buscar a descrição reduzida no catálogo CATMAT
-                // NOTE: fetchCatmatShortDescription não está definido no escopo fornecido, 
-                // mas assumimos que ele existe em '@/integrations/supabase/api'
                 const shortDescription = await fetchCatmatShortDescription(item.codigoItem);
                 
                 // Garante que a descrição do item seja uma string para evitar o erro de substring

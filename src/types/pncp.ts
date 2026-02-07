@@ -7,7 +7,7 @@ export interface ArpUasgSearchParams {
 }
 
 /**
- * Estrutura bruta de um item ARP retornado pela API externa (dentro da chave 'resultado').
+ * Estrutura bruta de um item ARP retornado pela API externa (1_consultarARP).
  */
 export interface ArpRawResult {
     numeroAtaRegistroPreco: string;
@@ -21,10 +21,11 @@ export interface ArpRawResult {
     objeto: string;
     quantidadeItens: number;
     idCompra: string; // Usado como ID único
+    numeroControlePncpAta: string; // Adicionado para busca de itens detalhados
 }
 
 /**
- * Estrutura simplificada e mapeada para uso no frontend (Resultado da busca inicial por UASG).
+ * Estrutura simplificada e mapeada para uso no frontend (Nível 1).
  */
 export interface ArpItemResult {
     id: string;
@@ -37,40 +38,39 @@ export interface ArpItemResult {
     valorTotalEstimado: number;
     quantidadeItens: number;
     pregaoFormatado: string;
+    numeroControlePncpAta: string; // Adicionado para busca de itens detalhados
 }
 
 /**
- * Estrutura bruta de um item detalhado retornado pela API 2_consultarItemARP.
+ * Estrutura bruta de um item detalhado ARP retornado pela API externa (2.1_consultarARPItem_Id).
  */
 export interface DetailedArpRawResult {
-    idItem: string; // ID único do item
-    codigoItem: string; // Código CATMAT/CATSER
-    descricaoItem: string;
-    unidadeMedida: string;
-    quantidade: number;
-    valorUnitario: number;
-    valorTotal: number;
-    // Outros campos que podem ser úteis
     numeroAtaRegistroPreco: string;
+    codigoUnidadeGerenciadora: string;
     numeroCompra: string;
     anoCompra: string;
-    codigoUnidadeGerenciadora: string;
+    dataVigenciaInicial: string;
+    dataVigenciaFinal: string;
+    numeroItem: string;
+    codigoItem: number; // CATMAT code
+    descricaoItem: string;
+    valorUnitario: number;
+    quantidadeHomologadaItem: number;
+    valorTotal: number;
+    numeroControlePncpAta: string;
 }
 
 /**
- * Estrutura simplificada e mapeada para uso no frontend (Item detalhado da ARP).
+ * Estrutura simplificada e mapeada para uso no frontend (Nível 2).
  */
 export interface DetailedArpItem {
-    id: string; // idItem
-    codigoItem: string; // CATMAT/CATSER
-    descricaoItem: string;
-    unidadeMedida: string;
-    quantidade: number;
-    valorUnitario: number;
-    valorTotal: number;
-    // Metadados de origem (para facilitar a importação)
+    id: string; // Unique ID for the item (ARP Control + Item Number)
     numeroAta: string;
-    numeroCompra: string;
-    anoCompra: string;
+    codigoItem: string; // CATMAT code as string
+    descricaoItem: string;
+    valorUnitario: number;
+    quantidadeHomologada: number;
+    numeroControlePncpAta: string;
+    pregaoFormatado: string;
     uasg: string;
 }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ArpItemResult, DetailedArpItem } from '@/types/pncp';
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
 import { formatCodug, formatCurrency, formatDate, formatPregao, capitalizeFirstLetter } from '@/lib/formatUtils';
@@ -8,45 +8,153 @@ import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp, Import, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { fetchDetailedArpItems } from '@/integrations/supabase/api'; // Importa a nova função
+import { useQueries, useQuery } from '@tanstack/react-query';
+import { fetchArpItemsById } from '@/integrations/supabase/api';
+
+// NOVO TIPO: Referência de uma ARP dentro de um Pregão
+interface ArpReference {
+    numeroControlePncpAta: string;
+    numeroAta: string;
+}
 
 // Tipo para o grupo de ARPs (agrupado por Pregão)
 interface ArpGroup {
     pregao: string;
     uasg: string;
     omNome: string;
-    itens: ArpItemResult[];
+    // Lista de referências de ARP que compõem este Pregão
+    arpReferences: ArpReference[]; 
     objetoRepresentativo: string;
     dataVigenciaInicial: string;
     dataVigenciaFinal: string;
 }
 
 interface ArpSearchResultsListProps {
-    results: ArpItemResult[];
-    // MUDANÇA: onSelect agora é onItemPreSelect, que lida com DetailedArpItem
+    results: ArpItemResult[]; 
+    // MUDANÇA: Função para alternar a seleção de um item detalhado
     onItemPreSelect: (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => void;
     searchedUasg: string;
     searchedOmName: string;
-    selectedItemIds: string[]; // IDs dos itens detalhados selecionados
+    // MUDANÇA: Array de IDs selecionados globalmente
+    selectedItemIds: string[];
 }
 
-const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ 
-    results, 
-    onItemPreSelect, 
-    searchedUasg, 
-    searchedOmName,
-    selectedItemIds,
+// Componente para buscar e exibir os itens detalhados de uma ARP
+const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelect, isGroupOpen, selectedItemIds }: { 
+    arpReferences: ArpReference[]; 
+    pregaoFormatado: string; 
+    uasg: string; 
+    onItemPreSelect: (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => void;
+    isGroupOpen: boolean;
+    selectedItemIds: string[];
 }) => {
-    const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-    // NOVO ESTADO: Armazena os itens detalhados carregados por idCompra
-    const [detailedItemsCache, setDetailedItemsCache] = useState<Record<string, DetailedArpItem[]>>({});
-    const [loadingDetails, setLoadingDetails] = useState<Record<string, boolean>>({});
+    // Usa useQueries para disparar buscas paralelas para cada ARP
+    const arpQueries = useQueries({
+        queries: arpReferences.map(ref => ({
+            queryKey: ['arpDetailedItems', ref.numeroControlePncpAta],
+            queryFn: () => fetchArpItemsById(ref.numeroControlePncpAta),
+            enabled: isGroupOpen && !!ref.numeroControlePncpAta,
+            staleTime: 1000 * 60 * 5, // 5 minutos de cache
+        })),
+    });
+    
+    // Consolidação dos resultados
+    const isLoading = arpQueries.some(query => query.isLoading);
+    const isError = arpQueries.some(query => query.isError);
+    
+    const detailedItems: DetailedArpItem[] = useMemo(() => {
+        if (isLoading || isError) return [];
+        
+        // Mapeia e achata os resultados de todas as queries
+        return arpQueries.flatMap(query => query.data || []);
+    }, [arpQueries, isLoading, isError]);
+    
+    const handlePreSelectDetailedItem = (item: DetailedArpItem) => {
+        // Chama a função de alternância no componente pai
+        onItemPreSelect(item, pregaoFormatado, uasg);
+    };
+    
+    if (isLoading) {
+        return (
+            <div className="text-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
+                <p className="text-sm text-muted-foreground mt-1">Carregando itens detalhados de {arpReferences.length} ARPs...</p>
+            </div>
+        );
+    }
+    
+    if (isError) {
+        // Podemos tentar extrair a mensagem de erro da primeira query que falhou
+        const firstError = arpQueries.find(query => query.isError)?.error;
+        const errorMessage = firstError?.message || "Erro desconhecido.";
 
+        return (
+            <div className="text-center py-4 text-red-500 text-sm">
+                Erro ao carregar itens detalhados de uma ou mais ARPs: {errorMessage}
+            </div>
+        );
+    }
+
+    if (!detailedItems || detailedItems.length === 0) {
+        return (
+            <div className="text-center py-4 text-muted-foreground text-sm">
+                Nenhum item detalhado encontrado nas ARPs deste Pregão.
+            </div>
+        );
+    }
+
+    return (
+        <div className="p-4 bg-muted/50 border-t border-border space-y-3">
+            <Table className="bg-background border rounded-md">
+                <thead>
+                    <TableRow className="text-xs text-muted-foreground hover:bg-background">
+                        <th className="px-4 py-2 text-left font-normal w-[10%]">ARP</th> {/* NOVO: Coluna ARP */}
+                        <th className="px-4 py-2 text-left font-normal w-[15%]">Cód. Item</th>
+                        <th className="px-4 py-2 text-left font-normal w-[45%]">Descrição Item</th>
+                        <th className="px-4 py-2 text-center font-normal w-[15%]">Qtd. Homologada</th>
+                        <th className="px-4 py-2 text-right font-normal w-[15%]">Valor Unitário</th>
+                    </TableRow>
+                </thead>
+                <TableBody>
+                    {detailedItems.map(item => {
+                        // MUDANÇA: Verifica se o ID do item está no array de IDs selecionados
+                        const isSelected = selectedItemIds.includes(item.id);
+                        return (
+                            <TableRow 
+                                key={item.id}
+                                className={`cursor-pointer transition-colors ${isSelected ? "bg-green-100/50 hover:bg-green-100/70" : "hover:bg-muted/50"}`}
+                                onClick={() => handlePreSelectDetailedItem(item)}
+                            >
+                                <TableCell className="text-sm font-medium">{item.numeroAta}</TableCell> {/* NOVO: Exibe o número da ARP */}
+                                <TableCell className="text-sm font-medium">{item.codigoItem}</TableCell>
+                                <TableCell className="text-sm max-w-lg whitespace-normal">
+                                    {capitalizeFirstLetter(item.descricaoItem)}
+                                </TableCell>
+                                <TableCell className="text-center text-sm">
+                                    {item.quantidadeHomologada.toLocaleString('pt-BR')}
+                                </TableCell>
+                                <TableCell className="text-right text-sm font-bold text-primary">
+                                    {formatCurrency(item.valorUnitario)}
+                                </TableCell>
+                            </TableRow>
+                        );
+                    })}
+                </TableBody>
+            </Table>
+        </div>
+    );
+};
+
+
+const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, onItemPreSelect, searchedUasg, searchedOmName, selectedItemIds }) => {
+    const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+    
     // 1. Lógica de Agrupamento
     const groupedArps = useMemo(() => {
         const groupsMap = new Map<string, ArpGroup>();
 
         results.forEach(arp => {
+            // A chave de agrupamento é o pregaoFormatado
             const pregaoKey = arp.pregaoFormatado;
             
             if (!groupsMap.has(pregaoKey)) {
@@ -54,7 +162,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({
                     pregao: pregaoKey,
                     uasg: arp.uasg,
                     omNome: arp.omNome,
-                    itens: [],
+                    arpReferences: [], // Inicializa a lista de referências
                     objetoRepresentativo: arp.objeto || 'Objeto não especificado',
                     dataVigenciaInicial: arp.dataVigenciaInicial || '',
                     dataVigenciaFinal: arp.dataVigenciaFinal || '',
@@ -62,39 +170,22 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({
             }
 
             const group = groupsMap.get(pregaoKey)!;
-            group.itens.push(arp);
+            
+            // Adiciona a referência da ARP atual ao grupo
+            group.arpReferences.push({
+                numeroControlePncpAta: arp.numeroControlePncpAta,
+                numeroAta: arp.numeroAta,
+            });
+            
+            // Atualiza o objeto representativo (opcional, mas mantém a consistência)
+            if (arp.objeto && arp.objeto.length > group.objetoRepresentativo.length) {
+                group.objetoRepresentativo = arp.objeto;
+            }
         });
 
         return Array.from(groupsMap.values()).sort((a, b) => a.pregao.localeCompare(b.pregao));
     }, [results]);
     
-    // 2. Função para buscar detalhes da ARP
-    const loadArpDetails = useCallback(async (arp: ArpItemResult) => {
-        const idCompra = arp.id;
-        
-        if (detailedItemsCache[idCompra]) return; // Já carregado
-        if (loadingDetails[idCompra]) return; // Já está carregando
-
-        setLoadingDetails(prev => ({ ...prev, [idCompra]: true }));
-        
-        try {
-            const items = await fetchDetailedArpItems(idCompra);
-            
-            if (items.length === 0) {
-                toast.warning(`Nenhum item detalhado encontrado para a ARP ${arp.numeroAta}.`);
-            }
-            
-            setDetailedItemsCache(prev => ({ ...prev, [idCompra]: items }));
-            
-        } catch (error: any) {
-            console.error(`Erro ao carregar detalhes da ARP ${arp.numeroAta}:`, error);
-            toast.error(error.message || "Falha ao carregar detalhes da ARP.");
-        } finally {
-            setLoadingDetails(prev => ({ ...prev, [idCompra]: false }));
-        }
-    }, [detailedItemsCache, loadingDetails]);
-    
-    // 3. Função para alternar a expansão e carregar detalhes
     const handleToggleGroup = (pregaoKey: string) => {
         setOpenGroups(prev => ({
             ...prev,
@@ -102,49 +193,18 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({
         }));
     };
     
-    // 4. Função para alternar a expansão da ARP individual e carregar detalhes
-    const handleToggleArp = (arp: ArpItemResult) => {
-        const idCompra = arp.id;
-        
-        // 1. Alterna o estado de expansão
-        setOpenGroups(prev => ({
-            ...prev,
-            [idCompra]: !prev[idCompra],
-        }));
-        
-        // 2. Se estiver abrindo, carrega os detalhes
-        if (!openGroups[idCompra]) {
-            loadArpDetails(arp);
-        }
-    };
-    
-    // 5. Função para pré-selecionar um item detalhado
-    const handlePreSelectDetailedItem = (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => {
-        onItemPreSelect(item, pregaoFormatado, uasg);
-    };
-    
-    // A função de importação foi movida para o ItemAquisicaoPNCPDialog, 
-    // pois ele gerencia o estado de seleção de múltiplos itens.
-    // Aqui, apenas chamamos a função de pré-seleção.
-
-    if (results.length === 0) {
-        return (
-            <Card className="p-4 text-center text-muted-foreground">
-                Nenhuma Ata de Registro de Preços encontrada para os critérios informados.
-            </Card>
-        );
-    }
-    
+    // Lógica de exibição do nome da OM no cabeçalho:
     const omNameFromApi = groupedArps.length > 0 ? groupedArps[0].omNome : '';
     const omNameDisplay = (omNameFromApi && !omNameFromApi.startsWith('UASG ')) 
         ? omNameFromApi 
         : searchedOmName;
     
     const omUasg = searchedUasg;
-    const totalArpItems = results.length;
+    const totalArpItems = results.length; 
 
     return (
         <div className="p-4 space-y-4">
+            {/* CABEÇALHO DA PESQUISA */}
             <h3 className="text-lg font-semibold flex flex-col">
                 <span>
                     Resultado para {omNameDisplay} ({formatCodug(omUasg)})
@@ -161,15 +221,16 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({
                             <TableHead className="w-[150px]">Pregão</TableHead>
                             <TableHead>Objeto</TableHead>
                             <TableHead className="w-[250px] text-center">Vigência</TableHead>
+                            <TableHead className="w-[50px]"></TableHead> 
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {groupedArps.map(group => {
                             const isGroupOpen = openGroups[group.pregao];
                             
-                            const displayPregao = group.pregao === 'DADOS_INCOMPLETOS' 
+                            const displayPregao = group.pregao === 'N/A' 
                                 ? <span className="text-red-500 font-bold">DADOS INCOMPLETOS</span> 
-                                : formatPregao(group.pregao);
+                                : formatPregao(group.pregao); 
                                 
                             return (
                                 <React.Fragment key={group.pregao}>
@@ -177,10 +238,8 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({
                                         className="cursor-pointer hover:bg-muted/50 transition-colors"
                                         onClick={() => handleToggleGroup(group.pregao)}
                                     >
-                                        {/* Célula do Pregão (Nível 1) */}
-                                        <TableCell className="font-semibold flex justify-between items-center">
+                                        <TableCell className="font-semibold">
                                             {displayPregao}
-                                            {isGroupOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground ml-2" /> : <ChevronDown className="h-3 w-3 text-muted-foreground ml-2" />}
                                         </TableCell>
                                         <TableCell className="text-sm max-w-xs whitespace-normal">
                                             {capitalizeFirstLetter(group.objetoRepresentativo)}
@@ -188,111 +247,24 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({
                                         <TableCell className="text-center text-sm whitespace-nowrap">
                                             {formatDate(group.dataVigenciaInicial)} - {formatDate(group.dataVigenciaFinal)}
                                         </TableCell>
+                                        <TableCell className="text-center">
+                                            {isGroupOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                                        </TableCell>
                                     </TableRow>
                                     
-                                    {/* Conteúdo Colapsável com a lista de ARPs individuais (Nível 2) */}
+                                    {/* Conteúdo Colapsável com a lista de ITENS DETALHADOS (Nível 2) */}
                                     <TableRow className="p-0">
-                                        <TableCell colSpan={3} className="p-0">
+                                        <TableCell colSpan={4} className="p-0">
                                             <Collapsible open={isGroupOpen}>
                                                 <CollapsibleContent>
-                                                    <div className="p-4 bg-muted/50 border-t border-border">
-                                                        {/* Tabela de ARPs Individuais dentro do Pregão */}
-                                                        <Table className="bg-background border rounded-md">
-                                                            <thead>
-                                                                <TableRow className="text-xs text-muted-foreground hover:bg-background">
-                                                                    <th className="px-4 py-2 text-left font-normal w-[30%]">Número da ARP</th>
-                                                                    <th className="px-4 py-2 text-left font-normal w-[50%]">Objeto</th>
-                                                                    <th className="px-4 py-2 text-center font-normal w-[20%]">Qtd. Itens</th>
-                                                                </TableRow>
-                                                            </thead>
-                                                            <TableBody>
-                                                                {group.itens.map(arp => {
-                                                                    const isArpOpen = openGroups[arp.id];
-                                                                    const isLoading = loadingDetails[arp.id];
-                                                                    const detailedItems = detailedItemsCache[arp.id] || [];
-                                                                    
-                                                                    return (
-                                                                        <React.Fragment key={arp.id}>
-                                                                            <TableRow 
-                                                                                className="cursor-pointer hover:bg-muted/50 transition-colors"
-                                                                                onClick={() => handleToggleArp(arp)}
-                                                                            >
-                                                                                <TableCell className="text-sm font-medium flex justify-between items-center">
-                                                                                    {arp.numeroAta || 'N/A'}
-                                                                                    {isArpOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground ml-2" /> : <ChevronDown className="h-3 w-3 text-muted-foreground ml-2" />}
-                                                                                </TableCell>
-                                                                                <TableCell className="text-sm max-w-xs whitespace-normal">
-                                                                                    {capitalizeFirstLetter(arp.objeto)}
-                                                                                </TableCell>
-                                                                                <TableCell className="text-center text-sm">
-                                                                                    {arp.quantidadeItens || 0}
-                                                                                </TableCell>
-                                                                            </TableRow>
-                                                                            
-                                                                            {/* Conteúdo Colapsável com os Itens Detalhados (Nível 3) */}
-                                                                            <TableRow className="p-0">
-                                                                                <TableCell colSpan={3} className="p-0">
-                                                                                    <Collapsible open={isArpOpen}>
-                                                                                        <CollapsibleContent>
-                                                                                            <div className="p-4 bg-background border-t border-border">
-                                                                                                {isLoading ? (
-                                                                                                    <div className="text-center py-4">
-                                                                                                        <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
-                                                                                                        <p className="text-xs text-muted-foreground mt-1">Carregando itens detalhados...</p>
-                                                                                                    </div>
-                                                                                                ) : detailedItems.length > 0 ? (
-                                                                                                    <Table className="border">
-                                                                                                        <thead>
-                                                                                                            <TableRow className="text-xs text-muted-foreground hover:bg-background">
-                                                                                                                <th className="px-4 py-2 text-left font-normal w-[15%]">Cód. Item</th>
-                                                                                                                <th className="px-4 py-2 text-left font-normal w-[45%]">Descrição</th>
-                                                                                                                <th className="px-4 py-2 text-center font-normal w-[10%]">Unid.</th>
-                                                                                                                <th className="px-4 py-2 text-right font-normal w-[15%]">Valor Unitário</th>
-                                                                                                                <th className="px-4 py-2 text-center font-normal w-[15%]">Ação</th>
-                                                                                                            </TableRow>
-                                                                                                        </thead>
-                                                                                                        <TableBody>
-                                                                                                            {detailedItems.map(item => {
-                                                                                                                const isSelected = selectedItemIds.includes(item.id);
-                                                                                                                return (
-                                                                                                                    <TableRow 
-                                                                                                                        key={item.id}
-                                                                                                                        className={`transition-colors ${isSelected ? "bg-green-100/50 hover:bg-green-100/70" : "hover:bg-muted/50"}`}
-                                                                                                                    >
-                                                                                                                        <TableCell className="text-xs font-medium">{item.codigoItem}</TableCell>
-                                                                                                                        <TableCell className="text-xs max-w-xs whitespace-normal">{item.descricaoItem}</TableCell>
-                                                                                                                        <TableCell className="text-center text-xs">{item.unidadeMedida}</TableCell>
-                                                                                                                        <TableCell className="text-right text-xs font-bold text-primary">
-                                                                                                                            {formatCurrency(item.valorUnitario)}
-                                                                                                                        </TableCell>
-                                                                                                                        <TableCell className="text-center">
-                                                                                                                            <Button
-                                                                                                                                variant={isSelected ? "default" : "outline"}
-                                                                                                                                size="sm"
-                                                                                                                                onClick={() => handlePreSelectDetailedItem(item, group.pregao, group.uasg)}
-                                                                                                                            >
-                                                                                                                                {isSelected ? <Check className="h-4 w-4" /> : <Import className="h-4 w-4" />}
-                                                                                                                            </Button>
-                                                                                                                        </TableCell>
-                                                                                                                    </TableRow>
-                                                                                                                );
-                                                                                                            })}
-                                                                                                        </TableBody>
-                                                                                                    </Table>
-                                                                                                ) : (
-                                                                                                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum item detalhado encontrado para esta ARP.</p>
-                                                                                                )}
-                                                                                            </div>
-                                                                                        </CollapsibleContent>
-                                                                                    </Collapsible>
-                                                                                </TableCell>
-                                                                            </TableRow>
-                                                                        </React.Fragment>
-                                                                    );
-                                                                })}
-                                                            </TableBody>
-                                                        </Table>
-                                                    </div>
+                                                    <DetailedArpItems 
+                                                        arpReferences={group.arpReferences} // PASSANDO TODAS AS REFERÊNCIAS
+                                                        pregaoFormatado={group.pregao}
+                                                        uasg={group.uasg}
+                                                        onItemPreSelect={onItemPreSelect}
+                                                        isGroupOpen={isGroupOpen}
+                                                        selectedItemIds={selectedItemIds}
+                                                    />
                                                 </CollapsibleContent>
                                             </Collapsible>
                                         </TableCell>
@@ -302,11 +274,6 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({
                         })}
                     </TableBody>
                 </Table>
-            </div>
-            
-            {/* O botão de importação foi movido para o ItemAquisicaoPNCPDialog */}
-            <div className="hidden">
-                {/* Este div é mantido para evitar que o rodapé do diálogo PNCP fique vazio, mas o botão principal está no pai */}
             </div>
         </div>
     );

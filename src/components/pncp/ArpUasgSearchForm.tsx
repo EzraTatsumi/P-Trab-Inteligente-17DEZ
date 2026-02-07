@@ -80,6 +80,8 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
     const onSubmit = async (values: ArpUasgFormValues) => {
         setIsSearching(true);
         setArpResults([]);
+        // MUDANÇA: Limpa a seleção global ao iniciar uma nova busca
+        onItemPreSelect({} as DetailedArpItem, '', ''); 
         
         try {
             toast.info(`Buscando ARPs para UASG ${formatCodug(values.uasg)}...`);

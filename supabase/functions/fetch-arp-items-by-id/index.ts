@@ -11,27 +11,25 @@ serve(async (req) => {
   }
 
   try {
-    const { idCompra } = await req.json();
+    const { numeroControlePncpAta } = await req.json();
 
-    if (!idCompra) {
-      return new Response(JSON.stringify({ error: 'Missing required parameter: idCompra.' }), {
+    if (!numeroControlePncpAta) {
+      return new Response(JSON.stringify({ error: 'Missing required parameter: numeroControlePncpAta.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const API_URL = 'https://dadosabertos.compras.gov.br/modulo-arp/2_consultarItemARP';
+    const API_URL = 'https://dadosabertos.compras.gov.br/modulo-arp/2.1_consultarARPItem_Id';
     
     // Parâmetros fixos e dinâmicos
     const params = new URLSearchParams({
-      pagina: '1',
-      tamanhoPagina: '500',
-      idCompra: idCompra,
+      numeroControlePncpAta: numeroControlePncpAta,
     });
 
     const fullUrl = `${API_URL}?${params.toString()}`;
     
-    console.log("[fetch-arp-items] Fetching ARP items from:", fullUrl);
+    console.log("[fetch-arp-items-by-id] Fetching ARP items from:", fullUrl);
 
     const response = await fetch(fullUrl, {
       method: 'GET',
@@ -42,7 +40,7 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[fetch-arp-items] External API error:", response.status, errorText);
+      console.error("[fetch-arp-items-by-id] External API error:", response.status, errorText);
       throw new Error(`External API failed with status ${response.status}`);
     }
 
@@ -51,7 +49,7 @@ serve(async (req) => {
     // Extrair o array de resultados da chave 'resultado'
     const resultsArray = data.resultado || [];
     
-    console.log(`[fetch-arp-items] Successfully fetched ${resultsArray.length} detailed items for idCompra ${idCompra}.`);
+    console.log(`[fetch-arp-items-by-id] Successfully fetched ${resultsArray.length} detailed items.`);
 
     // Retorna apenas o array de resultados
     return new Response(JSON.stringify(resultsArray), {
@@ -60,7 +58,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error("[fetch-arp-items] General error:", error);
+    console.error("[fetch-arp-items-by-id] General error:", error);
     return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
