@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,10 +10,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveNewCatmatEntry } from '@/integrations/supabase/api';
-import { useQueryClient } from '@tanstack/react-query'; // Mantém useQueryClient para invalidar o cache após a importação final
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { formatCodug, formatCurrency } from '@/lib/formatUtils';
-import { Textarea } from '@/components/ui/textarea'; // Importar Textarea
+import { Textarea } from '@/components/ui/textarea';
 
 interface PNCPInspectionDialogProps {
     open: boolean;
@@ -22,6 +22,39 @@ interface PNCPInspectionDialogProps {
     onFinalImport: (items: ItemAquisicao[]) => void;
     onReviewItem: (item: ItemAquisicao) => void; // Função para revisar o item
 }
+
+// Componente auxiliar para Textarea com auto-ajuste
+const AutoResizeTextarea: React.FC<{
+    value: string;
+    onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+    disabled: boolean;
+    className?: string;
+}> = ({ value, onChange, disabled, className }) => {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        if (textareaRef.current) {
+            // Resetar a altura para calcular a altura de rolagem correta
+            textareaRef.current.style.height = 'auto';
+            // Definir a altura para a altura de rolagem, garantindo um mínimo
+            const scrollHeight = textareaRef.current.scrollHeight;
+            const minHeight = 80; // Altura mínima de 3 linhas (aprox.)
+            textareaRef.current.style.height = `${Math.max(scrollHeight, minHeight)}px`;
+        }
+    }, [value]);
+
+    return (
+        <Textarea
+            ref={textareaRef}
+            value={value}
+            onChange={onChange}
+            className={cn("text-center text-sm overflow-hidden resize-none", className)}
+            disabled={disabled}
+            rows={1} // Começa com 1 linha, a lógica de auto-ajuste fará o resto
+        />
+    );
+};
+
 
 const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     open,
@@ -84,7 +117,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                     }
                 };
             }
-            return item;
+            return i;
         }));
     };
     
@@ -268,20 +301,20 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                 {/* Coluna Descrição Completa (ARP) - EDITÁVEL SE needs_catmat_info */}
                                 <TableCell className={cn("text-sm max-w-xs whitespace-normal text-center", status !== 'needs_catmat_info' && "py-4")}>
                                     {status === 'needs_catmat_info' ? (
-                                        <Textarea // SUBSTITUÍDO Input POR Textarea
+                                        <AutoResizeTextarea
                                             value={item.mappedItem.descricao_item}
                                             onChange={(e) => handleUpdateFullDescription(item.originalPncpItem.id, e.target.value)}
-                                            className="text-center text-sm min-h-[80px]" // Altura mínima para 3 linhas
-                                            rows={3}
                                             disabled={isSavingCatmat}
                                         />
                                     ) : (
                                         item.mappedItem.descricao_item
                                     )}
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        {/* Ajuste de formatação: Pregão sem zero à esquerda (se for numérico), UASG formatado em parênteses, e Valor Unitário formatado */}
-                                        Pregão: {item.mappedItem.numero_pregao.replace(/^0+/, '')} ({formatCodug(item.mappedItem.uasg)}) | R$: {formatCurrency(item.mappedItem.valor_unitario)}
-                                    </p>
+                                    {/* REMOVIDO: Detalhes de Pregão/UASG/Valor Unitário da célula da descrição completa */}
+                                    {status !== 'needs_catmat_info' && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Pregão: {item.mappedItem.numero_pregao.replace(/^0+/, '')} ({formatCodug(item.mappedItem.uasg)}) | R$: {formatCurrency(item.mappedItem.valor_unitario)}
+                                        </p>
+                                    )}
                                 </TableCell>
                                 
                                 {/* Coluna Descrição Completa (PNCP) - Centralizando o bloco */}
