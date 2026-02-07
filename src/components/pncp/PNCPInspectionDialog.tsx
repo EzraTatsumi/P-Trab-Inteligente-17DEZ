@@ -372,12 +372,12 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                         /* Coluna Status para Duplicados (Ajustada) */
                                         <TableCell className={cn("py-2 text-center")}>
                                             <div className="flex flex-col items-center justify-center gap-1">
-                                                {/* Remove o ícone X */}
+                                                {/* 1. Mensagem de Duplicidade Específica */}
                                                 <span className="text-sm text-red-600 font-medium">
                                                     Há duplicidade na Chave de Item: {item.messages[0]}
                                                 </span>
                                                 
-                                                {/* Status do Catálogo com cores */}
+                                                {/* 2. Status do Catálogo com cores */}
                                                 <p className={cn("text-xs mt-1", hasShortDescription ? "text-green-600" : "text-red-600")}>
                                                     {hasShortDescription ? 
                                                         "Item presente no Catálogo CATMAT nativo" : 
