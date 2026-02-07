@@ -57,12 +57,17 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     const [selectedItemsState, setSelectedItemsState] = useState<SelectedItemState[]>([]);
     const [isImporting, setIsImporting] = useState(false);
     
-    // NOVO: Limpa o estado de seleção sempre que o diálogo é aberto
+    // Limpa o estado de seleção sempre que o diálogo é aberto
     useEffect(() => {
         if (open) {
             setSelectedItemsState([]);
         }
     }, [open]);
+    
+    // Função para limpar explicitamente a seleção
+    const handleClearSelection = () => {
+        setSelectedItemsState([]);
+    };
     
     // MUDANÇA: Função para alternar a seleção de um item detalhado
     const handleItemPreSelect = (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => {
@@ -161,6 +166,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         <ArpUasgSearch 
                             onItemPreSelect={handleItemPreSelect} 
                             selectedItemIds={selectedItemIds}
+                            onClearSelection={handleClearSelection} // NOVO: Passando a função de limpeza
                         />
                     </TabsContent>
                     

@@ -32,9 +32,11 @@ const formSchema = z.object({
 type ArpUasgFormValues = z.infer<typeof formSchema>;
 
 interface ArpUasgSearchFormProps {
-    // MUDANÇA: Função para alternar a seleção de um item detalhado
+    // Função para alternar a seleção de um item detalhado
     onItemPreSelect: (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => void;
-    // MUDANÇA: Array de IDs selecionados
+    // NOVO: Função para limpar a seleção
+    onClearSelection: () => void;
+    // Array de IDs selecionados
     selectedItemIds: string[];
 }
 
@@ -47,7 +49,7 @@ const defaultDataFim = format(today, 'yyyy-MM-dd');
 const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 
 
-const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, selectedItemIds }) => {
+const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isOmSelectorOpen, setIsOmSelectorOpen] = useState(false);
     const [arpResults, setArpResults] = useState<ArpItemResult[]>([]); // CORRIGIDO: Usando ArpItemResult
@@ -80,8 +82,8 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
     const onSubmit = async (values: ArpUasgFormValues) => {
         setIsSearching(true);
         setArpResults([]);
-        // MUDANÇA: Limpa a seleção global ao iniciar uma nova busca
-        onItemPreSelect({} as DetailedArpItem, '', ''); 
+        // CORREÇÃO: Limpa a seleção global chamando a função dedicada
+        onClearSelection(); 
         
         try {
             toast.info(`Buscando ARPs para UASG ${formatCodug(values.uasg)}...`);
