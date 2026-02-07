@@ -38,9 +38,22 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
+        // NOVO: Se a API externa retornar 404, tratamos como 'Item não encontrado' e retornamos 200.
+        if (response.status === 404) {
+            console.warn(`[fetch-catmat-details] Item ${codigoItem} returned 404 from external API (Not Found).`);
+            return new Response(JSON.stringify({
+                codigoItem: codigoItem,
+                descricaoItem: "Item não encontrado no Catálogo de Material do PNCP.",
+                nomePdm: null,
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200, // Retorna 200 para o cliente, indicando sucesso na busca (mas item não encontrado)
+            });
+        }
+        
+        // Para outros erros (5xx, 4xx diferentes de 404), lançamos o erro
         const errorText = await response.text();
         console.error("[fetch-catmat-details] External API error:", response.status, errorText);
-        // Lança um erro que será capturado pelo catch e retornado ao cliente
         throw new Error(`External API failed with status ${response.status}`);
     }
 
@@ -75,7 +88,6 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("[fetch-catmat-details] General error:", error);
-    // Retorna um objeto de erro específico que será verificado no frontend
     return new Response(JSON.stringify({
         codigoItem: null,
         descricaoItem: "Falha ao carregar descrição oficial.",
