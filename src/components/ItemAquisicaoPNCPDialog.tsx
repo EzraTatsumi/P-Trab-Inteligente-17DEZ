@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, FileText, DollarSign, Loader2, Import } from "lucide-react";
+import { Search, FileText, DollarSign, Loader2 } from "lucide-react";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { DetailedArpItem } from '@/types/pncp';
 import { toast } from "sonner";
 import ArpUasgSearch from './pncp/ArpUasgSearch'; // Importa o novo componente
-import { fetchCatmatShortDescription } from '@/integrations/supabase/api'; // NOVO: Importa a função de busca CATMAT
 
 interface ItemAquisicaoPNCPDialogProps {
     open: boolean;
@@ -16,6 +14,7 @@ interface ItemAquisicaoPNCPDialogProps {
 }
 
 // Placeholder components for future implementation
+// REMOVIDO: ArpUasgSearch placeholder
 const ArpCatmatSearch: React.FC<{ onSelect: (item: ItemAquisicao) => void }> = ({ onSelect }) => (
     <div className="p-4 space-y-4">
         <p className="text-muted-foreground">
@@ -40,12 +39,6 @@ const AveragePriceSearch: React.FC<{ onSelect: (item: ItemAquisicao) => void }> 
     </div>
 );
 
-// NOVO TIPO DE ESTADO: Armazena o item detalhado selecionado e seus metadados de origem
-interface SelectedItemState {
-    item: DetailedArpItem;
-    pregaoFormatado: string;
-    uasg: string;
-}
 
 const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     open,
@@ -53,79 +46,13 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     onImport,
 }) => {
     const [selectedTab, setSelectedTab] = useState("arp-uasg");
-    // MUDANÇA: selectedItemState agora é um array
-    const [selectedItemsState, setSelectedItemsState] = useState<SelectedItemState[]>([]);
-    const [isImporting, setIsImporting] = useState(false);
     
-    // NOVO EFEITO: Limpa a seleção ao abrir o diálogo
-    useEffect(() => {
-        if (open) {
-            setSelectedItemsState([]);
-        }
-    }, [open]);
-    
-    // MUDANÇA: Função para alternar a seleção de um item detalhado
-    const handleItemPreSelect = (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => {
-        setSelectedItemsState(prev => {
-            const existingIndex = prev.findIndex(s => s.item.id === item.id);
-            
-            if (existingIndex !== -1) {
-                // Remover item (desselecionar)
-                return prev.filter((_, index) => index !== existingIndex);
-            } else {
-                // Adicionar item (selecionar)
-                return [...prev, { item, pregaoFormatado, uasg }];
-            }
-        });
-    };
-    
-    // Mapeia apenas os IDs para passar para os componentes de busca
-    const selectedItemIds = selectedItemsState.map(s => s.item.id);
-
-    // Função para confirmar a importação (disparada pelo botão no rodapé)
-    const handleConfirmImport = async () => {
-        if (selectedItemsState.length === 0) {
-            toast.error("Selecione pelo menos um item detalhado para importar.");
-            return;
-        }
-        
-        setIsImporting(true);
-        
-        try {
-            const importPromises = selectedItemsState.map(async ({ item, pregaoFormatado, uasg }) => {
-                // 1. Buscar a descrição reduzida no catálogo CATMAT
-                const shortDescription = await fetchCatmatShortDescription(item.codigoItem);
-                
-                // Garante que a descrição do item seja uma string para evitar o erro de substring
-                const itemDescription = item.descricaoItem || ''; 
-                
-                // 2. Mapeamento final do DetailedArpItem para ItemAquisicao
-                const itemAquisicao: ItemAquisicao = {
-                    // Usamos o ID do item detalhado do PNCP como ID local
-                    id: item.id, 
-                    descricao_item: itemDescription,
-                    // Usa a descrição reduzida do CATMAT, ou um fallback seguro
-                    descricao_reduzida: shortDescription || itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : ''),
-                    valor_unitario: item.valorUnitario, 
-                    numero_pregao: pregaoFormatado, 
-                    uasg: uasg, 
-                    codigo_catmat: item.codigoItem, 
-                };
-                return itemAquisicao;
-            });
-            
-            const importedItems = await Promise.all(importPromises);
-            
-            onImport(importedItems);
-            onOpenChange(false);
-            toast.success(`${importedItems.length} itens importados do PNCP com sucesso.`);
-            
-        } catch (error) {
-            console.error("Erro durante a importação PNCP:", error);
-            toast.error("Falha ao importar itens. Tente novamente.");
-        } finally {
-            setIsImporting(false);
-        }
+    // Função para receber um item selecionado de qualquer subcomponente de busca
+    const handleItemSelect = (item: ItemAquisicao) => {
+        // Por enquanto, importamos um item por vez. Se a busca retornar múltiplos, ajustaremos.
+        onImport([item]);
+        onOpenChange(false);
+        toast.success(`Item '${item.descricao_reduzida || item.descricao_item}' importado do PNCP.`);
     };
 
     return (
@@ -158,50 +85,22 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     </TabsList>
 
                     <TabsContent value="arp-uasg">
-                        <ArpUasgSearch 
-                            onItemPreSelect={handleItemPreSelect} 
-                            selectedItemIds={selectedItemIds}
-                        />
+                        <ArpUasgSearch onSelect={handleItemSelect} />
                     </TabsContent>
                     
                     <TabsContent value="arp-catmat">
-                        <ArpCatmatSearch onSelect={() => {}} /> {/* onSelect vazio, pois a lógica de seleção foi elevada */}
+                        <ArpCatmatSearch onSelect={handleItemSelect} />
                     </TabsContent>
                     
                     <TabsContent value="avg-price">
-                        <AveragePriceSearch onSelect={() => {}} /> {/* onSelect vazio, pois a lógica de seleção foi elevada */}
+                        <AveragePriceSearch onSelect={handleItemSelect} />
                     </TabsContent>
                 </Tabs>
 
-                {/* Rodapé com o botão de importação movido */}
-                <div className="flex justify-between gap-2 pt-4 border-t">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                        {/* MUDANÇA: Removido o indicador de item único */}
-                        {selectedItemsState.length > 0 ? (
-                            <p className="text-green-600 font-medium">
-                                {selectedItemsState.length} item(ns) selecionado(s) para importação.
-                            </p>
-                        ) : (
-                            <p>Nenhum item selecionado.</p>
-                        )}
-                    </div>
-                    <div className="flex gap-2">
-                        <Button 
-                            type="button" 
-                            onClick={handleConfirmImport}
-                            disabled={selectedItemsState.length === 0 || isImporting}
-                        >
-                            {isImporting ? (
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                                <Import className="h-4 w-4 mr-2" />
-                            )}
-                            Importar Item Selecionado ({selectedItemsState.length})
-                        </Button>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isImporting}>
-                            Fechar
-                        </Button>
-                    </div>
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                        Fechar
+                    </Button>
                 </div>
             </DialogContent>
         </Dialog>

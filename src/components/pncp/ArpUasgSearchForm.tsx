@@ -12,7 +12,7 @@ import { formatCodug } from '@/lib/formatUtils';
 import OmSelectorDialog from '@/components/OmSelectorDialog';
 import { format, subDays } from 'date-fns';
 import { fetchArpsByUasg } from '@/integrations/supabase/api';
-import { ArpItemResult, DetailedArpItem } from '@/types/pncp'; // Importando o tipo DetailedArpItem
+import { ArpItemResult } from '@/types/pncp'; // Importando o tipo ArpItemResult
 import ArpSearchResultsList from './ArpSearchResultsList';
 import { OMData } from '@/lib/omUtils';
 
@@ -32,10 +32,7 @@ const formSchema = z.object({
 type ArpUasgFormValues = z.infer<typeof formSchema>;
 
 interface ArpUasgSearchFormProps {
-    // MUDANÇA: Função para alternar a seleção de um item detalhado
-    onItemPreSelect: (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => void;
-    // MUDANÇA: Array de IDs selecionados
-    selectedItemIds: string[];
+    onSelect: (item: ItemAquisicao) => void;
 }
 
 // Calcula as datas padrão
@@ -47,7 +44,7 @@ const defaultDataFim = format(today, 'yyyy-MM-dd');
 const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 
 
-const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, selectedItemIds }) => {
+const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isOmSelectorOpen, setIsOmSelectorOpen] = useState(false);
     const [arpResults, setArpResults] = useState<ArpItemResult[]>([]); // CORRIGIDO: Usando ArpItemResult
@@ -80,8 +77,6 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
     const onSubmit = async (values: ArpUasgFormValues) => {
         setIsSearching(true);
         setArpResults([]);
-        // MUDANÇA: Limpa a seleção global ao iniciar uma nova busca
-        onItemPreSelect({} as DetailedArpItem, '', ''); 
         
         try {
             toast.info(`Buscando ARPs para UASG ${formatCodug(values.uasg)}...`);
@@ -215,10 +210,9 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
             {arpResults.length > 0 && (
                 <ArpSearchResultsList 
                     results={arpResults} 
-                    onItemPreSelect={onItemPreSelect} 
+                    onSelect={onSelect} 
                     searchedUasg={form.getValues('uasg')}
                     searchedOmName={searchedOmName}
-                    selectedItemIds={selectedItemIds}
                 />
             )}
 

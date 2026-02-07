@@ -1,8 +1,7 @@
 import { toast } from "sonner";
 import { supabase } from "./client"; // Importar o cliente Supabase
 import { Profile } from "@/types/profiles"; // Importar o novo tipo Profile
-import { ArpUasgSearchParams, ArpItemResult, ArpRawResult, DetailedArpItem, DetailedArpRawResult } from "@/types/pncp"; // Importa os novos tipos PNCP
-import { formatPregao } from "@/lib/formatUtils";
+import { ArpUasgSearchParams, ArpItemResult, ArpRawResult } from "@/types/pncp"; // Importa os novos tipos PNCP
 
 // Interface para a resposta consolidada da Edge Function
 interface EdgeFunctionResponse {
@@ -144,55 +143,8 @@ export async function fetchUserProfile(): Promise<Profile> {
     } as Profile;
 }
 
-/**
- * Busca a descrição reduzida de um item no catálogo CATMAT.
- * @param codigoCatmat O código CATMAT (string).
- * @returns A descrição reduzida (short_description) ou null.
- */
-export async function fetchCatmatShortDescription(codigoCatmat: string): Promise<string | null> {
-    if (!codigoCatmat) return null;
-    
-    // Remove caracteres não numéricos. REMOVIDO .padStart(9, '0') para maior compatibilidade.
-    const cleanCode = codigoCatmat.replace(/\D/g, '');
-    
-    // Se o código limpo for vazio, retorna null
-    if (!cleanCode) return null;
-    
-    try {
-        const { data, error } = await supabase
-            .from('catalogo_catmat')
-            .select('short_description')
-            .eq('code', cleanCode)
-            .maybeSingle();
-            
-        if (error) throw error;
-        
-        // Se a busca falhar, tentamos buscar o código preenchido com zeros à esquerda (9 dígitos)
-        if (!data?.short_description) {
-            const paddedCode = cleanCode.padStart(9, '0');
-            if (paddedCode !== cleanCode) {
-                const { data: paddedData, error: paddedError } = await supabase
-                    .from('catalogo_catmat')
-                    .select('short_description')
-                    .eq('code', paddedCode)
-                    .maybeSingle();
-                    
-                if (paddedError) throw paddedError;
-                return paddedData?.short_description || null;
-            }
-        }
-        
-        return data?.short_description || null;
-        
-    } catch (error) {
-        console.error("Erro ao buscar descrição reduzida do CATMAT:", error);
-        // Não lança erro fatal, apenas retorna null para que o processo de importação continue
-        return null;
-    }
-}
-
 // =================================================================
-// FUNÇÕES PARA CONSULTA PNCP (ARP)
+// NOVAS FUNÇÕES PARA CONSULTA PNCP (ARP)
 // =================================================================
 
 /**
@@ -244,6 +196,7 @@ export async function fetchArpsByUasg(params: ArpUasgSearchParams): Promise<ArpI
                 numeroAta: item.numeroAtaRegistroPreco || 'N/A',
                 objeto: item.objeto || 'Objeto não especificado',
                 uasg: uasgStr,
+                // CORREÇÃO APLICADA AQUI: Mapeando nomeUnidadeGerenciadora para omNome
                 omNome: item.nomeUnidadeGerenciadora || `UASG ${uasgStr}`, 
                 dataVigenciaInicial: item.dataVigenciaInicial || 'N/A',
                 dataVigenciaFinal: item.dataVigenciaFinal || 'N/A',
@@ -251,8 +204,6 @@ export async function fetchArpsByUasg(params: ArpUasgSearchParams): Promise<ArpI
                 valorTotalEstimado: parseFloat(String(item.valorTotal || 0)),
                 quantidadeItens: parseInt(String(item.quantidadeItens || 0)),
                 pregaoFormatado: pregaoFormatado,
-                // Mapeando o campo crucial
-                numeroControlePncpAta: item.numeroControlePncpAta || '', 
             };
         });
         
@@ -264,68 +215,5 @@ export async function fetchArpsByUasg(params: ArpUasgSearchParams): Promise<ArpI
         
         // Não exibe toast aqui, o componente que usa useQuery fará isso.
         throw new Error(`Falha ao buscar ARPs: ${errorMessage}`);
-    }
-}
-
-/**
- * Busca os itens detalhados de uma Ata de Registro de Preços (ARP) específica.
- * @param numeroControlePncpAta O número de controle PNCP da ARP.
- * @returns Uma lista de itens detalhados da ARP.
- */
-export async function fetchArpItemsById(numeroControlePncpAta: string): Promise<DetailedArpItem[]> {
-    try {
-        const { data, error } = await supabase.functions.invoke('fetch-arp-items-by-id', {
-            body: { numeroControlePncpAta },
-        });
-
-        if (error) {
-            throw new Error(error.message || "Falha na execução da Edge Function de busca de itens detalhados.");
-        }
-        
-        const responseData = data as DetailedArpRawResult[]; 
-        
-        if (!Array.isArray(responseData)) {
-            if (responseData && (responseData as any).error) {
-                throw new Error((responseData as any).error);
-            }
-            return [];
-        }
-        
-        // Mapeamento e sanitização dos dados para o tipo DetailedArpItem
-        const results: DetailedArpItem[] = responseData.map((item: DetailedArpRawResult) => {
-            
-            // Recalcula o Pregão formatado, pois o item detalhado não o traz pronto
-            const numeroCompraStr = String(item.numeroCompra || '').trim();
-            const anoCompraStr = String(item.anoCompra || '').trim();
-            let pregaoFormatado: string;
-            if (numeroCompraStr && anoCompraStr) {
-                const numeroCompraFormatado = numeroCompraStr.padStart(6, '0').replace(/(\d{3})(\d{3})/, '$1.$2');
-                const anoCompraDoisDigitos = anoCompraStr.slice(-2);
-                pregaoFormatado = `${numeroCompraFormatado}/${anoCompraDoisDigitos}`;
-            } else {
-                pregaoFormatado = 'N/A';
-            }
-            
-            const uasgStr = String(item.codigoUnidadeGerenciadora || '').replace(/\D/g, '');
-            
-            return {
-                // ID único: Combinação do controle da ARP e o número do item
-                id: `${item.numeroControlePncpAta}-${item.numeroItem}`, 
-                numeroAta: item.numeroAtaRegistroPreco || 'N/A',
-                codigoItem: String(item.codigoItem || 'N/A'),
-                descricaoItem: item.descricaoItem || 'Descrição não disponível',
-                valorUnitario: parseFloat(String(item.valorUnitario || 0)),
-                quantidadeHomologada: parseInt(String(item.quantidadeHomologadaItem || 0)),
-                numeroControlePncpAta: item.numeroControlePncpAta,
-                pregaoFormatado: pregaoFormatado,
-                uasg: uasgStr,
-            };
-        });
-        
-        return results;
-
-    } catch (error) {
-        console.error("Erro ao buscar itens detalhados da ARP:", error);
-        throw new Error(`Falha ao buscar itens detalhados: ${error instanceof Error ? error.message : "Erro desconhecido."}`);
     }
 }
