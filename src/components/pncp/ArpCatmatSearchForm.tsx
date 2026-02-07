@@ -13,6 +13,7 @@ import { DetailedArpItem } from '@/types/pncp';
 import { capitalizeFirstLetter, formatCodug, formatPregao, formatDate } from '@/lib/formatUtils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
+import CatmatCatalogDialog from '../CatmatCatalogDialog'; // NOVO: Importar o diálogo
 
 // 1. Esquema de Validação
 const formSchema = z.object({
@@ -46,7 +47,7 @@ const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 
 const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
     const [isSearching, setIsSearching] = useState(false);
-    const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false); // Para futuro catálogo local
+    const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false); // Estado para o diálogo
     const [arpResults, setArpResults] = useState<DetailedArpItem[]>([]); 
     
     // NOVO ESTADO: Armazena a descrição do item para o cabeçalho
@@ -118,6 +119,13 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
         } finally {
             setIsSearching(false);
         }
+    };
+    
+    // Função para receber dados do catálogo CATMAT e atualizar o formulário
+    const handleCatmatSelect = (catmatItem: { code: string, description: string, short_description: string | null }) => {
+        form.setValue('codigoItem', catmatItem.code, { shouldValidate: true });
+        setSearchedItemDescription(catmatItem.description);
+        setIsCatmatCatalogOpen(false);
     };
     
     // 5. Renderização dos resultados (Componente interno para CATMAT)
@@ -311,7 +319,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                                             type="button" 
                                             variant="outline" 
                                             size="icon" 
-                                            onClick={() => setIsCatmatCatalogOpen(true)}
+                                            onClick={() => setIsCatmatCatalogOpen(true)} // ABRIR DIÁLOGO
                                             disabled={isSearching}
                                         >
                                             <BookOpen className="h-4 w-4" />
@@ -389,15 +397,12 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                 </div>
             )}
 
-            {/* Diálogo de Catálogo CATMAT (Para futura implementação) */}
-            {/* <CatmatCatalogDialog
+            {/* Diálogo de Catálogo CATMAT */}
+            <CatmatCatalogDialog
                 open={isCatmatCatalogOpen}
                 onOpenChange={setIsCatmatCatalogOpen}
-                onSelect={(item) => {
-                    form.setValue('codigoItem', item.code);
-                    setSearchedItemDescription(item.description);
-                }}
-            /> */}
+                onSelect={handleCatmatSelect}
+            />
         </>
     );
 };
