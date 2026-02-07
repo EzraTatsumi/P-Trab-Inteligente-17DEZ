@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveNewCatmatEntry } from '@/integrations/supabase/api';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } => '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { formatCodug, formatCurrency } from '@/lib/formatUtils'; // CORRIGIDO: Importando de formatUtils
 
@@ -124,26 +124,46 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     
     // NOVO: Função para revisar o item
     const handleReviewItem = (item: InspectionItem) => {
-        // 1. Move o item para o status 'needs_catmat_info' no estado local
-        // Isso garante que, se o usuário voltar para a inspeção, o item estará na aba correta.
-        setInspectionList(prev => prev.map(i => {
-            if (i.originalPncpItem.id === item.originalPncpItem.id) {
-                return {
-                    ...i,
-                    status: 'needs_catmat_info',
-                    messages: ['Item movido para revisão manual.'],
-                };
-            }
-            return i;
-        }));
-        
-        // 2. Chama a função de callback com o item mapeado.
-        // Esta função no componente pai (ItemAquisicaoPNCPDialog) é responsável por fechar
-        // o diálogo principal e abrir o formulário de edição.
-        onReviewItem(item.mappedItem);
-        
-        // 3. REMOVIDO: Não fechar o diálogo de inspeção aqui. O diálogo principal será fechado pelo pai.
-        // onOpenChange(false); 
+        if (item.status === 'valid') {
+            // Se o item está válido, o usuário quer movê-lo para revisão interna (para editar a descrição reduzida)
+            setInspectionList(prev => prev.map(i => {
+                if (i.originalPncpItem.id === item.originalPncpItem.id) {
+                    return {
+                        ...i,
+                        status: 'needs_catmat_info',
+                        messages: ['Item movido para revisão manual.'],
+                        // Limpa a descrição reduzida para forçar a edição
+                        userShortDescription: item.mappedItem.descricao_reduzida || '', 
+                    };
+                }
+                return i;
+            }));
+            
+            // Muda para a aba de revisão
+            setActiveTab('needs_catmat_info');
+            toast.info("Item movido para a aba 'Requer Revisão'.");
+            
+        } else {
+            // Se o item já está em needs_catmat_info ou duplicate, o usuário quer editar no formulário principal
+            
+            // 1. Move o item para o status 'needs_catmat_info' no estado local (apenas para garantir consistência)
+            setInspectionList(prev => prev.map(i => {
+                if (i.originalPncpItem.id === item.originalPncpItem.id) {
+                    return {
+                        ...i,
+                        status: 'needs_catmat_info',
+                        messages: ['Item movido para revisão manual.'],
+                    };
+                }
+                return i;
+            }));
+            
+            // 2. Chama a função de callback com o item mapeado.
+            onReviewItem(item.mappedItem);
+            
+            // 3. Fecha o diálogo de inspeção (o pai ItemAquisicaoPNCPDialog fechará em seguida)
+            onOpenChange(false);
+        }
     };
 
     const handleFinalImport = () => {
@@ -276,7 +296,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                         className="w-full"
                                     >
                                         <Pencil className="h-4 w-4 mr-1" />
-                                        Revisar
+                                        {item.status === 'valid' ? 'Marcar para Revisão' : 'Revisar no Formulário'}
                                     </Button>
                                     
                                     <Button 
