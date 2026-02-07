@@ -10,9 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveNewCatmatEntry } from '@/integrations/supabase/api';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query'; // Mantém useQueryClient para invalidar o cache após a importação final
 import { cn } from '@/lib/utils';
-import { formatCodug, formatCurrency } from '@/lib/formatUtils'; // CORRIGIDO: Importando de formatUtils
+import { formatCodug, formatCurrency } from '@/lib/formatUtils';
 
 interface PNCPInspectionDialogProps {
     open: boolean;
@@ -31,6 +31,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
 }) => {
     const [inspectionList, setInspectionList] = useState(initialInspectionList);
     const [activeTab, setActiveTab] = useState<InspectionStatus>('valid');
+    const [isSavingCatmat, setIsSavingCatmat] = useState(false); // Novo estado de loading para a persistência final
     const queryClient = useQueryClient();
 
     // Atualiza a lista interna se a lista inicial mudar (ex: nova busca)
@@ -59,51 +60,8 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     const totalDuplicates = groupedItems.duplicate?.length || 0;
     const totalPending = totalNeedsInfo + totalDuplicates;
 
-    // Mutação para salvar a nova descrição reduzida no catálogo CATMAT
-    const saveCatmatMutation = useMutation({
-        mutationFn: async ({ item, shortDescription }: { item: InspectionItem, shortDescription: string }) => {
-            await saveNewCatmatEntry(
-                item.mappedItem.codigo_catmat,
-                item.mappedItem.descricao_item,
-                shortDescription
-            );
-            return item.originalPncpItem.id;
-        },
-        onSuccess: (itemId) => {
-            toast.success("Descrição reduzida salva no Catálogo CATMAT!");
-            
-            let newNeedsInfoCount = totalNeedsInfo;
+    // REMOVIDA A MUTAÇÃO saveCatmatMutation
 
-            // Atualiza o estado local para marcar o item como 'valid'
-            setInspectionList(prev => prev.map(item => {
-                if (item.originalPncpItem.id === itemId) {
-                    newNeedsInfoCount--; // Decrementa a contagem de pendentes
-                    return {
-                        ...item,
-                        status: 'valid', // <-- Apenas este item é alterado
-                        mappedItem: {
-                            ...item.mappedItem,
-                            descricao_reduzida: item.userShortDescription,
-                        },
-                        messages: ['Pronto para importação.'],
-                    };
-                }
-                return item;
-            }));
-            
-            // Se for o último item pendente, muda a aba para 'valid'
-            if (newNeedsInfoCount === 0) {
-                setActiveTab('valid');
-            }
-            
-            // Invalida a query do catálogo para que a próxima busca já use o novo valor
-            queryClient.invalidateQueries({ queryKey: ['catmatCatalog'] });
-        },
-        onError: (error) => {
-            toast.error(error.message || "Falha ao salvar descrição reduzida.");
-        }
-    });
-    
     const handleUpdateShortDescription = (itemId: string, value: string) => {
         setInspectionList(prev => prev.map(item => {
             if (item.originalPncpItem.id === itemId) {
@@ -113,8 +71,11 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
         }));
     };
     
-    // Função corrigida para chamar a mutação
-    const handleSaveAndValidateCatmat = (item: InspectionItem) => {
+    /**
+     * NOVO: Marca o item localmente como 'valid' e move para a aba Prontos.
+     * A persistência no BD é adiada para a importação final.
+     */
+    const handleMarkAsValid = (item: InspectionItem) => {
         // Garante que userShortDescription é uma string e remove espaços
         const shortDescription = (item.userShortDescription || '').trim();
         
@@ -123,24 +84,40 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             return;
         }
         
-        saveCatmatMutation.mutate({ item, shortDescription });
+        // Atualiza o estado local para marcar o item como 'valid'
+        setInspectionList(prev => prev.map(i => {
+            if (i.originalPncpItem.id === item.originalPncpItem.id) {
+                return {
+                    ...i,
+                    status: 'valid', // <-- Apenas este item é alterado
+                    mappedItem: {
+                        ...i.mappedItem,
+                        descricao_reduzida: shortDescription, // Usa o valor preenchido
+                    },
+                    messages: ['Pronto para importação.'],
+                };
+            }
+            return i;
+        }));
+        
+        toast.success("Item movido para a aba 'Prontos'.");
     };
 
     const handleRemoveItem = (itemId: string) => {
         setInspectionList(prev => prev.filter(item => item.originalPncpItem.id !== itemId));
     };
     
-    // NOVO: Função para revisar o item
-    const handleReviewItem = (item: InspectionItem) => {
+    // Função para revisar o item (mantida)
+    const handleReviewItemLocal = (item: InspectionItem) => {
         if (item.status === 'valid') {
-            // Se o item está válido, o usuário quer movê-lo para revisão interna (para editar a descrição reduzida)
+            // Se o item está válido, o usuário quer movê-lo para revisão interna
             setInspectionList(prev => prev.map(i => {
                 if (i.originalPncpItem.id === item.originalPncpItem.id) {
                     return {
                         ...i,
                         status: 'needs_catmat_info',
                         messages: ['Item movido para revisão manual.'],
-                        // Limpa a descrição reduzida para forçar a edição
+                        // Mantém a descrição reduzida preenchida para edição
                         userShortDescription: item.mappedItem.descricao_reduzida || '', 
                     };
                 }
@@ -154,39 +131,65 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
         } else {
             // Se o item já está em needs_catmat_info ou duplicate, o usuário quer editar no formulário principal
             
-            // 1. Move o item para o status 'needs_catmat_info' no estado local (apenas para garantir consistência)
-            setInspectionList(prev => prev.map(i => {
-                if (i.originalPncpItem.id === item.originalPncpItem.id) {
-                    return {
-                        ...i,
-                        status: 'needs_catmat_info',
-                        messages: ['Item movido para revisão manual.'],
-                    };
-                }
-                return i;
-            }));
-            
-            // 2. Chama a função de callback com o item mapeado.
+            // 1. Chama a função de callback com o item mapeado.
             onReviewItem(item.mappedItem);
             
-            // 3. Fecha o diálogo de inspeção (o pai ItemAquisicaoPNCPDialog fechará em seguida)
+            // 2. Fecha o diálogo de inspeção (o pai ItemAquisicaoPNCPDialog fechará em seguida)
             onOpenChange(false);
         }
     };
 
-    const handleFinalImport = () => {
+    /**
+     * NOVO: Lógica de importação final, incluindo persistência no catálogo CATMAT.
+     */
+    const handleFinalImport = async () => {
         if (totalNeedsInfo > 0) {
             toast.error("Ainda existem itens que requerem descrição reduzida. Por favor, preencha ou remova-os.");
             setActiveTab('needs_catmat_info');
             return;
         }
         
-        const finalItems = inspectionList
-            .filter(item => item.status === 'valid')
-            .map(item => item.mappedItem);
+        const itemsToPersist = inspectionList
+            .filter(item => item.status === 'valid' && item.userShortDescription.trim() !== '');
             
-        onFinalImport(finalItems);
-        onOpenChange(false);
+        const finalItems = itemsToPersist.map(item => item.mappedItem);
+        
+        if (finalItems.length === 0) {
+            toast.error("Nenhum item válido para importação.");
+            return;
+        }
+        
+        setIsSavingCatmat(true);
+        toast.info(`Persistindo ${itemsToPersist.length} descrições reduzidas no catálogo...`);
+        
+        try {
+            // 1. Persistir no catálogo CATMAT (apenas para itens que foram validados manualmente)
+            const persistencePromises = itemsToPersist.map(item => {
+                // Verifica se a descrição reduzida foi preenchida pelo usuário (ou se veio do PNCP e foi validada)
+                if (item.userShortDescription.trim() !== '') {
+                    return saveNewCatmatEntry(
+                        item.mappedItem.codigo_catmat,
+                        item.mappedItem.descricao_item,
+                        item.userShortDescription
+                    );
+                }
+                return Promise.resolve();
+            });
+            
+            await Promise.all(persistencePromises);
+            
+            // 2. Invalida a query do catálogo para que a próxima busca já use os novos valores
+            queryClient.invalidateQueries({ queryKey: ['catmatCatalog'] });
+            
+            // 3. Chama a importação final no componente pai
+            onFinalImport(finalItems);
+            
+        } catch (error: any) {
+            console.error("Erro durante a persistência CATMAT na importação final:", error);
+            toast.error(`Falha ao salvar no catálogo CATMAT. Importação cancelada. Detalhes: ${error.message}`);
+        } finally {
+            setIsSavingCatmat(false);
+        }
     };
     
     const renderInspectionTable = (status: InspectionStatus) => {
@@ -259,7 +262,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                             value={item.userShortDescription}
                                             onChange={(e) => handleUpdateShortDescription(item.originalPncpItem.id, e.target.value)}
                                             placeholder={"Inserir nome reduzido"}
-                                            disabled={saveCatmatMutation.isPending}
+                                            disabled={isSavingCatmat}
                                         />
                                         {item.nomePdm && (
                                             <p className="text-xs text-muted-foreground mt-1 text-center">
@@ -286,20 +289,16 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                 )}
                                 
                                 <TableCell className="text-right space-y-1">
-                                    {/* Botão Salvar & Validar (Apenas na aba Requer Revisão) */}
+                                    {/* Botão Validar (Apenas na aba Requer Revisão) */}
                                     {status === 'needs_catmat_info' && (
                                         <Button
                                             variant="secondary"
                                             size="sm"
                                             className="w-full"
-                                            onClick={() => handleSaveAndValidateCatmat(item)}
-                                            disabled={saveCatmatMutation.isPending || !item.userShortDescription.trim()}
+                                            onClick={() => handleMarkAsValid(item)}
+                                            disabled={isSavingCatmat || !item.userShortDescription.trim()}
                                         >
-                                            {saveCatmatMutation.isPending ? (
-                                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                            ) : (
-                                                <Check className="h-4 w-4 mr-2" />
-                                            )}
+                                            <Check className="h-4 w-4 mr-2" />
                                             Validar
                                         </Button>
                                     )}
@@ -309,7 +308,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                         <Button 
                                             variant="outline" 
                                             size="sm" 
-                                            onClick={() => handleReviewItem(item)}
+                                            onClick={() => handleReviewItemLocal(item)}
                                             className="w-full"
                                         >
                                             <Pencil className="h-4 w-4 mr-1" />
@@ -399,12 +398,16 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                         <Button 
                             type="button" 
                             onClick={handleFinalImport}
-                            disabled={totalValid === 0 || totalNeedsInfo > 0 || saveCatmatMutation.isPending}
+                            disabled={totalValid === 0 || totalNeedsInfo > 0 || isSavingCatmat}
                         >
-                            <Import className="h-4 w-4 mr-2" />
+                            {isSavingCatmat ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                                <Import className="h-4 w-4 mr-2" />
+                            )}
                             Importar {totalValid} Itens Válidos
                         </Button>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saveCatmatMutation.isPending}>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSavingCatmat}>
                             Cancelar
                         </Button>
                     </div>
