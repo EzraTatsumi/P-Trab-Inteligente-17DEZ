@@ -94,10 +94,15 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelec
         );
     }
     
-    if (error) {
+    // CORREÇÃO: Usar a variável isError definida pelo useQueries
+    if (isError) {
+        // Podemos tentar extrair a mensagem de erro da primeira query que falhou
+        const firstError = arpQueries.find(query => query.isError)?.error;
+        const errorMessage = firstError?.message || "Erro desconhecido.";
+
         return (
             <div className="text-center py-4 text-red-500 text-sm">
-                Erro ao carregar itens detalhados de uma ou mais ARPs.
+                Erro ao carregar itens detalhados de uma ou mais ARPs: {errorMessage}
             </div>
         );
     }
