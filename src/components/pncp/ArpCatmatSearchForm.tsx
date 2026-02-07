@@ -1,17 +1,18 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Search, Loader2, BookOpen } from "lucide-react";
+import { Search, Loader2, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { format, subDays } from 'date-fns';
 import { fetchArpItemsByCatmat, fetchCatmatFullDescription } from '@/integrations/supabase/api';
 import { DetailedArpItem } from '@/types/pncp';
-import ArpSearchResultsList from './ArpSearchResultsList';
-import { capitalizeFirstLetter } from '@/lib/formatUtils';
+import { capitalizeFirstLetter, formatCodug, formatPregao, formatDate } from '@/lib/formatUtils';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 
 // 1. Esquema de Validação
 const formSchema = z.object({
@@ -119,64 +120,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
         }
     };
     
-    // 4. Agrupamento dos resultados por Pregão (para reutilizar ArpSearchResultsList)
-    const groupedResults = useMemo(() => {
-        const groupsMap = new Map<string, DetailedArpItem[]>();
-
-        arpResults.forEach(item => {
-            // A chave de agrupamento é o pregaoFormatado
-            const pregaoKey = item.pregaoFormatado;
-            
-            if (!groupsMap.has(pregaoKey)) {
-                groupsMap.set(pregaoKey, []);
-            }
-            groupsMap.get(pregaoKey)!.push(item);
-        });
-
-        // Mapeia os grupos para o formato esperado pelo ArpSearchResultsList
-        // Nota: O ArpSearchResultsList espera ArpItemResult[], mas vamos passar DetailedArpItem[]
-        // e adaptar o componente para lidar com isso no próximo passo.
-        return Array.from(groupsMap.entries()).map(([pregao, items]) => {
-            // Usamos o primeiro item do grupo para obter os metadados do Pregão/OM
-            const representativeItem = items[0]; 
-            
-            // Mapeamos para o tipo ArpItemResult (que é o que o ArpSearchResultsList espera)
-            // Isso é um hack temporário, mas necessário para reutilizar o componente.
-            // A solução ideal seria refatorar ArpSearchResultsList para aceitar DetailedArpItem[]
-            // e agrupar internamente, mas vamos manter a estrutura atual por enquanto.
-            
-            // CORREÇÃO: Vamos criar um tipo intermediário que simula o ArpItemResult
-            // para que o ArpSearchResultsList possa agrupar.
-            return {
-                id: representativeItem.numeroControlePncpAta, // ID da ARP
-                numeroAta: representativeItem.numeroAta,
-                objeto: representativeItem.descricaoItem, // Usamos a descrição do item como objeto representativo
-                uasg: representativeItem.uasg,
-                omNome: representativeItem.nomeUnidadeGerenciadora || `UASG ${representativeItem.uasg}`, 
-                dataVigenciaInicial: representativeItem.dataVigenciaInicial,
-                dataVigenciaFinal: representativeItem.dataVigenciaFinal,
-                valorTotalEstimado: 0, // Não é relevante aqui
-                quantidadeItens: items.length,
-                pregaoFormatado: pregao,
-                numeroControlePncpAta: representativeItem.numeroControlePncpAta,
-            } as any; // Cast temporário
-        });
-    }, [arpResults]);
-    
-    // 5. Renderização dos resultados (Reutilizando ArpSearchResultsList)
-    // NOTA: O ArpSearchResultsList foi projetado para agrupar ARPs por Pregão.
-    // Aqui, a API já retorna itens detalhados, então precisamos simular o agrupamento
-    // para que o ArpSearchResultsList funcione como um acordeão de Pregões.
-    
-    // Vamos criar um novo componente de lista de resultados para CATMAT para simplificar o agrupamento.
-    // No entanto, para cumprir o requisito de "aproveitar ao máximo", vamos adaptar o ArpSearchResultsList.
-    
-    // O ArpSearchResultsList espera ArpItemResult[] e agrupa por pregaoFormatado.
-    // A API de CATMAT retorna DetailedArpRawResult[], que contém todos os dados necessários.
-    
-    // Vamos criar um novo componente de lista de resultados para CATMAT para simplificar o agrupamento.
-    
-    // NOVO: Componente de lista de resultados para CATMAT
+    // 5. Renderização dos resultados (Componente interno para CATMAT)
     const CatmatSearchResultsList = ({ results, searchedDescription, searchedCode }: { results: DetailedArpItem[], searchedDescription: string, searchedCode: string }) => {
         
         // Agrupamento por Pregão
@@ -313,7 +257,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                                                 {formatDate(representativeItem.dataVigenciaInicial)} - {formatDate(representativeItem.dataVigenciaFinal)}
                                             </TableCell>
                                             <TableCell className="text-center">
-                                                {isGroupOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                                                {isGroupOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-4 w-4" />}
                                             </TableCell>
                                         </TableRow>
                                         
