@@ -201,19 +201,17 @@ export async function fetchCatmatShortDescription(codigoCatmat: string): Promise
  * @param shortDescription The user-provided short description.
  */
 export async function saveNewCatmatEntry(code: string, description: string, shortDescription: string): Promise<void> {
-    const dbData: TablesInsert<'catalogo_catmat'> = {
-        code: code.replace(/\D/g, ''), // Ensure code is clean digits
-        description: description,
-        short_description: shortDescription,
-    };
+    const cleanCode = code.replace(/\D/g, ''); // Ensure code is clean digits
 
-    // Use upsert to handle both new entries and updates (onConflict: 'code' assumes 'code' is unique)
-    const { error } = await supabase
-        .from('catalogo_catmat')
-        .upsert(dbData, { onConflict: 'code' });
+    // Chamada à função RPC para UPSERT no catalogo_catmat
+    const { error } = await supabase.rpc('upsert_catmat_entry', {
+        p_code: cleanCode,
+        p_description: description,
+        p_short_description: shortDescription,
+    });
 
     if (error) {
-        console.error("Erro ao salvar nova entrada CATMAT:", error);
+        console.error("Erro ao salvar nova entrada CATMAT via RPC:", error);
         throw new Error("Falha ao salvar o item no catálogo CATMAT.");
     }
 }

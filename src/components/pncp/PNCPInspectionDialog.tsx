@@ -198,8 +198,9 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     };
 
     /**
-     * Lógica de importação final. A persistência no catálogo CATMAT foi removida
-     * para evitar erros de RLS, focando apenas na importação para a diretriz.
+     * Lógica de importação final.
+     * 1. Persiste itens válidos E não catalogados no BD catalogo_catmat.
+     * 2. Chama a importação final para o formulário principal.
      */
     const handleFinalImport = async () => {
         if (totalNeedsInfo > 0) {
@@ -217,16 +218,29 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             return;
         }
         
-        setIsSavingCatmat(true); // Mantemos o loading para feedback visual
+        setIsSavingCatmat(true);
         
         try {
-            // 1. Não tentamos mais persistir no catálogo CATMAT devido a erros de RLS.
-            // A descrição reduzida (descricao_reduzida) já está preenchida no mappedItem
-            // se foi encontrada no catálogo local ou se foi validada pelo usuário.
+            // 1. Persistir novos itens no catálogo CATMAT local (UPSERT)
+            const persistencePromises = inspectionList
+                .filter(item => item.status === 'valid' && !item.isCatmatCataloged) // Apenas itens válidos E não catalogados
+                .map(item => {
+                    // Usamos a descrição completa do PNCP (fullPncpDescription) se disponível, senão a da ARP
+                    const description = item.fullPncpDescription || item.mappedItem.descricao_item;
+                    
+                    return saveNewCatmatEntry(
+                        item.mappedItem.codigo_catmat,
+                        description,
+                        item.mappedItem.descricao_reduzida // Usa a descrição reduzida final (validada)
+                    );
+                });
+                
+            await Promise.all(persistencePromises);
             
-            // 2. Invalida a query do catálogo (mantido para limpar cache, mas sem garantia de novos dados)
+            // 2. Invalida a query do catálogo para que a próxima busca reflita os novos dados
             queryClient.invalidateQueries({ queryKey: ['catmatCatalog'] });
-            
+            queryClient.invalidateQueries({ queryKey: ['subitemCatalog'] }); 
+
             // 3. Chama a importação final no componente pai
             onFinalImport(finalItems);
             
@@ -234,9 +248,8 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             toast.success(`Importação de ${formatItemCount(finalItems.length)} concluída.`);
             
         } catch (error: any) {
-            // Se houver erro aqui, é um erro inesperado, mas o fluxo principal deve ser garantido.
-            console.error("Erro durante a importação final:", error);
-            toast.error(`Falha inesperada durante a importação. Detalhes: ${error.message}`);
+            console.error("Erro durante a importação final e persistência no catálogo:", error);
+            toast.error(`Falha ao salvar itens no catálogo local. Detalhes: ${error.message}`);
         } finally {
             setIsSavingCatmat(false);
         }
