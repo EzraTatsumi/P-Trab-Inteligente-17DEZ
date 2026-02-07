@@ -225,8 +225,8 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             const persistencePromises = inspectionList
                 .filter(item => item.status === 'valid' && !item.isCatmatCataloged) // Apenas itens válidos E não catalogados
                 .map(item => {
-                    // Usamos a descrição completa do PNCP (fullPncpDescription) se disponível, senão a da ARP
-                    const description = item.fullPncpDescription || item.mappedItem.descricao_item;
+                    // CORREÇÃO: Usar sempre a descrição do mappedItem (ARP/Revisada) para o catálogo
+                    const description = item.mappedItem.descricao_item;
                     
                     return saveNewCatmatEntry(
                         item.mappedItem.codigo_catmat,
