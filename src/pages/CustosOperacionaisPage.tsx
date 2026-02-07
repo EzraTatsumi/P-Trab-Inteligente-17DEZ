@@ -920,19 +920,28 @@ const CustosOperacionaisPage = () => {
           {taxaEmbarqueProps}
         </div>
         
-        <Table className="border">
+        {/* Aplica rounded-lg e overflow-hidden para arredondar os cantos da tabela */}
+        <Table className="rounded-lg overflow-hidden border">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[35%]">Posto/Graduação</TableHead>
+              {/* Aplica rounded-tl-lg e rounded-tr-lg aos cantos do cabeçalho */}
+              <TableHead className="w-[35%] rounded-tl-lg">Posto/Graduação</TableHead>
               <TableHead className="text-center">Dslc BSB/MAO/RJ/SP</TableHead>
               <TableHead className="text-center">Dslc demais capitais</TableHead>
-              <TableHead className="text-center">Demais Dslc</TableHead>
+              <TableHead className="text-center rounded-tr-lg">Demais Dslc</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {DIARIA_RANKS_CONFIG.map((rank) => (
+            {DIARIA_RANKS_CONFIG.map((rank, index) => (
               <TableRow key={rank.key}>
-                <TableCell className="font-medium whitespace-nowrap">{rank.label}</TableCell>
+                <TableCell className="font-medium whitespace-nowrap">
+                    {/* Aplica rounded-bl-lg e rounded-br-lg aos cantos da última linha */}
+                    {index === DIARIA_RANKS_CONFIG.length - 1 ? (
+                        <span className="rounded-bl-lg block">{rank.label}</span>
+                    ) : (
+                        rank.label
+                    )}
+                </TableCell>
                 <TableCell>
                   <CurrencyInput
                     {...getDiariaProps(rank.key, 'bsb')}
@@ -944,9 +953,17 @@ const CustosOperacionaisPage = () => {
                   />
                 </TableCell>
                 <TableCell>
-                  <CurrencyInput
-                    {...getDiariaProps(rank.key, 'demais')}
-                  />
+                    {index === DIARIA_RANKS_CONFIG.length - 1 ? (
+                        <span className="rounded-br-lg block">
+                            <CurrencyInput
+                                {...getDiariaProps(rank.key, 'demais')}
+                            />
+                        </span>
+                    ) : (
+                        <CurrencyInput
+                            {...getDiariaProps(rank.key, 'demais')}
+                        />
+                    )}
                 </TableCell>
               </TableRow>
             ))}
