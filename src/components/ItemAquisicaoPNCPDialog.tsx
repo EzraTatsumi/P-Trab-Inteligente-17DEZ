@@ -56,13 +56,17 @@ interface SelectedItemState {
     uasg: string;
 }
 
-// Função auxiliar para normalizar strings para comparação (Menos agressiva)
+// CORREÇÃO 1: Função auxiliar para normalizar strings para comparação (Incluindo normalização Unicode)
 const normalizeString = (str: string | number | null | undefined): string => {
     // 1. Converte para string, trata null/undefined como string vazia
     const s = String(str || '').trim();
-    // 2. Converte para maiúsculas
-    // 3. Colapsa múltiplos espaços internos em um único espaço
-    return s.toUpperCase().replace(/\s+/g, ' ');
+    
+    // 2. Normaliza caracteres Unicode (NFD) e remove diacríticos (acentos)
+    const normalized = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    // 3. Converte para maiúsculas
+    // 4. Colapsa múltiplos espaços internos em um único espaço
+    return normalized.toUpperCase().replace(/\s+/g, ' ');
 };
 
 /**
@@ -85,8 +89,10 @@ const isFlexibleDuplicate = (newItem: ItemAquisicao, existingItem: ItemAquisicao
     // Comparação de UASG (Normalizada - deve ser 6 dígitos brutos)
     const uasgMatch = normalizeString(newItem.uasg) === normalizeString(existingItem.uasg);
     
-    // Comparação numérica exata para valor unitário
-    const valorMatch = newItem.valor_unitario === existingItem.valor_unitario; 
+    // CORREÇÃO 2: Comparação numérica exata para valor unitário (arredondando para 2 casas decimais)
+    const roundedNewValue = Math.round(newItem.valor_unitario * 100) / 100;
+    const roundedExistingValue = Math.round(existingItem.valor_unitario * 100) / 100;
+    const valorMatch = roundedNewValue === roundedExistingValue; 
 
     if (!pregaoMatch || !uasgMatch || !valorMatch) {
         return false; // Falha na Chave de Contrato
