@@ -38,7 +38,7 @@ interface ArpUasgSearchFormProps {
     onClearSelection: () => void;
     // Array de IDs selecionados
     selectedItemIds: string[];
-    // NOVO: Ref do container de rolagem (DialogContent)
+    // NOVO: Ref do container de rolagem (DialogContent) - Mantido, mas não usado diretamente para scroll
     scrollContainerRef: React.RefObject<HTMLDivElement>;
 }
 
