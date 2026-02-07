@@ -160,16 +160,16 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
                             <TableHead className={catmatWidth}>Cód. CATMAT</TableHead>
-                            {/* CORREÇÃO 1: Renomear para Descrição Completa (ARP) */}
                             <TableHead className={arpDescWidth}>Descrição Completa (ARP)</TableHead>
-                            {/* NOVO: Coluna Descrição Completa (PNCP) */}
                             <TableHead className={pncpDescWidth}>Descrição Completa (PNCP)</TableHead>
                             
-                            {/* CORREÇÃO 2: Coluna condicional para Descrição Reduzida ou Status */}
+                            {/* Lógica Condicional para o Cabeçalho */}
                             {status === 'needs_catmat_info' ? (
                                 <TableHead className={statusOrShortDescWidth}>Descrição Reduzida *</TableHead>
+                            ) : status === 'valid' ? (
+                                <TableHead className={statusOrShortDescWidth}>Nome Reduzido</TableHead> // NOVO: Nome Reduzido para aba 'valid'
                             ) : (
-                                <TableHead className={statusOrShortDescWidth}>Status</TableHead>
+                                <TableHead className={statusOrShortDescWidth}>Status</TableHead> // Status para aba 'duplicate'
                             )}
                             
                             <TableHead className={actionWidth + " text-right"}>Ações</TableHead>
@@ -188,12 +188,12 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                     </p>
                                 </TableCell>
                                 
-                                {/* NOVO: Coluna Descrição Completa (PNCP) */}
+                                {/* Coluna Descrição Completa (PNCP) */}
                                 <TableCell className="text-sm max-w-xs whitespace-normal text-muted-foreground">
                                     {item.fullPncpDescription}
                                 </TableCell>
                                 
-                                {/* Coluna Condicional: Descrição Reduzida ou Status */}
+                                {/* Coluna Condicional: Descrição Reduzida, Nome Reduzido ou Status */}
                                 {status === 'needs_catmat_info' ? (
                                     <TableCell className="py-2">
                                         <div className="space-y-1">
@@ -219,8 +219,13 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                             </Button>
                                         </div>
                                     </TableCell>
+                                ) : status === 'valid' ? (
+                                    // NOVO: Exibe o Nome Reduzido para itens válidos
+                                    <TableCell className="py-2 font-medium text-sm">
+                                        {item.mappedItem.descricao_reduzida}
+                                    </TableCell>
                                 ) : (
-                                    /* CORREÇÃO 3: Coluna Status */
+                                    /* Coluna Status para Duplicados */
                                     <TableCell className="py-2">
                                         <div className="flex items-center gap-2">
                                             {status === 'valid' && <Check className="h-4 w-4 text-green-600" />}
