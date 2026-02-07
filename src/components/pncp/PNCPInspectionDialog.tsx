@@ -117,7 +117,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                     }
                 };
             }
-            return i;
+            return item;
         }));
     };
     
@@ -265,7 +265,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
         // Ajuste de largura das colunas conforme solicitado:
         const catmatWidth = 'w-[5%]'; // 5%
         const arpDescWidth = 'w-[33%]'; // 33%
-        const pncpDescWidth = 'w-[33%]'; // 33%
+        const pncpDescWidth = 'w-[33%]'; // 33% -> Será usado para Nome Reduzido na aba Duplicados
         const statusOrShortDescWidth = 'w-[24%]'; // 24%
         const actionWidth = 'w-[5%]'; // 5%
         // Total: 5 + 33 + 33 + 24 + 5 = 100%
@@ -278,7 +278,13 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                             {/* Centralizando cabeçalhos */}
                             <TableHead className={cn(catmatWidth, "text-center")}>Cód. CATMAT</TableHead>
                             <TableHead className={cn(arpDescWidth, "text-center")}>Descrição Completa (ARP)</TableHead>
-                            <TableHead className={cn(pncpDescWidth, "text-center")}>Descrição Completa (PNCP)</TableHead>
+                            
+                            {/* MUDANÇA 2: Coluna Descrição Completa (PNCP) -> Nome Reduzido se for Duplicado */}
+                            {status === 'duplicate' ? (
+                                <TableHead className={cn(pncpDescWidth, "text-center")}>Nome Reduzido</TableHead>
+                            ) : (
+                                <TableHead className={cn(pncpDescWidth, "text-center")}>Descrição Completa (PNCP)</TableHead>
+                            )}
                             
                             {/* Lógica Condicional para o Cabeçalho */}
                             {status === 'needs_catmat_info' ? (
@@ -293,109 +299,125 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {items.map(item => (
-                            <TableRow key={item.originalPncpItem.id}>
-                                {/* Centralizando células */}
-                                <TableCell className={cn("font-semibold text-sm text-center")}>{item.mappedItem.codigo_catmat}</TableCell>
-                                
-                                {/* Coluna Descrição Completa (ARP) - EDITÁVEL SE needs_catmat_info */}
-                                <TableCell className={cn("text-sm max-w-xs whitespace-normal text-center", status !== 'needs_catmat_info' && "py-4")}>
-                                    {status === 'needs_catmat_info' ? (
-                                        <AutoResizeTextarea
-                                            value={item.mappedItem.descricao_item}
-                                            onChange={(e) => handleUpdateFullDescription(item.originalPncpItem.id, e.target.value)}
-                                            disabled={isSavingCatmat}
-                                        />
-                                    ) : (
-                                        item.mappedItem.descricao_item
-                                    )}
-                                    {/* REMOVIDO: Detalhes de Pregão/UASG/Valor Unitário da célula da descrição completa */}
-                                    {status !== 'needs_catmat_info' && (
+                        {items.map(item => {
+                            // Verifica se o item tem descrição reduzida (indicando que existe no catálogo ou foi validado)
+                            const hasShortDescription = !!item.mappedItem.descricao_reduzida && item.mappedItem.descricao_reduzida.trim() !== '';
+                            
+                            return (
+                                <TableRow key={item.originalPncpItem.id}>
+                                    {/* Centralizando células */}
+                                    <TableCell className={cn("font-semibold text-sm text-center")}>{item.mappedItem.codigo_catmat}</TableCell>
+                                    
+                                    {/* Coluna Descrição Completa (ARP) - EDITÁVEL SE needs_catmat_info */}
+                                    <TableCell className={cn("text-sm max-w-xs whitespace-normal text-center", status !== 'needs_catmat_info' && "py-4")}>
+                                        {status === 'needs_catmat_info' ? (
+                                            <AutoResizeTextarea
+                                                value={item.mappedItem.descricao_item}
+                                                onChange={(e) => handleUpdateFullDescription(item.originalPncpItem.id, e.target.value)}
+                                                disabled={isSavingCatmat}
+                                            />
+                                        ) : (
+                                            item.mappedItem.descricao_item
+                                        )}
+                                        {/* Detalhes de Pregão/UASG/Valor Unitário */}
                                         <p className="text-xs text-muted-foreground mt-1">
                                             Pregão: {item.mappedItem.numero_pregao.replace(/^0+/, '')} ({formatCodug(item.mappedItem.uasg)}) | R$: {formatCurrency(item.mappedItem.valor_unitario)}
                                         </p>
-                                    )}
-                                </TableCell>
-                                
-                                {/* Coluna Descrição Completa (PNCP) - Centralizando o bloco */}
-                                <TableCell className={cn("text-sm max-w-xs whitespace-normal text-muted-foreground text-center")}>
-                                    {item.fullPncpDescription}
-                                </TableCell>
-                                
-                                {/* Coluna Condicional: Descrição Reduzida, Nome Reduzido ou Status */}
-                                {status === 'needs_catmat_info' ? (
-                                    <TableCell className="py-2">
-                                        <Input
-                                            value={item.userShortDescription}
-                                            onChange={(e) => handleUpdateShortDescription(item.originalPncpItem.id, e.target.value)}
-                                            placeholder={"Inserir nome reduzido"}
-                                            disabled={isSavingCatmat}
-                                        />
-                                        {item.nomePdm && (
-                                            <p className="text-xs text-muted-foreground mt-1 text-center">
-                                                Sugestão PNCP: {item.nomePdm}
-                                            </p>
+                                    </TableCell>
+                                    
+                                    {/* Coluna Descrição Completa (PNCP) / Nome Reduzido */}
+                                    <TableCell className={cn("text-sm max-w-xs whitespace-normal text-muted-foreground text-center")}>
+                                        {status === 'duplicate' ? (
+                                            <span className="text-gray-800 font-medium">
+                                                {item.mappedItem.descricao_reduzida || 'N/A'}
+                                            </span>
+                                        ) : (
+                                            item.fullPncpDescription
                                         )}
                                     </TableCell>
-                                ) : status === 'valid' ? (
-                                    // Exibe o Nome Reduzido para itens válidos
-                                    <TableCell className={cn("py-2 font-medium text-sm text-center")}>
-                                        {item.mappedItem.descricao_reduzida}
-                                    </TableCell>
-                                ) : (
-                                    /* Coluna Status para Duplicados */
-                                    <TableCell className={cn("py-2 text-center")}>
-                                        <div className="flex items-center justify-center gap-2">
-                                            {status === 'valid' && <Check className="h-4 w-4 text-green-600" />}
-                                            {status === 'duplicate' && <X className="h-4 w-4 text-red-600" />}
-                                            <span className={cn("text-sm", status === 'duplicate' && "text-red-600")}>
-                                                {item.messages[0]}
-                                            </span>
-                                        </div>
-                                    </TableCell>
-                                )}
-                                
-                                <TableCell className="text-right space-y-1">
-                                    {/* Botão Validar (Apenas na aba Requer Revisão) */}
-                                    {status === 'needs_catmat_info' && (
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            className="w-full"
-                                            onClick={() => handleMarkAsValid(item)}
-                                            disabled={isSavingCatmat || !item.userShortDescription.trim()}
-                                        >
-                                            <Check className="h-4 w-4 mr-2" />
-                                            Validar
-                                        </Button>
+                                    
+                                    {/* Coluna Condicional: Descrição Reduzida, Nome Reduzido ou Status */}
+                                    {status === 'needs_catmat_info' ? (
+                                        <TableCell className="py-2">
+                                            <Input
+                                                value={item.userShortDescription}
+                                                onChange={(e) => handleUpdateShortDescription(item.originalPncpItem.id, e.target.value)}
+                                                placeholder={"Inserir nome reduzido"}
+                                                disabled={isSavingCatmat}
+                                            />
+                                            {item.nomePdm && (
+                                                <p className="text-xs text-muted-foreground mt-1 text-center">
+                                                    Sugestão PNCP: {item.nomePdm}
+                                                </p>
+                                            )}
+                                        </TableCell>
+                                    ) : status === 'valid' ? (
+                                        // Exibe o Nome Reduzido para itens válidos
+                                        <TableCell className={cn("py-2 font-medium text-sm text-center")}>
+                                            {item.mappedItem.descricao_reduzida}
+                                        </TableCell>
+                                    ) : (
+                                        /* Coluna Status para Duplicados (MUDANÇA 3: Adiciona observação de catálogo) */
+                                        <TableCell className={cn("py-2 text-center")}>
+                                            <div className="flex flex-col items-center justify-center gap-1">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <X className="h-4 w-4 text-red-600" />
+                                                    <span className="text-sm text-red-600">
+                                                        {item.messages[0]}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    {hasShortDescription ? 
+                                                        "Catálogo: Descrição Reduzida EXISTENTE" : 
+                                                        "Catálogo: Descrição Reduzida AUSENTE"
+                                                    }
+                                                </p>
+                                            </div>
+                                        </TableCell>
                                     )}
+                                    
+                                    <TableCell className="text-right space-y-1">
+                                        {/* Botão Validar (Apenas na aba Requer Revisão) */}
+                                        {status === 'needs_catmat_info' && (
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                className="w-full"
+                                                onClick={() => handleMarkAsValid(item)}
+                                                disabled={isSavingCatmat || !item.userShortDescription.trim()}
+                                            >
+                                                <Check className="h-4 w-4 mr-2" />
+                                                Validar
+                                            </Button>
+                                        )}
 
-                                    {/* Botão Revisar (Apenas nas abas Prontos e Duplicados) */}
-                                    {status !== 'needs_catmat_info' && (
+                                        {/* Botão Revisar (Apenas nas abas Prontos e Duplicados) */}
+                                        {status !== 'needs_catmat_info' && (
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                onClick={() => handleReviewItemLocal(item)}
+                                                className="w-full"
+                                            >
+                                                <Pencil className="h-4 w-4 mr-1" />
+                                                Revisar
+                                            </Button>
+                                        )}
+                                        
+                                        {/* Botão Remover (Com ícone de Lixeira) */}
                                         <Button 
                                             variant="outline" 
                                             size="sm" 
-                                            onClick={() => handleReviewItemLocal(item)}
-                                            className="w-full"
+                                            onClick={() => handleRemoveItem(item.originalPncpItem.id)}
+                                            className="w-full text-red-600 border-red-300 hover:bg-red-100 hover:text-red-700"
                                         >
-                                            <Pencil className="h-4 w-4 mr-1" />
-                                            Revisar
+                                            <Trash2 className="h-4 w-4 mr-1" />
+                                            Remover
                                         </Button>
-                                    )}
-                                    
-                                    {/* Botão Remover (Com ícone de Lixeira) */}
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => handleRemoveItem(item.originalPncpItem.id)}
-                                        className="w-full text-red-600 border-red-300 hover:bg-red-100 hover:text-red-700"
-                                    >
-                                        <Trash2 className="h-4 w-4 mr-1" />
-                                        Remover
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
-                        ))}
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
                     </TableBody>
                 </Table>
             </div>
@@ -446,8 +468,9 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                         </TabsContent>
                         
                         <TabsContent value="duplicate">
+                            {/* MUDANÇA 1: Descrição detalhada dos critérios de duplicidade */}
                             <p className="text-sm text-muted-foreground mb-3 text-red-600">
-                                Estes itens já existem na diretriz de destino (mesma Descrição Completa, CATMAT, Pregão e UASG). Remova-os para evitar duplicidade.
+                                Estes itens são considerados duplicados pois possuem a mesma **Chave de Contrato** (Pregão, UASG e Valor Unitário) e pelo menos uma **Chave de Item** (CATMAT, Descrição Completa ou Descrição Reduzida) idêntica a um item já existente. Remova-os para evitar duplicidade.
                             </p>
                             {renderInspectionTable('duplicate')}
                         </TabsContent>
