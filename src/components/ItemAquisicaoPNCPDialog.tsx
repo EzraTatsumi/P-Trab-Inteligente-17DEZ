@@ -11,6 +11,7 @@ import ArpUasgSearch from './pncp/ArpUasgSearch'; // Importa o novo componente
 import { fetchCatmatShortDescription, fetchPncpCatmatDetails } from '@/integrations/supabase/api'; // Importa as funções de busca CATMAT e detalhes PNCP
 import PNCPInspectionDialog from './pncp/PNCPInspectionDialog'; // NOVO: Importar o diálogo de inspeção
 import { normalizeTextForComparison } from '@/lib/formatUtils'; // <-- NOVO IMPORT
+import { supabase } from '@/integrations/supabase/client'; // <-- IMPORT CORRIGIDO
 
 interface ItemAquisicaoPNCPDialogProps {
     open: boolean;
@@ -165,6 +166,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 }
                 
                 // 3. Busca da Descrição Reduzida e Completa no Catálogo Local
+                // CORREÇÃO: Usar o cliente supabase importado
                 const { data: catmatData, error: catmatError } = await supabase
                     .from('catalogo_catmat')
                     .select('description, short_description')
