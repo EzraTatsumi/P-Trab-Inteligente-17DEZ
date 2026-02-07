@@ -28,4 +28,7 @@ export interface InspectionItem {
     
     // NOVO: Descrição completa do item obtida do catálogo PNCP (4_consultarItemMaterial)
     fullPncpDescription: string;
+    
+    // NOVO: Nome do PDM (Padrão de Material)
+    nomePdm: string | null;
 }

@@ -148,8 +148,11 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 let status: InspectionStatus = 'pending';
                 let messages: string[] = [];
                 let shortDescription: string | null = null;
-                let fullPncpDescription: string | null = null; // NOVO: Campo para descrição completa
-
+                
+                // MUDANÇA: Variáveis para armazenar os resultados da busca completa
+                let fullPncpDescription: string | null = null; 
+                let nomePdm: string | null = null; // NOVO
+                
                 // 2. Verificação de Duplicidade Local
                 const itemKey = generateItemKey(initialMappedItem);
                 const isDuplicate = existingItemsInDiretriz.some(existingItem => generateItemKey(existingItem) === itemKey);
@@ -161,8 +164,10 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     // 3. Busca da Descrição Reduzida no Catálogo CATMAT (DB local)
                     shortDescription = await fetchCatmatShortDescription(item.codigoItem);
                     
-                    // 4. Busca da Descrição Completa no PNCP (API externa)
-                    fullPncpDescription = await fetchCatmatFullDescription(item.codigoItem);
+                    // 4. Busca da Descrição Completa e PDM no PNCP (API externa)
+                    const pncpDetails = await fetchCatmatFullDescription(item.codigoItem);
+                    fullPncpDescription = pncpDetails.fullDescription;
+                    nomePdm = pncpDetails.nomePdm; // NOVO: Captura o nome PDM
                     
                     if (shortDescription) {
                         // CATMAT encontrado e tem descrição reduzida
@@ -185,6 +190,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     messages: messages,
                     userShortDescription: shortDescription || '', // Campo para preenchimento do usuário
                     fullPncpDescription: fullPncpDescription || 'Descrição completa não encontrada no PNCP.', // NOVO
+                    nomePdm: nomePdm, // NOVO: Adiciona nomePdm ao objeto de inspeção
                 } as InspectionItem;
             });
             

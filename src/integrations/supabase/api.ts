@@ -220,10 +220,10 @@ export async function saveNewCatmatEntry(code: string, description: string, shor
 /**
  * Busca a descrição completa de um item CATMAT no PNCP (4_consultarItemMaterial).
  * @param codigoCatmat O código CATMAT (string).
- * @returns A descrição completa (descricaoItem) ou null.
+ * @returns Um objeto contendo a descrição completa (fullDescription) e o nome PDM (nomePdm), ou null.
  */
-export async function fetchCatmatFullDescription(codigoCatmat: string): Promise<string | null> {
-    if (!codigoCatmat) return null;
+export async function fetchCatmatFullDescription(codigoCatmat: string): Promise<{ fullDescription: string | null, nomePdm: string | null }> {
+    if (!codigoCatmat) return { fullDescription: null, nomePdm: null };
     
     try {
         const { data, error } = await supabase.functions.invoke('fetch-catmat-details', {
@@ -238,15 +238,18 @@ export async function fetchCatmatFullDescription(codigoCatmat: string): Promise<
         
         // A Edge Function retorna o objeto detalhado ou um objeto vazio {} se não encontrar.
         if (responseData && responseData.descricaoItem) {
-            return responseData.descricaoItem;
+            return {
+                fullDescription: responseData.descricaoItem,
+                nomePdm: responseData.nomePdm || null,
+            };
         }
         
-        return null;
+        return { fullDescription: null, nomePdm: null };
 
     } catch (error) {
         console.error("Erro ao buscar descrição completa do CATMAT:", error);
         // Não lança erro fatal, apenas retorna null para que o processo de importação continue
-        return null;
+        return { fullDescription: null, nomePdm: null };
     }
 }
 

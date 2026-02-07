@@ -249,12 +249,12 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                         <Input
                                             value={item.userShortDescription}
                                             onChange={(e) => handleUpdateShortDescription(item.originalPncpItem.id, e.target.value)}
-                                            placeholder={item.mappedItem.nome_pdm || "Nome curto para o catálogo"}
+                                            placeholder={item.nomePdm || "Nome curto para o catálogo"}
                                             disabled={saveCatmatMutation.isPending}
                                         />
-                                        {item.mappedItem.nome_pdm && (
+                                        {item.nomePdm && (
                                             <p className="text-xs text-muted-foreground mt-1 text-center">
-                                                Sugestão PDM: {item.mappedItem.nome_pdm}
+                                                Sugestão PDM: {item.nomePdm}
                                             </p>
                                         )}
                                     </TableCell>
