@@ -126,15 +126,21 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
         );
     }
     
-    // Usar o nome da OM do primeiro grupo como referência, se disponível
-    const omNameFromApi = groupedArps.length > 0 ? groupedArps[0].omNome : searchedOmName;
+    // 1. Tenta usar o nome da OM do primeiro grupo (que veio da API)
+    let omNameDisplay = groupedArps.length > 0 ? groupedArps[0].omNome : searchedOmName;
+    
+    // 2. Se o nome da API for o fallback genérico 'OM Desconhecida', usa o nome pesquisado
+    if (omNameDisplay === 'OM Desconhecida') {
+        omNameDisplay = searchedOmName;
+    }
+    
     const omUasg = searchedUasg;
 
     return (
         <div className="p-4 space-y-4">
             {/* CABEÇALHO DA PESQUISA */}
             <h3 className="text-lg font-semibold">
-                Resultado para {omNameFromApi} ({formatCodug(omUasg)})
+                Resultado para {omNameDisplay} ({formatCodug(omUasg)})
                 <span className="text-sm font-normal text-muted-foreground ml-2">
                     - {groupedArps.length} Pregões encontrados
                 </span>
