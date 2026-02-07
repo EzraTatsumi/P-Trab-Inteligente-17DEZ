@@ -125,6 +125,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     // NOVO: Função para revisar o item
     const handleReviewItem = (item: InspectionItem) => {
         // 1. Move o item para o status 'needs_catmat_info' no estado local
+        // Isso garante que, se o usuário voltar para a inspeção, o item estará na aba correta.
         setInspectionList(prev => prev.map(i => {
             if (i.originalPncpItem.id === item.originalPncpItem.id) {
                 return {
@@ -136,11 +137,13 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             return i;
         }));
         
-        // 2. Chama a função de callback com o item mapeado
+        // 2. Chama a função de callback com o item mapeado.
+        // Esta função no componente pai (ItemAquisicaoPNCPDialog) é responsável por fechar
+        // o diálogo principal e abrir o formulário de edição.
         onReviewItem(item.mappedItem);
         
-        // 3. Fecha o diálogo de inspeção
-        onOpenChange(false);
+        // 3. REMOVIDO: Não fechar o diálogo de inspeção aqui. O diálogo principal será fechado pelo pai.
+        // onOpenChange(false); 
     };
 
     const handleFinalImport = () => {
@@ -252,9 +255,10 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                         {item.mappedItem.descricao_reduzida}
                                     </TableCell>
                                 ) : (
-                                    /* Coluna Status para Duplicados e Pending */
+                                    /* Coluna Status para Duplicados */
                                     <TableCell className={cn("py-2 text-center")}>
                                         <div className="flex items-center justify-center gap-2">
+                                            {status === 'valid' && <Check className="h-4 w-4 text-green-600" />}
                                             {status === 'duplicate' && <X className="h-4 w-4 text-red-600" />}
                                             <span className={cn("text-sm", status === 'duplicate' && "text-red-600")}>
                                                 {item.messages[0]}
