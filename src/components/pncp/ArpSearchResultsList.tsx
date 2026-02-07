@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ArpItemResult } from '@/types/pncp'; // CORRIGIDO: Usando ArpItemResult
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
-import { formatCodug, formatCurrency, formatDate, formatPregao } from '@/lib/formatUtils';
+import { formatCodug, formatCurrency, formatDate, formatPregao, capitalizeFirstLetter } from '@/lib/formatUtils';
 import { Card, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -162,7 +162,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                             {displayPregao}
                                         </TableCell>
                                         <TableCell className="text-sm max-w-xs whitespace-normal">
-                                            {group.objetoRepresentativo}
+                                            {capitalizeFirstLetter(group.objetoRepresentativo)}
                                         </TableCell>
                                         {/* Ajuste: Adicionando whitespace-nowrap para manter as datas na mesma linha */}
                                         <TableCell className="text-center text-sm whitespace-nowrap">

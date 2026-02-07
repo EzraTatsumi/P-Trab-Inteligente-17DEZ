@@ -245,3 +245,15 @@ export function formatPregao(pregaoFormatado: string): string {
 
     return `${numeroSemZeros}/${ano}`;
 }
+
+/**
+ * Capitaliza a primeira letra de uma string.
+ * @param str A string de entrada.
+ * @returns A string com a primeira letra em maiúsculo.
+ */
+export function capitalizeFirstLetter(str: string | null | undefined): string {
+    if (!str) return '';
+    const trimmedStr = str.trim();
+    if (trimmedStr.length === 0) return '';
+    return trimmedStr.charAt(0).toUpperCase() + trimmedStr.slice(1);
+}
