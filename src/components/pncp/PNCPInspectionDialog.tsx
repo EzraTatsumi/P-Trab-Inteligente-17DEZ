@@ -223,8 +223,11 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                             
                             // Lógica de exibição da Descrição Oficial (PNCP)
                             const officialDescription = item.officialPncpDescription;
-                            const isErrorPlaceholder = officialDescription && (officialDescription.startsWith("Descrição oficial para") || officialDescription === "Falha ao carregar descrição oficial.");
-                            const displayOfficialDescription = status === 'duplicate' || !officialDescription || isErrorPlaceholder ? 'N/A' : officialDescription;
+                            
+                            // Simplificando a lógica de exibição para garantir que o valor da API seja mostrado
+                            const displayOfficialDescription = officialDescription && officialDescription !== "Falha ao carregar descrição oficial." && status !== 'duplicate'
+                                ? officialDescription
+                                : 'N/A';
 
                             return (
                                 <TableRow key={item.originalPncpItem.id}>
