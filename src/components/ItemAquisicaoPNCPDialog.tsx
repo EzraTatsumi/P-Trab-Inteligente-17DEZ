@@ -89,13 +89,16 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 // 1. Buscar a descrição reduzida no catálogo CATMAT
                 const shortDescription = await fetchCatmatShortDescription(item.codigoItem);
                 
+                // Garante que a descrição do item seja uma string para evitar o erro de substring
+                const itemDescription = item.descricaoItem || ''; 
+                
                 // 2. Mapeamento final do DetailedArpItem para ItemAquisicao
                 const itemAquisicao: ItemAquisicao = {
                     // Usamos o ID do item detalhado do PNCP como ID local
                     id: item.id, 
-                    descricao_item: item.descricaoItem,
-                    // Usa a descrição reduzida do CATMAT, ou um fallback
-                    descricao_reduzida: shortDescription || item.descricaoItem.substring(0, 50) + (item.descricaoItem.length > 50 ? '...' : ''),
+                    descricao_item: itemDescription,
+                    // Usa a descrição reduzida do CATMAT, ou um fallback seguro
+                    descricao_reduzida: shortDescription || itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : ''),
                     valor_unitario: item.valorUnitario, 
                     numero_pregao: pregaoFormatado, 
                     uasg: uasg, 
