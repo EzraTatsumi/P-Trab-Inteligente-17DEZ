@@ -138,7 +138,8 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                         <TableRow>
                             <TableHead className="w-[150px]">Pregão</TableHead>
                             <TableHead>Objeto</TableHead>
-                            <TableHead className="w-[200px] text-center">Vigência (Início - Fim)</TableHead>
+                            {/* Ajuste: Aumentando a largura e removendo (Início - Fim) */}
+                            <TableHead className="w-[250px] text-center">Vigência</TableHead>
                             <TableHead className="w-[50px]"></TableHead> {/* Coluna para o ícone de expansão */}
                         </TableRow>
                     </TableHeader>
@@ -163,7 +164,8 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                         <TableCell className="text-sm max-w-xs whitespace-normal">
                                             {group.objetoRepresentativo}
                                         </TableCell>
-                                        <TableCell className="text-center text-sm">
+                                        {/* Ajuste: Adicionando whitespace-nowrap para manter as datas na mesma linha */}
+                                        <TableCell className="text-center text-sm whitespace-nowrap">
                                             {formatDate(group.dataVigenciaInicial)} - {formatDate(group.dataVigenciaFinal)}
                                         </TableCell>
                                         <TableCell className="text-center">
