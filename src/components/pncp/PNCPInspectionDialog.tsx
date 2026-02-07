@@ -13,8 +13,7 @@ import { saveNewCatmatEntry } from '@/integrations/supabase/api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Textarea } from "@/components/ui/textarea";
-import { formatCodug } from '@/lib/formatUtils'; // NOVO: Importando formatCodug
+import { Textarea } from '@/components/ui/textarea';
 
 interface PNCPInspectionDialogProps {
     open: boolean;
@@ -22,13 +21,6 @@ interface PNCPInspectionDialogProps {
     inspectionList: InspectionItem[];
     onFinalImport: (items: ItemAquisicao[]) => void;
 }
-
-// Função auxiliar para remover zeros à esquerda do número do pregão
-const formatNumeroPregao = (numero: string) => {
-    if (!numero) return '';
-    // Remove zeros à esquerda, mas mantém pelo menos um dígito se for '000' -> '0'
-    return numero.replace(/^0+/, '') || '0';
-};
 
 const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     open,
@@ -211,13 +203,13 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                 <Table>
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
-                            <TableHead className="w-[10%] text-center">Cód. CATMAT</TableHead>
+                            <TableHead className="w-[10%]">Cód. CATMAT</TableHead>
                             {/* Coluna 2: Descrição Completa (ARP ou Catálogo) */}
-                            <TableHead className="w-[30%] text-center">Descrição Completa</TableHead> 
+                            <TableHead className="w-[30%]">Descrição Completa</TableHead> 
                             {/* Coluna 3: Descrição Oficial (PNCP) */}
-                            <TableHead className="w-[30%] text-center">Descrição Oficial (PNCP)</TableHead> 
+                            <TableHead className="w-[30%]">Descrição Oficial (PNCP)</TableHead> 
                             {/* Coluna 4: Descrição Reduzida */}
-                            <TableHead className="w-[15%] text-center">Descrição Reduzida</TableHead>
+                            <TableHead className="w-[15%]">Descrição Reduzida</TableHead>
                             <TableHead className="w-[15%] text-right">Ações</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -225,21 +217,17 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                         {items.map(item => {
                             const isSaving = saveCatmatMutation.isPending && saveCatmatMutation.variables?.item.originalPncpItem.id === item.originalPncpItem.id;
                             
-                            // Formatação do Pregão e UASG (Ajuste 1)
-                            const formattedPregao = formatNumeroPregao(item.mappedItem.numero_pregao);
-                            const formattedUasg = formatCodug(item.mappedItem.uasg);
-
                             return (
                                 <TableRow key={item.originalPncpItem.id}>
-                                    <TableCell className="font-semibold text-sm text-center">
+                                    <TableCell className="font-semibold text-sm">
                                         {item.mappedItem.codigo_catmat}
                                         <p className="text-xs text-muted-foreground mt-1">
-                                            {formattedPregao} ({formattedUasg})
+                                            {item.mappedItem.numero_pregao} | {item.mappedItem.uasg}
                                         </p>
                                     </TableCell>
                                     
                                     {/* Coluna 2: Descrição Completa (Editável se needs_catmat_info) */}
-                                    <TableCell className="text-sm max-w-xs whitespace-normal text-center">
+                                    <TableCell className="text-sm max-w-xs whitespace-normal">
                                         {status === 'needs_catmat_info' ? (
                                             <Textarea
                                                 value={item.mappedItem.descricao_item}
@@ -249,7 +237,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                                 disabled={isSaving}
                                             />
                                         ) : (
-                                            <div className="flex items-start gap-1 justify-center">
+                                            <div className="flex items-start gap-1">
                                                 {item.descriptionMismatch && (
                                                     <TooltipProvider>
                                                         <Tooltip>
@@ -262,18 +250,18 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                                         </Tooltip>
                                                     </TooltipProvider>
                                                 )}
-                                                <span className={cn({ 'ml-5': item.descriptionMismatch })}>{item.mappedItem.descricao_item}</span>
+                                                <span>{item.mappedItem.descricao_item}</span>
                                             </div>
                                         )}
                                     </TableCell>
                                     
-                                    {/* Coluna 3: Descrição Oficial (PNCP) - Bruta (Ajuste 2) */}
-                                    <TableCell className="text-sm max-w-xs whitespace-normal text-muted-foreground text-center">
-                                        {status === 'duplicate' ? 'N/A' : (item.officialPncpDescription || 'N/A')}
+                                    {/* Coluna 3: Descrição Oficial (PNCP) - Bruta, apenas para referência */}
+                                    <TableCell className="text-sm max-w-xs whitespace-normal text-muted-foreground">
+                                        {status === 'duplicate' ? 'N/A' : (item.officialPncpDescription && item.officialPncpDescription !== "Falha ao carregar descrição oficial." ? item.officialPncpDescription : 'N/A')}
                                     </TableCell>
                                     
                                     {/* Coluna 4: Descrição Reduzida (Editável se needs_catmat_info) */}
-                                    <TableCell className="text-center">
+                                    <TableCell>
                                         {status === 'needs_catmat_info' ? (
                                             <div className="space-y-1">
                                                 <Input
@@ -283,7 +271,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                                     disabled={isSaving}
                                                 />
                                                 {item.pdmSuggestion && (
-                                                    <p className="text-xs text-muted-foreground flex items-center gap-1 justify-center">
+                                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                         <Info className="h-3 w-3" />
                                                         Sugestão PDM: {item.pdmSuggestion}
                                                     </p>
@@ -320,7 +308,6 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                                     variant="outline"
                                                     size="sm"
                                                     onClick={() => handleSendToReview(item.originalPncpItem.id)}
-                                                    className="border-blue-500 text-blue-600 hover:bg-blue-50"
                                                 >
                                                     <Send className="h-4 w-4 mr-2" />
                                                     Enviar para Revisão
@@ -328,11 +315,11 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                             )}
                                             
                                             <Button 
-                                                variant="ghost" // Revertido para ghost
+                                                variant="ghost" 
                                                 size="sm" 
                                                 onClick={() => handleRemoveItem(item.originalPncpItem.id)}
+                                                className="text-red-600 hover:bg-red-100"
                                                 disabled={isSaving}
-                                                className="text-red-600 hover:bg-red-50 hover:text-red-700" // Mantendo cores de hover para indicar ação de remoção
                                             >
                                                 Remover
                                             </Button>
