@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -257,6 +257,25 @@ const CustosOperacionaisPage = () => {
   // NOVO ESTADO: Diálogo de Export/Import
   const [isExportImportDialogOpen, setIsExportImportDialogOpen] = useState(false);
   // END MATERIAL CONSUMO STATES
+  
+  // Ref para os containers colapsáveis para rolagem
+  const collapsibleRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Função para lidar com a mudança de estado do Collapsible e rolar
+  const handleCollapseChange = (key: string, open: boolean) => {
+      setFieldCollapseState(prev => ({ ...prev, [key]: open }));
+
+      if (open) {
+          // Scroll to the top of the collapsible section when it opens
+          setTimeout(() => {
+              const element = collapsibleRefs.current[key];
+              if (element) {
+                  // Scroll the element into view, aligning it to the start (top)
+                  element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+          }, 100); // Pequeno atraso para permitir que o DOM se atualize após a expansão
+      }
+  };
   
   // Efeito para rolar para o topo na montagem
   useEffect(() => {
@@ -1330,7 +1349,7 @@ const CustosOperacionaisPage = () => {
   // NOVO: 3. Função para navegar e abrir o subitem encontrado
   const handleGoToSubitem = (diretrizId: string) => {
       // 1. Abrir o Collapsible principal de Material de Consumo
-      setFieldCollapseState(prev => ({ ...prev, ['material_consumo_detalhe']: true }));
+      handleCollapseChange('material_consumo_detalhe', true);
       
       // 2. Define o ID do subitem que deve ser aberto
       setSubitemToOpenId(diretrizId);
@@ -1612,92 +1631,100 @@ const CustosOperacionaisPage = () => {
                 <div className="space-y-4">
                   
                   {/* Pagamento de Diárias */}
-                  <Collapsible 
-                    open={fieldCollapseState['diarias_detalhe']} 
-                    onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['diarias_detalhe']: open }))}
-                    className="border-b pb-4 last:border-b-0 last:pb-0"
-                  >
-                    <CollapsibleTrigger asChild>
-                      <div className="flex items-center justify-between cursor-pointer py-2">
-                        {/* CORREÇÃO H2: Título da seção */}
-                        <h2 className="text-base font-medium">
-                          Pagamento de Diárias
-                        </h2>
-                        {fieldCollapseState['diarias_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="mt-2">
-                        {renderDiariaTable()}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
+                  <div ref={el => collapsibleRefs.current['diarias_detalhe'] = el}>
+                    <Collapsible 
+                      open={fieldCollapseState['diarias_detalhe']} 
+                      onOpenChange={(open) => handleCollapseChange('diarias_detalhe', open)}
+                      className="border-b pb-4 last:border-b-0 last:pb-0"
+                    >
+                      <CollapsibleTrigger asChild>
+                        <div className="flex items-center justify-between cursor-pointer py-2">
+                          {/* CORREÇÃO H2: Título da seção */}
+                          <h2 className="text-base font-medium">
+                            Pagamento de Diárias
+                          </h2>
+                          {fieldCollapseState['diarias_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2">
+                          {renderDiariaTable()}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
                   
                   {/* Diretrizes de Passagens (Contratos/Trechos) */}
-                  <Collapsible 
-                    open={fieldCollapseState['passagens_detalhe']} 
-                    onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['passagens_detalhe']: open }))}
-                    className="border-b pb-4 last:border-b-0 last:pb-0"
-                  >
-                    <CollapsibleTrigger asChild>
-                      <div className="flex items-center justify-between cursor-pointer py-2">
-                        {/* CORREÇÃO H2: Título da seção */}
-                        <h2 className="text-base font-medium flex items-center gap-2">
-                          Passagens (Contratos/Trechos)
-                        </h2>
-                        {fieldCollapseState['passagens_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="mt-2">
-                        {renderPassagensSection()}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
+                  <div ref={el => collapsibleRefs.current['passagens_detalhe'] = el}>
+                    <Collapsible 
+                      open={fieldCollapseState['passagens_detalhe']} 
+                      onOpenChange={(open) => handleCollapseChange('passagens_detalhe', open)}
+                      className="border-b pb-4 last:border-b-0 last:pb-0"
+                    >
+                      <CollapsibleTrigger asChild>
+                        <div className="flex items-center justify-between cursor-pointer py-2">
+                          {/* CORREÇÃO H2: Título da seção */}
+                          <h2 className="text-base font-medium flex items-center gap-2">
+                            Passagens (Contratos/Trechos)
+                          </h2>
+                          {fieldCollapseState['passagens_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2">
+                          {renderPassagensSection()}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
                   
                   {/* Diretrizes de Concessionária */}
-                  <Collapsible 
-                    open={fieldCollapseState['concessionaria_detalhe']} 
-                    onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['concessionaria_detalhe']: open }))}
-                    className="border-b pb-4 last:border-b-0 last:pb-0"
-                  >
-                    <CollapsibleTrigger asChild>
-                      <div className="flex items-center justify-between cursor-pointer py-2">
-                        {/* CORREÇÃO H2: Título da seção */}
-                        <h2 className="text-base font-medium flex items-center gap-2">
-                          Concessionária (Água/Esgoto e Energia Elétrica)
-                        </h2>
-                        {fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="mt-2">
-                        {renderConcessionariaSection()}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
+                  <div ref={el => collapsibleRefs.current['concessionaria_detalhe'] = el}>
+                    <Collapsible 
+                      open={fieldCollapseState['concessionaria_detalhe']} 
+                      onOpenChange={(open) => handleCollapseChange('concessionaria_detalhe', open)}
+                      className="border-b pb-4 last:border-b-0 last:pb-0"
+                    >
+                      <CollapsibleTrigger asChild>
+                        <div className="flex items-center justify-between cursor-pointer py-2">
+                          {/* CORREÇÃO H2: Título da seção */}
+                          <h2 className="text-base font-medium flex items-center gap-2">
+                            Concessionária (Água/Esgoto e Energia Elétrica)
+                          </h2>
+                          {fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2">
+                          {renderConcessionariaSection()}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
                   
                   {/* Diretrizes de Material de Consumo (NOVO) */}
-                  <Collapsible 
-                    open={fieldCollapseState['material_consumo_detalhe']} 
-                    onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, ['material_consumo_detalhe']: open }))}
-                    className="border-b pb-4 last:border-b-0 last:pb-0"
-                  >
-                    <CollapsibleTrigger asChild>
-                      <div className="flex items-center justify-between cursor-pointer py-2">
-                        {/* CORREÇÃO H2: Título da seção */}
-                        <h2 className="text-base font-medium flex items-center gap-2">
-                          Material de Consumo (33.90.30)
-                        </h2>
-                        {fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="mt-2">
-                        {renderMaterialConsumoSection()}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
+                  <div ref={el => collapsibleRefs.current['material_consumo_detalhe'] = el}>
+                    <Collapsible 
+                      open={fieldCollapseState['material_consumo_detalhe']} 
+                      onOpenChange={(open) => handleCollapseChange('material_consumo_detalhe', open)}
+                      className="border-b pb-4 last:border-b-0 last:pb-0"
+                    >
+                      <CollapsibleTrigger asChild>
+                        <div className="flex items-center justify-between cursor-pointer py-2">
+                          {/* CORREÇÃO H2: Título da seção */}
+                          <h2 className="text-base font-medium flex items-center gap-2">
+                            Material de Consumo (33.90.30)
+                          </h2>
+                          {fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2">
+                          {renderMaterialConsumoSection()}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
                   
                   {/* OUTROS CAMPOS OPERACIONAIS (Fatores e Valores Simples) */}
                   {OPERATIONAL_FIELDS.filter(f => f.key !== 'fator_material_consumo').map(field => {
@@ -1705,27 +1732,28 @@ const CustosOperacionaisPage = () => {
                     const isOpen = fieldCollapseState[fieldKey] ?? false;
                     
                     return (
-                      <Collapsible 
-                        key={fieldKey} 
-                        open={isOpen} 
-                        onOpenChange={(open) => setFieldCollapseState(prev => ({ ...prev, [fieldKey]: open }))}
-                        className="border-b pb-4 last:border-b-0 last:pb-0"
-                      >
-                        <CollapsibleTrigger asChild>
-                          <div className="flex items-center justify-between cursor-pointer py-2">
-                            {/* CORREÇÃO H2: Título da seção */}
-                            <h2 className="text-base font-medium">
-                              {field.label}
-                            </h2>
-                            {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                          </div>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <div className="mt-2">
-                            {renderDiretrizField(field)}
-                          </div>
-                        </CollapsibleContent>
-                      </Collapsible>
+                      <div key={fieldKey} ref={el => collapsibleRefs.current[fieldKey] = el}>
+                        <Collapsible 
+                          open={isOpen} 
+                          onOpenChange={(open) => handleCollapseChange(fieldKey, open)}
+                          className="border-b pb-4 last:border-b-0 last:pb-0"
+                        >
+                          <CollapsibleTrigger asChild>
+                            <div className="flex items-center justify-between cursor-pointer py-2">
+                              {/* CORREÇÃO H2: Título da seção */}
+                              <h2 className="text-base font-medium">
+                                {field.label}
+                              </h2>
+                              {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="mt-2">
+                              {renderDiretrizField(field)}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </div>
                     );
                   })}
                 </div>
