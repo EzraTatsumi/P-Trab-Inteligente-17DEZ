@@ -118,9 +118,9 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
         setInspectionList(prev => prev.map(item => {
             if (item.originalPncpItem.id === itemId) {
                 return { 
-                    ...item, 
+                    ...i, 
                     mappedItem: {
-                        ...item.mappedItem,
+                        ...i.mappedItem,
                         descricao_item: value,
                     }
                 };
@@ -305,8 +305,8 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                     </TableHeader>
                     <TableBody>
                         {items.map(item => {
-                            // Verifica se o item tem descrição reduzida (indicando que existe no catálogo ou foi validado)
-                            const hasShortDescription = !!item.mappedItem.descricao_reduzida && item.mappedItem.descricao_reduzida.trim() !== '';
+                            // CORREÇÃO: Usar a nova flag isCatmatCataloged
+                            const isCataloged = item.isCatmatCataloged;
                             
                             return (
                                 <TableRow key={item.originalPncpItem.id}>
@@ -372,8 +372,8 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                                 </span>
                                                 
                                                 {/* 2. Status do Catálogo com cores */}
-                                                <p className={cn("text-xs mt-1", hasShortDescription ? "text-green-600" : "text-red-600")}>
-                                                    {hasShortDescription ? 
+                                                <p className={cn("text-xs mt-1", isCataloged ? "text-green-600" : "text-red-600")}>
+                                                    {isCataloged ? 
                                                         "Item presente no Catálogo CATMAT local" : 
                                                         "Item não presente no Catálogo CATMAT local"
                                                     }

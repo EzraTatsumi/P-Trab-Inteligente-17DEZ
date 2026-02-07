@@ -304,6 +304,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 let status: InspectionStatus = 'pending';
                 let messages: string[] = [];
                 let shortDescription: string | null = null;
+                let isCatmatCataloged = false; // NOVO: Flag para rastrear se veio do catálogo local
                 
                 let fullPncpDescription: string | null = null; 
                 let nomePdm: string | null = null; 
@@ -321,6 +322,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 // Se encontrado no catálogo local, preenche a descrição reduzida no item mapeado
                 if (shortDescription) {
                     initialMappedItem.descricao_reduzida = shortDescription;
+                    isCatmatCataloged = true; // Marca como catalogado
                 } else {
                     // Fallback seguro para descrição reduzida (primeiras 50 letras da descrição completa)
                     initialMappedItem.descricao_reduzida = itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : '');
@@ -346,7 +348,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     messages.push(`Chaves de Item idênticas: ${keys}`);
                 } else {
                     // 8. Determinação do Status para itens NÃO duplicados
-                    if (shortDescription) {
+                    if (isCatmatCataloged) { // Usa a nova flag
                         // CATMAT encontrado e tem descrição reduzida
                         status = 'valid';
                         messages.push('Pronto para importação.');
@@ -365,6 +367,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     userShortDescription: shortDescription || '', // Campo para preenchimento do usuário
                     fullPncpDescription: fullPncpDescription || 'Descrição completa não encontrada no PNCP.', 
                     nomePdm: nomePdm, 
+                    isCatmatCataloged: isCatmatCataloged, // Passa a nova flag
                 } as InspectionItem;
             });
             

@@ -31,4 +31,7 @@ export interface InspectionItem {
     
     // NOVO: Nome do PDM (Padrão de Material)
     nomePdm: string | null;
+    
+    // NOVO: Flag para indicar se o item foi encontrado no catálogo CATMAT local
+    isCatmatCataloged: boolean;
 }
