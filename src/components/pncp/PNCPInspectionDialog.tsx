@@ -246,28 +246,12 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                 {/* Coluna Condicional: Descrição Reduzida, Nome Reduzido ou Status */}
                                 {status === 'needs_catmat_info' ? (
                                     <TableCell className="py-2">
-                                        <div className="space-y-1">
-                                            <Input
-                                                value={item.userShortDescription}
-                                                onChange={(e) => handleUpdateShortDescription(item.originalPncpItem.id, e.target.value)}
-                                                placeholder={item.mappedItem.nome_pdm || "Nome curto para o catálogo"}
-                                                disabled={saveCatmatMutation.isPending}
-                                            />
-                                            <Button
-                                                variant="secondary"
-                                                size="sm"
-                                                className="w-full"
-                                                onClick={() => handleSaveAndValidateCatmat(item)}
-                                                disabled={saveCatmatMutation.isPending || !item.userShortDescription.trim()}
-                                            >
-                                                {saveCatmatMutation.isPending ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                                ) : (
-                                                    <Save className="h-4 w-4 mr-2" />
-                                                )}
-                                                Salvar & Validar
-                                            </Button>
-                                        </div>
+                                        <Input
+                                            value={item.userShortDescription}
+                                            onChange={(e) => handleUpdateShortDescription(item.originalPncpItem.id, e.target.value)}
+                                            placeholder={item.mappedItem.nome_pdm || "Nome curto para o catálogo"}
+                                            disabled={saveCatmatMutation.isPending}
+                                        />
                                     </TableCell>
                                 ) : status === 'valid' ? (
                                     // Exibe o Nome Reduzido para itens válidos
@@ -288,7 +272,25 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                 )}
                                 
                                 <TableCell className="text-right space-y-1">
-                                    {/* O botão Revisar só aparece se o status não for 'needs_catmat_info' */}
+                                    {/* Botão Salvar & Validar (Apenas na aba Requer Revisão) */}
+                                    {status === 'needs_catmat_info' && (
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            className="w-full"
+                                            onClick={() => handleSaveAndValidateCatmat(item)}
+                                            disabled={saveCatmatMutation.isPending || !item.userShortDescription.trim()}
+                                        >
+                                            {saveCatmatMutation.isPending ? (
+                                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                            ) : (
+                                                <Save className="h-4 w-4 mr-2" />
+                                            )}
+                                            Salvar & Validar
+                                        </Button>
+                                    )}
+
+                                    {/* Botão Revisar (Apenas nas abas Prontos e Duplicados) */}
                                     {status !== 'needs_catmat_info' && (
                                         <Button 
                                             variant="outline" 
