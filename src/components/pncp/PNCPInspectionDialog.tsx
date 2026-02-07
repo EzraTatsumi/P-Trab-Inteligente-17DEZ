@@ -13,7 +13,7 @@ import { saveNewCatmatEntry } from '@/integrations/supabase/api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Textarea } from '@/components/ui/textarea';
+import { Textarea } from "@/components/ui/textarea";
 import { formatCodug } from '@/lib/formatUtils'; // Importando formatCodug
 
 interface PNCPInspectionDialogProps {
@@ -221,6 +221,11 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                             // Formatação do Pregão (removendo zeros à esquerda)
                             const formattedPregao = item.mappedItem.numero_pregao.replace(/^0+/, '');
                             
+                            // Lógica de exibição da Descrição Oficial (PNCP)
+                            const officialDescription = item.officialPncpDescription;
+                            const isErrorPlaceholder = officialDescription && (officialDescription.startsWith("Descrição oficial para") || officialDescription === "Falha ao carregar descrição oficial.");
+                            const displayOfficialDescription = status === 'duplicate' || !officialDescription || isErrorPlaceholder ? 'N/A' : officialDescription;
+
                             return (
                                 <TableRow key={item.originalPncpItem.id}>
                                     <TableCell className="font-semibold text-sm">
@@ -261,7 +266,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                     
                                     {/* Coluna 3: Descrição Oficial (PNCP) - Bruta, apenas para referência */}
                                     <TableCell className="text-sm max-w-xs whitespace-normal text-muted-foreground">
-                                        {status === 'duplicate' ? 'N/A' : (item.officialPncpDescription && item.officialPncpDescription !== "Falha ao carregar descrição oficial." ? item.officialPncpDescription : 'N/A')}
+                                        {displayOfficialDescription}
                                     </TableCell>
                                     
                                     {/* Coluna 4: Descrição Reduzida (Editável se needs_catmat_info) */}
