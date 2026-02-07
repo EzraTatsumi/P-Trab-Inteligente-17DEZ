@@ -315,7 +315,6 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                             )}
                                             
                                             <Button 
-                                                variant="outline"
                                                 variant="ghost" 
                                                 size="sm" 
                                                 onClick={() => handleRemoveItem(item.originalPncpItem.id)}
