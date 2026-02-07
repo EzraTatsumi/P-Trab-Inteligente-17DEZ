@@ -12,6 +12,7 @@ import { fetchCatmatShortDescription, fetchPncpCatmatDetails } from '@/integrati
 import PNCPInspectionDialog from './pncp/PNCPInspectionDialog'; // NOVO: Importar o diálogo de inspeção
 import { normalizeTextForComparison } from '@/lib/formatUtils'; // <-- NOVO IMPORT
 import { supabase } from '@/integrations/supabase/client'; // <-- IMPORT CORRIGIDO
+import { Tables } from '@/integrations/supabase/types'; // Importar Tables para tipagem
 
 interface ItemAquisicaoPNCPDialogProps {
     open: boolean;
@@ -68,6 +69,47 @@ const generateItemKey = (item: ItemAquisicao): string => {
     
     return `${catmat}|${pregao}|${uasg}`;
 };
+
+/**
+ * Tenta buscar o registro CATMAT no catálogo local usando o código original e o código com padding de 9 dígitos.
+ * @param codigoItem O código CATMAT (string).
+ * @returns O registro do catálogo ou null.
+ */
+async function fetchLocalCatmat(codigoItem: string): Promise<Tables<'catalogo_catmat'> | null> {
+    const cleanCode = codigoItem.replace(/\D/g, '');
+    if (!cleanCode) return null;
+    
+    const catmatCodePadded = cleanCode.padStart(9, '0');
+    
+    // 1. Tenta buscar com padding de 9 dígitos (padrão PNCP)
+    let { data: catmatData, error: catmatError } = await supabase
+        .from('catalogo_catmat')
+        .select('description, short_description')
+        .eq('code', catmatCodePadded)
+        .maybeSingle();
+        
+    if (catmatError) {
+        console.error("Erro na busca CATMAT (padded):", catmatError);
+        // Não lança erro, apenas continua
+    }
+    
+    // 2. Se não encontrou e o código original é diferente do padded, tenta o código original
+    if (!catmatData && cleanCode !== catmatCodePadded) {
+        const { data: originalData, error: originalError } = await supabase
+            .from('catalogo_catmat')
+            .select('description, short_description')
+            .eq('code', cleanCode)
+            .maybeSingle();
+            
+        if (originalError) {
+            console.error("Erro na busca CATMAT (original):", originalError);
+        }
+        
+        catmatData = originalData;
+    }
+    
+    return catmatData as Tables<'catalogo_catmat'> | null;
+}
 
 
 const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
@@ -165,14 +207,8 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     } as InspectionItem;
                 }
                 
-                // 3. Busca da Descrição Reduzida e Completa no Catálogo Local
-                const catmatCodePadded = item.codigoItem.replace(/\D/g, '').padStart(9, '0');
-                
-                const { data: catmatData, error: catmatError } = await supabase
-                    .from('catalogo_catmat')
-                    .select('description, short_description')
-                    .eq('code', catmatCodePadded) // Busca com padding
-                    .maybeSingle();
+                // 3. Busca da Descrição Reduzida e Completa no Catálogo Local (USANDO NOVA FUNÇÃO)
+                const catmatData = await fetchLocalCatmat(item.codigoItem);
                 
                 // 4. Busca de Detalhes do Catálogo de Material do PNCP (para descrição oficial e PDM)
                 const catmatDetails = await fetchPncpCatmatDetails(item.codigoItem);
