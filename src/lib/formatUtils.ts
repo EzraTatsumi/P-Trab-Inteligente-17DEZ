@@ -18,6 +18,12 @@ export function formatCurrency(value: number | string | null | undefined): strin
 }
 
 /**
+ * Alias para formatCurrency, usado em alguns componentes que esperam formatNumber.
+ * Deve ser removido após a refatoração completa.
+ */
+export const formatNumber = formatCurrency;
+
+/**
  * Formata uma string de data (ISO ou YYYY-MM-DD) para DD/MM/YYYY.
  * @param dateString A string de data.
  * @returns String formatada (ex: 31/12/2023) ou 'N/A'.
