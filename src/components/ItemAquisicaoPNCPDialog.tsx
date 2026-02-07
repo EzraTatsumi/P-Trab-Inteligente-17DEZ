@@ -241,13 +241,27 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
             }
             const userId = user.id;
 
-            // 2. Buscar todos os itens existentes do usuário para o ano selecionado
-            // Esta lista inclui itens de TODAS as diretrizes do usuário para o ano.
+            // 2. Buscar todos os itens existentes do usuário para o ano selecionado (outras diretrizes)
             const allExistingItems = await fetchAllExistingAcquisitionItems(selectedYear, userId);
+            
+            // LOG DE DEBUG: Verificar itens existentes no banco
+            console.log("--- INÍCIO DA INSPEÇÃO PNCP ---");
+            console.log("ANO SELECIONADO:", selectedYear);
+            console.log("USER ID:", userId);
+            console.log("ITENS EXISTENTES NO BANCO (OUTRAS DIRETRIZES):", allExistingItems.length);
+            // console.log("ITENS EXISTENTES NO BANCO:", allExistingItems); // Comentado para evitar logs muito longos
+            
+            // 3. COMBINAR ITENS: Itens do banco + Itens da diretriz atual (estado local)
+            const combinedExistingItems = [
+                ...allExistingItems,
+                ...existingItemsInDiretriz
+            ];
+            
+            console.log("ITENS EXISTENTES COMBINADOS (DB + LOCAL):", combinedExistingItems.length);
             
             const inspectionPromises = selectedItemsState.map(async ({ item, pregaoFormatado, uasg }) => {
                 
-                // 3. Mapeamento inicial para ItemAquisicao
+                // 4. Mapeamento inicial para ItemAquisicao
                 const itemDescription = item.descricaoItem || ''; 
                 const initialMappedItem: ItemAquisicao = {
                     id: item.id, 
@@ -266,18 +280,18 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 let fullPncpDescription: string | null = null; 
                 let nomePdm: string | null = null; 
                 
-                // 4. Verificação de Duplicidade Global (Nova Lógica)
-                // Verifica se o item PNCP é duplicado em relação a QUALQUER item existente no DB do usuário para o ano.
-                const isDuplicate = allExistingItems.some(existingItem => isFlexibleDuplicate(initialMappedItem, existingItem));
+                // 5. Verificação de Duplicidade Global (Nova Lógica)
+                // Verifica se o item PNCP é duplicado em relação a QUALQUER item existente no COMBINADO.
+                const isDuplicate = combinedExistingItems.some(existingItem => isFlexibleDuplicate(initialMappedItem, existingItem));
                 
                 if (isDuplicate) {
                     status = 'duplicate';
                     messages.push('Item duplicado em uma diretriz existente para o ano selecionado.');
                 } else {
-                    // 5. Busca da Descrição Reduzida no Catálogo CATMAT (DB local)
+                    // 6. Busca da Descrição Reduzida no Catálogo CATMAT (DB local)
                     shortDescription = await fetchCatmatShortDescription(item.codigoItem);
                     
-                    // 6. Busca da Descrição Completa e PDM no PNCP (API externa)
+                    // 7. Busca da Descrição Completa e PDM no PNCP (API externa)
                     const pncpDetails = await fetchCatmatFullDescription(item.codigoItem);
                     fullPncpDescription = pncpDetails.fullDescription;
                     nomePdm = pncpDetails.nomePdm; 
@@ -310,7 +324,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
             const results = await Promise.all(inspectionPromises);
             setInspectionList(results);
             
-            // 7. Abrir o diálogo de inspeção
+            // 8. Abrir o diálogo de inspeção
             setIsInspectionDialogOpen(true);
             
         } catch (error) {
