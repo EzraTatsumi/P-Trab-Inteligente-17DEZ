@@ -12,9 +12,9 @@ import { formatCodug } from '@/lib/formatUtils';
 import OmSelectorDialog from '@/components/OmSelectorDialog';
 import { format, subDays } from 'date-fns';
 import { fetchArpsByUasg } from '@/integrations/supabase/api';
-import { ArpRawResult } from '@/types/pncp'; // Importando o tipo Raw
-import ArpSearchResultsList from './ArpSearchResultsList'; // Importando o novo componente
-import { OMData } from '@/lib/omUtils'; // Importando OMData
+import { ArpItemResult } from '@/types/pncp'; // Importando o tipo ArpItemResult
+import ArpSearchResultsList from './ArpSearchResultsList';
+import { OMData } from '@/lib/omUtils';
 
 // 1. Esquema de Validação
 const formSchema = z.object({
@@ -47,7 +47,7 @@ const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isOmSelectorOpen, setIsOmSelectorOpen] = useState(false);
-    const [arpResults, setArpResults] = useState<ArpRawResult[]>([]); // Usando ArpRawResult
+    const [arpResults, setArpResults] = useState<ArpItemResult[]>([]); // CORRIGIDO: Usando ArpItemResult
     
     // NOVO ESTADO: Armazena o nome da OM para o cabeçalho
     const [searchedOmName, setSearchedOmName] = useState<string>(""); 

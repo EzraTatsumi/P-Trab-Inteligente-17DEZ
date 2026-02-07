@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArpRawResult } from '@/types/pncp';
+import { ArpItemResult } from '@/types/pncp'; // CORRIGIDO: Usando ArpItemResult
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
 import { formatCodug, formatCurrency, formatDate } from '@/lib/formatUtils';
 import { Card, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,7 @@ interface ArpGroup {
     pregao: string;
     uasg: string;
     omNome: string;
-    itens: ArpRawResult[];
+    itens: ArpItemResult[]; // CORRIGIDO: Usando ArpItemResult
     // Dados representativos do grupo (do primeiro item)
     objetoRepresentativo: string;
     dataVigenciaInicial: string;
@@ -22,7 +22,7 @@ interface ArpGroup {
 }
 
 interface ArpSearchResultsListProps {
-    results: ArpRawResult[];
+    results: ArpItemResult[]; // CORRIGIDO: Usando ArpItemResult
     onSelect: (item: ItemAquisicao) => void;
     // NOVAS PROPS para o cabeçalho
     searchedUasg: string;
@@ -31,34 +31,22 @@ interface ArpSearchResultsListProps {
 
 const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, onSelect, searchedUasg, searchedOmName }) => {
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-    const [selectedArp, setSelectedArp] = useState<ArpRawResult | null>(null);
+    const [selectedArp, setSelectedArp] = useState<ArpItemResult | null>(null); // CORRIGIDO: Usando ArpItemResult
 
     // 1. Lógica de Agrupamento
     const groupedArps = useMemo(() => {
         const groupsMap = new Map<string, ArpGroup>();
 
         results.forEach(arp => {
-            // 1. Sanitização e Fallback para campos chave
-            const numeroCompraStr = String(arp.numeroCompra || '').trim();
-            const anoCompraStr = String(arp.anoCompra || '').trim();
-            const uasgStr = String(arp.codigoUnidadeGerenciadora || '').replace(/\D/g, '');
-            
-            let pregaoKey: string;
-            if (numeroCompraStr && anoCompraStr) {
-                const numeroCompraFormatado = formatCodug(numeroCompraStr);
-                const anoCompraDoisDigitos = anoCompraStr.slice(-2);
-                pregaoKey = `${numeroCompraFormatado}/${anoCompraDoisDigitos}`;
-            } else {
-                // Agrupa registros incompletos em uma chave única
-                pregaoKey = 'DADOS_INCOMPLETOS';
-            }
+            // A chave de agrupamento é o pregaoFormatado, que já foi calculado no API.ts
+            const pregaoKey = arp.pregaoFormatado;
             
             // 2. Criação ou atualização do grupo
             if (!groupsMap.has(pregaoKey)) {
                 groupsMap.set(pregaoKey, {
                     pregao: pregaoKey,
-                    uasg: uasgStr,
-                    omNome: arp.nomeUnidadeGerenciadora || 'OM Desconhecida',
+                    uasg: arp.uasg,
+                    omNome: arp.omNome,
                     itens: [],
                     // Captura os dados representativos do primeiro item
                     objetoRepresentativo: arp.objeto || 'Objeto não especificado',
@@ -83,8 +71,9 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
     };
     
     // Mantemos a pré-seleção, mas o botão de importação será o único ponto de ação
-    const handlePreSelect = (arp: ArpRawResult) => {
-        setSelectedArp(arp.idCompra === selectedArp?.idCompra ? null : arp);
+    const handlePreSelect = (arp: ArpItemResult) => {
+        // Usamos o ID da Compra (id) para rastrear a seleção
+        setSelectedArp(arp.id === selectedArp?.id ? null : arp);
     };
     
     const handleConfirmImport = () => {
@@ -94,24 +83,20 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
         }
         
         // Garantir que os campos necessários para ItemAquisicao não sejam nulos
-        const numeroCompraStr = String(selectedArp.numeroCompra || '').trim();
-        const anoCompraStr = String(selectedArp.anoCompra || '').trim();
-        const uasgStr = String(selectedArp.codigoUnidadeGerenciadora || '').replace(/\D/g, '');
-        
-        if (!numeroCompraStr || !anoCompraStr || !uasgStr) {
-            toast.error("Dados da ARP incompletos (Número da Compra, Ano ou UASG). Não é possível importar.");
+        if (!selectedArp.pregaoFormatado || !selectedArp.uasg) {
+            toast.error("Dados da ARP incompletos (Pregão ou UASG). Não é possível importar.");
             return;
         }
         
-        // Mapeamento do ArpRawResult para ItemAquisicao
+        // Mapeamento do ArpItemResult para ItemAquisicao
         const itemAquisicao: ItemAquisicao = {
-            id: selectedArp.idCompra, // Usar ID da Compra como ID temporário
-            descricao_item: `ARP ${selectedArp.numeroAtaRegistroPreco || 'N/A'} - ${selectedArp.objeto || 'Objeto não especificado'}`,
-            descricao_reduzida: `ARP ${selectedArp.numeroAtaRegistroPreco || 'N/A'}`,
-            // Valor médio por item (se quantidadeItens for 0, evita divisão por zero)
-            valor_unitario: selectedArp.valorTotal / (selectedArp.quantidadeItens || 1), 
-            numero_pregao: `${formatCodug(numeroCompraStr)}/${anoCompraStr.slice(-2)}`,
-            uasg: uasgStr,
+            id: selectedArp.id, // Usar ID da Compra como ID temporário
+            descricao_item: `ARP ${selectedArp.numeroAta || 'N/A'} - ${selectedArp.objeto || 'Objeto não especificado'}`,
+            descricao_reduzida: `ARP ${selectedArp.numeroAta || 'N/A'}`,
+            // Valor unitário é o valor total estimado dividido pela quantidade de itens
+            valor_unitario: selectedArp.valorTotalEstimado / (selectedArp.quantidadeItens || 1), 
+            numero_pregao: selectedArp.pregaoFormatado,
+            uasg: selectedArp.uasg,
             codigo_catmat: 'PNCP_REF', // Placeholder
         };
         
@@ -126,19 +111,21 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
         );
     }
     
-    // 1. Tenta usar o nome da OM do primeiro grupo (que veio da API)
-    let omNameDisplay = groupedArps.length > 0 ? groupedArps[0].omNome : searchedOmName;
+    // Lógica de exibição do nome da OM no cabeçalho:
+    // 1. Tenta usar o nome da OM do primeiro resultado (que veio da API)
+    const omNameFromApi = groupedArps.length > 0 ? groupedArps[0].omNome : searchedOmName;
     
-    // 2. Se o nome da API for o fallback genérico 'OM Desconhecida', usa o nome pesquisado
-    if (omNameDisplay === 'OM Desconhecida') {
-        omNameDisplay = searchedOmName;
-    }
+    // 2. Se o nome da API for genérico (UASG XXX.XXX), usa o nome pesquisado (se for mais informativo)
+    // No API.ts, o fallback é 'UASG XXX.XXX'. Se o nome da API for diferente disso, usamos ele.
+    const omNameDisplay = omNameFromApi.startsWith('UASG ') && omNameFromApi !== searchedOmName 
+        ? searchedOmName 
+        : omNameFromApi;
     
     const omUasg = searchedUasg;
 
     return (
         <div className="p-4 space-y-4">
-            {/* CABEÇALHO DA PESQUISA */}
+            {/* CABEÇALHO DA PESQUISA - CORRIGIDO CONFORME SOLICITADO */}
             <h3 className="text-lg font-semibold">
                 Resultado para {omNameDisplay} ({formatCodug(omUasg)})
                 <span className="text-sm font-normal text-muted-foreground ml-2">
@@ -201,15 +188,15 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                                             </thead>
                                                             <TableBody>
                                                                 {group.itens.map(arp => {
-                                                                    const isSelected = selectedArp?.idCompra === arp.idCompra;
+                                                                    const isSelected = selectedArp?.id === arp.id;
                                                                     return (
                                                                         <TableRow 
-                                                                            key={arp.idCompra}
+                                                                            key={arp.id}
                                                                             className={`cursor-pointer transition-colors ${isSelected ? "bg-green-100/50 hover:bg-green-100/70" : "hover:bg-muted/50"}`}
                                                                             onClick={() => handlePreSelect(arp)}
                                                                         >
                                                                             <TableCell className="text-sm font-medium">
-                                                                                {arp.numeroAtaRegistroPreco || 'N/A'}
+                                                                                {arp.numeroAta || 'N/A'}
                                                                             </TableCell>
                                                                             <TableCell className="text-center text-sm">
                                                                                 {arp.quantidadeItens || 0}
