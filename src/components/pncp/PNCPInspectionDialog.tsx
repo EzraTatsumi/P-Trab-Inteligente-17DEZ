@@ -195,11 +195,14 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
         }
         
         // Ajuste de largura das colunas:
-        const catmatWidth = 'w-[8%]';
-        const arpDescWidth = 'w-[35%]';
-        const pncpDescWidth = 'w-[35%]';
-        const actionWidth = 'w-[10%]';
-        const statusOrShortDescWidth = 'w-[12%]';
+        // Reduzindo Ações (actionWidth) e Status/ShortDesc (statusOrShortDescWidth)
+        // Aumentando Descrição ARP (arpDescWidth) e Descrição PNCP (pncpDescWidth)
+        const catmatWidth = 'w-[8%]'; // 8%
+        const arpDescWidth = 'w-[38%]'; // 38% (Aumentou de 35%)
+        const pncpDescWidth = 'w-[38%]'; // 38% (Aumentou de 35%)
+        const actionWidth = 'w-[8%]'; // 8% (Reduziu de 10%)
+        const statusOrShortDescWidth = 'w-[8%]'; // 8% (Reduziu de 12%)
+        // Total: 8 + 38 + 38 + 8 + 8 = 100%
 
         return (
             <div className="max-h-[50vh] overflow-y-auto border rounded-md">
@@ -289,9 +292,9 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                             {saveCatmatMutation.isPending ? (
                                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                             ) : (
-                                                <Save className="h-4 w-4 mr-2" />
+                                                <Check className="h-4 w-4 mr-2" />
                                             )}
-                                            Salvar & Validar
+                                            Validar
                                         </Button>
                                     )}
 
@@ -329,7 +332,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Inspeção de Itens PNCP</DialogTitle>
                     <DialogDescription>
@@ -359,7 +362,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                     
                     <TabsContent value="needs_catmat_info">
                         <p className="text-sm text-muted-foreground mb-3">
-                            Estes itens possuem códigos CATMAT válidos, mas não têm uma descrição reduzida cadastrada no seu catálogo. Por favor, forneça um nome curto para facilitar a identificação e clique em "Salvar & Validar".
+                            Estes itens possuem códigos CATMAT válidos, mas não têm uma descrição reduzida cadastrada no seu catálogo. Por favor, forneça um nome curto para facilitar a identificação e clique em "Validar".
                         </p>
                         {renderInspectionTable('needs_catmat_info')}
                     </TabsContent>
