@@ -198,7 +198,8 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     };
 
     /**
-     * Lógica de importação final, incluindo persistência no catálogo CATMAT.
+     * Lógica de importação final. A persistência no catálogo CATMAT foi removida
+     * para evitar erros de RLS, focando apenas na importação para a diretriz.
      */
     const handleFinalImport = async () => {
         if (totalNeedsInfo > 0) {
@@ -206,10 +207,6 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             setActiveTab('needs_catmat_info');
             return;
         }
-        
-        // Filtra apenas itens válidos que tiveram a descrição reduzida preenchida
-        const itemsToPersist = inspectionList
-            .filter(item => item.status === 'valid' && item.userShortDescription.trim() !== '');
             
         const finalItems = inspectionList
             .filter(item => item.status === 'valid')
@@ -220,38 +217,26 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             return;
         }
         
-        setIsSavingCatmat(true);
-        toast.info(`Persistindo ${itemsToPersist.length} descrições reduzidas no catálogo...`);
+        setIsSavingCatmat(true); // Mantemos o loading para feedback visual
         
         try {
-            // 1. Persistir no catálogo CATMAT (apenas para itens que foram validados manualmente)
-            const persistencePromises = itemsToPersist.map(item => {
-                // Usa a descrição reduzida que foi preenchida e validada
-                const shortDescription = item.mappedItem.descricao_reduzida || item.userShortDescription;
-                
-                if (shortDescription.trim() !== '') {
-                    return saveNewCatmatEntry(
-                        item.mappedItem.codigo_catmat,
-                        item.mappedItem.descricao_item,
-                        shortDescription
-                    );
-                }
-                return Promise.resolve();
-            });
+            // 1. Não tentamos mais persistir no catálogo CATMAT devido a erros de RLS.
+            // A descrição reduzida (descricao_reduzida) já está preenchida no mappedItem
+            // se foi encontrada no catálogo local ou se foi validada pelo usuário.
             
-            await Promise.all(persistencePromises);
-            
-            // 2. Invalida a query do catálogo para que a próxima busca já use os novos valores
+            // 2. Invalida a query do catálogo (mantido para limpar cache, mas sem garantia de novos dados)
             queryClient.invalidateQueries({ queryKey: ['catmatCatalog'] });
             
             // 3. Chama a importação final no componente pai
             onFinalImport(finalItems);
             
+            // Sucesso na importação para o formulário principal
+            toast.success(`Importação de ${formatItemCount(finalItems.length)} concluída.`);
+            
         } catch (error: any) {
-            console.error("Erro durante a persistência CATMAT na importação final:", error);
-            // Se a persistência falhar, ainda podemos tentar importar os itens, mas avisamos o usuário.
-            // No entanto, para manter a integridade, vamos cancelar a importação se a persistência falhar.
-            toast.error(`Falha ao salvar no catálogo CATMAT. Importação cancelada. Detalhes: ${error.message}`);
+            // Se houver erro aqui, é um erro inesperado, mas o fluxo principal deve ser garantido.
+            console.error("Erro durante a importação final:", error);
+            toast.error(`Falha inesperada durante a importação. Detalhes: ${error.message}`);
         } finally {
             setIsSavingCatmat(false);
         }
