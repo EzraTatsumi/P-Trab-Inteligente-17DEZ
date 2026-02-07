@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Import, Check, X, AlertTriangle, Save, BookOpen } from "lucide-react";
+import { Loader2, Import, Check, X, AlertTriangle, Save, BookOpen, Pencil } from "lucide-react";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { InspectionItem, InspectionStatus } from "@/types/pncpInspection";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ interface PNCPInspectionDialogProps {
     onOpenChange: (open: boolean) => void;
     inspectionList: InspectionItem[];
     onFinalImport: (items: ItemAquisicao[]) => void;
+    onReviewItem: (item: ItemAquisicao) => void; // NOVO: Função para revisar o item
 }
 
 const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
@@ -25,6 +26,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     onOpenChange,
     inspectionList: initialInspectionList,
     onFinalImport,
+    onReviewItem, // NOVO
 }) => {
     const [inspectionList, setInspectionList] = useState(initialInspectionList);
     const [activeTab, setActiveTab] = useState<InspectionStatus>('valid');
@@ -118,6 +120,14 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     const handleRemoveItem = (itemId: string) => {
         setInspectionList(prev => prev.filter(item => item.originalPncpItem.id !== itemId));
     };
+    
+    // NOVO: Função para revisar o item
+    const handleReviewItem = (item: InspectionItem) => {
+        // Chama a função de callback com o item mapeado
+        onReviewItem(item.mappedItem);
+        // Fecha o diálogo de inspeção
+        onOpenChange(false);
+    };
 
     const handleFinalImport = () => {
         if (totalNeedsInfo > 0) {
@@ -173,7 +183,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                 <TableHead className={cn(statusOrShortDescWidth, "text-center")}>Status</TableHead>
                             )}
                             
-                            <TableHead className={actionWidth + " text-center"}>Ações</TableHead>
+                            <TableHead className={actionWidth + " text-right"}>Ações</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -239,12 +249,23 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                     </TableCell>
                                 )}
                                 
-                                <TableCell className="text-right">
+                                <TableCell className="text-right space-y-1">
+                                    {/* NOVO BOTÃO: Revisar */}
                                     <Button 
-                                        variant="outline" // Alterado para outline para ter borda
+                                        variant="outline" 
+                                        size="sm" 
+                                        onClick={() => handleReviewItem(item)}
+                                        className="w-full"
+                                    >
+                                        <Pencil className="h-4 w-4 mr-1" />
+                                        Revisar
+                                    </Button>
+                                    
+                                    <Button 
+                                        variant="outline" 
                                         size="sm" 
                                         onClick={() => handleRemoveItem(item.originalPncpItem.id)}
-                                        className="text-red-600 border-red-300 hover:bg-red-100 hover:text-red-700" // Adicionando borda e hover
+                                        className="w-full text-red-600 border-red-300 hover:bg-red-100 hover:text-red-700"
                                     >
                                         Remover
                                     </Button>

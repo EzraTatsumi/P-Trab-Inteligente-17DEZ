@@ -81,6 +81,9 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     const [itemForm, setItemForm] = useState<typeof initialItemForm>(initialItemForm);
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     
+    // NOVO ESTADO: Item de aquisição que veio para revisão (do PNCP)
+    const [itemToReview, setItemToReview] = useState<ItemAquisicao | null>(null);
+    
     // NOVO ESTADO: Controle do diálogo do catálogo de Subitem
     const [isCatalogOpen, setIsCatalogOpen] = useState(false);
     
@@ -107,6 +110,14 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         }
         setEditingItemId(null);
     }, [diretrizToEdit, open, selectedYear]);
+    
+    // Efeito para lidar com o item que veio para revisão
+    useEffect(() => {
+        if (itemToReview) {
+            handleEditItem(itemToReview);
+            setItemToReview(null); // Limpa o estado após o uso
+        }
+    }, [itemToReview]);
 
     const handleItemCurrencyChange = (rawValue: string) => {
         const { numericValue, digits } = formatCurrencyInput(rawValue);
@@ -160,7 +171,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         }
 
         const newItem: ItemAquisicao = {
-            id: editingItemId || Math.random().toString(36).substring(2, 9),
+            // Se estiver editando, mantém o ID. Se for novo, gera um ID local.
+            id: editingItemId || Math.random().toString(36).substring(2, 9), 
             descricao_item: itemForm.descricao_item,
             descricao_reduzida: itemForm.descricao_reduzida, 
             valor_unitario: itemForm.valor_unitario,
@@ -282,6 +294,12 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         
         // 3. FECHAR O DIÁLOGO PNCP
         setIsPNCPSearchOpen(false); 
+    };
+    
+    // NOVO: Função para receber um item para revisão (chamado pelo PNCPInspectionDialog)
+    const handleReviewItem = (item: ItemAquisicao) => {
+        // Define o item no estado para que o useEffect o processe
+        setItemToReview(item);
     };
 
 
@@ -626,6 +644,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                 onImport={handlePNCPImport}
                 // NOVO: Passa a lista de itens já existentes na diretriz atual
                 existingItemsInDiretriz={subitemForm.itens_aquisicao}
+                onReviewItem={handleReviewItem} // NOVO: Passando a função de revisão
             />
         </Dialog>
     );

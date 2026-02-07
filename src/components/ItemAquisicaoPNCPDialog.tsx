@@ -17,6 +17,8 @@ interface ItemAquisicaoPNCPDialogProps {
     onImport: (items: ItemAquisicao[]) => void;
     // NOVO: Lista de itens já existentes na diretriz de destino
     existingItemsInDiretriz: ItemAquisicao[]; 
+    // NOVO: Função para iniciar a edição de um item no formulário principal
+    onReviewItem: (item: ItemAquisicao) => void;
 }
 
 // Placeholder components for future implementation
@@ -72,11 +74,12 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     open,
     onOpenChange,
     onImport,
-    existingItemsInDiretriz, // NOVO
+    existingItemsInDiretriz,
+    onReviewItem, // NOVO
 }) => {
     const [selectedTab, setSelectedTab] = useState("arp-uasg");
     const [selectedItemsState, setSelectedItemsState] = useState<SelectedItemState[]>([]);
-    const [isInspecting, setIsInspecting] = useState(false); // Mudança de isImporting para isInspecting
+    const [isInspecting, setIsInspecting] = useState(false);
     
     // NOVO ESTADO: Gerencia a lista de itens para inspeção
     const [inspectionList, setInspectionList] = useState<InspectionItem[]>([]);
@@ -199,13 +202,23 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         }
     };
     
+    // Função chamada pelo PNCPInspectionDialog para iniciar a edição no formulário principal
+    const handleReviewItem = (item: ItemAquisicao) => {
+        // 1. Fecha o diálogo de inspeção
+        setIsInspectionDialogOpen(false);
+        // 2. Fecha o diálogo principal de PNCP
+        onOpenChange(false);
+        // 3. Chama a função de revisão do componente pai (MaterialConsumoDiretrizFormDialog)
+        onReviewItem(item);
+    };
+    
     // Função chamada pelo PNCPInspectionDialog após a validação/resolução
     const handleFinalImport = (items: ItemAquisicao[]) => {
         onImport(items);
-        // Fechar o diálogo principal
-        onOpenChange(false);
+        // Fecha o diálogo principal após a importação
+        onOpenChange(false); 
     };
-
+    
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             {/* Adiciona a ref ao DialogContent */}
@@ -282,6 +295,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     onOpenChange={setIsInspectionDialogOpen}
                     inspectionList={inspectionList}
                     onFinalImport={handleFinalImport}
+                    onReviewItem={handleReviewItem} // NOVO: Passando a função de revisão
                 />
             )}
         </Dialog>
