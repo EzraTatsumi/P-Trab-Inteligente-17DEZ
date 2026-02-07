@@ -272,7 +272,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                             return (
                                 <React.Fragment key={group.pregao}>
                                     <TableRow 
-                                        ref={el => rowRefs.current[group.pregao] = el} {/* NOVO: Adiciona a referência da linha */}
+                                        ref={el => rowRefs.current[group.pregao] = el} // NOVO: Adiciona a referência da linha
                                         className="cursor-pointer hover:bg-muted/50 transition-colors"
                                         onClick={() => handleToggleGroup(group.pregao)}
                                     >
