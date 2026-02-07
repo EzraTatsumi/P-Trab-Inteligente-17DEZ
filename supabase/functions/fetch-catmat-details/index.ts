@@ -6,8 +6,8 @@ const corsHeaders = {
 }
 
 // Endpoint da API do Catálogo de Material do PNCP (Consulta por Código)
-// CORREÇÃO: Usando o endpoint de consulta que aceita parâmetros de query.
-const API_URL = 'https://dadosabertos.compras.gov.br/catalogo-material/1_consultarItem_Codigo';
+// CORREÇÃO: Usando o endpoint correto identificado pelo usuário.
+const API_URL = 'https://dadosabertos.compras.gov.br/modulo-material/4_consultarItemMaterial';
 const PAGE_SIZE = '10'; // Tamanho mínimo de página exigido pela API (entre 10 e 500)
 
 /**
@@ -21,6 +21,7 @@ async function fetchCatmatDetails(codigoItem: string) {
         pagina: '1',
         tamanhoPagina: PAGE_SIZE, 
         codigoItem: cleanCode, // Passa o código limpo e preenchido
+        bps: 'false', // Parâmetro adicional observado na sua requisição curl
     });
 
     const fullUrl = `${API_URL}?${params.toString()}`;
@@ -95,7 +96,6 @@ serve(async (req) => {
   } catch (error) {
     console.error("[fetch-catmat-details] General error:", error);
     // Se houver um erro na API externa (como 400 ou 404), ele será capturado aqui e retornará 500.
-    // O frontend já está configurado para lidar com o status não-2xx.
     return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
