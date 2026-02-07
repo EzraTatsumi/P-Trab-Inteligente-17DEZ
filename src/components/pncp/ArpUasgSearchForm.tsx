@@ -114,10 +114,11 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
             
             // Rola para o topo dos resultados após a busca ser concluída
             if (results.length > 0 && resultsRef.current) {
-                // Usamos setTimeout para garantir que o DOM foi renderizado após a atualização do estado
+                // Aumenta o atraso para garantir que o DOM do DialogContent tenha se ajustado
                 setTimeout(() => {
+                    // Rola o elemento de resultados para o topo do container de rolagem (DialogContent)
                     resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 50);
+                }, 100); // Atraso de 100ms
             }
 
         } catch (error: any) {
