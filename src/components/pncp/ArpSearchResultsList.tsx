@@ -206,17 +206,18 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
         return Array.from(groupsMap.values()).sort((a, b) => a.pregao.localeCompare(b.pregao));
     }, [results]);
     
-    // MUDANÇA: Implementação da rolagem
+    // MUDANÇA: Implementação da rolagem e do comportamento de acordeão
     const handleToggleGroup = (pregaoKey: string) => {
-        const isOpening = !openGroups[pregaoKey];
+        const isCurrentlyOpen = openGroups[pregaoKey];
         
-        setOpenGroups(prev => ({
-            ...prev,
-            [pregaoKey]: isOpening,
-        }));
-        
-        // Se estiver abrindo, rola a linha para o topo do contêiner de rolagem
-        if (isOpening) {
+        if (isCurrentlyOpen) {
+            // Se já estiver aberto, fecha
+            setOpenGroups({});
+        } else {
+            // Se estiver fechado, abre e fecha todos os outros
+            setOpenGroups({ [pregaoKey]: true });
+            
+            // Rola a linha para o topo do contêiner de rolagem
             setTimeout(() => {
                 const rowElement = rowRefs.current[pregaoKey];
                 if (rowElement) {
@@ -225,7 +226,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                         block: "start",
                     });
                 }
-            }, 100); // Pequeno atraso para garantir que a expansão do Collapsible comece
+            }, 100); 
         }
     };
     
