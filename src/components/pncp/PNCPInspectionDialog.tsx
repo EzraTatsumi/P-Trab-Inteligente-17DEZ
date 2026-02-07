@@ -220,7 +220,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                 <TableHead className={cn(statusOrShortDescWidth, "text-center")}>Status</TableHead>
                             )}
                             
-                            <TableHead className={actionWidth + " text-right"}>Ações</TableHead>
+                            <TableHead className={actionWidth + " text-center"}>Ações</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -252,6 +252,11 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                             placeholder={item.mappedItem.nome_pdm || "Nome curto para o catálogo"}
                                             disabled={saveCatmatMutation.isPending}
                                         />
+                                        {item.mappedItem.nome_pdm && (
+                                            <p className="text-xs text-muted-foreground mt-1 text-center">
+                                                Sugestão PDM: {item.mappedItem.nome_pdm}
+                                            </p>
+                                        )}
                                     </TableCell>
                                 ) : status === 'valid' ? (
                                     // Exibe o Nome Reduzido para itens válidos
