@@ -127,7 +127,7 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelec
                             >
                                 <TableCell className="text-xs font-medium">{item.numeroAta}</TableCell> {/* REDUZIDO PARA text-xs */}
                                 <TableCell className="text-xs font-medium">{item.codigoItem}</TableCell> {/* REDUZIDO PARA text-xs */}
-                                <TableCell className="text-xs max-w-lg whitespace-normal"> {/* REDUZIDO PARA text-xs */}
+                                <TableCell className="text-[0.7rem] max-w-lg whitespace-normal"> {/* ALTERADO PARA text-[0.7rem] */}
                                     {capitalizeFirstLetter(item.descricaoItem)}
                                 </TableCell>
                                 <TableCell className="text-center text-xs"> {/* REDUZIDO PARA text-xs */}
@@ -272,7 +272,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                             return (
                                 <React.Fragment key={group.pregao}>
                                     <TableRow 
-                                        ref={el => rowRefs.current[group.pregao] = el} // NOVO: Adiciona a referência da linha
+                                        ref={el => rowRefs.current[group.pregao] = el} // Adiciona a referência da linha
                                         className="cursor-pointer hover:bg-muted/50 transition-colors"
                                         onClick={() => handleToggleGroup(group.pregao)}
                                     >
