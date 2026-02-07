@@ -72,12 +72,15 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
         onSuccess: (itemId) => {
             toast.success("Descrição reduzida salva no Catálogo CATMAT!");
             
+            let newNeedsInfoCount = totalNeedsInfo;
+
             // Atualiza o estado local para marcar o item como 'valid'
             setInspectionList(prev => prev.map(item => {
                 if (item.originalPncpItem.id === itemId) {
+                    newNeedsInfoCount--; // Decrementa a contagem de pendentes
                     return {
                         ...item,
-                        status: 'valid',
+                        status: 'valid', // <-- Apenas este item é alterado
                         mappedItem: {
                             ...item.mappedItem,
                             descricao_reduzida: item.userShortDescription,
@@ -87,6 +90,11 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                 }
                 return item;
             }));
+            
+            // Se for o último item pendente, muda a aba para 'valid'
+            if (newNeedsInfoCount === 0) {
+                setActiveTab('valid');
+            }
             
             // Invalida a query do catálogo para que a próxima busca já use o novo valor
             queryClient.invalidateQueries({ queryKey: ['catmatCatalog'] });
