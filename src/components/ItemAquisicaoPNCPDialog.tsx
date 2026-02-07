@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,8 +8,11 @@ import { DetailedArpItem } from '@/types/pncp';
 import { InspectionItem, InspectionStatus } from '@/types/pncpInspection'; // NOVO: Importar tipos de inspeção
 import { toast } from "sonner";
 import ArpUasgSearch from './pncp/ArpUasgSearch'; // Importa o novo componente
-import { fetchCatmatShortDescription } from '@/integrations/supabase/api'; // Importa a função de busca CATMAT
+import { fetchCatmatShortDescription, fetchPncpCatmatDetails } from '@/integrations/supabase/api'; // Importa as funções de busca CATMAT e detalhes PNCP
 import PNCPInspectionDialog from './pncp/PNCPInspectionDialog'; // NOVO: Importar o diálogo de inspeção
+import { normalizeTextForComparison } from '@/lib/formatUtils'; // <-- NOVO IMPORT
+import { supabase } from '@/integrations/supabase/client'; // <-- IMPORT CORRIGIDO
+import { Tables } from '@/integrations/supabase/types'; // Importar Tables para tipagem
 
 interface ItemAquisicaoPNCPDialogProps {
     open: boolean;
@@ -52,20 +55,61 @@ interface SelectedItemState {
 }
 
 // Função auxiliar para gerar a chave de unicidade de um item (copiada de MaterialConsumoDiretrizFormDialog.tsx)
-const generateItemKey = (item: ItemAquisicao | Omit<ItemAquisicao, 'id'>): string => {
+const generateItemKey = (item: ItemAquisicao): string => {
     const normalize = (str: string) => 
         (str || '')
         .trim()
         .toUpperCase()
         .replace(/\s+/g, ' ');
         
-    const desc = normalize(item.descricao_item); 
+    // CRITÉRIO DE DUPLICIDADE SIMPLIFICADO: CATMAT, Pregão e UASG
     const catmat = normalize(item.codigo_catmat);
     const pregao = normalize(item.numero_pregao);
     const uasg = normalize(item.uasg);
     
-    return `${desc}|${catmat}|${pregao}|${uasg}`;
+    return `${catmat}|${pregao}|${uasg}`;
 };
+
+/**
+ * Tenta buscar o registro CATMAT no catálogo local usando o código original e o código com padding de 9 dígitos.
+ * @param codigoItem O código CATMAT (string).
+ * @returns O registro do catálogo ou null.
+ */
+async function fetchLocalCatmat(codigoItem: string): Promise<Tables<'catalogo_catmat'> | null> {
+    const cleanCode = codigoItem.replace(/\D/g, '');
+    if (!cleanCode) return null;
+    
+    const catmatCodePadded = cleanCode.padStart(9, '0');
+    
+    // 1. Tenta buscar com padding de 9 dígitos (padrão PNCP)
+    let { data: catmatData, error: catmatError } = await supabase
+        .from('catalogo_catmat')
+        .select('description, short_description')
+        .eq('code', catmatCodePadded)
+        .maybeSingle();
+        
+    if (catmatError) {
+        console.error("Erro na busca CATMAT (padded):", catmatError);
+        // Não lança erro, apenas continua
+    }
+    
+    // 2. Se não encontrou e o código original é diferente do padded, tenta o código original
+    if (!catmatData && cleanCode !== catmatCodePadded) {
+        const { data: originalData, error: originalError } = await supabase
+            .from('catalogo_catmat')
+            .select('description, short_description')
+            .eq('code', cleanCode)
+            .maybeSingle();
+            
+        if (originalError) {
+            console.error("Erro na busca CATMAT (original):", originalError);
+        }
+        
+        catmatData = originalData;
+    }
+    
+    return catmatData as Tables<'catalogo_catmat'> | null;
+}
 
 
 const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
@@ -81,9 +125,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     // NOVO ESTADO: Gerencia a lista de itens para inspeção
     const [inspectionList, setInspectionList] = useState<InspectionItem[]>([]);
     const [isInspectionDialogOpen, setIsInspectionDialogOpen] = useState(false);
-    
-    // NOVO: Ref para o DialogContent (o container de rolagem)
-    const dialogContentRef = useRef<HTMLDivElement>(null);
 
     // Limpa o estado de seleção sempre que o diálogo é aberto
     useEffect(() => {
@@ -130,12 +171,12 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         try {
             const inspectionPromises = selectedItemsState.map(async ({ item, pregaoFormatado, uasg }) => {
                 
-                // 1. Mapeamento inicial para ItemAquisicao
+                // 1. Mapeamento inicial para ItemAquisicao (usando dados da ARP)
                 const itemDescription = item.descricaoItem || ''; 
                 const initialMappedItem: ItemAquisicao = {
                     id: item.id, 
                     descricao_item: itemDescription,
-                    descricao_reduzida: '', // Será preenchido na inspeção ou busca CATMAT
+                    descricao_reduzida: '', 
                     valor_unitario: item.valorUnitario, 
                     numero_pregao: pregaoFormatado, 
                     uasg: uasg, 
@@ -144,46 +185,96 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 
                 let status: InspectionStatus = 'pending';
                 let messages: string[] = [];
-                let shortDescription: string | null = null;
                 
-                // 2. Verificação de Duplicidade Local
+                // 2. Verificação de Duplicidade Local (Critério: CATMAT, Pregão, UASG)
                 const itemKey = generateItemKey(initialMappedItem);
                 const isDuplicate = existingItemsInDiretriz.some(existingItem => generateItemKey(existingItem) === itemKey);
                 
                 if (isDuplicate) {
+                    // HIPÓTESE 3: DUPLICADO
                     status = 'duplicate';
                     messages.push('Item duplicado na diretriz de destino.');
-                } else {
-                    // 3. Busca da Descrição Reduzida no Catálogo CATMAT
-                    shortDescription = await fetchCatmatShortDescription(item.codigoItem);
                     
-                    if (shortDescription) {
-                        // CATMAT encontrado e tem descrição reduzida
-                        status = 'valid';
-                        messages.push('Pronto para importação.');
-                        initialMappedItem.descricao_reduzida = shortDescription;
-                    } else {
-                        // CATMAT não encontrado ou não tem descrição reduzida
-                        status = 'needs_catmat_info';
-                        messages.push('Requer descrição reduzida para o catálogo CATMAT.');
-                        // Fallback seguro para descrição reduzida (primeiras 50 letras da descrição completa)
-                        initialMappedItem.descricao_reduzida = itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : '');
-                    }
+                    return {
+                        originalPncpItem: item,
+                        mappedItem: initialMappedItem,
+                        status: status,
+                        messages: messages,
+                        userShortDescription: '',
+                        officialPncpDescription: null,
+                        pdmSuggestion: null,
+                        descriptionMismatch: false,
+                    } as InspectionItem;
                 }
                 
-                return {
-                    originalPncpItem: item,
-                    mappedItem: initialMappedItem,
-                    status: status,
-                    messages: messages,
-                    userShortDescription: shortDescription || '', // Campo para preenchimento do usuário
-                } as InspectionItem;
+                // 3. Busca da Descrição Reduzida e Completa no Catálogo Local (USANDO NOVA FUNÇÃO)
+                const catmatData = await fetchLocalCatmat(item.codigoItem);
+                
+                // 4. Busca de Detalhes do Catálogo de Material do PNCP (para descrição oficial e PDM)
+                const catmatDetails = await fetchPncpCatmatDetails(item.codigoItem);
+                const officialDescription = catmatDetails.descricaoItem;
+                const pdmSuggestion = catmatDetails.nomePdm;
+                
+                // 5. Comparação de Descrição (ARP vs Catálogo Oficial)
+                const normalizedOfficial = normalizeTextForComparison(officialDescription);
+                const normalizedArp = normalizeTextForComparison(itemDescription);
+                
+                const descriptionMismatch = officialDescription && 
+                                            officialDescription !== "Falha ao carregar descrição oficial." && 
+                                            normalizedOfficial !== normalizedArp;
+                
+                // --- LÓGICA CORRIGIDA PARA A HIPÓTESE 1 ---
+                if (catmatData) {
+                    // HIPÓTESE 1: CATMAT EXISTE NO CATÁLOGO LOCAL (PRONTO PARA IMPORTAR)
+                    status = 'valid';
+                    messages.push('Pronto para importação.');
+                    
+                    // Mapeia o item para usar os dados padronizados do catálogo local
+                    // Usa a descrição padronizada do BD se existir, senão usa a descrição da ARP
+                    initialMappedItem.descricao_reduzida = catmatData.short_description || '';
+                    initialMappedItem.descricao_item = catmatData.description || itemDescription; 
+                    
+                    if (descriptionMismatch) {
+                        messages.push('Divergência: Descrição da ARP difere da descrição oficial do PNCP.');
+                    }
+                    
+                    return {
+                        originalPncpItem: item,
+                        mappedItem: initialMappedItem,
+                        status: status,
+                        messages: messages,
+                        // userShortDescription é o valor inicial para o caso de o usuário querer revisar
+                        userShortDescription: catmatData.short_description || '', 
+                        officialPncpDescription: officialDescription,
+                        pdmSuggestion: pdmSuggestion,
+                        descriptionMismatch: descriptionMismatch,
+                    } as InspectionItem;
+                    
+                } else {
+                    // HIPÓTESE 2: CATMAT AUSENTE (REQUER REVISÃO)
+                    status = 'needs_catmat_info';
+                    messages.push('Requer descrição reduzida para o catálogo CATMAT.');
+                    
+                    // Valor inicial para Descrição Reduzida: Sugestão PDM (bruta) ou Descrição da ARP (truncada)
+                    const initialShortDesc = pdmSuggestion || itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : '');
+                    
+                    return {
+                        originalPncpItem: item,
+                        mappedItem: initialMappedItem, // Mantém a descrição da ARP como descrição completa inicial
+                        status: status,
+                        messages: messages,
+                        userShortDescription: initialShortDesc,
+                        officialPncpDescription: officialDescription,
+                        pdmSuggestion: pdmSuggestion,
+                        descriptionMismatch: descriptionMismatch,
+                    } as InspectionItem;
+                }
             });
             
             const results = await Promise.all(inspectionPromises);
             setInspectionList(results);
             
-            // 4. Abrir o diálogo de inspeção
+            // 6. Abrir o diálogo de inspeção
             setIsInspectionDialogOpen(true);
             
         } catch (error) {
@@ -203,8 +294,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            {/* Adiciona a ref ao DialogContent */}
-            <DialogContent ref={dialogContentRef} className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Search className="h-5 w-5" />
@@ -236,8 +326,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                             onItemPreSelect={handleItemPreSelect} 
                             selectedItemIds={selectedItemIds}
                             onClearSelection={handleClearSelection} 
-                            // NOVO: Passa a ref do container de rolagem
-                            scrollContainerRef={dialogContentRef}
                         />
                     </TabsContent>
                     

@@ -1,6 +1,54 @@
 import { subWeeks, startOfWeek, endOfWeek, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+// List of common Portuguese prepositions/articles to exclude from capitalization
+const EXCLUDED_WORDS = new Set(['de', 'da', 'do', 'dos', 'das', 'e', 'ou', 'a', 'o', 'em', 'no', 'na', 'nos', 'nas', 'por', 'para', 'com', 'sem', 'sob', 'sobre', 'entre', 'contra', 'até', 'após', 'desde']);
+
+/**
+ * Normaliza o texto para comparação: remove metadados/comentários, padroniza pontuação e converte para CAIXA ALTA.
+ * @param text A string de entrada.
+ * @returns A string normalizada.
+ */
+export function normalizeTextForComparison(text: string | null | undefined): string {
+    if (!text) return '';
+    
+    let cleaned = text.trim();
+    
+    // 1. Remover padrões de comentários/metadados (Ex: " - Ver Inc 30334 E 30335", " (Ver Pdm 30341)")
+    // Remove padrões como " - Ver Inc XXXX" ou " (Ver Pdm YYYY)"
+    cleaned = cleaned.replace(/(\s*[-–]\s*Ver Inc\s*.*)|(\s*\(\s*Ver Pdm\s*.*\))/gi, '');
+    
+    // 2. Padronizar pontuação e espaçamento (Ex: "TIPO 1: CREPOM" -> "TIPO 1 CREPOM")
+    // Remove dois pontos, vírgulas, pontos finais, etc., que não sejam parte de números
+    cleaned = cleaned.replace(/[:;,.]/g, ' ');
+    
+    // 3. Reduzir múltiplos espaços para um único espaço
+    cleaned = cleaned.replace(/\s+/g, ' ');
+    
+    // 4. Converter para CAIXA ALTA
+    return cleaned.toUpperCase();
+}
+
+/**
+ * Capitaliza a primeira letra de cada palavra, exceto preposições/artigos curtos.
+ * @param str A string de entrada.
+ * @returns A string formatada.
+ */
+export function capitalizeWords(str: string | null | undefined): string {
+    if (!str) return '';
+    
+    return str.toLowerCase().split(' ').map((word, index) => {
+        if (word.length === 0) return '';
+        
+        // Não capitaliza palavras excluídas, exceto se for a primeira palavra
+        if (index > 0 && EXCLUDED_WORDS.has(word)) {
+            return word;
+        }
+        
+        return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+}
+
 /**
  * Formata um número ou string de 6 dígitos (CODUG) para o formato XXX.XXX.
  * Se o valor não for uma string de 6 dígitos, retorna o valor original.
@@ -143,7 +191,7 @@ export const parseInputToNumber = (inputString: string): number => {
 /**
  * Formata um número para exibição em inputs, usando separador de milhar (ponto) e decimal (vírgula).
  * @param value O valor numérico.
- * @param decimals Número de casas decimais.
+ * @param decimals O número de casas decimais.
  * @returns A string formatada.
  */
 export const formatNumberForInput = (value: number | null | undefined, decimals: number = 2): string => {

@@ -127,7 +127,7 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelec
                             >
                                 <TableCell className="text-sm font-medium">{item.numeroAta}</TableCell> {/* NOVO: Exibe o número da ARP */}
                                 <TableCell className="text-sm font-medium">{item.codigoItem}</TableCell>
-                                <TableCell className="text-sm max-w-lg whitespace-normal">
+                                <TableCell className="text-[11px] max-w-lg whitespace-normal">
                                     {capitalizeFirstLetter(item.descricaoItem)}
                                 </TableCell>
                                 <TableCell className="text-center text-sm">
@@ -149,9 +149,12 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelec
 const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, onItemPreSelect, searchedUasg, searchedOmName, selectedItemIds }) => {
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
     
-    // NOVO: Ref para o cabeçalho dos resultados (âncora de rolagem)
+    // Ref para o cabeçalho dos resultados (âncora de rolagem)
     const resultHeaderRef = useRef<HTMLDivElement>(null);
     
+    // Ref para o container de rolagem
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
     // Efeito para rolar para o topo dos resultados quando a lista é carregada
     useEffect(() => {
         if (results.length > 0 && resultHeaderRef.current) {
@@ -203,10 +206,31 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
     }, [results]);
     
     const handleToggleGroup = (pregaoKey: string) => {
-        setOpenGroups(prev => ({
-            ...prev,
-            [pregaoKey]: !prev[pregaoKey],
-        }));
+        setOpenGroups(prev => {
+            const isCurrentlyOpen = prev[pregaoKey];
+            const newState = {
+                ...prev,
+                [pregaoKey]: !isCurrentlyOpen,
+            };
+            
+            // Se o grupo estiver sendo ABERTO, rola a linha do grupo para o topo do container
+            if (!isCurrentlyOpen && scrollContainerRef.current) {
+                // Usamos setTimeout para garantir que o DOM tenha tempo de renderizar a linha
+                setTimeout(() => {
+                    const rowElement = document.getElementById(`arp-group-row-${pregaoKey}`);
+                    
+                    if (rowElement) {
+                        // Usa scrollIntoView no elemento da linha, alinhando-o ao topo do container de rolagem
+                        rowElement.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                }, 100);
+            }
+            
+            return newState;
+        });
     };
     
     // Lógica de exibição do nome da OM no cabeçalho:
@@ -232,7 +256,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                 </h3>
             </div>
             
-            <div className="max-h-[400px] overflow-y-auto border rounded-md">
+            <div ref={scrollContainerRef} className="max-h-[400px] overflow-y-auto border rounded-md">
                 <Table>
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
@@ -244,7 +268,8 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                     </TableHeader>
                     <TableBody>
                         {groupedArps.map(group => {
-                            const isGroupOpen = openGroups[group.pregao];
+                            // CORREÇÃO APLICADA AQUI: Garante que é sempre um booleano
+                            const isGroupOpen = openGroups[group.pregao] ?? false; 
                             
                             const displayPregao = group.pregao === 'N/A' 
                                 ? <span className="text-red-500 font-bold">DADOS INCOMPLETOS</span> 
@@ -253,6 +278,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                             return (
                                 <React.Fragment key={group.pregao}>
                                     <TableRow 
+                                        id={`arp-group-row-${group.pregao}`} /* ID para rolagem */
                                         className="cursor-pointer hover:bg-muted/50 transition-colors"
                                         onClick={() => handleToggleGroup(group.pregao)}
                                     >
