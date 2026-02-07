@@ -116,7 +116,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
     const omNameFromApi = groupedArps.length > 0 ? groupedArps[0].omNome : '';
     
     // 2. Define o nome a ser exibido:
-    // Prioriza o nome da API se ele for diferente do nome genérico 'UASG XXX.XXX'
+    // Prioriza o nome da API se ele for diferente do nome genérico 'UASG XXX.XXX' (definido no api.ts)
     // Caso contrário, usa o nome pesquisado (que pode ser o nome do catálogo ou o fallback 'UASG XXX.XXX' do formulário).
     const omNameDisplay = (omNameFromApi && !omNameFromApi.startsWith('UASG ')) 
         ? omNameFromApi 
