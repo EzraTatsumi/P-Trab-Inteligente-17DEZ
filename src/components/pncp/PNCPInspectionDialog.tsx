@@ -194,14 +194,13 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             );
         }
         
-        // Ajuste de largura das colunas:
-        // Aumentando Descrição ARP e PNCP, mantendo CATMAT, Ações e Nome Reduzido estáveis.
+        // Ajuste de largura das colunas para dar mais espaço ao Nome Reduzido
         const catmatWidth = 'w-[8%]'; // 8%
-        const arpDescWidth = 'w-[38%]'; // 38%
-        const pncpDescWidth = 'w-[38%]'; // 38%
+        const arpDescWidth = 'w-[35%]'; // 35%
+        const pncpDescWidth = 'w-[35%]'; // 35%
         const actionWidth = 'w-[8%]'; // 8%
-        const statusOrShortDescWidth = 'w-[8%]'; // 8%
-        // Total: 8 + 38 + 38 + 8 + 8 = 100%
+        const statusOrShortDescWidth = 'w-[14%]'; // 14%
+        // Total: 8 + 35 + 35 + 8 + 14 = 100%
 
         return (
             <div className="max-h-[50vh] overflow-y-auto border rounded-md">
@@ -358,6 +357,10 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                     {/* Container com altura mínima para estabilizar o layout */}
                     <div className="min-h-[55vh]">
                         <TabsContent value="valid">
+                            {/* Placeholder para estabilizar a altura */}
+                            <p className="text-sm text-muted-foreground mb-3 opacity-0 select-none pointer-events-none">
+                                Placeholder para estabilizar a altura do diálogo.
+                            </p>
                             {renderInspectionTable('valid')}
                         </TabsContent>
                         
