@@ -144,6 +144,35 @@ export async function fetchUserProfile(): Promise<Profile> {
     } as Profile;
 }
 
+/**
+ * Busca a descrição reduzida de um item no catálogo CATMAT.
+ * @param codigoCatmat O código CATMAT (string).
+ * @returns A descrição reduzida (short_description) ou null.
+ */
+export async function fetchCatmatShortDescription(codigoCatmat: string): Promise<string | null> {
+    if (!codigoCatmat) return null;
+    
+    // Remove caracteres não numéricos e garante que tenha 9 dígitos (padrão CATMAT)
+    const cleanCode = codigoCatmat.replace(/\D/g, '').padStart(9, '0');
+    
+    try {
+        const { data, error } = await supabase
+            .from('catalogo_catmat')
+            .select('short_description')
+            .eq('code', cleanCode)
+            .maybeSingle();
+            
+        if (error) throw error;
+        
+        return data?.short_description || null;
+        
+    } catch (error) {
+        console.error("Erro ao buscar descrição reduzida do CATMAT:", error);
+        // Não lança erro fatal, apenas retorna null para que o processo de importação continue
+        return null;
+    }
+}
+
 // =================================================================
 // FUNÇÕES PARA CONSULTA PNCP (ARP)
 // =================================================================

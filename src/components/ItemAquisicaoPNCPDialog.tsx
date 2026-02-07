@@ -7,6 +7,7 @@ import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { DetailedArpItem } from '@/types/pncp';
 import { toast } from "sonner";
 import ArpUasgSearch from './pncp/ArpUasgSearch'; // Importa o novo componente
+import { fetchCatmatShortDescription } from '@/integrations/supabase/api'; // NOVO: Importa a função de busca CATMAT
 
 interface ItemAquisicaoPNCPDialogProps {
     open: boolean;
@@ -52,40 +53,69 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     onImport,
 }) => {
     const [selectedTab, setSelectedTab] = useState("arp-uasg");
-    const [selectedItemState, setSelectedItemState] = useState<SelectedItemState | null>(null);
+    // MUDANÇA: selectedItemState agora é um array
+    const [selectedItemsState, setSelectedItemsState] = useState<SelectedItemState[]>([]);
+    const [isImporting, setIsImporting] = useState(false);
     
-    // Função chamada pelo ArpSearchResultsList quando um item detalhado é clicado
-    const handleItemPreSelect = (item: DetailedArpItem | null, pregaoFormatado: string, uasg: string) => {
-        if (item) {
-            setSelectedItemState({ item, pregaoFormatado, uasg });
-        } else {
-            setSelectedItemState(null);
-        }
+    // MUDANÇA: Função para alternar a seleção de um item detalhado
+    const handleItemPreSelect = (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => {
+        setSelectedItemsState(prev => {
+            const existingIndex = prev.findIndex(s => s.item.id === item.id);
+            
+            if (existingIndex !== -1) {
+                // Remover item (desselecionar)
+                return prev.filter((_, index) => index !== existingIndex);
+            } else {
+                // Adicionar item (selecionar)
+                return [...prev, { item, pregaoFormatado, uasg }];
+            }
+        });
     };
     
+    // Mapeia apenas os IDs para passar para os componentes de busca
+    const selectedItemIds = selectedItemsState.map(s => s.item.id);
+
     // Função para confirmar a importação (disparada pelo botão no rodapé)
-    const handleConfirmImport = () => {
-        if (!selectedItemState) {
-            toast.error("Selecione um item detalhado para importar.");
+    const handleConfirmImport = async () => {
+        if (selectedItemsState.length === 0) {
+            toast.error("Selecione pelo menos um item detalhado para importar.");
             return;
         }
         
-        const { item, pregaoFormatado, uasg } = selectedItemState;
+        setIsImporting(true);
         
-        // Mapeamento final do DetailedArpItem para ItemAquisicao
-        const itemAquisicao: ItemAquisicao = {
-            id: item.id, 
-            descricao_item: item.descricaoItem,
-            descricao_reduzida: item.descricaoItem.substring(0, 50) + (item.descricaoItem.length > 50 ? '...' : ''),
-            valor_unitario: item.valorUnitario, 
-            numero_pregao: pregaoFormatado, 
-            uasg: uasg, 
-            codigo_catmat: item.codigoItem, 
-        };
-        
-        onImport([itemAquisicao]);
-        onOpenChange(false);
-        toast.success(`Item '${itemAquisicao.descricao_reduzida || itemAquisicao.descricao_item}' importado do PNCP.`);
+        try {
+            const importPromises = selectedItemsState.map(async ({ item, pregaoFormatado, uasg }) => {
+                // 1. Buscar a descrição reduzida no catálogo CATMAT
+                const shortDescription = await fetchCatmatShortDescription(item.codigoItem);
+                
+                // 2. Mapeamento final do DetailedArpItem para ItemAquisicao
+                const itemAquisicao: ItemAquisicao = {
+                    // Usamos o ID do item detalhado do PNCP como ID local
+                    id: item.id, 
+                    descricao_item: item.descricaoItem,
+                    // Usa a descrição reduzida do CATMAT, ou um fallback
+                    descricao_reduzida: shortDescription || item.descricaoItem.substring(0, 50) + (item.descricaoItem.length > 50 ? '...' : ''),
+                    valor_unitario: item.valorUnitario, 
+                    numero_pregao: pregaoFormatado, 
+                    uasg: uasg, 
+                    codigo_catmat: item.codigoItem, 
+                };
+                return itemAquisicao;
+            });
+            
+            const importedItems = await Promise.all(importPromises);
+            
+            onImport(importedItems);
+            onOpenChange(false);
+            toast.success(`${importedItems.length} itens importados do PNCP com sucesso.`);
+            
+        } catch (error) {
+            console.error("Erro durante a importação PNCP:", error);
+            toast.error("Falha ao importar itens. Tente novamente.");
+        } finally {
+            setIsImporting(false);
+        }
     };
 
     return (
@@ -120,7 +150,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     <TabsContent value="arp-uasg">
                         <ArpUasgSearch 
                             onItemPreSelect={handleItemPreSelect} 
-                            selectedItemId={selectedItemState?.item.id || null}
+                            selectedItemIds={selectedItemIds}
                         />
                     </TabsContent>
                     
@@ -136,9 +166,10 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 {/* Rodapé com o botão de importação movido */}
                 <div className="flex justify-between gap-2 pt-4 border-t">
                     <div className="flex items-center text-sm text-muted-foreground">
-                        {selectedItemState ? (
+                        {/* MUDANÇA: Removido o indicador de item único */}
+                        {selectedItemsState.length > 0 ? (
                             <p className="text-green-600 font-medium">
-                                Item Selecionado: {selectedItemState.item.descricaoItem.substring(0, 40)}...
+                                {selectedItemsState.length} item(ns) selecionado(s) para importação.
                             </p>
                         ) : (
                             <p>Nenhum item selecionado.</p>
@@ -148,12 +179,16 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         <Button 
                             type="button" 
                             onClick={handleConfirmImport}
-                            disabled={!selectedItemState}
+                            disabled={selectedItemsState.length === 0 || isImporting}
                         >
-                            <Import className="h-4 w-4 mr-2" />
-                            Importar Item Selecionado
+                            {isImporting ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                                <Import className="h-4 w-4 mr-2" />
+                            )}
+                            Importar Item Selecionado ({selectedItemsState.length})
                         </Button>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isImporting}>
                             Fechar
                         </Button>
                     </div>

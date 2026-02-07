@@ -31,25 +31,23 @@ interface ArpGroup {
 
 interface ArpSearchResultsListProps {
     results: ArpItemResult[]; 
-    // NOVO: Função para pré-selecionar o item detalhado (não faz a importação final)
-    onItemPreSelect: (item: DetailedArpItem | null, pregaoFormatado: string, uasg: string) => void;
+    // MUDANÇA: Função para alternar a seleção de um item detalhado
+    onItemPreSelect: (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => void;
     searchedUasg: string;
     searchedOmName: string;
-    // NOVO: ID do item selecionado globalmente para manter o destaque
-    selectedItemId: string | null;
+    // MUDANÇA: Array de IDs selecionados globalmente
+    selectedItemIds: string[];
 }
 
 // Componente para buscar e exibir os itens detalhados de uma ARP
-const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelect, isGroupOpen, selectedItemId }: { 
+const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelect, isGroupOpen, selectedItemIds }: { 
     arpReferences: ArpReference[]; 
     pregaoFormatado: string; 
     uasg: string; 
-    onItemPreSelect: (item: DetailedArpItem | null, pregaoFormatado: string, uasg: string) => void;
+    onItemPreSelect: (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => void;
     isGroupOpen: boolean;
-    selectedItemId: string | null;
+    selectedItemIds: string[];
 }) => {
-    // Não precisamos mais de selectedDetailedItem localmente, usamos selectedItemId do pai.
-
     // Usa useQueries para disparar buscas paralelas para cada ARP
     const arpQueries = useQueries({
         queries: arpReferences.map(ref => ({
@@ -72,19 +70,10 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelec
     }, [arpQueries, isLoading, isError]);
     
     const handlePreSelectDetailedItem = (item: DetailedArpItem) => {
-        const isCurrentlySelected = selectedItemId === item.id;
-        
-        if (isCurrentlySelected) {
-            // Desselecionar
-            onItemPreSelect(null, '', '');
-        } else {
-            // Selecionar
-            onItemPreSelect(item, pregaoFormatado, uasg);
-        }
+        // Chama a função de alternância no componente pai
+        onItemPreSelect(item, pregaoFormatado, uasg);
     };
     
-    // O botão de importação foi removido daqui.
-
     if (isLoading) {
         return (
             <div className="text-center py-4">
@@ -94,7 +83,6 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelec
         );
     }
     
-    // CORREÇÃO: Usar a variável isError definida pelo useQueries
     if (isError) {
         // Podemos tentar extrair a mensagem de erro da primeira query que falhou
         const firstError = arpQueries.find(query => query.isError)?.error;
@@ -129,7 +117,8 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelec
                 </thead>
                 <TableBody>
                     {detailedItems.map(item => {
-                        const isSelected = selectedItemId === item.id;
+                        // MUDANÇA: Verifica se o ID do item está no array de IDs selecionados
+                        const isSelected = selectedItemIds.includes(item.id);
                         return (
                             <TableRow 
                                 key={item.id}
@@ -152,14 +141,12 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelec
                     })}
                 </TableBody>
             </Table>
-            
-            {/* O botão de importação global foi removido daqui. */}
         </div>
     );
 };
 
 
-const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, onItemPreSelect, searchedUasg, searchedOmName, selectedItemId }) => {
+const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, onItemPreSelect, searchedUasg, searchedOmName, selectedItemIds }) => {
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
     
     // 1. Lógica de Agrupamento
@@ -276,7 +263,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                                         uasg={group.uasg}
                                                         onItemPreSelect={onItemPreSelect}
                                                         isGroupOpen={isGroupOpen}
-                                                        selectedItemId={selectedItemId}
+                                                        selectedItemIds={selectedItemIds}
                                                     />
                                                 </CollapsibleContent>
                                             </Collapsible>
@@ -288,8 +275,6 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                     </TableBody>
                 </Table>
             </div>
-            
-            {/* O botão de importação global foi removido, pois a importação agora é feita por item detalhado */}
         </div>
     );
 };

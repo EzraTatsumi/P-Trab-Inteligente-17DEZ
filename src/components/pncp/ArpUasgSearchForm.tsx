@@ -32,9 +32,10 @@ const formSchema = z.object({
 type ArpUasgFormValues = z.infer<typeof formSchema>;
 
 interface ArpUasgSearchFormProps {
-    // Alterado para onItemPreSelect
-    onItemPreSelect: (item: DetailedArpItem | null, pregaoFormatado: string, uasg: string) => void;
-    selectedItemId: string | null;
+    // MUDANÇA: Função para alternar a seleção de um item detalhado
+    onItemPreSelect: (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => void;
+    // MUDANÇA: Array de IDs selecionados
+    selectedItemIds: string[];
 }
 
 // Calcula as datas padrão
@@ -46,7 +47,7 @@ const defaultDataFim = format(today, 'yyyy-MM-dd');
 const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 
 
-const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, selectedItemId }) => {
+const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, selectedItemIds }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isOmSelectorOpen, setIsOmSelectorOpen] = useState(false);
     const [arpResults, setArpResults] = useState<ArpItemResult[]>([]); // CORRIGIDO: Usando ArpItemResult
@@ -79,7 +80,8 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
     const onSubmit = async (values: ArpUasgFormValues) => {
         setIsSearching(true);
         setArpResults([]);
-        onItemPreSelect(null, '', ''); // Limpa a seleção anterior
+        // MUDANÇA: Limpa a seleção global ao iniciar uma nova busca
+        onItemPreSelect({} as DetailedArpItem, '', ''); 
         
         try {
             toast.info(`Buscando ARPs para UASG ${formatCodug(values.uasg)}...`);
@@ -216,7 +218,7 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
                     onItemPreSelect={onItemPreSelect} 
                     searchedUasg={form.getValues('uasg')}
                     searchedOmName={searchedOmName}
-                    selectedItemId={selectedItemId}
+                    selectedItemIds={selectedItemIds}
                 />
             )}
 
