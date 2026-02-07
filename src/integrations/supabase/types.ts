@@ -1923,6 +1923,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: unknown
       }
+      upsert_catmat_entry: {
+        Args: {
+          p_code: string
+          p_description: string
+          p_short_description: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
