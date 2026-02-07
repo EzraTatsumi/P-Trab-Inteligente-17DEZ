@@ -454,7 +454,12 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                 <DialogHeader>
                     <DialogTitle>Inspeção de Itens PNCP</DialogTitle>
                     <DialogDescription>
-                        Revise os {formatItemCount(initialInspectionList.length)} selecionados. {formatItemCount(totalDuplicates)} duplicado{totalDuplicates === 1 ? '' : 's'} serão descartado{totalDuplicates === 1 ? '' : 's'}. Itens que requerem descrição reduzida devem ser resolvidos antes da importação final.
+                        Revise os {formatItemCount(initialInspectionList.length)} selecionados. 
+                        {totalDuplicates === 1 ? 
+                            `1 item duplicado será descartado.` : 
+                            `${totalDuplicates} itens duplicados serão descartados.`
+                        } 
+                        Itens que requerem descrição reduzida devem ser resolvidos antes da importação final.
                     </DialogDescription>
                 </DialogHeader>
 
