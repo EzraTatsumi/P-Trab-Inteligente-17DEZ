@@ -12,7 +12,7 @@ import { formatCodug } from '@/lib/formatUtils';
 import OmSelectorDialog from '@/components/OmSelectorDialog';
 import { format, subDays } from 'date-fns';
 import { fetchArpsByUasg } from '@/integrations/supabase/api';
-import { ArpItemResult } from '@/types/pncp'; // Importando o tipo ArpItemResult
+import { ArpItemResult, DetailedArpItem } from '@/types/pncp'; // Importando o tipo DetailedArpItem
 import ArpSearchResultsList from './ArpSearchResultsList';
 import { OMData } from '@/lib/omUtils';
 
@@ -32,7 +32,10 @@ const formSchema = z.object({
 type ArpUasgFormValues = z.infer<typeof formSchema>;
 
 interface ArpUasgSearchFormProps {
-    onSelect: (item: ItemAquisicao) => void;
+    // MUDANÇA: Função para alternar a seleção de um item detalhado
+    onItemPreSelect: (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => void;
+    // MUDANÇA: Array de IDs selecionados
+    selectedItemIds: string[];
 }
 
 // Calcula as datas padrão
@@ -44,7 +47,7 @@ const defaultDataFim = format(today, 'yyyy-MM-dd');
 const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 
 
-const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
+const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, selectedItemIds }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isOmSelectorOpen, setIsOmSelectorOpen] = useState(false);
     const [arpResults, setArpResults] = useState<ArpItemResult[]>([]); // CORRIGIDO: Usando ArpItemResult
@@ -210,9 +213,10 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onSelect }) => {
             {arpResults.length > 0 && (
                 <ArpSearchResultsList 
                     results={arpResults} 
-                    onSelect={onSelect} 
+                    onItemPreSelect={onItemPreSelect} 
                     searchedUasg={form.getValues('uasg')}
                     searchedOmName={searchedOmName}
+                    selectedItemIds={selectedItemIds}
                 />
             )}
 
