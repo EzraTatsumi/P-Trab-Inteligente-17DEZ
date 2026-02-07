@@ -140,7 +140,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                             <TableHead>Objeto</TableHead>
                             {/* Ajuste: Aumentando a largura e removendo (Início - Fim) */}
                             <TableHead className="w-[250px] text-center">Vigência</TableHead>
-                            <TableHead className="w-[50px]"></TableHead> {/* Coluna para o ícone de expansão */}
+                            {/* REMOVIDA A COLUNA VAZIA DE EXPANSÃO */}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -158,8 +158,10 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                         className="cursor-pointer hover:bg-muted/50 transition-colors"
                                         onClick={() => handleToggleGroup(group.pregao)}
                                     >
-                                        <TableCell className="font-semibold">
+                                        {/* MUDANÇA: Adicionando o ícone de expansão dentro desta célula */}
+                                        <TableCell className="font-semibold flex justify-between items-center">
                                             {displayPregao}
+                                            {isGroupOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground ml-2" /> : <ChevronDown className="h-3 w-3 text-muted-foreground ml-2" />}
                                         </TableCell>
                                         <TableCell className="text-sm max-w-xs whitespace-normal">
                                             {capitalizeFirstLetter(group.objetoRepresentativo)}
@@ -168,14 +170,13 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                         <TableCell className="text-center text-sm whitespace-nowrap">
                                             {formatDate(group.dataVigenciaInicial)} - {formatDate(group.dataVigenciaFinal)}
                                         </TableCell>
-                                        <TableCell className="text-center">
-                                            {isGroupOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
-                                        </TableCell>
+                                        {/* REMOVIDA A CÉLULA DE EXPANSÃO */}
                                     </TableRow>
                                     
                                     {/* Conteúdo Colapsável com a lista de ARPs individuais (Nível 2) */}
                                     <TableRow className="p-0">
-                                        <TableCell colSpan={4} className="p-0">
+                                        {/* MUDANÇA: Colspan ajustado de 4 para 3 */}
+                                        <TableCell colSpan={3} className="p-0">
                                             <Collapsible open={isGroupOpen}>
                                                 <CollapsibleContent>
                                                     <div className="p-4 bg-muted/50 border-t border-border">
