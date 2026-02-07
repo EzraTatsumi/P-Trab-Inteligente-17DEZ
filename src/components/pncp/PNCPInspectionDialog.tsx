@@ -13,7 +13,7 @@ import { saveNewCatmatEntry } from '@/integrations/supabase/api';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { formatCodug, formatCurrency } from '@/lib/formatUtils';
-import { Textarea } from '@/components/ui/textarea';
+import { Textarea } from "@/components/ui/textarea";
 
 interface PNCPInspectionDialogProps {
     open: boolean;
@@ -374,7 +374,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                             <div className="flex flex-col items-center justify-center gap-1">
                                                 {/* Remove o ícone X */}
                                                 <span className="text-sm text-red-600 font-medium">
-                                                    {item.messages[0]} {/* Mensagem de duplicidade */}
+                                                    Há duplicidade na Chave de Item: {item.messages[0]}
                                                 </span>
                                                 
                                                 {/* Status do Catálogo com cores */}
