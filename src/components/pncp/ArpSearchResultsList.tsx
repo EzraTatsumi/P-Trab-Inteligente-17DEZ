@@ -285,7 +285,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                             return (
                                 <React.Fragment key={group.pregao}>
                                     <TableRow 
-                                        id={`arp-group-row-${group.pregao}`} {/* NOVO: ID para rolagem */}
+                                        id={`arp-group-row-${group.pregao}`} /* NOVO: ID para rolagem */
                                         className="cursor-pointer hover:bg-muted/50 transition-colors"
                                         onClick={() => handleToggleGroup(group.pregao)}
                                     >
