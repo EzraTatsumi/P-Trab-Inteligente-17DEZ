@@ -126,11 +126,13 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
 
     return (
         <div className="p-4 space-y-4">
-            {/* CABEÇALHO DA PESQUISA - CORRIGIDO CONFORME SOLICITADO */}
-            <h3 className="text-lg font-semibold">
-                Resultado para {omNameDisplay} ({formatCodug(omUasg)})
-                <span className="text-sm font-normal text-muted-foreground ml-2">
-                    - {groupedArps.length} Pregões encontrados
+            {/* CABEÇALHO DA PESQUISA - AJUSTADO PARA QUEBRA DE LINHA */}
+            <h3 className="text-lg font-semibold flex flex-col">
+                <span>
+                    Resultado para {omNameDisplay} ({formatCodug(omUasg)})
+                </span>
+                <span className="text-sm font-normal text-muted-foreground mt-1">
+                    {groupedArps.length} Pregões encontrados
                 </span>
             </h3>
             
