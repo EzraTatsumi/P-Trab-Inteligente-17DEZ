@@ -14,6 +14,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Textarea } from '@/components/ui/textarea';
+import { formatCodug } from '@/lib/formatUtils'; // NOVO: Importando formatCodug
 
 interface PNCPInspectionDialogProps {
     open: boolean;
@@ -21,6 +22,13 @@ interface PNCPInspectionDialogProps {
     inspectionList: InspectionItem[];
     onFinalImport: (items: ItemAquisicao[]) => void;
 }
+
+// Função auxiliar para remover zeros à esquerda do número do pregão
+const formatNumeroPregao = (numero: string) => {
+    if (!numero) return '';
+    // Remove zeros à esquerda, mas mantém pelo menos um dígito se for '000' -> '0'
+    return numero.replace(/^0+/, '') || '0';
+};
 
 const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     open,
@@ -217,12 +225,16 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                         {items.map(item => {
                             const isSaving = saveCatmatMutation.isPending && saveCatmatMutation.variables?.item.originalPncpItem.id === item.originalPncpItem.id;
                             
+                            // Formatação do Pregão e UASG (Ajuste 1)
+                            const formattedPregao = formatNumeroPregao(item.mappedItem.numero_pregao);
+                            const formattedUasg = formatCodug(item.mappedItem.uasg);
+
                             return (
                                 <TableRow key={item.originalPncpItem.id}>
                                     <TableCell className="font-semibold text-sm">
                                         {item.mappedItem.codigo_catmat}
                                         <p className="text-xs text-muted-foreground mt-1">
-                                            {item.mappedItem.numero_pregao} | {item.mappedItem.uasg}
+                                            {formattedPregao} ({formattedUasg})
                                         </p>
                                     </TableCell>
                                     
@@ -255,9 +267,9 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                         )}
                                     </TableCell>
                                     
-                                    {/* Coluna 3: Descrição Oficial (PNCP) - Bruta, apenas para referência */}
+                                    {/* Coluna 3: Descrição Oficial (PNCP) - Bruta (Ajuste 2) */}
                                     <TableCell className="text-sm max-w-xs whitespace-normal text-muted-foreground">
-                                        {status === 'duplicate' ? 'N/A' : (item.officialPncpDescription && item.officialPncpDescription !== "Falha ao carregar descrição oficial." ? item.officialPncpDescription : 'N/A')}
+                                        {status === 'duplicate' ? 'N/A' : (item.officialPncpDescription || 'N/A')}
                                     </TableCell>
                                     
                                     {/* Coluna 4: Descrição Reduzida (Editável se needs_catmat_info) */}
@@ -308,6 +320,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                                     variant="outline"
                                                     size="sm"
                                                     onClick={() => handleSendToReview(item.originalPncpItem.id)}
+                                                    className="border-blue-500 text-blue-600 hover:bg-blue-50" // Ajuste 4: Borda azul
                                                 >
                                                     <Send className="h-4 w-4 mr-2" />
                                                     Enviar para Revisão
@@ -315,10 +328,9 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                             )}
                                             
                                             <Button 
-                                                variant="ghost" 
                                                 size="sm" 
                                                 onClick={() => handleRemoveItem(item.originalPncpItem.id)}
-                                                className="text-red-600 hover:bg-red-100"
+                                                className="border border-red-500 text-red-600 hover:bg-red-50 bg-transparent hover:text-red-700" // Ajuste 3: Borda vermelha
                                                 disabled={isSaving}
                                             >
                                                 Remover
