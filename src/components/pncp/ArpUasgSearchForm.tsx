@@ -115,13 +115,20 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
             setArpResults(results);
             
             // Rola para o topo dos resultados após a busca ser concluída
-            if (results.length > 0 && resultsRef.current) {
+            if (results.length > 0 && resultsRef.current && scrollContainerRef.current) {
                 // Usamos setTimeout para garantir que o DOM foi renderizado após a atualização do estado
                 setTimeout(() => {
-                    // Usamos scrollIntoView no elemento de resultados, que deve rolar o container pai (DialogContent)
-                    resultsRef.current?.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
+                    const resultsElement = resultsRef.current!;
+                    const containerElement = scrollContainerRef.current!;
+                    
+                    // Calcula a posição do elemento de resultados em relação ao topo do container de rolagem.
+                    // resultsElement.offsetTop é a distância do topo do container (DialogContent) até o elemento de resultados.
+                    const offset = resultsElement.offsetTop;
+                    
+                    // Força a rolagem do container para o offset calculado
+                    containerElement.scrollTo({
+                        top: offset,
+                        behavior: 'smooth'
                     });
                 }, 100); 
             }
