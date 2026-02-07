@@ -1631,11 +1631,10 @@ const CustosOperacionaisPage = () => {
                 <div className="space-y-4">
                   
                   {/* Pagamento de Diárias */}
-                  <div ref={el => collapsibleRefs.current['diarias_detalhe'] = el}>
+                  <div ref={el => collapsibleRefs.current['diarias_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
                     <Collapsible 
                       open={fieldCollapseState['diarias_detalhe']} 
                       onOpenChange={(open) => handleCollapseChange('diarias_detalhe', open)}
-                      className="border-b pb-4 last:border-b-0 last:pb-0"
                     >
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
@@ -1655,11 +1654,10 @@ const CustosOperacionaisPage = () => {
                   </div>
                   
                   {/* Diretrizes de Passagens (Contratos/Trechos) */}
-                  <div ref={el => collapsibleRefs.current['passagens_detalhe'] = el}>
+                  <div ref={el => collapsibleRefs.current['passagens_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
                     <Collapsible 
                       open={fieldCollapseState['passagens_detalhe']} 
                       onOpenChange={(open) => handleCollapseChange('passagens_detalhe', open)}
-                      className="border-b pb-4 last:border-b-0 last:pb-0"
                     >
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
@@ -1679,11 +1677,10 @@ const CustosOperacionaisPage = () => {
                   </div>
                   
                   {/* Diretrizes de Concessionária */}
-                  <div ref={el => collapsibleRefs.current['concessionaria_detalhe'] = el}>
+                  <div ref={el => collapsibleRefs.current['concessionaria_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
                     <Collapsible 
                       open={fieldCollapseState['concessionaria_detalhe']} 
                       onOpenChange={(open) => handleCollapseChange('concessionaria_detalhe', open)}
-                      className="border-b pb-4 last:border-b-0 last:pb-0"
                     >
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
@@ -1703,11 +1700,10 @@ const CustosOperacionaisPage = () => {
                   </div>
                   
                   {/* Diretrizes de Material de Consumo (NOVO) */}
-                  <div ref={el => collapsibleRefs.current['material_consumo_detalhe'] = el}>
+                  <div ref={el => collapsibleRefs.current['material_consumo_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
                     <Collapsible 
                       open={fieldCollapseState['material_consumo_detalhe']} 
                       onOpenChange={(open) => handleCollapseChange('material_consumo_detalhe', open)}
-                      className="border-b pb-4 last:border-b-0 last:pb-0"
                     >
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
@@ -1732,11 +1728,10 @@ const CustosOperacionaisPage = () => {
                     const isOpen = fieldCollapseState[fieldKey] ?? false;
                     
                     return (
-                      <div key={fieldKey} ref={el => collapsibleRefs.current[fieldKey] = el}>
+                      <div key={fieldKey} ref={el => collapsibleRefs.current[fieldKey] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
                         <Collapsible 
                           open={isOpen} 
                           onOpenChange={(open) => handleCollapseChange(fieldKey, open)}
-                          className="border-b pb-4 last:border-b-0 last:pb-0"
                         >
                           <CollapsibleTrigger asChild>
                             <div className="flex items-center justify-between cursor-pointer py-2">
