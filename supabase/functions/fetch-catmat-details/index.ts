@@ -5,37 +5,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const API_URL = 'https://dadosabertos.compras.gov.br/modulo-material/4_consultarItemMaterial';
-const PAGE_SIZE = '1'; // Só precisamos de um resultado
+// Endpoint da API do Catálogo de Material do PNCP
+const API_URL = 'https://dadosabertos.compras.gov.br/catalogo-material/1_consultarItem_Codigo';
+const PAGE_SIZE = '10'; // Tamanho mínimo de página exigido pela API (entre 10 e 500)
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
-  }
-
-  try {
-    const { codigoItem } = await req.json();
-
-    if (!codigoItem) {
-      return new Response(JSON.stringify({ error: 'Missing required parameter: codigoItem.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    // Remove caracteres não numéricos e garante 9 dígitos (padrão CATMAT)
-    const cleanCode = String(codigoItem).replace(/\D/g, '').padStart(9, '0');
-
+/**
+ * Função auxiliar para buscar detalhes de um item CATMAT.
+ */
+async function fetchCatmatDetails(codigoItem: string) {
     const params = new URLSearchParams({
-        pagina: PAGE_SIZE,
-        tamanhoPagina: PAGE_SIZE,
-        codigoItem: cleanCode,
-        bps: 'false',
+        pagina: '1',
+        tamanhoPagina: PAGE_SIZE, // CORREÇÃO: Define o tamanho da página para 10
+        codigoItem: codigoItem,
     });
 
     const fullUrl = `${API_URL}?${params.toString()}`;
     
-    console.log(`[fetch-catmat-details] Fetching details for code ${cleanCode} from: ${fullUrl}`);
+    console.log(`[fetch-catmat-details] Fetching details for item ${codigoItem} from: ${fullUrl}`);
 
     const response = await fetch(fullUrl, {
         method: 'GET',
@@ -52,26 +38,54 @@ serve(async (req) => {
 
     const data = await response.json();
     
-    const result = data.resultado?.[0];
+    // A API retorna um objeto com 'resultado' que é um array de itens
+    return data.resultado || [];
+}
 
-    if (!result) {
-        console.log(`[fetch-catmat-details] No result found for code ${cleanCode}`);
-        return new Response(JSON.stringify({ error: 'Item not found in PNCP Material Catalog.' }), {
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
+  try {
+    const { codigoItem } = await req.json();
+
+    if (!codigoItem) {
+      return new Response(JSON.stringify({ error: 'Missing required parameter: codigoItem.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // Remove caracteres não numéricos e preenche com zeros à esquerda (9 dígitos)
+    const cleanCode = String(codigoItem).replace(/\D/g, '').padStart(9, '0');
+
+    const results = await fetchCatmatDetails(cleanCode);
+    
+    if (results.length === 0) {
+        return new Response(JSON.stringify({ 
+            codigoItem: codigoItem,
+            descricaoItem: "Item não encontrado no Catálogo de Material do PNCP.",
+            nomePdm: null,
+        }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 404,
+            status: 200,
         });
     }
 
-    // Mapeia apenas os campos necessários
-    const mappedResult = {
-        codigoItem: String(result.codigoItem),
-        descricaoItem: result.descricaoItem, // Descrição completa oficial
-        nomePdm: result.nomePdm, // Nome reduzido sugerido (PDM)
+    // Assume que o primeiro resultado é o mais relevante
+    const item = results[0];
+    
+    // Mapeia os campos relevantes da resposta da API
+    const mappedDetails = {
+        codigoItem: item.codigoItem || cleanCode,
+        descricaoItem: item.descricaoItem || 'Descrição não disponível',
+        nomePdm: item.nomePdm || null, // Nome reduzido sugerido
     };
 
-    console.log(`[fetch-catmat-details] Successfully fetched details for code ${cleanCode}`);
+    console.log(`[fetch-catmat-details] Successfully fetched details for item ${cleanCode}.`);
 
-    return new Response(JSON.stringify(mappedResult), {
+    return new Response(JSON.stringify(mappedDetails), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });

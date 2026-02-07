@@ -191,9 +191,9 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                     </p>
                                 </TableCell>
                                 
-                                {/* Descrição Oficial (PNCP) */}
+                                {/* Descrição Oficial (PNCP) - CORRIGIDO: Verifica se a descrição é a mensagem de falha */}
                                 <TableCell className="text-sm max-w-xs whitespace-normal text-muted-foreground">
-                                    {item.officialPncpDescription || 'N/A'}
+                                    {item.officialPncpDescription && item.officialPncpDescription !== "Falha ao carregar descrição oficial." ? item.officialPncpDescription : 'N/A'}
                                 </TableCell>
                                 
                                 {status === 'needs_catmat_info' && (
