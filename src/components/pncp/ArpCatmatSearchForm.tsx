@@ -45,7 +45,7 @@ const defaultDataFim = format(today, 'yyyy-MM-dd');
 const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 
 
-const ArpCatmatSearchForm: React.FC<ArpCatmatFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
+const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false); // Estado para o diálogo
     const [arpResults, setArpResults] = useState<DetailedArpItem[]>([]); 
@@ -234,8 +234,9 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatFormProps> = ({ onItemPreSelect, se
                         <TableHeader className="sticky top-0 bg-background z-10">
                             <TableRow>
                                 <TableHead className="w-[150px]">Pregão</TableHead>
-                                <TableHead className="w-[250px]">OM Gerenciadora</TableHead>
-                                <TableHead className="w-[250px] text-center">Vigência</TableHead>
+                                <TableHead className="w-[200px]">OM Gerenciadora</TableHead>
+                                <TableHead className="w-[100px]">UASG</TableHead>
+                                <TableHead className="w-[200px] text-center">Vigência</TableHead>
                                 <TableHead className="w-[50px]"></TableHead> 
                             </TableRow>
                         </TableHeader>
@@ -259,7 +260,10 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatFormProps> = ({ onItemPreSelect, se
                                                 {displayPregao}
                                             </TableCell>
                                             <TableCell className="text-sm max-w-xs whitespace-normal">
-                                                {representativeItem.nomeUnidadeGerenciadora} ({formatCodug(representativeItem.uasg)})
+                                                {representativeItem.nomeUnidadeGerenciadora}
+                                            </TableCell>
+                                            <TableCell className="text-sm whitespace-nowrap">
+                                                {formatCodug(representativeItem.uasg)}
                                             </TableCell>
                                             <TableCell className="text-center text-sm whitespace-nowrap">
                                                 {formatDate(representativeItem.dataVigenciaInicial)} - {formatDate(representativeItem.dataVigenciaFinal)}
@@ -270,7 +274,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatFormProps> = ({ onItemPreSelect, se
                                         </TableRow>
                                         
                                         <TableRow className="p-0">
-                                            <TableCell colSpan={4} className="p-0">
+                                            <TableCell colSpan={5} className="p-0">
                                                 <Collapsible open={isGroupOpen}>
                                                     <CollapsibleContent>
                                                         <DetailedCatmatItems 
