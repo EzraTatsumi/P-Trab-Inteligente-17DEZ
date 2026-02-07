@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ArpItemResult } from '@/types/pncp'; // CORRIGIDO: Usando ArpItemResult
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
-import { formatCodug, formatCurrency, formatDate } from '@/lib/formatUtils';
+import { formatCodug, formatCurrency, formatDate, formatPregao } from '@/lib/formatUtils';
 import { Card, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -112,27 +112,23 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
     }
     
     // Lógica de exibição do nome da OM no cabeçalho:
-    // 1. Pega o nome da OM do primeiro resultado (que veio da API)
     const omNameFromApi = groupedArps.length > 0 ? groupedArps[0].omNome : '';
-    
-    // 2. Define o nome a ser exibido:
-    // Prioriza o nome da API se ele for diferente do nome genérico 'UASG XXX.XXX' (definido no api.ts)
-    // Caso contrário, usa o nome pesquisado (que pode ser o nome do catálogo ou o fallback 'UASG XXX.XXX' do formulário).
     const omNameDisplay = (omNameFromApi && !omNameFromApi.startsWith('UASG ')) 
         ? omNameFromApi 
         : searchedOmName;
     
     const omUasg = searchedUasg;
+    const totalArpItems = results.length; // Contagem total de itens individuais (ARPs)
 
     return (
         <div className="p-4 space-y-4">
-            {/* CABEÇALHO DA PESQUISA - AJUSTADO PARA QUEBRA DE LINHA */}
+            {/* CABEÇALHO DA PESQUISA - AJUSTADO PARA QUEBRA DE LINHA E CONTADOR DE ARPs */}
             <h3 className="text-lg font-semibold flex flex-col">
                 <span>
                     Resultado para {omNameDisplay} ({formatCodug(omUasg)})
                 </span>
                 <span className="text-sm font-normal text-muted-foreground mt-1">
-                    {groupedArps.length} Pregões encontrados
+                    {groupedArps.length} Pregões encontrados ({totalArpItems} ARPs)
                 </span>
             </h3>
             
@@ -153,7 +149,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                             // Se a chave for DADOS_INCOMPLETOS, exibe um rótulo de aviso
                             const displayPregao = group.pregao === 'DADOS_INCOMPLETOS' 
                                 ? <span className="text-red-500 font-bold">DADOS INCOMPLETOS</span> 
-                                : group.pregao;
+                                : formatPregao(group.pregao); // Aplicando a nova formatação
                                 
                             return (
                                 <React.Fragment key={group.pregao}>
@@ -164,7 +160,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                         <TableCell className="font-semibold">
                                             {displayPregao}
                                         </TableCell>
-                                        <TableCell className="text-sm max-w-xs truncate">
+                                        <TableCell className="text-sm max-w-xs whitespace-normal">
                                             {group.objetoRepresentativo}
                                         </TableCell>
                                         <TableCell className="text-center text-sm">
