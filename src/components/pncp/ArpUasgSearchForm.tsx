@@ -38,6 +38,8 @@ interface ArpUasgSearchFormProps {
     onClearSelection: () => void;
     // Array de IDs selecionados
     selectedItemIds: string[];
+    // NOVO: Ref do container de rolagem (DialogContent)
+    scrollContainerRef: React.RefObject<HTMLDivElement>;
 }
 
 // Calcula as datas padrão
@@ -49,7 +51,7 @@ const defaultDataFim = format(today, 'yyyy-MM-dd');
 const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 
 
-const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection }) => {
+const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isOmSelectorOpen, setIsOmSelectorOpen] = useState(false);
     const [arpResults, setArpResults] = useState<ArpItemResult[]>([]); // CORRIGIDO: Usando ArpItemResult
@@ -113,12 +115,22 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
             setArpResults(results);
             
             // Rola para o topo dos resultados após a busca ser concluída
-            if (results.length > 0 && resultsRef.current) {
-                // Aumenta o atraso para garantir que o DOM do DialogContent tenha se ajustado
+            if (results.length > 0 && resultsRef.current && scrollContainerRef.current) {
+                // Usamos setTimeout para garantir que o DOM foi renderizado após a atualização do estado
                 setTimeout(() => {
-                    // Rola o elemento de resultados para o topo do container de rolagem (DialogContent)
-                    resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 100); // Atraso de 100ms
+                    // Calcula a posição do elemento de resultados em relação ao topo do container de rolagem
+                    const resultsElement = resultsRef.current!;
+                    const containerElement = scrollContainerRef.current!;
+                    
+                    // Calcula o deslocamento necessário
+                    const offset = resultsElement.offsetTop - containerElement.offsetTop;
+                    
+                    // Rola o container de rolagem
+                    containerElement.scrollTo({
+                        top: offset,
+                        behavior: 'smooth'
+                    });
+                }, 100); 
             }
 
         } catch (error: any) {

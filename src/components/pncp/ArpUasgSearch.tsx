@@ -10,15 +10,18 @@ interface ArpUasgSearchProps {
     selectedItemIds: string[];
     // NOVO: Função para limpar a seleção
     onClearSelection: () => void;
+    // NOVO: Ref do container de rolagem
+    scrollContainerRef: React.RefObject<HTMLDivElement>;
 }
 
 // Este componente atua como um wrapper simples para o formulário
-const ArpUasgSearch: React.FC<ArpUasgSearchProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection }) => {
+const ArpUasgSearch: React.FC<ArpUasgSearchProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
     return (
         <ArpUasgSearchForm 
             onItemPreSelect={onItemPreSelect} 
             selectedItemIds={selectedItemIds} 
             onClearSelection={onClearSelection} 
+            scrollContainerRef={scrollContainerRef}
         />
     );
 };

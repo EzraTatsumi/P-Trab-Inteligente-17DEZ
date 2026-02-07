@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -52,7 +52,7 @@ interface SelectedItemState {
 }
 
 // Função auxiliar para gerar a chave de unicidade de um item (copiada de MaterialConsumoDiretrizFormDialog.tsx)
-const generateItemKey = (item: ItemAquisicao): string => {
+const generateItemKey = (item: ItemAquisicao | Omit<ItemAquisicao, 'id'>): string => {
     const normalize = (str: string) => 
         (str || '')
         .trim()
@@ -81,6 +81,9 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     // NOVO ESTADO: Gerencia a lista de itens para inspeção
     const [inspectionList, setInspectionList] = useState<InspectionItem[]>([]);
     const [isInspectionDialogOpen, setIsInspectionDialogOpen] = useState(false);
+    
+    // NOVO: Ref para o DialogContent (o container de rolagem)
+    const dialogContentRef = useRef<HTMLDivElement>(null);
 
     // Limpa o estado de seleção sempre que o diálogo é aberto
     useEffect(() => {
@@ -200,7 +203,8 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            {/* Adiciona a ref ao DialogContent */}
+            <DialogContent ref={dialogContentRef} className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Search className="h-5 w-5" />
@@ -232,6 +236,8 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                             onItemPreSelect={handleItemPreSelect} 
                             selectedItemIds={selectedItemIds}
                             onClearSelection={handleClearSelection} 
+                            // NOVO: Passa a ref do container de rolagem
+                            scrollContainerRef={dialogContentRef}
                         />
                     </TabsContent>
                     
