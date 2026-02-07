@@ -152,8 +152,11 @@ export async function fetchUserProfile(): Promise<Profile> {
 export async function fetchCatmatShortDescription(codigoCatmat: string): Promise<string | null> {
     if (!codigoCatmat) return null;
     
-    // Remove caracteres não numéricos e garante que tenha 9 dígitos (padrão CATMAT)
-    const cleanCode = codigoCatmat.replace(/\D/g, '').padStart(9, '0');
+    // Remove caracteres não numéricos. REMOVIDO .padStart(9, '0') para maior compatibilidade.
+    const cleanCode = codigoCatmat.replace(/\D/g, '');
+    
+    // Se o código limpo for vazio, retorna null
+    if (!cleanCode) return null;
     
     try {
         const { data, error } = await supabase
@@ -163,6 +166,21 @@ export async function fetchCatmatShortDescription(codigoCatmat: string): Promise
             .maybeSingle();
             
         if (error) throw error;
+        
+        // Se a busca falhar, tentamos buscar o código preenchido com zeros à esquerda (9 dígitos)
+        if (!data?.short_description) {
+            const paddedCode = cleanCode.padStart(9, '0');
+            if (paddedCode !== cleanCode) {
+                const { data: paddedData, error: paddedError } = await supabase
+                    .from('catalogo_catmat')
+                    .select('short_description')
+                    .eq('code', paddedCode)
+                    .maybeSingle();
+                    
+                if (paddedError) throw paddedError;
+                return paddedData?.short_description || null;
+            }
+        }
         
         return data?.short_description || null;
         
