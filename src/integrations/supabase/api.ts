@@ -4,6 +4,7 @@ import { Profile } from "@/types/profiles"; // Importar o novo tipo Profile
 import { ArpUasgSearchParams, ArpItemResult, ArpRawResult, DetailedArpItem, DetailedArpRawResult, CatmatDetailsRawResult } from "@/types/pncp"; // Importa os novos tipos PNCP
 import { formatPregao } from "@/lib/formatUtils";
 import { TablesInsert } from "./types"; // Importar TablesInsert
+import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo"; // NOVO: Importar ItemAquisicao
 
 // Interface para a resposta consolidada da Edge Function
 interface EdgeFunctionResponse {
@@ -389,5 +390,36 @@ export async function fetchArpItemsById(numeroControlePncpAta: string): Promise<
     } catch (error) {
         console.error("Erro ao buscar itens detalhados da ARP:", error);
         throw new Error(`Falha ao buscar itens detalhados: ${error instanceof Error ? error.message : "Erro desconhecido."}`);
+    }
+}
+
+/**
+ * Fetches all acquisition items from all 'diretrizes_material_consumo' for a given year and user.
+ * This is used for checking duplications during PNCP import.
+ * @param year The reference year.
+ * @param userId The ID of the current user.
+ * @returns A flattened array of all existing ItemAquisicao objects.
+ */
+export async function fetchAllExistingAcquisitionItems(year: number, userId: string): Promise<ItemAquisicao[]> {
+    try {
+        const { data, error } = await supabase
+            .from('diretrizes_material_consumo')
+            .select('itens_aquisicao')
+            .eq('user_id', userId)
+            .eq('ano_referencia', year);
+
+        if (error) throw error;
+
+        // Flatten the array of arrays (itens_aquisicao is a JSONB array in the DB)
+        const allItems = (data || []).flatMap(diretriz => {
+            // Ensure the JSONB field is treated as an array of ItemAquisicao
+            return (diretriz.itens_aquisicao as unknown as ItemAquisicao[]) || [];
+        });
+
+        return allItems;
+
+    } catch (error) {
+        console.error("Erro ao buscar todos os itens de aquisição existentes:", error);
+        throw new Error("Falha ao carregar itens de aquisição existentes para verificação de duplicidade.");
     }
 }

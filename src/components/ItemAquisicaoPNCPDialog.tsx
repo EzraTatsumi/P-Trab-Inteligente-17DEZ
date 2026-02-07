@@ -8,17 +8,20 @@ import { DetailedArpItem } from '@/types/pncp';
 import { InspectionItem, InspectionStatus } from '@/types/pncpInspection'; // NOVO: Importar tipos de inspeção
 import { toast } from "sonner";
 import ArpUasgSearch from './pncp/ArpUasgSearch'; // Importa o novo componente
-import { fetchCatmatShortDescription, fetchCatmatFullDescription } from '@/integrations/supabase/api'; // Importa a função de busca CATMAT
+import { fetchCatmatShortDescription, fetchCatmatFullDescription, fetchAllExistingAcquisitionItems } from '@/integrations/supabase/api'; // Importa as funções de busca CATMAT e a nova função de busca de itens
 import PNCPInspectionDialog from './pncp/PNCPInspectionDialog'; // NOVO: Importar o diálogo de inspeção
+import { supabase } from '@/integrations/supabase/client'; // Importar o cliente Supabase para obter o user ID
 
 interface ItemAquisicaoPNCPDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onImport: (items: ItemAquisicao[]) => void;
     // NOVO: Lista de itens já existentes na diretriz de destino
-    existingItemsInDiretriz: ItemAquisicao[]; 
+    existingItemsInDiretriz: ItemAquisicao[];
     // NOVO: Função para iniciar a edição de um item no formulário principal
     onReviewItem: (item: ItemAquisicao) => void;
+    // NOVO: Ano de referência para a busca de duplicidade global
+    selectedYear: number;
 }
 
 // Placeholder components for future implementation
@@ -53,20 +56,40 @@ interface SelectedItemState {
     uasg: string;
 }
 
-// Função auxiliar para gerar a chave de unicidade de um item (copiada de MaterialConsumoDiretrizFormDialog.tsx)
-const generateItemKey = (item: ItemAquisicao | Omit<ItemAquisicao, 'id'>): string => {
-    const normalize = (str: string) => 
-        (str || '')
-        .trim()
-        .toUpperCase()
-        .replace(/\s+/g, ' ');
-        
-    const desc = normalize(item.descricao_item); 
-    const catmat = normalize(item.codigo_catmat);
-    const pregao = normalize(item.numero_pregao);
-    const uasg = normalize(item.uasg);
-    
-    return `${desc}|${catmat}|${pregao}|${uasg}`;
+// Função auxiliar para normalizar strings para comparação
+const normalizeString = (str: string | number | null | undefined): string =>
+    (String(str || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[^A-Z0-9]/g, '')); // Remove caracteres especiais para comparação mais robusta
+
+/**
+ * Implementa a nova lógica de verificação de duplicidade flexível.
+ * Critérios Obrigatórios: numero_pregao, uasg, valor_unitario (devem ser idênticos).
+ * Critérios Opcionais: descricao_item, codigo_catmat, descricao_reduzida (pelo menos um deve ser igual).
+ */
+const isFlexibleDuplicate = (newItem: ItemAquisicao, existingItem: ItemAquisicao): boolean => {
+    // 1. Critérios Obrigatórios (Chave Base)
+    const baseMatch =
+        normalizeString(newItem.numero_pregao) === normalizeString(existingItem.numero_pregao) &&
+        normalizeString(newItem.uasg) === normalizeString(existingItem.uasg) &&
+        newItem.valor_unitario === existingItem.valor_unitario; // Comparação numérica exata
+
+    if (!baseMatch) {
+        return false;
+    }
+
+    // 2. Critérios Opcionais (Pelo menos um deve ser igual)
+    const optionalMatch =
+        // Descrição Completa
+        normalizeString(newItem.descricao_item) === normalizeString(existingItem.descricao_item) ||
+        // Código CATMAT
+        normalizeString(newItem.codigo_catmat) === normalizeString(existingItem.codigo_catmat) ||
+        // Descrição Reduzida (PDM)
+        normalizeString(newItem.descricao_reduzida) === normalizeString(existingItem.descricao_reduzida);
+
+    return optionalMatch;
 };
 
 
@@ -76,6 +99,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     onImport,
     existingItemsInDiretriz,
     onReviewItem, // NOVO
+    selectedYear, // NOVO
 }) => {
     const [selectedTab, setSelectedTab] = useState("arp-uasg");
     const [selectedItemsState, setSelectedItemsState] = useState<SelectedItemState[]>([]);
@@ -131,18 +155,30 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         toast.info("Iniciando inspeção e validação dos itens selecionados...");
         
         try {
+            // 1. Obter o ID do usuário
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                toast.error("Sessão expirada. Por favor, faça login novamente.");
+                setIsInspecting(false);
+                return;
+            }
+            const userId = user.id;
+
+            // 2. Buscar todos os itens existentes do usuário para o ano selecionado
+            const allExistingItems = await fetchAllExistingAcquisitionItems(selectedYear, userId);
+            
             const inspectionPromises = selectedItemsState.map(async ({ item, pregaoFormatado, uasg }) => {
                 
-                // 1. Mapeamento inicial para ItemAquisicao
-                const itemDescription = item.descricaoItem || ''; 
+                // 3. Mapeamento inicial para ItemAquisicao
+                const itemDescription = item.descricaoItem || '';
                 const initialMappedItem: ItemAquisicao = {
-                    id: item.id, 
+                    id: item.id,
                     descricao_item: itemDescription,
                     descricao_reduzida: '', // Será preenchido na inspeção ou busca CATMAT
-                    valor_unitario: item.valorUnitario, 
-                    numero_pregao: pregaoFormatado, 
-                    uasg: uasg, 
-                    codigo_catmat: item.codigoItem, 
+                    valor_unitario: item.valorUnitario,
+                    numero_pregao: pregaoFormatado,
+                    uasg: uasg,
+                    codigo_catmat: item.codigoItem,
                 };
                 
                 let status: InspectionStatus = 'pending';
@@ -150,21 +186,20 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 let shortDescription: string | null = null;
                 
                 // MUDANÇA: Variáveis para armazenar os resultados da busca completa
-                let fullPncpDescription: string | null = null; 
+                let fullPncpDescription: string | null = null;
                 let nomePdm: string | null = null; // NOVO
                 
-                // 2. Verificação de Duplicidade Local
-                const itemKey = generateItemKey(initialMappedItem);
-                const isDuplicate = existingItemsInDiretriz.some(existingItem => generateItemKey(existingItem) === itemKey);
+                // 4. Verificação de Duplicidade Global (Nova Lógica)
+                const isDuplicate = allExistingItems.some(existingItem => isFlexibleDuplicate(initialMappedItem, existingItem));
                 
                 if (isDuplicate) {
                     status = 'duplicate';
-                    messages.push('Item duplicado na diretriz de destino.');
+                    messages.push('Item duplicado em uma diretriz existente para o ano selecionado.');
                 } else {
-                    // 3. Busca da Descrição Reduzida no Catálogo CATMAT (DB local)
+                    // 5. Busca da Descrição Reduzida no Catálogo CATMAT (DB local)
                     shortDescription = await fetchCatmatShortDescription(item.codigoItem);
                     
-                    // 4. Busca da Descrição Completa e PDM no PNCP (API externa)
+                    // 6. Busca da Descrição Completa e PDM no PNCP (API externa)
                     const pncpDetails = await fetchCatmatFullDescription(item.codigoItem);
                     fullPncpDescription = pncpDetails.fullDescription;
                     nomePdm = pncpDetails.nomePdm; // NOVO: Captura o nome PDM
@@ -197,7 +232,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
             const results = await Promise.all(inspectionPromises);
             setInspectionList(results);
             
-            // 5. Abrir o diálogo de inspeção
+            // 7. Abrir o diálogo de inspeção
             setIsInspectionDialogOpen(true);
             
         } catch (error) {
