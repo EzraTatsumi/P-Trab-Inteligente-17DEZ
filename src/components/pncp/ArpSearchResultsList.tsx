@@ -125,15 +125,15 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelec
                                 className={`cursor-pointer transition-colors ${isSelected ? "bg-green-100/50 hover:bg-green-100/70" : "hover:bg-muted/50"}`}
                                 onClick={() => handlePreSelectDetailedItem(item)}
                             >
-                                <TableCell className="text-sm font-medium">{item.numeroAta}</TableCell> {/* NOVO: Exibe o número da ARP */}
-                                <TableCell className="text-sm font-medium">{item.codigoItem}</TableCell>
-                                <TableCell className="text-sm max-w-lg whitespace-normal">
+                                <TableCell className="text-xs font-medium">{item.numeroAta}</TableCell> {/* REDUZIDO PARA text-xs */}
+                                <TableCell className="text-xs font-medium">{item.codigoItem}</TableCell> {/* REDUZIDO PARA text-xs */}
+                                <TableCell className="text-xs max-w-lg whitespace-normal"> {/* REDUZIDO PARA text-xs */}
                                     {capitalizeFirstLetter(item.descricaoItem)}
                                 </TableCell>
-                                <TableCell className="text-center text-sm">
+                                <TableCell className="text-center text-xs"> {/* REDUZIDO PARA text-xs */}
                                     {item.quantidadeHomologada.toLocaleString('pt-BR')}
                                 </TableCell>
-                                <TableCell className="text-right text-sm font-bold text-primary">
+                                <TableCell className="text-right text-xs font-bold text-primary"> {/* REDUZIDO PARA text-xs */}
                                     {formatCurrency(item.valorUnitario)}
                                 </TableCell>
                             </TableRow>
@@ -149,8 +149,11 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelec
 const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, onItemPreSelect, searchedUasg, searchedOmName, selectedItemIds }) => {
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
     
-    // NOVO: Ref para o cabeçalho dos resultados (âncora de rolagem)
+    // Ref para o cabeçalho dos resultados (âncora de rolagem)
     const resultHeaderRef = useRef<HTMLDivElement>(null);
+    
+    // NOVO: Ref para armazenar as referências das linhas de Pregão
+    const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
     
     // Efeito para rolar para o topo dos resultados quando a lista é carregada
     useEffect(() => {
@@ -202,11 +205,27 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
         return Array.from(groupsMap.values()).sort((a, b) => a.pregao.localeCompare(b.pregao));
     }, [results]);
     
+    // MUDANÇA: Implementação da rolagem
     const handleToggleGroup = (pregaoKey: string) => {
+        const isOpening = !openGroups[pregaoKey];
+        
         setOpenGroups(prev => ({
             ...prev,
-            [pregaoKey]: !prev[pregaoKey],
+            [pregaoKey]: isOpening,
         }));
+        
+        // Se estiver abrindo, rola a linha para o topo do contêiner de rolagem
+        if (isOpening) {
+            setTimeout(() => {
+                const rowElement = rowRefs.current[pregaoKey];
+                if (rowElement) {
+                    rowElement.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                    });
+                }
+            }, 100); // Pequeno atraso para garantir que a expansão do Collapsible comece
+        }
     };
     
     // Lógica de exibição do nome da OM no cabeçalho:
@@ -253,6 +272,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                             return (
                                 <React.Fragment key={group.pregao}>
                                     <TableRow 
+                                        ref={el => rowRefs.current[group.pregao] = el} {/* NOVO: Adiciona a referência da linha */}
                                         className="cursor-pointer hover:bg-muted/50 transition-colors"
                                         onClick={() => handleToggleGroup(group.pregao)}
                                     >
