@@ -87,6 +87,8 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                         messages: ['Pronto para importação.'],
                         userShortDescription: shortDescription, // Mantém o valor salvo
                         pdmSuggestion: null, 
+                        // NOVO: Atualiza a descrição oficial com a descrição completa salva pelo usuário
+                        officialPncpDescription: fullDescription, 
                     };
                 }
                 return item;
@@ -115,7 +117,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
         }));
     };
     
-    // NOVO: Função para atualizar a Descrição Completa (mappedItem.descricao_item)
+    // Função para atualizar a Descrição Completa (mappedItem.descricao_item)
     const handleUpdateARPDescription = (itemId: string, value: string) => {
         setInspectionList(prev => prev.map(item => {
             if (item.originalPncpItem.id === itemId) {
@@ -148,7 +150,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
         saveCatmatMutation.mutate({ item, shortDescription, fullDescription });
     };
     
-    // NOVO: Função para enviar item 'valid' para 'needs_catmat_info' (Enviar para Revisão)
+    // Função para enviar item 'valid' para 'needs_catmat_info' (Enviar para Revisão)
     const handleSendToReview = (itemId: string) => {
         setInspectionList(prev => prev.map(item => {
             if (item.originalPncpItem.id === itemId) {
@@ -205,9 +207,9 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
                             <TableHead className="w-[10%] text-center">Cód. CATMAT</TableHead>
-                            {/* Coluna 2: Descrição Completa (ARP ou Catálogo) */}
+                            {/* Coluna 2: Descrição Completa (ARP/Final) */}
                             <TableHead className="w-[30%] text-center">Descrição Completa</TableHead> 
-                            {/* Coluna 3: Descrição Oficial (PNCP) */}
+                            {/* Coluna 3: Descrição Oficial (PNCP Catálogo) */}
                             <TableHead className="w-[30%] text-center">Descrição Oficial (PNCP)</TableHead> 
                             {/* Coluna 4: Descrição Reduzida */}
                             <TableHead className="w-[15%]text-center">Descrição Reduzida</TableHead>
@@ -223,17 +225,9 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                             
                             // Lógica de exibição da Descrição Oficial (PNCP)
                             const officialDescription = item.officialPncpDescription;
-                            
                             // NOVO: Detectar a string de fallback da Edge Function e a mensagem de falha do frontend
-                            const isFallbackMessage = officialDescription && (
-                                officialDescription.startsWith("Descrição oficial para") || 
-                                officialDescription === "Falha ao carregar descrição oficial."
-                            );
-                            
-                            // Se for duplicado ou se for a mensagem de fallback, exibe 'N/A'
-                            const displayOfficialDescription = status === 'duplicate' || !officialDescription || isFallbackMessage
-                                ? 'N/A'
-                                : officialDescription;
+                            const isErrorPlaceholder = officialDescription && (officialDescription.startsWith("Descrição oficial para") || officialDescription === "Falha ao carregar descrição oficial.");
+                            const displayOfficialDescription = status === 'duplicate' || !officialDescription || isErrorPlaceholder ? 'N/A' : officialDescription;
 
                             return (
                                 <TableRow key={item.originalPncpItem.id}>
@@ -278,7 +272,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                         {displayOfficialDescription}
                                     </TableCell>
                                     
-                                    {/* Coluna 4: Descrição Reduzida (Editável se needs_catmat_info) */}
+                                    {/* Coluna 4: Descrição Reduzida (Input se needs_catmat_info, Display se valid/duplicate) */}
                                     <TableCell>
                                         {status === 'needs_catmat_info' ? (
                                             <div className="space-y-1">
