@@ -51,7 +51,7 @@ const defaultDataFim = format(today, 'yyyy-MM-dd');
 const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 
 
-const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
+const ArpUasgSearchForm: React.FC<ArpUasgFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isOmSelectorOpen, setIsOmSelectorOpen] = useState(false);
     const [arpResults, setArpResults] = useState<ArpItemResult[]>([]); // CORRIGIDO: Usando ArpItemResult
@@ -246,7 +246,7 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
             <OmSelectorDialog
                 open={isOmSelectorOpen}
                 onOpenChange={setIsOmSelectorOpen}
-                onSelect={handleOmSelect}
+                onSelect={handleOmSelect as any}
             />
         </>
     );

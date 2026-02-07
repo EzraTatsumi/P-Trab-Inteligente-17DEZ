@@ -252,10 +252,9 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                         {item.mappedItem.descricao_reduzida}
                                     </TableCell>
                                 ) : (
-                                    /* Coluna Status para Duplicados */
+                                    /* Coluna Status para Duplicados e Pending */
                                     <TableCell className={cn("py-2 text-center")}>
                                         <div className="flex items-center justify-center gap-2">
-                                            {status === 'valid' && <Check className="h-4 w-4 text-green-600" />}
                                             {status === 'duplicate' && <X className="h-4 w-4 text-red-600" />}
                                             <span className={cn("text-sm", status === 'duplicate' && "text-red-600")}>
                                                 {item.messages[0]}
