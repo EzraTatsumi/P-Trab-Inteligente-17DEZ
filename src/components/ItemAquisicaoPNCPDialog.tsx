@@ -8,6 +8,7 @@ import { DetailedArpItem } from '@/types/pncp';
 import { InspectionItem, InspectionStatus } from '@/types/pncpInspection'; // NOVO: Importar tipos de inspeção
 import { toast } from "sonner";
 import ArpUasgSearch from './pncp/ArpUasgSearch'; // Importa o novo componente
+import ArpCatmatSearch from './pncp/ArpCatmatSearch'; // NOVO: Importa o componente de busca por CATMAT
 import { fetchCatmatShortDescription, fetchCatmatFullDescription, fetchAllExistingAcquisitionItems } from '@/integrations/supabase/api'; // Importa as funções de busca CATMAT e a nova função de busca de itens
 import PNCPInspectionDialog from './pncp/PNCPInspectionDialog'; // NOVO: Importar o diálogo de inspeção
 import { supabase } from '@/integrations/supabase/client'; // Importar o cliente Supabase para obter o user ID
@@ -25,7 +26,7 @@ interface ItemAquisicaoPNCPDialogProps {
 }
 
 // Placeholder components for future implementation
-const ArpCatmatSearch: React.FC<{ onSelect: (item: ItemAquisicao) => void }> = ({ onSelect }) => (
+const ArpCatmatSearchPlaceholder: React.FC<{ onSelect: (item: ItemAquisicao) => void }> = ({ onSelect }) => (
     <div className="p-4 space-y-4">
         <p className="text-muted-foreground">
             Funcionalidade de Busca de ARP por CATMAT/CATSER será implementada aqui.
@@ -452,7 +453,12 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     </TabsContent>
                     
                     <TabsContent value="arp-catmat">
-                        <ArpCatmatSearch onSelect={() => {}} /> {/* onSelect vazio, pois a lógica de seleção foi elevada */}
+                        <ArpCatmatSearch 
+                            onItemPreSelect={handleItemPreSelect} 
+                            selectedItemIds={selectedItemIds}
+                            onClearSelection={handleClearSelection} 
+                            scrollContainerRef={dialogContentRef}
+                        />
                     </TabsContent>
                     
                     <TabsContent value="avg-price">

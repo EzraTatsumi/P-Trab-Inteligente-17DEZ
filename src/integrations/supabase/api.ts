@@ -329,6 +329,70 @@ export async function fetchArpsByUasg(params: ArpUasgSearchParams): Promise<ArpI
 }
 
 /**
+ * Busca itens detalhados de uma Ata de Registro de Preços (ARP) por código CATMAT/CATSER e período de vigência.
+ * @param params Os parâmetros de busca (codigoItem e datas).
+ * @returns Uma lista de itens detalhados da ARP (DetailedArpItem[]).
+ */
+export async function fetchArpItemsByCatmat(params: { codigoItem: string, dataVigenciaInicialMin: string, dataVigenciaInicialMax: string }): Promise<DetailedArpItem[]> {
+    try {
+        const { data, error } = await supabase.functions.invoke('fetch-arp-items-by-catmat', {
+            body: params,
+        });
+
+        if (error) {
+            throw new Error(error.message || "Falha na execução da Edge Function de busca de itens por CATMAT.");
+        }
+        
+        // A API externa retorna um array de objetos DetailedArpRawResult
+        const responseData = data as DetailedArpRawResult[]; 
+        
+        if (!Array.isArray(responseData)) {
+            if (responseData && (responseData as any).error) {
+                throw new Error((responseData as any).error);
+            }
+            return [];
+        }
+        
+        // Mapeamento e sanitização dos dados para o tipo DetailedArpItem
+        const results: DetailedArpItem[] = responseData.map((item: DetailedArpRawResult) => {
+            
+            // Recalcula o Pregão formatado, pois o item detalhado não o traz pronto
+            const numeroCompraStr = String(item.numeroCompra || '').trim();
+            const anoCompraStr = String(item.anoCompra || '').trim();
+            let pregaoFormatado: string;
+            if (numeroCompraStr && anoCompraStr) {
+                const numeroCompraFormatado = numeroCompraStr.padStart(6, '0').replace(/(\d{3})(\d{3})/, '$1.$2');
+                const anoCompraDoisDigitos = anoCompraStr.slice(-2);
+                pregaoFormatado = `${numeroCompraFormatado}/${anoCompraDoisDigitos}`;
+            } else {
+                pregaoFormatado = 'N/A';
+            }
+            
+            const uasgStr = String(item.codigoUnidadeGerenciadora || '').replace(/\D/g, '');
+            
+            return {
+                // ID único: Combinação do controle da ARP e o número do item
+                id: `${item.numeroControlePncpAta}-${item.numeroItem}`, 
+                numeroAta: item.numeroAtaRegistroPreco || 'N/A',
+                codigoItem: String(item.codigoItem || 'N/A'),
+                descricaoItem: item.descricaoItem || 'Descrição não disponível',
+                valorUnitario: parseFloat(String(item.valorUnitario || 0)),
+                quantidadeHomologada: parseInt(String(item.quantidadeHomologadaItem || 0)),
+                numeroControlePncpAta: item.numeroControlePncpAta,
+                pregaoFormatado: pregaoFormatado,
+                uasg: uasgStr,
+            };
+        });
+        
+        return results;
+
+    } catch (error) {
+        console.error("Erro ao buscar itens detalhados da ARP por CATMAT:", error);
+        throw new Error(`Falha ao buscar itens detalhados: ${error instanceof Error ? error.message : "Erro desconhecido."}`);
+    }
+}
+
+/**
  * Busca os itens detalhados de uma Ata de Registro de Preços (ARP) específica.
  * @param numeroControlePncpAta O número de controle PNCP da ARP.
  * @returns Uma lista de itens detalhados da ARP.
