@@ -1,7 +1,7 @@
 import { toast } from "sonner";
 import { supabase } from "./client"; // Importar o cliente Supabase
 import { Profile } from "@/types/profiles"; // Importar o novo tipo Profile
-import { ArpUasgSearchParams, ArpItemResult, ArpRawResult } from "@/types/pncp"; // Importa os novos tipos PNCP
+import { ArpUasgSearchParams, ArpItemResult, ArpRawResult, DetailedArpItem, DetailedArpRawResult } from "@/types/pncp"; // Importa os novos tipos PNCP
 
 // Interface para a resposta consolidada da Edge Function
 interface EdgeFunctionResponse {
@@ -33,7 +33,7 @@ export async function fetchFuelPrice(fuelType: 'diesel' | 'gasolina'): Promise<{
       return responseData.diesel;
     } else {
       if (typeof responseData.gasolina?.price !== 'number' || responseData.gasolina.price <= 0) {
-        throw new Error("Preço da Gasolina inválido recebida.");
+        throw new Error("Preço da Gasolina inválida recebida.");
       }
       return responseData.gasolina;
     }
@@ -211,6 +211,62 @@ export async function fetchArpsByUasg(params: ArpUasgSearchParams): Promise<ArpI
         
         // Não exibe toast aqui, o componente que usa useQuery fará isso.
         throw new Error(`Falha ao buscar ARPs: ${errorMessage}`);
+    }
+}
+
+/**
+ * Busca os itens detalhados de uma Ata de Registro de Preços (ARP) específica.
+ * @param idCompra O ID da compra (idCompra) da ARP.
+ * @returns Uma lista de itens detalhados da ARP.
+ */
+export async function fetchDetailedArpItems(idCompra: string): Promise<DetailedArpItem[]> {
+    try {
+        const { data, error } = await supabase.functions.invoke('fetch-arp-items', {
+            body: { idCompra },
+        });
+
+        if (error) {
+            throw new Error(error.message || "Falha na execução da Edge Function de busca de itens detalhados.");
+        }
+        
+        const responseData = data as DetailedArpRawResult[]; 
+        
+        if (!Array.isArray(responseData)) {
+            if (responseData && (responseData as any).error) {
+                throw new Error((responseData as any).error);
+            }
+            return [];
+        }
+        
+        // Mapeamento e sanitização dos dados para o tipo DetailedArpItem
+        const results: DetailedArpItem[] = responseData.map((item: DetailedArpRawResult) => {
+            // Sanitização e Fallback para campos chave
+            const numeroCompraStr = String(item.numeroCompra || '').trim();
+            const anoCompraStr = String(item.anoCompra || '').trim();
+            const uasgStr = String(item.codigoUnidadeGerenciadora || '').replace(/\D/g, '');
+            
+            return {
+                id: item.idItem || Math.random().toString(36).substring(2, 9), 
+                codigoItem: item.codigoItem || 'N/A',
+                descricaoItem: item.descricaoItem || 'Descrição não disponível',
+                unidadeMedida: item.unidadeMedida || 'UN',
+                quantidade: parseFloat(String(item.quantidade || 0)),
+                valorUnitario: parseFloat(String(item.valorUnitario || 0)),
+                valorTotal: parseFloat(String(item.valorTotal || 0)),
+                numeroAta: item.numeroAtaRegistroPreco || 'N/A',
+                numeroCompra: numeroCompraStr,
+                anoCompra: anoCompraStr,
+                uasg: uasgStr,
+            };
+        });
+        
+        return results;
+
+    } catch (error) {
+        console.error("Erro ao buscar itens detalhados da ARP:", error);
+        const errorMessage = error instanceof Error ? error.message : "Erro desconhecido.";
+        
+        throw new Error(`Falha ao buscar itens detalhados da ARP: ${errorMessage}`);
     }
 }
 
