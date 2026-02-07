@@ -6,14 +6,14 @@ const corsHeaders = {
 }
 
 const API_URL = 'https://dadosabertos.compras.gov.br/modulo-material/4_consultarItemMaterial';
-const PAGE_SIZE = '1'; // Só precisamos do primeiro resultado
+const PAGE_SIZE = '10'; // CORRIGIDO: Tamanho mínimo permitido pela API é 10
 
 /**
  * Função auxiliar para buscar os detalhes do item CATMAT.
  */
 async function fetchCatmatDetails(codigoItem: string) {
     const params = new URLSearchParams({
-        pagina: PAGE_SIZE,
+        pagina: '1', // Usamos a primeira página
         tamanhoPagina: PAGE_SIZE,
         codigoItem: codigoItem,
         bps: 'false',
