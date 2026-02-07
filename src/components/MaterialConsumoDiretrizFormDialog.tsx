@@ -276,7 +276,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     const handlePNCPImport = (newItems: ItemAquisicao[]) => {
         if (newItems.length === 0) {
             toast.info("Nenhum item novo para adicionar.");
-            setIsPNCPSearchOpen(false); 
+            // Não fecha o diálogo PNCP
             return;
         }
         
@@ -292,8 +292,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         setItemForm(initialItemForm);
         setEditingItemId(null);
         
-        // 3. FECHAR O DIÁLOGO PNCP
-        setIsPNCPSearchOpen(false); 
+        // 3. NÃO FECHA O DIÁLOGO PNCP (Isso é controlado pelo ItemAquisicaoPNCPDialog)
     };
     
     // NOVO: Função para receber um item para revisão (chamado pelo PNCPInspectionDialog)
@@ -645,6 +644,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                 // NOVO: Passa a lista de itens já existentes na diretriz atual
                 existingItemsInDiretriz={subitemForm.itens_aquisicao}
                 onReviewItem={handleReviewItem} // NOVO: Passando a função de revisão
+                selectedYear={selectedYear} // Passa o ano de referência
             />
         </Dialog>
     );
