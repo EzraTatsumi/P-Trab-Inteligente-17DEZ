@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -386,9 +386,16 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     
     // Função chamada pelo PNCPInspectionDialog após a validação/resolução
     const handleFinalImport = (items: ItemAquisicao[]) => {
+        // 1. Chama a importação no componente pai (MaterialConsumoDiretrizFormDialog)
         onImport(items);
-        // Fecha o diálogo principal após a importação
-        onOpenChange(false); 
+        
+        // 2. Reseta o estado interno para a tela de busca
+        setSelectedItemsState([]);
+        setInspectionList([]);
+        setIsInspectionDialogOpen(false);
+        // Não fecha o diálogo principal, apenas reseta a visualização
+        
+        toast.success(`Importação de ${items.length} itens concluída. Pronto para nova busca.`);
     };
     
     return (
