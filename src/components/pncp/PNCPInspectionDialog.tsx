@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Import, Check, X, AlertTriangle, Save, BookOpen, Pencil } from "lucide-react";
+import { Loader2, Import, Check, X, AlertTriangle, Save, BookOpen, Pencil, Trash2 } from "lucide-react";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { InspectionItem, InspectionStatus } from "@/types/pncpInspection";
 import { toast } from "sonner";
@@ -194,12 +194,12 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             );
         }
         
-        // Define a largura das colunas dependendo do status
-        const catmatWidth = 'w-[10%]';
-        const arpDescWidth = 'w-[30%]';
-        const pncpDescWidth = 'w-[30%]';
-        const actionWidth = 'w-[15%]';
-        const statusOrShortDescWidth = 'w-[15%]'; // 100% - 10% - 30% - 30% - 15% = 15%
+        // Ajuste de largura das colunas:
+        const catmatWidth = 'w-[8%]';
+        const arpDescWidth = 'w-[35%]';
+        const pncpDescWidth = 'w-[35%]';
+        const actionWidth = 'w-[10%]';
+        const statusOrShortDescWidth = 'w-[12%]';
 
         return (
             <div className="max-h-[50vh] overflow-y-auto border rounded-md">
@@ -288,7 +288,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                 )}
                                 
                                 <TableCell className="text-right space-y-1">
-                                    {/* NOVO BOTÃO: Revisar */}
+                                    {/* Botão Revisar (Reduzido) */}
                                     <Button 
                                         variant="outline" 
                                         size="sm" 
@@ -296,15 +296,17 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                         className="w-full"
                                     >
                                         <Pencil className="h-4 w-4 mr-1" />
-                                        {item.status === 'valid' ? 'Marcar para Revisão' : 'Revisar no Formulário'}
+                                        Revisar
                                     </Button>
                                     
+                                    {/* Botão Remover (Com ícone de Lixeira) */}
                                     <Button 
                                         variant="outline" 
                                         size="sm" 
                                         onClick={() => handleRemoveItem(item.originalPncpItem.id)}
                                         className="w-full text-red-600 border-red-300 hover:bg-red-100 hover:text-red-700"
                                     >
+                                        <Trash2 className="h-4 w-4 mr-1" />
                                         Remover
                                     </Button>
                                 </TableCell>
