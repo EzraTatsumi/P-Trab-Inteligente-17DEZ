@@ -194,13 +194,13 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             );
         }
         
-        // Ajuste de largura das colunas para dar mais espaço ao Nome Reduzido
-        const catmatWidth = 'w-[8%]'; // 8%
-        const arpDescWidth = 'w-[35%]'; // 35%
-        const pncpDescWidth = 'w-[35%]'; // 35%
-        const actionWidth = 'w-[8%]'; // 8%
-        const statusOrShortDescWidth = 'w-[14%]'; // 14%
-        // Total: 8 + 35 + 35 + 8 + 14 = 100%
+        // Ajuste de largura das colunas conforme solicitado:
+        const catmatWidth = 'w-[5%]'; // 5%
+        const arpDescWidth = 'w-[33%]'; // 33%
+        const pncpDescWidth = 'w-[33%]'; // 33%
+        const statusOrShortDescWidth = 'w-[24%]'; // 24%
+        const actionWidth = 'w-[5%]'; // 5%
+        // Total: 5 + 33 + 33 + 24 + 5 = 100%
 
         return (
             <div className="max-h-[50vh] overflow-y-auto border rounded-md">
@@ -359,7 +359,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                         <TabsContent value="valid">
                             {/* Placeholder para estabilizar a altura */}
                             <p className="text-sm text-muted-foreground mb-3 opacity-0 select-none pointer-events-none">
-                                Placeholder para estabilizar a altura do diálogo.
+                                Estes itens possuem códigos CATMAT válidos, mas não têm um nome reduzido cadastrado no seu catálogo. Por favor, forneça um nome curto para facilitar a identificação e clique em "Validar".
                             </p>
                             {renderInspectionTable('valid')}
                         </TabsContent>
