@@ -25,4 +25,7 @@ export interface InspectionItem {
     
     // Campo para o usuário preencher se o status for 'needs_catmat_info'
     userShortDescription: string;
+    
+    // NOVO: Descrição completa do item obtida do catálogo PNCP (4_consultarItemMaterial)
+    fullPncpDescription: string;
 }

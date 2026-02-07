@@ -74,3 +74,23 @@ export interface DetailedArpItem {
     pregaoFormatado: string;
     uasg: string;
 }
+
+/**
+ * Estrutura bruta de um item detalhado CATMAT retornado pela API externa (4_consultarItemMaterial).
+ */
+export interface CatmatDetailsRawResult {
+    codigoGrupo: number;
+    nomeGrupo: string;
+    codigoClasse: number;
+    nomeClasse: string;
+    codigoPdm: number;
+    nomePdm: string;
+    codigoItem: number;
+    descricaoItem: string; // Este é o campo que queremos
+    statusItem: boolean;
+    itemSustentavel: boolean;
+    codigo_ncm: string | null;
+    descricao_ncm: string | null;
+    aplica_margem_preferencia: boolean;
+    dataHoraAtualizacao: string;
+}

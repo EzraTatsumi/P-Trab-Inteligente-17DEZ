@@ -1,7 +1,7 @@
 import { toast } from "sonner";
 import { supabase } from "./client"; // Importar o cliente Supabase
 import { Profile } from "@/types/profiles"; // Importar o novo tipo Profile
-import { ArpUasgSearchParams, ArpItemResult, ArpRawResult, DetailedArpItem, DetailedArpRawResult } from "@/types/pncp"; // Importa os novos tipos PNCP
+import { ArpUasgSearchParams, ArpItemResult, ArpRawResult, DetailedArpItem, DetailedArpRawResult, CatmatDetailsRawResult } from "@/types/pncp"; // Importa os novos tipos PNCP
 import { formatPregao } from "@/lib/formatUtils";
 import { TablesInsert } from "./types"; // Importar TablesInsert
 
@@ -214,6 +214,39 @@ export async function saveNewCatmatEntry(code: string, description: string, shor
     if (error) {
         console.error("Erro ao salvar nova entrada CATMAT:", error);
         throw new Error("Falha ao salvar o item no catálogo CATMAT.");
+    }
+}
+
+/**
+ * Busca a descrição completa de um item CATMAT no PNCP (4_consultarItemMaterial).
+ * @param codigoCatmat O código CATMAT (string).
+ * @returns A descrição completa (descricaoItem) ou null.
+ */
+export async function fetchCatmatFullDescription(codigoCatmat: string): Promise<string | null> {
+    if (!codigoCatmat) return null;
+    
+    try {
+        const { data, error } = await supabase.functions.invoke('fetch-catmat-details', {
+            body: { codigoItem: codigoCatmat },
+        });
+
+        if (error) {
+            throw new Error(error.message || "Falha na execução da Edge Function de busca de detalhes CATMAT.");
+        }
+        
+        const responseData = data as CatmatDetailsRawResult;
+        
+        // A Edge Function retorna o objeto detalhado ou um objeto vazio {} se não encontrar.
+        if (responseData && responseData.descricaoItem) {
+            return responseData.descricaoItem;
+        }
+        
+        return null;
+
+    } catch (error) {
+        console.error("Erro ao buscar descrição completa do CATMAT:", error);
+        // Não lança erro fatal, apenas retorna null para que o processo de importação continue
+        return null;
     }
 }
 

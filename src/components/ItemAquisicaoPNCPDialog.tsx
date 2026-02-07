@@ -8,7 +8,7 @@ import { DetailedArpItem } from '@/types/pncp';
 import { InspectionItem, InspectionStatus } from '@/types/pncpInspection'; // NOVO: Importar tipos de inspeção
 import { toast } from "sonner";
 import ArpUasgSearch from './pncp/ArpUasgSearch'; // Importa o novo componente
-import { fetchCatmatShortDescription } from '@/integrations/supabase/api'; // Importa a função de busca CATMAT
+import { fetchCatmatShortDescription, fetchCatmatFullDescription } from '@/integrations/supabase/api'; // Importa a função de busca CATMAT
 import PNCPInspectionDialog from './pncp/PNCPInspectionDialog'; // NOVO: Importar o diálogo de inspeção
 
 interface ItemAquisicaoPNCPDialogProps {
@@ -145,7 +145,8 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 let status: InspectionStatus = 'pending';
                 let messages: string[] = [];
                 let shortDescription: string | null = null;
-                
+                let fullPncpDescription: string | null = null; // NOVO: Campo para descrição completa
+
                 // 2. Verificação de Duplicidade Local
                 const itemKey = generateItemKey(initialMappedItem);
                 const isDuplicate = existingItemsInDiretriz.some(existingItem => generateItemKey(existingItem) === itemKey);
@@ -154,8 +155,11 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     status = 'duplicate';
                     messages.push('Item duplicado na diretriz de destino.');
                 } else {
-                    // 3. Busca da Descrição Reduzida no Catálogo CATMAT
+                    // 3. Busca da Descrição Reduzida no Catálogo CATMAT (DB local)
                     shortDescription = await fetchCatmatShortDescription(item.codigoItem);
+                    
+                    // 4. Busca da Descrição Completa no PNCP (API externa)
+                    fullPncpDescription = await fetchCatmatFullDescription(item.codigoItem);
                     
                     if (shortDescription) {
                         // CATMAT encontrado e tem descrição reduzida
@@ -177,13 +181,14 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     status: status,
                     messages: messages,
                     userShortDescription: shortDescription || '', // Campo para preenchimento do usuário
+                    fullPncpDescription: fullPncpDescription || 'Descrição completa não encontrada no PNCP.', // NOVO
                 } as InspectionItem;
             });
             
             const results = await Promise.all(inspectionPromises);
             setInspectionList(results);
             
-            // 4. Abrir o diálogo de inspeção
+            // 5. Abrir o diálogo de inspeção
             setIsInspectionDialogOpen(true);
             
         } catch (error) {
