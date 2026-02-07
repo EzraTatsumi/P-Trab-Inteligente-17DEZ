@@ -159,17 +159,18 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                 <Table>
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
-                            <TableHead className={catmatWidth}>Cód. CATMAT</TableHead>
-                            <TableHead className={arpDescWidth}>Descrição Completa (ARP)</TableHead>
-                            <TableHead className={pncpDescWidth}>Descrição Completa (PNCP)</TableHead>
+                            {/* Centralizando cabeçalhos */}
+                            <TableHead className={cn(catmatWidth, "text-center")}>Cód. CATMAT</TableHead>
+                            <TableHead className={cn(arpDescWidth, "text-center")}>Descrição Completa (ARP)</TableHead>
+                            <TableHead className={cn(pncpDescWidth, "text-center")}>Descrição Completa (PNCP)</TableHead>
                             
                             {/* Lógica Condicional para o Cabeçalho */}
                             {status === 'needs_catmat_info' ? (
-                                <TableHead className={statusOrShortDescWidth}>Descrição Reduzida *</TableHead>
+                                <TableHead className={cn(statusOrShortDescWidth, "text-center")}>Descrição Reduzida *</TableHead>
                             ) : status === 'valid' ? (
-                                <TableHead className={statusOrShortDescWidth}>Nome Reduzido</TableHead> // NOVO: Nome Reduzido para aba 'valid'
+                                <TableHead className={cn(statusOrShortDescWidth, "text-center")}>Nome Reduzido</TableHead>
                             ) : (
-                                <TableHead className={statusOrShortDescWidth}>Status</TableHead> // Status para aba 'duplicate'
+                                <TableHead className={cn(statusOrShortDescWidth, "text-center")}>Status</TableHead>
                             )}
                             
                             <TableHead className={actionWidth + " text-right"}>Ações</TableHead>
@@ -178,18 +179,19 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                     <TableBody>
                         {items.map(item => (
                             <TableRow key={item.originalPncpItem.id}>
-                                <TableCell className="font-semibold text-sm">{item.mappedItem.codigo_catmat}</TableCell>
+                                {/* Centralizando células */}
+                                <TableCell className={cn("font-semibold text-sm text-center")}>{item.mappedItem.codigo_catmat}</TableCell>
                                 
-                                {/* Coluna Descrição Completa (ARP) */}
-                                <TableCell className="text-sm max-w-xs whitespace-normal">
+                                {/* Coluna Descrição Completa (ARP) - Mantendo quebra de linha, mas centralizando o bloco */}
+                                <TableCell className={cn("text-sm max-w-xs whitespace-normal text-center")}>
                                     {item.mappedItem.descricao_item}
                                     <p className="text-xs text-muted-foreground mt-1">
                                         Pregão: {item.mappedItem.numero_pregao} | UASG: {item.mappedItem.uasg} | R$: {item.mappedItem.valor_unitario}
                                     </p>
                                 </TableCell>
                                 
-                                {/* Coluna Descrição Completa (PNCP) */}
-                                <TableCell className="text-sm max-w-xs whitespace-normal text-muted-foreground">
+                                {/* Coluna Descrição Completa (PNCP) - Centralizando o bloco */}
+                                <TableCell className={cn("text-sm max-w-xs whitespace-normal text-muted-foreground text-center")}>
                                     {item.fullPncpDescription}
                                 </TableCell>
                                 
@@ -220,14 +222,14 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                         </div>
                                     </TableCell>
                                 ) : status === 'valid' ? (
-                                    // NOVO: Exibe o Nome Reduzido para itens válidos
-                                    <TableCell className="py-2 font-medium text-sm">
+                                    // Exibe o Nome Reduzido para itens válidos
+                                    <TableCell className={cn("py-2 font-medium text-sm text-center")}>
                                         {item.mappedItem.descricao_reduzida}
                                     </TableCell>
                                 ) : (
                                     /* Coluna Status para Duplicados */
-                                    <TableCell className="py-2">
-                                        <div className="flex items-center gap-2">
+                                    <TableCell className={cn("py-2 text-center")}>
+                                        <div className="flex items-center justify-center gap-2">
                                             {status === 'valid' && <Check className="h-4 w-4 text-green-600" />}
                                             {status === 'duplicate' && <X className="h-4 w-4 text-red-600" />}
                                             <span className={cn("text-sm", status === 'duplicate' && "text-red-600")}>
@@ -239,10 +241,10 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                 
                                 <TableCell className="text-right">
                                     <Button 
-                                        variant="ghost" 
+                                        variant="outline" // Alterado para outline para ter borda
                                         size="sm" 
                                         onClick={() => handleRemoveItem(item.originalPncpItem.id)}
-                                        className="text-red-600 hover:bg-red-100"
+                                        className="text-red-600 border-red-300 hover:bg-red-100 hover:text-red-700" // Adicionando borda e hover
                                     >
                                         Remover
                                     </Button>
