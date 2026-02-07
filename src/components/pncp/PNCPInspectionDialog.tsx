@@ -118,9 +118,9 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
         setInspectionList(prev => prev.map(item => {
             if (item.originalPncpItem.id === itemId) {
                 return { 
-                    ...i, 
+                    ...item, 
                     mappedItem: {
-                        ...i.mappedItem,
+                        ...item.mappedItem,
                         descricao_item: value,
                     }
                 };
@@ -366,7 +366,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                         <TableCell className={cn("py-2 text-center")}>
                                             <div className="flex flex-col items-center justify-center gap-1">
                                                 {/* 1. Mensagem de Duplicidade Específica */}
-                                                <span className="text-sm text-red-600 font-medium">
+                                                <span className="text-xs text-red-600 font-medium">
                                                     {/* Exibe a mensagem detalhada de duplicidade */}
                                                     Há duplicidade na Chave de Contrato. {item.messages[0]}
                                                 </span>
