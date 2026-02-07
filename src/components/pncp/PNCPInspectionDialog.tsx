@@ -288,16 +288,18 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                 )}
                                 
                                 <TableCell className="text-right space-y-1">
-                                    {/* Botão Revisar (Reduzido) */}
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => handleReviewItem(item)}
-                                        className="w-full"
-                                    >
-                                        <Pencil className="h-4 w-4 mr-1" />
-                                        Revisar
-                                    </Button>
+                                    {/* O botão Revisar só aparece se o status não for 'needs_catmat_info' */}
+                                    {status !== 'needs_catmat_info' && (
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            onClick={() => handleReviewItem(item)}
+                                            className="w-full"
+                                        >
+                                            <Pencil className="h-4 w-4 mr-1" />
+                                            Revisar
+                                        </Button>
+                                    )}
                                     
                                     {/* Botão Remover (Com ícone de Lixeira) */}
                                     <Button 
