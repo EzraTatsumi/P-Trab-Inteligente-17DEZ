@@ -173,7 +173,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                 <TableHead className={cn(statusOrShortDescWidth, "text-center")}>Status</TableHead>
                             )}
                             
-                            <TableHead className={actionWidth + " text-right"}>Ações</TableHead>
+                            <TableHead className={actionWidth + " text-center"}>Ações</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
