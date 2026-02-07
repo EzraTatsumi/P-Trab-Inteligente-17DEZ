@@ -175,7 +175,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 const itemDescription = item.descricaoItem || ''; 
                 const initialMappedItem: ItemAquisicao = {
                     id: item.id, 
-                    descricao_item: itemDescription,
+                    descricao_item: itemDescription, // <-- Descrição da ARP
                     descricao_reduzida: '', 
                     valor_unitario: item.valorUnitario, 
                     numero_pregao: pregaoFormatado, 
@@ -232,7 +232,10 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     // Mapeia o item para usar os dados padronizados do catálogo local
                     // Usa a descrição padronizada do BD se existir, senão usa a descrição da ARP
                     initialMappedItem.descricao_reduzida = catmatData.short_description || '';
-                    initialMappedItem.descricao_item = catmatData.description || itemDescription; 
+                    
+                    // IMPORTANTE: MANTEMOS A DESCRIÇÃO DA ARP COMO A DESCRIÇÃO COMPLETA INICIAL DO MAPPED ITEM
+                    // O usuário pode editá-la se necessário, mas a descrição oficial do PNCP (officialDescription)
+                    // é usada apenas para comparação na Coluna 3.
                     
                     if (descriptionMismatch) {
                         messages.push('Divergência: Descrição da ARP difere da descrição oficial do PNCP.');
@@ -245,7 +248,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         messages: messages,
                         // userShortDescription é o valor inicial para o caso de o usuário querer revisar
                         userShortDescription: catmatData.short_description || '', 
-                        officialPncpDescription: officialDescription,
+                        officialPncpDescription: officialDescription, // <-- VALOR DA BUSCA PNCP
                         pdmSuggestion: pdmSuggestion,
                         descriptionMismatch: descriptionMismatch,
                     } as InspectionItem;
@@ -264,7 +267,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         status: status,
                         messages: messages,
                         userShortDescription: initialShortDesc,
-                        officialPncpDescription: officialDescription,
+                        officialPncpDescription: officialDescription, // <-- VALOR DA BUSCA PNCP
                         pdmSuggestion: pdmSuggestion,
                         descriptionMismatch: descriptionMismatch,
                     } as InspectionItem;
@@ -326,6 +329,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                             onItemPreSelect={handleItemPreSelect} 
                             selectedItemIds={selectedItemIds}
                             onClearSelection={handleClearSelection} 
+                            scrollContainerRef={null} // Ref não é mais necessário aqui
                         />
                     </TabsContent>
                     
