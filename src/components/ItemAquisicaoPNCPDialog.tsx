@@ -56,17 +56,29 @@ interface SelectedItemState {
     uasg: string;
 }
 
-// CORREÇÃO 1: Função auxiliar para normalizar strings para comparação (Incluindo normalização Unicode)
+// Função auxiliar para normalizar strings para comparação (Incluindo normalização Unicode)
 const normalizeString = (str: string | number | null | undefined): string => {
-    // 1. Converte para string, trata null/undefined como string vazia
     const s = String(str || '').trim();
-    
-    // 2. Normaliza caracteres Unicode (NFD) e remove diacríticos (acentos)
     const normalized = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    
-    // 3. Converte para maiúsculas
-    // 4. Colapsa múltiplos espaços internos em um único espaço
     return normalized.toUpperCase().replace(/\s+/g, ' ');
+};
+
+// NOVO: Função para normalizar strings removendo todos os caracteres não-dígitos (para Pregão e UASG)
+const normalizeDigits = (value: string | number | null | undefined) =>
+    normalizeString(value).replace(/[^\d]/g, "");
+
+// NOVO: Função para parsear valores monetários de forma robusta
+const parseMoney = (value: any): number => {
+    if (typeof value === "number") return value;
+
+    if (typeof value === "string") {
+        // Remove separador de milhar (ponto) e converte vírgula decimal para ponto
+        const cleaned = value.replace(/\./g, "").replace(",", ".");
+        const parsed = Number(cleaned);
+        return isNaN(parsed) ? 0 : parsed;
+    }
+
+    return 0;
 };
 
 /**
@@ -83,16 +95,22 @@ const normalizeString = (str: string | number | null | undefined): string => {
 const isFlexibleDuplicate = (newItem: ItemAquisicao, existingItem: ItemAquisicao): boolean => {
     // --- 1. Critérios Obrigatórios (Chave de Contrato) ---
     
-    // Comparação de Pregão (Normalizada)
-    const pregaoMatch = normalizeString(newItem.numero_pregao) === normalizeString(existingItem.numero_pregao);
+    // Comparação de Pregão (Normalizada para dígitos)
+    const pregaoMatch =
+        normalizeDigits(newItem.numero_pregao) ===
+        normalizeDigits(existingItem.numero_pregao);
     
-    // Comparação de UASG (Normalizada - deve ser 6 dígitos brutos)
-    const uasgMatch = normalizeString(newItem.uasg) === normalizeString(existingItem.uasg);
+    // Comparação de UASG (Normalizada para dígitos)
+    const uasgMatch =
+        normalizeDigits(newItem.uasg) ===
+        normalizeDigits(existingItem.uasg);
     
-    // CORREÇÃO 2: Comparação numérica exata para valor unitário (arredondando para 2 casas decimais)
-    const roundedNewValue = Math.round(newItem.valor_unitario * 100) / 100;
-    const roundedExistingValue = Math.round(existingItem.valor_unitario * 100) / 100;
-    const valorMatch = roundedNewValue === roundedExistingValue; 
+    // Comparação numérica exata para valor unitário (após parse e arredondamento)
+    const newValue = parseMoney(newItem.valor_unitario);
+    const existingValue = parseMoney(existingItem.valor_unitario);
+
+    const valorMatch =
+        Math.round(newValue * 100) === Math.round(existingValue * 100);
 
     if (!pregaoMatch || !uasgMatch || !valorMatch) {
         return false; // Falha na Chave de Contrato
@@ -101,13 +119,19 @@ const isFlexibleDuplicate = (newItem: ItemAquisicao, existingItem: ItemAquisicao
     // --- 2. Critérios Opcionais (Pelo menos um deve ser igual) ---
     
     // Comparação de CATMAT (Normalizada)
-    const catmatMatch = normalizeString(newItem.codigo_catmat) === normalizeString(existingItem.codigo_catmat);
+    const catmatMatch =
+        normalizeString(newItem.codigo_catmat) ===
+        normalizeString(existingItem.codigo_catmat);
     
     // Comparação de Descrição Completa (Normalizada)
-    const descCompletaMatch = normalizeString(newItem.descricao_item) === normalizeString(existingItem.descricao_item);
+    const descCompletaMatch =
+        normalizeString(newItem.descricao_item) ===
+        normalizeString(existingItem.descricao_item);
     
     // Comparação de Descrição Reduzida (Normalizada)
-    const descReduzidaMatch = normalizeString(newItem.descricao_reduzida) === normalizeString(existingItem.descricao_reduzida);
+    const descReduzidaMatch =
+        normalizeString(newItem.descricao_reduzida) ===
+        normalizeString(existingItem.descricao_reduzida);
 
     // Se a Chave de Contrato for idêntica, verifica se pelo menos uma Chave de Item é idêntica.
     const optionalMatch = catmatMatch || descCompletaMatch || descReduzidaMatch;
