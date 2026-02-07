@@ -210,12 +210,20 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     // NOVO: Ref para o DialogContent (o container de rolagem)
     const dialogContentRef = useRef<HTMLDivElement>(null);
 
+    // Função auxiliar para rolar o diálogo para o topo
+    const scrollToTop = () => {
+        if (dialogContentRef.current) {
+            dialogContentRef.current.scrollTo(0, 0);
+        }
+    };
+
     // Limpa o estado de seleção sempre que o diálogo é aberto
     useEffect(() => {
         if (open) {
             setSelectedItemsState([]);
             setInspectionList([]);
             setIsInspectionDialogOpen(false);
+            scrollToTop(); // Rola para o topo ao abrir
         }
     }, [open]);
     
@@ -378,8 +386,8 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     const handleReviewItem = (item: ItemAquisicao) => {
         // 1. Fecha o diálogo de inspeção
         setIsInspectionDialogOpen(false);
-        // 2. NÃO FECHA o diálogo principal de PNCP, permitindo que o usuário volte para a busca
-        // onOpenChange(false); // <-- REMOVIDO
+        // 2. Rola o diálogo PNCP para o topo (para ver o cabeçalho)
+        scrollToTop();
         // 3. Chama a função de revisão do componente pai (MaterialConsumoDiretrizFormDialog)
         onReviewItem(item);
     };
@@ -393,7 +401,9 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         setSelectedItemsState([]);
         setInspectionList([]);
         setIsInspectionDialogOpen(false);
-        // Não fecha o diálogo principal, apenas reseta a visualização
+        
+        // 3. Rola o diálogo PNCP para o topo (para ver o cabeçalho)
+        scrollToTop();
         
         toast.success(`Importação de ${items.length} itens concluída. Pronto para nova busca.`);
     };
