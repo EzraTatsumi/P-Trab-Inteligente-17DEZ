@@ -374,14 +374,15 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                             <div className="flex flex-col items-center justify-center gap-1">
                                                 {/* 1. Mensagem de Duplicidade Específica */}
                                                 <span className="text-sm text-red-600 font-medium">
-                                                    Há duplicidade na Chave de Item: {item.messages[0]}
+                                                    {/* Exibe a mensagem detalhada de duplicidade */}
+                                                    Há duplicidade na Chave de Contrato. {item.messages[0]}
                                                 </span>
                                                 
                                                 {/* 2. Status do Catálogo com cores */}
                                                 <p className={cn("text-xs mt-1", hasShortDescription ? "text-green-600" : "text-red-600")}>
                                                     {hasShortDescription ? 
-                                                        "Item presente no Catálogo CATMAT nativo" : 
-                                                        "Item não presente no Catálogo CATMAT nativo"
+                                                        "Item presente no Catálogo CATMAT local" : 
+                                                        "Item não presente no Catálogo CATMAT local"
                                                     }
                                                 </p>
                                             </div>

@@ -114,14 +114,24 @@ const parseMoney = (value: any): number => {
     return 0;
 };
 
+interface DuplicateCheckResult {
+    isDuplicate: boolean;
+    matchingKeys: string[];
+}
+
 /**
  * Implementa a lógica de verificação de duplicidade flexível (4 de 6).
  * 
  * @param newItem O item que está sendo importado (PNCP).
  * @param existingItem O item já existente no banco de dados.
- * @returns true se for considerado duplicado.
+ * @returns Objeto com status de duplicidade e chaves correspondentes.
  */
-const isFlexibleDuplicate = (newItem: ItemAquisicao, existingItem: ItemAquisicao): boolean => {
+const isFlexibleDuplicate = (newItem: ItemAquisicao, existingItem: ItemAquisicao): DuplicateCheckResult => {
+    const result: DuplicateCheckResult = {
+        isDuplicate: false,
+        matchingKeys: [],
+    };
+    
     // --- 1. Critérios Obrigatórios (Chave de Contrato) ---
     
     // Comparação de Pregão (Normalizada para dígitos e ano de 2 dígitos)
@@ -143,7 +153,7 @@ const isFlexibleDuplicate = (newItem: ItemAquisicao, existingItem: ItemAquisicao
         Math.round(newValue * 100) === Math.round(existingValue * 100);
 
     if (!pregaoMatch || !uasgMatch || !valorMatch) {
-        return false; // Falha na Chave de Contrato
+        return result; // Falha na Chave de Contrato
     }
 
     // --- 2. Critérios Opcionais (Pelo menos um deve ser igual) ---
@@ -163,10 +173,21 @@ const isFlexibleDuplicate = (newItem: ItemAquisicao, existingItem: ItemAquisicao
         normalizeString(newItem.descricao_reduzida) ===
         normalizeString(existingItem.descricao_reduzida);
 
-    // Se a Chave de Contrato for idêntica, verifica se pelo menos uma Chave de Item é idêntica.
-    const optionalMatch = catmatMatch || descCompletaMatch || descReduzidaMatch;
+    if (catmatMatch) result.matchingKeys.push('CATMAT');
+    if (descCompletaMatch) result.matchingKeys.push('Descrição Completa');
+    if (descReduzidaMatch && normalizeString(newItem.descricao_reduzida).length > 0) {
+        // Só considera a descrição reduzida se ela não for vazia (ou seja, se foi preenchida/encontrada)
+        result.matchingKeys.push('Nome Reduzido');
+    }
 
-    return optionalMatch;
+    // Se a Chave de Contrato for idêntica, verifica se pelo menos uma Chave de Item é idêntica.
+    const optionalMatch = result.matchingKeys.length > 0;
+
+    if (optionalMatch) {
+        result.isDuplicate = true;
+    }
+
+    return result;
 };
 
 
@@ -300,11 +321,21 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 // --- VERIFICAÇÃO DE DUPLICIDADE E STATUS FINAL ---
                 
                 // 7. Verificação de Duplicidade Global (Nova Lógica)
-                const isDuplicate = combinedExistingItems.some(existingItem => isFlexibleDuplicate(initialMappedItem, existingItem));
+                let duplicateResult: DuplicateCheckResult = { isDuplicate: false, matchingKeys: [] };
                 
-                if (isDuplicate) {
+                // Itera sobre todos os itens existentes para encontrar a primeira duplicidade
+                for (const existingItem of combinedExistingItems) {
+                    duplicateResult = isFlexibleDuplicate(initialMappedItem, existingItem);
+                    if (duplicateResult.isDuplicate) {
+                        break; // Encontrou duplicidade, pode parar
+                    }
+                }
+                
+                if (duplicateResult.isDuplicate) {
                     status = 'duplicate';
-                    messages.push('Item duplicado em uma diretriz existente para o ano selecionado.');
+                    // Formata a mensagem com as chaves correspondentes
+                    const keys = duplicateResult.matchingKeys.join(', ');
+                    messages.push(`Chaves de Item idênticas: ${keys}`);
                 } else {
                     // 8. Determinação do Status para itens NÃO duplicados
                     if (shortDescription) {
