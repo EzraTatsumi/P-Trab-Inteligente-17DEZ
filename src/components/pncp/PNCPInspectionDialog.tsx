@@ -23,6 +23,12 @@ interface PNCPInspectionDialogProps {
     onReviewItem: (item: ItemAquisicao) => void; // Função para revisar o item
 }
 
+// Função auxiliar para formatar a contagem de itens com concordância
+const formatItemCount = (count: number) => {
+    const itemWord = count === 1 ? 'item' : 'itens';
+    return `${count} ${itemWord}`;
+};
+
 // Componente auxiliar para Textarea com auto-ajuste
 const AutoResizeTextarea: React.FC<{
     value: string;
@@ -92,7 +98,9 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     const totalValid = groupedItems.valid?.length || 0;
     const totalNeedsInfo = groupedItems.needs_catmat_info?.length || 0;
     const totalDuplicates = groupedItems.duplicate?.length || 0;
-    const totalPending = totalNeedsInfo + totalDuplicates;
+    
+    // NOVO CÁLCULO: Apenas itens que requerem ação (needs_catmat_info)
+    const totalPendingAction = totalNeedsInfo; 
 
     const handleUpdateShortDescription = (itemId: string, value: string) => {
         setInspectionList(prev => prev.map(item => {
@@ -446,7 +454,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                 <DialogHeader>
                     <DialogTitle>Inspeção de Itens PNCP</DialogTitle>
                     <DialogDescription>
-                        Revise os {initialInspectionList.length} itens selecionados. Itens duplicados ou que requerem descrição reduzida devem ser resolvidos antes da importação final.
+                        Revise os {formatItemCount(initialInspectionList.length)} selecionados. {formatItemCount(totalDuplicates)} duplicado{totalDuplicates === 1 ? '' : 's'} serão descartado{totalDuplicates === 1 ? '' : 's'}. Itens que requerem descrição reduzida devem ser resolvidos antes da importação final.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -495,9 +503,9 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
 
                 <div className="flex justify-between items-center pt-4 border-t">
                     <p className="text-sm text-muted-foreground">
-                        {totalPending > 0 ? 
-                            <span className="text-red-600 font-medium">Atenção: {totalPending} itens requerem ação antes da importação.</span> :
-                            <span className="text-green-600 font-medium">Todos os {totalValid} itens estão prontos para importação.</span>
+                        {totalPendingAction > 0 ? 
+                            <span className="text-red-600 font-medium">Atenção: {formatItemCount(totalPendingAction)} requerem ação antes da importação.</span> :
+                            <span className="text-green-600 font-medium">Todos os {formatItemCount(totalValid)} estão prontos para importação.</span>
                         }
                     </p>
                     <div className="flex gap-2">
@@ -511,7 +519,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                             ) : (
                                 <Import className="h-4 w-4 mr-2" />
                             )}
-                            Importar {totalValid} Itens Válidos
+                            Importar {formatItemCount(totalValid)} Válido{totalValid === 1 ? '' : 's'}
                         </Button>
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSavingCatmat}>
                             Cancelar
