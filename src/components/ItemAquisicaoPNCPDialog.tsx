@@ -166,10 +166,12 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 }
                 
                 // 3. Busca da Descrição Reduzida e Completa no Catálogo Local
+                const catmatCodePadded = item.codigoItem.replace(/\D/g, '').padStart(9, '0');
+                
                 const { data: catmatData, error: catmatError } = await supabase
                     .from('catalogo_catmat')
                     .select('description, short_description')
-                    .eq('code', item.codigoItem.replace(/\D/g, '').padStart(9, '0')) // Busca com padding
+                    .eq('code', catmatCodePadded) // Busca com padding
                     .maybeSingle();
                 
                 // 4. Busca de Detalhes do Catálogo de Material do PNCP (para descrição oficial e PDM)
@@ -192,9 +194,9 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     messages.push('Pronto para importação.');
                     
                     // Mapeia o item para usar os dados padronizados do catálogo local
-                    // Se o catálogo local tiver short_description e description, usa-os.
+                    // Usa a descrição padronizada do BD se existir, senão usa a descrição da ARP
                     initialMappedItem.descricao_reduzida = catmatData.short_description || '';
-                    initialMappedItem.descricao_item = catmatData.description || itemDescription; // Usa a descrição completa padronizada, fallback para ARP
+                    initialMappedItem.descricao_item = catmatData.description || itemDescription; 
                     
                     if (descriptionMismatch) {
                         messages.push('Divergência: Descrição da ARP difere da descrição oficial do PNCP.');
