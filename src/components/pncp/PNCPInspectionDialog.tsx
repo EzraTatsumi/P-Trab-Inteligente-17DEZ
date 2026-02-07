@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Import, Check, X, AlertTriangle, Save, BookOpen, Info, Send } from "lucide-react";
+import { Loader2, Import, Check, X, AlertTriangle, Save, BookOpen } from "lucide-react";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { InspectionItem, InspectionStatus } from "@/types/pncpInspection";
 import { toast } from "sonner";
@@ -12,9 +12,6 @@ import { Label } from "@/components/ui/label";
 import { saveNewCatmatEntry } from '@/integrations/supabase/api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Textarea } from "@/components/ui/textarea";
-import { formatCodug } from '@/lib/formatUtils'; // Importando formatCodug
 
 interface PNCPInspectionDialogProps {
     open: boolean;
@@ -61,16 +58,15 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
 
     // Mutação para salvar a nova descrição reduzida no catálogo CATMAT
     const saveCatmatMutation = useMutation({
-        mutationFn: async ({ item, shortDescription, fullDescription }: { item: InspectionItem, shortDescription: string, fullDescription: string }) => {
-            // Chama a API para salvar/atualizar o catálogo CATMAT
+        mutationFn: async ({ item, shortDescription }: { item: InspectionItem, shortDescription: string }) => {
             await saveNewCatmatEntry(
                 item.mappedItem.codigo_catmat,
-                fullDescription, // Usa a descrição completa fornecida pelo usuário
+                item.mappedItem.descricao_item,
                 shortDescription
             );
-            return { itemId: item.originalPncpItem.id, shortDescription, fullDescription };
+            return item.originalPncpItem.id;
         },
-        onSuccess: ({ itemId, shortDescription, fullDescription }) => {
+        onSuccess: (itemId) => {
             toast.success("Descrição reduzida salva no Catálogo CATMAT!");
             
             // Atualiza o estado local para marcar o item como 'valid'
@@ -81,12 +77,9 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                         status: 'valid',
                         mappedItem: {
                             ...item.mappedItem,
-                            descricao_reduzida: shortDescription,
-                            descricao_item: fullDescription, // Atualiza a descrição completa no mappedItem
+                            descricao_reduzida: item.userShortDescription,
                         },
                         messages: ['Pronto para importação.'],
-                        userShortDescription: shortDescription, // Mantém o valor salvo
-                        pdmSuggestion: null, 
                     };
                 }
                 return item;
@@ -94,18 +87,12 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             
             // Invalida a query do catálogo para que a próxima busca já use o novo valor
             queryClient.invalidateQueries({ queryKey: ['catmatCatalog'] });
-            
-            // Se a aba atual for 'needs_catmat_info', tenta mudar para 'valid' se não houver mais pendências
-            if (activeTab === 'needs_catmat_info' && (groupedItems.needs_catmat_info?.length || 0) <= 1) {
-                setActiveTab('valid');
-            }
         },
         onError: (error) => {
             toast.error(error.message || "Falha ao salvar descrição reduzida.");
         }
     });
     
-    // Função para atualizar a Descrição Reduzida (userShortDescription)
     const handleUpdateShortDescription = (itemId: string, value: string) => {
         setInspectionList(prev => prev.map(item => {
             if (item.originalPncpItem.id === itemId) {
@@ -115,56 +102,17 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
         }));
     };
     
-    // NOVO: Função para atualizar a Descrição Completa (mappedItem.descricao_item)
-    const handleUpdateARPDescription = (itemId: string, value: string) => {
-        setInspectionList(prev => prev.map(item => {
-            if (item.originalPncpItem.id === itemId) {
-                return { 
-                    ...item, 
-                    mappedItem: {
-                        ...item.mappedItem,
-                        descricao_item: value,
-                    }
-                };
-            }
-            return item;
-        }));
-    };
-    
-    // Função corrigida para chamar a mutação (Salvar & Validar)
+    // Função corrigida para chamar a mutação
     const handleSaveAndValidateCatmat = (item: InspectionItem) => {
+        // Garante que userShortDescription é uma string e remove espaços
         const shortDescription = (item.userShortDescription || '').trim();
-        const fullDescription = (item.mappedItem.descricao_item || '').trim();
         
         if (!shortDescription) {
             toast.error("A descrição reduzida não pode ser vazia.");
             return;
         }
-        if (!fullDescription) {
-            toast.error("A descrição completa não pode ser vazia.");
-            return;
-        }
         
-        saveCatmatMutation.mutate({ item, shortDescription, fullDescription });
-    };
-    
-    // NOVO: Função para enviar item 'valid' para 'needs_catmat_info' (Enviar para Revisão)
-    const handleSendToReview = (itemId: string) => {
-        setInspectionList(prev => prev.map(item => {
-            if (item.originalPncpItem.id === itemId) {
-                toast.info("Item movido para 'Requer Revisão'. Edite e salve para atualizar o catálogo.");
-                return { 
-                    ...item, 
-                    status: 'needs_catmat_info',
-                    messages: ['Revisão solicitada pelo usuário.'],
-                    // Mantém a descrição reduzida atual como sugestão inicial
-                    userShortDescription: item.mappedItem.descricao_reduzida, 
-                };
-            }
-            return item;
-        }));
-        // Tenta mudar para a aba de revisão
-        setActiveTab('needs_catmat_info');
+        saveCatmatMutation.mutate({ item, shortDescription });
     };
 
     const handleRemoveItem = (itemId: string) => {
@@ -204,148 +152,75 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                 <Table>
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
-                            <TableHead className="w-[10%] text-center">Cód. CATMAT</TableHead>
-                            {/* Coluna 2: Descrição Completa (ARP ou Catálogo) */}
-                            <TableHead className="w-[30%] text-center">Descrição Completa</TableHead> 
-                            {/* Coluna 3: Descrição Oficial (PNCP) */}
-                            <TableHead className="w-[30%] text-center">Descrição Oficial (PNCP)</TableHead> 
-                            {/* Coluna 4: Descrição Reduzida */}
-                            <TableHead className="w-[15%]text-center">Descrição Reduzida</TableHead>
-                            <TableHead className="w-[15%] text-center">Ações</TableHead>
+                            <TableHead className="w-[15%]">Cód. CATMAT</TableHead>
+                            <TableHead className="w-[40%]">Descrição Completa (PNCP)</TableHead>
+                            {status === 'needs_catmat_info' && <TableHead className="w-[30%]">Descrição Reduzida *</TableHead>}
+                            {status !== 'needs_catmat_info' && <TableHead className="w-[30%]">Status</TableHead>}
+                            <TableHead className="w-[15%] text-right">Ações</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {items.map(item => {
-                            const isSaving = saveCatmatMutation.isPending && saveCatmatMutation.variables?.item.originalPncpItem.id === item.originalPncpItem.id;
-                            
-                            // Formatação do Pregão (removendo zeros à esquerda)
-                            const formattedPregao = item.mappedItem.numero_pregao.replace(/^0+/, '');
-                            
-                            // Lógica de exibição da Descrição Oficial (PNCP)
-                            const officialDescription = item.officialPncpDescription;
-                            
-                            // NOVO: Detectar a string de fallback da Edge Function e a mensagem de falha do frontend
-                            const isFallbackMessage = officialDescription && (
-                                officialDescription.startsWith("Descrição oficial para") || 
-                                officialDescription === "Falha ao carregar descrição oficial."
-                            );
-                            
-                            // Se for duplicado ou se for a mensagem de fallback, exibe 'N/A'
-                            const displayOfficialDescription = status === 'duplicate' || !officialDescription || isFallbackMessage
-                                ? 'N/A'
-                                : officialDescription;
-
-                            return (
-                                <TableRow key={item.originalPncpItem.id}>
-                                    <TableCell className="font-semibold text-sm">
-                                        {item.mappedItem.codigo_catmat}
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            {formattedPregao} ({formatCodug(item.mappedItem.uasg)})
-                                        </p>
-                                    </TableCell>
-                                    
-                                    {/* Coluna 2: Descrição Completa (Editável se needs_catmat_info) */}
-                                    <TableCell className="text-sm max-w-xs whitespace-normal">
-                                        {status === 'needs_catmat_info' ? (
-                                            <Textarea
-                                                value={item.mappedItem.descricao_item}
-                                                onChange={(e) => handleUpdateARPDescription(item.originalPncpItem.id, e.target.value)}
-                                                placeholder="Edite a descrição completa"
-                                                rows={3}
-                                                disabled={isSaving}
-                                            />
-                                        ) : (
-                                            <div className="flex items-start gap-1">
-                                                {item.descriptionMismatch && (
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <AlertTriangle className="h-4 w-4 text-yellow-600 mt-1 flex-shrink-0" />
-                                                            </TooltipTrigger>
-                                                            <TooltipContent className="max-w-xs">
-                                                                <p>Divergência: A descrição da ARP difere da descrição oficial do Catálogo de Material do PNCP.</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                )}
-                                                <span>{item.mappedItem.descricao_item}</span>
-                                            </div>
-                                        )}
-                                    </TableCell>
-                                    
-                                    {/* Coluna 3: Descrição Oficial (PNCP) - Bruta, apenas para referência */}
-                                    <TableCell className="text-sm max-w-xs whitespace-normal text-muted-foreground">
-                                        {displayOfficialDescription}
-                                    </TableCell>
-                                    
-                                    {/* Coluna 4: Descrição Reduzida (Editável se needs_catmat_info) */}
+                        {items.map(item => (
+                            <TableRow key={item.originalPncpItem.id}>
+                                <TableCell className="font-semibold text-sm">{item.mappedItem.codigo_catmat}</TableCell>
+                                <TableCell className="text-sm max-w-xs whitespace-normal">
+                                    {item.mappedItem.descricao_item}
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Pregão: {item.mappedItem.numero_pregao} | UASG: {item.mappedItem.uasg} | R$: {item.mappedItem.valor_unitario}
+                                    </p>
+                                </TableCell>
+                                
+                                {status === 'needs_catmat_info' && (
                                     <TableCell>
-                                        {status === 'needs_catmat_info' ? (
-                                            <div className="space-y-1">
-                                                <Input
-                                                    value={item.userShortDescription}
-                                                    onChange={(e) => handleUpdateShortDescription(item.originalPncpItem.id, e.target.value)}
-                                                    placeholder={item.pdmSuggestion || "Nome curto para o catálogo"}
-                                                    disabled={isSaving}
-                                                />
-                                                {item.pdmSuggestion && (
-                                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                                        <Info className="h-3 w-3" />
-                                                        Sugestão PDM: {item.pdmSuggestion}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <span className="font-medium text-sm">
-                                                {item.mappedItem.descricao_reduzida || 'N/A'}
-                                            </span>
-                                        )}
-                                    </TableCell>
-                                    
-                                    {/* Coluna 5: Ações */}
-                                    <TableCell className="text-right">
-                                        <div className="flex flex-col gap-2">
-                                            {status === 'needs_catmat_info' && (
-                                                <Button
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    onClick={() => handleSaveAndValidateCatmat(item)}
-                                                    disabled={isSaving || !item.userShortDescription.trim() || !item.mappedItem.descricao_item.trim()}
-                                                >
-                                                    {isSaving ? (
-                                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                                    ) : (
-                                                        <Save className="h-4 w-4 mr-2" />
-                                                    )}
-                                                    Salvar & Validar
-                                                </Button>
-                                            )}
-                                            
-                                            {status === 'valid' && (
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => handleSendToReview(item.originalPncpItem.id)}
-                                                >
-                                                    <Send className="h-4 w-4 mr-2" />
-                                                    Enviar para Revisão
-                                                </Button>
-                                            )}
-                                            
-                                            <Button 
-                                                variant="ghost" 
-                                                size="sm" 
-                                                onClick={() => handleRemoveItem(item.originalPncpItem.id)}
-                                                className="text-red-600 hover:bg-red-100 border border-red-600 hover:border-red-700" // Adicionado borda vermelha
-                                                disabled={isSaving}
+                                        <div className="space-y-1">
+                                            <Input
+                                                value={item.userShortDescription}
+                                                onChange={(e) => handleUpdateShortDescription(item.originalPncpItem.id, e.target.value)}
+                                                placeholder="Nome curto para o catálogo"
+                                                disabled={saveCatmatMutation.isPending}
+                                            />
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                className="w-full"
+                                                onClick={() => handleSaveAndValidateCatmat(item)}
+                                                disabled={saveCatmatMutation.isPending || !item.userShortDescription.trim()}
                                             >
-                                                Remover
+                                                {saveCatmatMutation.isPending ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                ) : (
+                                                    <Save className="h-4 w-4 mr-2" />
+                                                )}
+                                                Salvar & Validar
                                             </Button>
                                         </div>
                                     </TableCell>
-                                </TableRow>
-                            );
-                        })}
+                                )}
+                                
+                                {status !== 'needs_catmat_info' && (
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            {status === 'valid' && <Check className="h-4 w-4 text-green-600" />}
+                                            {status === 'duplicate' && <X className="h-4 w-4 text-red-600" />}
+                                            <span className={cn("text-sm", status === 'duplicate' && "text-red-600")}>
+                                                {item.messages[0]}
+                                            </span>
+                                        </div>
+                                    </TableCell>
+                                )}
+                                
+                                <TableCell className="text-right">
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={() => handleRemoveItem(item.originalPncpItem.id)}
+                                        className="text-red-600 hover:bg-red-100"
+                                    >
+                                        Remover
+                                    </Button>
+                                </TableCell>
+                            </TableRow>
+                        ))}
                     </TableBody>
                 </Table>
             </div>
@@ -384,14 +259,14 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                     
                     <TabsContent value="needs_catmat_info">
                         <p className="text-sm text-muted-foreground mb-3">
-                            Estes itens não possuem descrição reduzida no catálogo. Edite a Descrição Completa (se necessário) e forneça um nome curto para o catálogo.
+                            Estes itens possuem códigos CATMAT válidos, mas não têm uma descrição reduzida cadastrada no seu catálogo. Por favor, forneça um nome curto para facilitar a identificação e clique em "Salvar & Validar".
                         </p>
                         {renderInspectionTable('needs_catmat_info')}
                     </TabsContent>
                     
                     <TabsContent value="duplicate">
                         <p className="text-sm text-muted-foreground mb-3 text-red-600">
-                            Estes itens já existem na diretriz de destino (mesmo CATMAT, Pregão e UASG). Remova-os para evitar duplicidade.
+                            Estes itens já existem na diretriz de destino (mesma Descrição Completa, CATMAT, Pregão e UASG). Remova-os para evitar duplicidade.
                         </p>
                         {renderInspectionTable('duplicate')}
                     </TabsContent>

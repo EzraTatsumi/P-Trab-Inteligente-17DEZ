@@ -67,19 +67,10 @@ export interface DetailedArpItem {
     id: string; // Unique ID for the item (ARP Control + Item Number)
     numeroAta: string;
     codigoItem: string; // CATMAT code as string
-    descricaoItem: string; // Descrição da ARP
+    descricaoItem: string;
     valorUnitario: number;
     quantidadeHomologada: number;
     numeroControlePncpAta: string;
     pregaoFormatado: string;
     uasg: string;
-}
-
-/**
- * NOVO: Estrutura de detalhes do item no Catálogo de Material do PNCP.
- */
-export interface CatmatDetails {
-    codigoItem: string;
-    descricaoItem: string; // Descrição oficial completa
-    nomePdm: string; // Nome reduzido sugerido (PDM)
 }

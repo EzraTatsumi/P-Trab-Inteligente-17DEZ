@@ -1,8 +1,8 @@
 import { toast } from "sonner";
 import { supabase } from "./client"; // Importar o cliente Supabase
 import { Profile } from "@/types/profiles"; // Importar o novo tipo Profile
-import { ArpUasgSearchParams, ArpItemResult, ArpRawResult, DetailedArpItem, DetailedArpRawResult, CatmatDetails } from "@/types/pncp"; // Importa os novos tipos PNCP
-import { formatPregao, normalizeTextForComparison, capitalizeWords } from "@/lib/formatUtils"; // <-- UPDATED IMPORT
+import { ArpUasgSearchParams, ArpItemResult, ArpRawResult, DetailedArpItem, DetailedArpRawResult } from "@/types/pncp"; // Importa os novos tipos PNCP
+import { formatPregao } from "@/lib/formatUtils";
 import { TablesInsert } from "./types"; // Importar TablesInsert
 
 // Interface para a resposta consolidada da Edge Function
@@ -196,22 +196,14 @@ export async function fetchCatmatShortDescription(codigoCatmat: string): Promise
  * Saves a new or updates an existing CATMAT entry with a short description.
  * This is used when importing PNCP items where the CATMAT code is new or lacks a short description.
  * @param code The CATMAT code (string).
- * @param description The full description (from PNCP or user edit).
+ * @param description The full description (from PNCP).
  * @param shortDescription The user-provided short description.
  */
 export async function saveNewCatmatEntry(code: string, description: string, shortDescription: string): Promise<void> {
-    
-    // 1. Padronizar a descrição completa para CAIXA ALTA (padrão do BD)
-    // A descrição completa pode vir da ARP ou ser editada pelo usuário.
-    const standardizedDescription = normalizeTextForComparison(description);
-    
-    // 2. Padronizar a descrição reduzida (Capitalização de Palavras)
-    const standardizedShortDescription = capitalizeWords(shortDescription);
-    
     const dbData: TablesInsert<'catalogo_catmat'> = {
         code: code.replace(/\D/g, ''), // Ensure code is clean digits
-        description: standardizedDescription, // <-- USANDO DESCRIÇÃO PADRONIZADA
-        short_description: standardizedShortDescription, // <-- USANDO NOME REDUZIDO CAPITALIZADO
+        description: description,
+        short_description: shortDescription,
     };
 
     // Use upsert to handle both new entries and updates (onConflict: 'code' assumes 'code' is unique)
@@ -222,40 +214,6 @@ export async function saveNewCatmatEntry(code: string, description: string, shor
     if (error) {
         console.error("Erro ao salvar nova entrada CATMAT:", error);
         throw new Error("Falha ao salvar o item no catálogo CATMAT.");
-    }
-}
-
-/**
- * NOVO: Busca a descrição oficial e o nome PDM de um item no Catálogo de Material do PNCP.
- * @param codigoItem O código CATMAT (string).
- * @returns Os detalhes do item.
- */
-export async function fetchPncpCatmatDetails(codigoItem: string): Promise<CatmatDetails> {
-    try {
-        const { data, error } = await supabase.functions.invoke('fetch-catmat-details', {
-            body: { codigoItem },
-        });
-
-        if (error) {
-            throw new Error(error.message || "Falha na execução da Edge Function de busca de detalhes do CATMAT.");
-        }
-        
-        const responseData = data as CatmatDetails;
-        
-        if (!responseData.codigoItem) {
-            throw new Error("Item não encontrado no Catálogo de Material do PNCP.");
-        }
-        
-        return responseData;
-
-    } catch (error) {
-        console.error("Erro ao buscar detalhes do CATMAT no PNCP:", error);
-        // Retorna um objeto de fallback em caso de erro de API externa
-        return {
-            codigoItem: codigoItem,
-            descricaoItem: "Falha ao carregar descrição oficial.",
-            nomePdm: null,
-        } as CatmatDetails;
     }
 }
 
@@ -352,7 +310,7 @@ export async function fetchArpItemsById(numeroControlePncpAta: string): Promise<
         
         const responseData = data as DetailedArpRawResult[]; 
         
-        if (!ArrayOfDetailedArpRawResult(responseData)) {
+        if (!Array.isArray(responseData)) {
             if (responseData && (responseData as any).error) {
                 throw new Error((responseData as any).error);
             }
@@ -396,9 +354,4 @@ export async function fetchArpItemsById(numeroControlePncpAta: string): Promise<
         console.error("Erro ao buscar itens detalhados da ARP:", error);
         throw new Error(`Falha ao buscar itens detalhados: ${error instanceof Error ? error.message : "Erro desconhecido."}`);
     }
-}
-
-// Helper type guard for array check
-function ArrayOfDetailedArpRawResult(data: any): data is DetailedArpRawResult[] {
-    return Array.isArray(data);
 }
