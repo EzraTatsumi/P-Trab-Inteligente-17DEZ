@@ -401,6 +401,12 @@ export async function fetchArpItemsById(numeroControlePncpAta: string): Promise<
  * @returns A flattened array of all existing ItemAquisicao objects.
  */
 export async function fetchAllExistingAcquisitionItems(year: number, userId: string): Promise<ItemAquisicao[]> {
+    // Adiciona validação para garantir que o ano é um número válido
+    if (!year || typeof year !== 'number' || year <= 0) {
+        console.warn("fetchAllExistingAcquisitionItems called with invalid year:", year);
+        return [];
+    }
+    
     try {
         const { data, error } = await supabase
             .from('diretrizes_material_consumo')
