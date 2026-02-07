@@ -60,8 +60,6 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     const totalDuplicates = groupedItems.duplicate?.length || 0;
     const totalPending = totalNeedsInfo + totalDuplicates;
 
-    // REMOVIDA A MUTAÇÃO saveCatmatMutation
-
     const handleUpdateShortDescription = (itemId: string, value: string) => {
         setInspectionList(prev => prev.map(item => {
             if (item.originalPncpItem.id === itemId) {
@@ -72,7 +70,25 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     };
     
     /**
-     * NOVO: Marca o item localmente como 'valid' e move para a aba Prontos.
+     * NOVO: Permite editar a descrição completa (ARP) no estado local.
+     */
+    const handleUpdateFullDescription = (itemId: string, value: string) => {
+        setInspectionList(prev => prev.map(item => {
+            if (item.originalPncpItem.id === itemId) {
+                return { 
+                    ...item, 
+                    mappedItem: {
+                        ...item.mappedItem,
+                        descricao_item: value,
+                    }
+                };
+            }
+            return item;
+        }));
+    };
+    
+    /**
+     * Marca o item localmente como 'valid' e move para a aba Prontos.
      * A persistência no BD é adiada para a importação final.
      */
     const handleMarkAsValid = (item: InspectionItem) => {
@@ -140,7 +156,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     };
 
     /**
-     * NOVO: Lógica de importação final, incluindo persistência no catálogo CATMAT.
+     * Lógica de importação final, incluindo persistência no catálogo CATMAT.
      */
     const handleFinalImport = async () => {
         if (totalNeedsInfo > 0) {
@@ -149,10 +165,13 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             return;
         }
         
+        // Filtra apenas itens válidos que tiveram a descrição reduzida preenchida
         const itemsToPersist = inspectionList
             .filter(item => item.status === 'valid' && item.userShortDescription.trim() !== '');
             
-        const finalItems = itemsToPersist.map(item => item.mappedItem);
+        const finalItems = inspectionList
+            .filter(item => item.status === 'valid')
+            .map(item => item.mappedItem);
         
         if (finalItems.length === 0) {
             toast.error("Nenhum item válido para importação.");
@@ -165,12 +184,14 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
         try {
             // 1. Persistir no catálogo CATMAT (apenas para itens que foram validados manualmente)
             const persistencePromises = itemsToPersist.map(item => {
-                // Verifica se a descrição reduzida foi preenchida pelo usuário (ou se veio do PNCP e foi validada)
-                if (item.userShortDescription.trim() !== '') {
+                // Usa a descrição reduzida que foi preenchida e validada
+                const shortDescription = item.mappedItem.descricao_reduzida || item.userShortDescription;
+                
+                if (shortDescription.trim() !== '') {
                     return saveNewCatmatEntry(
                         item.mappedItem.codigo_catmat,
                         item.mappedItem.descricao_item,
-                        item.userShortDescription
+                        shortDescription
                     );
                 }
                 return Promise.resolve();
@@ -186,6 +207,8 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             
         } catch (error: any) {
             console.error("Erro durante a persistência CATMAT na importação final:", error);
+            // Se a persistência falhar, ainda podemos tentar importar os itens, mas avisamos o usuário.
+            // No entanto, para manter a integridade, vamos cancelar a importação se a persistência falhar.
             toast.error(`Falha ao salvar no catálogo CATMAT. Importação cancelada. Detalhes: ${error.message}`);
         } finally {
             setIsSavingCatmat(false);
@@ -241,9 +264,18 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                 {/* Centralizando células */}
                                 <TableCell className={cn("font-semibold text-sm text-center")}>{item.mappedItem.codigo_catmat}</TableCell>
                                 
-                                {/* Coluna Descrição Completa (ARP) - Mantendo quebra de linha, mas centralizando o bloco */}
-                                <TableCell className={cn("text-sm max-w-xs whitespace-normal text-center")}>
-                                    {item.mappedItem.descricao_item}
+                                {/* Coluna Descrição Completa (ARP) - EDITÁVEL SE needs_catmat_info */}
+                                <TableCell className={cn("text-sm max-w-xs whitespace-normal text-center", status !== 'needs_catmat_info' && "py-4")}>
+                                    {status === 'needs_catmat_info' ? (
+                                        <Input
+                                            value={item.mappedItem.descricao_item}
+                                            onChange={(e) => handleUpdateFullDescription(item.originalPncpItem.id, e.target.value)}
+                                            className="text-center h-8"
+                                            disabled={isSavingCatmat}
+                                        />
+                                    ) : (
+                                        item.mappedItem.descricao_item
+                                    )}
                                     <p className="text-xs text-muted-foreground mt-1">
                                         {/* Ajuste de formatação: Pregão sem zero à esquerda (se for numérico), UASG formatado em parênteses, e Valor Unitário formatado */}
                                         Pregão: {item.mappedItem.numero_pregao.replace(/^0+/, '')} ({formatCodug(item.mappedItem.uasg)}) | R$: {formatCurrency(item.mappedItem.valor_unitario)}
