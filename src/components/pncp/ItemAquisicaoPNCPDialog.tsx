@@ -1,393 +1,154 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, FileText, DollarSign, Loader2, Import } from "lucide-react";
-import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { DetailedArpItem } from '@/types/pncp';
-import { InspectionItem, InspectionStatus } from '@/types/pncpInspection'; // NOVO: Importar tipos de inspeção
+import { Card, CardContent } from "@/components/ui/card";
+import { Loader2, Search, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import ArpUasgSearch from './pncp/ArpUasgSearch'; // Importa o novo componente
-import { fetchCatmatShortDescription, fetchPncpCatmatDetails } from '@/integrations/supabase/api'; // Importa as funções de busca CATMAT e detalhes PNCP
-import PNCPInspectionDialog from './pncp/PNCPInspectionDialog'; // NOVO: Importar o diálogo de inspeção
-import { normalizeTextForComparison } from '@/lib/formatUtils'; // <-- NOVO IMPORT
-import { supabase } from '@/integrations/supabase/client'; // <-- IMPORT CORRIGIDO
-import { Tables } from '@/integrations/supabase/types'; // Importar Tables para tipagem
+import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
+import ArpUasgSearchForm from './ArpUasgSearchForm';
+import ArpUasgResults from './ArpUasgResults';
+import { ArpUasgSearchParams, ArpItemResult } from '@/types/pncp';
+import { useQuery } from '@tanstack/react-query';
+import { fetchArpsByUasg } from '@/integrations/supabase/api';
 
 interface ItemAquisicaoPNCPDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onImport: (items: ItemAquisicao[]) => void;
-    // NOVO: Lista de itens já existentes na diretriz de destino
-    existingItemsInDiretriz: ItemAquisicao[]; 
 }
 
-// Placeholder components for future implementation
-const ArpCatmatSearch: React.FC<{ onSelect: (item: ItemAquisicao) => void }> = ({ onSelect }) => (
-    <div className="p-4 space-y-4">
-        <p className="text-muted-foreground">
-            Funcionalidade de Busca de ARP por CATMAT/CATSER será implementada aqui.
-        </p>
-        <Button disabled>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            Buscar ARP (Em desenvolvimento)
-        </Button>
-    </div>
-);
-
-const AveragePriceSearch: React.FC<{ onSelect: (item: ItemAquisicao) => void }> = ({ onSelect }) => (
-    <div className="p-4 space-y-4">
-        <p className="text-muted-foreground">
-            Funcionalidade de Pesquisa de Preço Médio será implementada aqui.
-        </p>
-        <Button disabled>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            Pesquisar Preço (Em desenvolvimento)
-        </Button>
-    </div>
-);
-
-// NOVO TIPO DE ESTADO: Armazena o item detalhado selecionado e seus metadados de origem
-interface SelectedItemState {
-    item: DetailedArpItem;
-    pregaoFormatado: string;
-    uasg: string;
-}
-
-// Função auxiliar para gerar a chave de unicidade de um item (copiada de MaterialConsumoDiretrizFormDialog.tsx)
-const generateItemKey = (item: ItemAquisicao): string => {
-    const normalize = (str: string) => 
-        (str || '')
-        .trim()
-        .toUpperCase()
-        .replace(/\s+/g, ' ');
-        
-    // CRITÉRIO DE DUPLICIDADE SIMPLIFICADO: CATMAT, Pregão e UASG
-    const catmat = normalize(item.codigo_catmat);
-    const pregao = normalize(item.numero_pregao);
-    const uasg = normalize(item.uasg);
-    
-    return `${catmat}|${pregao}|${uasg}`;
-};
-
-/**
- * Tenta buscar o registro CATMAT no catálogo local usando o código original e o código com padding de 9 dígitos.
- * @param codigoItem O código CATMAT (string).
- * @returns O registro do catálogo ou null.
- */
-async function fetchLocalCatmat(codigoItem: string): Promise<Tables<'catalogo_catmat'> | null> {
-    const cleanCode = codigoItem.replace(/\D/g, '');
-    if (!cleanCode) return null;
-    
-    const catmatCodePadded = cleanCode.padStart(9, '0');
-    
-    // 1. Tenta buscar com padding de 9 dígitos (padrão PNCP)
-    let { data: catmatData, error: catmatError } = await supabase
-        .from('catalogo_catmat')
-        .select('description, short_description')
-        .eq('code', catmatCodePadded)
-        .maybeSingle();
-        
-    if (catmatError) {
-        console.error("Erro na busca CATMAT (padded):", catmatError);
-        // Não lança erro, apenas continua
-    }
-    
-    // 2. Se não encontrou e o código original é diferente do padded, tenta o código original
-    if (!catmatData && cleanCode !== catmatCodePadded) {
-        const { data: originalData, error: originalError } = await supabase
-            .from('catalogo_catmat')
-            .select('description, short_description')
-            .eq('code', cleanCode)
-            .maybeSingle();
-            
-        if (originalError) {
-            console.error("Erro na busca CATMAT (original):", originalError);
-        }
-        
-        catmatData = originalData;
-    }
-    
-    return catmatData as Tables<'catalogo_catmat'> | null;
-}
-
+// Estados de visualização
+type ViewState = 'search' | 'results' | 'details';
 
 const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     open,
     onOpenChange,
     onImport,
-    existingItemsInDiretriz, // NOVO
 }) => {
-    const [selectedTab, setSelectedTab] = useState("arp-uasg");
-    const [selectedItemsState, setSelectedItemsState] = useState<SelectedItemState[]>([]);
-    const [isInspecting, setIsInspecting] = useState(false); // Mudança de isImporting para isInspecting
+    const [view, setView] = useState<ViewState>('search');
+    const [searchParams, setSearchParams] = useState<ArpUasgSearchParams | null>(null);
+    const [selectedArp, setSelectedArp] = useState<ArpItemResult | null>(null);
     
-    // NOVO ESTADO: Gerencia a lista de itens para inspeção
-    const [inspectionList, setInspectionList] = useState<InspectionItem[]>([]);
-    const [isInspectionDialogOpen, setIsInspectionDialogOpen] = useState(false);
+    // Query para buscar ARPs por UASG
+    const { data: arpResults, isLoading: isSearching, error: searchError } = useQuery({
+        queryKey: ['arpUasgSearch', searchParams],
+        queryFn: () => fetchArpsByUasg(searchParams!),
+        enabled: view === 'results' && !!searchParams,
+        initialData: [],
+    });
+    
+    // Efeito para lidar com erros de busca
+    if (searchError) {
+        toast.error(searchError.message || "Erro desconhecido na busca de ARPs.");
+        // Resetar para a view de busca em caso de erro
+        setView('search');
+    }
 
-    // Limpa o estado de seleção sempre que o diálogo é aberto
-    useEffect(() => {
-        if (open) {
-            setSelectedItemsState([]);
-            setInspectionList([]);
-            setIsInspectionDialogOpen(false);
-        }
-    }, [open]);
-    
-    // Função para limpar explicitamente a seleção
-    const handleClearSelection = () => {
-        setSelectedItemsState([]);
+    const handleSearch = (params: ArpUasgSearchParams) => {
+        setSearchParams(params);
+        setView('results');
     };
     
-    // Função para alternar a seleção de um item detalhado
-    const handleItemPreSelect = (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => {
-        setSelectedItemsState(prev => {
-            const existingIndex = prev.findIndex(s => s.item.id === item.id);
-            
-            if (existingIndex !== -1) {
-                // Remover item (desselecionar)
-                return prev.filter((_, index) => index !== existingIndex);
-            } else {
-                // Adicionar item (selecionar)
-                return [...prev, { item, pregaoFormatado, uasg }];
-            }
-        });
+    const handleSelectArp = (arp: ArpItemResult) => {
+        setSelectedArp(arp);
+        setView('details');
     };
     
-    // Mapeia apenas os IDs para passar para os componentes de busca
-    const selectedItemIds = selectedItemsState.map(s => s.item.id);
-
-    // NOVO: Função para iniciar a inspeção
-    const handleStartInspection = async () => {
-        if (selectedItemsState.length === 0) {
-            toast.error("Selecione pelo menos um item detalhado para importar.");
-            return;
-        }
-        
-        setIsInspecting(true);
-        toast.info("Iniciando inspeção e validação dos itens selecionados...");
-        
-        try {
-            const inspectionPromises = selectedItemsState.map(async ({ item, pregaoFormatado, uasg }) => {
-                
-                // 1. Mapeamento inicial para ItemAquisicao (usando dados da ARP)
-                const itemDescription = item.descricaoItem || ''; 
-                const initialMappedItem: ItemAquisicao = {
-                    id: item.id, 
-                    descricao_item: itemDescription, // <-- Descrição da ARP
-                    descricao_reduzida: '', 
-                    valor_unitario: item.valorUnitario, 
-                    numero_pregao: pregaoFormatado, 
-                    uasg: uasg, 
-                    codigo_catmat: item.codigoItem, 
-                };
-                
-                let status: InspectionStatus = 'pending';
-                let messages: string[] = [];
-                
-                // 2. Verificação de Duplicidade Local (Critério: CATMAT, Pregão, UASG)
-                const itemKey = generateItemKey(initialMappedItem);
-                const isDuplicate = existingItemsInDiretriz.some(existingItem => generateItemKey(existingItem) === itemKey);
-                
-                if (isDuplicate) {
-                    // HIPÓTESE 3: DUPLICADO
-                    status = 'duplicate';
-                    messages.push('Item duplicado na diretriz de destino.');
-                    
-                    return {
-                        originalPncpItem: item,
-                        mappedItem: initialMappedItem,
-                        status: status,
-                        messages: messages,
-                        userShortDescription: '',
-                        officialPncpDescription: null,
-                        pdmSuggestion: null,
-                        descriptionMismatch: false,
-                    } as InspectionItem;
-                }
-                
-                // --- INÍCIO DA LÓGICA DE ROBUSTEZ ---
-                let officialDescription: string | null = null;
-                let pdmSuggestion: string | null = null;
-                let descriptionMismatch = false;
-                let catmatDetailsFailed = false; // Flag de falha na busca PNCP
-                
-                try {
-                    // 4. Busca de Detalhes do Catálogo de Material do PNCP (para descrição oficial e PDM)
-                    const catmatDetails = await fetchPncpCatmatDetails(item.codigoItem);
-                    officialDescription = catmatDetails.descricaoItem;
-                    pdmSuggestion = catmatDetails.nomePdm;
-                    
-                    // 5. Comparação de Descrição (ARP vs Catálogo Oficial)
-                    const normalizedOfficial = normalizeTextForComparison(officialDescription);
-                    const normalizedArp = normalizeTextForComparison(itemDescription);
-                    
-                    descriptionMismatch = officialDescription && 
-                                          officialDescription !== "Falha ao carregar descrição oficial." && 
-                                          normalizedOfficial !== normalizedArp;
-                                          
-                } catch (e) {
-                    // Se a busca falhar (incluindo o erro lançado no api.ts), forçamos a revisão.
-                    catmatDetailsFailed = true;
-                    console.error(`Falha ao buscar detalhes PNCP para ${item.codigoItem}:`, e);
-                    // Definimos o officialDescription como null para que o frontend saiba que não foi verificado
-                    officialDescription = null; 
-                }
-                
-                // 3. Busca da Descrição Reduzida no Catálogo Local
-                const catmatData = await fetchLocalCatmat(item.codigoItem);
-                
-                // --- FIM DA LÓGICA DE ROBUSTEZ ---
-                
-                // 6. Determinação do Status Final
-                
-                // Se a busca PNCP falhou OU o CATMAT não existe localmente, forçamos a revisão.
-                if (catmatDetailsFailed || !catmatData) {
-                    status = 'needs_catmat_info';
-                    
-                    if (catmatDetailsFailed) {
-                        messages.push('ERRO: Falha ao verificar a descrição oficial do PNCP. Revisão manual obrigatória.');
-                    } else {
-                        messages.push('Requer descrição reduzida para o catálogo CATMAT.');
-                    }
-                    
-                    // Valor inicial para Descrição Reduzida: Sugestão PDM (bruta) ou Descrição da ARP (truncada)
-                    const initialShortDesc = pdmSuggestion || itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : '');
-                    
-                    return {
-                        originalPncpItem: item,
-                        mappedItem: initialMappedItem, // Mantém a descrição da ARP como descrição completa inicial
-                        status: status,
-                        messages: messages,
-                        userShortDescription: initialShortDesc,
-                        officialPncpDescription: officialDescription, // Pode ser null se a busca falhou
-                        pdmSuggestion: pdmSuggestion,
-                        descriptionMismatch: descriptionMismatch,
-                    } as InspectionItem;
-                    
-                } else {
-                    // HIPÓTESE 1: CATMAT EXISTE NO CATÁLOGO LOCAL (PRONTO PARA IMPORTAR)
-                    status = 'valid';
-                    messages.push('Pronto para importação.');
-                    
-                    // Mapeia o item para usar os dados padronizados do catálogo local
-                    initialMappedItem.descricao_reduzida = catmatData.short_description || '';
-                    
-                    if (descriptionMismatch) {
-                        messages.push('Divergência: Descrição da ARP difere da descrição oficial do PNCP.');
-                    }
-                    
-                    return {
-                        originalPncpItem: item,
-                        mappedItem: initialMappedItem,
-                        status: status,
-                        messages: messages,
-                        userShortDescription: catmatData.short_description || '', 
-                        officialPncpDescription: officialDescription, // <-- VALOR DA BUSCA PNCP
-                        pdmSuggestion: pdmSuggestion,
-                        descriptionMismatch: descriptionMismatch,
-                    } as InspectionItem;
-                }
-            });
-            
-            const results = await Promise.all(inspectionPromises);
-            setInspectionList(results);
-            
-            // 6. Abrir o diálogo de inspeção
-            setIsInspectionDialogOpen(true);
-            
-        } catch (error) {
-            console.error("Erro durante a inspeção PNCP:", error);
-            toast.error("Falha ao inspecionar itens. Tente novamente.");
-        } finally {
-            setIsInspecting(false);
-        }
-    };
-    
-    // Função chamada pelo PNCPInspectionDialog após a validação/resolução
-    const handleFinalImport = (items: ItemAquisicao[]) => {
+    const handleImportItems = (items: ItemAquisicao[]) => {
         onImport(items);
-        // Fechar o diálogo principal
-        onOpenChange(false);
+        // Fecha o diálogo principal após a importação
+        onOpenChange(false); 
     };
+    
+    const handleBack = () => {
+        if (view === 'details') {
+            setView('results');
+            setSelectedArp(null);
+        } else if (view === 'results') {
+            setView('search');
+            setSearchParams(null);
+        }
+    };
+    
+    const title = useMemo(() => {
+        switch (view) {
+            case 'search':
+                return "Buscar ARPs por UASG";
+            case 'results':
+                return "Resultados da Busca de ARPs";
+            case 'details':
+                return `Detalhes da ARP: ${selectedArp?.numeroAta || 'Carregando...'}`;
+            default:
+                return "Consulta PNCP";
+        }
+    }, [view, selectedArp]);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Search className="h-5 w-5" />
-                        Importação de Itens PNCP
-                    </DialogTitle>
+                    <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>
-                        Selecione o método de busca no Portal Nacional de Contratações Públicas (PNCP).
+                        {view === 'search' && "Consulte Atas de Registro de Preços (ARPs) no PNCP por Unidade Gestora e período de vigência."}
+                        {view === 'results' && "Selecione uma ARP para visualizar os itens detalhados."}
+                        {view === 'details' && `Itens detalhados da ARP ${selectedArp?.numeroAta}. Selecione os itens para importar.`}
                     </DialogDescription>
                 </DialogHeader>
+                
+                {view !== 'search' && (
+                    <Button variant="ghost" onClick={handleBack} className="w-fit">
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Voltar
+                    </Button>
+                )}
 
-                <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 mb-4">
-                        <TabsTrigger value="arp-uasg" className="flex items-center gap-2">
-                            <FileText className="h-4 w-4" />
-                            ARP por UASG
-                        </TabsTrigger>
-                        <TabsTrigger value="arp-catmat" className="flex items-center gap-2">
-                            <FileText className="h-4 w-4" />
-                            ARP por CATMAT/CATSER
-                        </TabsTrigger>
-                        <TabsTrigger value="avg-price" className="flex items-center gap-2">
-                            <DollarSign className="h-4 w-4" />
-                            Preço Médio
-                        </TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="arp-uasg">
-                        <ArpUasgSearch 
-                            onItemPreSelect={handleItemPreSelect} 
-                            selectedItemIds={selectedItemIds}
-                            onClearSelection={handleClearSelection} 
-                            scrollContainerRef={null} // Ref não é mais necessário aqui
+                <CardContent className="p-0">
+                    {view === 'search' && (
+                        <ArpUasgSearchForm 
+                            onSearch={handleSearch}
+                            isSearching={isSearching}
                         />
-                    </TabsContent>
+                    )}
                     
-                    <TabsContent value="arp-catmat">
-                        <ArpCatmatSearch onSelect={() => {}} /> {/* onSelect vazio, pois a lógica de seleção foi elevada */}
-                    </TabsContent>
+                    {view === 'results' && isSearching && (
+                        <div className="text-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+                            <p className="text-sm text-muted-foreground mt-2">Buscando ARPs...</p>
+                        </div>
+                    )}
                     
-                    <TabsContent value="avg-price">
-                        <AveragePriceSearch onSelect={() => {}} /> {/* onSelect vazio, pois a lógica de seleção foi elevada */}
-                    </TabsContent>
-                </Tabs>
-
-                {/* Rodapé com o botão de importação movido */}
-                <div className="flex justify-end gap-2 pt-4 border-t">
-                    <Button 
-                        type="button" 
-                        onClick={handleStartInspection}
-                        disabled={selectedItemsState.length === 0 || isInspecting}
-                    >
-                        {isInspecting ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                            <Import className="h-4 w-4 mr-2" />
-                        )}
-                        Inspecionar e Importar ({selectedItemsState.length})
-                    </Button>
-                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isInspecting}>
-                        Fechar
-                    </Button>
-                </div>
+                    {view === 'results' && !isSearching && arpResults && (
+                        <ArpUasgResults 
+                            results={arpResults}
+                            onSelectArp={handleSelectArp}
+                        />
+                    )}
+                    
+                    {view === 'details' && selectedArp && (
+                        // TODO: Criar componente ArpItemDetails para exibir e selecionar itens
+                        <Card className="mt-4 p-6 text-center">
+                            <p className="text-lg font-semibold">Visualização de Detalhes da ARP</p>
+                            <p className="text-muted-foreground">
+                                Implementação pendente: Aqui será exibida a lista de itens da ARP {selectedArp.numeroAta} para seleção e importação.
+                            </p>
+                            <Button 
+                                onClick={() => handleImportItems([{ 
+                                    id: Math.random().toString(36).substring(2, 9),
+                                    descricao_item: `Item de Teste da ARP ${selectedArp.numeroAta}`,
+                                    descricao_reduzida: `Teste ARP`,
+                                    valor_unitario: 100.00,
+                                    numero_pregao: selectedArp.numeroAta,
+                                    uasg: selectedArp.uasg,
+                                    codigo_catmat: '000000000',
+                                }])}
+                                className="mt-4"
+                            >
+                                Importar Item de Teste
+                            </Button>
+                        </Card>
+                    )}
+                </CardContent>
             </DialogContent>
-            
-            {/* Diálogo de Inspeção */}
-            {isInspectionDialogOpen && (
-                <PNCPInspectionDialog
-                    open={isInspectionDialogOpen}
-                    onOpenChange={setIsInspectionDialogOpen}
-                    inspectionList={inspectionList}
-                    onFinalImport={handleFinalImport}
-                />
-            )}
         </Dialog>
     );
 };

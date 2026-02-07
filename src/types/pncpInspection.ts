@@ -1,4 +1,4 @@
-import { DetailedArpItem, CatmatDetails } from "./pncp";
+import { DetailedArpItem } from "./pncp";
 import { ItemAquisicao } from "./diretrizesMaterialConsumo";
 
 /**
@@ -25,9 +25,4 @@ export interface InspectionItem {
     
     // Campo para o usuário preencher se o status for 'needs_catmat_info'
     userShortDescription: string;
-    
-    // NOVO: Dados do Catálogo de Material do PNCP
-    officialPncpDescription: string | null;
-    pdmSuggestion: string | null;
-    descriptionMismatch: boolean;
 }
