@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, FileText, DollarSign, Loader2 } from "lucide-react";
+import { Search, FileText, DollarSign, Loader2, Import } from "lucide-react";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
+import { DetailedArpItem } from '@/types/pncp';
 import { toast } from "sonner";
 import ArpUasgSearch from './pncp/ArpUasgSearch'; // Importa o novo componente
 
@@ -14,7 +15,6 @@ interface ItemAquisicaoPNCPDialogProps {
 }
 
 // Placeholder components for future implementation
-// REMOVIDO: ArpUasgSearch placeholder
 const ArpCatmatSearch: React.FC<{ onSelect: (item: ItemAquisicao) => void }> = ({ onSelect }) => (
     <div className="p-4 space-y-4">
         <p className="text-muted-foreground">
@@ -39,6 +39,12 @@ const AveragePriceSearch: React.FC<{ onSelect: (item: ItemAquisicao) => void }> 
     </div>
 );
 
+// NOVO TIPO DE ESTADO: Armazena o item detalhado selecionado e seus metadados de origem
+interface SelectedItemState {
+    item: DetailedArpItem;
+    pregaoFormatado: string;
+    uasg: string;
+}
 
 const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     open,
@@ -46,13 +52,40 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     onImport,
 }) => {
     const [selectedTab, setSelectedTab] = useState("arp-uasg");
+    const [selectedItemState, setSelectedItemState] = useState<SelectedItemState | null>(null);
     
-    // Função para receber um item selecionado de qualquer subcomponente de busca
-    const handleItemSelect = (item: ItemAquisicao) => {
-        // Por enquanto, importamos um item por vez. Se a busca retornar múltiplos, ajustaremos.
-        onImport([item]);
+    // Função chamada pelo ArpSearchResultsList quando um item detalhado é clicado
+    const handleItemPreSelect = (item: DetailedArpItem | null, pregaoFormatado: string, uasg: string) => {
+        if (item) {
+            setSelectedItemState({ item, pregaoFormatado, uasg });
+        } else {
+            setSelectedItemState(null);
+        }
+    };
+    
+    // Função para confirmar a importação (disparada pelo botão no rodapé)
+    const handleConfirmImport = () => {
+        if (!selectedItemState) {
+            toast.error("Selecione um item detalhado para importar.");
+            return;
+        }
+        
+        const { item, pregaoFormatado, uasg } = selectedItemState;
+        
+        // Mapeamento final do DetailedArpItem para ItemAquisicao
+        const itemAquisicao: ItemAquisicao = {
+            id: item.id, 
+            descricao_item: item.descricaoItem,
+            descricao_reduzida: item.descricaoItem.substring(0, 50) + (item.descricaoItem.length > 50 ? '...' : ''),
+            valor_unitario: item.valorUnitario, 
+            numero_pregao: pregaoFormatado, 
+            uasg: uasg, 
+            codigo_catmat: item.codigoItem, 
+        };
+        
+        onImport([itemAquisicao]);
         onOpenChange(false);
-        toast.success(`Item '${item.descricao_reduzida || item.descricao_item}' importado do PNCP.`);
+        toast.success(`Item '${itemAquisicao.descricao_reduzida || itemAquisicao.descricao_item}' importado do PNCP.`);
     };
 
     return (
@@ -85,22 +118,45 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     </TabsList>
 
                     <TabsContent value="arp-uasg">
-                        <ArpUasgSearch onSelect={handleItemSelect} />
+                        <ArpUasgSearch 
+                            onItemPreSelect={handleItemPreSelect} 
+                            selectedItemId={selectedItemState?.item.id || null}
+                        />
                     </TabsContent>
                     
                     <TabsContent value="arp-catmat">
-                        <ArpCatmatSearch onSelect={handleItemSelect} />
+                        <ArpCatmatSearch onSelect={() => {}} /> {/* onSelect vazio, pois a lógica de seleção foi elevada */}
                     </TabsContent>
                     
                     <TabsContent value="avg-price">
-                        <AveragePriceSearch onSelect={handleItemSelect} />
+                        <AveragePriceSearch onSelect={() => {}} /> {/* onSelect vazio, pois a lógica de seleção foi elevada */}
                     </TabsContent>
                 </Tabs>
 
-                <div className="flex justify-end gap-2 pt-4 border-t">
-                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                        Fechar
-                    </Button>
+                {/* Rodapé com o botão de importação movido */}
+                <div className="flex justify-between gap-2 pt-4 border-t">
+                    <div className="flex items-center text-sm text-muted-foreground">
+                        {selectedItemState ? (
+                            <p className="text-green-600 font-medium">
+                                Item Selecionado: {selectedItemState.item.descricaoItem.substring(0, 40)}...
+                            </p>
+                        ) : (
+                            <p>Nenhum item selecionado.</p>
+                        )}
+                    </div>
+                    <div className="flex gap-2">
+                        <Button 
+                            type="button" 
+                            onClick={handleConfirmImport}
+                            disabled={!selectedItemState}
+                        >
+                            <Import className="h-4 w-4 mr-2" />
+                            Importar Item Selecionado
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                            Fechar
+                        </Button>
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>

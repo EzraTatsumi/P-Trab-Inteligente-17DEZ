@@ -31,20 +31,24 @@ interface ArpGroup {
 
 interface ArpSearchResultsListProps {
     results: ArpItemResult[]; 
-    onSelect: (item: ItemAquisicao) => void;
+    // NOVO: Função para pré-selecionar o item detalhado (não faz a importação final)
+    onItemPreSelect: (item: DetailedArpItem | null, pregaoFormatado: string, uasg: string) => void;
     searchedUasg: string;
     searchedOmName: string;
+    // NOVO: ID do item selecionado globalmente para manter o destaque
+    selectedItemId: string | null;
 }
 
 // Componente para buscar e exibir os itens detalhados de uma ARP
-const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onSelect, isGroupOpen }: { 
+const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onItemPreSelect, isGroupOpen, selectedItemId }: { 
     arpReferences: ArpReference[]; 
     pregaoFormatado: string; 
     uasg: string; 
-    onSelect: (item: ItemAquisicao) => void;
+    onItemPreSelect: (item: DetailedArpItem | null, pregaoFormatado: string, uasg: string) => void;
     isGroupOpen: boolean;
+    selectedItemId: string | null;
 }) => {
-    const [selectedDetailedItem, setSelectedDetailedItem] = useState<DetailedArpItem | null>(null);
+    // Não precisamos mais de selectedDetailedItem localmente, usamos selectedItemId do pai.
 
     // Usa useQueries para disparar buscas paralelas para cada ARP
     const arpQueries = useQueries({
@@ -68,29 +72,18 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onSelect, isGr
     }, [arpQueries, isLoading, isError]);
     
     const handlePreSelectDetailedItem = (item: DetailedArpItem) => {
-        setSelectedDetailedItem(item.id === selectedDetailedItem?.id ? null : item);
+        const isCurrentlySelected = selectedItemId === item.id;
+        
+        if (isCurrentlySelected) {
+            // Desselecionar
+            onItemPreSelect(null, '', '');
+        } else {
+            // Selecionar
+            onItemPreSelect(item, pregaoFormatado, uasg);
+        }
     };
     
-    const handleConfirmImport = () => {
-        if (!selectedDetailedItem) {
-            toast.error("Selecione um item detalhado para importar.");
-            return;
-        }
-        
-        // Mapeamento do DetailedArpItem para ItemAquisicao
-        const itemAquisicao: ItemAquisicao = {
-            id: selectedDetailedItem.id, 
-            descricao_item: selectedDetailedItem.descricaoItem,
-            // Cria uma descrição reduzida a partir da descrição completa
-            descricao_reduzida: selectedDetailedItem.descricaoItem.substring(0, 50) + (selectedDetailedItem.descricaoItem.length > 50 ? '...' : ''),
-            valor_unitario: selectedDetailedItem.valorUnitario, 
-            numero_pregao: pregaoFormatado, // Usa o pregão do grupo (já formatado)
-            uasg: uasg, // Usa a UASG do grupo
-            codigo_catmat: selectedDetailedItem.codigoItem, 
-        };
-        
-        onSelect(itemAquisicao);
-    };
+    // O botão de importação foi removido daqui.
 
     if (isLoading) {
         return (
@@ -101,7 +94,7 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onSelect, isGr
         );
     }
     
-    if (isError) {
+    if (error) {
         return (
             <div className="text-center py-4 text-red-500 text-sm">
                 Erro ao carregar itens detalhados de uma ou mais ARPs.
@@ -131,7 +124,7 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onSelect, isGr
                 </thead>
                 <TableBody>
                     {detailedItems.map(item => {
-                        const isSelected = selectedDetailedItem?.id === item.id;
+                        const isSelected = selectedItemId === item.id;
                         return (
                             <TableRow 
                                 key={item.id}
@@ -155,22 +148,13 @@ const DetailedArpItems = ({ arpReferences, pregaoFormatado, uasg, onSelect, isGr
                 </TableBody>
             </Table>
             
-            <div className="flex justify-end">
-                <Button 
-                    onClick={handleConfirmImport} 
-                    disabled={!selectedDetailedItem}
-                    size="sm"
-                >
-                    <Import className="h-4 w-4 mr-2" />
-                    Importar Item Selecionado
-                </Button>
-            </div>
+            {/* O botão de importação global foi removido daqui. */}
         </div>
     );
 };
 
 
-const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, onSelect, searchedUasg, searchedOmName }) => {
+const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, onItemPreSelect, searchedUasg, searchedOmName, selectedItemId }) => {
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
     
     // 1. Lógica de Agrupamento
@@ -285,8 +269,9 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                                                         arpReferences={group.arpReferences} // PASSANDO TODAS AS REFERÊNCIAS
                                                         pregaoFormatado={group.pregao}
                                                         uasg={group.uasg}
-                                                        onSelect={onSelect}
+                                                        onItemPreSelect={onItemPreSelect}
                                                         isGroupOpen={isGroupOpen}
+                                                        selectedItemId={selectedItemId}
                                                     />
                                                 </CollapsibleContent>
                                             </Collapsible>
