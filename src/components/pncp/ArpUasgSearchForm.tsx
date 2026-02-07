@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -56,6 +56,9 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
     
     // NOVO ESTADO: Armazena o nome da OM para o cabeçalho
     const [searchedOmName, setSearchedOmName] = useState<string>(""); 
+    
+    // REF para o container de resultados
+    const resultsRef = useRef<HTMLDivElement>(null);
 
     const form = useForm<ArpUasgFormValues>({
         resolver: zodResolver(formSchema),
@@ -108,6 +111,14 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
             }
             
             setArpResults(results);
+            
+            // Rola para o topo dos resultados após a busca ser concluída
+            if (results.length > 0 && resultsRef.current) {
+                // Usamos setTimeout para garantir que o DOM foi renderizado após a atualização do estado
+                setTimeout(() => {
+                    resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 50);
+            }
 
         } catch (error: any) {
             console.error("Erro na busca PNCP:", error);
@@ -213,15 +224,17 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
                 </form>
             </Form>
             
-            {/* Seção de Resultados - Passando as novas props */}
+            {/* Seção de Resultados - Adicionando a ref para rolagem */}
             {arpResults.length > 0 && (
-                <ArpSearchResultsList 
-                    results={arpResults} 
-                    onItemPreSelect={onItemPreSelect} 
-                    searchedUasg={form.getValues('uasg')}
-                    searchedOmName={searchedOmName}
-                    selectedItemIds={selectedItemIds}
-                />
+                <div ref={resultsRef}>
+                    <ArpSearchResultsList 
+                        results={arpResults} 
+                        onItemPreSelect={onItemPreSelect} 
+                        searchedUasg={form.getValues('uasg')}
+                        searchedOmName={searchedOmName}
+                        selectedItemIds={selectedItemIds}
+                    />
+                </div>
             )}
 
             <OmSelectorDialog
