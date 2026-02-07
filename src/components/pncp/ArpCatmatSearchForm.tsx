@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { format, subDays } from 'date-fns';
 import { fetchArpItemsByCatmat, fetchCatmatFullDescription } from '@/integrations/supabase/api';
 import { DetailedArpItem } from '@/types/pncp';
-import { capitalizeFirstLetter, formatCodug, formatPregao, formatDate } from '@/lib/formatUtils';
+import { capitalizeFirstLetter, formatCodug, formatPregao, formatDate, formatCurrency } from '@/lib/formatUtils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import CatmatCatalogDialog from '../CatmatCatalogDialog'; // NOVO: Importar o diálogo
@@ -45,7 +45,7 @@ const defaultDataFim = format(today, 'yyyy-MM-dd');
 const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 
 
-const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
+const ArpCatmatSearchForm: React.FC<ArpCatmatFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false); // Estado para o diálogo
     const [arpResults, setArpResults] = useState<DetailedArpItem[]>([]); 
