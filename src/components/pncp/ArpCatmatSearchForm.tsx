@@ -107,8 +107,8 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
             if (results.length > 0 && resultsRef.current) {
                 setTimeout(() => {
                     resultsRef.current?.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start' 
+                        behavior: "smooth",
+                        block: "start" 
                     });
                 }, 100); 
             }
@@ -260,7 +260,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                                                 {displayPregao}
                                             </TableCell>
                                             <TableCell className="text-sm max-w-xs whitespace-normal">
-                                                {representativeItem.nomeUnidadeGerenciadora}
+                                                {representativeItem.nomeUnidadeGerenciadora || 'N/A'}
                                             </TableCell>
                                             <TableCell className="text-sm whitespace-nowrap">
                                                 {formatCodug(representativeItem.uasg)}
