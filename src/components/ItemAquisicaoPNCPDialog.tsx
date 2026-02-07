@@ -249,7 +249,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
             console.log("ANO SELECIONADO:", selectedYear);
             console.log("USER ID:", userId);
             console.log("ITENS EXISTENTES NO BANCO (OUTRAS DIRETRIZES):", allExistingItems.length);
-            // console.log("ITENS EXISTENTES NO BANCO:", allExistingItems); // Comentado para evitar logs muito longos
             
             // 3. COMBINAR ITENS: Itens do banco + Itens da diretriz atual (estado local)
             const combinedExistingItems = [
@@ -280,33 +279,42 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 let fullPncpDescription: string | null = null; 
                 let nomePdm: string | null = null; 
                 
-                // --- NOVO FLUXO: Busca de Detalhes PNCP (nomePdm) SEMPRE ---
+                // --- BUSCAS DE DADOS INDEPENDENTES DO STATUS ---
+                
                 // 5. Busca da Descrição Completa e PDM no PNCP (API externa)
                 const pncpDetails = await fetchCatmatFullDescription(item.codigoItem);
                 fullPncpDescription = pncpDetails.fullDescription;
                 nomePdm = pncpDetails.nomePdm; 
                 
-                // 6. Verificação de Duplicidade Global (Nova Lógica)
+                // 6. Busca da Descrição Reduzida no Catálogo CATMAT (DB local)
+                shortDescription = await fetchCatmatShortDescription(item.codigoItem);
+                
+                // Se encontrado no catálogo local, preenche a descrição reduzida no item mapeado
+                if (shortDescription) {
+                    initialMappedItem.descricao_reduzida = shortDescription;
+                } else {
+                    // Fallback seguro para descrição reduzida (primeiras 50 letras da descrição completa)
+                    initialMappedItem.descricao_reduzida = itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : '');
+                }
+                
+                // --- VERIFICAÇÃO DE DUPLICIDADE E STATUS FINAL ---
+                
+                // 7. Verificação de Duplicidade Global (Nova Lógica)
                 const isDuplicate = combinedExistingItems.some(existingItem => isFlexibleDuplicate(initialMappedItem, existingItem));
                 
                 if (isDuplicate) {
                     status = 'duplicate';
                     messages.push('Item duplicado em uma diretriz existente para o ano selecionado.');
                 } else {
-                    // 7. Busca da Descrição Reduzida no Catálogo CATMAT (DB local)
-                    shortDescription = await fetchCatmatShortDescription(item.codigoItem);
-                    
+                    // 8. Determinação do Status para itens NÃO duplicados
                     if (shortDescription) {
                         // CATMAT encontrado e tem descrição reduzida
                         status = 'valid';
                         messages.push('Pronto para importação.');
-                        initialMappedItem.descricao_reduzida = shortDescription;
                     } else {
                         // CATMAT não encontrado ou não tem descrição reduzida
                         status = 'needs_catmat_info';
                         messages.push('Requer descrição reduzida para o catálogo CATMAT.');
-                        // Fallback seguro para descrição reduzida (primeiras 50 letras da descrição completa)
-                        initialMappedItem.descricao_reduzida = itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : '');
                     }
                 }
                 
@@ -317,14 +325,14 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     messages: messages,
                     userShortDescription: shortDescription || '', // Campo para preenchimento do usuário
                     fullPncpDescription: fullPncpDescription || 'Descrição completa não encontrada no PNCP.', 
-                    nomePdm: nomePdm, // NOVO: Adiciona nomePdm ao objeto de inspeção
+                    nomePdm: nomePdm, 
                 } as InspectionItem;
             });
             
             const results = await Promise.all(inspectionPromises);
             setInspectionList(results);
             
-            // 8. Abrir o diálogo de inspeção
+            // 9. Abrir o diálogo de inspeção
             setIsInspectionDialogOpen(true);
             
         } catch (error) {
