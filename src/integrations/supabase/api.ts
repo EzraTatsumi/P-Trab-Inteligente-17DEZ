@@ -33,7 +33,7 @@ export async function fetchFuelPrice(fuelType: 'diesel' | 'gasolina'): Promise<{
       return responseData.diesel;
     } else {
       if (typeof responseData.gasolina?.price !== 'number' || responseData.gasolina.price <= 0) {
-        throw new Error("Preço da Gasolina inválido recebido.");
+        throw new Error("Preço da Gasolina inválido recebida.");
       }
       return responseData.gasolina;
     }
@@ -143,10 +143,6 @@ export async function fetchUserProfile(): Promise<Profile> {
     } as Profile;
 }
 
-// =================================================================
-// NOVAS FUNÇÕES PARA CONSULTA PNCP (ARP)
-// =================================================================
-
 /**
  * Busca Atas de Registro de Preços (ARPs) por UASG e período de vigência.
  * @param params Os parâmetros de busca (UASG e datas).
@@ -215,5 +211,31 @@ export async function fetchArpsByUasg(params: ArpUasgSearchParams): Promise<ArpI
         
         // Não exibe toast aqui, o componente que usa useQuery fará isso.
         throw new Error(`Falha ao buscar ARPs: ${errorMessage}`);
+    }
+}
+
+/**
+ * Busca a descrição reduzida (short_description) de um item no catálogo CATMAT.
+ * @param catmatCode O código CATMAT do item.
+ * @returns A descrição reduzida ou null se não for encontrada.
+ */
+export async function fetchCatmatShortDescription(catmatCode: string): Promise<string | null> {
+    if (!catmatCode) return null;
+    
+    try {
+        const { data, error } = await supabase
+            .from('catalogo_catmat')
+            .select('short_description')
+            .eq('code', catmatCode)
+            .maybeSingle();
+            
+        if (error) throw error;
+        
+        return data?.short_description || null;
+        
+    } catch (error) {
+        console.error("Erro ao buscar short_description do CATMAT:", error);
+        // Retorna null em caso de erro para não interromper o fluxo de importação
+        return null;
     }
 }
