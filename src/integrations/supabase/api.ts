@@ -2,7 +2,7 @@ import { toast } from "sonner";
 import { supabase } from "./client"; // Importar o cliente Supabase
 import { Profile } from "@/types/profiles"; // Importar o novo tipo Profile
 import { ArpUasgSearchParams, ArpItemResult, ArpRawResult, DetailedArpItem, DetailedArpRawResult, CatmatDetails } from "@/types/pncp"; // Importa os novos tipos PNCP
-import { formatPregao } from "@/lib/formatUtils";
+import { formatPregao, normalizeTextForComparison, capitalizeWords } from "@/lib/formatUtils"; // <-- UPDATED IMPORT
 import { TablesInsert } from "./types"; // Importar TablesInsert
 
 // Interface para a resposta consolidada da Edge Function
@@ -200,10 +200,17 @@ export async function fetchCatmatShortDescription(codigoCatmat: string): Promise
  * @param shortDescription The user-provided short description.
  */
 export async function saveNewCatmatEntry(code: string, description: string, shortDescription: string): Promise<void> {
+    
+    // 1. Padronizar a descrição completa para CAIXA ALTA (padrão do BD)
+    const standardizedDescription = normalizeTextForComparison(description);
+    
+    // 2. Padronizar a descrição reduzida (Capitalização de Palavras)
+    const standardizedShortDescription = capitalizeWords(shortDescription);
+    
     const dbData: TablesInsert<'catalogo_catmat'> = {
         code: code.replace(/\D/g, ''), // Ensure code is clean digits
-        description: description,
-        short_description: shortDescription,
+        description: standardizedDescription, // <-- USANDO DESCRIÇÃO PADRONIZADA
+        short_description: standardizedShortDescription, // <-- USANDO NOME REDUZIDO CAPITALIZADO
     };
 
     // Use upsert to handle both new entries and updates (onConflict: 'code' assumes 'code' is unique)

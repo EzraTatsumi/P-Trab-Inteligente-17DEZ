@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import ArpUasgSearch from './pncp/ArpUasgSearch'; // Importa o novo componente
 import { fetchCatmatShortDescription, fetchPncpCatmatDetails } from '@/integrations/supabase/api'; // Importa as funções de busca CATMAT e detalhes PNCP
 import PNCPInspectionDialog from './pncp/PNCPInspectionDialog'; // NOVO: Importar o diálogo de inspeção
+import { normalizeTextForComparison } from '@/lib/formatUtils'; // <-- NOVO IMPORT
 
 interface ItemAquisicaoPNCPDialogProps {
     open: boolean;
@@ -158,7 +159,13 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     const pdmSuggestion = catmatDetails.nomePdm;
                     
                     // 4. Comparação de Descrição (ARP vs Catálogo Oficial)
-                    const descriptionMismatch = officialDescription && officialDescription !== "Falha ao carregar descrição oficial." && officialDescription.trim() !== itemDescription.trim();
+                    // Aplicar normalização para ignorar diferenças de pontuação e metadados
+                    const normalizedOfficial = normalizeTextForComparison(officialDescription);
+                    const normalizedArp = normalizeTextForComparison(itemDescription);
+                    
+                    const descriptionMismatch = officialDescription && 
+                                                officialDescription !== "Falha ao carregar descrição oficial." && 
+                                                normalizedOfficial !== normalizedArp; // <-- USANDO NORMALIZAÇÃO
                     
                     if (descriptionMismatch) {
                         messages.push('Atenção: Descrição da ARP difere da descrição oficial do Catálogo de Material do PNCP.');
@@ -177,7 +184,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         status = 'needs_catmat_info';
                         messages.push('Requer descrição reduzida para o catálogo CATMAT.');
                         
-                        // Sugere o nome PDM se disponível, senão usa o fallback
+                        // Sugere o nome PDM (que já vem limpo da Edge Function)
                         initialMappedItem.descricao_reduzida = pdmSuggestion || itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : '');
                     }
                     
