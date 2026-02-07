@@ -203,14 +203,14 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                 <Table>
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
-                            <TableHead className="w-[10%]">Cód. CATMAT</TableHead>
+                            <TableHead className="w-[10%] text-center">Cód. CATMAT</TableHead>
                             {/* Coluna 2: Descrição Completa (ARP ou Catálogo) */}
-                            <TableHead className="w-[30%]">Descrição Completa</TableHead> 
+                            <TableHead className="w-[30%] text-center">Descrição Completa</TableHead> 
                             {/* Coluna 3: Descrição Oficial (PNCP) */}
-                            <TableHead className="w-[30%]">Descrição Oficial (PNCP)</TableHead> 
+                            <TableHead className="w-[30%] text-center">Descrição Oficial (PNCP)</TableHead> 
                             {/* Coluna 4: Descrição Reduzida */}
-                            <TableHead className="w-[15%]">Descrição Reduzida</TableHead>
-                            <TableHead className="w-[15%] text-right">Ações</TableHead>
+                            <TableHead className="w-[15%]text-center">Descrição Reduzida</TableHead>
+                            <TableHead className="w-[15%] text-center">Ações</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
