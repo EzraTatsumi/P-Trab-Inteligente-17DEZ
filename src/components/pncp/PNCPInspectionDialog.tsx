@@ -14,6 +14,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Textarea } from '@/components/ui/textarea';
+import { formatCodug } from '@/lib/formatUtils'; // Importando formatCodug
 
 interface PNCPInspectionDialogProps {
     open: boolean;
@@ -217,12 +218,15 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                         {items.map(item => {
                             const isSaving = saveCatmatMutation.isPending && saveCatmatMutation.variables?.item.originalPncpItem.id === item.originalPncpItem.id;
                             
+                            // Formatação do Pregão (removendo zeros à esquerda)
+                            const formattedPregao = item.mappedItem.numero_pregao.replace(/^0+/, '');
+                            
                             return (
                                 <TableRow key={item.originalPncpItem.id}>
                                     <TableCell className="font-semibold text-sm">
                                         {item.mappedItem.codigo_catmat}
                                         <p className="text-xs text-muted-foreground mt-1">
-                                            {item.mappedItem.numero_pregao} | {item.mappedItem.uasg}
+                                            {formattedPregao} ({formatCodug(item.mappedItem.uasg)})
                                         </p>
                                     </TableCell>
                                     
@@ -318,7 +322,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                                 variant="ghost" 
                                                 size="sm" 
                                                 onClick={() => handleRemoveItem(item.originalPncpItem.id)}
-                                                className="text-red-600 hover:bg-red-100"
+                                                className="text-red-600 hover:bg-red-100 border border-red-600 hover:border-red-700" // Adicionado borda vermelha
                                                 disabled={isSaving}
                                             >
                                                 Remover
