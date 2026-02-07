@@ -5,7 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Endpoint da API do Catálogo de Material do PNCP
+// Endpoint da API do Catálogo de Material do PNCP (Consulta por Código)
+// CORREÇÃO: Usando o endpoint de consulta que aceita parâmetros de query.
 const API_URL = 'https://dadosabertos.compras.gov.br/catalogo-material/1_consultarItem_Codigo';
 const PAGE_SIZE = '10'; // Tamanho mínimo de página exigido pela API (entre 10 e 500)
 
@@ -13,15 +14,18 @@ const PAGE_SIZE = '10'; // Tamanho mínimo de página exigido pela API (entre 10
  * Função auxiliar para buscar detalhes de um item CATMAT.
  */
 async function fetchCatmatDetails(codigoItem: string) {
+    // Remove caracteres não numéricos e preenche com zeros à esquerda (9 dígitos)
+    const cleanCode = String(codigoItem).replace(/\D/g, '').padStart(9, '0');
+    
     const params = new URLSearchParams({
         pagina: '1',
-        tamanhoPagina: PAGE_SIZE, // CORREÇÃO: Define o tamanho da página para 10
-        codigoItem: codigoItem,
+        tamanhoPagina: PAGE_SIZE, 
+        codigoItem: cleanCode, // Passa o código limpo e preenchido
     });
 
     const fullUrl = `${API_URL}?${params.toString()}`;
     
-    console.log(`[fetch-catmat-details] Fetching details for item ${codigoItem} from: ${fullUrl}`);
+    console.log(`[fetch-catmat-details] Fetching details for item ${cleanCode} from: ${fullUrl}`);
 
     const response = await fetch(fullUrl, {
         method: 'GET',
@@ -57,12 +61,10 @@ serve(async (req) => {
       });
     }
     
-    // Remove caracteres não numéricos e preenche com zeros à esquerda (9 dígitos)
-    const cleanCode = String(codigoItem).replace(/\D/g, '').padStart(9, '0');
-
-    const results = await fetchCatmatDetails(cleanCode);
+    const results = await fetchCatmatDetails(codigoItem);
     
     if (results.length === 0) {
+        // Se não encontrar, retorna um objeto de fallback com status 200
         return new Response(JSON.stringify({ 
             codigoItem: codigoItem,
             descricaoItem: "Item não encontrado no Catálogo de Material do PNCP.",
@@ -78,12 +80,12 @@ serve(async (req) => {
     
     // Mapeia os campos relevantes da resposta da API
     const mappedDetails = {
-        codigoItem: item.codigoItem || cleanCode,
+        codigoItem: item.codigoItem || String(codigoItem),
         descricaoItem: item.descricaoItem || 'Descrição não disponível',
         nomePdm: item.nomePdm || null, // Nome reduzido sugerido
     };
 
-    console.log(`[fetch-catmat-details] Successfully fetched details for item ${cleanCode}.`);
+    console.log(`[fetch-catmat-details] Successfully fetched details for item ${codigoItem}.`);
 
     return new Response(JSON.stringify(mappedDetails), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -92,6 +94,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("[fetch-catmat-details] General error:", error);
+    // Se houver um erro na API externa (como 400 ou 404), ele será capturado aqui e retornará 500.
+    // O frontend já está configurado para lidar com o status não-2xx.
     return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
