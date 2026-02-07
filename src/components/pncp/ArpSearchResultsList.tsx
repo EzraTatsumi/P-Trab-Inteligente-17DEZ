@@ -152,6 +152,9 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
     // NOVO: Ref para o cabeçalho dos resultados (âncora de rolagem)
     const resultHeaderRef = useRef<HTMLDivElement>(null);
     
+    // NOVO: Ref para o container de rolagem (div 235)
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
     // Efeito para rolar para o topo dos resultados quando a lista é carregada
     useEffect(() => {
         if (results.length > 0 && resultHeaderRef.current) {
@@ -203,10 +206,38 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
     }, [results]);
     
     const handleToggleGroup = (pregaoKey: string) => {
-        setOpenGroups(prev => ({
-            ...prev,
-            [pregaoKey]: !prev[pregaoKey],
-        }));
+        setOpenGroups(prev => {
+            const newState = {
+                ...prev,
+                [pregaoKey]: !prev[pregaoKey],
+            };
+            
+            // Se o grupo estiver sendo ABERTO, rola o container para o topo
+            if (newState[pregaoKey] && scrollContainerRef.current) {
+                // Encontra a linha do grupo que está sendo aberta
+                const rowElement = document.getElementById(`arp-group-row-${pregaoKey}`);
+                
+                if (rowElement) {
+                    // Calcula a posição da linha em relação ao topo do container de rolagem
+                    const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
+                    const rowTop = rowElement.getBoundingClientRect().top;
+                    
+                    // Calcula a quantidade de rolagem necessária
+                    const scrollAmount = rowTop - containerTop;
+                    
+                    // Rola o container
+                    scrollContainerRef.current.scrollBy({
+                        top: scrollAmount,
+                        behavior: 'smooth'
+                    });
+                } else {
+                    // Fallback: rola para o topo do container
+                    scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }
+            
+            return newState;
+        });
     };
     
     // Lógica de exibição do nome da OM no cabeçalho:
@@ -232,7 +263,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                 </h3>
             </div>
             
-            <div className="max-h-[400px] overflow-y-auto border rounded-md">
+            <div ref={scrollContainerRef} className="max-h-[400px] overflow-y-auto border rounded-md">
                 <Table>
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
@@ -254,6 +285,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                             return (
                                 <React.Fragment key={group.pregao}>
                                     <TableRow 
+                                        id={`arp-group-row-${group.pregao}`} {/* NOVO: ID para rolagem */}
                                         className="cursor-pointer hover:bg-muted/50 transition-colors"
                                         onClick={() => handleToggleGroup(group.pregao)}
                                     >
