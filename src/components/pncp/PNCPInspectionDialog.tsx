@@ -11,14 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveNewCatmatEntry } from '@/integrations/supabase/api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { cn } from '@/lib/utils';
+import { cn, formatCodug, formatCurrency } from '@/lib/utils'; // Importando formatCodug e formatCurrency
 
 interface PNCPInspectionDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     inspectionList: InspectionItem[];
     onFinalImport: (items: ItemAquisicao[]) => void;
-    onReviewItem: (item: ItemAquisicao) => void; // NOVO: Função para revisar o item
+    onReviewItem: (item: ItemAquisicao) => void; // Função para revisar o item
 }
 
 const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
@@ -26,7 +26,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     onOpenChange,
     inspectionList: initialInspectionList,
     onFinalImport,
-    onReviewItem, // NOVO
+    onReviewItem,
 }) => {
     const [inspectionList, setInspectionList] = useState(initialInspectionList);
     const [activeTab, setActiveTab] = useState<InspectionStatus>('valid');
@@ -123,9 +123,22 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
     
     // NOVO: Função para revisar o item
     const handleReviewItem = (item: InspectionItem) => {
-        // Chama a função de callback com o item mapeado
+        // 1. Move o item para o status 'needs_catmat_info' no estado local
+        setInspectionList(prev => prev.map(i => {
+            if (i.originalPncpItem.id === item.originalPncpItem.id) {
+                return {
+                    ...i,
+                    status: 'needs_catmat_info',
+                    messages: ['Item movido para revisão manual.'],
+                };
+            }
+            return i;
+        }));
+        
+        // 2. Chama a função de callback com o item mapeado
         onReviewItem(item.mappedItem);
-        // Fecha o diálogo de inspeção
+        
+        // 3. Fecha o diálogo de inspeção
         onOpenChange(false);
     };
 
@@ -196,7 +209,8 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                 <TableCell className={cn("text-sm max-w-xs whitespace-normal text-center")}>
                                     {item.mappedItem.descricao_item}
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Pregão: {item.mappedItem.numero_pregao} | UASG: {item.mappedItem.uasg} | R$: {item.mappedItem.valor_unitario}
+                                        {/* Ajuste de formatação: Pregão sem zero à esquerda (se for numérico), UASG formatado em parênteses, e Valor Unitário formatado */}
+                                        Pregão: {item.mappedItem.numero_pregao.replace(/^0+/, '')} ({formatCodug(item.mappedItem.uasg)}) | R$: {formatCurrency(item.mappedItem.valor_unitario)}
                                     </p>
                                 </TableCell>
                                 
