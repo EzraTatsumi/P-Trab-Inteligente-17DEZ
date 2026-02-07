@@ -378,8 +378,8 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     const handleReviewItem = (item: ItemAquisicao) => {
         // 1. Fecha o diálogo de inspeção
         setIsInspectionDialogOpen(false);
-        // 2. Fecha o diálogo principal de PNCP
-        onOpenChange(false);
+        // 2. NÃO FECHA o diálogo principal de PNCP, permitindo que o usuário volte para a busca
+        // onOpenChange(false); // <-- REMOVIDO
         // 3. Chama a função de revisão do componente pai (MaterialConsumoDiretrizFormDialog)
         onReviewItem(item);
     };
