@@ -227,7 +227,7 @@ const ArpSearchResultsList: React.FC<ArpSearchResultsListProps> = ({ results, on
                         Resultado para {omNameDisplay} ({formatCodug(omUasg)})
                     </span>
                     <span className="text-sm font-normal text-muted-foreground mt-1">
-                        {groupedArp.length} Pregões encontrados ({totalArpItems} ARPs)
+                        {groupedArps.length} Pregões encontrados ({totalArpItems} ARPs)
                     </span>
                 </h3>
             </div>
