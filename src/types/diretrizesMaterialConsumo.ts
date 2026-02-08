@@ -1,49 +1,40 @@
-import { Tables } from "@/integrations/supabase/types";
-
-/**
- * Estrutura de um item de aquisição dentro de uma Diretriz de Material de Consumo.
- */
 export interface ItemAquisicao {
-    id: string; // ID local temporário para manipulação no frontend
-    descricao_item: string; // Descrição completa do item
-    descricao_reduzida: string; // Novo campo: Descrição reduzida do item
+    id: string;
+    codigo_catmat: string;
+    descricao_item: string;
+    descricao_reduzida: string | null;
     valor_unitario: number;
     numero_pregao: string;
     uasg: string;
-    codigo_catmat: string;
-    // unidade_medida: string; // REMOVIDO
+    om_nome: string; // Nome da OM do Pregão
+    unidade_medida: string; // Unidade de medida do item
+    gnd: string; // GND (33.90.30 ou 33.90.39)
+    // Campos de PNCP
+    data_vigencia_inicial: string;
+    data_vigencia_final: string;
+    numero_controle_pncp_ata: string;
+    quantidade_homologada: number;
 }
 
-/**
- * Estrutura da Diretriz de Material de Consumo (Tabela diretrizes_material_consumo).
- */
-export interface DiretrizMaterialConsumo extends Omit<Tables<'diretrizes_material_consumo'>, 'itens_aquisicao'> {
-    // Sobrescreve itens_aquisicao para usar o tipo ItemAquisicao[]
-    itens_aquisicao: ItemAquisicao[];
+// SelectedItemAquisicao é o ItemAquisicao com a quantidade solicitada e metadados do Subitem
+export interface SelectedItemAquisicao extends ItemAquisicao {
+    quantidade_solicitada: number;
+    diretriz_id: string;
+    nr_subitem: string;
+    nome_subitem: string;
 }
 
-/**
- * Estrutura de uma linha lida do Excel, com status de validação, antes de ser agrupada.
- */
-export interface StagingRow {
-    // Dados do Subitem ND
+// DiretrizMaterialConsumo é a linha da tabela diretrizes_material_consumo
+export interface DiretrizMaterialConsumo {
+    id: string;
+    user_id: string;
+    ano_referencia: number;
     nr_subitem: string;
     nome_subitem: string;
     descricao_subitem: string | null;
-
-    // Dados do Item de Aquisição
-    codigo_catmat: string;
-    descricao_item: string;
-    descricao_reduzida: string;
-    valor_unitario: number;
-    numero_pregao: string;
-    uasg: string;
-    // unidade_medida: string; // REMOVIDO
-
-    // Status de Validação
-    isValid: boolean;
-    errors: string[];
-    isDuplicateInternal: boolean; // Duplicidade dentro do arquivo
-    isDuplicateExternal: boolean; // Duplicidade de Subitem ND no DB (apenas para o primeiro item do grupo)
-    originalRowIndex: number; // Linha original no Excel
+    // O campo itens_aquisicao é JSONB no DB, mas aqui é tipado como ItemAquisicao[]
+    itens_aquisicao: ItemAquisicao[]; 
+    ativo: boolean;
+    created_at: string;
+    updated_at: string;
 }
