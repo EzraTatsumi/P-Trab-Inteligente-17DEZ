@@ -5,8 +5,8 @@ import * as z from 'zod';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Search, Loader2, BookOpen, DollarSign } from "lucide-react"; // Removido Checkbox daqui
-import { Checkbox } from "@/components/ui/checkbox"; // Adicionado Checkbox do local correto
+import { Search, Loader2, BookOpen, DollarSign } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { format, subDays } from 'date-fns';
 import { fetchPriceStats, fetchCatmatFullDescription } from '@/integrations/supabase/api';
@@ -28,11 +28,26 @@ const formSchema = z.object({
     // Se não ignorar datas, ambas devem ser preenchidas e a dataFim deve ser >= dataInicio
     if (!data.ignoreDates) {
         if (!data.dataInicio || !data.dataFim) return false;
-        return new Date(data.dataFim) >= new Date(data.dataInicio);
+        
+        const startDate = new Date(data.dataInicio);
+        const endDate = new Date(data.dataFim);
+        
+        // Verifica se a Data de Fim é posterior ou igual à Data de Início
+        if (endDate < startDate) return false;
+        
+        // Verifica se o intervalo é maior que 365 dias (86400000 ms * 365)
+        const maxDurationMs = 86400000 * 365;
+        const durationMs = endDate.getTime() - startDate.getTime();
+        
+        // Se a duração for estritamente maior que 365 dias, falha.
+        // Adicionamos uma pequena margem de segurança (1ms) para evitar problemas de fuso horário.
+        if (durationMs > maxDurationMs) {
+             return false;
+        }
     }
     return true;
 }, {
-    message: "Se não ignorar, Data de Fim deve ser posterior ou igual à Data de Início.",
+    message: "O período de busca não pode exceder 365 dias.",
     path: ["dataFim"],
 });
 
@@ -45,7 +60,8 @@ interface PriceSearchFormProps {
 
 // Calcula as datas padrão
 const today = new Date();
-const oneYearAgo = subDays(today, 365);
+// Ajuste: Usar 364 dias para garantir que o intervalo seja aceito pela API (365 dias é o limite)
+const oneYearAgo = subDays(today, 364); 
 
 // Formata as datas para o formato 'YYYY-MM-DD' exigido pelo input type="date"
 const defaultDataFim = format(today, 'yyyy-MM-dd');
