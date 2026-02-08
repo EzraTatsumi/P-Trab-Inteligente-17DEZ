@@ -524,13 +524,55 @@ export async function fetchPriceStats(params: PriceStatsSearchParams): Promise<P
             throw new Error(error.message || "Falha na execução da Edge Function de busca de estatísticas de preço.");
         }
         
-        const responseData = data as PriceStatsResult; 
+        // Assumimos que a Edge Function retorna um objeto que inclui detailedItemsRaw
+        const responseData = data as PriceStatsResult & { detailedItemsRaw?: DetailedArpRawResult[] }; 
         
         if ((responseData as any).error) {
             throw new Error((responseData as any).error);
         }
         
-        return responseData;
+        // Mapeamento dos itens detalhados brutos para DetailedArpItem[]
+        const detailedItems: DetailedArpItem[] = (responseData.detailedItemsRaw || []).map((item: DetailedArpRawResult) => {
+            
+            // Recalcula o Pregão formatado
+            const numeroCompraStr = String(item.numeroCompra || '').trim();
+            const anoCompraStr = String(item.anoCompra || '').trim();
+            let pregaoFormatado: string;
+            if (numeroCompraStr && anoCompraStr) {
+                const numeroCompraFormatado = numeroCompraStr.padStart(6, '0').replace(/(\d{3})(\d{3})/, '$1.$2');
+                const anoCompraDoisDigitos = anoCompraStr.slice(-2);
+                pregaoFormatado = `${numeroCompraFormatado}/${anoCompraDoisDigitos}`;
+            } else {
+                pregaoFormatado = 'N/A';
+            }
+            
+            const uasgStr = String(item.codigoUnidadeGerenciadora || '').replace(/\D/g, '');
+            
+            return {
+                // ID único: Combinação do controle da ARP e o número do item
+                id: `${item.numeroControlePncpAta}-${item.numeroItem}`, 
+                numeroAta: item.numeroAtaRegistroPreco || 'N/A',
+                codigoItem: String(item.codigoItem || 'N/A'),
+                descricaoItem: item.descricaoItem || 'Descrição não disponível',
+                valorUnitario: parseFloat(String(item.valorUnitario || 0)),
+                quantidadeHomologada: parseInt(String(item.quantidadeHomologadaItem || 0)),
+                numeroControlePncpAta: item.numeroControlePncpAta,
+                pregaoFormatado: pregaoFormatado,
+                uasg: uasgStr,
+                omNome: item.nomeUnidadeGerenciadora || `UASG ${uasgStr}`,
+                dataVigenciaInicial: item.dataVigenciaInicial || 'N/A',
+                dataVigenciaFinal: item.dataVigenciaFinal || 'N/A',
+            };
+        });
+        
+        // Retorna o resultado final com os itens mapeados
+        return {
+            codigoItem: responseData.codigoItem,
+            descricaoItem: responseData.descricaoItem,
+            stats: responseData.stats,
+            totalRegistros: responseData.totalRegistros,
+            detailedItems: detailedItems, // Usar os itens mapeados
+        };
 
     } catch (error) {
         console.error("Erro ao buscar estatísticas de preço:", error);

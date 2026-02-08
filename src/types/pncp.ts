@@ -122,4 +122,6 @@ export interface PriceStatsResult {
     descricaoItem: string | null;
     stats: PriceStats | null;
     totalRegistros: number;
+    // NOVO: Lista de itens detalhados usados para o cálculo
+    detailedItems: DetailedArpItem[]; 
 }
