@@ -16,7 +16,7 @@ import ArpCatmatSearchResultsList from './ArpCatmatSearchResultsList';
 // 1. Esquema de Validação
 const formSchema = z.object({
     codigoItem: z.string()
-        .min(1, { message: "O Código CATMAT/CATSER é obrigatório." })
+        .min(1, { message: "O Código CATMAT é obrigatório." })
         .regex(/^\d{1,9}$/, { message: "O código deve conter apenas números (máx. 9 dígitos)." }),
     dataInicio: z.string().min(1, { message: "Data de Início é obrigatória." }),
     dataFim: z.string().min(1, { message: "Data de Fim é obrigatória." }),
@@ -127,7 +127,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                             name="codigoItem"
                             render={({ field }) => (
                                 <FormItem className="col-span-4 md:col-span-2">
-                                    <FormLabel>Cód. CATMAT/CATSER *</FormLabel>
+                                    <FormLabel>Cód. CATMAT *</FormLabel>
                                     <div className="flex gap-2">
                                         <FormControl>
                                             <Input
@@ -203,7 +203,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                         ) : (
                             <>
                                 <Search className="h-4 w-4 mr-2" />
-                                Buscar ARPs por CATMAT/CATSER
+                                Buscar ARPs por CATMAT
                             </>
                         )}
                     </Button>

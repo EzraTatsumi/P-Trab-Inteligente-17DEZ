@@ -484,7 +484,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         </TabsTrigger>
                         <TabsTrigger value="arp-catmat" className="flex items-center gap-2">
                             <FileText className="h-4 w-4" />
-                            ARP por CATMAT/CATSER
+                            ARP por CATMAT
                         </TabsTrigger>
                         <TabsTrigger value="avg-price" className="flex items-center gap-2">
                             <DollarSign className="h-4 w-4" />
