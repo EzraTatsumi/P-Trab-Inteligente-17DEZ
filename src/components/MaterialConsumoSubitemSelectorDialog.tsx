@@ -286,7 +286,7 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                                             <p className="font-semibold text-base">
                                                 {d.nr_subitem} - {d.nome_subitem}
                                             </p>
-                                            {/* REMOVIDO: Descrição detalhada do Subitem (p 289) */}
+                                            {/* Descrição detalhada removida */}
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
                                             <span className="text-sm text-muted-foreground">
@@ -337,13 +337,12 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                                                                     />
                                                                 </TableCell>
                                                                 <TableCell>
-                                                                    {/* Trocado para nome_reduzido (p 342) */}
+                                                                    {/* Usando nome_reduzido com fallback para descrição completa */}
                                                                     <p className="font-medium">{item.nome_reduzido || item.descricao_item}</p>
                                                                     <p className="text-xs text-muted-foreground mt-0.5">
-                                                                        {/* Adicionado UASG no final do Pregão (p 343) */}
+                                                                        {/* Adicionado UASG no final do Pregão */}
                                                                         CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({formatCodug(item.uasg)})
                                                                     </p>
-                                                                    {/* REMOVIDO: Linha UASG e GND (p 346) */}
                                                                 </TableCell>
                                                                 <TableCell className="text-right">
                                                                     <p className="font-medium text-sm">
