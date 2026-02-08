@@ -21,12 +21,12 @@ import {
     calculateLoteTotals,
     generateMaterialConsumoMemoriaCalculo,
     generateConsolidatedMaterialConsumoMemoriaCalculo,
-    MaterialConsumoRegistro, // CORRIGIDO: Importado do novo lib/materialConsumoUtils
+    MaterialConsumoRegistro,
     MaterialConsumoFormState,
     CalculatedMaterialConsumo,
     ConsolidatedMaterialConsumoRecord,
     SelectedItemAquisicao,
-    AcquisitionGroup, 
+    AcquisitionGroup, // NOVO TIPO
 } from "@/lib/materialConsumoUtils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -47,7 +47,8 @@ import MaterialConsumoSubitemSelectorDialog from "@/components/MaterialConsumoSu
 import { ConsolidatedMaterialConsumoMemoria } from "@/components/ConsolidatedMaterialConsumoMemoria"; 
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear"; 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"; 
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"; // ADICIONADO
+// import AcquisitionGroupDialog from "@/components/AcquisitionGroupDialog"; // REMOVIDO
 
 // Tipos de dados
 type MaterialConsumoRegistroDB = Tables<'material_consumo_registros'>; 
@@ -154,8 +155,7 @@ const MaterialConsumoForm = () => {
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({}); 
     
     // Busca o ano padrão para o seletor de subitens
-    // CORRIGIDO: Removido o argumento 'operacional'
-    const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear();
+    const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear('operacional');
     const selectedYear = defaultYearData?.year || new Date().getFullYear();
 
     // Dados mestres
@@ -245,8 +245,7 @@ const MaterialConsumoForm = () => {
                     
                     nr_subitem: r.nr_subitem,
                     nome_subitem: r.nome_subitem,
-                    // CORRIGIDO: Conversão de SelectedItemAquisicao[] para Json
-                    itens_aquisicao_selecionados: r.itens_aquisicao_selecionados as unknown as Json,
+                    itens_aquisicao_selecionados: r.itens_aquisicao_selecionados,
                     
                     valor_total: r.valor_total,
                     valor_nd_30: r.valor_nd_30,
@@ -315,8 +314,7 @@ const MaterialConsumoForm = () => {
                     
                     nr_subitem: r.nr_subitem,
                     nome_subitem: r.nome_subitem,
-                    // CORRIGIDO: Conversão de SelectedItemAquisicao[] para Json
-                    itens_aquisicao_selecionados: r.itens_aquisicao_selecionados as unknown as Json,
+                    itens_aquisicao_selecionados: r.itens_aquisicao_selecionados,
                     
                     valor_total: r.valor_total,
                     valor_nd_30: r.valor_nd_30,
@@ -632,7 +630,6 @@ const MaterialConsumoForm = () => {
         
         // 2. Reconstruir a lista de itens selecionados a partir do primeiro registro do grupo
         const firstRecord = group.records[0];
-        // CORRIGIDO: Tipagem correta para o JSONB
         const selectedItensFromRecords: SelectedItemAquisicao[] = (firstRecord.itens_aquisicao_selecionados as unknown as SelectedItemAquisicao[]) || [];
 
         // 3. Criar um Grupo de Aquisição temporário para edição
@@ -753,7 +750,7 @@ const MaterialConsumoForm = () => {
                     
                     nr_subitem: subitemGroup.nr_subitem,
                     nome_subitem: subitemGroup.nome_subitem,
-                    itens_aquisicao_selecionados: subitemGroup.items, // SelectedItemAquisicao[]
+                    itens_aquisicao_selecionados: subitemGroup.items as unknown as Tables<'material_consumo_registros'>['itens_aquisicao_selecionados'],
                     
                     valor_total: totals.totalGeral,
                     valor_nd_30: totals.totalND30,
@@ -1040,7 +1037,7 @@ const MaterialConsumoForm = () => {
                                                                 type="number"
                                                                 min={0} 
                                                                 placeholder="1"
-                                                                // Garante que '0' seja exibido como '' para permitir digitação livre
+                                                                // Garante que '0' seja exibido como '0' e não como string vazia, mas permite a digitação
                                                                 value={item.quantidade_solicitada === 0 ? "" : item.quantidade_solicitada}
                                                                 onChange={(e) => {
                                                                     // Permite que o campo fique vazio temporariamente durante a digitação
@@ -1056,12 +1053,10 @@ const MaterialConsumoForm = () => {
                                                     <TableCell>
                                                         {item.descricao_reduzida || item.descricao_item}
                                                         <p className="text-xs text-muted-foreground mt-0.5">
-                                                            {/* CORRIGIDO: Usando GND e unidade_medida */}
                                                             CATMAT: {item.codigo_catmat} | GND: {item.gnd}
                                                         </p>
                                                     </TableCell>
                                                     <TableCell className="text-right text-sm">
-                                                        {/* CORRIGIDO: Usando unidade_medida */}
                                                         {formatCurrency(item.valor_unitario)} {item.unidade_medida}
                                                     </TableCell>
                                                     <TableCell className="text-right font-semibold text-sm">
@@ -1430,12 +1425,10 @@ const MaterialConsumoForm = () => {
                                                                                                 <TableCell>
                                                                                                     {item.descricao_reduzida || item.descricao_item}
                                                                                                     <p className="text-xs text-muted-foreground mt-0.5">
-                                                                                                        {/* CORRIGIDO: Usando GND */}
                                                                                                         CATMAT: {item.codigo_catmat} | GND: {item.gnd}
                                                                                                     </p>
                                                                                                 </TableCell>
                                                                                                 <TableCell className="text-right text-sm">
-                                                                                                    {/* CORRIGIDO: Usando unidade_medida */}
                                                                                                     {formatCurrency(item.valor_unitario)} {item.unidade_medida}
                                                                                                 </TableCell>
                                                                                                 <TableCell className="text-right font-semibold text-sm">

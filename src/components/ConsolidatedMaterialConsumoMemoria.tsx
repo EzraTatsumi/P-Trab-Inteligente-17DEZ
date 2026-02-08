@@ -2,13 +2,9 @@ import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Pencil, Save, XCircle, RefreshCw, Loader2, Check } from "lucide-react"; // Adicionado Check
-import { 
-    ConsolidatedMaterialConsumoRecord, 
-    generateConsolidatedMaterialConsumoMemoriaCalculo,
-    generateMaterialConsumoMemoriaCalculo, // Importado a função individual
-    CalculatedMaterialConsumo, // Importado o tipo Calculated
-} from "@/lib/materialConsumoUtils";
+import { Pencil, Save, XCircle, RefreshCw, Loader2 } from "lucide-react";
+import { ConsolidatedMaterialConsumoRecord } from "@/lib/materialConsumoUtils";
+import { generateConsolidatedMaterialConsumoMemoriaCalculo } from "@/lib/materialConsumoUtils";
 import { cn } from "@/lib/utils";
 
 interface ConsolidatedMaterialConsumoMemoriaProps {
@@ -18,7 +14,6 @@ interface ConsolidatedMaterialConsumoMemoriaProps {
     editingMemoriaId: string | null;
     memoriaEdit: string;
     setMemoriaEdit: (value: string) => void;
-    // Corrigido o tipo do argumento para group
     handleIniciarEdicaoMemoria: (group: ConsolidatedMaterialConsumoRecord & { groupKey: string }, memoriaCompleta: string) => void;
     handleCancelarEdicaoMemoria: () => void;
     handleSalvarMemoriaCustomizada: (registroId: string) => Promise<void>;
@@ -41,11 +36,11 @@ export const ConsolidatedMaterialConsumoMemoria: React.FC<ConsolidatedMaterialCo
     const registroId = group.records[0]?.id;
     const isEditing = editingMemoriaId === registroId;
     
-    // A memória completa é gerada a partir do grupo consolidado
+    // A memória completa é gerada a partir do primeiro registro (que contém o customizado, se houver)
     const memoriaCompleta = generateConsolidatedMaterialConsumoMemoriaCalculo(group);
     
     // Verifica se a memória atual é customizada (comparando com a automática)
-    // Para verificar se é customizada, basta checar o campo detalhamento_customizado do primeiro registro
+    const memoriaAutomatica = generateMaterialConsumoMemoriaCalculo(group.records[0]);
     const isCustomized = group.records[0]?.detalhamento_customizado !== null;
 
     return (

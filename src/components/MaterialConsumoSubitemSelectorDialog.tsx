@@ -28,8 +28,7 @@ interface SelectedItemAquisicaoAugmented extends SelectedItemAquisicao {
 
 interface MaterialConsumoSubitemSelectorDialogProps {
     open: boolean;
-    // CORREÇÃO: onOpenChange deve aceitar um booleano, conforme o padrão do shadcn/ui
-    onOpenChange: (open: boolean) => void; 
+    onOpenChange: (open: (open: boolean) => boolean) => void;
     selectedYear: number;
     initialSelections: SelectedItemAquisicao[];
     // Alterado para retornar uma lista plana de itens, permitindo múltiplos subitens
@@ -130,7 +129,7 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                 item.codigo_catmat.toLowerCase().includes(lowerCaseSearch) ||
                 item.descricao_item.toLowerCase().includes(lowerCaseSearch) ||
                 item.numero_pregao.toLowerCase().includes(lowerCaseSearch) ||
-                item.om_nome.toLowerCase().includes(lowerCaseSearch) // CORRIGIDO: om_nome agora existe em ItemAquisicao
+                item.om_nome.toLowerCase().includes(lowerCaseSearch)
             );
             
             return itemMatch;
@@ -186,7 +185,7 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
         
         // Retorna a lista plana de itens, incluindo os metadados do Subitem
         onSelect(finalSelection);
-        onOpenChange(false); // CORRIGIDO: Passando boolean
+        onOpenChange(false);
     };
     
     const handleToggleSubitem = (diretrizId: string) => {
@@ -333,8 +332,8 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                                                                     {/* Usando descricao_reduzida */}
                                                                     <p className="font-medium">{item.descricao_reduzida}</p>
                                                                     <p className="text-xs text-muted-foreground mt-0.5">
-                                                                        {/* Adicionado GND */}
-                                                                        CATMAT: {item.codigo_catmat} | GND: {item.gnd} | Pregão: {item.numero_pregao} ({formatCodug(item.uasg)})
+                                                                        {/* Adicionado UASG no final do Pregão */}
+                                                                        CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({formatCodug(item.uasg)})
                                                                     </p>
                                                                 </TableCell>
                                                                 <TableCell 
@@ -344,6 +343,7 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                                                                     <p className="font-medium text-sm">
                                                                         {formatCurrency(item.valor_unitario)} {item.unidade_medida}
                                                                     </p>
+                                                                    {/* Unidade de medida removida da linha separada */}
                                                                 </TableCell>
                                                             </TableRow>
                                                         );
