@@ -200,7 +200,7 @@ const CustosOperacionaisPage = () => {
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [isYearManagementDialogOpen, setIsYearManagementDialogOpen] = useState(false);
   
-  const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear('operacional');
+  const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear();
   const defaultYear = defaultYearData?.defaultYear || null;
   
   // Estado para armazenar os inputs brutos (apenas dígitos) para campos monetários
@@ -549,8 +549,6 @@ const CustosOperacionaisPage = () => {
         diaria_demais_pracas_capitais: diretrizes.diaria_demais_pracas_capitais || 0,
         diaria_demais_pracas_demais: diretrizes.diaria_demais_pracas_demais || 0,
         taxa_embarque: diretrizes.taxa_embarque || 0,
-        valor_suprimentos_fundo_dia: diretrizes.valor_suprimentos_fundo_dia || 0,
-        valor_verba_operacional_dia: diretrizes.valor_verba_operacional_dia || 0,
       };
       
       diretrizOperacionalSchema.parse(dataToValidate);
@@ -583,8 +581,6 @@ const CustosOperacionaisPage = () => {
         diaria_demais_pracas_demais: diretrizes.diaria_demais_pracas_demais,
         
         taxa_embarque: diretrizes.taxa_embarque,
-        valor_suprimentos_fundo_dia: diretrizes.valor_suprimentos_fundo_dia,
-        valor_verba_operacional_dia: diretrizes.valor_verba_operacional_dia,
       };
 
       if (diretrizes.id) {
@@ -602,7 +598,7 @@ const CustosOperacionaisPage = () => {
         toast.success("Diretrizes Operacionais criadas!");
       }
       
-      queryClient.invalidateQueries({ queryKey: ["defaultDiretrizYear", user.id, 'operacional'] });
+      queryClient.invalidateQueries({ queryKey: ["diretrizesOperacionais", diretrizes.ano_referencia] });
       await loadAvailableYears(defaultYear);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -633,7 +629,7 @@ const CustosOperacionaisPage = () => {
         
       if (error) throw error;
       
-      queryClient.invalidateQueries({ queryKey: ["defaultDiretrizYear", user.id, 'operacional'] });
+      queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
       
       toast.success(`Ano ${diretrizes.ano_referencia} definido como padrão para cálculos!`);
       
@@ -681,16 +677,13 @@ const CustosOperacionaisPage = () => {
       if (passagensError) throw passagensError;
       
       if (sourcePassagens && sourcePassagens.length > 0) {
-          const newPassagens = (sourcePassagens as Tables<'diretrizes_passagens'>[]).map(p => {
-              const { id, created_at, updated_at, ...restOfPassagem } = p as any;
-              return {
-                  ...restOfPassagem,
-                  ano_referencia: targetYear,
-                  user_id: user.id,
-                  // O Supabase aceita Json, então passamos o JSONB diretamente
-                  trechos: p.trechos, 
-              };
-          });
+          const newPassagens = sourcePassagens.map(p => ({
+              ...p,
+              ano_referencia: targetYear,
+              user_id: user.id,
+              // O Supabase aceita Json, então passamos o JSONB diretamente
+              trechos: p.trechos, 
+          }));
           
           const { error: insertPassagensError } = await supabase
             .from("diretrizes_passagens")
@@ -755,7 +748,7 @@ const CustosOperacionaisPage = () => {
       setIsYearManagementDialogOpen(false);
       setSelectedYear(targetYear);
       
-      queryClient.invalidateQueries({ queryKey: ["defaultDiretrizYear", user.id, 'operacional'] });
+      queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
       await loadAvailableYears(defaultYear);
       
     } catch (error: any) {
@@ -811,7 +804,7 @@ const CustosOperacionaisPage = () => {
       toast.success(`Diretrizes operacionais, de passagens, concessionária e material de consumo do ano ${year} excluídas com sucesso!`);
       setIsYearManagementDialogOpen(false);
       
-      queryClient.invalidateQueries({ queryKey: ["defaultDiretrizYear", user.id, 'operacional'] });
+      queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
       await loadAvailableYears(defaultYear);
       
     } catch (error: any) {
@@ -1152,7 +1145,7 @@ const CustosOperacionaisPage = () => {
           setDiretrizConcessionariaToEdit(null);
           setIsConcessionariaFormOpen(false);
           
-      } catch (error) {
+      } catch (error: any) {
           toast.error(sanitizeError(error));
       } finally {
           setLoading(false);
@@ -1299,7 +1292,7 @@ const CustosOperacionaisPage = () => {
           setDiretrizMaterialConsumoToEdit(null);
           setIsMaterialConsumoFormOpen(false);
           
-      } catch (error) {
+      } catch (error: any) {
           toast.error(sanitizeError(error));
       } finally {
           setLoading(false);
