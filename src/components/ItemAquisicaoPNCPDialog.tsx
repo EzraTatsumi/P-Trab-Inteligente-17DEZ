@@ -207,14 +207,14 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         });
     };
     
-    // NOVO: Função para selecionar um item de preço médio (apenas um por vez)
+    // NOVO: Função para selecionar um item de preço médio (ou item individual do detalhe de preço)
     const handlePriceSelect = (item: ItemAquisicao) => {
         // 1. Limpa todas as seleções ARP e outras referências de preço
         const newSelection = selectedItemsState.filter(s => !s.isPriceReference);
         
-        // 2. Adiciona o novo item de preço médio
+        // 2. Adiciona o novo item de preço médio/individual
         setSelectedItemsState([...newSelection, { 
-            item: item, 
+            item: item as DetailedArpItem, // ItemAquisicao é compatível o suficiente para o fluxo de inspeção
             pregaoFormatado: item.numero_pregao, 
             uasg: item.uasg, 
             isPriceReference: true 
@@ -268,7 +268,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 let originalPncpItem: DetailedArpItem;
                 
                 if (isPriceReference) {
-                    // Se for referência de preço, o item já é um ItemAquisicao
+                    // Se for referência de preço, o item já é um ItemAquisicao (ou foi mapeado para um)
                     initialMappedItem = selectedItem as ItemAquisicao;
                     // Criamos um DetailedArpItem fake para o PNCPInspectionDialog
                     originalPncpItem = {

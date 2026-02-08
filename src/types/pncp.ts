@@ -122,4 +122,6 @@ export interface PriceStatsResult {
     descricaoItem: string | null;
     stats: PriceStats | null;
     totalRegistros: number;
+    // NOVO: Lista detalhada de itens para recálculo local
+    detailedItems: DetailedArpItem[]; 
 }
