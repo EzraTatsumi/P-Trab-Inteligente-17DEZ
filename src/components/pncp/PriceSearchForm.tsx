@@ -4,8 +4,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Search, Loader2, BookOpen, DollarSign, Checkbox } from "lucide-react";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
+import { Search, Loader2, BookOpen, DollarSign } from "lucide-react"; // Removido Checkbox daqui
+import { Checkbox } from "@/components/ui/checkbox"; // Adicionado Checkbox do local correto
 import { toast } from "sonner";
 import { format, subDays } from 'date-fns';
 import { fetchPriceStats, fetchCatmatFullDescription } from '@/integrations/supabase/api';
