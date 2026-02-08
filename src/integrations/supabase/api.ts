@@ -10,6 +10,7 @@ import {
     CatmatDetailsRawResult,
     PriceStatsSearchParams, // NOVO
     PriceStatsResult, // NOVO
+    PriceRawRecord, // NOVO
 } from "@/types/pncp"; // Importa os novos tipos PNCP
 import { formatPregao } from "@/lib/formatUtils";
 import { TablesInsert } from "./types"; // Importar TablesInsert
@@ -390,7 +391,7 @@ export async function fetchArpItemsByCatmat(params: { codigoItem: string, dataVi
                 numeroControlePncpAta: item.numeroControlePncpAta,
                 pregaoFormatado: pregaoFormatado,
                 uasg: uasgStr,
-                // NOVOS CAMPOS MAPEADOS:
+                // NOVOS CAMPOS ADICIONADOS:
                 omNome: item.nomeUnidadeGerenciadora || `UASG ${uasgStr}`,
                 dataVigenciaInicial: item.dataVigenciaInicial || 'N/A',
                 dataVigenciaFinal: item.dataVigenciaFinal || 'N/A',
@@ -457,7 +458,7 @@ export async function fetchArpItemsById(numeroControlePncpAta: string): Promise<
                 numeroControlePncpAta: item.numeroControlePncpAta,
                 pregaoFormatado: pregaoFormatado,
                 uasg: uasgStr,
-                // NOVOS CAMPOS MAPEADOS:
+                // NOVOS CAMPOS ADICIONADOS:
                 omNome: item.nomeUnidadeGerenciadora || `UASG ${uasgStr}`,
                 dataVigenciaInicial: item.dataVigenciaInicial || 'N/A',
                 dataVigenciaFinal: item.dataVigenciaFinal || 'N/A',
@@ -512,7 +513,7 @@ export async function fetchAllExistingAcquisitionItems(year: number, userId: str
 /**
  * Busca estatísticas de preço (Mínimo, Máximo, Médio, Mediana) para um item CATMAT/CATSER.
  * @param params Os parâmetros de busca (codigoItem e datas opcionais).
- * @returns O resultado das estatísticas de preço.
+ * @returns O resultado das estatísticas de preço, incluindo os registros brutos.
  */
 export async function fetchPriceStats(params: PriceStatsSearchParams): Promise<PriceStatsResult> {
     try {
@@ -528,6 +529,11 @@ export async function fetchPriceStats(params: PriceStatsSearchParams): Promise<P
         
         if ((responseData as any).error) {
             throw new Error((responseData as any).error);
+        }
+        
+        // NOVO: Garantir que 'records' existe e é um array
+        if (!responseData.records || !Array.isArray(responseData.records)) {
+            responseData.records = [];
         }
         
         return responseData;

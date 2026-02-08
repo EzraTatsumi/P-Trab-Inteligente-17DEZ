@@ -117,9 +117,21 @@ export interface PriceStats {
     medianPrice: number;
 }
 
+// NOVO TIPO: Estrutura de um registro de preço individual retornado pela API externa
+export interface PriceRawRecord {
+    id: string; // ID único para rastreamento (pode ser gerado pelo backend ou um hash)
+    valorUnitario: number;
+    dataReferencia: string; // Data da compra/registro
+    uasg: string;
+    fonte: string; // Ex: 'PNCP', 'ARP', 'Cotação'
+    numeroControlePncpAta?: string; // Se for de uma ARP
+}
+
 export interface PriceStatsResult {
     codigoItem: string;
     descricaoItem: string | null;
     stats: PriceStats | null;
     totalRegistros: number;
+    // NOVO CAMPO: Lista de registros brutos usados para o cálculo
+    records: PriceRawRecord[]; 
 }
