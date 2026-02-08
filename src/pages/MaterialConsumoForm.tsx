@@ -1210,7 +1210,7 @@ const MaterialConsumoForm = () => {
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
                                                                 <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>
-                                                                    {item.om_detentora} ({formatCodug(item.ug_detentora)})
+                                                                    {omDestino} ({formatCodug(ugDestino)})
                                                                 </p>
                                                                 <p className="font-medium">{item.dias_operacao} {diasText} / {item.efetivo} {efetivoText}</p>
                                                             </div>
@@ -1382,7 +1382,7 @@ const MaterialConsumoForm = () => {
                                                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
                                                                 <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
                                                                     {omDestino} ({formatCodug(ugDestino)})
-                                                                </p>
+                                                                </span>
                                                             </div>
                                                             <div className="flex justify-between text-xs">
                                                                 <span className="text-muted-foreground">ND 33.90.30:</span>
