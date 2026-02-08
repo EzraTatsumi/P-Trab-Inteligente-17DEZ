@@ -221,7 +221,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         const newSelection = selectedItemsState.filter(s => !s.isPriceReference);
         
         // 2. Adiciona o novo item de preço médio
-        setSelectedItemsState([...newSelection, { 
+        setSelectedItemsState(prev => [...newSelection, { 
             item: item, 
             pregaoFormatado: item.numero_pregao, 
             uasg: item.uasg, 
@@ -336,7 +336,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 nomePdm = pncpDetails.nomePdm; 
                 
                 // 6. Busca da Descrição Reduzida no Catálogo CATMAT (DB local)
-                // MUDANÇA CRÍTICA: Usar o novo retorno da função
                 const catalogStatus = await fetchCatmatShortDescription(initialMappedItem.codigo_catmat);
                 shortDescription = catalogStatus.shortDescription;
                 isCatmatCataloged = catalogStatus.isCataloged;
@@ -382,7 +381,8 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         if (isPriceReference) {
                             messages.push('Item de referência de preço. Requer preenchimento de Pregão/UASG.');
                         } else if (isCatmatCataloged && !shortDescription) {
-                            messages.push('Item catalogado, mas requer descrição reduzida.');
+                            // MENSAGEM AJUSTADA PARA CLAREZA
+                            messages.push('Item catalogado localmente, mas requer descrição reduzida.');
                         } else {
                             messages.push('Requer descrição reduzida para o catálogo CATMAT.');
                         }
