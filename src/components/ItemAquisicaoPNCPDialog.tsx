@@ -8,7 +8,7 @@ import { DetailedArpItem } from '@/types/pncp';
 import { InspectionItem, InspectionStatus } from '@/types/pncpInspection'; // NOVO: Importar tipos de inspeção
 import { toast } from "sonner";
 import ArpUasgSearch from './pncp/ArpUasgSearch'; // Importa o novo componente
-import ArpCatmatSearchForm from './pncp/ArpCatmatSearchForm'; // CORREÇÃO: Usar o nome correto do componente
+import ArpCatmatSearch from './pncp/ArpCatmatSearch'; // NOVO: Importa o componente wrapper
 import PriceSearchForm from './pncp/PriceSearchForm'; // NOVO: Importa o componente de busca por preço médio
 import { fetchCatmatShortDescription, fetchCatmatFullDescription, fetchAllExistingAcquisitionItems } from '@/integrations/supabase/api'; // Importa as funções de busca CATMAT e a nova função de busca de itens
 import PNCPInspectionDialog from './pncp/PNCPInspectionDialog'; // NOVO: Importar o diálogo de inspeção
@@ -502,10 +502,11 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     </TabsContent>
                     
                     <TabsContent value="arp-catmat">
-                        <ArpCatmatSearchForm
+                        <ArpCatmatSearch
                             onItemPreSelect={handleItemPreSelect} 
                             selectedItemIds={selectedItemIds}
                             onClearSelection={handleClearSelection} 
+                            scrollContainerRef={dialogContentRef}
                         />
                     </TabsContent>
                     
