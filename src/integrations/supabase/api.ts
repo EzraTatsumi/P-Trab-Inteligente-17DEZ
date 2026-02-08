@@ -10,7 +10,6 @@ import {
     CatmatDetailsRawResult,
     PriceStatsSearchParams, // NOVO
     PriceStatsResult, // NOVO
-    PriceItemDetail, // NOVO
 } from "@/types/pncp"; // Importa os novos tipos PNCP
 import { formatPregao } from "@/lib/formatUtils";
 import { TablesInsert } from "./types"; // Importar TablesInsert
@@ -538,73 +537,5 @@ export async function fetchPriceStats(params: PriceStatsSearchParams): Promise<P
         const errorMessage = error instanceof Error ? error.message : "Erro desconhecido.";
         
         throw new Error(`Falha ao buscar estatísticas de preço: ${errorMessage}`);
-    }
-}
-
-/**
- * Busca a lista detalhada de itens que compõem as estatísticas de preço.
- * @param params Os parâmetros de busca (codigoItem e datas opcionais).
- * @returns Uma lista de itens detalhados de preço.
- */
-export async function fetchPriceStatsDetails(params: PriceStatsSearchParams): Promise<PriceItemDetail[]> {
-    try {
-        // NOTE: Assumimos que existe uma Edge Function 'fetch-price-stats-details'
-        // que retorna a lista bruta de itens de preço.
-        const { data, error } = await supabase.functions.invoke('fetch-price-stats-details', {
-            body: params,
-        });
-
-        if (error) {
-            throw new Error(error.message || "Falha na execução da Edge Function de busca de detalhes de preço.");
-        }
-        
-        // Assumimos que a Edge Function retorna um array de objetos brutos
-        const rawData = data as any[]; 
-        
-        // Verifica se é um array válido
-        if (!Array.isArray(rawData)) {
-            if (rawData && (rawData as any).error) {
-                throw new Error((rawData as any).error);
-            }
-            return [];
-        }
-        
-        // Mapeamento e sanitização para o tipo PriceItemDetail atualizado
-        const results: PriceItemDetail[] = rawData.map((item: any) => {
-            
-            // 1. Valor Unitário (Heurística expandida)
-            const rawPrice = item.preçoUnitario ?? item.valorUnitario ?? item.precoUnitario ?? 0;
-            const valorUnitario = parseFloat(String(rawPrice));
-            
-            // 2. Código UASG (Foco no nome do schema)
-            const rawUasgCode = item.codigoUasg;
-            const cleanUasgCode = rawUasgCode 
-                ? String(rawUasgCode).replace(/\D/g, '').slice(0, 6) 
-                : 'N/A';
-            
-            // 3. Nome UASG (Foco no nome do schema)
-            const nomeUasg = item.nomeUasg || 'N/A';
-            
-            return {
-                id: item.id || Math.random().toString(36).substring(2, 9),
-                codigoItem: String(item.codigoItem || 'N/A'),
-                descricaoItem: item.descricaoItem || 'Descrição não disponível',
-                // Mapeamento corrigido e robusto
-                valorUnitario: isNaN(valorUnitario) ? 0 : valorUnitario, 
-                dataReferencia: item.dataReferencia || 'N/A',
-                fonte: item.fonte || 'N/A',
-                // Mapeamento corrigido e robusto
-                codigoUasg: cleanUasgCode,
-                nomeUasg: nomeUasg,
-            };
-        });
-        
-        return results;
-
-    } catch (error) {
-        console.error("Erro ao buscar detalhes de estatísticas de preço:", error);
-        const errorMessage = error instanceof Error ? error.message : "Erro desconhecido.";
-        
-        throw new Error(`Falha ao buscar detalhes de preço: ${errorMessage}`);
     }
 }

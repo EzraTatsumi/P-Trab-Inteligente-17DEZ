@@ -5,18 +5,16 @@ import * as z from 'zod';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Search, Loader2, BookOpen, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Loader2, BookOpen, DollarSign } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { format, subDays } from 'date-fns';
-import { fetchPriceStats, fetchCatmatFullDescription, fetchPriceStatsDetails } from '@/integrations/supabase/api';
-import { PriceStatsResult, PriceStats, PriceItemDetail } from '@/types/pncp';
+import { fetchPriceStats, fetchCatmatFullDescription } from '@/integrations/supabase/api';
+import { PriceStatsResult, PriceStats } from '@/types/pncp';
 import { capitalizeFirstLetter, formatCurrency } from '@/lib/formatUtils';
 import CatmatCatalogDialog from '../CatmatCatalogDialog';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import PriceItemDetailsList from './PriceItemDetailsList';
 
 // 1. Esquema de Validação
 const formSchema = z.object({
@@ -75,13 +73,6 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
     const [searchResult, setSearchResult] = useState<PriceStatsResult | null>(null);
     
-    // NOVO ESTADO: Lista detalhada de itens que compuseram o cálculo
-    const [priceDetails, setPriceDetails] = useState<PriceItemDetail[]>([]);
-    // NOVO ESTADO: Controle de carregamento dos detalhes
-    const [isDetailsLoading, setIsDetailsLoading] = useState(false);
-    // NOVO ESTADO: Controle do estado do colapsável
-    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-    
     const form = useForm<PriceSearchFormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -104,34 +95,10 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
         form.setValue('codigoItem', catmatItem.code, { shouldValidate: true });
         setIsCatmatCatalogOpen(false);
     };
-    
-    // NOVO: Função para buscar os detalhes (separada da busca de estatísticas)
-    const fetchDetails = async (catmatCode: string, dataInicio: string | null, dataFim: string | null) => {
-        setIsDetailsLoading(true);
-        try {
-            const params = { codigoItem: catmatCode, dataInicio, dataFim };
-            const details = await fetchPriceStatsDetails(params);
-            setPriceDetails(details);
-            
-            // Se houver detalhes, abre o colapsável automaticamente
-            if (details.length > 0) {
-                setIsDetailsOpen(true);
-            }
-            
-        } catch (error: any) {
-            console.error("Erro ao buscar detalhes de preço:", error);
-            // O erro já é tratado no componente pai, mas limpamos o estado local
-            setPriceDetails([]);
-        } finally {
-            setIsDetailsLoading(false);
-        }
-    };
 
     const onSubmit = async (values: PriceSearchFormValues) => {
         setIsSearching(true);
         setSearchResult(null);
-        setPriceDetails([]); // Limpa detalhes anteriores
-        setIsDetailsOpen(false); // Fecha o colapsável
         
         const catmatCode = values.codigoItem;
         
@@ -150,12 +117,9 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                 toast.warning(`Nenhum registro de preço encontrado para o CATMAT ${catmatCode} no período.`);
             } else {
                 toast.success(`${result.totalRegistros} registros encontrados!`);
-                // 1. Salva o resultado das estatísticas
-                setSearchResult(result);
-                
-                // 2. Dispara a busca dos detalhes
-                await fetchDetails(catmatCode, params.dataInicio, params.dataFim);
             }
+            
+            setSearchResult(result);
 
         } catch (error: any) {
             console.error("Erro na busca de preço médio:", error);
@@ -198,23 +162,6 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
         onPriceSelect(item);
         
         toast.info(`Preço (${priceType}) selecionado. Prossiga para a inspeção.`);
-    };
-    
-    // NOVO: Função para lidar com a pré-seleção de um item detalhado da lista
-    const handleItemPreSelect = (item: PriceItemDetail) => {
-        // Mapeia o item detalhado para o formato ItemAquisicao
-        const selectedItem: ItemAquisicao = {
-            id: item.id, 
-            codigo_catmat: item.codigoItem,
-            descricao_item: item.descricaoItem,
-            descricao_reduzida: item.descricaoItem.substring(0, 50) + (item.descricaoItem.length > 50 ? '...' : ''),
-            valor_unitario: item.valorUnitario,
-            numero_pregao: 'REF. PREÇO', // Padrão para referência de preço
-            uasg: item.codigoUasg, 
-        };
-        
-        onPriceSelect(selectedItem);
-        toast.info(`Valor de ${formatCurrency(item.valorUnitario)} selecionado. Prossiga para a inspeção.`);
     };
 
     const renderPriceButtons = (stats: PriceStats) => {
@@ -417,36 +364,6 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                             </p>
                         )}
                     </Card>
-                    
-                    {/* NOVO: Collapsible para a lista de detalhes */}
-                    <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-                        <CollapsibleTrigger asChild>
-                            <Button 
-                                variant="outline" 
-                                className="w-full justify-between"
-                                disabled={isDetailsLoading || searchResult.totalRegistros === 0}
-                            >
-                                <span className="font-medium">
-                                    {isDetailsOpen ? "Ocultar Detalhes dos Registros" : "Visualizar Detalhes dos Registros"}
-                                </span>
-                                {isDetailsLoading ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : isDetailsOpen ? (
-                                    <ChevronUp className="h-4 w-4" />
-                                ) : (
-                                    <ChevronDown className="h-4 w-4" />
-                                )}
-                            </Button>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                            <PriceItemDetailsList 
-                                items={priceDetails}
-                                isLoading={isDetailsLoading}
-                                isError={false} // O erro já é tratado na função fetchDetails
-                                onItemPreSelect={handleItemPreSelect}
-                            />
-                        </CollapsibleContent>
-                    </Collapsible>
                 </div>
             )}
 

@@ -1,3 +1,5 @@
+// Tipos para a consulta PNCP
+
 export interface ArpUasgSearchParams {
     codigoUnidadeGerenciadora: string;
     dataVigenciaInicialMin: string;
@@ -99,7 +101,7 @@ export interface CatmatDetailsRawResult {
 }
 
 // =================================================================
-// TIPOS PARA PESQUISA DE PREÇO MÉDIO (CONSOLIDADO)
+// NOVOS TIPOS PARA PESQUISA DE PREÇO MÉDIO
 // =================================================================
 
 export interface PriceStatsSearchParams {
@@ -108,9 +110,6 @@ export interface PriceStatsSearchParams {
     dataFim: string | null;
 }
 
-/**
- * Estatísticas de preço calculadas.
- */
 export interface PriceStats {
     minPrice: number;
     maxPrice: number;
@@ -118,26 +117,9 @@ export interface PriceStats {
     medianPrice: number;
 }
 
-/**
- * Resultado da busca de estatísticas (inclui o nome do item e o total de registros).
- */
 export interface PriceStatsResult {
     codigoItem: string;
     descricaoItem: string | null;
     stats: PriceStats | null;
     totalRegistros: number;
-}
-
-/**
- * Estrutura detalhada de um item de preço (registro individual).
- */
-export interface PriceItemDetail {
-    id: string;
-    codigoItem: string;
-    descricaoItem: string;
-    valorUnitario: number;
-    dataReferencia: string;
-    fonte: string;
-    codigoUasg: string;
-    nomeUasg: string;
 }
