@@ -433,6 +433,11 @@ const MaterialConsumoForm = () => {
         return pendingMaterialConsumo.reduce((sum, item) => sum + item.valor_total, 0);
     }, [pendingMaterialConsumo]);
     
+    // Calculate the total number of individual acquisition items selected across all groups
+    const totalAcquisitionItems = useMemo(() => {
+        return formData.acquisition_groups.reduce((sum, group) => sum + group.itens.length, 0);
+    }, [formData.acquisition_groups]);
+    
     // =================================================================
     // HANDLERS DE AÇÃO
     // =================================================================
@@ -1096,7 +1101,38 @@ const MaterialConsumoForm = () => {
     // RENDERIZAÇÃO
     // =================================================================
 
-    // ... (código de carregamento e validações)
+    const isGlobalLoading = isLoadingPTrab || isLoadingRegistros || isLoadingOms || isLoadingDefaultYear;
+    const isSaving = insertMutation.isPending || replaceGroupMutation.isPending || handleDeleteMutation.isPending;
+
+    if (isGlobalLoading) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Carregando dados do P Trab...</span>
+            </div>
+        );
+    }
+
+    const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
+    
+    // Lógica de abertura da Seção 2: Depende apenas da OM Favorecida e Fase da Atividade
+    const isBaseFormReady = formData.om_favorecida.length > 0 && 
+                            formData.ug_favorecida.length > 0 && 
+                            formData.fase_atividade.length > 0;
+
+    // Verifica se os campos numéricos da Solicitação estão preenchidos (incluindo OM Destino, agora na Seção 2)
+    const isSolicitationDataReady = formData.dias_operacao > 0 &&
+                                    formData.efetivo > 0 &&
+                                    formData.om_destino.length > 0 && 
+                                    formData.ug_destino.length > 0 && 
+                                    formData.acquisition_groups.length > 0 &&
+                                    formData.acquisition_groups.every(g => g.itens.some(i => i.quantidade_solicitada > 0)); // Verifica se há pelo menos 1 item com Qtd > 0
+
+    const isCalculationReady = isBaseFormReady && isSolicitationDataReady;
+    
+    // Lógica para a Seção 3
+    const itemsToDisplay = pendingMaterialConsumo;
+    const isStagingUpdate = !!editingId && pendingMaterialConsumo.length > 0;
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1119,7 +1155,6 @@ const MaterialConsumoForm = () => {
                         <form onSubmit={handleStageCalculation} className="space-y-8">
                             
                             {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
-                            {/* ... (Seção 1 permanece inalterada) ... */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
                                     1. Dados da Organização
@@ -1340,7 +1375,6 @@ const MaterialConsumoForm = () => {
                             )}
 
                             {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
-                            {/* ... (Seção 3 permanece inalterada) ... */}
                             {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -1483,7 +1517,6 @@ const MaterialConsumoForm = () => {
                             )}
 
                             {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
-                            {/* ... (Seção 4 permanece inalterada) ... */}
                             {consolidatedRegistros && consolidatedRegistros.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1603,7 +1636,6 @@ const MaterialConsumoForm = () => {
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
-                            {/* ... (Seção 5 permanece inalterada) ... */}
                             {consolidatedRegistros && consolidatedRegistros.length > 0 && (
                                 <div className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
