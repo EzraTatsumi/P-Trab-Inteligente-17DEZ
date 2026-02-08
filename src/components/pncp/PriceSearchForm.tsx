@@ -60,6 +60,10 @@ interface PriceSearchFormProps {
     onPriceSelect: (item: ItemAquisicao) => void;
     // NOVO: Estado de inspeção do componente pai
     isInspecting: boolean; 
+    // NOVO: Função para limpar a seleção de preço no componente pai
+    onClearPriceSelection: () => void;
+    // NOVO: Item de aquisição selecionado (para manter o estado visual)
+    selectedItemForInspection: ItemAquisicao | null;
 }
 
 // Calcula as datas padrão
@@ -79,7 +83,7 @@ interface IndexedRawPriceRecord extends RawPriceRecord {
 // NOVO TIPO: Tipos de preço para o estado de seleção
 type PriceType = 'avg' | 'median' | 'min' | 'max';
 
-const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInspecting }) => {
+const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInspecting, onClearPriceSelection, selectedItemForInspection }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
     const [searchResult, setSearchResult] = useState<PriceStatsResult | null>(null);
@@ -122,6 +126,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
         setShowRawData(false); 
         setExcludedRecordIds(new Set()); // Limpa exclusões ao iniciar nova busca
         setSelectedPriceType(null); // Limpa a seleção de preço
+        onClearPriceSelection(); // Limpa a seleção no componente pai
         
         const catmatCode = values.codigoItem;
         
@@ -175,6 +180,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
         if (total === 0) {
             // Se todos os registros foram excluídos, limpa a seleção de preço
             setSelectedPriceType(null);
+            onClearPriceSelection();
             return { currentStats: null, currentTotalRecords: 0, indexedRecords: indexed };
         }
 
@@ -226,11 +232,10 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
     };
     
     /**
-     * Cria o ItemAquisicao temporário e o envia para o fluxo de inspeção.
+     * CRUCIAL: Esta função agora APENAS seleciona o preço e cria o item temporário.
+     * A inspeção é disparada pelo botão no componente pai.
      */
     const handlePriceSelection = (price: number, priceType: PriceType, priceLabel: string) => {
-        if (isInspecting) return; // Previne duplo clique/chamada enquanto a inspeção está em andamento
-        
         if (!searchResult || !searchResult.descricaoItem) {
             toast.error("Erro: Dados do item não carregados.");
             return;
@@ -259,16 +264,29 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
             uasg: '', // Vazio, pois não há UASG de referência
         };
         
-        // 3. Envia para o fluxo de inspeção
+        // 3. Envia o item para o componente pai para ser armazenado como item selecionado
         onPriceSelect(item);
         
         // 4. Feedback visual
-        toast.info(`Preço (${priceLabel}) selecionado. Prossiga para a inspeção.`);
+        toast.info(`Preço (${priceLabel}) selecionado. Clique em 'Inspecionar e Importar'.`);
     };
 
     const renderPriceButtons = (stats: PriceStats) => {
         const buttonClass = "flex flex-col items-center justify-center h-24 w-full text-center transition-all";
         const priceStyle = "text-xl font-bold mt-1";
+        
+        // Determina o tipo de preço selecionado no estado do componente pai
+        const selectedPrice = selectedItemForInspection?.valor_unitario;
+        
+        // Função auxiliar para verificar se o botão atual corresponde ao preço selecionado
+        const isSelected = (price: number, type: PriceType) => {
+            // Verifica se o preço do item selecionado corresponde ao preço do botão
+            if (selectedPrice !== undefined && Math.round(selectedPrice * 100) === Math.round(price * 100)) {
+                // Se o preço for igual, verifica se o tipo também é igual (para evitar ambiguidade se min=avg)
+                return selectedPriceType === type;
+            }
+            return false;
+        };
         
         return (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -276,10 +294,10 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                 {/* Preço Médio */}
                 <Button 
                     type="button" 
-                    variant={selectedPriceType === 'avg' ? 'default' : 'outline'} 
+                    variant={isSelected(stats.avgPrice, 'avg') ? 'default' : 'outline'} 
                     className={buttonClass}
                     onClick={() => handlePriceSelection(stats.avgPrice, 'avg', 'Médio')}
-                    disabled={isInspecting} // Desabilita durante a inspeção
+                    disabled={isInspecting}
                 >
                     <span className="text-sm text-muted-foreground">Preço Médio</span>
                     <span className={priceStyle}>{formatCurrency(stats.avgPrice)}</span>
@@ -288,10 +306,10 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                 {/* Mediana */}
                 <Button 
                     type="button" 
-                    variant={selectedPriceType === 'median' ? 'default' : 'outline'} 
+                    variant={isSelected(stats.medianPrice, 'median') ? 'default' : 'outline'} 
                     className={buttonClass}
                     onClick={() => handlePriceSelection(stats.medianPrice, 'median', 'Mediana')}
-                    disabled={isInspecting} // Desabilita durante a inspeção
+                    disabled={isInspecting}
                 >
                     <span className="text-sm text-muted-foreground">Mediana</span>
                     <span className={priceStyle}>{formatCurrency(stats.medianPrice)}</span>
@@ -300,10 +318,10 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                 {/* Preço Mínimo */}
                 <Button 
                     type="button" 
-                    variant={selectedPriceType === 'min' ? 'default' : 'outline'} 
+                    variant={isSelected(stats.minPrice, 'min') ? 'default' : 'outline'} 
                     className={buttonClass}
                     onClick={() => handlePriceSelection(stats.minPrice, 'min', 'Mínimo')}
-                    disabled={isInspecting} // Desabilita durante a inspeção
+                    disabled={isInspecting}
                 >
                     <span className="text-sm text-muted-foreground">Preço Mínimo</span>
                     <span className={priceStyle}>{formatCurrency(stats.minPrice)}</span>
@@ -312,10 +330,10 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                 {/* Preço Máximo */}
                 <Button 
                     type="button" 
-                    variant={selectedPriceType === 'max' ? 'default' : 'outline'} 
+                    variant={isSelected(stats.maxPrice, 'max') ? 'default' : 'outline'} 
                     className={buttonClass}
                     onClick={() => handlePriceSelection(stats.maxPrice, 'max', 'Máximo')}
-                    disabled={isInspecting} // Desabilita durante a inspeção
+                    disabled={isInspecting}
                 >
                     <span className="text-sm text-muted-foreground">Preço Máximo</span>
                     <span className={priceStyle}>{formatCurrency(stats.maxPrice)}</span>
@@ -523,7 +541,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                                 </p>
                                 {renderPriceButtons(currentStats)}
                                 <p className="text-xs text-muted-foreground mt-4">
-                                    Selecione um dos valores acima para usá-lo como preço unitário de referência.
+                                    Selecione um dos valores acima e clique em 'Inspecionar e Importar' no rodapé.
                                 </p>
                                 
                                 {/* NOVO: Collapsible para a Base de Cálculo */}

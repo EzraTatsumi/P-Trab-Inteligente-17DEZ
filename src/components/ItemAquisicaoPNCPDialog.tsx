@@ -191,8 +191,16 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         setSelectedItemsState([]);
     };
     
+    // NOVO: Função para limpar apenas a seleção de preço médio
+    const handleClearPriceSelection = () => {
+        setSelectedItemsState(prev => prev.filter(s => !s.isPriceReference));
+    };
+    
     // Função para alternar a seleção de um item detalhado (ARP)
     const handleItemPreSelect = (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => {
+        // Limpa qualquer seleção de preço médio ao selecionar um item ARP
+        handleClearPriceSelection();
+        
         setSelectedItemsState(prev => {
             const id = item.id;
             const existingIndex = prev.findIndex(s => s.item.id === id && !s.isPriceReference);
@@ -210,29 +218,40 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     // NOVO: Função para selecionar um item de preço médio (apenas um por vez)
     const handlePriceSelect = (item: ItemAquisicao) => {
         // 1. Limpa todas as seleções ARP e outras referências de preço
-        const newSelection = selectedItemsState.filter(s => !s.isPriceReference);
+        handleClearPriceSelection();
         
         // 2. Adiciona o novo item de preço médio
-        setSelectedItemsState([...newSelection, { 
+        setSelectedItemsState(prev => [...prev, { 
             item: item, 
             pregaoFormatado: item.numero_pregao, 
             uasg: item.uasg, 
             isPriceReference: true 
         }]);
         
-        // 3. Inicia a inspeção imediatamente (conforme o fluxo de preço médio)
-        handleStartInspection(true);
+        // 3. NÃO DISPARA A INSPEÇÃO AQUI. O usuário deve clicar no botão.
     };
     
     // Mapeia apenas os IDs para passar para os componentes de busca
     const selectedItemIds = selectedItemsState.map(s => s.item.id);
 
+    // Filtra itens ARP para contagem
+    const selectedArpItems = selectedItemsState.filter(s => !s.isPriceReference);
+    // Filtra itens de Preço Médio para contagem
+    const selectedPriceItems = selectedItemsState.filter(s => s.isPriceReference);
+    
+    // Determine which flow is active
+    const isPriceFlowActive = selectedPriceItems.length > 0;
+    const isArpFlowActive = selectedArpItems.length > 0;
+    
+    // Item selecionado para inspeção (se for preço médio, é o primeiro item de preço)
+    const selectedItemForInspection = isPriceFlowActive ? selectedPriceItems[0].item as ItemAquisicao : null;
+
     // NOVO: Função para iniciar a inspeção (agora aceita um parâmetro para forçar a inspeção de apenas 1 item)
     const handleStartInspection = async (isPriceReferenceFlow: boolean = false) => {
         
         const itemsToInspect = isPriceReferenceFlow 
-            ? selectedItemsState.filter(s => s.isPriceReference)
-            : selectedItemsState.filter(s => !s.isPriceReference);
+            ? selectedPriceItems
+            : selectedArpItems;
             
         if (itemsToInspect.length === 0) {
             toast.error("Selecione pelo menos um item detalhado para importar.");
@@ -421,21 +440,12 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         toast.success(`Importação de ${items.length} itens concluída. Pronto para nova busca.`);
     };
     
-    // Filtra itens ARP para contagem
-    const selectedArpItems = selectedItemsState.filter(s => !s.isPriceReference);
-    // Filtra itens de Preço Médio para contagem
-    const selectedPriceItems = selectedItemsState.filter(s => s.isPriceReference);
-    
     // Determine which flow is active
-    const isPriceFlowActive = selectedPriceItems.length > 0;
-    const isArpFlowActive = selectedArpItems.length > 0;
-    
-    // New disabling logic: Disabled if inspecting OR if no items are selected at all.
     const isAnyItemSelected = isPriceFlowActive || isArpFlowActive;
     const isButtonDisabled = isInspecting || !isAnyItemSelected;
     
     const buttonText = isPriceFlowActive 
-        ? `Re-inspecionar Preço Médio (${selectedPriceItems.length})`
+        ? `Inspecionar Preço Médio (${selectedPriceItems.length})`
         : `Inspecionar e Importar (${selectedArpItems.length})`;
         
     const handleButtonClick = () => {
@@ -496,6 +506,8 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         <PriceSearchForm 
                             onPriceSelect={handlePriceSelect} 
                             isInspecting={isInspecting} 
+                            onClearPriceSelection={handleClearPriceSelection}
+                            selectedItemForInspection={selectedItemForInspection}
                         />
                     </TabsContent>
                 </Tabs>
