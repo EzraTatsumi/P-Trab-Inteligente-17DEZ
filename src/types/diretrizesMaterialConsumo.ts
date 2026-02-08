@@ -1,28 +1,49 @@
 import { Tables } from "@/integrations/supabase/types";
 
 /**
- * Representa um item de aquisição (CATMAT/PNCP) dentro de uma diretriz de Material de Consumo.
+ * Estrutura de um item de aquisição dentro de uma Diretriz de Material de Consumo.
  */
 export interface ItemAquisicao {
-    id: string; // ID único do item (e.g., PNCP ID ou UUID)
-    codigo_catmat: string;
-    descricao_item: string; // Descrição completa
-    descricao_reduzida: string; // Descrição curta (para exibição)
+    id: string; // ID local temporário para manipulação no frontend
+    descricao_item: string; // Descrição completa do item
+    descricao_reduzida: string; // Novo campo: Descrição reduzida do item
     valor_unitario: number;
-    unidade_medida: string;
     numero_pregao: string;
     uasg: string;
-    gnd: '33.90.30' | '33.90.39';
-    // Campos adicionais para rastreamento de origem (preenchidos no seletor)
-    diretriz_id: string;
-    nr_subitem: string;
-    nome_subitem: string;
+    codigo_catmat: string;
+    // unidade_medida: string; // REMOVIDO
 }
 
 /**
- * Representa a estrutura completa de uma diretriz de Material de Consumo.
+ * Estrutura da Diretriz de Material de Consumo (Tabela diretrizes_material_consumo).
  */
-export type DiretrizMaterialConsumo = Tables<'diretrizes_material_consumo'> & {
-    // Sobrescreve o tipo Json para garantir que é um array de ItemAquisicao
+export interface DiretrizMaterialConsumo extends Omit<Tables<'diretrizes_material_consumo'>, 'itens_aquisicao'> {
+    // Sobrescreve itens_aquisicao para usar o tipo ItemAquisicao[]
     itens_aquisicao: ItemAquisicao[];
-};
+}
+
+/**
+ * Estrutura de uma linha lida do Excel, com status de validação, antes de ser agrupada.
+ */
+export interface StagingRow {
+    // Dados do Subitem ND
+    nr_subitem: string;
+    nome_subitem: string;
+    descricao_subitem: string | null;
+
+    // Dados do Item de Aquisição
+    codigo_catmat: string;
+    descricao_item: string;
+    descricao_reduzida: string;
+    valor_unitario: number;
+    numero_pregao: string;
+    uasg: string;
+    // unidade_medida: string; // REMOVIDO
+
+    // Status de Validação
+    isValid: boolean;
+    errors: string[];
+    isDuplicateInternal: boolean; // Duplicidade dentro do arquivo
+    isDuplicateExternal: boolean; // Duplicidade de Subitem ND no DB (apenas para o primeiro item do grupo)
+    originalRowIndex: number; // Linha original no Excel
+}

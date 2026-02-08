@@ -27,7 +27,6 @@ import SuprimentoFundosForm from "./pages/SuprimentoFundosForm";
 import PassagemForm from "./pages/PassagemForm";
 import HorasVooForm from "./pages/HorasVooForm";
 import ConcessionariaForm from "./pages/ConcessionariaForm";
-import MaterialConsumoForm from "./pages/MaterialConsumoForm"; // NOVO IMPORT
 import NotFound from "./pages/NotFound";
 
 // Define as rotas como um array de objetos
@@ -52,7 +51,6 @@ const routes: RouteObject[] = [
   { path: "/ptrab/passagem-aerea", element: <PassagemForm /> },
   { path: "/ptrab/horas-voo-avex", element: <HorasVooForm /> },
   { path: "/ptrab/concessionaria", element: <ConcessionariaForm /> },
-  { path: "/ptrab/material-consumo", element: <MaterialConsumoForm /> }, // NOVA ROTA
   { path: "/config/custos-operacionais", element: <CustosOperacionaisPage /> },
   { path: "/config/diretrizes", element: <DiretrizesCusteioPage /> },
   { path: "/config/visualizacao", element: <VisualizacaoConfigPage /> },
