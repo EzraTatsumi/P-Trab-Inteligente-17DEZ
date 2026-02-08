@@ -5,26 +5,31 @@ import * as z from 'zod';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Search, Loader2, DollarSign, ChevronDown, ChevronUp, RefreshCw, AlertTriangle } from "lucide-react";
+import { Search, Loader2, DollarSign, ChevronDown, ChevronUp, RefreshCw, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { formatCodug, formatCurrency, formatNumber } from '@/lib/formatUtils';
-import { format, subDays } from 'date-fns';
+import { format, subDays, addYears } from 'date-fns';
 import { fetchPriceStats } from '@/integrations/supabase/api';
 import { PriceStatsResult, PriceRawRecord, PriceStats } from '@/types/pncp';
 import { Card, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import PriceRecordList from './PriceRecordList'; // NOVO: Importar a lista de registros
+import PriceRecordList from './PriceRecordList';
+import { Switch } from '@/components/ui/switch';
+import CatmatCatalogDialog from '../CatmatCatalogDialog'; // Importar o diálogo CATMAT
 
-// 1. Esquema de Validação
+// 1. Esquema de Validação (Removida a obrigatoriedade de 9 dígitos)
 const formSchema = z.object({
     codigoItem: z.string()
         .min(1, { message: "O código CATMAT/CATSER é obrigatório." })
-        .regex(/^\d{9}$/, { message: "O código deve ter 9 dígitos." }),
+        .regex(/^\d+$/, { message: "O código deve conter apenas números." }),
     dataInicio: z.string().optional(),
     dataFim: z.string().optional(),
+    // NOVO CAMPO: Pesquisa irrestrita
+    unrestrictedSearch: z.boolean().default(false),
 }).refine(data => {
-    if (data.dataInicio && data.dataFim) {
+    // Validação de datas só se a pesquisa não for irrestrita
+    if (!data.unrestrictedSearch && data.dataInicio && data.dataFim) {
         return new Date(data.dataFim) >= new Date(data.dataInicio);
     }
     return true;
@@ -39,13 +44,13 @@ interface PriceSearchFormProps {
     onPriceSelect: (item: ItemAquisicao) => void;
 }
 
-// Calcula as datas padrão (últimos 180 dias)
+// Calcula as datas padrão (1 ano a partir de hoje)
 const today = new Date();
-const sixMonthsAgo = subDays(today, 180);
+const oneYearFromNow = addYears(today, 1);
 
 // Formata as datas para o formato 'YYYY-MM-DD' exigido pelo input type="date"
-const defaultDataFim = format(today, 'yyyy-MM-dd');
-const defaultDataInicio = format(sixMonthsAgo, 'yyyy-MM-dd');
+const defaultDataFim = format(oneYearFromNow, 'yyyy-MM-dd');
+const defaultDataInicio = format(today, 'yyyy-MM-dd');
 
 // Função auxiliar para calcular estatísticas (Mínimo, Máximo, Médio, Mediana)
 const calculateStats = (records: PriceRawRecord[]): PriceStats => {
@@ -81,6 +86,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [searchResult, setSearchResult] = useState<PriceStatsResult | null>(null);
     const [isListOpen, setIsListOpen] = useState(false);
+    const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
     
     // NOVO ESTADO: IDs dos registros excluídos
     const [excludedRecordIds, setExcludedRecordIds] = useState<string[]>([]);
@@ -94,8 +100,11 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
             codigoItem: "",
             dataInicio: defaultDataInicio,
             dataFim: defaultDataFim,
+            unrestrictedSearch: false, // Padrão: pesquisa restrita
         },
     });
+    
+    const unrestrictedSearch = form.watch('unrestrictedSearch');
     
     // --- Lógica de Recálculo no Cliente (useMemo) ---
     const { recalculatedStats, activeRecords, totalActiveRecords } = useMemo(() => {
@@ -154,6 +163,12 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
         toast.success("Estatísticas recalculadas com sucesso!");
     };
     
+    // Função para receber dados do catálogo CATMAT e atualizar o formulário de item
+    const handleCatmatSelect = (catmatItem: { code: string, description: string, short_description: string | null }) => {
+        form.setValue('codigoItem', catmatItem.code, { shouldValidate: true });
+        setIsCatmatCatalogOpen(false);
+    };
+    
     // --- Lógica de Busca ---
 
     const onSubmit = async (values: PriceSearchFormValues) => {
@@ -168,8 +183,9 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
             
             const params = {
                 codigoItem: values.codigoItem,
-                dataInicio: values.dataInicio || null,
-                dataFim: values.dataFim || null,
+                // Se a pesquisa for irrestrita, passa null para as datas
+                dataInicio: unrestrictedSearch ? null : values.dataInicio || null,
+                dataFim: unrestrictedSearch ? null : values.dataFim || null,
             };
             
             const result = await fetchPriceStats(params);
@@ -222,33 +238,49 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
         <div className="space-y-6">
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-4 border rounded-lg bg-muted/50">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                         
-                        <FormField
-                            control={form.control}
-                            name="codigoItem"
-                            render={({ field }) => (
-                                <FormItem className="col-span-1">
-                                    <FormLabel>Cód. CATMAT/CATSER *</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            {...field}
-                                            onChange={(e) => {
-                                                const rawValue = e.target.value.replace(/\D/g, '');
-                                                const limitedValue = rawValue.slice(0, 9); 
-                                                form.setValue('codigoItem', limitedValue, { shouldValidate: true });
-                                            }}
-                                            value={field.value}
-                                            placeholder="Ex: 123456789"
-                                            maxLength={9}
-                                            disabled={isSearching}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        {/* Coluna 1: Código CATMAT/CATSER e Botão Catálogo */}
+                        <div className="space-y-2 col-span-2 md:col-span-1">
+                            <FormField
+                                control={form.control}
+                                name="codigoItem"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Cód. CATMAT/CATSER *</FormLabel>
+                                        <div className="flex gap-2">
+                                            <FormControl>
+                                                <Input
+                                                    {...field}
+                                                    onChange={(e) => {
+                                                        const rawValue = e.target.value.replace(/\D/g, '');
+                                                        form.setValue('codigoItem', rawValue, { shouldValidate: true });
+                                                    }}
+                                                    value={field.value}
+                                                    placeholder="Ex: 604269"
+                                                    disabled={isSearching}
+                                                />
+                                            </FormControl>
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="icon" 
+                                                onClick={() => setIsCatmatCatalogOpen(true)}
+                                                disabled={isSearching}
+                                            >
+                                                <BookOpen className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                        <FormMessage />
+                                        <p className="text-xs text-muted-foreground">
+                                            Insira o código do item de material ou serviço.
+                                        </p>
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
                         
+                        {/* Coluna 2: Data de Início */}
                         <FormField
                             control={form.control}
                             name="dataInicio"
@@ -259,7 +291,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                                         <Input
                                             type="date"
                                             {...field}
-                                            disabled={isSearching}
+                                            disabled={isSearching || unrestrictedSearch}
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -267,6 +299,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                             )}
                         />
                         
+                        {/* Coluna 3: Data de Fim */}
                         <FormField
                             control={form.control}
                             name="dataFim"
@@ -277,30 +310,53 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                                         <Input
                                             type="date"
                                             {...field}
-                                            disabled={isSearching}
+                                            disabled={isSearching || unrestrictedSearch}
                                         />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
-                        
-                        <div className="col-span-1 flex items-end">
-                            <Button type="submit" disabled={isSearching || !form.formState.isValid} className="w-full">
-                                {isSearching ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Buscando Preços...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Search className="h-4 w-4 mr-2" />
-                                        Buscar Preços
-                                    </>
-                                )}
-                            </Button>
-                        </div>
                     </div>
+                    
+                    {/* Opção de Pesquisa Irrestrita */}
+                    <FormField
+                        control={form.control}
+                        name="unrestrictedSearch"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                <div className="space-y-0.5">
+                                    <FormLabel className="text-base flex items-center gap-2">
+                                        Pesquisar sem restrição de data
+                                    </FormLabel>
+                                    <FormDescription>
+                                        Busca todos os registros de preço disponíveis para o item, ignorando o período acima.
+                                    </FormDescription>
+                                </div>
+                                <FormControl>
+                                    <Switch
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                        disabled={isSearching}
+                                    />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                    
+                    <Button type="submit" disabled={isSearching || !form.formState.isValid} className="w-full">
+                        {isSearching ? (
+                            <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Buscando Estatísticas de Preço...
+                            </>
+                        ) : (
+                            <>
+                                <Search className="h-4 w-4 mr-2" />
+                                Buscar Estatísticas de Preço
+                            </>
+                        )}
+                    </Button>
                 </form>
             </Form>
             
@@ -379,6 +435,13 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                     </Collapsible>
                 </Card>
             )}
+            
+            {/* Diálogo do Catálogo CATMAT */}
+            <CatmatCatalogDialog
+                open={isCatmatCatalogOpen}
+                onOpenChange={setIsCatmatCatalogOpen}
+                onSelect={handleCatmatSelect}
+            />
         </div>
     );
 };
