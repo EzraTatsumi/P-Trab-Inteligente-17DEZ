@@ -150,7 +150,7 @@ const handleGlobalDragOver = (e: DragEvent) => {
         if (scrollDirection !== 'down') {
             scrollDirection = 'down';
             if (!scrollAnimationFrame) {
-                scrollAnimationFrame = requestAnimationFrame(autoScroll);
+                scrollDirection = requestAnimationFrame(autoScroll);
             }
         }
     } 
@@ -1434,7 +1434,7 @@ const CustosOperacionaisPage = () => {
                                   {item.descricao_item}
                                   {/* Linha 1: CATMAT */}
                                   <p className="text-xs text-muted-foreground">
-                                      Cód. CATMAT: {item.codigo_catmat || 'N/A'}
+                                      Cód. CATMAT: {item.codigo_catmat || 'N/A'} | GND: {item.gnd}
                                   </p>
                                   {/* Linha 2: Pregão e UASG */}
                                   <p className="text-xs text-muted-foreground truncate">
