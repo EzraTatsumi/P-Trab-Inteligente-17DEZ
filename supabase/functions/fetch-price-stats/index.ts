@@ -111,9 +111,9 @@ serve(async (req) => {
             if (item.precoUnitario && typeof item.precoUnitario === 'number' && item.precoUnitario > 0) {
                 allPrices.push(item.precoUnitario);
                 
-                // Coleta o registro bruto. Usamos o operador || 'N/A' para garantir que seja uma string.
-                const codigoUasg = String(item.codigoUnidadeGestora || 'N/A');
-                const nomeUasg = String(item.nomeUnidadeGestora || 'N/A');
+                // CORREÇÃO APLICADA AQUI: Usando 'codigoUasg' e 'nomeUasg'
+                const codigoUasg = String(item.codigoUasg || 'N/A');
+                const nomeUasg = String(item.nomeUasg || 'N/A');
 
                 allRawRecords.push({
                     codigoUasg: codigoUasg,
