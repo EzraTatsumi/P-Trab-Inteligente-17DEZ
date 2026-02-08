@@ -426,12 +426,23 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     // Filtra itens de Preço Médio para contagem
     const selectedPriceItems = selectedItemsState.filter(s => s.isPriceReference);
     
-    // O botão de inspeção deve ser desabilitado se:
-    // 1. Estiver inspecionando (isInspecting)
-    // 2. Não houver itens ARP selecionados E a aba ativa não for Preço Médio
-    // 3. Houver itens de Preço Médio selecionados (pois o fluxo é automático)
+    // Determine which flow is active
+    const isPriceFlowActive = selectedPriceItems.length > 0;
+    const isArpFlowActive = selectedArpItems.length > 0;
     
-    const isInspectionDisabled = isInspecting || selectedArpItems.length === 0 || selectedPriceItems.length > 0;
+    // New disabling logic: Disabled if inspecting OR if no items are selected at all.
+    const isAnyItemSelected = isPriceFlowActive || isArpFlowActive;
+    const isButtonDisabled = isInspecting || !isAnyItemSelected;
+    
+    const buttonText = isPriceFlowActive 
+        ? `Re-inspecionar Preço Médio (${selectedPriceItems.length})`
+        : `Inspecionar e Importar (${selectedArpItems.length})`;
+        
+    const handleButtonClick = () => {
+        // If price items are selected, use the price flow (true). Otherwise, use ARP flow (false).
+        const flowType = isPriceFlowActive; 
+        handleStartInspection(flowType);
+    };
     
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -493,16 +504,15 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 <div className="flex justify-end gap-2 pt-4 border-t">
                     <Button 
                         type="button" 
-                        onClick={() => handleStartInspection(false)} // Inspeciona ARP
-                        disabled={isInspectionDisabled}
+                        onClick={handleButtonClick}
+                        disabled={isButtonDisabled}
                     >
                         {isInspecting ? (
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         ) : (
                             <Import className="h-4 w-4 mr-2" />
                         )}
-                        {/* Exibe a contagem de itens ARP selecionados */}
-                        Inspecionar e Importar ({selectedArpItems.length})
+                        {buttonText}
                     </Button>
                     <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isInspecting}>
                         Fechar
