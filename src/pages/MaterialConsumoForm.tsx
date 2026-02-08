@@ -359,6 +359,9 @@ const MaterialConsumoForm = () => {
         }
     });
     
+    // Variável de estado de salvamento
+    const isSaving = insertMutation.isPending || replaceGroupMutation.isPending || handleDeleteMutation.isPending;
+    
     // Efeito de inicialização da OM Favorecida e OM Destino
     useEffect(() => {
         if (ptrabData && !editingId) {
@@ -415,6 +418,16 @@ const MaterialConsumoForm = () => {
         toast.success(`Grupo "${finalGroup.groupName}" salvo no formulário.`);
     };
     
+    const handleOpenGroupForm = () => {
+        setGroupToEdit(undefined);
+        setIsGroupFormOpen(true);
+    };
+    
+    const handleCancelGroupForm = () => {
+        setGroupToEdit(undefined);
+        setIsGroupFormOpen(false);
+    };
+    
     const handleEditAcquisitionGroup = (group: AcquisitionGroup) => {
         setGroupToEdit(group);
         setIsGroupFormOpen(true);
@@ -426,6 +439,104 @@ const MaterialConsumoForm = () => {
             acquisitionGroups: prev.acquisitionGroups.filter(g => g.tempId !== tempId),
         }));
         toast.info("Grupo de aquisição removido do formulário.");
+    };
+    
+    const renderAcquisitionGroups = () => {
+        if (formData.acquisitionGroups.length === 0) {
+            return (
+                <Card className="p-4 text-center text-muted-foreground border-dashed">
+                    Nenhum Grupo de Aquisição criado.
+                </Card>
+            );
+        }
+        
+        return (
+            <div className="space-y-3">
+                {formData.acquisitionGroups.map(group => (
+                    <Collapsible key={group.tempId} defaultOpen>
+                        <Card className="border-l-4 border-primary/70">
+                            <CollapsibleTrigger asChild>
+                                <div className="flex justify-between items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                                    <div className="flex items-center gap-2">
+                                        <Package className="h-4 w-4 text-primary" />
+                                        <span className="font-semibold">{group.groupName}</span>
+                                        <Badge variant="secondary" className="text-xs">
+                                            {group.items.length} Itens
+                                        </Badge>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-sm">{formatCurrency(group.totalValue)}</span>
+                                        {group.groupPurpose && (
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <FileText className="h-4 w-4 text-muted-foreground" />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p className="max-w-xs">{group.groupPurpose}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        )}
+                                        <ChevronDown className="h-4 w-4" />
+                                    </div>
+                                </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="border-t p-3 bg-background">
+                                <div className="space-y-2">
+                                    <p className="text-sm text-muted-foreground">Finalidade: {group.groupPurpose || 'Não especificada'}</p>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Item</TableHead>
+                                                <TableHead className="text-center">Qtd</TableHead>
+                                                <TableHead className="text-right">Total</TableHead>
+                                                <TableHead className="w-[100px] text-center">ND</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {group.items.map(item => (
+                                                <TableRow key={item.id}>
+                                                    <TableCell className="text-xs">
+                                                        {item.descricao_item}
+                                                        <p className="text-muted-foreground text-[10px]">CATMAT: {item.codigo_catmat}</p>
+                                                    </TableCell>
+                                                    <TableCell className="text-center text-xs">{item.quantidade}</TableCell>
+                                                    <TableCell className="text-right text-xs font-medium">{formatCurrency(item.valor_total)}</TableCell>
+                                                    <TableCell className="text-center text-xs font-medium">{item.nd}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                                <div className="flex justify-end gap-2 pt-3 border-t mt-3">
+                                    <Button 
+                                        type="button" 
+                                        variant="outline" 
+                                        size="sm" 
+                                        onClick={() => handleEditAcquisitionGroup(group)}
+                                        disabled={isSaving}
+                                    >
+                                        <Pencil className="mr-2 h-4 w-4" />
+                                        Editar
+                                    </Button>
+                                    <Button 
+                                        type="button" 
+                                        variant="destructive" 
+                                        size="sm" 
+                                        onClick={() => handleDeleteAcquisitionGroup(group.tempId)}
+                                        disabled={isSaving}
+                                    >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Excluir
+                                    </Button>
+                                </div>
+                            </CollapsibleContent>
+                        </Card>
+                    </Collapsible>
+                ))}
+            </div>
+        );
     };
     
     // =================================================================
@@ -460,6 +571,8 @@ const MaterialConsumoForm = () => {
             // Nota: Em MaterialConsumo, cada AcquisitionGroup se torna um registro no DB.
             const calculatedRecords: CalculatedMaterialConsumo[] = formData.acquisitionGroups.map(group => {
                 
+                const { totalValue, totalND30: nd30, totalND39: nd39 } = calculateGroupTotals(group.items);
+                
                 // Cria um registro temporário para a função de memória consolidada
                 const tempGroupRecord: ConsolidatedMaterialConsumoRecord = {
                     groupKey: group.tempId,
@@ -483,23 +596,23 @@ const MaterialConsumoForm = () => {
                         group_name: group.groupName,
                         group_purpose: group.groupPurpose,
                         itens_aquisicao: group.items as unknown as Json,
-                        valor_total: group.totalValue,
-                        valor_nd_30: group.totalND30,
-                        valor_nd_39: group.totalND39,
+                        valor_total: totalValue,
+                        valor_nd_30: nd30,
+                        valor_nd_39: nd39,
                         detalhamento_customizado: null,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString(),
                     } as MaterialConsumoRegistro],
-                    totalGeral: group.totalValue,
-                    totalND30: group.totalND30,
-                    totalND39: group.totalND39,
+                    totalGeral: totalValue,
+                    totalND30: nd30,
+                    totalND39: nd39,
                 };
                 
                 const memoria = generateConsolidatedMaterialConsumoMemoriaCalculo(tempGroupRecord);
                 
                 return {
                     tempId: group.tempId, 
-                    p_trab_id: ptrabId,
+                    p_trab_id: ptrabId!,
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
                     om_detentora: formData.om_destino,
@@ -690,8 +803,8 @@ const MaterialConsumoForm = () => {
                 fase_atividade: newFormData.fase_atividade,
                 
                 valor_total: totalValue,
-                valor_nd_30: nd30,
-                valor_nd_39: nd39,
+                valor_nd_30: group.totalND30,
+                valor_nd_39: group.totalND39,
                 
                 totalGeral: totalValue,
                 memoria_calculo_display: memoria, 
