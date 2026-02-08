@@ -169,14 +169,16 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
         onPriceSelect(item);
     };
     
-    // RESTAURADO: Função para renderizar os botões de preço
+    // Função para renderizar os botões de preço
     const renderPriceButtons = (stats: PriceStats) => {
+        // Removendo a classe grid daqui, pois ela será aplicada no CardContent
         const buttonClass = "flex flex-col items-center justify-center h-24 w-full text-center transition-all";
         const priceStyle = "text-xl font-bold mt-1";
         
+        // Retornamos os botões diretamente, sem um div wrapper de grid,
+        // pois o CardContent já é o container grid.
         return (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                
+            <>
                 {/* Preço Médio */}
                 <Button 
                     type="button" 
@@ -220,7 +222,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                     <span className="text-sm text-muted-foreground">Preço Máximo</span>
                     <span className={priceStyle}>{formatCurrency(stats.maxPrice)}</span>
                 </Button>
-            </div>
+            </>
         );
     };
 
@@ -380,17 +382,20 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                         </CollapsibleContent>
                     </Collapsible>
                     
-                    <CardContent className="p-0 pt-4 grid grid-cols-2 md:grid-cols-4 gap-4 border-t">
-                        <div className="space-y-1 col-span-4">
+                    {/* APLICANDO O LAYOUT DE GRID AQUI */}
+                    <CardContent className="p-0 pt-4 space-y-4 border-t">
+                        <div className="space-y-1">
                             <p className="text-sm text-muted-foreground">
                                 Item: <span className="font-medium text-foreground">{capitalizeFirstLetter(searchResult.descricaoItem || 'N/A')}</span>
                             </p>
                         </div>
                         
-                        {/* Botões de Seleção de Preço (RESTAURADOS) */}
-                        {renderPriceButtons(searchResult.stats)}
+                        {/* Botões de Seleção de Preço */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {renderPriceButtons(searchResult.stats)}
+                        </div>
                         
-                        <p className="text-xs text-muted-foreground mt-4 col-span-4">
+                        <p className="text-xs text-muted-foreground pt-2">
                             Selecione um dos valores acima para usá-lo como preço unitário de referência.
                         </p>
                     </CardContent>
