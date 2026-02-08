@@ -687,7 +687,7 @@ const PassagemForm = () => {
                 diretriz_id: trecho.diretriz_id,
                 trecho_id: trecho.id, 
                 origem: trecho.origem,
-                destino: registro.destino,
+                destino: trecho.destino,
                 tipo_transporte: registro.tipo_transporte,
                 is_ida_volta: registro.is_ida_volta,
                 valor_unitario: trecho.valor_unitario,
