@@ -8,7 +8,7 @@ interface PageMetadataProps {
 }
 
 const PageMetadata: React.FC<PageMetadataProps> = ({ title, description, canonicalPath }) => {
-  const fullTitle = `${title} | PTrab Inteligente`;
+  const fullTitle = `P Trab Inteligente | by TATSUMI`;
   const baseUrl = window.location.origin;
   const canonicalUrl = `${baseUrl}${canonicalPath}`;
 
