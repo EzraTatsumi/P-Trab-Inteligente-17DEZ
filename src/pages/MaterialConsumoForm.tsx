@@ -553,6 +553,7 @@ const MaterialConsumoForm = () => {
     };
     
     const handleItemQuantityChange = (groupId: string, itemId: string, quantity: number) => {
+        // Permite 0, mas não negativo
         if (quantity < 0) return;
         
         setFormData(prev => {
@@ -1036,8 +1037,14 @@ const MaterialConsumoForm = () => {
                                                                 type="number"
                                                                 min={0} 
                                                                 placeholder="1"
-                                                                value={item.quantidade_solicitada === 0 ? "" : item.quantidade_solicitada}
-                                                                onChange={(e) => handleItemQuantityChange(group.id, item.id, parseInt(e.target.value) || 0)}
+                                                                // Garante que '0' seja exibido como '0' e não como string vazia, mas permite a digitação
+                                                                value={item.quantidade_solicitada}
+                                                                onChange={(e) => {
+                                                                    // Permite que o campo fique vazio temporariamente durante a digitação
+                                                                    const rawValue = e.target.value;
+                                                                    const quantity = rawValue === '' ? 0 : parseInt(rawValue) || 0;
+                                                                    handleItemQuantityChange(group.id, item.id, quantity);
+                                                                }}
                                                                 className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                 disabled={isSaving}
                                                             />
