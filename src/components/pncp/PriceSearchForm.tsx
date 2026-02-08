@@ -224,6 +224,14 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
         );
     };
     
+    // NOVO: Ordena os registros brutos do maior para o menor valor
+    const sortedRawRecords = useMemo(() => {
+        if (!searchResult?.rawRecords) return [];
+        
+        // Cria uma cópia e ordena pelo precoUnitario em ordem decrescente
+        return [...searchResult.rawRecords].sort((a, b) => b.precoUnitario - a.precoUnitario);
+    }, [searchResult?.rawRecords]);
+    
     const renderRawDataTable = (records: RawPriceRecord[]) => {
         return (
             <div className="max-h-60 overflow-y-auto mt-2 border rounded-md">
@@ -420,7 +428,8 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                                         </CollapsibleTrigger>
                                         
                                         <CollapsibleContent>
-                                            {renderRawDataTable(searchResult.rawRecords)}
+                                            {/* CORREÇÃO: Passa os registros ordenados */}
+                                            {renderRawDataTable(sortedRawRecords)}
                                         </CollapsibleContent>
                                     </Collapsible>
                                 )}
