@@ -61,7 +61,7 @@ const PTrabForm = () => {
     { id: "horas-voo-avex", name: "Horas de Voo (AvEx)" },
     { id: "locacao-estruturas", name: "Locação de Estruturas" },
     { id: "locacao-viatura", name: "Locação de Viatura" },
-    { id: "material-consumo", name: "Material de Consumo" },
+    { id: "material-consumo", name: "Material de Consumo" }, // NOVO ITEM
     { id: "outros-servicos", name: "Outros Serviços" },
     { id: "concessionaria", name: "Pagamento de Concessionárias" },
     { id: "diaria", name: "Pagamento de Diárias" },
@@ -210,6 +210,8 @@ const PTrabForm = () => {
       navigate(`/ptrab/horas-voo-avex?ptrabId=${ptrabId}`);
     } else if (itemId === 'concessionaria') {
       navigate(`/ptrab/concessionaria?ptrabId=${ptrabId}`);
+    } else if (itemId === 'material-consumo') { // NOVO HANDLER
+      navigate(`/ptrab/material-consumo?ptrabId=${ptrabId}`);
     } else {
       // Trata itens operacionais não implementados
       toast.info(`Funcionalidade '${itemName}' (Operacional) ainda não implementada.`);
