@@ -202,8 +202,13 @@ export async function fetchCatmatShortDescription(codigoCatmat: string): Promise
         
         // 3. Retorna o status
         if (data) {
+            const rawShortDesc = data.short_description;
+            // CORREÇÃO: Aplica trim() e verifica se a string resultante tem conteúdo
+            const normalizedShortDesc = rawShortDesc ? rawShortDesc.trim() : null;
+            
             return {
-                shortDescription: data.short_description || null,
+                // Se normalizedShortDesc for uma string vazia (''), retorna null. Caso contrário, retorna o valor.
+                shortDescription: normalizedShortDesc && normalizedShortDesc.length > 0 ? normalizedShortDesc : null,
                 isCataloged: true, // O registro existe no catálogo
             };
         }
