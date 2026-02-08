@@ -21,12 +21,9 @@ import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"; // Importando Collapsible
 
-// Tipos de estado
-interface SubitemSelection {
-    diretriz_id: string;
-    nr_subitem: string;
-    nome_subitem: string;
-    itens_aquisicao: ItemAquisicao[];
+// Tipo de dados para o retorno do seletor (Item de Aquisição + Metadados do Subitem)
+interface SelectedItemAquisicaoAugmented extends SelectedItemAquisicao {
+    // Herda todos os campos, incluindo nr_subitem e nome_subitem
 }
 
 interface MaterialConsumoSubitemSelectorDialogProps {
@@ -34,7 +31,8 @@ interface MaterialConsumoSubitemSelectorDialogProps {
     onOpenChange: (open: boolean) => void;
     selectedYear: number;
     initialSelections: SelectedItemAquisicao[];
-    onSelect: (selectedItems: ItemAquisicao[], diretriz: { diretriz_id: string, nr_subitem: string, nome_subitem: string }) => void;
+    // Alterado para retornar uma lista plana de itens, permitindo múltiplos subitens
+    onSelect: (selectedItems: SelectedItemAquisicaoAugmented[]) => void; 
     onAddSubitem: () => void;
 }
 
@@ -158,32 +156,26 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
             return;
         }
         
-        const finalSelection: ItemAquisicao[] = [];
-        let selectedDiretriz: SubitemSelection | null = null;
+        const finalSelection: SelectedItemAquisicaoAugmented[] = [];
+        
+        // Mapa para preservar quantidades iniciais (se estiver em modo edição)
+        const initialQuantityMap = new Map(initialSelections.map(item => [item.id, item.quantidade_solicitada]));
         
         // Itera sobre todas as diretrizes para encontrar os itens selecionados
         for (const diretriz of diretrizes) {
             const selectedItemsInDiretriz = diretriz.itens_aquisicao.filter(item => selectedItemIds[item.id]);
             
-            if (selectedItemsInDiretriz.length > 0) {
-                // Se houver itens selecionados, eles devem pertencer ao MESMO Subitem.
-                // Se o usuário selecionar itens de dois subitens diferentes, isso é um erro lógico
-                // para o fluxo de Material de Consumo (que só permite 1 Subitem por registro).
+            selectedItemsInDiretriz.forEach(item => {
+                const quantity = initialQuantityMap.get(item.id) || 1; // Preserva ou inicializa com 1
                 
-                if (selectedDiretriz && selectedDiretriz.diretriz_id !== diretriz.id) {
-                    toast.error("Erro: Você selecionou itens de mais de um Subitem da ND. Por favor, selecione itens de apenas um Subitem por vez.");
-                    return;
-                }
-                
-                selectedDiretriz = {
+                finalSelection.push({
+                    ...item,
+                    quantidade_solicitada: quantity,
                     diretriz_id: diretriz.id,
                     nr_subitem: diretriz.nr_subitem,
                     nome_subitem: diretriz.nome_subitem,
-                    itens_aquisicao: diretriz.itens_aquisicao,
-                };
-                
-                finalSelection.push(...selectedItemsInDiretriz);
-            }
+                } as SelectedItemAquisicaoAugmented);
+            });
         }
         
         if (finalSelection.length === 0) {
@@ -191,14 +183,8 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
             return;
         }
         
-        if (!selectedDiretriz) {
-             // Isso não deve acontecer se finalSelection.length > 0, mas é um fallback de segurança
-             toast.error("Erro interno: Subitem de origem não identificado.");
-             return;
-        }
-        
-        // Passa a lista de ItemAquisicao e os dados do Subitem
-        onSelect(finalSelection, selectedDiretriz);
+        // Retorna a lista plana de itens, incluindo os metadados do Subitem
+        onSelect(finalSelection);
         onOpenChange(false);
     };
     

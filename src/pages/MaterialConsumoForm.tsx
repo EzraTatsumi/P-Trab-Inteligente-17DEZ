@@ -26,6 +26,7 @@ import {
     CalculatedMaterialConsumo,
     ConsolidatedMaterialConsumoRecord,
     SelectedItemAquisicao,
+    AcquisitionGroup, // NOVO TIPO
 } from "@/lib/materialConsumoUtils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -43,9 +44,10 @@ import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
 import { cn } from "@/lib/utils"; 
 import MaterialConsumoSubitemSelectorDialog from "@/components/MaterialConsumoSubitemSelectorDialog";
-import { ConsolidatedMaterialConsumoMemoria } from "@/components/ConsolidatedMaterialConsumoMemoria"; // Será criado no próximo passo
+import { ConsolidatedMaterialConsumoMemoria } from "@/components/ConsolidatedMaterialConsumoMemoria"; 
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear"; // IMPORTADO
+import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear"; 
+import AcquisitionGroupDialog from "@/components/AcquisitionGroupDialog"; // NOVO COMPONENTE
 
 // Tipos de dados
 type MaterialConsumoRegistroDB = Tables<'material_consumo_registros'>; 
@@ -74,7 +76,7 @@ const initialFormState: MaterialConsumoFormState = {
     dias_operacao: 0,
     efetivo: 0, 
     fase_atividade: "",
-    selected_itens: [],
+    acquisition_groups: [], // Alterado para grupos
 };
 
 // Helper function to compare form data structures
@@ -88,16 +90,21 @@ const compareFormData = (data1: MaterialConsumoFormState, data2: MaterialConsumo
         data1.om_destino !== data2.om_destino || 
         data1.ug_destino !== data2.ug_destino || 
         data1.fase_atividade !== data2.fase_atividade ||
-        data1.selected_itens.length !== data2.selected_itens.length
+        data1.acquisition_groups.length !== data2.acquisition_groups.length
     ) {
         return true;
     }
     
-    // Comparar detalhes dos itens (IDs e quantidades)
-    const itens1 = data1.selected_itens.map(t => `${t.id}-${t.quantidade_solicitada}`).sort().join('|');
-    const itens2 = data2.selected_itens.map(t => `${t.id}-${t.quantidade_solicitada}`).sort().join('|');
+    // Comparar detalhes dos grupos (IDs, nomes e itens)
+    const groups1 = data1.acquisition_groups.map(g => 
+        `${g.id}-${g.nome}|${g.itens.map(t => `${t.id}-${t.quantidade_solicitada}`).sort().join(',')}`
+    ).sort().join('||');
     
-    if (itens1 !== itens2) {
+    const groups2 = data2.acquisition_groups.map(g => 
+        `${g.id}-${g.nome}|${g.itens.map(t => `${t.id}-${t.quantidade_solicitada}`).sort().join(',')}`
+    ).sort().join('||');
+    
+    if (groups1 !== groups2) {
         return true;
     }
     
@@ -113,9 +120,8 @@ const MaterialConsumoForm = () => {
     const { handleEnterToNextField } = useFormNavigation();
     
     const [formData, setFormData] = useState<MaterialConsumoFormState>(initialFormState);
-    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editingId, setEditingId] = useState<string | null>(null); // ID do grupo de registros (Subitem) que está sendo editado
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-    const [registroToDelete, setRegistroToDelete] = useState<MaterialConsumoRegistroDB | null>(null);
     
     // NOVO ESTADO: Armazena o grupo completo a ser excluído/substituído
     const [groupToDelete, setGroupToDelete] = useState<ConsolidatedMaterialConsumo | null>(null); 
@@ -125,7 +131,7 @@ const MaterialConsumoForm = () => {
     const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
     const [memoriaEdit, setMemoriaEdit] = useState<string>("");
     
-    // NOVO ESTADO: Array de registros calculados, mas não salvos
+    // NOVO ESTADO: Array de registros calculados, mas não salvos (CalculatedMaterialConsumo)
     const [pendingMaterialConsumo, setPendingMaterialConsumo] = useState<CalculatedMaterialConsumo[]>([]);
     
     // NOVO ESTADO: Armazena o último formData que gerou um item em pendingMaterialConsumo
@@ -135,15 +141,9 @@ const MaterialConsumoForm = () => {
     const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
     const [selectedOmDestinoId, setSelectedOmDestinoId] = useState<string | undefined>(undefined);
     
-    // Estado para o diálogo de seleção de subitens
-    const [showSubitemSelector, setShowSubitemSelector] = useState(false);
-    
-    // Estado para armazenar o subitem selecionado (para display e persistência)
-    const [selectedSubitemData, setSelectedSubitemData] = useState<{
-        diretriz_id: string;
-        nr_subitem: string;
-        nome_subitem: string;
-    } | null>(null);
+    // Estado para o diálogo de gerenciamento de grupos
+    const [showGroupDialog, setShowGroupDialog] = useState(false);
+    const [groupToEdit, setGroupToEdit] = useState<AcquisitionGroup | undefined>(undefined);
     
     // Busca o ano padrão para o seletor de subitens
     const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear('operacional');
@@ -271,9 +271,8 @@ const MaterialConsumoForm = () => {
                 dias_operacao: prev.dias_operacao,
                 efetivo: prev.efetivo,
                 fase_atividade: prev.fase_atividade,
-                selected_itens: [], // Limpa os itens selecionados após salvar
+                acquisition_groups: [], // Limpa os grupos após salvar
             }));
-            setSelectedSubitemData(null);
             resetForm();
         },
         onError: (error) => { 
@@ -350,7 +349,6 @@ const MaterialConsumoForm = () => {
             queryClient.invalidateQueries({ queryKey: ['materialConsumoRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
             setShowDeleteDialog(false);
-            setRegistroToDelete(null);
             setGroupToDelete(null);
         },
         onError: (error) => {
@@ -371,7 +369,6 @@ const MaterialConsumoForm = () => {
             }));
             setSelectedOmFavorecidaId(undefined); 
             setSelectedOmDestinoId(undefined);
-            setSelectedSubitemData(null);
             
         } else if (ptrabData && editingId) {
             // Modo Edição: Preencher
@@ -389,65 +386,23 @@ const MaterialConsumoForm = () => {
     
     // Este cálculo é usado apenas para exibir o total consolidado no formulário (Seção 2)
     const calculos = useMemo(() => {
-        if (!ptrabData || formData.selected_itens.length === 0) {
+        if (!ptrabData || formData.acquisition_groups.length === 0) {
             return {
                 totalGeral: 0,
                 totalND30: 0,
                 totalND39: 0,
-                memoria: "Selecione pelo menos um item de aquisição e preencha os dados de solicitação.",
+                memoria: "Adicione pelo menos um Grupo de Aquisição e preencha os dados de solicitação.",
             };
         }
         
         try {
-            const totals = calculateLoteTotals(formData.selected_itens);
-            
-            // Gerar a memória consolidada para o STAGING (apenas para visualização)
-            const tempGroup: ConsolidatedMaterialConsumoRecord = {
-                diretriz_id: selectedSubitemData?.diretriz_id || '',
-                nr_subitem: selectedSubitemData?.nr_subitem || '',
-                nome_subitem: selectedSubitemData?.nome_subitem || '',
-                organizacao: formData.om_favorecida,
-                ug: formData.ug_favorecida,
-                om_detentora: formData.om_destino,
-                ug_detentora: formData.ug_destino,
-                dias_operacao: formData.dias_operacao,
-                efetivo: formData.efetivo,
-                fase_atividade: formData.fase_atividade,
-                records: [], // Não é necessário preencher records aqui
-                totalGeral: totals.totalGeral,
-                totalND30: totals.totalND30,
-                totalND39: totals.totalND39,
-            };
-            
-            // Criar um registro temporário para gerar a memória individual (simulando o registro de DB)
-            const tempRegistro: MaterialConsumoRegistro = {
-                id: 'temp',
-                p_trab_id: ptrabId!,
-                diretriz_id: tempGroup.diretriz_id,
-                organizacao: tempGroup.organizacao,
-                ug: tempGroup.ug,
-                om_detentora: tempGroup.om_detentora,
-                ug_detentora: tempGroup.ug_detentora,
-                dias_operacao: tempGroup.dias_operacao,
-                efetivo: tempGroup.efetivo,
-                fase_atividade: tempGroup.fase_atividade,
-                nr_subitem: tempGroup.nr_subitem,
-                nome_subitem: tempGroup.nome_subitem,
-                itens_aquisicao_selecionados: formData.selected_itens as unknown as Tables<'material_consumo_registros'>['itens_aquisicao_selecionados'],
-                valor_total: totals.totalGeral,
-                valor_nd_30: totals.totalND30,
-                valor_nd_39: totals.totalND39,
-                detalhamento: null,
-                detalhamento_customizado: null,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            };
-            
-            const memoria = generateMaterialConsumoMemoriaCalculo(tempRegistro);
+            // Agrega todos os itens de todos os grupos para calcular o total geral do formulário
+            const allItems = formData.acquisition_groups.flatMap(group => group.itens);
+            const totals = calculateLoteTotals(allItems);
             
             return {
                 ...totals,
-                memoria,
+                memoria: "Cálculo pronto para ser estagiado.",
             };
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : "Erro desconhecido no cálculo.";
@@ -458,7 +413,7 @@ const MaterialConsumoForm = () => {
                 memoria: `Erro ao calcular: ${errorMessage}`,
             };
         }
-    }, [formData, ptrabData, ptrabId, selectedSubitemData]);
+    }, [formData, ptrabData, ptrabId]);
     
     // Verifica se o formulário está "sujo" (diferente do lastStagedFormData)
     const isMaterialConsumoDirty = useMemo(() => {
@@ -489,9 +444,8 @@ const MaterialConsumoForm = () => {
             dias_operacao: 0,
             efetivo: 0,
             fase_atividade: "",
-            selected_itens: [],
+            acquisition_groups: [],
         }));
-        setSelectedSubitemData(null);
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
         setSelectedOmFavorecidaId(undefined);
@@ -506,6 +460,61 @@ const MaterialConsumoForm = () => {
         setGroupToReplace(null);
         resetForm();
     };
+
+    // --- Lógica de Gerenciamento de Grupos de Aquisição ---
+    
+    const handleAddGroup = () => {
+        if (pendingMaterialConsumo.length > 0) {
+            toast.warning("Salve ou limpe os itens pendentes antes de adicionar um novo grupo.");
+            return;
+        }
+        setGroupToEdit(undefined);
+        setShowGroupDialog(true);
+    };
+    
+    const handleEditGroup = (groupId: string) => {
+        if (pendingMaterialConsumo.length > 0) {
+            toast.warning("Salve ou limpe os itens pendentes antes de editar um grupo.");
+            return;
+        }
+        const group = formData.acquisition_groups.find(g => g.id === groupId);
+        if (group) {
+            setGroupToEdit(group);
+            setShowGroupDialog(true);
+        }
+    };
+    
+    const handleRemoveGroup = (groupId: string) => {
+        if (pendingMaterialConsumo.length > 0) {
+            toast.warning("Salve ou limpe os itens pendentes antes de remover um grupo.");
+            return;
+        }
+        setFormData(prev => ({
+            ...prev,
+            acquisition_groups: prev.acquisition_groups.filter(g => g.id !== groupId),
+        }));
+        toast.success("Grupo de aquisição removido.");
+    };
+    
+    const handleSaveGroup = (group: AcquisitionGroup) => {
+        setFormData(prev => {
+            const existingIndex = prev.acquisition_groups.findIndex(g => g.id === group.id);
+            if (existingIndex !== -1) {
+                // Edição
+                const newGroups = [...prev.acquisition_groups];
+                newGroups[existingIndex] = group;
+                return { ...prev, acquisition_groups: newGroups };
+            } else {
+                // Novo
+                return { ...prev, acquisition_groups: [...prev.acquisition_groups, group] };
+            }
+        });
+        setShowGroupDialog(false);
+        setGroupToEdit(undefined);
+        toast.success(`Grupo "${group.nome}" salvo com sucesso.`);
+    };
+    
+    // --- Lógica de Edição de Registros Salvos (ConsolidatedMaterialConsumo) ---
 
     const handleEdit = (group: ConsolidatedMaterialConsumo) => {
         if (pendingMaterialConsumo.length > 0) {
@@ -529,12 +538,21 @@ const MaterialConsumoForm = () => {
         setSelectedOmDestinoId(omDestinoToEdit?.id);
         
         // 2. Reconstruir a lista de itens selecionados a partir do primeiro registro do grupo
-        // Nota: Para Material de Consumo, todos os registros do grupo devem ter o mesmo itens_aquisicao_selecionados,
-        // mas o agrupamento é feito por Subitem. Usamos o primeiro registro para obter a lista de itens.
+        // Nota: Em Material de Consumo, um ConsolidatedMaterialConsumo representa um Subitem.
+        // O campo itens_aquisicao_selecionados contém a lista de itens de aquisição para aquele Subitem.
         const firstRecord = group.records[0];
         const selectedItensFromRecords: SelectedItemAquisicao[] = (firstRecord.itens_aquisicao_selecionados as unknown as SelectedItemAquisicao[]) || [];
 
-        // 3. Populate formData
+        // 3. Criar um Grupo de Aquisição temporário para edição
+        // Como o DB não armazena o nome/finalidade do grupo, usamos o nome do Subitem como fallback
+        const tempGroup: AcquisitionGroup = {
+            id: crypto.randomUUID(), // Novo ID temporário para o grupo de edição
+            nome: `Edição: ${group.nr_subitem} - ${group.nome_subitem}`,
+            finalidade: `Registro original do Subitem ${group.nr_subitem}`,
+            itens: selectedItensFromRecords,
+        };
+
+        // 4. Populate formData
         const newFormData: MaterialConsumoFormState = {
             om_favorecida: group.organizacao, 
             ug_favorecida: group.ug, 
@@ -543,52 +561,14 @@ const MaterialConsumoForm = () => {
             dias_operacao: group.dias_operacao,
             efetivo: group.efetivo || 0, 
             fase_atividade: group.fase_atividade || "",
-            selected_itens: selectedItensFromRecords, 
+            acquisition_groups: [tempGroup], // Apenas o grupo de edição
         };
         setFormData(newFormData);
         
-        // 4. Define o Subitem Selecionado
-        setSelectedSubitemData({
-            diretriz_id: group.diretriz_id,
-            nr_subitem: group.nr_subitem,
-            nome_subitem: group.nome_subitem,
-        });
-        
         // 5. Gerar o item pendente (staging) imediatamente com os dados originais
-        const totals = calculateLoteTotals(selectedItensFromRecords);
-        
-        const calculatedFormData: CalculatedMaterialConsumo = {
-            tempId: firstRecord.id, // Usamos o ID real do DB como tempId para rastreamento
-            p_trab_id: ptrabId!,
-            diretriz_id: group.diretriz_id,
-            organizacao: group.organizacao, 
-            ug: group.ug, 
-            om_detentora: group.om_detentora,
-            ug_detentora: group.ug_detentora,
-            dias_operacao: group.dias_operacao,
-            efetivo: group.efetivo,
-            fase_atividade: group.fase_atividade,
-            
-            nr_subitem: group.nr_subitem,
-            nome_subitem: group.nome_subitem,
-            itens_aquisicao_selecionados: firstRecord.itens_aquisicao_selecionados,
-            
-            valor_total: totals.totalGeral,
-            valor_nd_30: totals.totalND30,
-            valor_nd_39: totals.totalND39,
-            
-            detalhamento: firstRecord.detalhamento, 
-            detalhamento_customizado: firstRecord.detalhamento_customizado, 
-            
-            totalGeral: totals.totalGeral,
-            memoria_calculo_display: generateMaterialConsumoMemoriaCalculo(firstRecord), 
-            om_favorecida: group.organizacao,
-            ug_favorecida: group.ug,
-        } as CalculatedMaterialConsumo;
-        
-        // Para Material de Consumo, o grupo é um único registro lógico (Subitem), então só há 1 item pendente
-        setPendingMaterialConsumo([calculatedFormData]);
-        setLastStagedFormData(newFormData); // Marca o formulário como staged (limpo)
+        // Em modo edição, o staging é feito no handleStageCalculation, mas precisamos do lastStagedFormData
+        // para que o isMaterialConsumoDirty funcione.
+        setLastStagedFormData(newFormData); 
         
         toast.info("Modo Edição ativado. Altere os dados na Seção 2 e clique em 'Recalcular/Revisar Lote'.");
         
@@ -596,7 +576,6 @@ const MaterialConsumoForm = () => {
     };
 
     const handleConfirmDelete = (group: ConsolidatedMaterialConsumo) => {
-        setRegistroToDelete(group.records[0]); 
         setGroupToDelete(group); 
         setShowDeleteDialog(true);
     };
@@ -607,11 +586,8 @@ const MaterialConsumoForm = () => {
         
         try {
             // 1. Validação básica
-            if (!selectedSubitemData) {
-                throw new Error("Selecione um Subitem da ND na Seção 2.");
-            }
-            if (formData.selected_itens.length === 0) {
-                throw new Error("Selecione pelo menos um item de aquisição com quantidade maior que zero.");
+            if (formData.acquisition_groups.length === 0) {
+                throw new Error("Adicione pelo menos um Grupo de Aquisição na Seção 2.");
             }
             if (formData.dias_operacao <= 0) {
                 throw new Error("O número de dias deve ser maior que zero.");
@@ -626,58 +602,101 @@ const MaterialConsumoForm = () => {
                 throw new Error("A OM Destino do Recurso é obrigatória.");
             }
             
-            // 2. Calcular Totais
-            const totals = calculateLoteTotals(formData.selected_itens);
+            // 2. Agrupar todos os itens de todos os grupos por Subitem (diretriz_id)
+            const allItems = formData.acquisition_groups.flatMap(group => group.itens);
             
-            // 3. Gerar o registro (apenas 1 por Subitem)
-            const calculatedFormData: CalculatedMaterialConsumo = {
-                tempId: editingId || crypto.randomUUID(), 
-                p_trab_id: ptrabId!,
-                diretriz_id: selectedSubitemData.diretriz_id,
-                organizacao: formData.om_favorecida, 
-                ug: formData.ug_favorecida, 
-                om_detentora: formData.om_destino,
-                ug_detentora: formData.ug_destino,
-                dias_operacao: formData.dias_operacao,
-                efetivo: formData.efetivo,
-                fase_atividade: formData.fase_atividade,
+            const groupsToProcess = allItems.reduce((acc, item) => {
+                // Ignora itens com quantidade zero
+                if (item.quantidade_solicitada <= 0) return acc;
                 
-                nr_subitem: selectedSubitemData.nr_subitem,
-                nome_subitem: selectedSubitemData.nome_subitem,
-                itens_aquisicao_selecionados: formData.selected_itens as unknown as Tables<'material_consumo_registros'>['itens_aquisicao_selecionados'],
-                
-                valor_total: totals.totalGeral,
-                valor_nd_30: totals.totalND30,
-                valor_nd_39: totals.totalND39,
-                
-                detalhamento: `Material de Consumo: ${selectedSubitemData.nr_subitem} - ${selectedSubitemData.nome_subitem}`, 
-                detalhamento_customizado: null, 
-                
-                totalGeral: totals.totalGeral,
-                memoria_calculo_display: "", // Será preenchido abaixo
-                om_favorecida: formData.om_favorecida,
-                ug_favorecida: formData.ug_favorecida,
-            } as CalculatedMaterialConsumo;
-            
-            // 4. Preservar memória customizada em modo edição
-            if (editingId && groupToReplace) {
-                const originalRecord = groupToReplace.records.find(r => r.id === editingId);
-                if (originalRecord?.detalhamento_customizado) {
-                    calculatedFormData.detalhamento_customizado = originalRecord.detalhamento_customizado;
+                const key = item.diretriz_id;
+                if (!acc[key]) {
+                    acc[key] = {
+                        diretriz_id: item.diretriz_id,
+                        nr_subitem: item.nr_subitem,
+                        nome_subitem: item.nome_subitem,
+                        items: [],
+                    };
                 }
+                acc[key].items.push(item);
+                return acc;
+            }, {} as Record<string, {
+                diretriz_id: string;
+                nr_subitem: string;
+                nome_subitem: string;
+                items: SelectedItemAquisicao[];
+            }>);
+            
+            const newPendingItems: CalculatedMaterialConsumo[] = [];
+            
+            // 3. Gerar um registro CalculatedMaterialConsumo para CADA Subitem (diretriz_id)
+            Object.values(groupsToProcess).forEach(subitemGroup => {
+                const totals = calculateLoteTotals(subitemGroup.items);
+                
+                // Preservar customização de memória se estiver em modo edição
+                let customDetalhamento: string | null = null;
+                let tempId: string = crypto.randomUUID();
+                
+                if (editingId && groupToReplace) {
+                    // Estamos editando um registro existente (que é um Subitem)
+                    // O groupToReplace é o ConsolidatedMaterialConsumo original.
+                    // Se o Subitem atual (subitemGroup.diretriz_id) for o mesmo que o Subitem original,
+                    // preservamos o ID e o detalhamento customizado.
+                    if (subitemGroup.diretriz_id === groupToReplace.diretriz_id) {
+                        const originalRecord = groupToReplace.records[0];
+                        tempId = originalRecord.id;
+                        customDetalhamento = originalRecord.detalhamento_customizado;
+                    }
+                    // Se for um Subitem diferente, ele é um novo registro, mesmo em modo edição.
+                }
+                
+                const calculatedFormData: CalculatedMaterialConsumo = {
+                    tempId: tempId, 
+                    p_trab_id: ptrabId!,
+                    diretriz_id: subitemGroup.diretriz_id,
+                    organizacao: formData.om_favorecida, 
+                    ug: formData.ug_favorecida, 
+                    om_detentora: formData.om_destino,
+                    ug_detentora: formData.ug_destino,
+                    dias_operacao: formData.dias_operacao,
+                    efetivo: formData.efetivo,
+                    fase_atividade: formData.fase_atividade,
+                    
+                    nr_subitem: subitemGroup.nr_subitem,
+                    nome_subitem: subitemGroup.nome_subitem,
+                    itens_aquisicao_selecionados: subitemGroup.items as unknown as Tables<'material_consumo_registros'>['itens_aquisicao_selecionados'],
+                    
+                    valor_total: totals.totalGeral,
+                    valor_nd_30: totals.totalND30,
+                    valor_nd_39: totals.totalND39,
+                    
+                    detalhamento: `Material de Consumo: ${subitemGroup.nr_subitem} - ${subitemGroup.nome_subitem}`, 
+                    detalhamento_customizado: customDetalhamento, 
+                    
+                    totalGeral: totals.totalGeral,
+                    memoria_calculo_display: "", // Será preenchido abaixo
+                    om_favorecida: formData.om_favorecida,
+                    ug_favorecida: formData.ug_favorecida,
+                } as CalculatedMaterialConsumo;
+                
+                // Gerar memória final (usando o objeto calculado)
+                calculatedFormData.memoria_calculo_display = generateMaterialConsumoMemoriaCalculo(calculatedFormData);
+                
+                newPendingItems.push(calculatedFormData);
+            });
+            
+            if (newPendingItems.length === 0) {
+                throw new Error("Nenhum item com quantidade maior que zero foi encontrado nos Grupos de Aquisição.");
             }
             
-            // 5. Gerar memória final (usando o objeto calculado)
-            calculatedFormData.memoria_calculo_display = generateMaterialConsumoMemoriaCalculo(calculatedFormData);
-            
-            // 6. Atualizar estados
-            setPendingMaterialConsumo([calculatedFormData]);
+            // 4. Atualizar estados
+            setPendingMaterialConsumo(newPendingItems);
             setLastStagedFormData(formData);
             
             if (editingId) {
-                toast.info("Cálculo atualizado. Revise e confirme a atualização na Seção 3.");
+                toast.info(`Cálculo atualizado. Revise e confirme a atualização de ${newPendingItems.length} Subitem(s) na Seção 3.`);
             } else {
-                toast.info(`Subitem ${selectedSubitemData.nr_subitem} adicionado à lista pendente.`);
+                toast.info(`${newPendingItems.length} Subitem(s) adicionado(s) à lista pendente.`);
             }
             
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); 
@@ -704,10 +723,11 @@ const MaterialConsumoForm = () => {
             return;
         }
         
-        // 1. IDs dos registros antigos para deletar (apenas o ID do primeiro registro, pois é 1:1)
+        // 1. IDs dos registros antigos para deletar (todos os IDs do grupo original)
         const oldIds = groupToReplace.records.map(r => r.id);
         
         // 2. Novos registros (pendingMaterialConsumo) para inserir
+        // Note: pendingMaterialConsumo pode ter 1 ou mais registros se o usuário mudou o Subitem
         replaceGroupMutation.mutate({ oldIds, newRecords: pendingMaterialConsumo });
     };
     
@@ -760,44 +780,6 @@ const MaterialConsumoForm = () => {
             ...prev,
             fase_atividade: fase,
         }));
-    };
-    
-    // --- Lógica de Seleção de Subitem (Callback do Dialog) ---
-    const handleSubitemSelected = (selectedItems: ItemAquisicao[], diretriz: { diretriz_id: string, nr_subitem: string, nome_subitem: string }) => {
-        
-        // 1. Mapeia os ItemAquisicao (sem quantidade) para SelectedItemAquisicao (com quantidade inicial 1)
-        const itemsWithQuantity: SelectedItemAquisicao[] = selectedItems.map(item => ({
-            ...item,
-            quantidade_solicitada: 1, // Inicializa a quantidade para 1
-            diretriz_id: diretriz.diretriz_id, // Adiciona o ID da diretriz para rastreamento
-        }));
-        
-        // 2. Atualiza o formulário com a lista de itens selecionados
-        setFormData(prev => ({
-            ...prev,
-            selected_itens: itemsWithQuantity,
-        }));
-        
-        // 3. Armazena os dados do subitem
-        setSelectedSubitemData(diretriz);
-        
-        toast.success(`Subitem ${diretriz.nr_subitem} selecionado com ${selectedItems.length} itens. Defina as quantidades na Seção 2.`);
-    };
-    
-    // --- Lógica de Edição de Quantidade de Item no Formulário Principal ---
-    const handleItemQuantityChange = (itemId: string, quantity: number) => {
-        if (quantity < 0) return;
-        
-        setFormData(prev => {
-            const newSelections = prev.selected_itens.map(item => 
-                item.id === itemId ? { ...item, quantidade_solicitada: quantity } : item
-            );
-            
-            return {
-                ...prev,
-                selected_itens: newSelections,
-            };
-        });
     };
     
     // --- Lógica de Edição de Memória ---
@@ -857,7 +839,7 @@ const MaterialConsumoForm = () => {
         }
     };
     
-    // --- Handler para Adicionar Subitem ---
+    // --- Handler para Adicionar Subitem (Redireciona para Config) ---
     const handleAddSubitem = () => {
         // Navegar para a rota de Custos Operacionais, passando o estado para abrir a seção de material de consumo
         navigate('/config/custos-operacionais', { state: { openMaterialConsumo: true } });
@@ -894,20 +876,16 @@ const MaterialConsumoForm = () => {
                                     formData.efetivo > 0 &&
                                     formData.om_destino.length > 0 && 
                                     formData.ug_destino.length > 0 && 
-                                    formData.selected_itens.length > 0 &&
-                                    // A validação de quantidade > 0 agora é feita no handleStageCalculation
-                                    formData.selected_itens.some(t => t.quantidade_solicitada > 0); 
+                                    formData.acquisition_groups.length > 0; 
 
-    const isCalculationReady = isBaseFormReady && formData.selected_itens.length > 0;
+    const isCalculationReady = isBaseFormReady && isSolicitationDataReady;
     
     // Lógica para a Seção 3
     const itemsToDisplay = pendingMaterialConsumo;
     const isStagingUpdate = !!editingId && pendingMaterialConsumo.length > 0;
     
-    // Itens iniciais para o diálogo (se estiver editando)
-    const initialItemsForDialog = editingId && groupToReplace 
-        ? formData.selected_itens 
-        : formData.selected_itens;
+    // Total de itens de aquisição em todos os grupos
+    const totalAcquisitionItems = formData.acquisition_groups.reduce((sum, group) => sum + group.itens.length, 0);
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
@@ -969,11 +947,11 @@ const MaterialConsumoForm = () => {
                                 </div>
                             </section>
 
-                            {/* SEÇÃO 2: CONFIGURAR ITEM (SELEÇÃO DE SUBITEM) */}
+                            {/* SEÇÃO 2: CONFIGURAR SOLICITAÇÃO E GRUPOS DE AQUISIÇÃO */}
                             {isBaseFormReady && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        2. Configurar Subitem e Itens de Aquisição
+                                        2. Configurar Solicitação e Grupos de Aquisição
                                     </h3>
                                     
                                     <Card className="mt-6 bg-muted/50 rounded-lg p-4">
@@ -1051,86 +1029,71 @@ const MaterialConsumoForm = () => {
                                             </CardContent>
                                         </Card>
                                         
-                                        {/* Detalhes do Material de Consumo (Seleção de Subitem) */}
+                                        {/* Grupos de Aquisição */}
                                         <Card className="mt-4 rounded-lg p-4 bg-background">
-                                            <h4 className="font-semibold text-base mb-4">
-                                                Subitem e Itens de Aquisição Selecionados
-                                            </h4>
-                                            
-                                            <div className="space-y-4">
+                                            <h4 className="font-semibold text-base mb-4 flex justify-between items-center">
+                                                Grupos de Aquisição ({formData.acquisition_groups.length})
                                                 <Button 
                                                     type="button" 
-                                                    onClick={() => setShowSubitemSelector(true)}
+                                                    onClick={handleAddGroup}
                                                     disabled={!isPTrabEditable || isSaving}
-                                                    variant="secondary"
-                                                    className="w-full"
+                                                    size="sm"
                                                 >
-                                                    <Package className="mr-2 h-4 w-4" />
-                                                    {selectedSubitemData ? 
-                                                        `Alterar Subitem: ${selectedSubitemData.nr_subitem} (${formData.selected_itens.length} itens)` 
-                                                        : "Selecionar Subitem da ND *"}
+                                                    <Plus className="mr-2 h-4 w-4" />
+                                                    Adicionar Grupo
                                                 </Button>
-                                                
-                                                {/* Exibição dos Itens de Aquisição Selecionados */}
-                                                {formData.selected_itens.length > 0 && (
-                                                    <div className="border p-3 rounded-md space-y-2">
-                                                        <Table>
-                                                            <TableHeader>
-                                                                <TableRow>
-                                                                    <TableHead className="w-[100px] text-center">Qtd</TableHead>
-                                                                    <TableHead>Item de Aquisição</TableHead>
-                                                                    <TableHead className="text-right">Valor Unitário</TableHead>
-                                                                    <TableHead className="text-right">Total Item</TableHead>
-                                                                </TableRow>
-                                                            </TableHeader>
-                                                            <TableBody>
-                                                                {formData.selected_itens.map((item) => {
-                                                                    const totals = calculateItemTotals(item);
-                                                                    
-                                                                    return (
-                                                                        <TableRow key={item.id}>
-                                                                            <TableCell className="w-[100px]">
-                                                                                <div className="flex items-center justify-center gap-1">
-                                                                                    <Input
-                                                                                        type="number"
-                                                                                        min={0} 
-                                                                                        placeholder="Ex: 1"
-                                                                                        value={item.quantidade_solicitada === 0 ? "" : item.quantidade_solicitada}
-                                                                                        onChange={(e) => handleItemQuantityChange(item.id, parseInt(e.target.value) || 0)}
-                                                                                        onWheel={(e) => e.currentTarget.blur()} 
-                                                                                        onKeyDown={(e) => { 
-                                                                                            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                                                                                                e.preventDefault();
-                                                                                            }
-                                                                                        }}
-                                                                                        className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                                        disabled={!isPTrabEditable || isSaving}
-                                                                                    />
-                                                                                </div>
-                                                                            </TableCell>
-                                                                            <TableCell>
-                                                                                {item.descricao_item}
-                                                                                <p className="text-xs text-muted-foreground mt-0.5">
-                                                                                    CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} | GND: {item.gnd}
-                                                                                </p>
-                                                                            </TableCell>
-                                                                            <TableCell className="text-right text-sm">
-                                                                                {formatCurrency(item.valor_unitario)} / {item.unidade_medida}
-                                                                            </TableCell>
-                                                                            <TableCell className="text-right font-semibold text-sm">
-                                                                                {formatCurrency(totals.totalGeral)}
-                                                                            </TableCell>
-                                                                        </TableRow>
-                                                                    );
-                                                                })}
-                                                            </TableBody>
-                                                        </Table>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            </h4>
+                                            
+                                            {/* Lista de Grupos */}
+                                            {formData.acquisition_groups.length === 0 ? (
+                                                <Alert variant="default" className="text-sm">
+                                                    <AlertCircle className="h-4 w-4" />
+                                                    <AlertTitle>Nenhum Grupo Adicionado</AlertTitle>
+                                                    <AlertDescription>
+                                                        Adicione um grupo para selecionar os itens de aquisição necessários.
+                                                    </AlertDescription>
+                                                </Alert>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    {formData.acquisition_groups.map(group => {
+                                                        const totalGroup = calculateLoteTotals(group.itens).totalGeral;
+                                                        
+                                                        return (
+                                                            <div key={group.id} className="border p-3 rounded-md flex justify-between items-center bg-gray-50">
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-semibold">{group.nome}</span>
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        {group.itens.length} itens ({totalGroupValue > 0 ? formatCurrency(totalGroup) : 'R$ 0,00'})
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex gap-2">
+                                                                    <Button 
+                                                                        type="button" 
+                                                                        variant="ghost" 
+                                                                        size="icon" 
+                                                                        onClick={() => handleEditGroup(group.id)}
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                    >
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button 
+                                                                        type="button" 
+                                                                        variant="ghost" 
+                                                                        size="icon" 
+                                                                        onClick={() => handleRemoveGroup(group.id)}
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
                                             
                                             <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
-                                                <span className="font-bold text-sm">VALOR TOTAL DA SOLICITAÇÃO:</span>
+                                                <span className="font-bold text-sm">VALOR TOTAL DA SOLICITAÇÃO ({totalAcquisitionItems} itens):</span>
                                                 <span className={cn("font-extrabold text-lg text-primary")}>
                                                     {formatCurrency(calculos.totalGeral)}
                                                 </span>
@@ -1400,11 +1363,11 @@ const MaterialConsumoForm = () => {
                                                             </div>
                                                             <div className="flex justify-between text-xs">
                                                                 <span className="text-muted-foreground">ND 33.90.30:</span>
-                                                                <span className="text-green-600">{formatCurrency(totalND30)}</span>
+                                                                <span className="text-green-600">{formatCurrency(totalND30Consolidado)}</span>
                                                             </div>
                                                             <div className="flex justify-between text-xs">
                                                                 <span className="text-muted-foreground">ND 33.90.39:</span>
-                                                                <span className="text-green-600">{formatCurrency(totalND39)}</span>
+                                                                <span className="text-green-600">{formatCurrency(totalND39Consolidado)}</span>
                                                             </div>
                                                         </div>
                                                     </Card>
@@ -1469,13 +1432,13 @@ const MaterialConsumoForm = () => {
                     </AlertDialogContent>
                 </AlertDialog>
                 
-                {/* Diálogo de Seleção de Subitem */}
-                <MaterialConsumoSubitemSelectorDialog
-                    open={showSubitemSelector}
-                    onOpenChange={setShowSubitemSelector}
-                    selectedYear={selectedYear} // USANDO O ANO PADRÃO
-                    initialSelections={initialItemsForDialog}
-                    onSelect={(items, diretriz) => handleSubitemSelected(items, diretriz)}
+                {/* Diálogo de Gerenciamento de Grupo de Aquisição */}
+                <AcquisitionGroupDialog
+                    open={showGroupDialog}
+                    onOpenChange={setShowGroupDialog}
+                    initialGroup={groupToEdit}
+                    onSave={handleSaveGroup}
+                    selectedYear={selectedYear}
                     onAddSubitem={handleAddSubitem}
                 />
             </div>
