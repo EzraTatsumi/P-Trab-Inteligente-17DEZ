@@ -213,43 +213,38 @@ export const numberToRawDigits = (value: number | null | undefined): string => {
 };
 
 /**
- * Formata o número do pregão para exibição, removendo zeros à esquerda e adicionando separadores.
- * Se for uma referência não numérica (como 'Em processo de abertura'), retorna a string original.
- * @param pregao O número ou referência do pregão.
- * @returns String formatada.
+ * Formata um número de Pregão no padrão X.XXX/AA, removendo zeros à esquerda do número principal.
+ * Espera o formato '000.001/24' e retorna '1/24' ou '1.001/24'.
+ * @param pregaoFormatado O pregão formatado (ex: '000.001/24').
+ * @returns String formatada (ex: '1/24').
  */
-export const formatPregaoDisplay = (pregao: string | null | undefined): string => {
-    if (!pregao) return 'N/A';
-    
-    const trimmedPregao = pregao.trim();
-    
-    // Se contiver caracteres não numéricos além de ponto ou barra, retorna a string original
-    if (/[^\d./-]/.test(trimmedPregao)) {
-        return trimmedPregao;
-    }
-    
-    // Tenta formatar como número/ano (Ex: 90001/24)
-    const parts = trimmedPregao.split('/');
-    
-    if (parts.length === 2) {
-        const numberPart = parts[0].replace(/^0+/, ''); // Remove zeros à esquerda
-        const yearPart = parts[1];
-        
-        // Adiciona ponto de milhar na parte numérica, se aplicável
-        const formattedNumberPart = numberPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-        
-        return `${formattedNumberPart}/${yearPart}`;
-    }
-    
-    // Se for apenas um número, remove zeros à esquerda e adiciona ponto de milhar
-    const numericOnly = trimmedPregao.replace(/\D/g, '');
-    if (numericOnly.length > 0) {
-        const numberWithoutLeadingZeros = numericOnly.replace(/^0+/, '');
-        return numberWithoutLeadingZeros.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+export function formatPregao(pregaoFormatado: string): string {
+    if (!pregaoFormatado || pregaoFormatado === 'N/A') return 'N/A';
+
+    // Exemplo: '000.001/24'
+    const parts = pregaoFormatado.split('/');
+    if (parts.length !== 2) return pregaoFormatado;
+
+    const numeroCompleto = parts[0].replace(/\./g, ''); // '000001'
+    const ano = parts[1]; // '24'
+
+    // Remove zeros à esquerda do número completo
+    const numeroSemZeros = numeroCompleto.replace(/^0+/, ''); // '1'
+
+    if (!numeroSemZeros) {
+        // Caso seja '000.000/24', retorna '0/24'
+        return `0/${ano}`;
     }
 
-    return trimmedPregao;
-};
+    // Reinsere o ponto de milhar, se necessário
+    if (numeroSemZeros.length > 3) {
+        const parte1 = numeroSemZeros.slice(0, -3);
+        const parte2 = numeroSemZeros.slice(-3);
+        return `${parte1}.${parte2}/${ano}`;
+    }
+
+    return `${numeroSemZeros}/${ano}`;
+}
 
 /**
  * Capitaliza a primeira letra de uma string.
