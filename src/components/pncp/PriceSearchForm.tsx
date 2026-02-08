@@ -17,7 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardTitle, CardContent } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import PriceItemDetailsList from './PriceItemDetailsList';
-import CatmatCatalogDialog from '../CatmatCatalogDialog'; // RESTAURADO
+import CatmatCatalogDialog from '../CatmatCatalogDialog';
 
 // 1. Esquema de Validação (RESTAURADO)
 const formSchema = z.object({
@@ -72,7 +72,7 @@ const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
     const [searchParams, setSearchParams] = useState<PriceStatsSearchParams | null>(null);
     const [isSearching, setIsSearching] = useState(false);
-    const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false); // RESTAURADO
+    const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false); 
     
     // Query para buscar estatísticas de preço
@@ -97,11 +97,11 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
             codigoItem: "",
             dataInicio: defaultDataInicio,
             dataFim: defaultDataFim,
-            ignoreDates: false, // RESTAURADO
+            ignoreDates: false,
         },
     });
     
-    const ignoreDates = form.watch('ignoreDates'); // RESTAURADO
+    const ignoreDates = form.watch('ignoreDates');
     
     const handleItemCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const rawValue = e.target.value.replace(/\D/g, '');
@@ -133,7 +133,6 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
         // A busca real é feita pelo useQuery, mas usamos o estado local para controlar o loading do formulário
         // até que o useQuery comece a carregar.
         
-        // Se o useQuery estiver habilitado, ele fará a busca.
         // Usamos um pequeno timeout para garantir que o estado de loading do useQuery seja capturado.
         setTimeout(() => setIsSearching(false), 100); 
     };
@@ -309,28 +308,27 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                             )}
                         />
                         
-                        {/* Checkbox para ignorar datas */}
+                        {/* Checkbox para ignorar datas - CORRIGIDO */}
                         <FormField
                             control={form.control}
                             name="ignoreDates"
                             render={({ field }) => (
                                 <FormItem 
                                     className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 col-span-4 cursor-pointer"
-                                    onClick={() => {
-                                        if (!(isSearchingStats || isSearching)) {
-                                            form.setValue('ignoreDates', !field.value, { shouldValidate: true });
-                                        }
-                                    }}
+                                    // Removido o onClick do FormItem para evitar o loop.
+                                    // A label agora está associada ao checkbox, tornando o FormItem clicável.
                                 >
                                     <FormControl>
                                         <Checkbox
                                             checked={field.value}
                                             onCheckedChange={field.onChange}
                                             disabled={isSearchingStats || isSearching}
+                                            // Adiciona um ID para a label se referir a ele
+                                            id="ignoreDates" 
                                         />
                                     </FormControl>
-                                    <div className="space-y-1 leading-none pointer-events-none">
-                                        <FormLabel>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel htmlFor="ignoreDates" className="cursor-pointer">
                                             Pesquisar sem restrição de data
                                         </FormLabel>
                                         <FormDescription>
