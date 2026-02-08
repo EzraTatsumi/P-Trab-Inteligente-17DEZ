@@ -221,29 +221,35 @@ export const numberToRawDigits = (value: number | null | undefined): string => {
 export function formatPregao(pregaoFormatado: string): string {
     if (!pregaoFormatado || pregaoFormatado === 'N/A') return 'N/A';
 
-    // Exemplo: '000.001/24'
+    // Verifica se é uma referência de preço médio (que não tem formato de pregão)
+    if (pregaoFormatado.toLowerCase().includes('ref. preço') || pregaoFormatado.toLowerCase().includes('em processo')) {
+        return pregaoFormatado;
+    }
+
+    // Remove o ano e o separador (/) temporariamente
     const parts = pregaoFormatado.split('/');
     if (parts.length !== 2) return pregaoFormatado;
 
-    const numeroCompleto = parts[0].replace(/\./g, ''); // '000001'
-    const ano = parts[1]; // '24'
+    // Remove pontos de milhar e zeros à esquerda do número
+    const numeroCompleto = parts[0].replace(/\./g, '').replace(/^0+/, ''); 
+    const ano = parts[1]; 
 
-    // Remove zeros à esquerda do número completo
-    const numeroSemZeros = numeroCompleto.replace(/^0+/, ''); // '1'
-
-    if (!numeroSemZeros) {
-        // Caso seja '000.000/24', retorna '0/24'
+    if (!numeroCompleto) {
+        // Caso o número seja '0' ou vazio, retorna '0/AA'
         return `0/${ano}`;
     }
 
-    // Reinsere o ponto de milhar, se necessário
-    if (numeroSemZeros.length > 3) {
-        const parte1 = numeroSemZeros.slice(0, -3);
-        const parte2 = numeroSemZeros.slice(-3);
-        return `${parte1}.${parte2}/${ano}`;
+    // Reinsere o ponto de milhar, se necessário (a cada 3 dígitos a partir da direita)
+    let formattedNumber = '';
+    let tempNumber = numeroCompleto;
+    
+    while (tempNumber.length > 3) {
+        formattedNumber = `.${tempNumber.slice(-3)}${formattedNumber}`;
+        tempNumber = tempNumber.slice(0, -3);
     }
+    formattedNumber = tempNumber + formattedNumber;
 
-    return `${numeroSemZeros}/${ano}`;
+    return `${formattedNumber}/${ano}`;
 }
 
 /**
