@@ -378,7 +378,7 @@ const MaterialConsumoForm = () => {
             const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
             setSelectedOmFavorecidaId(omFavorecida?.id);
             
-            const omDestino = oms?.find(om => om.nome_om === formData.om_destino && om.codug_om === formData.ug_destino);
+            const omDestino = oms?.find(om => om.nome_om === formData.om_destino && om.codug_om === formData.ug_detentora);
             setSelectedOmDestinoId(omDestino?.id);
         }
     }, [ptrabData, oms, editingId]);
@@ -859,8 +859,11 @@ const MaterialConsumoForm = () => {
     // RENDERIZAÇÃO
     // =================================================================
 
-    const isGlobalLoading = isLoadingPTrab || isLoadingRegistros || isLoadingOms || isLoadingDefaultYear || isSaving;
+    // 1. Definir isSaving primeiro
     const isSaving = insertMutation.isPending || replaceGroupMutation.isPending || handleDeleteMutation.isPending;
+    
+    // 2. Definir isGlobalLoading usando isSaving
+    const isGlobalLoading = isLoadingPTrab || isLoadingRegistros || isLoadingOms || isLoadingDefaultYear || isSaving;
 
     if (isGlobalLoading) {
         return (
@@ -1168,6 +1171,8 @@ const MaterialConsumoForm = () => {
                                             const efetivoText = item.efetivo === 1 ? 'militar' : 'militares';
                                             
                                             const isOmDestinoDifferent = item.om_favorecida !== item.om_detentora || item.ug_favorecida !== item.ug_detentora;
+                                            const omDestino = item.om_detentora;
+                                            const ugDestino = item.ug_detentora;
 
                                             return (
                                                 <Card 
