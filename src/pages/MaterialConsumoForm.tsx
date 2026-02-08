@@ -47,7 +47,7 @@ import MaterialConsumoSubitemSelectorDialog from "@/components/MaterialConsumoSu
 import { ConsolidatedMaterialConsumoMemoria } from "@/components/ConsolidatedMaterialConsumoMemoria"; 
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear"; 
-import AcquisitionGroupDialog from "@/components/AcquisitionGroupDialog"; // NOVO COMPONENTE
+// import AcquisitionGroupDialog from "@/components/AcquisitionGroupDialog"; // REMOVIDO
 
 // Tipos de dados
 type MaterialConsumoRegistroDB = Tables<'material_consumo_registros'>; 
@@ -111,6 +111,10 @@ const compareFormData = (data1: MaterialConsumoFormState, data2: MaterialConsumo
     return false;
 };
 
+// Tipo de dados para o retorno do seletor de subitens (agora permite múltiplos subitens)
+interface SelectedItemAquisicaoAugmented extends SelectedItemAquisicao {
+    // Já herda todos os campos necessários
+}
 
 const MaterialConsumoForm = () => {
     const navigate = useNavigate();
@@ -141,9 +145,10 @@ const MaterialConsumoForm = () => {
     const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
     const [selectedOmDestinoId, setSelectedOmDestinoId] = useState<string | undefined>(undefined);
     
-    // Estado para o diálogo de gerenciamento de grupos
-    const [showGroupDialog, setShowGroupDialog] = useState(false);
-    const [groupToEdit, setGroupToEdit] = useState<AcquisitionGroup | undefined>(undefined);
+    // ESTADOS PARA GERENCIAMENTO INLINE DE GRUPO
+    const [isAddingGroup, setIsAddingGroup] = useState(false);
+    const [currentGroup, setCurrentGroup] = useState<AcquisitionGroup | null>(null);
+    const [showSubitemSelector, setShowSubitemSelector] = useState(false);
     
     // Busca o ano padrão para o seletor de subitens
     const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear('operacional');
@@ -451,6 +456,8 @@ const MaterialConsumoForm = () => {
         setSelectedOmFavorecidaId(undefined);
         setSelectedOmDestinoId(undefined);
         setLastStagedFormData(null); 
+        setIsAddingGroup(false); // Garante que o formulário inline seja fechado
+        setCurrentGroup(null);
     };
     
     const handleClearPending = () => {
@@ -461,27 +468,60 @@ const MaterialConsumoForm = () => {
         resetForm();
     };
 
-    // --- Lógica de Gerenciamento de Grupos de Aquisição ---
+    // --- Lógica de Gerenciamento de Grupos de Aquisição (INLINE) ---
     
-    const handleAddGroup = () => {
+    const handleStartAddGroup = () => {
         if (pendingMaterialConsumo.length > 0) {
             toast.warning("Salve ou limpe os itens pendentes antes de adicionar um novo grupo.");
             return;
         }
-        setGroupToEdit(undefined);
-        setShowGroupDialog(true);
+        setCurrentGroup({
+            id: crypto.randomUUID(),
+            nome: "",
+            finalidade: "",
+            itens: [],
+        });
+        setIsAddingGroup(true);
     };
     
-    const handleEditGroup = (groupId: string) => {
+    const handleStartEditGroup = (groupId: string) => {
         if (pendingMaterialConsumo.length > 0) {
             toast.warning("Salve ou limpe os itens pendentes antes de editar um grupo.");
             return;
         }
         const group = formData.acquisition_groups.find(g => g.id === groupId);
         if (group) {
-            setGroupToEdit(group);
-            setShowGroupDialog(true);
+            setCurrentGroup(group);
+            setIsAddingGroup(true);
         }
+    };
+    
+    const handleCancelGroupEdit = () => {
+        setCurrentGroup(null);
+        setIsAddingGroup(false);
+    };
+    
+    const handleSaveGroup = () => {
+        if (!currentGroup || !currentGroup.nome.trim()) {
+            toast.error("O nome do Grupo de Aquisição é obrigatório.");
+            return;
+        }
+        
+        setFormData(prev => {
+            const existingIndex = prev.acquisition_groups.findIndex(g => g.id === currentGroup.id);
+            if (existingIndex !== -1) {
+                // Edição
+                const newGroups = [...prev.acquisition_groups];
+                newGroups[existingIndex] = currentGroup;
+                return { ...prev, acquisition_groups: newGroups };
+            } else {
+                // Novo
+                return { ...prev, acquisition_groups: [...prev.acquisition_groups, currentGroup] };
+            }
+        });
+        
+        toast.success(`Grupo "${currentGroup.nome}" salvo!`);
+        handleCancelGroupEdit();
     };
     
     const handleRemoveGroup = (groupId: string) => {
@@ -496,22 +536,56 @@ const MaterialConsumoForm = () => {
         toast.success("Grupo de aquisição removido.");
     };
     
-    const handleSaveGroup = (group: AcquisitionGroup) => {
+    const handleItemQuantityChange = (groupId: string, itemId: string, quantity: number) => {
+        if (quantity < 0) return;
+        
         setFormData(prev => {
-            const existingIndex = prev.acquisition_groups.findIndex(g => g.id === group.id);
-            if (existingIndex !== -1) {
-                // Edição
-                const newGroups = [...prev.acquisition_groups];
-                newGroups[existingIndex] = group;
-                return { ...prev, acquisition_groups: newGroups };
-            } else {
-                // Novo
-                return { ...prev, acquisition_groups: [...prev.acquisition_groups, group] };
-            }
+            const newGroups = prev.acquisition_groups.map(group => {
+                if (group.id === groupId) {
+                    const newItems = group.itens.map(item => 
+                        item.id === itemId ? { ...item, quantidade_solicitada: quantity } : item
+                    );
+                    return { ...group, itens: newItems };
+                }
+                return group;
+            });
+            return { ...prev, acquisition_groups: newGroups };
         });
-        setShowGroupDialog(false);
-        setGroupToEdit(undefined);
-        toast.success(`Grupo "${group.nome}" salvo com sucesso.`);
+    };
+    
+    const handleRemoveItemFromGroup = (groupId: string, itemId: string) => {
+        setFormData(prev => {
+            const newGroups = prev.acquisition_groups.map(group => {
+                if (group.id === groupId) {
+                    const newItems = group.itens.filter(item => item.id !== itemId);
+                    return { ...group, itens: newItems };
+                }
+                return group;
+            }).filter(group => group.itens.length > 0); // Remove o grupo se ficar vazio
+            
+            return { ...prev, acquisition_groups: newGroups };
+        });
+        toast.info("Item removido do grupo.");
+    };
+    
+    const handleSubitemSelected = (selectedItems: SelectedItemAquisicaoAugmented[]) => {
+        if (!currentGroup) return;
+        
+        // 1. Mapeia os itens selecionados para o formato AcquisitionGroup.itens
+        // Preserva a quantidade de itens que já estavam no grupo
+        const existingItemMap = new Map(currentGroup.itens.map(item => [item.id, item]));
+        
+        const newItems: SelectedItemAquisicao[] = selectedItems.map(item => {
+            const existing = existingItemMap.get(item.id);
+            return {
+                ...item,
+                quantidade_solicitada: existing ? existing.quantidade_solicitada : 1, // Preserva ou inicializa
+            };
+        });
+        
+        setCurrentGroup(prev => (prev ? { ...prev, itens: newItems } : null));
+        setShowSubitemSelector(false);
+        toast.success(`${newItems.length} itens importados para o grupo. Salve o grupo para confirmar.`);
     };
     
     // --- Lógica de Edição de Registros Salvos (ConsolidatedMaterialConsumo) ---
@@ -538,13 +612,10 @@ const MaterialConsumoForm = () => {
         setSelectedOmDestinoId(omDestinoToEdit?.id);
         
         // 2. Reconstruir a lista de itens selecionados a partir do primeiro registro do grupo
-        // Nota: Em Material de Consumo, um ConsolidatedMaterialConsumo representa um Subitem.
-        // O campo itens_aquisicao_selecionados contém a lista de itens de aquisição para aquele Subitem.
         const firstRecord = group.records[0];
         const selectedItensFromRecords: SelectedItemAquisicao[] = (firstRecord.itens_aquisicao_selecionados as unknown as SelectedItemAquisicao[]) || [];
 
         // 3. Criar um Grupo de Aquisição temporário para edição
-        // Como o DB não armazena o nome/finalidade do grupo, usamos o nome do Subitem como fallback
         const tempGroup: AcquisitionGroup = {
             id: crypto.randomUUID(), // Novo ID temporário para o grupo de edição
             nome: `Edição: ${group.nr_subitem} - ${group.nome_subitem}`,
@@ -566,8 +637,6 @@ const MaterialConsumoForm = () => {
         setFormData(newFormData);
         
         // 5. Gerar o item pendente (staging) imediatamente com os dados originais
-        // Em modo edição, o staging é feito no handleStageCalculation, mas precisamos do lastStagedFormData
-        // para que o isMaterialConsumoDirty funcione.
         setLastStagedFormData(newFormData); 
         
         toast.info("Modo Edição ativado. Altere os dados na Seção 2 e clique em 'Recalcular/Revisar Lote'.");
@@ -845,47 +914,189 @@ const MaterialConsumoForm = () => {
         navigate('/config/custos-operacionais', { state: { openMaterialConsumo: true } });
     };
     
+    // --- Renderização de Grupo de Aquisição (INLINE) ---
+    const renderAcquisitionGroupForm = (group: AcquisitionGroup) => {
+        const isGroupValid = group.nome.trim().length > 0 && group.itens.some(item => item.quantidade_solicitada > 0);
+        const totalGroupValue = calculateLoteTotals(group.itens).totalGeral;
+        
+        // Agrupa os itens selecionados por Subitem para exibição
+        const groupedItems = group.itens.reduce((acc, item) => {
+            const key = item.diretriz_id;
+            if (!acc[key]) {
+                acc[key] = {
+                    diretriz_id: item.diretriz_id,
+                    nr_subitem: item.nr_subitem,
+                    nome_subitem: item.nome_subitem,
+                    items: [],
+                    totalSubitem: 0,
+                };
+            }
+            const totals = calculateItemTotals(item);
+            acc[key].items.push(item);
+            acc[key].totalSubitem += totals.totalGeral;
+            return acc;
+        }, {} as Record<string, {
+            diretriz_id: string;
+            nr_subitem: string;
+            nome_subitem: string;
+            items: SelectedItemAquisicao[];
+            totalSubitem: number;
+        }>);
+        
+        return (
+            <Card className="p-4 border-2 border-primary/50 bg-primary/5 space-y-4">
+                <h4 className="font-bold text-lg text-primary">
+                    {group.nome || "Novo Grupo"}
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="group-name">Nome do Grupo *</Label>
+                        <Input
+                            id="group-name"
+                            placeholder="Ex: Material de Escritório - QG"
+                            value={group.nome}
+                            onChange={(e) => setCurrentGroup(prev => prev ? { ...prev, nome: e.target.value } : null)}
+                            disabled={isSaving}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="group-finalidade">Finalidade (Opcional)</Label>
+                        <Input
+                            id="group-finalidade"
+                            placeholder="Ex: Apoio à Seção de Logística"
+                            value={group.finalidade}
+                            onChange={(e) => setCurrentGroup(prev => prev ? { ...prev, finalidade: e.target.value } : null)}
+                            disabled={isSaving}
+                        />
+                    </div>
+                </div>
+                
+                {/* Botão para abrir o seletor de itens */}
+                <Button 
+                    type="button" 
+                    onClick={() => setShowSubitemSelector(true)}
+                    disabled={isSaving}
+                    variant="secondary"
+                    className="w-full"
+                >
+                    <Package className="mr-2 h-4 w-4" />
+                    Importar/Alterar Itens de Subitens da ND ({group.itens.length} itens)
+                </Button>
+                
+                {/* Tabela de Itens Selecionados */}
+                {group.itens.length > 0 && (
+                    <div className="mt-4 border p-3 rounded-md space-y-4 bg-background">
+                        {Object.values(groupedItems).map(subitemGroup => (
+                            <div key={subitemGroup.diretriz_id} className="space-y-2">
+                                <div className="flex justify-between items-center bg-secondary/10 p-2 rounded-md">
+                                    <span className="font-semibold text-sm text-foreground">
+                                        {subitemGroup.nr_subitem} - {subitemGroup.nome_subitem}
+                                    </span>
+                                    <span className="font-bold text-sm text-foreground">
+                                        {formatCurrency(subitemGroup.totalSubitem)}
+                                    </span>
+                                </div>
+                                
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[100px] text-center">Qtd</TableHead>
+                                            <TableHead>Item de Aquisição</TableHead>
+                                            <TableHead className="text-right">Valor Unitário</TableHead>
+                                            <TableHead className="text-right">Total Item</TableHead>
+                                            <TableHead className="w-[50px] text-center">Ação</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {subitemGroup.items.map((item) => {
+                                            const totals = calculateItemTotals(item);
+                                            
+                                            return (
+                                                <TableRow key={item.id}>
+                                                    <TableCell className="w-[100px]">
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <Input
+                                                                type="number"
+                                                                min={0} 
+                                                                placeholder="1"
+                                                                value={item.quantidade_solicitada === 0 ? "" : item.quantidade_solicitada}
+                                                                onChange={(e) => handleItemQuantityChange(group.id, item.id, parseInt(e.target.value) || 0)}
+                                                                onWheel={(e) => e.currentTarget.blur()} 
+                                                                className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                disabled={isSaving}
+                                                            />
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {item.descricao_reduzida || item.descricao_item}
+                                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                                            CATMAT: {item.codigo_catmat} | GND: {item.gnd}
+                                                        </p>
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-sm">
+                                                        {formatCurrency(item.valor_unitario)} {item.unidade_medida}
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-semibold text-sm">
+                                                        {formatCurrency(totals.totalGeral)}
+                                                    </TableCell>
+                                                    <TableCell className="w-[50px] text-center">
+                                                        <Button
+                                                            type="button" 
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleRemoveItemFromGroup(group.id, item.id)} 
+                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                            disabled={isSaving}
+                                                        >
+                                                            <Minus className="h-4 w-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        ))}
+                        
+                        <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
+                            <span className="font-bold text-sm">VALOR TOTAL DO GRUPO:</span>
+                            <span className={cn("font-extrabold text-lg text-primary")}>
+                                {formatCurrency(totalGroupValue)}
+                            </span>
+                        </div>
+                    </div>
+                )}
+                
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                    <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={handleCancelGroupEdit}
+                        disabled={isSaving}
+                    >
+                        Cancelar
+                    </Button>
+                    
+                    <Button 
+                        type="button" 
+                        onClick={handleSaveGroup}
+                        disabled={isSaving || !isGroupValid}
+                    >
+                        <Check className="mr-2 h-4 w-4" />
+                        Salvar Grupo
+                    </Button>
+                </div>
+            </Card>
+        );
+    };
+    
     // =================================================================
     // RENDERIZAÇÃO
     // =================================================================
 
-    // 1. Definir isSaving primeiro
-    const isSaving = insertMutation.isPending || replaceGroupMutation.isPending || handleDeleteMutation.isPending;
-    
-    // 2. Definir isGlobalLoading usando isSaving
-    const isGlobalLoading = isLoadingPTrab || isLoadingRegistros || isLoadingOms || isLoadingDefaultYear || isSaving;
-
-    if (isGlobalLoading) {
-        return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                <span className="ml-2 text-muted-foreground">Carregando dados do P Trab...</span>
-            </div>
-        );
-    }
-
-    const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
-    
-    // Lógica de abertura da Seção 2: Depende apenas da OM Favorecida e Fase da Atividade
-    const isBaseFormReady = formData.om_favorecida.length > 0 && 
-                            formData.ug_favorecida.length > 0 && 
-                            formData.fase_atividade.length > 0;
-
-    // Verifica se os campos numéricos da Solicitação estão preenchidos (incluindo OM Destino)
-    const isSolicitationDataReady = formData.dias_operacao > 0 &&
-                                    formData.efetivo > 0 &&
-                                    formData.om_destino.length > 0 && 
-                                    formData.ug_destino.length > 0 && 
-                                    formData.acquisition_groups.length > 0; 
-
-    const isCalculationReady = isBaseFormReady && isSolicitationDataReady;
-    
-    // Lógica para a Seção 3
-    const itemsToDisplay = pendingMaterialConsumo;
-    const isStagingUpdate = !!editingId && pendingMaterialConsumo.length > 0;
-    
-    // Total de itens de aquisição em todos os grupos
-    const totalAcquisitionItems = formData.acquisition_groups.reduce((sum, group) => sum + group.itens.length, 0);
+    // ... (código de carregamento e validações)
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
@@ -908,6 +1119,7 @@ const MaterialConsumoForm = () => {
                         <form onSubmit={handleStageCalculation} className="space-y-8">
                             
                             {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
+                            {/* ... (Seção 1 permanece inalterada) ... */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
                                     1. Dados da Organização
@@ -1031,18 +1243,12 @@ const MaterialConsumoForm = () => {
                                         
                                         {/* Grupos de Aquisição */}
                                         <Card className="mt-4 rounded-lg p-4 bg-background">
-                                            <h4 className="font-semibold text-base mb-4 flex justify-between items-center">
+                                            <h4 className="font-semibold text-base mb-4 flex items-center gap-2">
                                                 Grupos de Aquisição ({formData.acquisition_groups.length})
-                                                <Button 
-                                                    type="button" 
-                                                    onClick={handleAddGroup}
-                                                    disabled={!isPTrabEditable || isSaving}
-                                                    size="sm"
-                                                >
-                                                    <Plus className="mr-2 h-4 w-4" />
-                                                    Adicionar Grupo
-                                                </Button>
                                             </h4>
+                                            
+                                            {/* Formulário de Adição/Edição INLINE */}
+                                            {isAddingGroup && currentGroup && renderAcquisitionGroupForm(currentGroup)}
                                             
                                             {/* Lista de Grupos */}
                                             {formData.acquisition_groups.length === 0 ? (
@@ -1056,7 +1262,6 @@ const MaterialConsumoForm = () => {
                                             ) : (
                                                 <div className="space-y-3">
                                                     {formData.acquisition_groups.map(group => {
-                                                        // CORREÇÃO: Calcular o total do grupo aqui
                                                         const totalGroup = calculateLoteTotals(group.itens).totalGeral;
                                                         
                                                         return (
@@ -1072,7 +1277,7 @@ const MaterialConsumoForm = () => {
                                                                         type="button" 
                                                                         variant="ghost" 
                                                                         size="icon" 
-                                                                        onClick={() => handleEditGroup(group.id)}
+                                                                        onClick={() => handleStartEditGroup(group.id)}
                                                                         disabled={!isPTrabEditable || isSaving}
                                                                     >
                                                                         <Pencil className="h-4 w-4" />
@@ -1090,6 +1295,22 @@ const MaterialConsumoForm = () => {
                                                             </div>
                                                         );
                                                     })}
+                                                </div>
+                                            )}
+                                            
+                                            {/* NOVO BOTÃO DE ADICIONAR GRUPO (Movido para baixo do Alert/Lista) */}
+                                            {!isAddingGroup && (
+                                                <div className="flex justify-end mt-4 border-t pt-4">
+                                                    <Button 
+                                                        type="button" 
+                                                        onClick={handleStartAddGroup}
+                                                        disabled={!isPTrabEditable || isSaving}
+                                                        variant="outline" 
+                                                        className="w-full"
+                                                    >
+                                                        <Plus className="mr-2 h-4 w-4" />
+                                                        Adicionar Novo Grupo de Aquisição
+                                                    </Button>
                                                 </div>
                                             )}
                                             
@@ -1119,6 +1340,7 @@ const MaterialConsumoForm = () => {
                             )}
 
                             {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
+                            {/* ... (Seção 3 permanece inalterada) ... */}
                             {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -1261,6 +1483,7 @@ const MaterialConsumoForm = () => {
                             )}
 
                             {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
+                            {/* ... (Seção 4 permanece inalterada) ... */}
                             {consolidatedRegistros && consolidatedRegistros.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1380,6 +1603,7 @@ const MaterialConsumoForm = () => {
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
+                            {/* ... (Seção 5 permanece inalterada) ... */}
                             {consolidatedRegistros && consolidatedRegistros.length > 0 && (
                                 <div className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1433,13 +1657,13 @@ const MaterialConsumoForm = () => {
                     </AlertDialogContent>
                 </AlertDialog>
                 
-                {/* Diálogo de Gerenciamento de Grupo de Aquisição */}
-                <AcquisitionGroupDialog
-                    open={showGroupDialog}
-                    onOpenChange={setShowGroupDialog}
-                    initialGroup={groupToEdit}
-                    onSave={handleSaveGroup}
+                {/* Diálogo de Seleção de Subitem (usado internamente pelo formulário inline) */}
+                <MaterialConsumoSubitemSelectorDialog
+                    open={showSubitemSelector}
+                    onOpenChange={setShowSubitemSelector}
                     selectedYear={selectedYear}
+                    initialSelections={currentGroup?.itens || []} 
+                    onSelect={handleSubitemSelected}
                     onAddSubitem={handleAddSubitem}
                 />
             </div>
