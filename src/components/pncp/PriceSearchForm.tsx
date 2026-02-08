@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Search, Loader2, DollarSign, ChevronDown, ChevronUp, RefreshCw, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
