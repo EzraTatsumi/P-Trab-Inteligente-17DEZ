@@ -5,16 +5,18 @@ import * as z from 'zod';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Search, Loader2, BookOpen, DollarSign } from "lucide-react";
+import { Search, Loader2, BookOpen, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { format, subDays } from 'date-fns';
 import { fetchPriceStats, fetchCatmatFullDescription } from '@/integrations/supabase/api';
-import { PriceStatsResult, PriceStats } from '@/types/pncp';
-import { capitalizeFirstLetter, formatCurrency } from '@/lib/formatUtils';
+import { PriceStatsResult, PriceStats, RawPriceRecord } from '@/types/pncp';
+import { capitalizeFirstLetter, formatCurrency, formatCodug } from '@/lib/formatUtils';
 import CatmatCatalogDialog from '../CatmatCatalogDialog';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 // 1. Esquema de Validação
 const formSchema = z.object({
@@ -73,6 +75,9 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
     const [searchResult, setSearchResult] = useState<PriceStatsResult | null>(null);
     
+    // NOVO ESTADO: Controla a visibilidade da base de cálculo
+    const [showRawData, setShowRawData] = useState(false);
+    
     const form = useForm<PriceSearchFormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -99,6 +104,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
     const onSubmit = async (values: PriceSearchFormValues) => {
         setIsSearching(true);
         setSearchResult(null);
+        setShowRawData(false); // Fecha o collapsible ao iniciar nova busca
         
         const catmatCode = values.codigoItem;
         
@@ -214,6 +220,37 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                     <span className="text-sm text-muted-foreground">Preço Máximo</span>
                     <span className={priceStyle}>{formatCurrency(stats.maxPrice)}</span>
                 </Button>
+            </div>
+        );
+    };
+    
+    const renderRawDataTable = (records: RawPriceRecord[]) => {
+        return (
+            <div className="max-h-60 overflow-y-auto mt-2 border rounded-md">
+                <Table>
+                    <TableHeader className="sticky top-0 bg-background z-10">
+                        <TableRow>
+                            <TableHead className="w-[15%]">UASG</TableHead>
+                            <TableHead className="w-[55%]">Nome da OM</TableHead>
+                            <TableHead className="w-[30%] text-right">Preço Unitário</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {records.map((record, index) => (
+                            <TableRow key={index}>
+                                <TableCell className="text-sm font-medium py-2">
+                                    {formatCodug(record.codigoUasg)}
+                                </TableCell>
+                                <TableCell className="text-sm py-2">
+                                    {capitalizeFirstLetter(record.nomeUasg.toLowerCase())}
+                                </TableCell>
+                                <TableCell className="text-right text-sm font-bold text-primary py-2">
+                                    {formatCurrency(record.precoUnitario)}
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
             </div>
         );
     };
@@ -357,6 +394,35 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                                 <p className="text-xs text-muted-foreground mt-4">
                                     Selecione um dos valores acima para usá-lo como preço unitário de referência.
                                 </p>
+                                
+                                {/* NOVO: Collapsible para a Base de Cálculo */}
+                                {searchResult.rawRecords.length > 0 && (
+                                    <Collapsible 
+                                        open={showRawData} 
+                                        onOpenChange={setShowRawData} 
+                                        className="mt-4 border-t pt-4"
+                                    >
+                                        <CollapsibleTrigger asChild>
+                                            <Button variant="link" className="p-0 h-auto">
+                                                {showRawData ? (
+                                                    <>
+                                                        <ChevronUp className="h-4 w-4 mr-2" />
+                                                        Ocultar Base de Cálculo
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <ChevronDown className="h-4 w-4 mr-2" />
+                                                        Mostrar Base de Cálculo ({searchResult.totalRegistros} registros)
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </CollapsibleTrigger>
+                                        
+                                        <CollapsibleContent>
+                                            {renderRawDataTable(searchResult.rawRecords)}
+                                        </CollapsibleContent>
+                                    </Collapsible>
+                                )}
                             </>
                         ) : (
                             <p className="text-center text-muted-foreground">

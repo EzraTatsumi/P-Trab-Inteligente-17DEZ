@@ -90,6 +90,7 @@ serve(async (req) => {
     const cleanCode = String(codigoItem).replace(/\D/g, '');
 
     let allPrices: number[] = [];
+    let allRawRecords: { codigoUasg: string, nomeUasg: string, precoUnitario: number }[] = []; // NOVO: Array para registros brutos
     let currentPage = 1;
     let totalPages = 1; 
     let itemDescription: string | null = null;
@@ -105,10 +106,17 @@ serve(async (req) => {
         const resultsArray = data.resultado || [];
         const paginationMetadata = data.paginacao || {};
         
-        // Coleta os preços unitários e a descrição do item
+        // Coleta os preços unitários, a descrição do item E os registros brutos
         resultsArray.forEach((item: any) => {
             if (item.precoUnitario && typeof item.precoUnitario === 'number' && item.precoUnitario > 0) {
                 allPrices.push(item.precoUnitario);
+                
+                // NOVO: Coleta o registro bruto
+                allRawRecords.push({
+                    codigoUasg: String(item.codigoUnidadeGestora || 'N/A'),
+                    nomeUasg: String(item.nomeUnidadeGestora || 'N/A'),
+                    precoUnitario: item.precoUnitario,
+                });
             }
             if (!itemDescription && item.descricaoItem) {
                 itemDescription = item.descricaoItem;
@@ -131,6 +139,7 @@ serve(async (req) => {
             descricaoItem: itemDescription,
             stats: null,
             totalRegistros: 0,
+            rawRecords: [], // NOVO: Retorna array vazio
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,
@@ -159,6 +168,7 @@ serve(async (req) => {
         descricaoItem: itemDescription,
         stats: stats,
         totalRegistros: totalRegistros,
+        rawRecords: allRawRecords, // NOVO: Retorna os registros brutos
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,

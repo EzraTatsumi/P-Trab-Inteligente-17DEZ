@@ -117,9 +117,19 @@ export interface PriceStats {
     medianPrice: number;
 }
 
+/**
+ * Estrutura de um registro bruto de preço retornado pela API externa (1_consultarMaterial).
+ */
+export interface RawPriceRecord {
+    codigoUasg: string;
+    nomeUasg: string;
+    precoUnitario: number;
+}
+
 export interface PriceStatsResult {
     codigoItem: string;
     descricaoItem: string | null;
     stats: PriceStats | null;
     totalRegistros: number;
+    rawRecords: RawPriceRecord[]; // NOVO: Lista de registros brutos
 }
