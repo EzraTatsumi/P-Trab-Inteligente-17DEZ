@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Search, Check, Plus, XCircle, AlertCircle, ArrowRight } from "lucide-react";
+import { Loader2, Package, Search, Check, Plus, XCircle, AlertCircle, ArrowRight, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,7 @@ import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMateri
 import { formatCurrency, formatCodug, formatNumber } from "@/lib/formatUtils";
 import { SelectedItemAquisicao } from "@/lib/materialConsumoUtils";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox"; // Importando Checkbox
 
 // Tipos de estado
 interface SubitemSelection {
@@ -29,12 +30,13 @@ interface SubitemSelection {
     itens_aquisicao: ItemAquisicao[];
 }
 
+// O tipo de retorno de onSelect agora é ItemAquisicao[] (sem quantidade)
 interface MaterialConsumoSubitemSelectorDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     selectedYear: number;
     initialSelections: SelectedItemAquisicao[];
-    onSelect: (selectedItems: SelectedItemAquisicao[], diretriz: SubitemSelection) => void;
+    onSelect: (selectedItems: ItemAquisicao[], diretriz: SubitemSelection) => void; // Alterado para ItemAquisicao[]
     onAddSubitem: () => void;
 }
 
@@ -53,8 +55,8 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedSubitem, setSelectedSubitem] = useState<SubitemSelection | null>(null);
     
-    // Estado dos itens de aquisição com a quantidade solicitada
-    const [itemQuantities, setItemQuantities] = useState<Record<string, number>>({});
+    // NOVO ESTADO: Armazena os IDs dos itens de aquisição selecionados
+    const [selectedItemIds, setSelectedItemIds] = useState<Record<string, boolean>>({});
     
     // Ref para o container de resultados para rolagem
     const resultsRef = useRef<HTMLDivElement>(null);
@@ -87,19 +89,18 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
     
     // --- Efeitos e Handlers de Estado ---
     
-    // Efeito para inicializar as quantidades ao abrir o diálogo ou mudar a seleção inicial
+    // Efeito para inicializar a seleção ao abrir o diálogo ou mudar a seleção inicial
     useEffect(() => {
         if (open) {
-            // 1. Inicializa as quantidades a partir das seleções iniciais
-            const initialQuants: Record<string, number> = {};
+            const initialIds: Record<string, boolean> = {};
             let initialDiretriz: SubitemSelection | null = null;
             
             if (initialSelections.length > 0) {
                 initialSelections.forEach(item => {
-                    initialQuants[item.id] = item.quantidade_solicitada;
+                    initialIds[item.id] = true;
                 });
                 
-                // 2. Tenta encontrar a diretriz correspondente
+                // Tenta encontrar a diretriz correspondente
                 const firstItem = initialSelections[0];
                 const foundDiretriz = diretrizes.find(d => d.id === firstItem.diretriz_id);
                 
@@ -113,7 +114,7 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                 }
             }
             
-            setItemQuantities(initialQuants);
+            setSelectedItemIds(initialIds);
             setSelectedSubitem(initialDiretriz);
             setSearchTerm("");
         }
@@ -148,10 +149,10 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
         );
     }, [selectedSubitem, searchTerm]);
     
-    // Calcula o total de itens selecionados (com quantidade > 0)
+    // Calcula o total de itens selecionados
     const totalSelectedItems = useMemo(() => {
-        return Object.values(itemQuantities).filter(q => q > 0).length;
-    }, [itemQuantities]);
+        return Object.values(selectedItemIds).filter(isTrue => isTrue).length;
+    }, [selectedItemIds]);
     
     // --- Handlers de Ação ---
     
@@ -159,7 +160,7 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
         // Se o subitem for o mesmo, apenas alterna a visualização
         if (selectedSubitem?.diretriz_id === diretriz.id) {
             setSelectedSubitem(null);
-            setItemQuantities({}); // Limpa as quantidades ao deselecionar
+            setSelectedItemIds({}); // Limpa as seleções ao deselecionar
             return;
         }
         
@@ -172,9 +173,9 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
         };
         setSelectedSubitem(newSubitem);
         
-        // 2. Limpa a busca e as quantidades
+        // 2. Limpa a busca e as seleções
         setSearchTerm("");
-        setItemQuantities({});
+        setSelectedItemIds({});
         
         // 3. Rola para o topo da lista de itens
         setTimeout(() => {
@@ -185,13 +186,10 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
         }, 100);
     };
     
-    const handleQuantityChange = (itemId: string, quantity: number) => {
-        // Garante que a quantidade não seja negativa
-        if (quantity < 0) return;
-        
-        setItemQuantities(prev => ({
+    const handleItemToggle = (itemId: string, isChecked: boolean) => {
+        setSelectedItemIds(prev => ({
             ...prev,
-            [itemId]: quantity,
+            [itemId]: isChecked,
         }));
     };
     
@@ -201,33 +199,42 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
             return;
         }
         
-        const finalSelection: SelectedItemAquisicao[] = [];
+        const finalSelection: ItemAquisicao[] = [];
         
         // Mapeia os itens de aquisição do subitem selecionado
         selectedSubitem.itens_aquisicao.forEach(item => {
-            const quantity = itemQuantities[item.id] || 0;
-            
-            if (quantity > 0) {
-                finalSelection.push({
-                    ...item,
-                    quantidade_solicitada: quantity,
-                    diretriz_id: selectedSubitem.diretriz_id, // Adiciona o ID da diretriz para rastreamento
-                });
+            if (selectedItemIds[item.id]) {
+                // Retorna o ItemAquisicao original (sem a propriedade quantidade_solicitada)
+                finalSelection.push(item);
             }
         });
         
         if (finalSelection.length === 0) {
-            toast.error("Selecione pelo menos um item de aquisição com quantidade maior que zero.");
+            toast.error("Selecione pelo menos um item de aquisição.");
             return;
         }
         
+        // Passa a lista de ItemAquisicao e os dados do Subitem
         onSelect(finalSelection, selectedSubitem);
         onOpenChange(false);
     };
     
-    const handleClearAll = () => {
-        setItemQuantities({});
-        toast.info("Quantidades zeradas.");
+    const handleSelectAll = () => {
+        if (!selectedSubitem) return;
+        
+        const allSelected = selectedSubitem.itens_aquisicao.every(item => selectedItemIds[item.id]);
+        
+        if (allSelected) {
+            setSelectedItemIds({});
+            toast.info("Todos os itens desmarcados.");
+        } else {
+            const newSelections: Record<string, boolean> = {};
+            selectedSubitem.itens_aquisicao.forEach(item => {
+                newSelections[item.id] = true;
+            });
+            setSelectedItemIds(newSelections);
+            toast.info("Todos os itens marcados.");
+        }
     };
     
     // --- Renderização ---
@@ -312,7 +319,7 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                     Subitem Selecionado: {selectedSubitem?.nr_subitem} - {selectedSubitem?.nome_subitem}
                 </h4>
                 <p className="text-xs text-muted-foreground">
-                    Selecione a quantidade desejada para cada item de aquisição.
+                    Selecione quais itens de aquisição deseja incluir na solicitação.
                 </p>
             </div>
             
@@ -331,7 +338,17 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-[100px] text-center">Qtd</TableHead>
+                            <TableHead className="w-[50px] text-center">
+                                <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={handleSelectAll}
+                                    className="h-8 w-8"
+                                >
+                                    <ListChecks className="h-4 w-4" />
+                                </Button>
+                            </TableHead>
                             <TableHead>Item de Aquisição</TableHead>
                             <TableHead className="text-right">Valor Unitário</TableHead>
                         </TableRow>
@@ -345,25 +362,20 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                             </TableRow>
                         ) : (
                             filteredAcquisitionItems.map(item => {
-                                const currentQuantity = itemQuantities[item.id] || 0;
+                                const isSelected = selectedItemIds[item.id] || false;
                                 
                                 return (
-                                    <TableRow key={item.id}>
-                                        <TableCell className="w-[100px]">
-                                            <Input
-                                                type="number"
-                                                min={0}
-                                                placeholder="0"
-                                                value={currentQuantity === 0 ? "" : currentQuantity}
-                                                onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 0)}
-                                                onWheel={(e) => e.currentTarget.blur()}
-                                                className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    <TableRow key={item.id} className={cn(isSelected && "bg-green-50/50")}>
+                                        <TableCell className="w-[50px] text-center">
+                                            <Checkbox
+                                                checked={isSelected}
+                                                onCheckedChange={(checked) => handleItemToggle(item.id, !!checked)}
                                                 disabled={isDataLoading}
                                             />
                                         </TableCell>
                                         <TableCell>
                                             <p className="font-medium">{item.descricao_item}</p>
-                                            <p className="text-xs text-muted-foreground">
+                                            <p className="text-xs text-muted-foreground mt-0.5">
                                                 CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
@@ -387,9 +399,9 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
             </div>
             
             <div className="flex justify-between items-center pt-4 border-t">
-                <Button type="button" variant="outline" onClick={handleClearAll} disabled={isDataLoading}>
+                <Button type="button" variant="outline" onClick={() => setSelectedItemIds({})} disabled={isDataLoading}>
                     <XCircle className="mr-2 h-4 w-4" />
-                    Zerar Quantidades
+                    Limpar Seleção
                 </Button>
                 <p className="font-semibold">
                     Itens Selecionados: <span className="text-primary">{totalSelectedItems}</span>
@@ -420,7 +432,7 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                             if (isSubitemSelected) {
                                 // Volta para a seleção de subitem
                                 setSelectedSubitem(null);
-                                setItemQuantities({});
+                                setSelectedItemIds({});
                                 setSearchTerm("");
                             } else {
                                 onOpenChange(false);

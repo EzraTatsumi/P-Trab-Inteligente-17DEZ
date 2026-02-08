@@ -378,7 +378,7 @@ const MaterialConsumoForm = () => {
             const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
             setSelectedOmFavorecidaId(omFavorecida?.id);
             
-            const omDestino = oms?.find(om => om.nome_om === formData.om_destino && om.codug_om === formData.ug_detentora);
+            const omDestino = oms?.find(om => om.nome_om === formData.om_destino && om.codug_om === formData.ug_destino);
             setSelectedOmDestinoId(omDestino?.id);
         }
     }, [ptrabData, oms, editingId]);
@@ -763,17 +763,25 @@ const MaterialConsumoForm = () => {
     };
     
     // --- Lógica de Seleção de Subitem (Callback do Dialog) ---
-    const handleSubitemSelected = (selectedItems: SelectedItemAquisicao[], diretriz: { diretriz_id: string, nr_subitem: string, nome_subitem: string }) => {
-        // 1. Atualiza o formulário com a lista de itens selecionados
-        setFormData(prev => ({
-            ...prev,
-            selected_itens: selectedItems,
+    const handleSubitemSelected = (selectedItems: ItemAquisicao[], diretriz: { diretriz_id: string, nr_subitem: string, nome_subitem: string }) => {
+        
+        // 1. Mapeia os ItemAquisicao (sem quantidade) para SelectedItemAquisicao (com quantidade inicial 1)
+        const itemsWithQuantity: SelectedItemAquisicao[] = selectedItems.map(item => ({
+            ...item,
+            quantidade_solicitada: 1, // Inicializa a quantidade para 1
+            diretriz_id: diretriz.diretriz_id, // Adiciona o ID da diretriz para rastreamento
         }));
         
-        // 2. Armazena os dados do subitem
+        // 2. Atualiza o formulário com a lista de itens selecionados
+        setFormData(prev => ({
+            ...prev,
+            selected_itens: itemsWithQuantity,
+        }));
+        
+        // 3. Armazena os dados do subitem
         setSelectedSubitemData(diretriz);
         
-        toast.success(`Subitem ${diretriz.nr_subitem} selecionado com ${selectedItems.length} itens.`);
+        toast.success(`Subitem ${diretriz.nr_subitem} selecionado com ${selectedItems.length} itens. Defina as quantidades na Seção 2.`);
     };
     
     // --- Lógica de Edição de Quantidade de Item no Formulário Principal ---
@@ -887,9 +895,10 @@ const MaterialConsumoForm = () => {
                                     formData.om_destino.length > 0 && 
                                     formData.ug_destino.length > 0 && 
                                     formData.selected_itens.length > 0 &&
-                                    formData.selected_itens.every(t => t.quantidade_solicitada > 0); 
+                                    // A validação de quantidade > 0 agora é feita no handleStageCalculation
+                                    formData.selected_itens.some(t => t.quantidade_solicitada > 0); 
 
-    const isCalculationReady = isBaseFormReady && isSolicitationDataReady;
+    const isCalculationReady = isBaseFormReady && formData.selected_itens.length > 0;
     
     // Lógica para a Seção 3
     const itemsToDisplay = pendingMaterialConsumo;
