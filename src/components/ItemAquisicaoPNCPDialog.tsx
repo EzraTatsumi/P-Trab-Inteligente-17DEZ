@@ -195,14 +195,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     const handleItemPreSelect = (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => {
         setSelectedItemsState(prev => {
             const id = item.id;
-            // Verifica se o item já existe (ARP)
             const existingIndex = prev.findIndex(s => s.item.id === id && !s.isPriceReference);
-            
-            // Se houver um item de preço médio selecionado, impede a seleção de ARP
-            if (prev.some(s => s.isPriceReference)) {
-                toast.warning("Desselecione o item de Preço Médio antes de selecionar ARPs.");
-                return prev;
-            }
             
             if (existingIndex !== -1) {
                 // Remover item (desselecionar)
@@ -227,22 +220,19 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
             isPriceReference: true 
         }]);
         
-        // 3. Mudar para a aba de ARP para que o usuário veja o botão de inspeção principal
-        setSelectedTab("arp-uasg");
-        
-        // 4. Rola para o topo para que o usuário veja o botão de inspeção
-        scrollToTop();
-        
-        toast.info("Item de preço médio selecionado. Clique em 'Inspecionar e Importar'.");
+        // 3. Inicia a inspeção imediatamente (conforme o fluxo de preço médio)
+        handleStartInspection(true);
     };
     
     // Mapeia apenas os IDs para passar para os componentes de busca
     const selectedItemIds = selectedItemsState.map(s => s.item.id);
 
     // NOVO: Função para iniciar a inspeção (agora aceita um parâmetro para forçar a inspeção de apenas 1 item)
-    const handleStartInspection = async () => { // Removido o parâmetro isPriceReferenceFlow
+    const handleStartInspection = async (isPriceReferenceFlow: boolean = false) => {
         
-        const itemsToInspect = selectedItemsState; // Inspeciona todos os itens selecionados
+        const itemsToInspect = isPriceReferenceFlow 
+            ? selectedItemsState.filter(s => s.isPriceReference)
+            : selectedItemsState.filter(s => !s.isPriceReference);
             
         if (itemsToInspect.length === 0) {
             toast.error("Selecione pelo menos um item detalhado para importar.");
@@ -391,6 +381,12 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
             // 9. Abrir o diálogo de inspeção
             setIsInspectionDialogOpen(true);
             
+            // 10. Se for fluxo de preço médio, o item já está selecionado e pronto para revisão.
+            if (isPriceReferenceFlow && results.length === 1) {
+                // Chama a função de revisão para conduzir o usuário ao formulário principal
+                handleReviewItem(results[0].mappedItem);
+            }
+            
         } catch (error) {
             console.error("Erro durante a inspeção PNCP:", error);
             toast.error("Falha ao inspecionar itens. Tente novamente.");
@@ -440,7 +436,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     
     // Se houver um item de preço médio selecionado, o botão de inspeção deve ser desabilitado
     // para itens ARP, pois o fluxo de preço médio é imediato.
-    const isArpInspectionDisabled = selectedPriceItems.length > 0 && selectedArpItems.length > 0;
+    const isArpInspectionDisabled = selectedPriceItems.length > 0;
     
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -501,15 +497,15 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 <div className="flex justify-end gap-2 pt-4 border-t">
                     <Button 
                         type="button" 
-                        onClick={() => handleStartInspection()} 
-                        disabled={totalItemsToInspect === 0 || isInspecting}
+                        onClick={() => handleStartInspection(false)} // Inspeciona ARP
+                        disabled={selectedArpItems.length === 0 || isInspecting || isArpInspectionDisabled}
                     >
                         {isInspecting ? (
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         ) : (
                             <Import className="h-4 w-4 mr-2" />
                         )}
-                        Inspecionar e Importar ({totalItemsToInspect})
+                        Inspecionar e Importar ({selectedArpItems.length})
                     </Button>
                     <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isInspecting}>
                         Fechar
