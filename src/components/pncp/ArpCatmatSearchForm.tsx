@@ -261,7 +261,8 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                                                 {displayPregao}
                                             </TableCell>
                                             <TableCell className="text-sm max-w-xs whitespace-normal">
-                                                {representativeItem.nomeUnidadeGerenciadora || 'N/A'}
+                                                {/* CORREÇÃO APLICADA AQUI: Usando omNome */}
+                                                {representativeItem.omNome || 'N/A'}
                                             </TableCell>
                                             <TableCell className="text-sm whitespace-nowrap">
                                                 {formatCodug(representativeItem.uasg)}
