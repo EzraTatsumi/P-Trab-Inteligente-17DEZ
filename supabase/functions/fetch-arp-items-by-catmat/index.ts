@@ -9,7 +9,7 @@ const API_URL = 'https://dadosabertos.compras.gov.br/modulo-arp/2_consultarARPIt
 const PAGE_SIZE = '500'; // Tamanho máximo permitido
 
 /**
- * Função auxiliar para buscar uma página específica de itens ARP por CATMAT.
+ * Função auxiliar para buscar uma página específica de itens de ARP por CATMAT.
  */
 async function fetchArpItemPage(
     codigoItem: string, 
@@ -62,13 +62,12 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    
-    // Remove caracteres não numéricos do código CATMAT
-    const cleanCode = String(codigoItem).replace(/\D/g, '');
 
     let allResults: any[] = [];
     let currentPage = 1;
     let totalPages = 1; 
+    
+    const cleanCode = String(codigoItem).replace(/\D/g, '');
 
     do {
         const data = await fetchArpItemPage(
@@ -96,7 +95,7 @@ serve(async (req) => {
 
     console.log(`[fetch-arp-items-by-catmat] Successfully fetched ${allResults.length} total records across ${totalPages} pages.`);
 
-    // Retorna o array consolidado de resultados (DetailedArpRawResult[])
+    // Retorna o array consolidado de resultados
     return new Response(JSON.stringify(allResults), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,

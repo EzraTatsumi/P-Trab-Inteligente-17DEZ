@@ -7,11 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Search, Loader2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
-import { format, subDays } from 'date-fns';
-import { fetchArpItemsByCatmat, fetchCatmatFullDescription } from '@/integrations/supabase/api';
 import { DetailedArpItem } from '@/types/pncp';
+import { format } from 'date-fns';
+import { fetchArpItemsByCatmat } from '@/integrations/supabase/api';
 import CatmatCatalogDialog from '../CatmatCatalogDialog';
-import ArpCatmatSearchResultsList from './ArpCatmatSearchResultsList'; // NOVO IMPORT
+import ArpCatmatSearchResultsList from './ArpCatmatSearchResultsList';
 
 // 1. Esquema de Validação
 const formSchema = z.object({
@@ -28,27 +28,28 @@ const formSchema = z.object({
 type ArpCatmatFormValues = z.infer<typeof formSchema>;
 
 interface ArpCatmatSearchFormProps {
+    // Função para alternar a seleção de um item detalhado
     onItemPreSelect: (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => void;
+    // Função para limpar a seleção global
     onClearSelection: () => void;
+    // Array de IDs selecionados
     selectedItemIds: string[];
-    scrollContainerRef: React.RefObject<HTMLDivElement>;
 }
 
-// Calcula as datas padrão
+// Calcula as datas padrão (últimos 3 meses)
 const today = new Date();
-const oneYearAgo = subDays(today, 365);
+const threeMonthsAgo = new Date();
+threeMonthsAgo.setMonth(today.getMonth() - 3);
 
 // Formata as datas para o formato 'YYYY-MM-DD' exigido pelo input type="date"
 const defaultDataFim = format(today, 'yyyy-MM-dd');
-const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
+const defaultDataInicio = format(threeMonthsAgo, 'yyyy-MM-dd');
 
 
-const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
+const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSelect, onClearSelection, selectedItemIds }) => {
     const [isSearching, setIsSearching] = useState(false);
-    const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false); 
+    const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
     const [arpResults, setArpResults] = useState<DetailedArpItem[]>([]); 
-    
-    const [searchedItemDescription, setSearchedItemDescription] = useState<string>(""); 
     
     const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -65,9 +66,13 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
         const rawValue = e.target.value.replace(/\D/g, '');
         const limitedValue = rawValue.slice(0, 9); 
         form.setValue('codigoItem', limitedValue, { shouldValidate: true });
-        setSearchedItemDescription(""); 
     };
     
+    const handleCatmatSelect = (catmatItem: { code: string, description: string, short_description: string | null }) => {
+        form.setValue('codigoItem', catmatItem.code, { shouldValidate: true });
+        setIsCatmatCatalogOpen(false);
+    };
+
     const onSubmit = async (values: ArpCatmatFormValues) => {
         setIsSearching(true);
         setArpResults([]);
@@ -78,18 +83,12 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
         try {
             toast.info(`Buscando ARPs para CATMAT ${catmatCode}...`);
             
-            // 1. Busca a descrição completa do item no PNCP para usar no cabeçalho
-            const pncpDetails = await fetchCatmatFullDescription(catmatCode);
-            const description = pncpDetails.fullDescription || `Cód. ${catmatCode}`;
-            setSearchedItemDescription(description);
-            
             const params = {
                 codigoItem: catmatCode,
                 dataVigenciaInicialMin: values.dataInicio,
                 dataVigenciaInicialMax: values.dataFim,
             };
             
-            // 2. Busca os itens ARP
             const results = await fetchArpItemsByCatmat(params);
             
             if (results.length === 0) {
@@ -100,12 +99,11 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
             
             setArpResults(results);
             
-            // 3. Rola para o topo dos resultados
             if (results.length > 0 && resultsRef.current) {
                 setTimeout(() => {
                     resultsRef.current?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "start" 
+                        behavior: 'smooth',
+                        block: 'start'
                     });
                 }, 100); 
             }
@@ -117,15 +115,6 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
             setIsSearching(false);
         }
     };
-    
-    // Função para receber dados do catálogo CATMAT e atualizar o formulário
-    const handleCatmatSelect = (catmatItem: { code: string, description: string, short_description: string | null }) => {
-        form.setValue('codigoItem', catmatItem.code, { shouldValidate: true });
-        setSearchedItemDescription(catmatItem.description);
-        setIsCatmatCatalogOpen(false);
-    };
-    
-    // O componente CatmatSearchResultsList foi movido para um arquivo separado.
 
     return (
         <>
@@ -137,7 +126,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                             control={form.control}
                             name="codigoItem"
                             render={({ field }) => (
-                                <FormItem className="col-span-2">
+                                <FormItem className="col-span-4 md:col-span-2">
                                     <FormLabel>Cód. CATMAT/CATSER *</FormLabel>
                                     <div className="flex gap-2">
                                         <FormControl>
@@ -145,7 +134,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                                                 {...field}
                                                 onChange={handleCatmatChange}
                                                 value={field.value}
-                                                placeholder="Ex: 423465"
+                                                placeholder="Ex: 604269"
                                                 maxLength={9}
                                                 disabled={isSearching}
                                             />
@@ -154,7 +143,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                                             type="button" 
                                             variant="outline" 
                                             size="icon" 
-                                            onClick={() => setIsCatmatCatalogOpen(true)} 
+                                            onClick={() => setIsCatmatCatalogOpen(true)}
                                             disabled={isSearching}
                                         >
                                             <BookOpen className="h-4 w-4" />
@@ -172,7 +161,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                             control={form.control}
                             name="dataInicio"
                             render={({ field }) => (
-                                <FormItem className="col-span-1">
+                                <FormItem className="col-span-2 md:col-span-1">
                                     <FormLabel>Data de Início *</FormLabel>
                                     <FormControl>
                                         <Input
@@ -190,7 +179,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                             control={form.control}
                             name="dataFim"
                             render={({ field }) => (
-                                <FormItem className="col-span-1">
+                                <FormItem className="col-span-2 md:col-span-1">
                                     <FormLabel>Data de Fim *</FormLabel>
                                     <FormControl>
                                         <Input
@@ -226,15 +215,12 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                 <div ref={resultsRef}>
                     <ArpCatmatSearchResultsList 
                         results={arpResults} 
-                        searchedDescription={searchedItemDescription}
-                        searchedCode={form.getValues('codigoItem')}
-                        onItemPreSelect={onItemPreSelect}
+                        onItemPreSelect={onItemPreSelect} 
                         selectedItemIds={selectedItemIds}
                     />
                 </div>
             )}
 
-            {/* Diálogo de Catálogo CATMAT */}
             <CatmatCatalogDialog
                 open={isCatmatCatalogOpen}
                 onOpenChange={setIsCatmatCatalogOpen}

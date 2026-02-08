@@ -369,8 +369,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 } else {
                     // 8. Determinação do Status para itens NÃO duplicados
                     
-                    // CORREÇÃO APLICADA AQUI: Se o item está catalogado E tem shortDescription, ele é válido,
-                    // independentemente de ser uma referência de preço.
+                    // CORREÇÃO APLICADA AQUI: Se o item está catalogado E tem shortDescription, ele é válido.
                     if (isCatmatCataloged && shortDescription) { 
                         status = 'valid';
                         messages.push('Pronto para importação.');
@@ -503,10 +502,11 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     </TabsContent>
                     
                     <TabsContent value="arp-catmat">
-                        {/* TODO: Implement ArpCatmatSearchForm */}
-                        <div className="text-center py-8 text-muted-foreground">
-                            Busca de ARP por CATMAT/CATSER ainda não implementada.
-                        </div>
+                        <ArpCatmatSearchForm
+                            onItemPreSelect={handleItemPreSelect} 
+                            selectedItemIds={selectedItemIds}
+                            onClearSelection={handleClearSelection} 
+                        />
                     </TabsContent>
                     
                     <TabsContent value="avg-price">
