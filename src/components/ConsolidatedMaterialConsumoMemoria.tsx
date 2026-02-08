@@ -2,9 +2,12 @@ import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Pencil, Save, XCircle, RefreshCw, Loader2 } from "lucide-react";
-import { ConsolidatedMaterialConsumoRecord } from "@/lib/materialConsumoUtils";
-import { generateConsolidatedMaterialConsumoMemoriaCalculo } from "@/lib/materialConsumoUtils";
+import { Pencil, Save, XCircle, RefreshCw, Loader2, Check } from "lucide-react";
+import { 
+    ConsolidatedMaterialConsumoRecord, 
+    generateConsolidatedMaterialConsumoMemoriaCalculo,
+    generateMaterialConsumoMemoriaCalculo, // Importar a função de memória individual
+} from "@/lib/materialConsumoUtils";
 import { cn } from "@/lib/utils";
 
 interface ConsolidatedMaterialConsumoMemoriaProps {
@@ -40,7 +43,8 @@ export const ConsolidatedMaterialConsumoMemoria: React.FC<ConsolidatedMaterialCo
     const memoriaCompleta = generateConsolidatedMaterialConsumoMemoriaCalculo(group);
     
     // Verifica se a memória atual é customizada (comparando com a automática)
-    const memoriaAutomatica = generateMaterialConsumoMemoriaCalculo(group.records[0]);
+    // Usamos o primeiro registro do grupo para gerar a memória automática
+    const memoriaAutomatica = group.records[0] ? generateMaterialConsumoMemoriaCalculo(group.records[0]) : '';
     const isCustomized = group.records[0]?.detalhamento_customizado !== null;
 
     return (

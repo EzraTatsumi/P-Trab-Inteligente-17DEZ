@@ -45,6 +45,7 @@ import PassagemTrechoSelectorDialog, { TrechoSelection } from "@/components/Pass
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
 import { TrechoPassagem, TipoTransporte } from "@/types/diretrizesPassagens";
 import { ConsolidatedPassagemMemoria } from "@/components/ConsolidatedPassagemMemoria"; 
+import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo"; // Adicionado ItemAquisicao
 
 // Tipos de dados
 type PassagemRegistroDB = Tables<'passagem_registros'>; 
@@ -180,7 +181,7 @@ const PassagemForm = () => {
     const [showTrechoSelector, setShowTrechoSelector] = useState(false);
     
     // Busca o ano padrão para o seletor de trechos
-    const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear();
+    const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear('operacional');
     const selectedYear = defaultYearData?.year || new Date().getFullYear();
 
     // Dados mestres
@@ -272,7 +273,7 @@ const PassagemForm = () => {
                     valor_unitario: trecho.valor_unitario,
                     
                     // Campos consolidados (que agora são específicos para este trecho)
-                    quantidade_passagens: trecho.quantidade_passagens,
+                    quantidade_passagens: r.quantidade_passagens,
                     valor_total: r.valor_total,
                     valor_nd_33: r.valor_nd_33,
                     detalhamento: r.detalhamento,
@@ -786,7 +787,7 @@ const PassagemForm = () => {
                     // Campos obrigatórios do tipo DB
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
-                    // CORREÇÃO: Removendo valor_nd_30
+                    // CORREÇÃO: Removendo valor_nd_30 que não existe em passagem_registros
                     // valor_nd_30: 0, 
                 } as PassagemRegistro;
 

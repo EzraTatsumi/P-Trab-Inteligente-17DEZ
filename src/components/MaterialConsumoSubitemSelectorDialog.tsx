@@ -72,6 +72,7 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                 
             if (error) throw error;
             
+            // Mapear o tipo Json para ItemAquisicao[]
             return (data || []).map(d => ({
                 ...d,
                 itens_aquisicao: (d.itens_aquisicao as unknown as ItemAquisicao[]) || [],
