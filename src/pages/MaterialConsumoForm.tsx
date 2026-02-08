@@ -1056,6 +1056,7 @@ const MaterialConsumoForm = () => {
                                             ) : (
                                                 <div className="space-y-3">
                                                     {formData.acquisition_groups.map(group => {
+                                                        // CORREÇÃO: Calcular o total do grupo aqui
                                                         const totalGroup = calculateLoteTotals(group.itens).totalGeral;
                                                         
                                                         return (
@@ -1063,7 +1064,7 @@ const MaterialConsumoForm = () => {
                                                                 <div className="flex flex-col">
                                                                     <span className="font-semibold">{group.nome}</span>
                                                                     <span className="text-xs text-muted-foreground">
-                                                                        {group.itens.length} itens ({totalGroupValue > 0 ? formatCurrency(totalGroup) : 'R$ 0,00'})
+                                                                        {group.itens.length} itens ({totalGroup > 0 ? formatCurrency(totalGroup) : 'R$ 0,00'})
                                                                     </span>
                                                                 </div>
                                                                 <div className="flex gap-2">
