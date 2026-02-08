@@ -47,10 +47,11 @@ export interface ArpItemResult {
 export interface DetailedArpRawResult {
     numeroAtaRegistroPreco: string;
     codigoUnidadeGerenciadora: string;
+    nomeUnidadeGerenciadora: string; // <-- Adicionado aqui (assumindo que a API retorna)
     numeroCompra: string;
     anoCompra: string;
-    dataVigenciaInicial: string;
-    dataVigenciaFinal: string;
+    dataVigenciaInicial: string; // <-- Adicionado aqui
+    dataVigenciaFinal: string;   // <-- Adicionado aqui
     numeroItem: string;
     codigoItem: number; // CATMAT code
     descricaoItem: string;
@@ -73,6 +74,10 @@ export interface DetailedArpItem {
     numeroControlePncpAta: string;
     pregaoFormatado: string;
     uasg: string;
+    // NOVOS CAMPOS ADICIONADOS:
+    omNome: string; 
+    dataVigenciaInicial: string;
+    dataVigenciaFinal: string;
 }
 
 /**

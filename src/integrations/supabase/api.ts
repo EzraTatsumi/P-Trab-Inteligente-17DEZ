@@ -381,6 +381,10 @@ export async function fetchArpItemsByCatmat(params: { codigoItem: string, dataVi
                 numeroControlePncpAta: item.numeroControlePncpAta,
                 pregaoFormatado: pregaoFormatado,
                 uasg: uasgStr,
+                // NOVOS CAMPOS MAPEADOS:
+                omNome: item.nomeUnidadeGerenciadora || `UASG ${uasgStr}`,
+                dataVigenciaInicial: item.dataVigenciaInicial || 'N/A',
+                dataVigenciaFinal: item.dataVigenciaFinal || 'N/A',
             };
         });
         
@@ -444,6 +448,10 @@ export async function fetchArpItemsById(numeroControlePncpAta: string): Promise<
                 numeroControlePncpAta: item.numeroControlePncpAta,
                 pregaoFormatado: pregaoFormatado,
                 uasg: uasgStr,
+                // NOVOS CAMPOS MAPEADOS:
+                omNome: item.nomeUnidadeGerenciadora || `UASG ${uasgStr}`,
+                dataVigenciaInicial: item.dataVigenciaInicial || 'N/A',
+                dataVigenciaFinal: item.dataVigenciaFinal || 'N/A',
             };
         });
         
