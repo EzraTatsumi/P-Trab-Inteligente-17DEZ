@@ -337,8 +337,8 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                                                                     />
                                                                 </TableCell>
                                                                 <TableCell>
-                                                                    {/* Usando nome_reduzido com fallback para descrição completa */}
-                                                                    <p className="font-medium">{item.nome_reduzido || item.descricao_item}</p>
+                                                                    {/* Forçando nome_reduzido (removido fallback para descrição completa) */}
+                                                                    <p className="font-medium">{item.nome_reduzido}</p>
                                                                     <p className="text-xs text-muted-foreground mt-0.5">
                                                                         {/* Adicionado UASG no final do Pregão */}
                                                                         CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({formatCodug(item.uasg)})
@@ -346,11 +346,9 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                                                                 </TableCell>
                                                                 <TableCell className="text-right">
                                                                     <p className="font-medium text-sm">
-                                                                        {formatCurrency(item.valor_unitario)}
+                                                                        {formatCurrency(item.valor_unitario)} / {item.unidade_medida}
                                                                     </p>
-                                                                    <p className="text-xs text-muted-foreground">
-                                                                        / {item.unidade_medida}
-                                                                    </p>
+                                                                    {/* REMOVIDO: p 351 (unidade de medida duplicada) */}
                                                                 </TableCell>
                                                             </TableRow>
                                                         );
