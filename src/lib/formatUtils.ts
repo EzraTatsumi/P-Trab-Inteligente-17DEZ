@@ -20,6 +20,23 @@ export const formatCurrency = (value: number | string | null | undefined): strin
 };
 
 /**
+ * Formata um valor numérico para o formato de número brasileiro (X.XXX,XX).
+ * @param value O valor numérico.
+ * @param decimals Número de casas decimais (padrão: 2).
+ * @returns String formatada.
+ */
+export const formatNumber = (value: number | string | null | undefined, decimals: number = 2): string => {
+    if (value === null || value === undefined) return '0';
+    const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(numericValue)) return '0';
+
+    return new Intl.NumberFormat('pt-BR', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+    }).format(numericValue);
+};
+
+/**
  * Converte uma string de entrada de moeda (ex: "1234,56") para um objeto contendo
  * o valor numérico e os dígitos brutos.
  * @param rawValue A string de entrada do usuário.
