@@ -1,11 +1,66 @@
+// src/types/materialConsumo.ts
 import { Tables } from "@/integrations/supabase/types";
-import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 
-// Tipo de registro salvo no banco de dados (se fosse uma tabela separada, mas Material de Consumo usa diretrizes)
-// Para este formulário, vamos definir o tipo de registro que seria salvo (que é o ItemAquisicao, mas com campos de contexto)
-export interface MaterialConsumoRegistroDB extends Tables<'diretrizes_material_consumo'> {
-    // Campos de contexto do PTrab (simulados, pois o registro real seria em outra tabela)
-    p_trab_id: string;
+// Tipo base para um item de aquisição (vindo da diretriz)
+export interface ItemAquisicao {
+    id: string;
+    codigo_catmat: string;
+    descricao_item: string;
+    descricao_reduzida: string;
+    valor_unitario: number;
+    unidade_medida: string;
+    gnd: '30' | '39';
+    numero_pregao: string;
+    uasg: string;
+    om_nome: string;
+    data_vigencia_final: string;
+}
+
+// Tipo para um item selecionado no formulário (inclui a quantidade solicitada e metadados do subitem)
+export interface SelectedItemAquisicao extends ItemAquisicao {
+    quantidade_solicitada: number;
+    diretriz_id: string;
+    nr_subitem: string;
+    nome_subitem: string;
+}
+
+// Tipo para um grupo de aquisição (usado no formulário para agrupar itens)
+export interface AcquisitionGroup {
+    id: string;
+    nome: string;
+    finalidade: string;
+    itens: SelectedItemAquisicao[];
+}
+
+// Estado principal do formulário
+export interface MaterialConsumoFormState {
+    om_favorecida: string;
+    ug_favorecida: string;
+    om_destino: string;
+    ug_destino: string;
+    dias_operacao: number;
+    efetivo: number;
+    fase_atividade: string;
+    acquisition_groups: AcquisitionGroup[];
+}
+
+// Tipo para um registro individual no DB (material_consumo_registros)
+export type MaterialConsumoRegistroDB = Tables<'material_consumo_registros'>;
+
+// Tipo para o registro calculado antes de salvar (inclui campos de display)
+export interface CalculatedMaterialConsumo extends MaterialConsumoRegistroDB {
+    tempId: string; // ID temporário para gerenciamento local
+    totalGeral: number;
+    memoria_calculo_display: string; // A memória gerada
+    om_favorecida: string;
+    ug_favorecida: string;
+}
+
+// Tipo para o registro consolidado (agrupado por Subitem)
+export interface ConsolidatedMaterialConsumoRecord {
+    diretriz_id: string;
+    nr_subitem: string;
+    nome_subitem: string;
     organizacao: string;
     ug: string;
     om_detentora: string;
@@ -13,62 +68,13 @@ export interface MaterialConsumoRegistroDB extends Tables<'diretrizes_material_c
     dias_operacao: number;
     efetivo: number;
     fase_atividade: string;
-    
-    // O item de aquisição em si (que é o que realmente importa)
-    item_aquisicao: ItemAquisicao;
-    
-    // Campos de cálculo
-    valor_nd_30: number;
-    valor_nd_39: number;
-    valor_total: number;
-    detalhamento: string | null;
-    detalhamento_customizado: string | null;
-}
-
-// Tipo para o grupo de aquisição gerenciado no formulário (Staging Area)
-export interface MaterialConsumoGrupo {
-    id: string; // ID temporário (UUID)
-    
-    // Dados do Subitem (Diretriz)
-    diretrizId: string;
-    nrSubitem: string;
-    nomeSubitem: string;
-    
-    // Dados da Solicitação (Contexto)
-    organizacao: string; // OM Favorecida
-    ug: string; // UG Favorecida
-    om_detentora: string; // OM Destino
-    ug_detentora: string; // UG Destino
-    dias_operacao: number;
-    efetivo: number;
-    fase_atividade: string;
-    
-    // Itens de Aquisição (com quantidades atualizadas)
-    itensSelecionados: ItemAquisicao[];
-    
-    // Campos de Cálculo
-    valorND30: number;
-    valorND39: number;
-    totalLinha: number;
-    memoriaCalculo: string;
-    detalhamentoCustomizado: string | null;
-}
-
-// Tipo para o registro consolidado (para exibição na Seção 4)
-export interface ConsolidatedMaterialConsumo {
-    groupKey: string;
-    organizacao: string;
-    ug: string;
-    om_detentora: string;
-    ug_detentora: string;
-    dias_operacao: number;
-    efetivo: number;
-    fase_atividade: string;
-    
-    // Registros individuais (cada um representa um ItemAquisicao salvo)
-    records: MaterialConsumoRegistroDB[]; 
-    
+    records: MaterialConsumoRegistroDB[];
     totalGeral: number;
     totalND30: number;
     totalND39: number;
+}
+
+// Tipo usado no frontend para o grupo consolidado (inclui a chave de agrupamento)
+export interface ConsolidatedMaterialConsumo extends ConsolidatedMaterialConsumoRecord {
+    groupKey: string;
 }

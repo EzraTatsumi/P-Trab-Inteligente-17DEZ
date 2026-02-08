@@ -1375,6 +1375,90 @@ export type Database = {
           },
         ]
       }
+      material_consumo_registros: {
+        Row: {
+          id: string
+          p_trab_id: string
+          diretriz_id: string
+          organizacao: string
+          ug: string
+          om_detentora: string
+          ug_detentora: string
+          dias_operacao: number
+          efetivo: number
+          fase_atividade: string
+          nr_subitem: string
+          nome_subitem: string
+          itens_aquisicao_selecionados: Json
+          valor_total: number
+          valor_nd_30: number
+          valor_nd_39: number
+          detalhamento: string | null
+          detalhamento_customizado: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          p_trab_id: string
+          diretriz_id: string
+          organizacao: string
+          ug: string
+          om_detentora: string
+          ug_detentora: string
+          dias_operacao: number
+          efetivo: number
+          fase_atividade: string
+          nr_subitem: string
+          nome_subitem: string
+          itens_aquisicao_selecionados: Json
+          valor_total: number
+          valor_nd_30: number
+          valor_nd_39: number
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          p_trab_id?: string
+          diretriz_id?: string
+          organizacao?: string
+          ug?: string
+          om_detentora?: string
+          ug_detentora?: string
+          dias_operacao?: number
+          efetivo?: number
+          fase_atividade?: string
+          nr_subitem?: string
+          nome_subitem?: string
+          itens_aquisicao_selecionados?: Json
+          valor_total?: number
+          valor_nd_30?: number
+          valor_nd_39?: number
+          detalhamento?: string | null
+          detalhamento_customizado?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_consumo_registros_diretriz_id_fkey"
+            columns: ["diretriz_id"]
+            isOneToOne: false
+            referencedRelation: "diretrizes_material_consumo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_consumo_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizacoes_militares: {
         Row: {
           ativo: boolean | null
