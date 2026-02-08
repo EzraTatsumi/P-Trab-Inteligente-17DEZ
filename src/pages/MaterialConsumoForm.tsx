@@ -967,7 +967,7 @@ const MaterialConsumoForm = () => {
                 </h4>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
+                    <div className="space-y-2 col-span-1">
                         <Label htmlFor="group-name">Nome do Grupo *</Label>
                         <Input
                             id="group-name"
@@ -1038,14 +1038,14 @@ const MaterialConsumoForm = () => {
                                                                 min={0} 
                                                                 placeholder="1"
                                                                 // Garante que '0' seja exibido como '0' e não como string vazia, mas permite a digitação
-                                                                value={item.quantidade_solicitada}
+                                                                value={item.quantidade_solicitada === 0 ? "" : item.quantidade_solicitada}
                                                                 onChange={(e) => {
                                                                     // Permite que o campo fique vazio temporariamente durante a digitação
                                                                     const rawValue = e.target.value;
                                                                     const quantity = rawValue === '' ? 0 : parseInt(rawValue) || 0;
                                                                     handleItemQuantityChange(group.id, item.id, quantity);
                                                                 }}
-                                                                className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                className="w-20 text-center h-8" // Removidas as classes de aparência
                                                                 disabled={isSaving}
                                                             />
                                                         </div>
@@ -1094,20 +1094,19 @@ const MaterialConsumoForm = () => {
                 <div className="flex justify-end gap-3 pt-4 border-t">
                     <Button 
                         type="button" 
-                        variant="outline" 
-                        onClick={handleCancelGroupEdit}
-                        disabled={isSaving}
-                    >
-                        Cancelar
-                    </Button>
-                    
-                    <Button 
-                        type="button" 
                         onClick={handleSaveGroup}
                         disabled={isSaving || !isGroupValid}
                     >
                         <Check className="mr-2 h-4 w-4" />
                         Salvar Grupo
+                    </Button>
+                    <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={handleCancelGroupEdit}
+                        disabled={isSaving}
+                    >
+                        Cancelar
                     </Button>
                 </div>
             </Card>
@@ -1395,15 +1394,33 @@ const MaterialConsumoForm = () => {
                                                                                         <TableHead>Item de Aquisição</TableHead>
                                                                                         <TableHead className="text-right">Valor Unitário</TableHead>
                                                                                         <TableHead className="text-right">Total Item</TableHead>
+                                                                                        <TableHead className="w-[50px] text-center">Ação</TableHead>
                                                                                     </TableRow>
                                                                                 </TableHeader>
                                                                                 <TableBody>
                                                                                     {subitemGroup.items.map((item) => {
                                                                                         const totals = calculateItemTotals(item);
+                                                                                        
                                                                                         return (
                                                                                             <TableRow key={item.id}>
-                                                                                                <TableCell className="w-[100px] text-center">
-                                                                                                    {item.quantidade_solicitada}
+                                                                                                <TableCell className="w-[100px]">
+                                                                                                    <div className="flex items-center justify-center gap-1">
+                                                                                                        <Input
+                                                                                                            type="number"
+                                                                                                            min={0} 
+                                                                                                            placeholder="1"
+                                                                                                            // Garante que '0' seja exibido como '' para permitir digitação livre
+                                                                                                            value={item.quantidade_solicitada === 0 ? "" : item.quantidade_solicitada}
+                                                                                                            onChange={(e) => {
+                                                                                                                // Permite que o campo fique vazio temporariamente durante a digitação
+                                                                                                                const rawValue = e.target.value;
+                                                                                                                const quantity = rawValue === '' ? 0 : parseInt(rawValue) || 0;
+                                                                                                                handleItemQuantityChange(group.id, item.id, quantity);
+                                                                                                            }}
+                                                                                                            className="w-20 text-center h-8" // Removidas as classes de aparência
+                                                                                                            disabled={isSaving}
+                                                                                                        />
+                                                                                                    </div>
                                                                                                 </TableCell>
                                                                                                 <TableCell>
                                                                                                     {item.descricao_reduzida || item.descricao_item}
@@ -1416,6 +1433,18 @@ const MaterialConsumoForm = () => {
                                                                                                 </TableCell>
                                                                                                 <TableCell className="text-right font-semibold text-sm">
                                                                                                     {formatCurrency(totals.totalGeral)}
+                                                                                                </TableCell>
+                                                                                                <TableCell className="w-[50px] text-center">
+                                                                                                    <Button
+                                                                                                        type="button" 
+                                                                                                        variant="ghost"
+                                                                                                        size="icon"
+                                                                                                        onClick={() => handleRemoveItemFromGroup(group.id, item.id)} 
+                                                                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                                                        disabled={isSaving}
+                                                                                                    >
+                                                                                                        <Trash2 className="h-4 w-4" />
+                                                                                                    </Button>
                                                                                                 </TableCell>
                                                                                             </TableRow>
                                                                                         );
@@ -1579,10 +1608,6 @@ const MaterialConsumoForm = () => {
                                     <div className="flex justify-end gap-3 pt-4">
                                         {isStagingUpdate ? (
                                             <>
-                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
-                                                    <XCircle className="mr-2 h-4 w-4" />
-                                                    Cancelar Edição
-                                                </Button>
                                                 <Button 
                                                     type="button" 
                                                     onClick={handleCommitStagedUpdate}
@@ -1592,13 +1617,13 @@ const MaterialConsumoForm = () => {
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                                                     Atualizar Lote
                                                 </Button>
+                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
+                                                    <XCircle className="mr-2 h-4 w-4" />
+                                                    Cancelar Edição
+                                                </Button>
                                             </>
                                         ) : (
                                             <>
-                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
-                                                    <XCircle className="mr-2 h-4 w-4" />
-                                                    Limpar Lista
-                                                </Button>
                                                 <Button 
                                                     type="button" 
                                                     onClick={handleSavePendingMaterialConsumo}
@@ -1607,6 +1632,10 @@ const MaterialConsumoForm = () => {
                                                 >
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                                     Salvar Registros
+                                                </Button>
+                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
+                                                    <XCircle className="mr-2 h-4 w-4" />
+                                                    Limpar Lista
                                                 </Button>
                                             </>
                                         )}
