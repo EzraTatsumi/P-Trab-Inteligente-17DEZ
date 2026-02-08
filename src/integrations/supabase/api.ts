@@ -530,26 +530,7 @@ export async function fetchPriceStats(params: PriceStatsSearchParams): Promise<P
             throw new Error((responseData as any).error);
         }
         
-        // Mapeamento para garantir que detailedItems é um array de DetailedArpItem
-        const mappedDetailedItems: DetailedArpItem[] = (responseData.detailedItems || []).map((item: any) => ({
-            id: item.id,
-            numeroAta: item.numeroAta,
-            codigoItem: String(item.codigoItem || 'N/A'),
-            descricaoItem: item.descricaoItem || 'Descrição não disponível',
-            valorUnitario: parseFloat(String(item.valorUnitario || 0)),
-            quantidadeHomologada: parseInt(String(item.quantidadeHomologada || 0)),
-            numeroControlePncpAta: item.numeroControlePncpAta,
-            pregaoFormatado: item.pregaoFormatado,
-            uasg: item.uasg,
-            omNome: item.omNome || `UASG ${item.uasg}`,
-            dataVigenciaInicial: item.dataVigenciaInicial || 'N/A',
-            dataVigenciaFinal: item.dataVigenciaFinal || 'N/A',
-        }));
-        
-        return {
-            ...responseData,
-            detailedItems: mappedDetailedItems,
-        };
+        return responseData;
 
     } catch (error) {
         console.error("Erro ao buscar estatísticas de preço:", error);
