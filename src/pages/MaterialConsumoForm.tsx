@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check, Package, Minus } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check, Package, Minus, ChevronDown } from "lucide-react";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
@@ -47,6 +47,7 @@ import MaterialConsumoSubitemSelectorDialog from "@/components/MaterialConsumoSu
 import { ConsolidatedMaterialConsumoMemoria } from "@/components/ConsolidatedMaterialConsumoMemoria"; 
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear"; 
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"; // ADICIONADO
 // import AcquisitionGroupDialog from "@/components/AcquisitionGroupDialog"; // REMOVIDO
 
 // Tipos de dados
@@ -149,6 +150,9 @@ const MaterialConsumoForm = () => {
     const [isAddingGroup, setIsAddingGroup] = useState(false);
     const [currentGroup, setCurrentGroup] = useState<AcquisitionGroup | null>(null);
     const [showSubitemSelector, setShowSubitemSelector] = useState(false);
+    
+    // NEW STATE for expanding groups in Section 2 list
+    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({}); 
     
     // Busca o ano padrão para o seletor de subitens
     const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear('operacional');
@@ -471,6 +475,13 @@ const MaterialConsumoForm = () => {
         setEditingId(null);
         setGroupToReplace(null);
         resetForm();
+    };
+    
+    const handleToggleGroupExpand = (groupId: string) => {
+        setExpandedGroups(prev => ({
+            ...prev,
+            [groupId]: !prev[groupId],
+        }));
     };
 
     // --- Lógica de Gerenciamento de Grupos de Aquisição (INLINE) ---
@@ -1027,7 +1038,6 @@ const MaterialConsumoForm = () => {
                                                                 placeholder="1"
                                                                 value={item.quantidade_solicitada === 0 ? "" : item.quantidade_solicitada}
                                                                 onChange={(e) => handleItemQuantityChange(group.id, item.id, parseInt(e.target.value) || 0)}
-                                                                onWheel={(e) => e.currentTarget.blur()} 
                                                                 className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                 disabled={isSaving}
                                                             />
@@ -1054,7 +1064,7 @@ const MaterialConsumoForm = () => {
                                                             className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                                             disabled={isSaving}
                                                         >
-                                                            <Minus className="h-4 w-4" />
+                                                            <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     </TableCell>
                                                 </TableRow>
@@ -1225,7 +1235,6 @@ const MaterialConsumoForm = () => {
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 onKeyDown={handleEnterToNextField}
-                                                                onWheel={(e) => e.currentTarget.blur()}
                                                                 className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                             />
                                                         </div>
@@ -1243,7 +1252,6 @@ const MaterialConsumoForm = () => {
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 onKeyDown={handleEnterToNextField}
-                                                                onWheel={(e) => e.currentTarget.blur()}
                                                                 className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                             />
                                                         </div>
@@ -1298,36 +1306,119 @@ const MaterialConsumoForm = () => {
                                                 <div className="space-y-3">
                                                     {formData.acquisition_groups.map(group => {
                                                         const totalGroup = calculateLoteTotals(group.itens).totalGeral;
+                                                        const isExpanded = expandedGroups[group.id] || false;
                                                         
+                                                        // Agrupa os itens selecionados por Subitem para exibição dentro do Collapsible
+                                                        const groupedItems = group.itens.reduce((acc, item) => {
+                                                            const key = item.diretriz_id;
+                                                            if (!acc[key]) {
+                                                                acc[key] = {
+                                                                    diretriz_id: item.diretriz_id,
+                                                                    nr_subitem: item.nr_subitem,
+                                                                    nome_subitem: item.nome_subitem,
+                                                                    items: [],
+                                                                    totalSubitem: 0,
+                                                                };
+                                                            }
+                                                            const totals = calculateItemTotals(item);
+                                                            acc[key].items.push(item);
+                                                            acc[key].totalSubitem += totals.totalGeral;
+                                                            return acc;
+                                                        }, {} as Record<string, {
+                                                            diretriz_id: string;
+                                                            nr_subitem: string;
+                                                            nome_subitem: string;
+                                                            items: SelectedItemAquisicao[];
+                                                            totalSubitem: number;
+                                                        }>);
+
                                                         return (
-                                                            <div key={group.id} className="border p-3 rounded-md flex justify-between items-center bg-gray-50">
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-semibold">{group.nome}</span>
-                                                                    <span className="text-xs text-muted-foreground">
-                                                                        {group.itens.length} itens ({totalGroup > 0 ? formatCurrency(totalGroup) : 'R$ 0,00'})
-                                                                    </span>
-                                                                </div>
-                                                                <div className="flex gap-2">
-                                                                    <Button 
-                                                                        type="button" 
-                                                                        variant="ghost" 
-                                                                        size="icon" 
-                                                                        onClick={() => handleStartEditGroup(group.id)}
-                                                                        disabled={!isPTrabEditable || isSaving}
-                                                                    >
-                                                                        <Pencil className="h-4 w-4" />
-                                                                    </Button>
-                                                                    <Button 
-                                                                        type="button" 
-                                                                        variant="ghost" 
-                                                                        size="icon" 
-                                                                        onClick={() => handleRemoveGroup(group.id)}
-                                                                        disabled={!isPTrabEditable || isSaving}
-                                                                    >
-                                                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
+                                                            <Collapsible 
+                                                                key={group.id} 
+                                                                open={isExpanded} 
+                                                                onOpenChange={() => handleToggleGroupExpand(group.id)}
+                                                                className="border rounded-md bg-gray-50"
+                                                            >
+                                                                <CollapsibleTrigger asChild>
+                                                                    <div className="p-3 flex justify-between items-center cursor-pointer w-full hover:bg-gray-100 transition-colors">
+                                                                        <div className="flex flex-col text-left">
+                                                                            <span className="font-semibold">{group.nome}</span>
+                                                                            <span className="text-xs text-muted-foreground">
+                                                                                {group.itens.length} itens ({totalGroup > 0 ? formatCurrency(totalGroup) : 'R$ 0,00'})
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2 shrink-0">
+                                                                            <ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-180")} />
+                                                                            <Button 
+                                                                                type="button" 
+                                                                                variant="ghost" 
+                                                                                size="icon" 
+                                                                                onClick={(e) => { e.stopPropagation(); handleStartEditGroup(group.id); }}
+                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                            >
+                                                                                <Pencil className="h-4 w-4" />
+                                                                            </Button>
+                                                                            <Button 
+                                                                                type="button" 
+                                                                                variant="ghost" 
+                                                                                size="icon" 
+                                                                                onClick={(e) => { e.stopPropagation(); handleRemoveGroup(group.id); }}
+                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
+                                                                </CollapsibleTrigger>
+                                                                <CollapsibleContent className="border-t bg-background/80 p-3 space-y-3">
+                                                                    {Object.values(groupedItems).map(subitemGroup => (
+                                                                        <div key={subitemGroup.diretriz_id} className="space-y-2 border p-2 rounded-md">
+                                                                            <div className="flex justify-between items-center bg-secondary/10 p-1 rounded-sm">
+                                                                                <span className="font-semibold text-xs text-foreground">
+                                                                                    {subitemGroup.nr_subitem} - {subitemGroup.nome_subitem}
+                                                                                </span>
+                                                                                <span className="font-bold text-xs text-foreground">
+                                                                                    {formatCurrency(subitemGroup.totalSubitem)}
+                                                                                </span>
+                                                                            </div>
+                                                                            <Table>
+                                                                                <TableHeader>
+                                                                                    <TableRow>
+                                                                                        <TableHead className="w-[100px] text-center">Qtd</TableHead>
+                                                                                        <TableHead>Item de Aquisição</TableHead>
+                                                                                        <TableHead className="text-right">Valor Unitário</TableHead>
+                                                                                        <TableHead className="text-right">Total Item</TableHead>
+                                                                                    </TableRow>
+                                                                                </TableHeader>
+                                                                                <TableBody>
+                                                                                    {subitemGroup.items.map((item) => {
+                                                                                        const totals = calculateItemTotals(item);
+                                                                                        return (
+                                                                                            <TableRow key={item.id}>
+                                                                                                <TableCell className="w-[100px] text-center">
+                                                                                                    {item.quantidade_solicitada}
+                                                                                                </TableCell>
+                                                                                                <TableCell>
+                                                                                                    {item.descricao_reduzida || item.descricao_item}
+                                                                                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                                                                                        CATMAT: {item.codigo_catmat} | GND: {item.gnd}
+                                                                                                    </p>
+                                                                                                </TableCell>
+                                                                                                <TableCell className="text-right text-sm">
+                                                                                                    {formatCurrency(item.valor_unitario)} {item.unidade_medida}
+                                                                                                </TableCell>
+                                                                                                <TableCell className="text-right font-semibold text-sm">
+                                                                                                    {formatCurrency(totals.totalGeral)}
+                                                                                                </TableCell>
+                                                                                            </TableRow>
+                                                                                        );
+                                                                                    })}
+                                                                                </TableBody>
+                                                                            </Table>
+                                                                        </div>
+                                                                    ))}
+                                                                </CollapsibleContent>
+                                                            </Collapsible>
                                                         );
                                                     })}
                                                 </div>

@@ -322,7 +322,10 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                                                                         disabled={isDataLoading}
                                                                     />
                                                                 </TableCell>
-                                                                <TableCell>
+                                                                <TableCell 
+                                                                    onClick={() => handleItemToggle(item.id, !isItemSelected)}
+                                                                    className="cursor-pointer hover:bg-gray-50/50 transition-colors"
+                                                                >
                                                                     {/* Usando descricao_reduzida */}
                                                                     <p className="font-medium">{item.descricao_reduzida}</p>
                                                                     <p className="text-xs text-muted-foreground mt-0.5">
