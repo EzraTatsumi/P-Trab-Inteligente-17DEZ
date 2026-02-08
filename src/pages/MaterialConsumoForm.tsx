@@ -384,7 +384,7 @@ const MaterialConsumoForm = () => {
             const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
             setSelectedOmFavorecidaId(omFavorecida?.id);
             
-            const omDestino = oms?.find(om => om.nome_om === formData.om_destino && om.codug_om === formData.ug_detentora);
+            const omDestino = oms?.find(om => om.nome_om === formData.om_destino && om.codug_om === formData.ug_destino);
             setSelectedOmDestinoId(omDestino?.id);
         }
     }, [ptrabData, oms, editingId]);
@@ -1034,18 +1034,18 @@ const MaterialConsumoForm = () => {
                                                     <TableCell className="w-[100px]">
                                                         <div className="flex items-center justify-center gap-1">
                                                             <Input
-                                                                type="text" 
+                                                                type="number"
                                                                 min={0} 
                                                                 placeholder="1"
-                                                                // CORREÇÃO APLICADA AQUI: Vincula diretamente ao valor do estado
-                                                                value={String(item.quantidade_solicitada)} 
+                                                                // Garante que '0' seja exibido como '0' e não como string vazia, mas permite a digitação
+                                                                value={item.quantidade_solicitada === 0 ? "" : item.quantidade_solicitada}
                                                                 onChange={(e) => {
-                                                                    // Limpa caracteres não numéricos e converte
-                                                                    const rawValue = e.target.value.replace(/\D/g, '');
+                                                                    // Permite que o campo fique vazio temporariamente durante a digitação
+                                                                    const rawValue = e.target.value;
                                                                     const quantity = rawValue === '' ? 0 : parseInt(rawValue) || 0;
                                                                     handleItemQuantityChange(group.id, item.id, quantity);
                                                                 }}
-                                                                className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                className="w-20 text-center h-8" // Removidas as classes de aparência
                                                                 disabled={isSaving}
                                                             />
                                                         </div>
@@ -1053,7 +1053,7 @@ const MaterialConsumoForm = () => {
                                                     <TableCell>
                                                         {item.descricao_reduzida || item.descricao_item}
                                                         <p className="text-xs text-muted-foreground mt-0.5">
-                                                            CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({formatCodug(item.uasg)})
+                                                            CATMAT: {item.codigo_catmat} | GND: {item.gnd}
                                                         </p>
                                                     </TableCell>
                                                     <TableCell className="text-right text-sm">
@@ -1236,7 +1236,7 @@ const MaterialConsumoForm = () => {
                                                                 type="number"
                                                                 min={1}
                                                                 placeholder="Ex: 7"
-                                                                value={formData.dias_operacao}
+                                                                value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
                                                                 onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
@@ -1253,7 +1253,7 @@ const MaterialConsumoForm = () => {
                                                                 type="number"
                                                                 min={1}
                                                                 placeholder="Ex: 10"
-                                                                value={formData.efetivo}
+                                                                value={formData.efetivo === 0 ? "" : formData.efetivo}
                                                                 onChange={(e) => setFormData({ ...formData, efetivo: parseInt(e.target.value) || 0 })}
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
@@ -1406,18 +1406,18 @@ const MaterialConsumoForm = () => {
                                                                                                 <TableCell className="w-[100px]">
                                                                                                     <div className="flex items-center justify-center gap-1">
                                                                                                         <Input
-                                                                                                            type="text" 
+                                                                                                            type="number"
                                                                                                             min={0} 
                                                                                                             placeholder="1"
-                                                                                                            // CORREÇÃO APLICADA AQUI: Vincula diretamente ao valor do estado
-                                                                                                            value={String(item.quantidade_solicitada)} 
+                                                                                                            // Garante que '0' seja exibido como '' para permitir digitação livre
+                                                                                                            value={item.quantidade_solicitada === 0 ? "" : item.quantidade_solicitada}
                                                                                                             onChange={(e) => {
-                                                                                                                // Limpa caracteres não numéricos e converte
-                                                                                                                const rawValue = e.target.value.replace(/\D/g, '');
+                                                                                                                // Permite que o campo fique vazio temporariamente durante a digitação
+                                                                                                                const rawValue = e.target.value;
                                                                                                                 const quantity = rawValue === '' ? 0 : parseInt(rawValue) || 0;
                                                                                                                 handleItemQuantityChange(group.id, item.id, quantity);
                                                                                                             }}
-                                                                                                            className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                                            className="w-20 text-center h-8" // Removidas as classes de aparência
                                                                                                             disabled={isSaving}
                                                                                                         />
                                                                                                     </div>
@@ -1425,7 +1425,7 @@ const MaterialConsumoForm = () => {
                                                                                                 <TableCell>
                                                                                                     {item.descricao_reduzida || item.descricao_item}
                                                                                                     <p className="text-xs text-muted-foreground mt-0.5">
-                                                                                                        CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({formatCodug(item.uasg)})
+                                                                                                        CATMAT: {item.codigo_catmat} | GND: {item.gnd}
                                                                                                     </p>
                                                                                                 </TableCell>
                                                                                                 <TableCell className="text-right text-sm">
