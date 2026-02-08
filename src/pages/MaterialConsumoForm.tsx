@@ -1034,11 +1034,11 @@ const MaterialConsumoForm = () => {
                                                     <TableCell className="w-[100px]">
                                                         <div className="flex items-center justify-center gap-1">
                                                             <Input
-                                                                type="text" // ALTERADO PARA TEXT
+                                                                type="text" 
                                                                 min={0} 
                                                                 placeholder="1"
-                                                                // Garante que '0' seja exibido como '' para permitir digitação livre
-                                                                value={item.quantidade_solicitada === 0 ? "" : String(item.quantidade_solicitada)} // GARANTINDO STRING
+                                                                {/* CORREÇÃO APLICADA AQUI: Remove a condição de string vazia */}
+                                                                value={String(item.quantidade_solicitada)} 
                                                                 onChange={(e) => {
                                                                     // Limpa caracteres não numéricos e converte
                                                                     const rawValue = e.target.value.replace(/\D/g, '');
@@ -1236,7 +1236,8 @@ const MaterialConsumoForm = () => {
                                                                 type="number"
                                                                 min={1}
                                                                 placeholder="Ex: 7"
-                                                                value={formData.dias_operacao === 0 ? "" : formData.dias_operacao}
+                                                                {/* CORREÇÃO APLICADA AQUI */}
+                                                                value={formData.dias_operacao}
                                                                 onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
@@ -1253,7 +1254,8 @@ const MaterialConsumoForm = () => {
                                                                 type="number"
                                                                 min={1}
                                                                 placeholder="Ex: 10"
-                                                                value={formData.efetivo === 0 ? "" : formData.efetivo}
+                                                                {/* CORREÇÃO APLICADA AQUI */}
+                                                                value={formData.efetivo}
                                                                 onChange={(e) => setFormData({ ...formData, efetivo: parseInt(e.target.value) || 0 })}
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
@@ -1406,11 +1408,11 @@ const MaterialConsumoForm = () => {
                                                                                                 <TableCell className="w-[100px]">
                                                                                                     <div className="flex items-center justify-center gap-1">
                                                                                                         <Input
-                                                                                                            type="text" // ALTERADO PARA TEXT
+                                                                                                            type="text" 
                                                                                                             min={0} 
                                                                                                             placeholder="1"
-                                                                                                            // Garante que '0' seja exibido como '' para permitir digitação livre
-                                                                                                            value={item.quantidade_solicitada === 0 ? "" : String(item.quantidade_solicitada)} // GARANTINDO STRING
+                                                                                                            {/* CORREÇÃO APLICADA AQUI */}
+                                                                                                            value={String(item.quantidade_solicitada)} 
                                                                                                             onChange={(e) => {
                                                                                                                 // Limpa caracteres não numéricos e converte
                                                                                                                 const rawValue = e.target.value.replace(/\D/g, '');
