@@ -1037,7 +1037,7 @@ const MaterialConsumoForm = () => {
                                                                 type="number"
                                                                 min={0} 
                                                                 placeholder="1"
-                                                                // Garante que '0' seja exibido como '0' e não como string vazia, mas permite a digitação
+                                                                // Garante que '0' seja exibido como '' para permitir digitação livre
                                                                 value={item.quantidade_solicitada === 0 ? "" : item.quantidade_solicitada}
                                                                 onChange={(e) => {
                                                                     // Permite que o campo fique vazio temporariamente durante a digitação
@@ -1045,7 +1045,7 @@ const MaterialConsumoForm = () => {
                                                                     const quantity = rawValue === '' ? 0 : parseInt(rawValue) || 0;
                                                                     handleItemQuantityChange(group.id, item.id, quantity);
                                                                 }}
-                                                                className="w-20 text-center h-8" // Removidas as classes de aparência
+                                                                className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                 disabled={isSaving}
                                                             />
                                                         </div>
@@ -1053,7 +1053,7 @@ const MaterialConsumoForm = () => {
                                                     <TableCell>
                                                         {item.descricao_reduzida || item.descricao_item}
                                                         <p className="text-xs text-muted-foreground mt-0.5">
-                                                            CATMAT: {item.codigo_catmat} | GND: {item.gnd}
+                                                            CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({formatCodug(item.uasg)})
                                                         </p>
                                                     </TableCell>
                                                     <TableCell className="text-right text-sm">
@@ -1417,7 +1417,7 @@ const MaterialConsumoForm = () => {
                                                                                                                 const quantity = rawValue === '' ? 0 : parseInt(rawValue) || 0;
                                                                                                                 handleItemQuantityChange(group.id, item.id, quantity);
                                                                                                             }}
-                                                                                                            className="w-20 text-center h-8" // Removidas as classes de aparência
+                                                                                                            className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                                                             disabled={isSaving}
                                                                                                         />
                                                                                                     </div>
@@ -1425,7 +1425,7 @@ const MaterialConsumoForm = () => {
                                                                                                 <TableCell>
                                                                                                     {item.descricao_reduzida || item.descricao_item}
                                                                                                     <p className="text-xs text-muted-foreground mt-0.5">
-                                                                                                        CATMAT: {item.codigo_catmat} | GND: {item.gnd}
+                                                                                                        CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({formatCodug(item.uasg)})
                                                                                                     </p>
                                                                                                 </TableCell>
                                                                                                 <TableCell className="text-right text-sm">
