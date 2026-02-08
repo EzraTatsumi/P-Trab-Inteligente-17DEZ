@@ -221,8 +221,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         }]);
         
         // 3. Inicia a inspeção imediatamente (conforme o fluxo de preço médio)
-        // O fluxo de preço médio é imediato, então chamamos a inspeção com a flag
-        handleStartInspection(true); 
+        handleStartInspection(true);
     };
     
     // Mapeia apenas os IDs para passar para os componentes de busca
