@@ -384,7 +384,7 @@ const MaterialConsumoForm = () => {
             const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
             setSelectedOmFavorecidaId(omFavorecida?.id);
             
-            const omDestino = oms?.find(om => om.nome_om === formData.om_destino && om.codug_om === formData.ug_destino);
+            const omDestino = oms?.find(om => om.nome_om === formData.om_destino && om.codug_om === formData.ug_detentora);
             setSelectedOmDestinoId(omDestino?.id);
         }
     }, [ptrabData, oms, editingId]);
@@ -1034,14 +1034,14 @@ const MaterialConsumoForm = () => {
                                                     <TableCell className="w-[100px]">
                                                         <div className="flex items-center justify-center gap-1">
                                                             <Input
-                                                                type="number"
+                                                                type="text" // ALTERADO PARA TEXT
                                                                 min={0} 
                                                                 placeholder="1"
                                                                 // Garante que '0' seja exibido como '' para permitir digitação livre
-                                                                value={item.quantidade_solicitada === 0 ? "" : item.quantidade_solicitada}
+                                                                value={item.quantidade_solicitada === 0 ? "" : String(item.quantidade_solicitada)} // GARANTINDO STRING
                                                                 onChange={(e) => {
-                                                                    // Permite que o campo fique vazio temporariamente durante a digitação
-                                                                    const rawValue = e.target.value;
+                                                                    // Limpa caracteres não numéricos e converte
+                                                                    const rawValue = e.target.value.replace(/\D/g, '');
                                                                     const quantity = rawValue === '' ? 0 : parseInt(rawValue) || 0;
                                                                     handleItemQuantityChange(group.id, item.id, quantity);
                                                                 }}
@@ -1406,14 +1406,14 @@ const MaterialConsumoForm = () => {
                                                                                                 <TableCell className="w-[100px]">
                                                                                                     <div className="flex items-center justify-center gap-1">
                                                                                                         <Input
-                                                                                                            type="number"
+                                                                                                            type="text" // ALTERADO PARA TEXT
                                                                                                             min={0} 
                                                                                                             placeholder="1"
                                                                                                             // Garante que '0' seja exibido como '' para permitir digitação livre
-                                                                                                            value={item.quantidade_solicitada === 0 ? "" : item.quantidade_solicitada}
+                                                                                                            value={item.quantidade_solicitada === 0 ? "" : String(item.quantidade_solicitada)} // GARANTINDO STRING
                                                                                                             onChange={(e) => {
-                                                                                                                // Permite que o campo fique vazio temporariamente durante a digitação
-                                                                                                                const rawValue = e.target.value;
+                                                                                                                // Limpa caracteres não numéricos e converte
+                                                                                                                const rawValue = e.target.value.replace(/\D/g, '');
                                                                                                                 const quantity = rawValue === '' ? 0 : parseInt(rawValue) || 0;
                                                                                                                 handleItemQuantityChange(group.id, item.id, quantity);
                                                                                                             }}
