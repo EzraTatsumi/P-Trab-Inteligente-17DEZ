@@ -221,7 +221,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         }]);
         
         // 3. Inicia a inspeção imediatamente (conforme o fluxo de preço médio)
-        // O fluxo de preço médio deve ir direto para a inspeção, mas sem pular o diálogo de inspeção.
         handleStartInspection(true);
     };
     
@@ -427,14 +426,12 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     // Filtra itens de Preço Médio para contagem
     const selectedPriceItems = selectedItemsState.filter(s => s.isPriceReference);
     
-    const totalItemsToInspect = selectedArpItems.length + selectedPriceItems.length;
+    // O botão de inspeção deve ser desabilitado se:
+    // 1. Estiver inspecionando (isInspecting)
+    // 2. Não houver itens ARP selecionados E a aba ativa não for Preço Médio
+    // 3. Houver itens de Preço Médio selecionados (pois o fluxo é automático)
     
-    // Se houver um item de preço médio selecionado, o botão de inspeção deve ser desabilitado
-    // para itens ARP, pois o fluxo de preço médio é imediato.
-    const isArpInspectionDisabled = selectedPriceItems.length > 0;
-    
-    // NOVO: Determina se o botão de inspeção deve ser exibido
-    const showInspectionButton = selectedTab !== 'avg-price';
+    const isInspectionDisabled = isInspecting || selectedArpItems.length === 0 || selectedPriceItems.length > 0;
     
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -487,27 +484,26 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     <TabsContent value="avg-price">
                         <PriceSearchForm 
                             onPriceSelect={handlePriceSelect} 
-                            isInspecting={isInspecting} // NOVO: Passa o estado de inspeção
+                            isInspecting={isInspecting} 
                         />
                     </TabsContent>
                 </Tabs>
 
-                {/* Rodapé com o botão de importação movido */}
+                {/* Rodapé com o botão de importação */}
                 <div className="flex justify-end gap-2 pt-4 border-t">
-                    {showInspectionButton && (
-                        <Button 
-                            type="button" 
-                            onClick={() => handleStartInspection(false)} // Inspeciona ARP
-                            disabled={selectedArpItems.length === 0 || isInspecting || isArpInspectionDisabled}
-                        >
-                            {isInspecting ? (
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                                <Import className="h-4 w-4 mr-2" />
-                            )}
-                            Inspecionar e Importar ({selectedArpItems.length})
-                        </Button>
-                    )}
+                    <Button 
+                        type="button" 
+                        onClick={() => handleStartInspection(false)} // Inspeciona ARP
+                        disabled={isInspectionDisabled}
+                    >
+                        {isInspecting ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                            <Import className="h-4 w-4 mr-2" />
+                        )}
+                        {/* Exibe a contagem de itens ARP selecionados */}
+                        Inspecionar e Importar ({selectedArpItems.length})
+                    </Button>
                     <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isInspecting}>
                         Fechar
                     </Button>
