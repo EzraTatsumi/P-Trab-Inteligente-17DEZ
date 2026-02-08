@@ -99,3 +99,27 @@ export interface CatmatDetailsRawResult {
     aplica_margem_preferencia: boolean;
     dataHoraAtualizacao: string;
 }
+
+// =================================================================
+// NOVOS TIPOS PARA PESQUISA DE PREÇO MÉDIO
+// =================================================================
+
+export interface PriceStatsSearchParams {
+    codigoItem: string;
+    dataInicio: string | null;
+    dataFim: string | null;
+}
+
+export interface PriceStats {
+    minPrice: number;
+    maxPrice: number;
+    avgPrice: number;
+    medianPrice: number;
+}
+
+export interface PriceStatsResult {
+    codigoItem: string;
+    descricaoItem: string | null;
+    stats: PriceStats | null;
+    totalRegistros: number;
+}

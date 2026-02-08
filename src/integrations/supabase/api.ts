@@ -1,7 +1,16 @@
 import { toast } from "sonner";
 import { supabase } from "./client"; // Importar o cliente Supabase
 import { Profile } from "@/types/profiles"; // Importar o novo tipo Profile
-import { ArpUasgSearchParams, ArpItemResult, ArpRawResult, DetailedArpItem, DetailedArpRawResult, CatmatDetailsRawResult } from "@/types/pncp"; // Importa os novos tipos PNCP
+import { 
+    ArpUasgSearchParams, 
+    ArpItemResult, 
+    ArpRawResult, 
+    DetailedArpItem, 
+    DetailedArpRawResult, 
+    CatmatDetailsRawResult,
+    PriceStatsSearchParams, // NOVO
+    PriceStatsResult, // NOVO
+} from "@/types/pncp"; // Importa os novos tipos PNCP
 import { formatPregao } from "@/lib/formatUtils";
 import { TablesInsert } from "./types"; // Importar TablesInsert
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo"; // NOVO: Importar ItemAquisicao
@@ -497,5 +506,36 @@ export async function fetchAllExistingAcquisitionItems(year: number, userId: str
     } catch (error) {
         console.error("Erro ao buscar todos os itens de aquisição existentes:", error);
         throw new Error("Falha ao carregar itens de aquisição existentes para verificação de duplicidade.");
+    }
+}
+
+/**
+ * Busca estatísticas de preço (Mínimo, Máximo, Médio, Mediana) para um item CATMAT/CATSER.
+ * @param params Os parâmetros de busca (codigoItem e datas opcionais).
+ * @returns O resultado das estatísticas de preço.
+ */
+export async function fetchPriceStats(params: PriceStatsSearchParams): Promise<PriceStatsResult> {
+    try {
+        const { data, error } = await supabase.functions.invoke('fetch-price-stats', {
+            body: params,
+        });
+
+        if (error) {
+            throw new Error(error.message || "Falha na execução da Edge Function de busca de estatísticas de preço.");
+        }
+        
+        const responseData = data as PriceStatsResult; 
+        
+        if ((responseData as any).error) {
+            throw new Error((responseData as any).error);
+        }
+        
+        return responseData;
+
+    } catch (error) {
+        console.error("Erro ao buscar estatísticas de preço:", error);
+        const errorMessage = error instanceof Error ? error.message : "Erro desconhecido.";
+        
+        throw new Error(`Falha ao buscar estatísticas de preço: ${errorMessage}`);
     }
 }
