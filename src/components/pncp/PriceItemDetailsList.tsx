@@ -2,7 +2,8 @@ import React from 'react';
 import { PriceItemDetail } from '@/types/pncp';
 import { formatCodug, formatCurrency, formatDate } from '@/lib/formatUtils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface PriceItemDetailsListProps {
     items: PriceItemDetail[];
