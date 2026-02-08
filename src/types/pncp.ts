@@ -108,6 +108,9 @@ export interface PriceStatsSearchParams {
     dataFim: string | null;
 }
 
+/**
+ * Estatísticas de preço calculadas.
+ */
 export interface PriceStats {
     minPrice: number;
     maxPrice: number;
@@ -115,6 +118,9 @@ export interface PriceStats {
     medianPrice: number;
 }
 
+/**
+ * Resultado da busca de estatísticas (inclui o nome do item e o total de registros).
+ */
 export interface PriceStatsResult {
     codigoItem: string;
     descricaoItem: string | null;
