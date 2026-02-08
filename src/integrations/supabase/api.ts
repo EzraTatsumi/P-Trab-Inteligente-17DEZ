@@ -10,6 +10,7 @@ import {
     CatmatDetailsRawResult,
     PriceStatsSearchParams, // NOVO
     PriceStatsResult, // NOVO
+    PriceItemDetail, // NOVO
 } from "@/types/pncp"; // Importa os novos tipos PNCP
 import { formatPregao } from "@/lib/formatUtils";
 import { TablesInsert } from "./types"; // Importar TablesInsert
@@ -537,5 +538,39 @@ export async function fetchPriceStats(params: PriceStatsSearchParams): Promise<P
         const errorMessage = error instanceof Error ? error.message : "Erro desconhecido.";
         
         throw new Error(`Falha ao buscar estatísticas de preço: ${errorMessage}`);
+    }
+}
+
+/**
+ * Busca a lista detalhada de itens que compõem as estatísticas de preço.
+ * @param params Os parâmetros de busca (codigoItem e datas opcionais).
+ * @returns Uma lista de itens detalhados de preço.
+ */
+export async function fetchPriceStatsDetails(params: PriceStatsSearchParams): Promise<PriceItemDetail[]> {
+    try {
+        // NOTE: Assumimos que existe uma Edge Function 'fetch-price-stats-details'
+        // que retorna a lista bruta de itens de preço.
+        const { data, error } = await supabase.functions.invoke('fetch-price-stats-details', {
+            body: params,
+        });
+
+        if (error) {
+            throw new Error(error.message || "Falha na execução da Edge Function de busca de detalhes de preço.");
+        }
+        
+        const responseData = data as PriceItemDetail[]; 
+        
+        if ((responseData as any).error) {
+            throw new Error((responseData as any).error);
+        }
+        
+        // Mapeamento e sanitização (assumindo que a Edge Function já retorna o formato PriceItemDetail)
+        return Array.isArray(responseData) ? responseData : [];
+
+    } catch (error) {
+        console.error("Erro ao buscar detalhes de estatísticas de preço:", error);
+        const errorMessage = error instanceof Error ? error.message : "Erro desconhecido.";
+        
+        throw new Error(`Falha ao buscar detalhes de preço: ${errorMessage}`);
     }
 }

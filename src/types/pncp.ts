@@ -1,5 +1,3 @@
-// Tipos para a consulta PNCP
-
 export interface ArpUasgSearchParams {
     codigoUnidadeGerenciadora: string;
     dataVigenciaInicialMin: string;
@@ -122,4 +120,16 @@ export interface PriceStatsResult {
     descricaoItem: string | null;
     stats: PriceStats | null;
     totalRegistros: number;
+}
+
+/**
+ * Estrutura de um item individual retornado pela busca de detalhes de preço.
+ */
+export interface PriceItemDetail {
+    id: string; // Unique ID for the item
+    codigoItem: string; // CATMAT code
+    descricaoItem: string;
+    valorUnitario: number;
+    dataReferencia: string; // Date of the price reference
+    fonte: string; // Source of the price (e.g., PNCP, Painel de Preços)
 }
