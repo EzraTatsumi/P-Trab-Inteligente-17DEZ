@@ -210,6 +210,8 @@ const PTrabForm = () => {
       navigate(`/ptrab/horas-voo-avex?ptrabId=${ptrabId}`);
     } else if (itemId === 'concessionaria') {
       navigate(`/ptrab/concessionaria?ptrabId=${ptrabId}`);
+    } else if (itemId === 'material-consumo') {
+      navigate(`/ptrab/material-consumo?ptrabId=${ptrabId}`);
     } else {
       // Trata itens operacionais não implementados
       toast.info(`Funcionalidade '${itemName}' (Operacional) ainda não implementada.`);

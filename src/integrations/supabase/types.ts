@@ -972,6 +972,77 @@ export type Database = {
           },
         ]
       }
+      material_consumo_registros: {
+        Row: {
+          id: string
+          p_trab_id: string
+          organizacao: string
+          ug: string
+          om_detentora: string | null
+          ug_detentora: string | null
+          dias_operacao: number
+          efetivo: number
+          fase_atividade: string | null
+          group_name: string
+          group_purpose: string | null
+          itens_aquisicao: Json
+          valor_total: number
+          valor_nd_30: number
+          valor_nd_39: number
+          detalhamento_customizado: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          p_trab_id: string
+          organizacao: string
+          ug: string
+          om_detentora?: string | null
+          ug_detentora?: string | null
+          dias_operacao: number
+          efetivo: number
+          fase_atividade?: string | null
+          group_name: string
+          group_purpose?: string | null
+          itens_aquisicao: Json
+          valor_total?: number
+          valor_nd_30?: number
+          valor_nd_39?: number
+          detalhamento_customizado?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          p_trab_id?: string
+          organizacao?: string
+          ug?: string
+          om_detentora?: string | null
+          ug_detentora?: string | null
+          dias_operacao?: number
+          efetivo?: number
+          fase_atividade?: string | null
+          group_name?: string
+          group_purpose?: string | null
+          itens_aquisicao?: Json
+          valor_total?: number
+          valor_nd_30?: number
+          valor_nd_39?: number
+          detalhamento_customizado?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_consumo_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diretrizes_classe_ii: {
         Row: {
           ano_referencia: number

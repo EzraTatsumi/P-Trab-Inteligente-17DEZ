@@ -27,6 +27,7 @@ import SuprimentoFundosForm from "./pages/SuprimentoFundosForm";
 import PassagemForm from "./pages/PassagemForm";
 import HorasVooForm from "./pages/HorasVooForm";
 import ConcessionariaForm from "./pages/ConcessionariaForm";
+import MaterialConsumoForm from "./pages/MaterialConsumoForm";
 import NotFound from "./pages/NotFound";
 
 // Define as rotas como um array de objetos
@@ -51,14 +52,7 @@ const routes: RouteObject[] = [
   { path: "/ptrab/passagem-aerea", element: <PassagemForm /> },
   { path: "/ptrab/horas-voo-avex", element: <HorasVooForm /> },
   { path: "/ptrab/concessionaria", element: <ConcessionariaForm /> },
-  { path: "/config/custos-operacionais", element: <CustosOperacionaisPage /> },
-  { path: "/config/diretrizes", element: <DiretrizesCusteioPage /> },
-  { path: "/config/visualizacao", element: <VisualizacaoConfigPage /> },
-  { path: "/config/om", element: <OmConfigPage /> },
-  { path: "/config/om/bulk-upload", element: <OmBulkUploadPage /> },
-  { path: "/config/ptrab-export-import", element: <PTrabExportImportPage /> },
-  { path: "/config/profile", element: <UserProfilePage /> },
-  { path: "/share-ptrab", element: <SharePage /> },
+  { path: "/ptrab/material-consumo", element: <MaterialConsumoForm /> },
   { path: "*", element: <NotFound /> },
 ];
 
