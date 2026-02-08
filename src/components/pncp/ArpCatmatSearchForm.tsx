@@ -7,11 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Search, Loader2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
-import { DetailedArpItem } from '@/types/pncp';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { fetchArpItemsByCatmat } from '@/integrations/supabase/api';
+import { DetailedArpItem, ArpItemResult } from '@/types/pncp';
+import ArpSearchResultsList from './ArpSearchResultsList';
 import CatmatCatalogDialog from '../CatmatCatalogDialog';
-import ArpCatmatSearchResultsList from './ArpCatmatSearchResultsList';
 
 // 1. Esquema de Validação
 const formSchema = z.object({
@@ -28,29 +28,27 @@ const formSchema = z.object({
 type ArpCatmatFormValues = z.infer<typeof formSchema>;
 
 interface ArpCatmatSearchFormProps {
-    // Função para alternar a seleção de um item detalhado
     onItemPreSelect: (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => void;
-    // Função para limpar a seleção global
-    onClearSelection: () => void;
-    // Array de IDs selecionados
     selectedItemIds: string[];
+    onClearSelection: () => void;
+    scrollContainerRef: React.RefObject<HTMLDivElement>;
 }
 
-// Calcula as datas padrão (últimos 3 meses)
+// Calcula as datas padrão
 const today = new Date();
-const threeMonthsAgo = new Date();
-threeMonthsAgo.setMonth(today.getMonth() - 3);
+const oneYearAgo = subDays(today, 365);
 
-// Formata as datas para o formato 'YYYY-MM-DD' exigido pelo input type="date"
 const defaultDataFim = format(today, 'yyyy-MM-dd');
-const defaultDataInicio = format(threeMonthsAgo, 'yyyy-MM-dd');
+const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 
 
-const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSelect, onClearSelection, selectedItemIds }) => {
+const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
-    const [arpResults, setArpResults] = useState<DetailedArpItem[]>([]); 
+    // Armazena os itens detalhados (DetailedArpItem)
+    const [detailedItems, setDetailedItems] = useState<DetailedArpItem[]>([]); 
     
+    // REF para o container de resultados
     const resultsRef = useRef<HTMLDivElement>(null);
 
     const form = useForm<ArpCatmatFormValues>({
@@ -75,16 +73,14 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
 
     const onSubmit = async (values: ArpCatmatFormValues) => {
         setIsSearching(true);
-        setArpResults([]);
+        setDetailedItems([]);
         onClearSelection(); 
         
-        const catmatCode = values.codigoItem;
-        
         try {
-            toast.info(`Buscando ARPs para CATMAT ${catmatCode}...`);
+            toast.info(`Buscando itens de ARP para CATMAT ${values.codigoItem}...`);
             
             const params = {
-                codigoItem: catmatCode,
+                codigoItem: values.codigoItem,
                 dataVigenciaInicialMin: values.dataInicio,
                 dataVigenciaInicialMax: values.dataFim,
             };
@@ -92,13 +88,14 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
             const results = await fetchArpItemsByCatmat(params);
             
             if (results.length === 0) {
-                toast.warning("Nenhuma Ata de Registro de Preços encontrada para os critérios informados.");
+                toast.warning("Nenhum item de Ata de Registro de Preços encontrado para os critérios informados.");
             } else {
-                toast.success(`${results.length} itens de ARP encontrados!`);
+                toast.success(`${results.length} itens encontrados!`);
             }
             
-            setArpResults(results);
+            setDetailedItems(results);
             
+            // Rola para o topo dos resultados após a busca ser concluída
             if (results.length > 0 && resultsRef.current) {
                 setTimeout(() => {
                     resultsRef.current?.scrollIntoView({
@@ -110,11 +107,49 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
 
         } catch (error: any) {
             console.error("Erro na busca PNCP por CATMAT:", error);
-            toast.error(error.message || "Falha ao buscar ARPs. Verifique os parâmetros.");
+            toast.error(error.message || "Falha ao buscar itens de ARP. Verifique os parâmetros.");
         } finally {
             setIsSearching(false);
         }
     };
+    
+    // Mapeia os DetailedArpItem para o formato ArpItemResult para usar o ArpSearchResultsList
+    const mappedResults: ArpItemResult[] = useMemo(() => {
+        if (detailedItems.length === 0) return [];
+        
+        // Agrupa os itens detalhados pelo número de controle da ARP
+        const groups = detailedItems.reduce((acc, item) => {
+            const key = item.numeroControlePncpAta;
+            if (!acc[key]) {
+                acc[key] = {
+                    id: key,
+                    numeroAta: item.numeroAta,
+                    objeto: item.descricaoItem, // Usamos a descrição do item como objeto representativo
+                    uasg: item.uasg,
+                    omNome: item.omNome,
+                    dataVigenciaInicial: item.dataVigenciaInicial,
+                    dataVigenciaFinal: item.dataVigenciaFinal,
+                    valorTotalEstimado: 0, // Não calculamos o total aqui
+                    quantidadeItens: 0,
+                    pregaoFormatado: item.pregaoFormatado,
+                    numeroControlePncpAta: key,
+                };
+            }
+            // Atualiza o objeto com a descrição mais longa (heurística)
+            if (item.descricaoItem.length > acc[key].objeto.length) {
+                acc[key].objeto = item.descricaoItem;
+            }
+            return acc;
+        }, {} as Record<string, ArpItemResult>);
+        
+        return Object.values(groups);
+    }, [detailedItems]);
+    
+    // Função para lidar com a seleção de itens detalhados (passada para ArpSearchResultsList)
+    const handleItemPreSelectWrapper = (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => {
+        onItemPreSelect(item, pregaoFormatado, uasg);
+    };
+
 
     return (
         <>
@@ -198,12 +233,12 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                         {isSearching ? (
                             <>
                                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Buscando ARPs...
+                                Buscando Itens de ARP...
                             </>
                         ) : (
                             <>
                                 <Search className="h-4 w-4 mr-2" />
-                                Buscar ARPs por CATMAT
+                                Buscar Itens de ARP por CATMAT
                             </>
                         )}
                     </Button>
@@ -211,11 +246,20 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
             </Form>
             
             {/* Seção de Resultados */}
-            {arpResults.length > 0 && (
+            {mappedResults.length > 0 && (
                 <div ref={resultsRef}>
-                    <ArpCatmatSearchResultsList 
-                        results={arpResults} 
-                        onItemPreSelect={onItemPreSelect} 
+                    {/* O ArpSearchResultsList espera ArpItemResult[], mas internamente busca os detalhes. */}
+                    {/* Como a busca por CATMAT já retorna os detalhes, precisamos adaptar o ArpSearchResultsList */}
+                    {/* para aceitar os DetailedItems diretamente, ou mapear os resultados. */}
+                    {/* A solução mais simples é usar o ArpSearchResultsList, mas ele precisa de um array de ArpItemResult */}
+                    {/* que represente os pregões encontrados. */}
+                    
+                    {/* NOVO: Passamos os resultados mapeados (que representam os Pregões) */}
+                    <ArpSearchResultsList 
+                        results={mappedResults} 
+                        onItemPreSelect={handleItemPreSelectWrapper} 
+                        searchedUasg={''} // Não aplicável na busca por CATMAT
+                        searchedOmName={`CATMAT ${form.getValues('codigoItem')}`}
                         selectedItemIds={selectedItemIds}
                     />
                 </div>
