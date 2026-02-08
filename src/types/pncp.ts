@@ -99,7 +99,7 @@ export interface CatmatDetailsRawResult {
 }
 
 // =================================================================
-// NOVOS TIPOS PARA PESQUISA DE PREÇO MÉDIO
+// TIPOS PARA PESQUISA DE PREÇO MÉDIO (CONSOLIDADO)
 // =================================================================
 
 export interface PriceStatsSearchParams {
@@ -126,19 +126,4 @@ export interface PriceStatsResult {
     descricaoItem: string | null;
     stats: PriceStats | null;
     totalRegistros: number;
-}
-
-/**
- * Estrutura de um item individual retornado pela busca de detalhes de preço.
- */
-export interface PriceItemDetail {
-    id: string; // Unique ID for the item
-    codigoItem: string; // CATMAT code
-    descricaoItem: string;
-    valorUnitario: number; // Mapeado de 'preçoUnitario'
-    dataReferencia: string; // Date of the price reference
-    fonte: string; // Source of the price (e.g., PNCP, Painel de Preços)
-    // NOVOS CAMPOS ADICIONADOS:
-    codigoUasg: string;
-    nomeUasg: string;
 }
