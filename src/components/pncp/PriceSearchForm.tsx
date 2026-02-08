@@ -231,7 +231,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
                             <TableHead className="w-[15%]">UASG</TableHead>
-                            <TableHead className="w-[55%]">Nome da OM</TableHead>
+                            <TableHead className="w-[55%]">Nome da UASG</TableHead>
                             <TableHead className="w-[30%] text-right">Preço Unitário</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -242,7 +242,8 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                                     {formatCodug(record.codigoUasg)}
                                 </TableCell>
                                 <TableCell className="text-sm py-2">
-                                    {capitalizeFirstLetter(record.nomeUasg.toLowerCase())}
+                                    {/* Removendo a formatação de capitalização para exibir o nome bruto da UASG/Entidade */}
+                                    {record.nomeUasg}
                                 </TableCell>
                                 <TableCell className="text-right text-sm font-bold text-primary py-2">
                                     {formatCurrency(record.precoUnitario)}

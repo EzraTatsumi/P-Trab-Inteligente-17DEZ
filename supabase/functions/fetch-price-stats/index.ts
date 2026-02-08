@@ -90,7 +90,7 @@ serve(async (req) => {
     const cleanCode = String(codigoItem).replace(/\D/g, '');
 
     let allPrices: number[] = [];
-    let allRawRecords: { codigoUasg: string, nomeUasg: string, precoUnitario: number }[] = []; // NOVO: Array para registros brutos
+    let allRawRecords: { codigoUasg: string, nomeUasg: string, precoUnitario: number }[] = []; // Array para registros brutos
     let currentPage = 1;
     let totalPages = 1; 
     let itemDescription: string | null = null;
@@ -111,10 +111,13 @@ serve(async (req) => {
             if (item.precoUnitario && typeof item.precoUnitario === 'number' && item.precoUnitario > 0) {
                 allPrices.push(item.precoUnitario);
                 
-                // NOVO: Coleta o registro bruto
+                // Coleta o registro bruto. Usamos o operador || 'N/A' para garantir que seja uma string.
+                const codigoUasg = String(item.codigoUnidadeGestora || 'N/A');
+                const nomeUasg = String(item.nomeUnidadeGestora || 'N/A');
+
                 allRawRecords.push({
-                    codigoUasg: String(item.codigoUnidadeGestora || 'N/A'),
-                    nomeUasg: String(item.nomeUnidadeGestora || 'N/A'),
+                    codigoUasg: codigoUasg,
+                    nomeUasg: nomeUasg,
                     precoUnitario: item.precoUnitario,
                 });
             }
@@ -139,7 +142,7 @@ serve(async (req) => {
             descricaoItem: itemDescription,
             stats: null,
             totalRegistros: 0,
-            rawRecords: [], // NOVO: Retorna array vazio
+            rawRecords: [],
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,
@@ -168,7 +171,7 @@ serve(async (req) => {
         descricaoItem: itemDescription,
         stats: stats,
         totalRegistros: totalRegistros,
-        rawRecords: allRawRecords, // NOVO: Retorna os registros brutos
+        rawRecords: allRawRecords,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
