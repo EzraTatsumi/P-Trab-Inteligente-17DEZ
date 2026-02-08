@@ -514,11 +514,11 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 </div>
                             </div>
 
-                            {/* SEGUNDA LINHA: Descrição Reduzida, Valor, Pregão, UASG */}
+                            {/* SEGUNDA LINHA: Nome Reduzido, Valor, Pregão, UASG */}
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                {/* Campo Descrição Reduzida (1 coluna) */}
+                                {/* Campo Nome Reduzido (1 coluna) */}
                                 <div className="space-y-2 col-span-1">
-                                    <Label htmlFor="item-descricao-reduzida">Descrição Reduzida</Label>
+                                    <Label htmlFor="item-descricao-reduzida">Nome Reduzido</Label>
                                     <Input
                                         id="item-descricao-reduzida"
                                         value={itemForm.descricao_reduzida}
@@ -598,7 +598,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[20%]">Descrição Reduzida</TableHead>
+                                        <TableHead className="w-[20%]">Nome Reduzido</TableHead>
                                         <TableHead className="w-[20%]">Descrição Completa</TableHead>
                                         <TableHead className="w-[10%] text-center">Cód. CATMAT</TableHead>
                                         <TableHead className="w-[10%] text-center">Pregão/Ref.</TableHead>
