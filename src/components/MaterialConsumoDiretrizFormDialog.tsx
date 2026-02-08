@@ -611,7 +611,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     {sortedItens.map(item => (
                                         <TableRow key={item.id}>
                                             <TableCell className="font-medium text-sm">{item.descricao_reduzida || 'N/A'}</TableCell>
-                                            <TableCell className="font-medium text-sm">{item.descricao_item}</TableCell>
+                                            <TableCell className="font-medium text-xs">{item.descricao_item}</TableCell>
                                             <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
                                             <TableCell className="text-center text-sm">{formatPregao(item.numero_pregao) || 'N/A'}</TableCell>
                                             <TableCell className="text-center text-sm">{formatCodug(item.uasg) || 'N/A'}</TableCell>
