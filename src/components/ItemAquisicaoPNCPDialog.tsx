@@ -221,6 +221,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         }]);
         
         // 3. Inicia a inspeção imediatamente (conforme o fluxo de preço médio)
+        // O fluxo de preço médio deve ir direto para a inspeção, mas sem pular o diálogo de inspeção.
         handleStartInspection(true);
     };
     
@@ -381,11 +382,8 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
             // 9. Abrir o diálogo de inspeção
             setIsInspectionDialogOpen(true);
             
-            // 10. Se for fluxo de preço médio, o item já está selecionado e pronto para revisão.
-            if (isPriceReferenceFlow && results.length === 1) {
-                // Chama a função de revisão para conduzir o usuário ao formulário principal
-                handleReviewItem(results[0].mappedItem);
-            }
+            // 10. REMOVIDO: A chamada imediata a handleReviewItem para o fluxo de preço médio.
+            // O usuário agora deve clicar em 'Revisar' dentro do PNCPInspectionDialog.
             
         } catch (error) {
             console.error("Erro durante a inspeção PNCP:", error);

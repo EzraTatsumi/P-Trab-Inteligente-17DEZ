@@ -74,6 +74,9 @@ interface IndexedRawPriceRecord extends RawPriceRecord {
     id: number;
 }
 
+// NOVO TIPO: Tipos de preço para o estado de seleção
+type PriceType = 'avg' | 'median' | 'min' | 'max';
+
 const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
@@ -81,6 +84,9 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
     
     // Estado para rastrear os IDs (índices) dos registros excluídos
     const [excludedRecordIds, setExcludedRecordIds] = useState<Set<number>>(new Set());
+    
+    // NOVO ESTADO: Rastreia o tipo de preço selecionado
+    const [selectedPriceType, setSelectedPriceType] = useState<PriceType | null>(null);
     
     // Controla a visibilidade da base de cálculo
     const [showRawData, setShowRawData] = useState(false);
@@ -113,6 +119,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
         setSearchResult(null);
         setShowRawData(false); 
         setExcludedRecordIds(new Set()); // Limpa exclusões ao iniciar nova busca
+        setSelectedPriceType(null); // Limpa a seleção de preço
         
         const catmatCode = values.codigoItem;
         
@@ -164,6 +171,8 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
         const total = activePrices.length;
 
         if (total === 0) {
+            // Se todos os registros foram excluídos, limpa a seleção de preço
+            setSelectedPriceType(null);
             return { currentStats: null, currentTotalRecords: 0, indexedRecords: indexed };
         }
 
@@ -217,13 +226,16 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
     /**
      * Cria o ItemAquisicao temporário e o envia para o fluxo de inspeção.
      */
-    const handlePriceSelection = (price: number, priceType: string) => {
+    const handlePriceSelection = (price: number, priceType: PriceType, priceLabel: string) => {
         if (!searchResult || !searchResult.descricaoItem) {
             toast.error("Erro: Dados do item não carregados.");
             return;
         }
         
-        // 1. Cria o ItemAquisicao
+        // 1. Define o tipo de preço selecionado para feedback visual
+        setSelectedPriceType(priceType);
+        
+        // 2. Cria o ItemAquisicao
         const item: ItemAquisicao = {
             // ID temporário, será substituído na inspeção
             id: Math.random().toString(36).substring(2, 9), 
@@ -243,10 +255,11 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
             uasg: '', // Vazio, pois não há UASG de referência
         };
         
-        // 2. Envia para o fluxo de inspeção
+        // 3. Envia para o fluxo de inspeção
         onPriceSelect(item);
         
-        toast.info(`Preço (${priceType}) selecionado. Prossiga para a inspeção.`);
+        // 4. Feedback visual
+        toast.info(`Preço (${priceLabel}) selecionado. Prossiga para a inspeção.`);
     };
 
     const renderPriceButtons = (stats: PriceStats) => {
@@ -259,9 +272,9 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                 {/* Preço Médio */}
                 <Button 
                     type="button" 
-                    variant="outline" 
+                    variant={selectedPriceType === 'avg' ? 'default' : 'outline'} 
                     className={buttonClass}
-                    onClick={() => handlePriceSelection(stats.avgPrice, 'Médio')}
+                    onClick={() => handlePriceSelection(stats.avgPrice, 'avg', 'Médio')}
                 >
                     <span className="text-sm text-muted-foreground">Preço Médio</span>
                     <span className={priceStyle}>{formatCurrency(stats.avgPrice)}</span>
@@ -270,9 +283,9 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                 {/* Mediana */}
                 <Button 
                     type="button" 
-                    variant="outline" 
+                    variant={selectedPriceType === 'median' ? 'default' : 'outline'} 
                     className={buttonClass}
-                    onClick={() => handlePriceSelection(stats.medianPrice, 'Mediana')}
+                    onClick={() => handlePriceSelection(stats.medianPrice, 'median', 'Mediana')}
                 >
                     <span className="text-sm text-muted-foreground">Mediana</span>
                     <span className={priceStyle}>{formatCurrency(stats.medianPrice)}</span>
@@ -281,9 +294,9 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                 {/* Preço Mínimo */}
                 <Button 
                     type="button" 
-                    variant="outline" 
+                    variant={selectedPriceType === 'min' ? 'default' : 'outline'} 
                     className={buttonClass}
-                    onClick={() => handlePriceSelection(stats.minPrice, 'Mínimo')}
+                    onClick={() => handlePriceSelection(stats.minPrice, 'min', 'Mínimo')}
                 >
                     <span className="text-sm text-muted-foreground">Preço Mínimo</span>
                     <span className={priceStyle}>{formatCurrency(stats.minPrice)}</span>
@@ -292,9 +305,9 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                 {/* Preço Máximo */}
                 <Button 
                     type="button" 
-                    variant="outline" 
+                    variant={selectedPriceType === 'max' ? 'default' : 'outline'} 
                     className={buttonClass}
-                    onClick={() => handlePriceSelection(stats.maxPrice, 'Máximo')}
+                    onClick={() => handlePriceSelection(stats.maxPrice, 'max', 'Máximo')}
                 >
                     <span className="text-sm text-muted-foreground">Preço Máximo</span>
                     <span className={priceStyle}>{formatCurrency(stats.maxPrice)}</span>
@@ -302,6 +315,20 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
             </div>
         );
     };
+    
+    // NOVO: Ordena os registros brutos do maior para o menor valor
+    const sortedRawRecords = useMemo(() => {
+        if (!searchResult?.rawRecords) return [];
+        
+        // 1. Indexa os registros brutos para dar a eles um ID estável (baseado no índice original)
+        const indexed = searchResult.rawRecords.map((record, index) => ({
+            ...record,
+            id: index,
+        }));
+        
+        // 2. Cria uma cópia e ordena pelo precoUnitario em ordem decrescente
+        return [...indexed].sort((a, b) => b.precoUnitario - a.precoUnitario);
+    }, [searchResult?.rawRecords]);
     
     const renderRawDataTable = (records: IndexedRawPriceRecord[]) => {
         return (
@@ -491,7 +518,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                                     Selecione um dos valores acima para usá-lo como preço unitário de referência.
                                 </p>
                                 
-                                {/* Collapsible para a Base de Cálculo */}
+                                {/* NOVO: Collapsible para a Base de Cálculo */}
                                 {indexedRecords.length > 0 && (
                                     <Collapsible 
                                         open={showRawData} 
@@ -515,7 +542,8 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                                         </CollapsibleTrigger>
                                         
                                         <CollapsibleContent>
-                                            {renderRawDataTable(indexedRecords)}
+                                            {/* CORREÇÃO: Passa os registros ordenados */}
+                                            {renderRawDataTable(sortedRawRecords)}
                                         </CollapsibleContent>
                                     </Collapsible>
                                 )}
