@@ -5,7 +5,7 @@ import * as z from 'zod';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Search, Loader2, BookOpen, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Loader2, BookOpen, DollarSign, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { format, subDays } from 'date-fns';
@@ -69,13 +69,20 @@ const oneYearAgo = subDays(today, 364);
 const defaultDataFim = format(today, 'yyyy-MM-dd');
 const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 
+// Tipo auxiliar para o registro bruto com um ID único (baseado no índice)
+interface IndexedRawPriceRecord extends RawPriceRecord {
+    id: number;
+}
 
 const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
     const [searchResult, setSearchResult] = useState<PriceStatsResult | null>(null);
     
-    // NOVO ESTADO: Controla a visibilidade da base de cálculo
+    // Estado para rastrear os IDs (índices) dos registros excluídos
+    const [excludedRecordIds, setExcludedRecordIds] = useState<Set<number>>(new Set());
+    
+    // Controla a visibilidade da base de cálculo
     const [showRawData, setShowRawData] = useState(false);
     
     const form = useForm<PriceSearchFormValues>({
@@ -104,7 +111,8 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
     const onSubmit = async (values: PriceSearchFormValues) => {
         setIsSearching(true);
         setSearchResult(null);
-        setShowRawData(false); // Fecha o collapsible ao iniciar nova busca
+        setShowRawData(false); 
+        setExcludedRecordIds(new Set()); // Limpa exclusões ao iniciar nova busca
         
         const catmatCode = values.codigoItem;
         
@@ -125,6 +133,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                 toast.success(`${result.totalRegistros} registros encontrados!`);
             }
             
+            // O resultado inicial da API é armazenado
             setSearchResult(result);
 
         } catch (error: any) {
@@ -133,6 +142,76 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
         } finally {
             setIsSearching(false);
         }
+    };
+    
+    /**
+     * Lógica de Recálculo de Estatísticas
+     */
+    const { currentStats, currentTotalRecords, indexedRecords } = useMemo(() => {
+        if (!searchResult || searchResult.totalRegistros === 0) {
+            return { currentStats: null, currentTotalRecords: 0, indexedRecords: [] };
+        }
+
+        // 1. Indexa os registros brutos para dar a eles um ID estável (baseado no índice original)
+        const indexed = searchResult.rawRecords.map((record, index) => ({
+            ...record,
+            id: index,
+        }));
+        
+        // 2. Filtra os registros que NÃO estão excluídos
+        const activeRecords = indexed.filter(record => !excludedRecordIds.has(record.id));
+        const activePrices = activeRecords.map(r => r.precoUnitario);
+        const total = activePrices.length;
+
+        if (total === 0) {
+            return { currentStats: null, currentTotalRecords: 0, indexedRecords: indexed };
+        }
+
+        // 3. Recalcula as estatísticas
+        const minPrice = Math.min(...activePrices);
+        const maxPrice = Math.max(...activePrices);
+        const sumPrices = activePrices.reduce((sum, price) => sum + price, 0);
+        const avgPrice = sumPrices / total;
+        
+        // Cálculo da Mediana (necessita de ordenação)
+        const sortedPrices = [...activePrices].sort((a, b) => a - b);
+        const middle = Math.floor(sortedPrices.length / 2);
+        const medianPrice = sortedPrices.length % 2 === 0
+            ? (sortedPrices[middle - 1] + sortedPrices[middle]) / 2
+            : sortedPrices[middle];
+
+        const stats: PriceStats = {
+            minPrice: parseFloat(minPrice.toFixed(2)),
+            maxPrice: parseFloat(maxPrice.toFixed(2)),
+            avgPrice: parseFloat(avgPrice.toFixed(2)),
+            medianPrice: parseFloat(medianPrice.toFixed(2)),
+        };
+        
+        // 4. Ordena os registros indexados (para exibição na tabela)
+        const sortedIndexedRecords = [...indexed].sort((a, b) => b.precoUnitario - a.precoUnitario);
+
+        return { 
+            currentStats: stats, 
+            currentTotalRecords: total, 
+            indexedRecords: sortedIndexedRecords 
+        };
+    }, [searchResult, excludedRecordIds]);
+    
+    /**
+     * Alterna o estado de exclusão de um registro.
+     */
+    const toggleExclusion = (id: number) => {
+        setExcludedRecordIds(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(id)) {
+                newSet.delete(id);
+                toast.info("Registro incluído no cálculo.");
+            } else {
+                newSet.add(id);
+                toast.warning("Registro excluído do cálculo.");
+            }
+            return newSet;
+        });
     };
     
     /**
@@ -224,40 +303,48 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
         );
     };
     
-    // NOVO: Ordena os registros brutos do maior para o menor valor
-    const sortedRawRecords = useMemo(() => {
-        if (!searchResult?.rawRecords) return [];
-        
-        // Cria uma cópia e ordena pelo precoUnitario em ordem decrescente
-        return [...searchResult.rawRecords].sort((a, b) => b.precoUnitario - a.precoUnitario);
-    }, [searchResult?.rawRecords]);
-    
-    const renderRawDataTable = (records: RawPriceRecord[]) => {
+    const renderRawDataTable = (records: IndexedRawPriceRecord[]) => {
         return (
             <div className="max-h-60 overflow-y-auto mt-2 border rounded-md">
                 <Table>
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
+                            <TableHead className="w-[5%] text-center">
+                                <Trash2 className="h-4 w-4 text-muted-foreground mx-auto" />
+                            </TableHead>
                             <TableHead className="w-[15%]">UASG</TableHead>
-                            <TableHead className="w-[55%]">Nome da UASG</TableHead>
+                            <TableHead className="w-[50%]">Nome da UASG</TableHead>
                             <TableHead className="w-[30%] text-right">Preço Unitário</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {records.map((record, index) => (
-                            <TableRow key={index}>
-                                <TableCell className="text-sm font-medium py-2">
-                                    {formatCodug(record.codigoUasg)}
-                                </TableCell>
-                                <TableCell className="text-sm py-2">
-                                    {/* Removendo a formatação de capitalização para exibir o nome bruto da UASG/Entidade */}
-                                    {record.nomeUasg}
-                                </TableCell>
-                                <TableCell className="text-right text-sm font-bold text-primary py-2">
-                                    {formatCurrency(record.precoUnitario)}
-                                </TableCell>
-                            </TableRow>
-                        ))}
+                        {records.map((record) => {
+                            const isExcluded = excludedRecordIds.has(record.id);
+                            
+                            return (
+                                <TableRow 
+                                    key={record.id} 
+                                    className={isExcluded ? 'bg-red-50/50 opacity-50 hover:bg-red-50' : 'hover:bg-muted/50'}
+                                >
+                                    <TableCell className="text-center py-2">
+                                        <Checkbox
+                                            checked={!isExcluded}
+                                            onCheckedChange={() => toggleExclusion(record.id)}
+                                            aria-label={isExcluded ? "Incluir registro" : "Excluir registro"}
+                                        />
+                                    </TableCell>
+                                    <TableCell className="text-sm font-medium py-2">
+                                        {formatCodug(record.codigoUasg)}
+                                    </TableCell>
+                                    <TableCell className="text-sm py-2">
+                                        {record.nomeUasg}
+                                    </TableCell>
+                                    <TableCell className="text-right text-sm font-bold text-primary py-2">
+                                        {formatCurrency(record.precoUnitario)}
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
                     </TableBody>
                 </Table>
             </div>
@@ -391,21 +478,21 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                 <div className="p-4 space-y-4">
                     <Card className="p-4">
                         <CardTitle className="text-lg font-semibold mb-3">
-                            Estatísticas de Preço ({searchResult.totalRegistros} Registros)
+                            Estatísticas de Preço ({currentTotalRecords} Registros Ativos)
                         </CardTitle>
                         
-                        {searchResult.stats ? (
+                        {currentStats ? (
                             <>
                                 <p className="text-sm text-muted-foreground mb-4">
                                     Item: <span className="font-medium text-foreground">{capitalizeFirstLetter(searchResult.descricaoItem || 'N/A')}</span>
                                 </p>
-                                {renderPriceButtons(searchResult.stats)}
+                                {renderPriceButtons(currentStats)}
                                 <p className="text-xs text-muted-foreground mt-4">
                                     Selecione um dos valores acima para usá-lo como preço unitário de referência.
                                 </p>
                                 
-                                {/* NOVO: Collapsible para a Base de Cálculo */}
-                                {searchResult.rawRecords.length > 0 && (
+                                {/* Collapsible para a Base de Cálculo */}
+                                {indexedRecords.length > 0 && (
                                     <Collapsible 
                                         open={showRawData} 
                                         onOpenChange={setShowRawData} 
@@ -421,22 +508,21 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                                                 ) : (
                                                     <>
                                                         <ChevronDown className="h-4 w-4 mr-2" />
-                                                        Mostrar Base de Cálculo ({searchResult.totalRegistros} registros)
+                                                        Mostrar Base de Cálculo ({currentTotalRecords} ativos / {indexedRecords.length} total)
                                                     </>
                                                 )}
                                             </Button>
                                         </CollapsibleTrigger>
                                         
                                         <CollapsibleContent>
-                                            {/* CORREÇÃO: Passa os registros ordenados */}
-                                            {renderRawDataTable(sortedRawRecords)}
+                                            {renderRawDataTable(indexedRecords)}
                                         </CollapsibleContent>
                                     </Collapsible>
                                 )}
                             </>
                         ) : (
                             <p className="text-center text-muted-foreground">
-                                Nenhum registro de preço encontrado para o CATMAT {searchResult.codigoItem}.
+                                Nenhum registro de preço ativo encontrado para o CATMAT {searchResult.codigoItem}.
                             </p>
                         )}
                     </Card>
