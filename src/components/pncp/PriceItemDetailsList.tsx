@@ -1,7 +1,7 @@
 import React from 'react';
 import { PriceItemDetail } from '@/types/pncp';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { formatCurrency, formatDate } from '@/lib/formatUtils';
+import { formatCurrency, formatCodug } from '@/lib/formatUtils';
 import { Loader2 } from 'lucide-react';
 
 interface PriceItemDetailsListProps {
@@ -41,9 +41,9 @@ const PriceItemDetailsList: React.FC<PriceItemDetailsListProps> = ({ items, isLo
             <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
-                        <TableHead className="w-[40%]">Descrição do Item</TableHead>
-                        <TableHead className="w-[20%] text-center">Data Referência</TableHead>
-                        <TableHead className="w-[20%] text-center">Fonte</TableHead>
+                        <TableHead className="w-[30%]">Descrição do Item</TableHead>
+                        <TableHead className="w-[15%] text-center">Cód. UASG</TableHead>
+                        <TableHead className="w-[35%]">Nome UASG</TableHead>
                         <TableHead className="w-[20%] text-right">Valor Unitário</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -53,11 +53,11 @@ const PriceItemDetailsList: React.FC<PriceItemDetailsListProps> = ({ items, isLo
                             <TableCell className="text-sm max-w-xs whitespace-normal">
                                 {item.descricaoItem}
                             </TableCell>
-                            <TableCell className="text-center text-sm">
-                                {formatDate(item.dataReferencia)}
+                            <TableCell className="text-center text-sm font-mono">
+                                {formatCodug(item.codigoUasg)}
                             </TableCell>
-                            <TableCell className="text-center text-sm">
-                                {item.fonte}
+                            <TableCell className="text-sm">
+                                {item.nomeUasg}
                             </TableCell>
                             <TableCell className="text-right font-bold text-primary text-sm">
                                 {formatCurrency(item.valorUnitario)}
