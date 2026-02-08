@@ -569,18 +569,32 @@ export async function fetchPriceStatsDetails(params: PriceStatsSearchParams): Pr
         }
         
         // Mapeamento e sanitização para o tipo PriceItemDetail atualizado
-        const results: PriceItemDetail[] = rawData.map((item: any) => ({
-            id: item.id || Math.random().toString(36).substring(2, 9),
-            codigoItem: String(item.codigoItem || 'N/A'),
-            descricaoItem: item.descricaoItem || 'Descrição não disponível',
-            // Mapeando 'preçoUnitario' para 'valorUnitario'
-            valorUnitario: parseFloat(String(item.preçoUnitario || 0)), 
-            dataReferencia: item.dataReferencia || 'N/A',
-            fonte: item.fonte || 'N/A',
-            // Mapeando os novos campos de UASG
-            codigoUasg: String(item.codigoUasg || 'N/A').replace(/\D/g, '').slice(0, 6),
-            nomeUasg: item.nomeUasg || 'N/A',
-        }));
+        const results: PriceItemDetail[] = rawData.map((item: any) => {
+            
+            // Tenta extrair o valor unitário de 'preçoUnitario' ou 'valorUnitario'
+            const rawPrice = item.preçoUnitario ?? item.valorUnitario ?? 0;
+            const valorUnitario = parseFloat(String(rawPrice));
+            
+            // Tenta extrair o código UASG de 'codigoUasg' ou 'uasg'
+            const rawUasgCode = item.codigoUasg ?? item.uasg ?? 'N/A';
+            const cleanUasgCode = String(rawUasgCode).replace(/\D/g, '').slice(0, 6);
+            
+            // Tenta extrair o nome da UASG de 'nomeUasg' ou 'omNome'
+            const nomeUasg = item.nomeUasg ?? item.omNome ?? 'N/A';
+            
+            return {
+                id: item.id || Math.random().toString(36).substring(2, 9),
+                codigoItem: String(item.codigoItem || 'N/A'),
+                descricaoItem: item.descricaoItem || 'Descrição não disponível',
+                // Mapeamento corrigido e robusto
+                valorUnitario: isNaN(valorUnitario) ? 0 : valorUnitario, 
+                dataReferencia: item.dataReferencia || 'N/A',
+                fonte: item.fonte || 'N/A',
+                // Mapeamento corrigido e robusto
+                codigoUasg: cleanUasgCode,
+                nomeUasg: nomeUasg,
+            };
+        });
         
         return results;
 

@@ -45,11 +45,10 @@ const PriceItemDetailsList: React.FC<PriceItemDetailsListProps> = ({ items, isLo
             <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
-                        <TableHead className="w-[10%] text-center">Data Ref.</TableHead>
+                        <TableHead className="w-[15%] text-center">Data Ref.</TableHead>
                         <TableHead className="w-[15%] text-center">Cód. UASG</TableHead>
-                        <TableHead className="w-[35%]">Nome UASG</TableHead>
-                        <TableHead className="w-[20%]">Fonte</TableHead>
-                        <TableHead className="w-[15%] text-right">Valor Unitário</TableHead>
+                        <TableHead className="w-[45%]">Nome UASG</TableHead>
+                        <TableHead className="w-[20%] text-right">Valor Unitário</TableHead>
                         <TableHead className="w-[5%] text-center">Sel.</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -64,15 +63,10 @@ const PriceItemDetailsList: React.FC<PriceItemDetailsListProps> = ({ items, isLo
                                 {formatDate(item.dataReferencia)}
                             </TableCell>
                             <TableCell className="text-xs text-center font-medium py-2">
-                                {/* NOVO: Usando formatCodug para o código da UASG */}
                                 {formatCodug(item.codigoUasg)}
                             </TableCell>
                             <TableCell className="text-xs py-2 max-w-xs whitespace-normal">
-                                {/* NOVO: Exibindo o nome da UASG */}
                                 {item.nomeUasg}
-                            </TableCell>
-                            <TableCell className="text-xs py-2">
-                                {item.fonte}
                             </TableCell>
                             <TableCell className="text-right text-xs font-bold text-primary py-2">
                                 {formatCurrency(item.valorUnitario)}
