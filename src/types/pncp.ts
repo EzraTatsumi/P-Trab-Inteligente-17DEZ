@@ -129,7 +129,10 @@ export interface PriceItemDetail {
     id: string; // Unique ID for the item
     codigoItem: string; // CATMAT code
     descricaoItem: string;
-    valorUnitario: number;
+    valorUnitario: number; // Mapeado de 'preçoUnitario'
     dataReferencia: string; // Date of the price reference
     fonte: string; // Source of the price (e.g., PNCP, Painel de Preços)
+    // NOVOS CAMPOS ADICIONADOS:
+    codigoUasg: string;
+    nomeUasg: string;
 }

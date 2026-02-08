@@ -558,14 +558,31 @@ export async function fetchPriceStatsDetails(params: PriceStatsSearchParams): Pr
             throw new Error(error.message || "Falha na execução da Edge Function de busca de detalhes de preço.");
         }
         
-        const responseData = data as PriceItemDetail[]; 
+        // Assumimos que a Edge Function retorna um array de objetos brutos
+        const rawData = data as any[]; 
         
-        if ((responseData as any).error) {
-            throw new Error((responseData as any).error);
+        if (!Array.isArray(rawData)) {
+            if (rawData && (rawData as any).error) {
+                throw new Error((rawData as any).error);
+            }
+            return [];
         }
         
-        // Mapeamento e sanitização (assumindo que a Edge Function já retorna o formato PriceItemDetail)
-        return Array.isArray(responseData) ? responseData : [];
+        // Mapeamento e sanitização para o tipo PriceItemDetail atualizado
+        const results: PriceItemDetail[] = rawData.map((item: any) => ({
+            id: item.id || Math.random().toString(36).substring(2, 9),
+            codigoItem: String(item.codigoItem || 'N/A'),
+            descricaoItem: item.descricaoItem || 'Descrição não disponível',
+            // Mapeando 'preçoUnitario' para 'valorUnitario'
+            valorUnitario: parseFloat(String(item.preçoUnitario || 0)), 
+            dataReferencia: item.dataReferencia || 'N/A',
+            fonte: item.fonte || 'N/A',
+            // Mapeando os novos campos de UASG
+            codigoUasg: String(item.codigoUasg || 'N/A').replace(/\D/g, '').slice(0, 6),
+            nomeUasg: item.nomeUasg || 'N/A',
+        }));
+        
+        return results;
 
     } catch (error) {
         console.error("Erro ao buscar detalhes de estatísticas de preço:", error);
