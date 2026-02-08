@@ -786,7 +786,7 @@ const PassagemForm = () => {
                     // Campos obrigatórios do tipo DB
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
-                    // CORREÇÃO: Removendo valor_nd_30
+                    // CORREÇÃO: Removendo valor_nd_30 que não existe em passagem_registros
                     // valor_nd_30: 0, 
                 } as PassagemRegistro;
 
@@ -1299,7 +1299,7 @@ const PassagemForm = () => {
                                                                                                 e.preventDefault();
                                                                                             }
                                                                                         }}
-                                                                                        className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                        className="w-full text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                                         disabled={!isPTrabEditable || isSaving}
                                                                                     />
                                                                                 </div>
