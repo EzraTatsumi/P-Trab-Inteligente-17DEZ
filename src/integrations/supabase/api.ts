@@ -561,7 +561,8 @@ export async function fetchPriceStatsDetails(params: PriceStatsSearchParams): Pr
         // Assumimos que a Edge Function retorna um array de objetos brutos
         const rawData = data as any[]; 
         
-        if (!ArrayOfRawData(rawData)) {
+        // CORREÇÃO: Substituir a chamada ArrayOfRawData(rawData) por Array.isArray(rawData)
+        if (!Array.isArray(rawData)) {
             if (rawData && (rawData as any).error) {
                 throw new Error((rawData as any).error);
             }
