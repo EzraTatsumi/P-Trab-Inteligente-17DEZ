@@ -36,6 +36,8 @@ serve(async (req) => {
             valorUnitario: 100.50,
             dataReferencia: '2024-01-15',
             fonte: 'PNCP',
+            codigoUasg: '160001', // Adicionado
+            nomeUasg: 'Comando da 1ª Região Militar', // Adicionado
         },
         {
             id: '2',
@@ -44,6 +46,8 @@ serve(async (req) => {
             valorUnitario: 500.00,
             dataReferencia: '2024-02-20',
             fonte: 'Painel de Preços',
+            codigoUasg: '160002', // Adicionado
+            nomeUasg: 'Comando da 2ª Região Militar', // Adicionado
         },
         {
             id: '3',
@@ -52,6 +56,8 @@ serve(async (req) => {
             valorUnitario: 110.25,
             dataReferencia: '2024-03-01',
             fonte: 'PNCP',
+            codigoUasg: '160001', // Adicionado
+            nomeUasg: 'Comando da 1ª Região Militar', // Adicionado
         },
         {
             id: '4',
@@ -60,6 +66,8 @@ serve(async (req) => {
             valorUnitario: 5.00,
             dataReferencia: '2024-04-10',
             fonte: 'PNCP',
+            codigoUasg: '160003', // Adicionado
+            nomeUasg: 'Comando da 3ª Região Militar', // Adicionado
         },
         {
             id: '5',
@@ -68,6 +76,8 @@ serve(async (req) => {
             valorUnitario: 105.00,
             dataReferencia: '2024-05-05',
             fonte: 'Painel de Preços',
+            codigoUasg: '160002', // Adicionado
+            nomeUasg: 'Comando da 2ª Região Militar', // Adicionado
         },
     ];
     // --- SIMULATION END ---
