@@ -315,7 +315,10 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                                                         
                                                         return (
                                                             <TableRow key={item.id} className={cn(isItemSelected && "bg-green-50/50")}>
-                                                                <TableCell className="w-[50px] text-center">
+                                                                <TableCell 
+                                                                    className="w-[50px] text-center cursor-pointer hover:bg-gray-50/50 transition-colors"
+                                                                    onClick={() => handleItemToggle(item.id, !isItemSelected)}
+                                                                >
                                                                     <Checkbox
                                                                         checked={isItemSelected}
                                                                         onCheckedChange={(checked) => handleItemToggle(item.id, !!checked)}
@@ -333,7 +336,10 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                                                                         CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({formatCodug(item.uasg)})
                                                                     </p>
                                                                 </TableCell>
-                                                                <TableCell className="text-right">
+                                                                <TableCell 
+                                                                    className="text-right cursor-pointer hover:bg-gray-50/50 transition-colors"
+                                                                    onClick={() => handleItemToggle(item.id, !isItemSelected)}
+                                                                >
                                                                     <p className="font-medium text-sm">
                                                                         {formatCurrency(item.valor_unitario)} {item.unidade_medida}
                                                                     </p>
@@ -357,7 +363,7 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Package className="h-6 w-6 text-primary" />
@@ -369,7 +375,7 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                     {renderSubitemList()}
                 </div>
                 
-                <DialogFooter>
+                <DialogFooter className="flex justify-between sm:justify-between">
                     <Button 
                         type="button" 
                         variant="outline" 
