@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -61,6 +61,9 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     loading,
 }) => {
     const { handleEnterToNextField } = useFormNavigation();
+    
+    // Referência para o formulário de edição do item
+    const itemFormRef = useRef<HTMLDivElement>(null);
 
     const getInitialFormState = (editData: DiretrizMaterialConsumo | null): InternalMaterialConsumoForm => {
         if (editData) {
@@ -224,6 +227,9 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             codigo_catmat: item.codigo_catmat, 
             // unidade_medida: item.unidade_medida, // REMOVIDO
         });
+        
+        // Rola a tela para o formulário de edição
+        itemFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
     const handleDeleteItem = (itemId: string) => {
@@ -356,6 +362,11 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     };
     
     const isEditingSubitem = !!subitemForm.id;
+    
+    // 1. Ordenar os itens de aquisição por descrição completa
+    const sortedItens = [...subitemForm.itens_aquisicao].sort((a, b) => 
+        a.descricao_item.localeCompare(b.descricao_item)
+    );
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -462,7 +473,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                         </div>
                         
                         {/* Formulário de Item - Reorganizado em três linhas lógicas */}
-                        <div className="border p-3 rounded-lg bg-muted/50 space-y-4">
+                        <div className="border p-3 rounded-lg bg-muted/50 space-y-4" ref={itemFormRef}>
                             {/* PRIMEIRA LINHA: CATMAT, Botão CATMAT e Descrição Completa */}
                             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                                 {/* Campo Código CATMAT (1 coluna) */}
@@ -583,7 +594,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                         </div>
                         
                         {/* Tabela de Itens de Aquisição */}
-                        {subitemForm.itens_aquisicao.length > 0 ? (
+                        {sortedItens.length > 0 ? (
                             <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -597,7 +608,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {subitemForm.itens_aquisicao.map(item => (
+                                    {sortedItens.map(item => (
                                         <TableRow key={item.id}>
                                             <TableCell className="font-medium text-sm">{item.descricao_reduzida || 'N/A'}</TableCell>
                                             <TableCell className="font-medium text-sm">{item.descricao_item}</TableCell>
