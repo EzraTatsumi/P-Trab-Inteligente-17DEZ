@@ -58,6 +58,8 @@ type PriceSearchFormValues = z.infer<typeof formSchema>;
 interface PriceSearchFormProps {
     // Função de callback para enviar o item selecionado para inspeção
     onPriceSelect: (item: ItemAquisicao) => void;
+    // NOVO: Estado de inspeção do componente pai
+    isInspecting: boolean; 
 }
 
 // Calcula as datas padrão
@@ -77,7 +79,7 @@ interface IndexedRawPriceRecord extends RawPriceRecord {
 // NOVO TIPO: Tipos de preço para o estado de seleção
 type PriceType = 'avg' | 'median' | 'min' | 'max';
 
-const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
+const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInspecting }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
     const [searchResult, setSearchResult] = useState<PriceStatsResult | null>(null);
@@ -227,6 +229,8 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
      * Cria o ItemAquisicao temporário e o envia para o fluxo de inspeção.
      */
     const handlePriceSelection = (price: number, priceType: PriceType, priceLabel: string) => {
+        if (isInspecting) return; // Previne duplo clique/chamada enquanto a inspeção está em andamento
+        
         if (!searchResult || !searchResult.descricaoItem) {
             toast.error("Erro: Dados do item não carregados.");
             return;
@@ -275,6 +279,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                     variant={selectedPriceType === 'avg' ? 'default' : 'outline'} 
                     className={buttonClass}
                     onClick={() => handlePriceSelection(stats.avgPrice, 'avg', 'Médio')}
+                    disabled={isInspecting} // Desabilita durante a inspeção
                 >
                     <span className="text-sm text-muted-foreground">Preço Médio</span>
                     <span className={priceStyle}>{formatCurrency(stats.avgPrice)}</span>
@@ -286,6 +291,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                     variant={selectedPriceType === 'median' ? 'default' : 'outline'} 
                     className={buttonClass}
                     onClick={() => handlePriceSelection(stats.medianPrice, 'median', 'Mediana')}
+                    disabled={isInspecting} // Desabilita durante a inspeção
                 >
                     <span className="text-sm text-muted-foreground">Mediana</span>
                     <span className={priceStyle}>{formatCurrency(stats.medianPrice)}</span>
@@ -297,6 +303,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                     variant={selectedPriceType === 'min' ? 'default' : 'outline'} 
                     className={buttonClass}
                     onClick={() => handlePriceSelection(stats.minPrice, 'min', 'Mínimo')}
+                    disabled={isInspecting} // Desabilita durante a inspeção
                 >
                     <span className="text-sm text-muted-foreground">Preço Mínimo</span>
                     <span className={priceStyle}>{formatCurrency(stats.minPrice)}</span>
@@ -308,6 +315,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                     variant={selectedPriceType === 'max' ? 'default' : 'outline'} 
                     className={buttonClass}
                     onClick={() => handlePriceSelection(stats.maxPrice, 'max', 'Máximo')}
+                    disabled={isInspecting} // Desabilita durante a inspeção
                 >
                     <span className="text-sm text-muted-foreground">Preço Máximo</span>
                     <span className={priceStyle}>{formatCurrency(stats.maxPrice)}</span>

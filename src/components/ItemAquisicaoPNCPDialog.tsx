@@ -382,9 +382,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
             // 9. Abrir o diálogo de inspeção
             setIsInspectionDialogOpen(true);
             
-            // 10. REMOVIDO: A chamada imediata a handleReviewItem para o fluxo de preço médio.
-            // O usuário agora deve clicar em 'Revisar' dentro do PNCPInspectionDialog.
-            
         } catch (error) {
             console.error("Erro durante a inspeção PNCP:", error);
             toast.error("Falha ao inspecionar itens. Tente novamente.");
@@ -435,6 +432,9 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     // Se houver um item de preço médio selecionado, o botão de inspeção deve ser desabilitado
     // para itens ARP, pois o fluxo de preço médio é imediato.
     const isArpInspectionDisabled = selectedPriceItems.length > 0;
+    
+    // NOVO: Determina se o botão de inspeção deve ser exibido
+    const showInspectionButton = selectedTab !== 'avg-price';
     
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -487,24 +487,27 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     <TabsContent value="avg-price">
                         <PriceSearchForm 
                             onPriceSelect={handlePriceSelect} 
+                            isInspecting={isInspecting} // NOVO: Passa o estado de inspeção
                         />
                     </TabsContent>
                 </Tabs>
 
                 {/* Rodapé com o botão de importação movido */}
                 <div className="flex justify-end gap-2 pt-4 border-t">
-                    <Button 
-                        type="button" 
-                        onClick={() => handleStartInspection(false)} // Inspeciona ARP
-                        disabled={selectedArpItems.length === 0 || isInspecting || isArpInspectionDisabled}
-                    >
-                        {isInspecting ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                            <Import className="h-4 w-4 mr-2" />
-                        )}
-                        Inspecionar e Importar ({selectedArpItems.length})
-                    </Button>
+                    {showInspectionButton && (
+                        <Button 
+                            type="button" 
+                            onClick={() => handleStartInspection(false)} // Inspeciona ARP
+                            disabled={selectedArpItems.length === 0 || isInspecting || isArpInspectionDisabled}
+                        >
+                            {isInspecting ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                                <Import className="h-4 w-4 mr-2" />
+                            )}
+                            Inspecionar e Importar ({selectedArpItems.length})
+                        </Button>
+                    )}
                     <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isInspecting}>
                         Fechar
                     </Button>
