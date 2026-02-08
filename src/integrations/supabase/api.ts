@@ -561,7 +561,7 @@ export async function fetchPriceStatsDetails(params: PriceStatsSearchParams): Pr
         // Assumimos que a Edge Function retorna um array de objetos brutos
         const rawData = data as any[]; 
         
-        // CORREÇÃO: Substituir a chamada ArrayOfRawData(rawData) por Array.isArray(rawData)
+        // Verifica se é um array válido
         if (!Array.isArray(rawData)) {
             if (rawData && (rawData as any).error) {
                 throw new Error((rawData as any).error);
@@ -576,12 +576,14 @@ export async function fetchPriceStatsDetails(params: PriceStatsSearchParams): Pr
             const rawPrice = item.preçoUnitario ?? item.valorUnitario ?? item.precoUnitario ?? 0;
             const valorUnitario = parseFloat(String(rawPrice));
             
-            // 2. Código UASG (Heurística expandida)
-            const rawUasgCode = item.codigoUasg ?? item.uasg ?? item.codigoUnidadeGestora ?? item.unidadeGestora ?? 'N/A';
-            const cleanUasgCode = String(rawUasgCode).replace(/\D/g, '').slice(0, 6);
+            // 2. Código UASG (Foco no nome do schema)
+            const rawUasgCode = item.codigoUasg;
+            const cleanUasgCode = rawUasgCode 
+                ? String(rawUasgCode).replace(/\D/g, '').slice(0, 6) 
+                : 'N/A';
             
-            // 3. Nome UASG (Heurística expandida)
-            const nomeUasg = item.nomeUasg ?? item.omNome ?? item.nomeUnidadeGestora ?? item.unidadeGestoraNome ?? 'N/A';
+            // 3. Nome UASG (Foco no nome do schema)
+            const nomeUasg = item.nomeUasg || 'N/A';
             
             return {
                 id: item.id || Math.random().toString(36).substring(2, 9),
