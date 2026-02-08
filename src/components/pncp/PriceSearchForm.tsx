@@ -4,36 +4,52 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Search, Loader2, BookOpen, ChevronDown, ChevronUp, Import } from "lucide-react";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
+import { Search, Loader2, BookOpen, ChevronDown, ChevronUp, Import, DollarSign } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { formatCodug, formatCurrency, formatNumber } from '@/lib/formatUtils';
-import OmSelectorDialog from '@/components/OmSelectorDialog';
+import { formatCodug, formatCurrency, formatNumber, capitalizeFirstLetter } from '@/lib/formatUtils';
 import { format, subDays } from 'date-fns';
 import { fetchPriceStats, fetchPriceStatsDetails } from '@/integrations/supabase/api';
-import { ArpItemResult, DetailedArpItem, PriceStatsSearchParams, PriceStatsResult, PriceItemDetail } from '@/types/pncp';
-import ArpSearchResultsList from './ArpSearchResultsList';
-import { OMData } from '@/lib/omUtils';
+import { PriceStatsSearchParams, PriceStatsResult, PriceItemDetail, PriceStats } from '@/types/pncp';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardTitle, CardContent } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import PriceItemDetailsList from './PriceItemDetailsList';
+import CatmatCatalogDialog from '../CatmatCatalogDialog'; // RESTAURADO
 
-// 1. Esquema de Validação
+// 1. Esquema de Validação (RESTAURADO)
 const formSchema = z.object({
     codigoItem: z.string()
         .min(1, { message: "O Código CATMAT/CATSER é obrigatório." })
-        .regex(/^\d{9}$/, { message: "O Código deve ter 9 dígitos." }),
+        .regex(/^\d{1,9}$/, { message: "O código deve conter apenas números (máx. 9 dígitos)." }),
     dataInicio: z.string().optional(),
     dataFim: z.string().optional(),
+    ignoreDates: z.boolean().default(false),
 }).refine(data => {
-    if (data.dataInicio && data.dataFim) {
-        return new Date(data.dataFim) >= new Date(data.dataInicio);
+    // Se não ignorar datas, ambas devem ser preenchidas e a dataFim deve ser >= dataInicio
+    if (!data.ignoreDates) {
+        if (!data.dataInicio || !data.dataFim) return false;
+        
+        const startDate = new Date(data.dataInicio);
+        const endDate = new Date(data.dataFim);
+        
+        // Verifica se a Data de Fim é posterior ou igual à Data de Início
+        if (endDate < startDate) return false;
+        
+        // Verifica se o intervalo é maior que 365 dias (86400000 ms * 365)
+        const maxDurationMs = 86400000 * 365;
+        const durationMs = endDate.getTime() - startDate.getTime();
+        
+        // Se a duração for estritamente maior que 365 dias, falha.
+        if (durationMs > maxDurationMs) {
+             return false;
+        }
     }
     return true;
 }, {
-    message: "A Data de Fim deve ser posterior ou igual à Data de Início.",
+    message: "O período de busca não pode exceder 365 dias.",
     path: ["dataFim"],
 });
 
@@ -45,7 +61,8 @@ interface PriceSearchFormProps {
 
 // Calcula as datas padrão
 const today = new Date();
-const oneYearAgo = subDays(today, 365);
+// Ajuste: Usar 364 dias para garantir que o intervalo seja aceito pela API (365 dias é o limite)
+const oneYearAgo = subDays(today, 364); 
 
 // Formata as datas para o formato 'YYYY-MM-DD' exigido pelo input type="date"
 const defaultDataFim = format(today, 'yyyy-MM-dd');
@@ -55,7 +72,8 @@ const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
     const [searchParams, setSearchParams] = useState<PriceStatsSearchParams | null>(null);
     const [isSearching, setIsSearching] = useState(false);
-    const [isDetailsOpen, setIsDetailsOpen] = useState(false); // NOVO: Estado para o Collapsible
+    const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false); // RESTAURADO
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false); 
     
     // Query para buscar estatísticas de preço
     const { data: searchResult, isLoading: isSearchingStats, error: searchError } = useQuery({
@@ -79,23 +97,35 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
             codigoItem: "",
             dataInicio: defaultDataInicio,
             dataFim: defaultDataFim,
+            ignoreDates: false, // RESTAURADO
         },
     });
+    
+    const ignoreDates = form.watch('ignoreDates'); // RESTAURADO
     
     const handleItemCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const rawValue = e.target.value.replace(/\D/g, '');
         const limitedValue = rawValue.slice(0, 9); 
         form.setValue('codigoItem', limitedValue, { shouldValidate: true });
     };
+    
+    // RESTAURADO: Função para selecionar item do catálogo CATMAT
+    const handleCatmatSelect = (catmatItem: { code: string, description: string, short_description: string | null }) => {
+        form.setValue('codigoItem', catmatItem.code, { shouldValidate: true });
+        setIsCatmatCatalogOpen(false);
+    };
 
     const onSubmit = async (values: PriceSearchFormValues) => {
         setIsSearching(true);
         setIsDetailsOpen(false); // Fecha os detalhes ao iniciar nova busca
         
+        const catmatCode = values.codigoItem;
+        
         const params: PriceStatsSearchParams = {
-            codigoItem: values.codigoItem,
-            dataInicio: values.dataInicio || null,
-            dataFim: values.dataFim || null,
+            codigoItem: catmatCode,
+            // RESTAURADO: Lógica de ignorar datas
+            dataInicio: values.ignoreDates ? null : values.dataInicio || null,
+            dataFim: values.ignoreDates ? null : values.dataFim || null,
         };
         
         setSearchParams(params);
@@ -138,32 +168,100 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
         
         onPriceSelect(item);
     };
+    
+    // RESTAURADO: Função para renderizar os botões de preço
+    const renderPriceButtons = (stats: PriceStats) => {
+        const buttonClass = "flex flex-col items-center justify-center h-24 w-full text-center transition-all";
+        const priceStyle = "text-xl font-bold mt-1";
+        
+        return (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                
+                {/* Preço Médio */}
+                <Button 
+                    type="button" 
+                    variant="outline" 
+                    className={buttonClass}
+                    onClick={() => handleSelectPrice(stats.avgPrice, searchResult!.descricaoItem || `Item CATMAT ${searchResult!.codigoItem} (Preço Médio)`)}
+                >
+                    <span className="text-sm text-muted-foreground">Preço Médio</span>
+                    <span className={priceStyle}>{formatCurrency(stats.avgPrice)}</span>
+                </Button>
+                
+                {/* Mediana */}
+                <Button 
+                    type="button" 
+                    variant="outline" 
+                    className={buttonClass}
+                    onClick={() => handleSelectPrice(stats.medianPrice, searchResult!.descricaoItem || `Item CATMAT ${searchResult!.codigoItem} (Preço Mediana)`)}
+                >
+                    <span className="text-sm text-muted-foreground">Mediana</span>
+                    <span className={priceStyle}>{formatCurrency(stats.medianPrice)}</span>
+                </Button>
+                
+                {/* Preço Mínimo */}
+                <Button 
+                    type="button" 
+                    variant="outline" 
+                    className={buttonClass}
+                    onClick={() => handleSelectPrice(stats.minPrice, searchResult!.descricaoItem || `Item CATMAT ${searchResult!.codigoItem} (Preço Mínimo)`)}
+                >
+                    <span className="text-sm text-muted-foreground">Preço Mínimo</span>
+                    <span className={priceStyle}>{formatCurrency(stats.minPrice)}</span>
+                </Button>
+                
+                {/* Preço Máximo */}
+                <Button 
+                    type="button" 
+                    variant="outline" 
+                    className={buttonClass}
+                    onClick={() => handleSelectPrice(stats.maxPrice, searchResult!.descricaoItem || `Item CATMAT ${searchResult!.codigoItem} (Preço Máximo)`)}
+                >
+                    <span className="text-sm text-muted-foreground">Preço Máximo</span>
+                    <span className={priceStyle}>{formatCurrency(stats.maxPrice)}</span>
+                </Button>
+            </div>
+        );
+    };
+
 
     return (
-        <div className="p-4 space-y-4">
+        <>
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         
                         <FormField
                             control={form.control}
                             name="codigoItem"
                             render={({ field }) => (
-                                <FormItem className="col-span-2">
+                                <FormItem className="col-span-4 md:col-span-2">
                                     <FormLabel>Cód. CATMAT/CATSER *</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            {...field}
-                                            onChange={handleItemCodeChange}
-                                            value={field.value}
-                                            placeholder="Ex: 123456789"
-                                            maxLength={9}
+                                    <div className="flex gap-2">
+                                        <FormControl>
+                                            <Input
+                                                {...field}
+                                                onChange={handleItemCodeChange}
+                                                value={field.value}
+                                                placeholder="Ex: 604269"
+                                                maxLength={9}
+                                                disabled={isSearchingStats || isSearching}
+                                            />
+                                        </FormControl>
+                                        {/* RESTAURADO: Botão Catálogo CATMAT */}
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            size="icon" 
+                                            onClick={() => setIsCatmatCatalogOpen(true)}
                                             disabled={isSearchingStats || isSearching}
-                                        />
-                                    </FormControl>
+                                        >
+                                            <BookOpen className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                     <FormMessage />
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        9 dígitos. Deixe as datas vazias para buscar o histórico completo.
+                                        Insira o código do item de material ou serviço (máx. 9 dígitos).
                                     </p>
                                 </FormItem>
                             )}
@@ -173,13 +271,15 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                             control={form.control}
                             name="dataInicio"
                             render={({ field }) => (
-                                <FormItem className="col-span-1">
+                                <FormItem className="col-span-2 md:col-span-1">
                                     <FormLabel>Data de Início</FormLabel>
                                     <FormControl>
                                         <Input
                                             type="date"
                                             {...field}
-                                            disabled={isSearchingStats || isSearching}
+                                            disabled={isSearchingStats || isSearching || ignoreDates}
+                                            value={ignoreDates ? '' : field.value}
+                                            onChange={field.onChange}
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -191,16 +291,43 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                             control={form.control}
                             name="dataFim"
                             render={({ field }) => (
-                                <FormItem className="col-span-1">
+                                <FormItem className="col-span-2 md:col-span-1">
                                     <FormLabel>Data de Fim</FormLabel>
                                     <FormControl>
                                         <Input
                                             type="date"
                                             {...field}
-                                            disabled={isSearchingStats || isSearching}
+                                            disabled={isSearchingStats || isSearching || ignoreDates}
+                                            value={ignoreDates ? '' : field.value}
+                                            onChange={field.onChange}
                                         />
                                     </FormControl>
                                     <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        
+                        {/* RESTAURADO: Checkbox para ignorar datas */}
+                        <FormField
+                            control={form.control}
+                            name="ignoreDates"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 col-span-4">
+                                    <FormControl>
+                                        <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                            disabled={isSearchingStats || isSearching}
+                                        />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel>
+                                            Pesquisar sem restrição de data
+                                        </FormLabel>
+                                        <FormDescription>
+                                            Busca todos os registros de preço disponíveis para o item, ignorando o período acima.
+                                        </FormDescription>
+                                    </div>
                                 </FormItem>
                             )}
                         />
@@ -215,7 +342,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                         ) : (
                             <>
                                 <Search className="h-4 w-4 mr-2" />
-                                Buscar Preço Médio
+                                Buscar Estatísticas de Preço
                             </>
                         )}
                     </Button>
@@ -232,6 +359,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
 
             {searchResult && searchResult.stats && (
                 <Card className="p-4 space-y-4">
+                    {/* INTEGRAÇÃO DA NOVA FUNCIONALIDADE DE EXPANSÃO */}
                     <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
                         <CollapsibleTrigger asChild>
                             <div className="flex items-center justify-between cursor-pointer hover:bg-muted/50 p-2 -m-2 rounded-md transition-colors">
@@ -253,82 +381,35 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                     </Collapsible>
                     
                     <CardContent className="p-0 pt-4 grid grid-cols-2 md:grid-cols-4 gap-4 border-t">
-                        <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">Preço Mínimo</p>
-                            <p className="text-xl font-bold text-green-600">
-                                {formatCurrency(searchResult.stats.minPrice)}
+                        <div className="space-y-1 col-span-4">
+                            <p className="text-sm text-muted-foreground">
+                                Item: <span className="font-medium text-foreground">{capitalizeFirstLetter(searchResult.descricaoItem || 'N/A')}</span>
                             </p>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => handleSelectPrice(searchResult.stats!.minPrice, searchResult.descricaoItem || `Item CATMAT ${searchResult.codigoItem} (Preço Mínimo)`)}
-                                className="w-full mt-2"
-                            >
-                                <Import className="h-4 w-4 mr-1" />
-                                Usar Mínimo
-                            </Button>
                         </div>
-                        <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">Preço Médio</p>
-                            <p className="text-xl font-bold text-primary">
-                                {formatCurrency(searchResult.stats.avgPrice)}
-                            </p>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => handleSelectPrice(searchResult.stats!.avgPrice, searchResult.descricaoItem || `Item CATMAT ${searchResult.codigoItem} (Preço Médio)`)}
-                                className="w-full mt-2"
-                            >
-                                <Import className="h-4 w-4 mr-1" />
-                                Usar Médio
-                            </Button>
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">Preço Mediana</p>
-                            <p className="text-xl font-bold text-blue-600">
-                                {formatCurrency(searchResult.stats.medianPrice)}
-                            </p>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => handleSelectPrice(searchResult.stats!.medianPrice, searchResult.descricaoItem || `Item CATMAT ${searchResult.codigoItem} (Preço Mediana)`)}
-                                className="w-full mt-2"
-                            >
-                                <Import className="h-4 w-4 mr-1" />
-                                Usar Mediana
-                            </Button>
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">Preço Máximo</p>
-                            <p className="text-xl font-bold text-red-600">
-                                {formatCurrency(searchResult.stats.maxPrice)}
-                            </p>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => handleSelectPrice(searchResult.stats!.maxPrice, searchResult.descricaoItem || `Item CATMAT ${searchResult.codigoItem} (Preço Máximo)`)}
-                                className="w-full mt-2"
-                            >
-                                <Import className="h-4 w-4 mr-1" />
-                                Usar Máximo
-                            </Button>
-                        </div>
+                        
+                        {/* Botões de Seleção de Preço (RESTAURADOS) */}
+                        {renderPriceButtons(searchResult.stats)}
+                        
+                        <p className="text-xs text-muted-foreground mt-4 col-span-4">
+                            Selecione um dos valores acima para usá-lo como preço unitário de referência.
+                        </p>
                     </CardContent>
                 </Card>
             )}
             
             {searchResult && !searchResult.stats && (
                 <Card className="p-4 text-center text-muted-foreground">
-                    Nenhuma estatística de preço encontrada para o item {searchResult.codigoItem} no período.
+                    Nenhum registro de preço encontrado para o item {searchResult.codigoItem} no período.
                 </Card>
             )}
 
-            <OmSelectorDialog
-                open={false} // Mantido como false, pois este componente não usa o seletor de OM
-                onOpenChange={() => {}}
-                onSelect={() => {}}
+            {/* Diálogo de Catálogo CATMAT (RESTAURADO) */}
+            <CatmatCatalogDialog
+                open={isCatmatCatalogOpen}
+                onOpenChange={setIsCatmatCatalogOpen}
+                onSelect={handleCatmatSelect}
             />
-        </div>
+        </>
     );
 };
 
