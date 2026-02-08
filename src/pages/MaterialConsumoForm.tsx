@@ -384,7 +384,7 @@ const MaterialConsumoForm = () => {
             const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
             setSelectedOmFavorecidaId(omFavorecida?.id);
             
-            const omDestino = oms?.find(om => om.nome_om === formData.om_destino && om.codug_om === formData.ug_detentora);
+            const omDestino = oms?.find(om => om.nome_om === formData.om_destino && om.codug_om === formData.ug_destino);
             setSelectedOmDestinoId(omDestino?.id);
         }
     }, [ptrabData, oms, editingId]);
@@ -1037,7 +1037,7 @@ const MaterialConsumoForm = () => {
                                                                 type="number"
                                                                 min={0} 
                                                                 placeholder="1"
-                                                                // Garante que '0' seja exibido como '' para permitir digitação livre
+                                                                // Garante que '0' seja exibido como '0' e não como string vazia, mas permite a digitação
                                                                 value={item.quantidade_solicitada === 0 ? "" : item.quantidade_solicitada}
                                                                 onChange={(e) => {
                                                                     // Permite que o campo fique vazio temporariamente durante a digitação
@@ -1045,21 +1045,15 @@ const MaterialConsumoForm = () => {
                                                                     const quantity = rawValue === '' ? 0 : parseInt(rawValue) || 0;
                                                                     handleItemQuantityChange(group.id, item.id, quantity);
                                                                 }}
-                                                                className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                className="w-20 text-center h-8" // Removidas as classes de aparência
                                                                 disabled={isSaving}
-                                                                onWheel={(e) => e.currentTarget.blur()} // Desabilita roda do mouse
-                                                                onKeyDown={(e) => { // Desabilita setas do teclado
-                                                                    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                                                                        e.preventDefault();
-                                                                    }
-                                                                }}
                                                             />
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
                                                         {item.descricao_reduzida || item.descricao_item}
                                                         <p className="text-xs text-muted-foreground mt-0.5">
-                                                            CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({formatCodug(item.uasg)})
+                                                            CATMAT: {item.codigo_catmat} | GND: {item.gnd}
                                                         </p>
                                                     </TableCell>
                                                     <TableCell className="text-right text-sm">
@@ -1423,21 +1417,15 @@ const MaterialConsumoForm = () => {
                                                                                                                 const quantity = rawValue === '' ? 0 : parseInt(rawValue) || 0;
                                                                                                                 handleItemQuantityChange(group.id, item.id, quantity);
                                                                                                             }}
-                                                                                                            className="w-20 text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                                            className="w-20 text-center h-8" // Removidas as classes de aparência
                                                                                                             disabled={isSaving}
-                                                                                                            onWheel={(e) => e.currentTarget.blur()} // Desabilita roda do mouse
-                                                                                                            onKeyDown={(e) => { // Desabilita setas do teclado
-                                                                                                                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                                                                                                                    e.preventDefault();
-                                                                                                                }
-                                                                                                            }}
                                                                                                         />
                                                                                                     </div>
                                                                                                 </TableCell>
                                                                                                 <TableCell>
                                                                                                     {item.descricao_reduzida || item.descricao_item}
                                                                                                     <p className="text-xs text-muted-foreground mt-0.5">
-                                                                                                        CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({formatCodug(item.uasg)})
+                                                                                                        CATMAT: {item.codigo_catmat} | GND: {item.gnd}
                                                                                                     </p>
                                                                                                 </TableCell>
                                                                                                 <TableCell className="text-right text-sm">
