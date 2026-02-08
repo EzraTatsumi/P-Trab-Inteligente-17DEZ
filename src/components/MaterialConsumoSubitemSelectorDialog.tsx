@@ -28,7 +28,7 @@ interface SelectedItemAquisicaoAugmented extends SelectedItemAquisicao {
 
 interface MaterialConsumoSubitemSelectorDialogProps {
     open: boolean;
-    onOpenChange: (open: boolean) => void;
+    onOpenChange: (open: (open: boolean) => boolean) => void;
     selectedYear: number;
     initialSelections: SelectedItemAquisicao[];
     // Alterado para retornar uma lista plana de itens, permitindo múltiplos subitens
@@ -261,7 +261,7 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                                 <CollapsibleTrigger asChild>
                                     <div 
                                         className={cn(
-                                            "p-3 flex justify-between items-center cursor-pointer transition-colors w-full",
+                                            "p-3 flex justify-between items-center cursor-pointer transition-colors w-full rounded-lg", // Adicionado rounded-lg
                                             isSubitemOpen 
                                                 ? "bg-primary/10 border-primary/50" 
                                                 : "hover:bg-muted/50",
@@ -375,16 +375,7 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                     {renderSubitemList()}
                 </div>
                 
-                <DialogFooter className="flex justify-between sm:justify-between">
-                    <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={() => onOpenChange(false)}
-                        disabled={isDataLoading}
-                    >
-                        Cancelar
-                    </Button>
-                    
+                <DialogFooter className="flex justify-end gap-3">
                     <Button 
                         type="button" 
                         onClick={handleConfirmSelection}
@@ -392,6 +383,14 @@ const MaterialConsumoSubitemSelectorDialog: React.FC<MaterialConsumoSubitemSelec
                     >
                         <Check className="mr-2 h-4 w-4" />
                         Confirmar Seleção ({totalSelectedItems})
+                    </Button>
+                    <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => onOpenChange(false)}
+                        disabled={isDataLoading}
+                    >
+                        Cancelar
                     </Button>
                 </DialogFooter>
             </DialogContent>
