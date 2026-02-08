@@ -14,7 +14,8 @@ type PTrabLinkedTableName =
     'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' |
     'classe_viii_saude_registros' | 'classe_viii_remonta_registros' |
     'classe_ix_registros' | 'p_trab_ref_lpc' | 'passagem_registros' |
-    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros' | 'horas_voo_registros' | 'material_consumo_registros'; // ADICIONADO
+    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros' | 'horas_voo_registros' |
+    'material_consumo_registros'; // ADICIONADO
 
 /**
  * Tipo de dados para o PTrab principal.
@@ -167,4 +168,25 @@ export async function fetchDefaultLogisticaYear(): Promise<number | null> {
     }
 
     return data?.default_logistica_year ?? null;
+}
+
+/**
+ * Busca o ano padrão operacional (default_operacional_year) do perfil do usuário.
+ */
+export async function fetchDefaultOperacionalYear(): Promise<number | null> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('default_operacional_year')
+        .eq('id', user.id)
+        .single();
+
+    if (error) {
+        console.error("Erro ao buscar default_operacional_year:", error);
+        return null;
+    }
+
+    return data?.default_operacional_year ?? null;
 }

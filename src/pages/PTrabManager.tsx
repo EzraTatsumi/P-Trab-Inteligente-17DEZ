@@ -96,7 +96,8 @@ type PTrabLinkedTableName =
     'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' | 
     'classe_viii_saude_registros' | 'classe_viii_remonta_registros' | 
     'classe_ix_registros' | 'p_trab_ref_lpc' | 'passagem_registros' | 
-    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros' | 'horas_voo_registros' | 'material_consumo_registros'; // ADICIONADO
+    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros' | 'horas_voo_registros' |
+    'material_consumo_registros'; // ADICIONADO
 
 // Lista de Comandos Militares de Área (CMA)
 const COMANDOS_MILITARES_AREA = [
@@ -1247,7 +1248,7 @@ const PTrabManager = () => {
     
     const genericNumericFields = ['dias_operacao', 'valor_total', 'valor_nd_30', 'valor_nd_39', 'efetivo'];
 
-    // CORREÇÕES APLICADAS AQUI (Linhas 1188, 1234-1239, 1268)
+    // CLASSE II
     await cloneClassRecords('classe_ii_registros', 'itens_equipamentos', genericNumericFields);
 
     const classeIIINumericFields = [
@@ -1343,7 +1344,45 @@ const PTrabManager = () => {
     await cloneClassRecords('horas_voo_registros', null, ['dias_operacao', 'quantidade_hv', 'valor_nd_30', 'valor_nd_39', 'valor_total']);
     
     // CLONAGEM DE MATERIAL DE CONSUMO (NOVO)
-    await cloneClassRecords('material_consumo_registros', 'itens_aquisicao_selecionados', ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_30', 'valor_nd_39']);
+    const materialConsumoNumericFields = ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_30', 'valor_nd_39'];
+    
+    const { data: originalMaterialConsumoRecords, error: fetchMaterialConsumoError } = await supabase
+      .from("material_consumo_registros")
+      .select("*")
+      .eq("p_trab_id", originalPTrabId);
+
+    if (fetchMaterialConsumoError) {
+      console.error("Erro ao carregar registros de Material de Consumo:", fetchMaterialConsumoError);
+    } else {
+      const newMaterialConsumoRecords = (originalMaterialConsumoRecords || []).map(record => {
+        const { id, created_at, updated_at, ...restOfRecord } = record;
+        
+        const newRecord: Record<string, any> = {
+            ...restOfRecord,
+            p_trab_id: newPTrabId,
+            // Clonar JSONB
+            itens_aquisicao_selecionados: record.itens_aquisicao_selecionados ? JSON.parse(JSON.stringify(record.itens_aquisicao_selecionados)) : null,
+        };
+        
+        materialConsumoNumericFields.forEach(field => {
+            if (newRecord[field] === null || newRecord[field] === undefined) {
+                newRecord[field] = 0;
+            }
+        });
+        
+        return newRecord;
+      });
+
+      if (newMaterialConsumoRecords.length > 0) {
+        const { error: insertMaterialConsumoError } = await supabase
+          .from("material_consumo_registros")
+          .insert(newMaterialConsumoRecords as TablesInsert<'material_consumo_registros'>[]);
+        if (insertMaterialConsumoError) {
+          console.error("ERRO DE INSERÇÃO MATERIAL CONSUMO:", insertMaterialConsumoError);
+          toast.error(`Erro ao clonar registros de Material de Consumo: ${sanitizeError(insertMaterialConsumoError)}`);
+        }
+      }
+    }
   };
 
   const needsNumbering = (ptrab: PTrab) => {
@@ -1420,7 +1459,7 @@ const PTrabManager = () => {
             'passagem_registros', 
             'concessionaria_registros', // NOVO: Adicionado Concessionária
             'horas_voo_registros', // CORRIGIDO: Adicionado Horas de Voo
-            'material_consumo_registros', // NOVO: Adicionado Material de Consumo
+            'material_consumo_registros', // NOVO: Adicionado Material Consumo
         ];
         
         for (const tableName of tablesToConsolidate) {
@@ -1453,7 +1492,7 @@ const PTrabManager = () => {
                         ...(record.hasOwnProperty('itens_remonta') && { itens_remonta: JSON.parse(JSON.stringify((record as any).itens_remonta)) }),
                         ...(record.hasOwnProperty('itens_motomecanizacao') && { itens_motomecanizacao: JSON.parse(JSON.stringify((record as any).itens_motomecanizacao)) }),
                         ...(record.hasOwnProperty('quantidades_por_posto') && { quantidades_por_posto: JSON.parse(JSON.stringify((record as any).quantidades_por_posto)) }),
-                        // NOVO: Clonar itens_aquisicao_selecionados
+                        // NOVO: Clonar itens_aquisicao_selecionados para Material Consumo
                         ...(record.hasOwnProperty('itens_aquisicao_selecionados') && { itens_aquisicao_selecionados: JSON.parse(JSON.stringify((record as any).itens_aquisicao_selecionados)) }),
                     } as TablesInsert<typeof tableName>;
                     

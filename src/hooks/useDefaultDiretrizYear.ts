@@ -1,61 +1,44 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useSession } from "@/components/SessionContextProvider";
+import { useQuery } from '@tanstack/react-query';
+import { useSession } from '@/components/SessionContextProvider';
+import { fetchDefaultLogisticaYear, fetchDefaultOperacionalYear } from '@/lib/ptrabUtils';
+
+type DiretrizType = 'logistica' | 'operacional';
 
 /**
- * Determina o ano de referência para as diretrizes de Custos Operacionais.
- * Prioriza: Ano Padrão do Perfil > Ano Mais Recente Cadastrado > Ano Atual.
- * 
- * @returns O ano de referência e o ano padrão definido no perfil.
+ * Hook para buscar o ano de referência padrão do usuário (logística ou operacional).
+ * @param type O tipo de diretriz a buscar ('logistica' ou 'operacional'). Opcional, padroniza para 'logistica'.
+ * @returns O ano padrão e o ano atual (fallback).
  */
-export const useDefaultDiretrizYear = () => {
+export function useDefaultDiretrizYear(type: DiretrizType = 'logistica') {
     const { user } = useSession();
+    const userId = user?.id;
     const currentYear = new Date().getFullYear();
 
-    return useQuery({
-        queryKey: ["defaultOperacionalYear", user?.id],
+    const queryKey = ['defaultDiretrizYear', userId, type];
+
+    const { data, isLoading, error } = useQuery({
+        queryKey: queryKey,
         queryFn: async () => {
-            if (!user?.id) {
-                return { year: currentYear, defaultYear: null };
-            }
+            if (!userId) return { defaultYear: null, year: currentYear };
 
-            // 1. Buscar o ano padrão de Operacional do perfil
-            const { data: profileData } = await supabase
-                .from('profiles')
-                .select('default_operacional_year')
-                .eq('id', user.id)
-                .maybeSingle();
+            const fetchFunction = type === 'logistica' 
+                ? fetchDefaultLogisticaYear 
+                : fetchDefaultOperacionalYear;
             
-            const defaultYear = profileData?.default_operacional_year || null;
-
-            // 2. Buscar o ano mais recente disponível em diretrizes_operacionais
-            const { data: latestOperacionalData } = await supabase
-                .from("diretrizes_operacionais")
-                .select("ano_referencia")
-                .eq("user_id", user.id)
-                .order("ano_referencia", { ascending: false })
-                .limit(1)
-                .maybeSingle();
-                
-            const latestOperacionalYear = latestOperacionalData?.ano_referencia || null;
+            const defaultYear = await fetchFunction();
             
-            // 3. Determinar o ano a ser usado
-            let yearToUse = currentYear;
+            // Se o ano padrão não estiver definido ou for inválido, usa o ano atual como fallback
+            const year = defaultYear && defaultYear > 0 ? defaultYear : currentYear;
             
-            // Se o ano padrão estiver definido E for igual ao ano mais recente salvo OU ao ano atual, use-o.
-            if (defaultYear && (defaultYear === latestOperacionalYear || defaultYear === currentYear)) {
-                yearToUse = defaultYear;
-            } else if (latestOperacionalYear) {
-                // Se houver um ano salvo mais recente, use-o.
-                yearToUse = latestOperacionalYear;
-            } else if (defaultYear) {
-                // Se houver um ano padrão definido, mas não houver dados salvos, use o padrão.
-                yearToUse = defaultYear;
-            }
-            
-            return { year: yearToUse, defaultYear };
+            return { defaultYear, year };
         },
-        enabled: !!user?.id,
-        staleTime: 1000 * 60 * 5, // 5 minutos de cache
+        enabled: !!userId,
+        initialData: { defaultYear: null, year: currentYear },
     });
-};
+
+    return {
+        data,
+        isLoading,
+        error,
+    };
+}

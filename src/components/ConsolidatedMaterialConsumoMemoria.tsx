@@ -1,27 +1,29 @@
-import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import React from 'react';
+import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Pencil, Save, RefreshCw, XCircle, ChevronDown, ChevronUp } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ConsolidatedMaterialConsumo } from "@/types/materialConsumo";
-import { generateConsolidatedMaterialConsumoMemoriaCalculo } from "@/lib/materialConsumoUtils";
-import { cn } from '@/lib/utils';
+import { Button } from "@/components/ui/button";
+import { Pencil, Save, XCircle, RefreshCw, Loader2, Check } from "lucide-react";
+import { 
+    ConsolidatedMaterialConsumoRecord, 
+    generateConsolidatedMaterialConsumoMemoriaCalculo,
+    generateMaterialConsumoMemoriaCalculo, // Importar a função de memória individual
+} from "@/lib/materialConsumoUtils";
+import { cn } from "@/lib/utils";
 
 interface ConsolidatedMaterialConsumoMemoriaProps {
-    group: ConsolidatedMaterialConsumo;
+    group: ConsolidatedMaterialConsumoRecord & { groupKey: string };
     isPTrabEditable: boolean;
     isSaving: boolean;
     editingMemoriaId: string | null;
     memoriaEdit: string;
     setMemoriaEdit: (value: string) => void;
-    handleIniciarEdicaoMemoria: (group: ConsolidatedMaterialConsumo, memoriaCompleta: string) => void;
+    handleIniciarEdicaoMemoria: (group: ConsolidatedMaterialConsumoRecord & { groupKey: string }, memoriaCompleta: string) => void;
     handleCancelarEdicaoMemoria: () => void;
     handleSalvarMemoriaCustomizada: (registroId: string) => Promise<void>;
     handleRestaurarMemoriaAutomatica: (registroId: string) => Promise<void>;
 }
 
-const ConsolidatedMaterialConsumoMemoria: React.FC<ConsolidatedMaterialConsumoMemoriaProps> = ({
+export const ConsolidatedMaterialConsumoMemoria: React.FC<ConsolidatedMaterialConsumoMemoriaProps> = ({
     group,
     isPTrabEditable,
     isSaving,
@@ -33,114 +35,101 @@ const ConsolidatedMaterialConsumoMemoria: React.FC<ConsolidatedMaterialConsumoMe
     handleSalvarMemoriaCustomizada,
     handleRestaurarMemoriaAutomatica,
 }) => {
-    const [isOpen, setIsOpen] = useState(false);
+    // O ID do registro para edição é o ID do primeiro registro do grupo
+    const registroId = group.records[0]?.id;
+    const isEditing = editingMemoriaId === registroId;
     
-    // O ID do registro que está sendo editado (o primeiro do grupo)
-    const firstRecordId = group.records[0]?.id || '';
-    const isEditing = editingMemoriaId === firstRecordId;
+    // A memória completa é gerada a partir do primeiro registro (que contém o customizado, se houver)
+    const memoriaCompleta = generateConsolidatedMaterialConsumoMemoriaCalculo(group);
     
-    // A memória automática é gerada a partir do grupo consolidado
-    const memoriaAutomatica = useMemo(() => {
-        return generateConsolidatedMaterialConsumoMemoriaCalculo(group);
-    }, [group]);
-    
-    // Verifica se a memória atual é customizada
-    const isCustomized = !!group.records[0]?.detalhamento_customizado;
-    
-    // O texto a ser exibido (customizado se existir, senão automático)
-    const displayMemoria = isCustomized ? group.records[0].detalhamento_customizado : memoriaAutomatica;
+    // Verifica se a memória atual é customizada (comparando com a automática)
+    // Usamos o primeiro registro do grupo para gerar a memória automática
+    const memoriaAutomatica = group.records[0] ? generateMaterialConsumoMemoriaCalculo(group.records[0]) : '';
+    const isCustomized = group.records[0]?.detalhamento_customizado !== null;
 
     return (
-        <Card className={cn("border", isCustomized && "border-green-500 shadow-md")}>
-            <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-                <CardHeader className="py-3 px-4">
-                    <CollapsibleTrigger asChild>
-                        <div className="flex items-center justify-between cursor-pointer">
-                            <CardTitle className="text-base font-semibold flex items-center gap-2">
-                                <span className="text-primary">{group.organizacao} (UG: {group.ug})</span>
-                                {isCustomized && (
-                                    <span className="text-xs text-green-600 font-medium flex items-center">
-                                        <Pencil className="h-3 w-3 mr-1" /> Customizada
-                                    </span>
-                                )}
-                            </CardTitle>
-                            {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </div>
-                    </CollapsibleTrigger>
-                </CardHeader>
-                
-                <CollapsibleContent>
-                    <CardContent className="pt-2 pb-4 px-4">
-                        {isEditing ? (
-                            // MODO EDIÇÃO
-                            <div className="space-y-3">
-                                <Textarea
-                                    value={memoriaEdit}
-                                    onChange={(e) => setMemoriaEdit(e.target.value)}
-                                    rows={10}
-                                    className="font-mono text-xs"
-                                    disabled={isSaving}
-                                />
-                                <div className="flex justify-end gap-2">
+        <Card className="shadow-md">
+            <CardContent className="p-4 space-y-3">
+                <div className="flex justify-between items-center border-b pb-2">
+                    <h4 className="font-bold text-base">
+                        {group.nr_subitem} - {group.nome_subitem}
+                    </h4>
+                    {isPTrabEditable && !isSaving && (
+                        <div className="flex gap-2">
+                            {isEditing ? (
+                                <>
                                     <Button 
                                         type="button" 
                                         variant="outline" 
+                                        size="sm" 
                                         onClick={handleCancelarEdicaoMemoria}
-                                        disabled={isSaving}
                                     >
-                                        <XCircle className="mr-2 h-4 w-4" />
+                                        <XCircle className="h-4 w-4 mr-2" />
                                         Cancelar
                                     </Button>
                                     <Button 
                                         type="button" 
-                                        onClick={() => handleSalvarMemoriaCustomizada(firstRecordId)}
+                                        size="sm" 
+                                        onClick={() => handleSalvarMemoriaCustomizada(registroId)}
                                         disabled={isSaving}
                                     >
-                                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                        Salvar Customizada
+                                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                                        Salvar
                                     </Button>
-                                </div>
-                            </div>
-                        ) : (
-                            // MODO VISUALIZAÇÃO
-                            <div className="space-y-3">
-                                <pre className="bg-muted p-3 rounded-md text-xs font-mono whitespace-pre-wrap break-words">
-                                    {displayMemoria}
-                                </pre>
-                                
-                                {isPTrabEditable && (
-                                    <div className="flex justify-end gap-2">
-                                        {isCustomized && (
-                                            <Button 
-                                                type="button" 
-                                                variant="destructive" 
-                                                size="sm"
-                                                onClick={() => handleRestaurarMemoriaAutomatica(firstRecordId)}
-                                                disabled={isSaving}
-                                            >
-                                                <RefreshCw className="mr-2 h-4 w-4" />
-                                                Restaurar Automática
-                                            </Button>
-                                        )}
+                                </>
+                            ) : (
+                                <>
+                                    {isCustomized && (
                                         <Button 
                                             type="button" 
-                                            variant="secondary" 
-                                            size="sm"
-                                            onClick={() => handleIniciarEdicaoMemoria(group, displayMemoria)}
-                                            disabled={isSaving}
+                                            variant="destructive" 
+                                            size="sm" 
+                                            onClick={() => handleRestaurarMemoriaAutomatica(registroId)}
                                         >
-                                            <Pencil className="mr-2 h-4 w-4" />
-                                            {isCustomized ? "Editar Customizada" : "Customizar"}
+                                            <RefreshCw className="h-4 w-4 mr-2" />
+                                            Restaurar Padrão
                                         </Button>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </CardContent>
-                </CollapsibleContent>
-            </Collapsible>
+                                    )}
+                                    <Button 
+                                        type="button" 
+                                        variant="outline" 
+                                        size="sm" 
+                                        onClick={() => handleIniciarEdicaoMemoria(group, memoriaCompleta)}
+                                    >
+                                        <Pencil className="h-4 w-4 mr-2" />
+                                        Editar
+                                    </Button>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
+                
+                {isEditing ? (
+                    <Textarea
+                        value={memoriaEdit}
+                        onChange={(e) => setMemoriaEdit(e.target.value)}
+                        rows={15}
+                        className="font-mono text-xs"
+                        placeholder="Edite a memória de cálculo aqui..."
+                        disabled={isSaving}
+                    />
+                ) : (
+                    <pre className={cn(
+                        "whitespace-pre-wrap break-words p-3 rounded-md bg-gray-50 border text-xs font-mono",
+                        isCustomized ? "border-green-500 bg-green-50/50" : "border-gray-200"
+                    )}>
+                        {memoriaCompleta}
+                    </pre>
+                )}
+                
+                {isCustomized && !isEditing && (
+                    <p className="text-xs text-green-600 font-medium flex items-center gap-1">
+                        <Check className="h-3 w-3" />
+                        Esta memória de cálculo foi customizada.
+                    </p>
+                )}
+            </CardContent>
         </Card>
     );
 };
-
-export default ConsolidatedMaterialConsumoMemoria;
