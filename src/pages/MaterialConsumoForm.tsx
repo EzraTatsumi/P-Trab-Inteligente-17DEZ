@@ -920,10 +920,10 @@ const MaterialConsumoForm = () => {
                 <Card>
                     <CardHeader>
                         <CardTitle>
-                            Material de Consumo (ND 33.90.30/39)
+                            Material de Consumo
                         </CardTitle>
                         <CardDescription>
-                            Solicitação de recursos para aquisição de material de consumo (ND 33.90.30 e 33.90.39).
+                            Solicitação de recursos para aquisição de material de consumo.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -1400,11 +1400,11 @@ const MaterialConsumoForm = () => {
                                                             </div>
                                                             <div className="flex justify-between text-xs">
                                                                 <span className="text-muted-foreground">ND 33.90.30:</span>
-                                                                <span className="text-green-600">{formatCurrency(totalND30Consolidado)}</span>
+                                                                <span className="text-green-600">{formatCurrency(totalND30)}</span>
                                                             </div>
                                                             <div className="flex justify-between text-xs">
                                                                 <span className="text-muted-foreground">ND 33.90.39:</span>
-                                                                <span className="text-green-600">{formatCurrency(totalND39Consolidado)}</span>
+                                                                <span className="text-green-600">{formatCurrency(totalND39)}</span>
                                                             </div>
                                                         </div>
                                                     </Card>
