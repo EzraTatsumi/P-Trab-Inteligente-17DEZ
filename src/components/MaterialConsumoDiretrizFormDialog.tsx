@@ -276,21 +276,38 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     const handlePNCPImport = (newItems: ItemAquisicao[]) => {
         if (newItems.length === 0) {
             toast.info("Nenhum item novo para adicionar.");
-            // Não fecha o diálogo PNCP
             return;
         }
         
-        // 1. Adiciona os novos itens válidos aos existentes
-        setSubitemForm(prev => ({
-            ...prev,
-            itens_aquisicao: [...prev.itens_aquisicao, ...newItems],
-        }));
-        
-        toast.success(`${newItems.length} itens importados do PNCP com sucesso e adicionados à lista.`);
+        // Verifica se o primeiro item é um item de Preço Médio (que precisa de UASG/Pregão manual)
+        // Itens de Preço Médio têm UASG vazia e Pregão padrão 'Em processo de abertura'
+        const firstItem = newItems[0];
+        const isPriceReferenceItem = firstItem.uasg === '' && firstItem.numero_pregao === 'Em processo de abertura';
 
-        // 2. Limpa o formulário de item individual
-        setItemForm(initialItemForm);
-        setEditingItemId(null);
+        if (isPriceReferenceItem) {
+            // Se for item de Preço Médio, forçamos a edição no formulário individual
+            handleEditItem(firstItem);
+            toast.info("Item de Preço Médio importado. Por favor, preencha a UASG e o Pregão/Ref. Preço antes de adicionar.");
+            
+            // Se houver mais itens (o que não deve acontecer no fluxo de Preço Médio), eles são descartados
+            if (newItems.length > 1) {
+                console.warn("Múltiplos itens de preço médio importados. Apenas o primeiro foi enviado para edição.");
+            }
+        } else {
+            // Se for ARP (ou qualquer outro item com UASG/Pregão preenchidos), adiciona diretamente
+            
+            // 1. Adiciona os novos itens válidos aos existentes
+            setSubitemForm(prev => ({
+                ...prev,
+                itens_aquisicao: [...prev.itens_aquisicao, ...newItems],
+            }));
+            
+            toast.success(`${newItems.length} itens importados do PNCP com sucesso e adicionados à lista.`);
+
+            // 2. Limpa o formulário de item individual
+            setItemForm(initialItemForm);
+            setEditingItemId(null);
+        }
         
         // 3. NÃO FECHA O DIÁLOGO PNCP (Isso é controlado pelo ItemAquisicaoPNCPDialog)
     };
