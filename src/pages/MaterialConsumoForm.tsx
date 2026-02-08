@@ -1037,7 +1037,7 @@ const MaterialConsumoForm = () => {
                                                                 type="text" 
                                                                 min={0} 
                                                                 placeholder="1"
-                                                                {/* CORREÇÃO APLICADA AQUI: Remove a condição de string vazia */}
+                                                                // CORREÇÃO APLICADA AQUI: Vincula diretamente ao valor do estado
                                                                 value={String(item.quantidade_solicitada)} 
                                                                 onChange={(e) => {
                                                                     // Limpa caracteres não numéricos e converte
@@ -1236,7 +1236,6 @@ const MaterialConsumoForm = () => {
                                                                 type="number"
                                                                 min={1}
                                                                 placeholder="Ex: 7"
-                                                                {/* CORREÇÃO APLICADA AQUI */}
                                                                 value={formData.dias_operacao}
                                                                 onChange={(e) => setFormData({ ...formData, dias_operacao: parseInt(e.target.value) || 0 })}
                                                                 required
@@ -1254,7 +1253,6 @@ const MaterialConsumoForm = () => {
                                                                 type="number"
                                                                 min={1}
                                                                 placeholder="Ex: 10"
-                                                                {/* CORREÇÃO APLICADA AQUI */}
                                                                 value={formData.efetivo}
                                                                 onChange={(e) => setFormData({ ...formData, efetivo: parseInt(e.target.value) || 0 })}
                                                                 required
@@ -1411,7 +1409,7 @@ const MaterialConsumoForm = () => {
                                                                                                             type="text" 
                                                                                                             min={0} 
                                                                                                             placeholder="1"
-                                                                                                            {/* CORREÇÃO APLICADA AQUI */}
+                                                                                                            // CORREÇÃO APLICADA AQUI: Vincula diretamente ao valor do estado
                                                                                                             value={String(item.quantidade_solicitada)} 
                                                                                                             onChange={(e) => {
                                                                                                                 // Limpa caracteres não numéricos e converte
