@@ -285,7 +285,13 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         const isPriceReferenceItem = firstItem.uasg === '' && firstItem.numero_pregao === 'Em processo de abertura';
 
         if (isPriceReferenceItem) {
-            // Se for item de Preço Médio, forçamos a edição no formulário individual
+            // 1. Adiciona o item à lista (com UASG/Pregão vazios)
+            setSubitemForm(prev => ({
+                ...prev,
+                itens_aquisicao: [...prev.itens_aquisicao, firstItem],
+            }));
+            
+            // 2. Coloca o item em modo de edição para que o usuário preencha os campos faltantes
             handleEditItem(firstItem);
             toast.info("Item de Preço Médio importado. Por favor, preencha a UASG e o Pregão/Ref. Preço antes de adicionar.");
             
