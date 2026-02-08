@@ -561,7 +561,7 @@ export async function fetchPriceStatsDetails(params: PriceStatsSearchParams): Pr
         // Assumimos que a Edge Function retorna um array de objetos brutos
         const rawData = data as any[]; 
         
-        if (!Array.isArray(rawData)) {
+        if (!ArrayOfRawData(rawData)) {
             if (rawData && (rawData as any).error) {
                 throw new Error((rawData as any).error);
             }
@@ -571,16 +571,16 @@ export async function fetchPriceStatsDetails(params: PriceStatsSearchParams): Pr
         // Mapeamento e sanitização para o tipo PriceItemDetail atualizado
         const results: PriceItemDetail[] = rawData.map((item: any) => {
             
-            // Tenta extrair o valor unitário de 'preçoUnitario' ou 'valorUnitario'
-            const rawPrice = item.preçoUnitario ?? item.valorUnitario ?? 0;
+            // 1. Valor Unitário (Heurística expandida)
+            const rawPrice = item.preçoUnitario ?? item.valorUnitario ?? item.precoUnitario ?? 0;
             const valorUnitario = parseFloat(String(rawPrice));
             
-            // Tenta extrair o código UASG de 'codigoUasg' ou 'uasg'
-            const rawUasgCode = item.codigoUasg ?? item.uasg ?? 'N/A';
+            // 2. Código UASG (Heurística expandida)
+            const rawUasgCode = item.codigoUasg ?? item.uasg ?? item.codigoUnidadeGestora ?? item.unidadeGestora ?? 'N/A';
             const cleanUasgCode = String(rawUasgCode).replace(/\D/g, '').slice(0, 6);
             
-            // Tenta extrair o nome da UASG de 'nomeUasg' ou 'omNome'
-            const nomeUasg = item.nomeUasg ?? item.omNome ?? 'N/A';
+            // 3. Nome UASG (Heurística expandida)
+            const nomeUasg = item.nomeUasg ?? item.omNome ?? item.nomeUnidadeGestora ?? item.unidadeGestoraNome ?? 'N/A';
             
             return {
                 id: item.id || Math.random().toString(36).substring(2, 9),
