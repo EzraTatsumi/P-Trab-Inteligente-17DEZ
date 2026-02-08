@@ -218,10 +218,10 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     // NOVO: Função para selecionar um item de preço médio (apenas um por vez)
     const handlePriceSelect = (item: ItemAquisicao) => {
         // 1. Limpa todas as seleções ARP e outras referências de preço
-        handleClearPriceSelection();
+        const newSelection = selectedItemsState.filter(s => !s.isPriceReference);
         
         // 2. Adiciona o novo item de preço médio
-        setSelectedItemsState(prev => [...prev, { 
+        setSelectedItemsState([...newSelection, { 
             item: item, 
             pregaoFormatado: item.numero_pregao, 
             uasg: item.uasg, 
@@ -336,12 +336,14 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 nomePdm = pncpDetails.nomePdm; 
                 
                 // 6. Busca da Descrição Reduzida no Catálogo CATMAT (DB local)
-                shortDescription = await fetchCatmatShortDescription(initialMappedItem.codigo_catmat);
+                // MUDANÇA CRÍTICA: Usar o novo retorno da função
+                const catalogStatus = await fetchCatmatShortDescription(initialMappedItem.codigo_catmat);
+                shortDescription = catalogStatus.shortDescription;
+                isCatmatCataloged = catalogStatus.isCataloged;
                 
                 // Se encontrado no catálogo local, preenche a descrição reduzida no item mapeado
                 if (shortDescription) {
                     initialMappedItem.descricao_reduzida = shortDescription;
-                    isCatmatCataloged = true; 
                 } else {
                     // Fallback seguro para descrição reduzida (primeiras 50 letras da descrição completa)
                     const itemDescription = initialMappedItem.descricao_item || fullPncpDescription || '';
@@ -367,18 +369,23 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     messages.push(`Chaves de Item idênticas: ${keys}`);
                 } else {
                     // 8. Determinação do Status para itens NÃO duplicados
-                    if (isCatmatCataloged && !isPriceReference) { 
-                        // CATMAT encontrado e tem descrição reduzida (e não é fluxo de preço médio)
+                    
+                    // Se o item está catalogado E tem shortDescription E não é fluxo de preço médio, é válido.
+                    if (isCatmatCataloged && shortDescription && !isPriceReference) { 
                         status = 'valid';
                         messages.push('Pronto para importação.');
-                    } else if (isPriceReference) {
-                        // Se for fluxo de preço médio, sempre requer revisão para preencher Pregão/UASG
-                        status = 'needs_catmat_info';
-                        messages.push('Item de referência de preço. Requer preenchimento de Pregão/UASG.');
                     } else {
-                        // CATMAT não encontrado ou não tem descrição reduzida
+                        // Se for fluxo de preço médio OU se estiver catalogado mas sem shortDescription, requer revisão.
+                        // Se não estiver catalogado, também requer revisão.
                         status = 'needs_catmat_info';
-                        messages.push('Requer descrição reduzida para o catálogo CATMAT.');
+                        
+                        if (isPriceReference) {
+                            messages.push('Item de referência de preço. Requer preenchimento de Pregão/UASG.');
+                        } else if (isCatmatCataloged && !shortDescription) {
+                            messages.push('Item catalogado, mas requer descrição reduzida.');
+                        } else {
+                            messages.push('Requer descrição reduzida para o catálogo CATMAT.');
+                        }
                     }
                 }
                 
@@ -387,6 +394,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     mappedItem: initialMappedItem,
                     status: status,
                     messages: messages,
+                    // Se o item foi catalogado, usamos a shortDescription do BD como sugestão inicial
                     userShortDescription: shortDescription || '', 
                     fullPncpDescription: fullPncpDescription || 'Descrição completa não encontrada no PNCP.', 
                     nomePdm: nomePdm, 

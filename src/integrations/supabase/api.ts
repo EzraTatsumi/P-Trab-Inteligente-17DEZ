@@ -155,22 +155,29 @@ export async function fetchUserProfile(): Promise<Profile> {
     } as Profile;
 }
 
+// NOVO TIPO DE RETORNO
+interface CatmatCatalogStatus {
+    shortDescription: string | null;
+    isCataloged: boolean;
+}
+
 /**
- * Busca a descrição reduzida de um item no catálogo CATMAT.
+ * Busca a descrição reduzida de um item no catálogo CATMAT e verifica sua existência.
  * @param codigoCatmat O código CATMAT (string).
- * @returns A descrição reduzida (short_description) ou null.
+ * @returns Um objeto com a descrição reduzida (short_description) e um flag de existência.
  */
-export async function fetchCatmatShortDescription(codigoCatmat: string): Promise<string | null> {
-    if (!codigoCatmat) return null;
+export async function fetchCatmatShortDescription(codigoCatmat: string): Promise<CatmatCatalogStatus> {
+    if (!codigoCatmat) return { shortDescription: null, isCataloged: false };
     
     // Remove caracteres não numéricos.
     const cleanCode = codigoCatmat.replace(/\D/g, '');
     
     // Se o código limpo for vazio, retorna null
-    if (!cleanCode) return null;
+    if (!cleanCode) return { shortDescription: null, isCataloged: false };
     
     try {
-        const { data, error } = await supabase
+        // 1. Tenta buscar o código limpo
+        let { data, error } = await supabase
             .from('catalogo_catmat')
             .select('short_description')
             .eq('code', cleanCode)
@@ -178,8 +185,8 @@ export async function fetchCatmatShortDescription(codigoCatmat: string): Promise
             
         if (error) throw error;
         
-        // Se a busca falhar, tentamos buscar o código preenchido com zeros à esquerda (9 dígitos)
-        if (!data?.short_description) {
+        // 2. Se não encontrou, tenta buscar o código preenchido com zeros à esquerda (9 dígitos)
+        if (!data) {
             const paddedCode = cleanCode.padStart(9, '0');
             if (paddedCode !== cleanCode) {
                 const { data: paddedData, error: paddedError } = await supabase
@@ -189,16 +196,24 @@ export async function fetchCatmatShortDescription(codigoCatmat: string): Promise
                     .maybeSingle();
                     
                 if (paddedError) throw paddedError;
-                return paddedData?.short_description || null;
+                data = paddedData;
             }
         }
         
-        return data?.short_description || null;
+        // 3. Retorna o status
+        if (data) {
+            return {
+                shortDescription: data.short_description || null,
+                isCataloged: true, // O registro existe no catálogo
+            };
+        }
+        
+        return { shortDescription: null, isCataloged: false }; // Não encontrado
         
     } catch (error) {
         console.error("Erro ao buscar descrição reduzida do CATMAT:", error);
         // Não lança erro fatal, apenas retorna null para que o processo de importação continue
-        return null;
+        return { shortDescription: null, isCataloged: false };
     }
 }
 
