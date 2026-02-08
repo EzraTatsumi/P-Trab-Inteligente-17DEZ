@@ -127,3 +127,17 @@ export interface PriceStatsResult {
     stats: PriceStats | null;
     totalRegistros: number;
 }
+
+/**
+ * Estrutura detalhada de um item de preço (registro individual).
+ */
+export interface PriceItemDetail {
+    id: string;
+    codigoItem: string;
+    descricaoItem: string;
+    valorUnitario: number;
+    dataReferencia: string;
+    fonte: string;
+    codigoUasg: string;
+    nomeUasg: string;
+}
