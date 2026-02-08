@@ -41,18 +41,14 @@ const PriceItemDetailsList: React.FC<PriceItemDetailsListProps> = ({ items, isLo
             <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
-                        <TableHead className="w-[30%]">Descrição do Item</TableHead>
-                        <TableHead className="w-[15%] text-center">Cód. UASG</TableHead>
-                        <TableHead className="w-[35%]">Nome UASG</TableHead>
-                        <TableHead className="w-[20%] text-right">Valor Unitário</TableHead>
+                        <TableHead className="w-[25%] text-center">Cód. UASG</TableHead>
+                        <TableHead className="w-[50%]">Nome UASG</TableHead>
+                        <TableHead className="w-[25%] text-right">Valor Unitário</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {items.map((item) => (
                         <TableRow key={item.id}>
-                            <TableCell className="text-sm max-w-xs whitespace-normal">
-                                {item.descricaoItem}
-                            </TableCell>
                             <TableCell className="text-center text-sm font-mono">
                                 {formatCodug(item.codigoUasg)}
                             </TableCell>

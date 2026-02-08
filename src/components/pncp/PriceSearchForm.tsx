@@ -38,7 +38,7 @@ const formSchema = z.object({
         // Verifica se a Data de Fim é posterior ou igual à Data de Início
         if (endDate < startDate) return false;
         
-        // Verifica se o intervalo é maior que 365 dias (86400000 ms * 365)
+        // Verifica se o intervalo é maior que 365 dias (86400000 * 365)
         const maxDurationMs = 86400000 * 365;
         const durationMs = endDate.getTime() - startDate.getTime();
         
@@ -309,12 +309,19 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                             )}
                         />
                         
-                        {/* RESTAURADO: Checkbox para ignorar datas */}
+                        {/* Checkbox para ignorar datas */}
                         <FormField
                             control={form.control}
                             name="ignoreDates"
                             render={({ field }) => (
-                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 col-span-4">
+                                <FormItem 
+                                    className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 col-span-4 cursor-pointer"
+                                    onClick={() => {
+                                        if (!(isSearchingStats || isSearching)) {
+                                            form.setValue('ignoreDates', !field.value, { shouldValidate: true });
+                                        }
+                                    }}
+                                >
                                     <FormControl>
                                         <Checkbox
                                             checked={field.value}
@@ -322,7 +329,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                                             disabled={isSearchingStats || isSearching}
                                         />
                                     </FormControl>
-                                    <div className="space-y-1 leading-none">
+                                    <div className="space-y-1 leading-none pointer-events-none">
                                         <FormLabel>
                                             Pesquisar sem restrição de data
                                         </FormLabel>
