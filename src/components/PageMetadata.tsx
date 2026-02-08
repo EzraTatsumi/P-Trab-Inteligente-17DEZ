@@ -10,8 +10,8 @@ interface PageMetadataProps {
 }
 
 const PageMetadata: React.FC<PageMetadataProps> = ({ title, description, canonicalPath }) => {
-  // Combina o título dinâmico da página com a marca fixa do aplicativo
-  const fullTitle = `${title} | ${APP_BRANDING}`;
+  // O título completo agora é sempre a marca fixa, ignorando o 'title' dinâmico.
+  const fullTitle = APP_BRANDING;
 
   return (
     <Helmet>
