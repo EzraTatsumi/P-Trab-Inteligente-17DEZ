@@ -8,12 +8,18 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Search, Loader2, DollarSign, AlertTriangle, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { formatCodug, formatCurrency, getPreviousWeekRange } from '@/lib/formatUtils';
+import { formatCodug, formatCurrency } from '@/lib/formatUtils';
 import { fetchPriceStats } from '@/integrations/supabase/api';
 import { PriceStatsResult, PriceStats, DetailedArpItem } from '@/types/pncp';
 import { useQuery } from '@tanstack/react-query';
 import OmSelectorDialog from '@/components/OmSelectorDialog';
-import DetailedPriceItemsTable from './DetailedPriceItemsTable'; // NOVO IMPORT
+import DetailedPriceItemsTable from './DetailedPriceItemsTable';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+
+// Datas padrão solicitadas: 07/02/2025 a 08/02/2026
+const defaultDataInicio = "2025-02-07";
+const defaultDataFim = "2026-02-08";
 
 // 1. Esquema de Validação
 const formSchema = z.object({
@@ -30,12 +36,13 @@ interface PriceSearchFormProps {
     onPriceSelect: (item: ItemAquisicao) => void;
 }
 
-// Datas padrão: Última semana completa
-const { start: defaultDataInicio, end: defaultDataFim } = getPreviousWeekRange();
-
 const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isOmSelectorOpen, setIsOmSelectorOpen] = useState(false);
+    const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false); // Estado para o catálogo
+    
+    // NOVO: Estado para controlar se o período de tempo será usado
+    const [useDateRange, setUseDateRange] = useState(true);
     
     // Estado para armazenar o resultado completo da busca
     const [priceStatsResult, setPriceStatsResult] = useState<PriceStatsResult | null>(null);
@@ -47,8 +54,8 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
         resolver: zodResolver(formSchema),
         defaultValues: {
             codigoItem: "",
-            dataInicio: defaultDataInicio.split('T')[0], // Apenas a data
-            dataFim: defaultDataFim.split('T')[0], // Apenas a data
+            dataInicio: defaultDataInicio,
+            dataFim: defaultDataFim,
         },
     });
     
@@ -68,8 +75,9 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
             
             const params = {
                 codigoItem: values.codigoItem,
-                dataInicio: values.dataInicio || null,
-                dataFim: values.dataFim || null,
+                // Condicionalmente inclui as datas
+                dataInicio: useDateRange ? values.dataInicio || null : null,
+                dataFim: useDateRange ? values.dataFim || null : null,
             };
             
             const result = await fetchPriceStats(params);
@@ -99,6 +107,13 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
         setPriceStatsResult(null);
         setShowDetails(false);
     };
+    
+    // Função placeholder para abrir o catálogo CATMAT
+    const handleOpenCatmatCatalog = () => {
+        // Implementação futura: Abrir diálogo de busca no catálogo CATMAT
+        toast.info("Funcionalidade de busca no Catálogo CATMAT em desenvolvimento.");
+        setIsCatmatCatalogOpen(true); // Apenas para simular o estado
+    };
 
     const currentStats = priceStatsResult?.stats;
     const totalRegistros = priceStatsResult?.totalRegistros || 0;
@@ -114,61 +129,90 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect }) => {
                             control={form.control}
                             name="codigoItem"
                             render={({ field }) => (
-                                <FormItem className="col-span-4 md:col-span-2">
+                                <FormItem className="col-span-4">
                                     <FormLabel>Código CATMAT/CATSER *</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            {...field}
-                                            onChange={handleCatmatChange}
-                                            value={field.value}
-                                            placeholder="Ex: 123456789"
-                                            maxLength={9}
+                                    <div className="flex space-x-2">
+                                        <FormControl>
+                                            <Input
+                                                {...field}
+                                                onChange={handleCatmatChange}
+                                                value={field.value}
+                                                placeholder="Ex: 123456789"
+                                                maxLength={9}
+                                                disabled={isSearching}
+                                            />
+                                        </FormControl>
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            size="icon" 
+                                            onClick={handleOpenCatmatCatalog}
                                             disabled={isSearching}
-                                        />
-                                    </FormControl>
+                                        >
+                                            <BookOpen className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                     <FormMessage />
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Insira o código de 9 dígitos do item.
+                                        Insira o código de 9 dígitos do item ou use o catálogo.
                                     </p>
                                 </FormItem>
                             )}
                         />
                         
-                        <FormField
-                            control={form.control}
-                            name="dataInicio"
-                            render={({ field }) => (
-                                <FormItem className="col-span-2 md:col-span-1">
-                                    <FormLabel>Data de Início</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="date"
-                                            {...field}
-                                            disabled={isSearching}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        {/* Toggle para Período de Tempo */}
+                        <div className="col-span-4 flex items-center space-x-2 pt-2">
+                            <Switch
+                                id="date-range-toggle"
+                                checked={useDateRange}
+                                onCheckedChange={setUseDateRange}
+                                disabled={isSearching}
+                            />
+                            <Label htmlFor="date-range-toggle">
+                                Usar Período de Tempo Específico
+                            </Label>
+                        </div>
                         
-                        <FormField
-                            control={form.control}
-                            name="dataFim"
-                            render={({ field }) => (
-                                <FormItem className="col-span-2 md:col-span-1">
-                                    <FormLabel>Data de Fim</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="date"
-                                            {...field}
-                                            disabled={isSearching}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        {/* Campos de Data Condicionais */}
+                        {useDateRange && (
+                            <>
+                                <FormField
+                                    control={form.control}
+                                    name="dataInicio"
+                                    render={({ field }) => (
+                                        <FormItem className="col-span-4 md:col-span-2">
+                                            <FormLabel>Data de Início</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="date"
+                                                    {...field}
+                                                    disabled={isSearching}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                
+                                <FormField
+                                    control={form.control}
+                                    name="dataFim"
+                                    render={({ field }) => (
+                                        <FormItem className="col-span-4 md:col-span-2">
+                                            <FormLabel>Data de Fim</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="date"
+                                                    {...field}
+                                                    disabled={isSearching}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </>
+                        )}
                     </div>
                     
                     <Button type="submit" disabled={isSearching} className="w-full">

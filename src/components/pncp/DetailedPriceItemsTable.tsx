@@ -4,7 +4,7 @@ import { formatCurrency, formatNumber, formatCodug, formatDate } from '@/lib/for
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, X, RefreshCw, DollarSign, AlertTriangle } from 'lucide-react';
+import { Check, X, RefreshCw, DollarSign, AlertTriangle, Import } from 'lucide-react';
 import { toast } from 'sonner';
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
 import { cn } from '@/lib/utils';
