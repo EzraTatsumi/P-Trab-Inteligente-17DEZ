@@ -11,7 +11,7 @@ import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import CurrencyInput from "@/components/CurrencyInput";
-import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodug } from "@/lib/formatUtils";
+import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodug, formatPregaoDisplay } from "@/lib/formatUtils";
 import SubitemCatalogDialog from './SubitemCatalogDialog';
 import CatmatCatalogDialog from './CatmatCatalogDialog';
 import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog';
@@ -596,7 +596,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                             <TableCell className="font-medium text-sm">{item.descricao_reduzida || 'N/A'}</TableCell>
                                             <TableCell className="font-medium text-sm">{item.descricao_item}</TableCell>
                                             <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
-                                            <TableCell className="text-center text-sm">{item.numero_pregao || 'N/A'}</TableCell>
+                                            <TableCell className="text-center text-sm">{formatPregaoDisplay(item.numero_pregao) || 'N/A'}</TableCell>
                                             <TableCell className="text-center text-sm">{formatCodug(item.uasg) || 'N/A'}</TableCell>
                                             <TableCell className="text-right font-bold text-primary text-sm">
                                                 {formatCurrency(item.valor_unitario)}
