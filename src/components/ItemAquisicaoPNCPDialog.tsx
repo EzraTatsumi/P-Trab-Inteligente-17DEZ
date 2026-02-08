@@ -369,21 +369,22 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 } else {
                     // 8. Determinação do Status para itens NÃO duplicados
                     
-                    // Se o item está catalogado E tem shortDescription E não é fluxo de preço médio, é válido.
-                    if (isCatmatCataloged && shortDescription && !isPriceReference) { 
+                    // CORREÇÃO APLICADA AQUI: Se o item está catalogado E tem shortDescription, ele é válido,
+                    // independentemente de ser uma referência de preço.
+                    if (isCatmatCataloged && shortDescription) { 
                         status = 'valid';
                         messages.push('Pronto para importação.');
                     } else {
-                        // Se for fluxo de preço médio OU se estiver catalogado mas sem shortDescription, requer revisão.
-                        // Se não estiver catalogado, também requer revisão.
                         status = 'needs_catmat_info';
                         
                         if (isPriceReference) {
-                            messages.push('Item de referência de preço. Requer preenchimento de Pregão/UASG.');
+                            // Se for PriceReference E não tiver shortDescription, adicionamos a mensagem específica
+                            messages.push('Item de referência de preço. Requer preenchimento de Pregão/UASG e descrição reduzida.');
                         } else if (isCatmatCataloged && !shortDescription) {
-                            // MENSAGEM AJUSTADA PARA CLAREZA
+                            // Item catalogado, mas sem shortDescription (deve ser preenchido)
                             messages.push('Item catalogado localmente, mas requer descrição reduzida.');
                         } else {
+                            // Item não catalogado
                             messages.push('Requer descrição reduzida para o catálogo CATMAT.');
                         }
                     }
@@ -394,7 +395,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     mappedItem: initialMappedItem,
                     status: status,
                     messages: messages,
-                    // Se o item foi catalogado, usamos a shortDescription do BD como sugestão inicial
+                    // Se shortDescription foi encontrado, use-o para preencher o campo de input do usuário.
                     userShortDescription: shortDescription || '', 
                     fullPncpDescription: fullPncpDescription || 'Descrição completa não encontrada no PNCP.', 
                     nomePdm: nomePdm, 
@@ -502,12 +503,10 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     </TabsContent>
                     
                     <TabsContent value="arp-catmat">
-                        <ArpCatmatSearchForm 
-                            onItemPreSelect={handleItemPreSelect} 
-                            selectedItemIds={selectedItemIds}
-                            onClearSelection={handleClearSelection} 
-                            scrollContainerRef={dialogContentRef}
-                        />
+                        {/* TODO: Implement ArpCatmatSearchForm */}
+                        <div className="text-center py-8 text-muted-foreground">
+                            Busca de ARP por CATMAT/CATSER ainda não implementada.
+                        </div>
                     </TabsContent>
                     
                     <TabsContent value="avg-price">
