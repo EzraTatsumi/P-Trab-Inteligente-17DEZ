@@ -45,6 +45,7 @@ import { cn } from "@/lib/utils";
 import MaterialConsumoSubitemSelectorDialog from "@/components/MaterialConsumoSubitemSelectorDialog";
 import { ConsolidatedMaterialConsumoMemoria } from "@/components/ConsolidatedMaterialConsumoMemoria"; // Será criado no próximo passo
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
+import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear"; // IMPORTADO
 
 // Tipos de dados
 type MaterialConsumoRegistroDB = Tables<'material_consumo_registros'>; 
@@ -143,6 +144,10 @@ const MaterialConsumoForm = () => {
         nr_subitem: string;
         nome_subitem: string;
     } | null>(null);
+    
+    // Busca o ano padrão para o seletor de subitens
+    const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear('operacional');
+    const selectedYear = defaultYearData?.year || new Date().getFullYear();
 
     // Dados mestres
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
@@ -854,7 +859,7 @@ const MaterialConsumoForm = () => {
     // RENDERIZAÇÃO
     // =================================================================
 
-    const isGlobalLoading = isLoadingPTrab || isLoadingRegistros || isLoadingOms || insertMutation.isPending || replaceGroupMutation.isPending || handleDeleteMutation.isPending;
+    const isGlobalLoading = isLoadingPTrab || isLoadingRegistros || isLoadingOms || isLoadingDefaultYear || isSaving;
     const isSaving = insertMutation.isPending || replaceGroupMutation.isPending || handleDeleteMutation.isPending;
 
     if (isGlobalLoading) {
@@ -1377,7 +1382,7 @@ const MaterialConsumoForm = () => {
                                                                 <span className="text-muted-foreground">OM Destino Recurso:</span>
                                                                 <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
                                                                     {omDestino} ({formatCodug(ugDestino)})
-                                                                </span>
+                                                                </p>
                                                             </div>
                                                             <div className="flex justify-between text-xs">
                                                                 <span className="text-muted-foreground">ND 33.90.30:</span>
@@ -1454,7 +1459,7 @@ const MaterialConsumoForm = () => {
                 <MaterialConsumoSubitemSelectorDialog
                     open={showSubitemSelector}
                     onOpenChange={setShowSubitemSelector}
-                    selectedYear={ptrabData?.periodo_inicio ? new Date(ptrabData.periodo_inicio).getFullYear() : new Date().getFullYear()}
+                    selectedYear={selectedYear} // USANDO O ANO PADRÃO
                     initialSelections={initialItemsForDialog}
                     onSelect={(items, diretriz) => handleSubitemSelected(items, diretriz)}
                     onAddSubitem={handleAddSubitem}

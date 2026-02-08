@@ -169,3 +169,24 @@ export async function fetchDefaultLogisticaYear(): Promise<number | null> {
 
     return data?.default_logistica_year ?? null;
 }
+
+/**
+ * Busca o ano padrão operacional (default_operacional_year) do perfil do usuário.
+ */
+export async function fetchDefaultOperacionalYear(): Promise<number | null> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('default_operacional_year')
+        .eq('id', user.id)
+        .single();
+
+    if (error) {
+        console.error("Erro ao buscar default_operacional_year:", error);
+        return null;
+    }
+
+    return data?.default_operacional_year ?? null;
+}
