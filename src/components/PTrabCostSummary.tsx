@@ -198,7 +198,6 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     classeVI: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeVII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeVIII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
-    classeVIII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeIX: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     diarias: { total: 0, totalND15: 0, totalND30: 0, totalMilitares: 0, totalDiasViagem: 0 },
     verbaOperacional: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
@@ -1625,8 +1624,10 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     if (mode === 'permanente') {
         const totalMaterialPermanente = (data as OmTotals).omKey ? (data as OmTotals).totalMaterialPermanente : (data as PTrabAggregatedTotals).totalMaterialPermanente;
         
+        if (totalMaterialPermanente === 0) return null;
+        
         return (
-            <div className="space-y-3 border-l-4 border-green-500 pl-3 pt-4">
+            <div className="space-y-3 border-l-4 border-green-500 pl-3">
                 <div className="flex items-center justify-between text-xs font-semibold text-green-600 mb-2">
                     <div className="flex items-center gap-2">
                         <HardHat className="h-3 w-3" />
@@ -1636,9 +1637,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground">
                     <span className="w-1/2 text-left">Itens de Material Permanente</span>
-                    <span className="w-1/4 text-right font-medium">
-                        {/* Vazio */}
-                    </span>
+                    <span className="w-1/4 text-right font-medium"></span>
                     <span className="w-1/4 text-right font-medium">
                         {formatCurrency(totalMaterialPermanente)}
                     </span>
@@ -1667,19 +1666,14 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                     </span>
                 </div>
                 
-                {/* Detalhes por Tipo de Aeronave (Exibidos diretamente) */}
+                {/* Detalhes por Tipo de Aeronave (Restaurado conforme imagem) */}
                 <div className="space-y-1 pl-4 text-[10px]">
                     {sortedHorasVoo.map(([tipoAnv, data]) => (
-                        <div key={tipoAnv} className="flex justify-between text-muted-foreground border-b border-border/30 pb-1">
-                            <span className="w-1/2 text-left flex items-center gap-1">
-                                <Zap className="h-2 w-2 text-purple-500" />
-                                {tipoAnv}
-                            </span>
+                        <div key={tipoAnv} className="flex justify-between text-muted-foreground">
+                            <span className="w-1/2 text-left">{tipoAnv}</span>
+                            <span className="w-1/4 text-right font-medium text-background"></span>
                             <span className="w-1/4 text-right font-medium">
                                 {formatNumber(data.totalHV, 2)} HV
-                            </span>
-                            <span className="w-1/4 text-right font-medium">
-                                {formatCurrency(data.totalValor)}
                             </span>
                         </div>
                     ))}
