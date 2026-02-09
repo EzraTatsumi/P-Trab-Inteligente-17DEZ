@@ -884,6 +884,8 @@ const MaterialConsumoForm = () => {
     const handleStageCalculation = (e: React.FormEvent) => {
         e.preventDefault();
         
+        console.log("[MaterialConsumoForm] Submissão do formulário principal (handleStageCalculation) iniciada.");
+        
         try {
             // 1. Validação básica
             if (formData.acquisitionGroups.length === 0) {
@@ -1005,6 +1007,7 @@ const MaterialConsumoForm = () => {
             toast.info(`${newPendingItems.length} Grupo(s) de Aquisição adicionado(s) à lista pendente.`);
             
         } catch (err: any) {
+            console.error("[MaterialConsumoForm] Erro na validação/cálculo:", err);
             toast.error(err.message || "Erro desconhecido ao calcular.");
         }
     };
@@ -1671,7 +1674,7 @@ const MaterialConsumoForm = () => {
                                             </Card>
                                         );
                                     })}
-                                </section>
+                                </div>
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}

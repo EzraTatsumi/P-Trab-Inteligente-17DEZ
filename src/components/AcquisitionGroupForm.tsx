@@ -149,14 +149,18 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
         toast.info("Item removido do grupo.");
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    // FUNÇÃO DE SALVAMENTO (AGORA CHAMADA POR ONCLICK)
+    const handleSaveGroupClick = () => {
+        console.log("[AcquisitionGroupForm] Tentativa de salvar grupo iniciada.");
+        
         if (!groupName.trim()) {
             toast.error("O Nome do Grupo de Aquisição é obrigatório.");
+            console.log("[AcquisitionGroupForm] Falha: Nome do grupo vazio.");
             return;
         }
         if (items.length === 0) {
             toast.error("Adicione pelo menos um item de aquisição ao grupo.");
+            console.log("[AcquisitionGroupForm] Falha: Nenhum item adicionado.");
             return;
         }
         
@@ -164,6 +168,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
         const hasZeroQuantity = items.some(item => item.quantidade === 0);
         if (hasZeroQuantity) {
             toast.error("A quantidade de todos os itens deve ser maior que zero.");
+            console.log("[AcquisitionGroupForm] Falha: Quantidade zero encontrada.");
             return;
         }
         
@@ -178,6 +183,8 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
             totalND30: 0, // Placeholder
             totalND39: 0, // Placeholder
         } as AcquisitionGroup);
+        
+        console.log("[AcquisitionGroupForm] onSave chamado com sucesso.");
     };
     
     const displayTitle = groupName.trim() || (initialGroup ? 'Editando Grupo' : 'Novo Grupo');
@@ -185,7 +192,8 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
     return (
         <Card className="border border-gray-300 bg-gray-50 p-4 shadow-lg">
             <h4 className="font-bold text-lg mb-4">{displayTitle}</h4>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* REMOVIDO: <form onSubmit={handleSubmit} className="space-y-4"> */}
+            <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="groupName">Nome do Grupo *</Label>
@@ -329,7 +337,8 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                 
                 <div className="flex justify-end gap-3 pt-2">
                     <Button 
-                        type="submit" 
+                        type="button" // ALTERADO PARA TYPE="BUTTON"
+                        onClick={handleSaveGroupClick} // ALTERADO PARA ONCLICK
                         disabled={isSaving || !groupName.trim() || items.length === 0}
                         // CORREÇÃO: Usando a classe padrão do botão primário
                         className="w-auto" 
@@ -348,7 +357,8 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                         Cancelar
                     </Button>
                 </div>
-            </form>
+            </div>
+            {/* REMOVIDO: </form> */}
         </Card>
     );
 };
