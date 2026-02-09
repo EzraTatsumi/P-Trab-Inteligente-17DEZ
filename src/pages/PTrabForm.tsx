@@ -263,7 +263,7 @@ const PTrabForm = () => {
         </div>
         
         {/* CORREÇÃO H1: Título principal da página */}
-        <h1 className="text-2xl font-bold mb-6">{pageTitle}</h1>
+        {/* Removido o H1 conforme solicitado */}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Coluna Esquerda: Dados do P Trab, Resumo de Custos e Crédito Disponível */}
