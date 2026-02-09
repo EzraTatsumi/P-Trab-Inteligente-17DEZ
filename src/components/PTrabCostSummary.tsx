@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase, Droplet, Zap } from "lucide-react";
+import { formatCurrency, formatNumber, formatCodug } from "@/lib/formatUtils";
+import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase, Droplet, Zap, Users } from "lucide-react";
 import {
   Accordion,
   AccordionItem,
@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tables } from "@/integrations/supabase/types";
+import { Switch } from "@/components/ui/switch"; // Importando Switch
 
 // Define the category constants
 const CATEGORIAS_CLASSE_II = ["Equipamento Individual", "Proteção Balística", "Material de Estacionamento"];
@@ -20,14 +21,151 @@ const CATEGORIAS_CLASSE_V = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 const CATEGORIAS_CLASSE_VI = ["Embarcação", "Equipamento de Engenharia", "Gerador"];
 const CATEGORIAS_CLASSE_VII = ["Comunicações", "Informática"];
 const CATEGORIAS_CLASSE_VIII = ["Saúde", "Remonta/Veterinária"];
-const CATEGORIAS_CLASSE_IX = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"]; // NOVO
+const CATEGORIAS_CLASSE_IX = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
 
-interface ItemClasseII {
+interface ItemClasse {
   item: string;
   quantidade: number;
   valor_mnt_dia: number;
   categoria: string;
 }
+
+// Tipos para a nova estrutura agrupada por OM
+interface OmTotals {
+    omKey: string; // organizacao|ug
+    omName: string;
+    ug: string;
+    totalGeral: number;
+    totalLogistica: number;
+    totalOperacional: number;
+    totalMaterialPermanente: number;
+    totalAviacaoExercito: number;
+    
+    // Detalhes por Classe/Item (Subtotais)
+    classeI: {
+        total: number;
+        totalComplemento: number;
+        totalEtapaSolicitadaValor: number;
+        totalDiasEtapaSolicitada: number;
+        totalRefeicoesIntermediarias: number;
+        totalRacoesOperacionaisGeral: number;
+    };
+    classeII: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> };
+    classeIII: { total: number, totalDieselValor: number, totalGasolinaValor: number, totalDieselLitros: number, totalGasolinaLitros: number, totalLubrificanteValor: number, totalLubrificanteLitros: number };
+    classeV: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> };
+    classeVI: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> };
+    classeVII: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> };
+    classeVIII: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> };
+    classeIX: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> };
+    
+    diarias: { total: number, totalND15: number, totalND30: number, totalMilitares: number, totalDiasViagem: number };
+    verbaOperacional: { total: number, totalND30: number, totalND39: number, totalEquipes: number, totalDias: number };
+    suprimentoFundos: { total: number, totalND30: number, totalND39: number, totalEquipes: number, totalDias: number };
+    passagens: { total: number, totalQuantidade: number, totalTrechos: number };
+    concessionaria: { total: number, totalAgua: number, totalEnergia: number, totalRegistros: number };
+    horasVoo: { total: number, quantidadeHV: number, groupedHV: Record<string, { totalValor: number, totalHV: number }> };
+    materialConsumo: { total: number, totalND30: number, totalND39: number };
+}
+
+// Tipo de retorno da função de busca
+interface PTrabAggregatedTotals {
+    // Totais Globais (para o modo 'global')
+    totalLogisticoGeral: number;
+    totalOperacional: number;
+    totalMaterialPermanente: number;
+    totalAviacaoExercito: number;
+    totalRacoesOperacionaisGeral: number;
+    
+    // Detalhes Globais (para o modo 'global')
+    totalClasseI: number;
+    totalComplemento: number;
+    totalEtapaSolicitadaValor: number;
+    totalDiasEtapaSolicitada: number;
+    totalRefeicoesIntermediarias: number;
+    
+    totalClasseII: number;
+    totalClasseII_ND30: number;
+    totalClasseII_ND39: number;
+    totalItensClasseII: number;
+    groupedClasseIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }>;
+    
+    totalClasseV: number;
+    totalClasseV_ND30: number;
+    totalClasseV_ND39: number;
+    totalItensClasseV: number;
+    groupedClasseVCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }>;
+    
+    totalClasseVI: number;
+    totalClasseVI_ND30: number;
+    totalClasseVI_ND39: number;
+    totalItensClasseVI: number;
+    groupedClasseVICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }>;
+    
+    totalClasseVII: number;
+    totalClasseVII_ND30: number;
+    totalClasseVII_ND39: number;
+    totalItensClasseVII: number;
+    groupedClasseVIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }>;
+    
+    totalClasseVIII: number;
+    totalClasseVIII_ND30: number;
+    totalClasseVIII_ND39: number;
+    totalItensClasseVIII: number;
+    groupedClasseVIIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }>;
+    
+    totalClasseIX: number;
+    totalClasseIX_ND30: number;
+    totalClasseIX_ND39: number;
+    totalItensClasseIX: number;
+    groupedClasseIXCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }>;
+    
+    totalDieselValor: number;
+    totalGasolinaValor: number;
+    totalDieselLitros: number;
+    totalGasolinaLitros: number;
+    totalLubrificanteValor: number;
+    totalLubrificanteLitros: number;
+    totalCombustivel: number;
+    
+    totalDiarias: number;
+    totalDiariasND15: number;
+    totalDiariasND30: number;
+    totalMilitaresDiarias: number;
+    totalDiasViagem: number;
+    
+    totalVerbaOperacional: number;
+    totalVerbaOperacionalND30: number;
+    totalVerbaOperacionalND39: number;
+    totalEquipesVerba: number;
+    totalDiasVerba: number;
+    
+    totalSuprimentoFundos: number;
+    totalSuprimentoFundosND30: number;
+    totalSuprimentoFundosND39: number;
+    totalEquipesSuprimento: number;
+    totalDiasSuprimento: number;
+    
+    totalPassagensND33: number;
+    totalQuantidadePassagens: number;
+    totalTrechosPassagens: number;
+    
+    totalConcessionariaND39: number;
+    totalConcessionariaRegistros: number;
+    totalConcessionariaAgua: number;
+    totalConcessionariaEnergia: number;
+    
+    totalHorasVoo: number;
+    quantidadeHorasVoo: number;
+    groupedHorasVoo: Record<string, { totalValor: number, totalHV: number }>;
+    
+    totalMaterialConsumo: number; // NOVO
+    totalMaterialConsumoND30: number; // NOVO
+    totalMaterialConsumoND39: number; // NOVO
+
+    // Nova Estrutura Agrupada por OM
+    groupedByOm: Record<string, OmTotals>;
+}
+
 
 // Helper function to calculate days of requested stage (diasEtapaSolicitada)
 const calculateDiasEtapaSolicitada = (diasOperacao: number): number => {
@@ -43,28 +181,59 @@ const calculateDiasEtapaSolicitada = (diasOperacao: number): number => {
   }
 };
 
-const fetchPTrabTotals = async (ptrabId: string) => {
+const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
+    omKey: `${omName}|${ug}`,
+    omName,
+    ug,
+    totalGeral: 0,
+    totalLogistica: 0,
+    totalOperacional: 0,
+    totalMaterialPermanente: 0,
+    totalAviacaoExercito: 0,
+    classeI: { total: 0, totalComplemento: 0, totalEtapaSolicitadaValor: 0, totalDiasEtapaSolicitada: 0, totalRefeicoesIntermediarias: 0, totalRacoesOperacionaisGeral: 0 },
+    classeII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeIII: { total: 0, totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0 },
+    classeV: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeVI: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeVII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeVIII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeIX: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    diarias: { total: 0, totalND15: 0, totalND30: 0, totalMilitares: 0, totalDiasViagem: 0 },
+    verbaOperacional: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
+    suprimentoFundos: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
+    passagens: { total: 0, totalQuantidade: 0, totalTrechos: 0 },
+    concessionaria: { total: 0, totalAgua: 0, totalEnergia: 0, totalRegistros: 0 },
+    horasVoo: { total: 0, quantidadeHV: 0, groupedHV: {} },
+    materialConsumo: { total: 0, totalND30: 0, totalND39: 0 },
+});
+
+const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals> => {
+  
+  // Inicializa o objeto de agregação por OM
+  const groupedByOm: Record<string, OmTotals> = {};
+  
+  const getOmTotals = (omName: string, ug: string): OmTotals => {
+      const key = `${omName}|${ug}`;
+      if (!groupedByOm[key]) {
+          groupedByOm[key] = initializeOmTotals(omName, ug);
+      }
+      return groupedByOm[key];
+  };
+  
   // 1. Fetch Classe I totals (33.90.30)
   const { data: classeIData, error: classeIError } = await supabase
     .from('classe_i_registros')
-    .select('total_qs, total_qr, complemento_qs, etapa_qs, complemento_qr, etapa_qr, efetivo, dias_operacao, nr_ref_int, quantidade_r2, quantidade_r3, categoria')
+    .select('total_qs, total_qr, complemento_qs, etapa_qs, complemento_qr, etapa_qr, efetivo, dias_operacao, nr_ref_int, quantidade_r2, quantidade_r3, categoria, organizacao, ug')
     .eq('p_trab_id', ptrabId);
 
   if (classeIError) {
     console.error("Erro ao carregar Classe I:", classeIError);
-    // Continua, mas com dados vazios
   }
 
-  let totalClasseI = 0;
-  let totalComplemento = 0;
-  let totalEtapaSolicitadaValor = 0;
-  let totalDiasEtapaSolicitada = 0;
-  let totalRefeicoesIntermediarias = 0;
-  let totalRacoesOperacionaisGeral = 0;
-
   (classeIData || []).forEach(record => {
+    const omTotals = getOmTotals(record.organizacao, record.ug);
+    
     if (record.categoria === 'RACAO_QUENTE') {
-        // Garantir que todos os campos numéricos sejam tratados como números
         const totalQs = Number(record.total_qs || 0);
         const totalQr = Number(record.total_qr || 0);
         const complementoQs = Number(record.complemento_qs || 0);
@@ -75,16 +244,22 @@ const fetchPTrabTotals = async (ptrabId: string) => {
         const nrRefInt = Number(record.nr_ref_int || 0);
         const diasOperacao = Number(record.dias_operacao || 0);
 
-        totalClasseI += totalQs + totalQr;
-        totalComplemento += complementoQs + complementoQr;
-        totalEtapaSolicitadaValor += etapaQs + etapaQr;
-        
+        const totalClasseI = totalQs + totalQr;
+        const totalComplemento = complementoQs + complementoQr;
+        const totalEtapaSolicitadaValor = etapaQs + etapaQr;
         const diasEtapaSolicitada = calculateDiasEtapaSolicitada(diasOperacao);
-        totalDiasEtapaSolicitada += diasEtapaSolicitada;
+        const totalRefeicoesIntermediarias = efetivo * nrRefInt * diasOperacao;
         
-        totalRefeicoesIntermediarias += efetivo * nrRefInt * diasOperacao;
+        omTotals.classeI.total += totalClasseI;
+        omTotals.classeI.totalComplemento += totalComplemento;
+        omTotals.classeI.totalEtapaSolicitadaValor += totalEtapaSolicitadaValor;
+        omTotals.classeI.totalDiasEtapaSolicitada += diasEtapaSolicitada;
+        omTotals.classeI.totalRefeicoesIntermediarias += totalRefeicoesIntermediarias;
+        omTotals.totalLogistica += totalClasseI;
+
     } else if (record.categoria === 'RACAO_OPERACIONAL') {
-        totalRacoesOperacionaisGeral += Number(record.quantidade_r2 || 0) + Number(record.quantidade_r3 || 0);
+        const totalRacoesOperacionais = Number(record.quantidade_r2 || 0) + Number(record.quantidade_r3 || 0);
+        omTotals.classeI.totalRacoesOperacionaisGeral += totalRacoesOperacionais;
     }
   });
   
@@ -96,70 +271,60 @@ const fetchPTrabTotals = async (ptrabId: string) => {
     { data: classeVIIData, error: classeVIIError },
     { data: classeVIIISaudeData, error: classeVIIISaudeError },
     { data: classeVIIIRemontaData, error: classeVIIIRemontaError },
-    { data: classeIXData, error: classeIXError }, // NOVO
-    { data: classeIIIData, error: classeIIIError }, // Classe III
-    { data: diariaData, error: diariaError }, // Diárias
-    { data: verbaOperacionalData, error: verbaOperacionalError }, // Verba Operacional e Suprimento de Fundos
-    { data: passagemData, error: passagemError }, // Passagens
-    { data: concessionariaData, error: concessionariaError }, // NOVO: Concessionária
-    { data: horasVooData, error: horasVooError }, // NOVO: Horas de Voo
+    { data: classeIXData, error: classeIXError },
+    { data: classeIIIData, error: classeIIIError },
+    { data: diariaData, error: diariaError },
+    { data: verbaOperacionalData, error: verbaOperacionalError },
+    { data: passagemData, error: passagemError },
+    { data: concessionariaData, error: concessionariaError },
+    { data: horasVooData, error: horasVooError },
+    { data: materialConsumoData, error: materialConsumoError }, // NOVO
   ] = await Promise.all([
     supabase
       .from('classe_ii_registros')
-      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
-      .eq('p_trab_id', ptrabId),
+      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
     supabase
       .from('classe_v_registros')
-      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
-      .eq('p_trab_id', ptrabId),
+      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
     supabase
       .from('classe_vi_registros')
-      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
-      .eq('p_trab_id', ptrabId),
+      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
     supabase
       .from('classe_vii_registros')
-      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
-      .eq('p_trab_id', ptrabId),
+      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
     supabase
       .from('classe_viii_saude_registros')
-      .select('valor_total, itens_saude, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
-      .eq('p_trab_id', ptrabId),
+      .select('valor_total, itens_saude, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
     supabase
       .from('classe_viii_remonta_registros')
-      .select('valor_total, itens_remonta, dias_operacao, organizacao, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais')
-      .eq('p_trab_id', ptrabId),
+      .select('valor_total, itens_remonta, dias_operacao, organizacao, ug, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais'),
     supabase
-      .from('classe_ix_registros') // NOVO
-      .select('valor_total, itens_motomecanizacao, dias_operacao, organizacao, categoria, valor_nd_30, valor_nd_39')
-      .eq('p_trab_id', ptrabId),
+      .from('classe_ix_registros')
+      .select('valor_total, itens_motomecanizacao, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
     supabase
       .from('classe_iii_registros')
-      .select('valor_total, tipo_combustivel, total_litros, tipo_equipamento')
-      .eq('p_trab_id', ptrabId),
+      .select('valor_total, tipo_combustivel, total_litros, tipo_equipamento, organizacao, ug, consumo_lubrificante_litro, preco_lubrificante'),
     supabase
-      .from('diaria_registros') // Diárias
-      // CORRIGIDO: Buscando valor_nd_15 (total geral) e valor_taxa_embarque (para detalhamento)
-      .select('valor_total, valor_nd_15, valor_taxa_embarque, quantidade, dias_operacao, valor_nd_30') 
-      .eq('p_trab_id', ptrabId),
-    supabase // Verba Operacional e Suprimento de Fundos
+      .from('diaria_registros')
+      .select('valor_total, valor_nd_15, valor_taxa_embarque, quantidade, dias_operacao, valor_nd_30, organizacao, ug'), 
+    supabase
       .from('verba_operacional_registros')
-      .select('valor_nd_30, valor_nd_39, valor_total_solicitado, dias_operacao, quantidade_equipes, detalhamento')
-      .eq('p_trab_id', ptrabId),
-    supabase // Passagens
+      .select('valor_nd_30, valor_nd_39, valor_total_solicitado, dias_operacao, quantidade_equipes, detalhamento, organizacao, ug'),
+    supabase
       .from('passagem_registros')
-      .select('valor_total, valor_nd_33, quantidade_passagens, is_ida_volta, origem, destino')
-      .eq('p_trab_id', ptrabId),
-    supabase // NOVO: Concessionária
+      .select('valor_total, valor_nd_33, quantidade_passagens, is_ida_volta, origem, destino, organizacao, ug'),
+    supabase
       .from('concessionaria_registros')
-      .select('valor_total, valor_nd_39, dias_operacao, efetivo, categoria')
-      .eq('p_trab_id', ptrabId),
-    supabase // NOVO: Horas de Voo
+      .select('valor_total, valor_nd_39, dias_operacao, efetivo, categoria, organizacao, ug'),
+    supabase
       .from('horas_voo_registros')
-      .select('valor_total, quantidade_hv, tipo_anv') // ADDED tipo_anv
-      .eq('p_trab_id', ptrabId),
+      .select('valor_total, quantidade_hv, tipo_anv, organizacao, ug'),
+    supabase
+      .from('material_consumo_registros') // NOVO
+      .select('valor_total, valor_nd_30, valor_nd_39, organizacao, ug'),
   ]);
 
-  // Logar erros, mas não lançar exceção para permitir que o cálculo continue
+  // Logar erros, mas não lançar exceção
   if (classeIIError) console.error("Erro ao carregar Classe II:", classeIIError);
   if (classeVError) console.error("Erro ao carregar Classe V:", classeVError);
   if (classeVIError) console.error("Erro ao carregar Classe VI:", classeVIError);
@@ -171,9 +336,10 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   if (diariaError) console.error("Erro ao carregar Diárias:", diariaError);
   if (verbaOperacionalError) console.error("Erro ao carregar Verba Operacional/Suprimento:", verbaOperacionalError);
   if (passagemError) console.error("Erro ao carregar Passagens:", passagemError); 
-  if (concessionariaError) console.error("Erro ao carregar Concessionária:", concessionariaError); // NOVO
-  if (horasVooError) console.error("Erro ao carregar Horas de Voo:", horasVooError); // NOVO
-  
+  if (concessionariaError) console.error("Erro ao carregar Concessionária:", concessionariaError);
+  if (horasVooError) console.error("Erro ao carregar Horas de Voo:", horasVooError);
+  if (materialConsumoError) console.error("Erro ao carregar Material de Consumo:", materialConsumoError);
+
   // Usar arrays vazios se o fetch falhou
   const safeClasseIIData = classeIIData || [];
   const safeClasseVData = classeVData || [];
@@ -186,440 +352,346 @@ const fetchPTrabTotals = async (ptrabId: string) => {
   const safeDiariaData = diariaData || [];
   const safeVerbaOperacionalData = verbaOperacionalData || [];
   const safePassagemData = passagemData || []; 
-  const safeConcessionariaData = concessionariaData || []; // NOVO
-  const safeHorasVooData = horasVooData || []; // NOVO
+  const safeConcessionariaData = concessionariaData || [];
+  const safeHorasVooData = horasVooData || [];
+  const safeMaterialConsumoData = materialConsumoData || []; // NOVO
   
+  // Processamento de Classes Diversas (II, V, VI, VII, VIII, IX)
   const allClasseItemsData = [
-    ...safeClasseIIData,
-    ...safeClasseVData,
-    ...safeClasseVIData,
-    ...safeClasseVIIData,
-    ...safeClasseVIIISaudeData.map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde' })),
+    ...safeClasseIIData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos, classe: 'II' })),
+    ...safeClasseVData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos, classe: 'V' })),
+    ...safeClasseVIData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos, classe: 'VI' })),
+    ...safeClasseVIIData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos, classe: 'VII' })),
+    ...safeClasseVIIISaudeData.map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', classe: 'VIII' })),
     ...safeClasseVIIIRemontaData.map(r => ({ 
         ...r, 
         itens_equipamentos: r.itens_remonta, 
         categoria: 'Remonta/Veterinária',
         animal_tipo: r.animal_tipo,
         quantidade_animais: r.quantidade_animais,
+        classe: 'VIII'
     })),
-    ...safeClasseIXData.map(r => ({ // NOVO
+    ...safeClasseIXData.map(r => ({ 
         ...r, 
         itens_equipamentos: r.itens_motomecanizacao, 
         categoria: r.categoria,
+        classe: 'IX'
     })),
   ];
   
-  let totalClasseII = 0;
-  let totalClasseII_ND30 = 0;
-  let totalClasseII_ND39 = 0;
-  let totalItensClasseII = 0;
-  const groupedClasseIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
-
-  let totalClasseV = 0;
-  let totalClasseV_ND30 = 0;
-  let totalClasseV_ND39 = 0;
-  let totalItensClasseV = 0;
-  const groupedClasseVCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
-  
-  let totalClasseVI = 0;
-  let totalClasseVI_ND30 = 0;
-  let totalClasseVI_ND39 = 0;
-  let totalItensClasseVI = 0;
-  const groupedClasseVICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
-  
-  let totalClasseVII = 0;
-  let totalClasseVII_ND30 = 0;
-  let totalClasseVII_ND39 = 0;
-  let totalItensClasseVII = 0;
-  const groupedClasseVIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
-  
-  let totalClasseVIII = 0;
-  let totalClasseVIII_ND30 = 0;
-  let totalClasseVIII_ND39 = 0;
-  let totalItensClasseVIII = 0;
-  const groupedClasseVIIICategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {};
-  
-  let totalClasseIX = 0; // NOVO
-  let totalClasseIX_ND30 = 0; // NOVO
-  let totalClasseIX_ND39 = 0; // NOVO
-  let totalItensClasseIX = 0; // NOVO
-  const groupedClasseIXCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> = {}; // NOVO
-  
-  (allClasseItemsData || []).forEach(record => {
+  allClasseItemsData.forEach(record => {
+    const omTotals = getOmTotals(record.organizacao, record.ug);
     const category = record.categoria;
-    // FIX: Cast to unknown first to resolve TS2352 error when casting Json to ItemClasseII[]
-    const items = (record.itens_equipamentos || []) as unknown as ItemClasseII[]; 
-    // Garante que a quantidade de itens é numérica
+    const items = (record.itens_equipamentos || []) as unknown as ItemClasse[]; 
     const totalItemsCategory = items.reduce((sum, item) => sum + (Number(item.quantidade) || 0), 0); 
     
-    // Garante que valor_total é numérico
     const valorTotal = Number(record.valor_total || 0);
     const valorND30 = Number(record.valor_nd_30 || 0);
     const valorND39 = Number(record.valor_nd_39 || 0);
+    
+    omTotals.totalLogistica += valorTotal;
 
-    if (CATEGORIAS_CLASSE_II.includes(category)) {
-        // CLASSE II
-        totalClasseII += valorTotal;
-        totalClasseII_ND30 += valorND30;
-        totalClasseII_ND39 += valorND39;
-        totalItensClasseII += totalItemsCategory;
-        
-        if (!groupedClasseIICategories[category]) {
-            groupedClasseIICategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
-        }
-        groupedClasseIICategories[category].totalValor += valorTotal;
-        groupedClasseIICategories[category].totalND30 += valorND30;
-        groupedClasseIICategories[category].totalND39 += valorND39;
-        groupedClasseIICategories[category].totalItens += totalItemsCategory;
+    const updateCategoryTotals = (group: OmTotals[keyof OmTotals] & { groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> }) => {
+        group.total += valorTotal;
+        group.totalND30 += valorND30;
+        group.totalND39 += valorND39;
+        group.totalItens += totalItemsCategory;
 
-    } else if (CATEGORIAS_CLASSE_V.includes(category)) {
-        // CLASSE V
-        totalClasseV += valorTotal;
-        totalClasseV_ND30 += valorND30;
-        totalClasseV_ND39 += valorND39;
-        totalItensClasseV += totalItemsCategory;
-
-        if (!groupedClasseVCategories[category]) {
-            groupedClasseVCategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
-        }
-        groupedClasseVCategories[category].totalValor += valorTotal;
-        groupedClasseVCategories[category].totalND30 += valorND30;
-        groupedClasseVCategories[category].totalND39 += valorND39;
-        groupedClasseVCategories[category].totalItens += totalItemsCategory;
-    } else if (CATEGORIAS_CLASSE_VI.includes(category)) {
-        // CLASSE VI
-        totalClasseVI += valorTotal;
-        totalClasseVI_ND30 += valorND30;
-        totalClasseVI_ND39 += valorND39;
-        totalItensClasseVI += totalItemsCategory;
-
-        if (!groupedClasseVICategories[category]) {
-            groupedClasseVICategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
-        }
-        groupedClasseVICategories[category].totalValor += valorTotal;
-        groupedClasseVICategories[category].totalND30 += valorND30;
-        groupedClasseVICategories[category].totalND39 += valorND39;
-        groupedClasseVICategories[category].totalItens += totalItemsCategory;
-    } else if (CATEGORIAS_CLASSE_VII.includes(category)) {
-        // CLASSE VII
-        totalClasseVII += valorTotal;
-        totalClasseVII_ND30 += valorND30;
-        totalClasseVII_ND39 += valorND39;
-        totalItensClasseVII += totalItemsCategory;
-
-        if (!groupedClasseVIICategories[category]) {
-            groupedClasseVIICategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
-        }
-        groupedClasseVIICategories[category].totalValor += valorTotal;
-        groupedClasseVIICategories[category].totalND30 += valorND30;
-        groupedClasseVIICategories[category].totalND39 += valorND39;
-        groupedClasseVIICategories[category].totalItens += totalItemsCategory;
-    } else if (CATEGORIAS_CLASSE_VIII.includes(category)) {
-        // CLASSE VIII
-        totalClasseVIII += valorTotal;
-        totalClasseVIII_ND30 += valorND30;
-        totalClasseVIII_ND39 += valorND39;
-        
         let groupKey = category;
         let currentTotalItems = totalItemsCategory;
         
-        if (category === 'Remonta/Veterinária') {
+        if (record.classe === 'VIII' && category === 'Remonta/Veterinária') {
             const animalType = (record as any).animal_tipo;
             const quantidadeAnimais = Number((record as any).quantidade_animais || 0);
-            
             if (animalType) {
                 groupKey = `Remonta - ${animalType}`;
                 currentTotalItems = quantidadeAnimais;
             }
         }
         
-        if (category === 'Saúde') {
-            groupKey = 'Saúde';
+        if (!group.groupedCategories[groupKey]) {
+            group.groupedCategories[groupKey] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
         }
-        
-        totalItensClasseVIII += currentTotalItems;
+        group.groupedCategories[groupKey].totalValor += valorTotal;
+        group.groupedCategories[groupKey].totalND30 += valorND30;
+        group.groupedCategories[groupKey].totalND39 += valorND39;
+        group.groupedCategories[groupKey].totalItens += currentTotalItems;
+    };
 
-        if (!groupedClasseVIIICategories[groupKey]) {
-            groupedClasseVIIICategories[groupKey] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
-        }
-        groupedClasseVIIICategories[groupKey].totalValor += valorTotal;
-        groupedClasseVIIICategories[groupKey].totalND30 += valorND30;
-        groupedClasseVIIICategories[groupKey].totalND39 += valorND39;
-        groupedClasseVIIICategories[groupKey].totalItens += currentTotalItems;
-    } else if (CATEGORIAS_CLASSE_IX.includes(category)) { // NOVO
-        // CLASSE IX
-        totalClasseIX += valorTotal;
-        totalClasseIX_ND30 += valorND30;
-        totalClasseIX_ND39 += valorND39;
-        totalItensClasseIX += totalItemsCategory;
+    if (record.classe === 'II') updateCategoryTotals(omTotals.classeII);
+    else if (record.classe === 'V') updateCategoryTotals(omTotals.classeV);
+    else if (record.classe === 'VI') updateCategoryTotals(omTotals.classeVI);
+    else if (record.classe === 'VII') updateCategoryTotals(omTotals.classeVII);
+    else if (record.classe === 'VIII') updateCategoryTotals(omTotals.classeVIII);
+    else if (record.classe === 'IX') updateCategoryTotals(omTotals.classeIX);
+  });
+  
+  // 3. Processamento de Classe III (Combustível e Lubrificante)
+  safeClasseIIIData.forEach(record => {
+    const omTotals = getOmTotals(record.organizacao, record.ug);
+    const valorTotal = Number(record.valor_total || 0);
+    const totalLitros = Number(record.total_litros || 0);
+    
+    omTotals.totalLogistica += valorTotal;
+    omTotals.classeIII.total += valorTotal;
 
-        if (!groupedClasseIXCategories[category]) {
-            groupedClasseIXCategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
+    if (record.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO') {
+        omTotals.classeIII.totalLubrificanteValor += valorTotal;
+        omTotals.classeIII.totalLubrificanteLitros += totalLitros;
+    } else {
+        if (record.tipo_combustivel === 'DIESEL' || record.tipo_combustivel === 'OD') {
+            omTotals.classeIII.totalDieselValor += valorTotal;
+            omTotals.classeIII.totalDieselLitros += totalLitros;
+        } else if (record.tipo_combustivel === 'GASOLINA' || record.tipo_combustivel === 'GAS') {
+            omTotals.classeIII.totalGasolinaValor += valorTotal;
+            omTotals.classeIII.totalGasolinaLitros += totalLitros;
         }
-        groupedClasseIXCategories[category].totalValor += valorTotal;
-        groupedClasseIXCategories[category].totalND30 += valorND30;
-        groupedClasseIXCategories[category].totalND39 += valorND39;
-        groupedClasseIXCategories[category].totalItens += totalItemsCategory;
     }
   });
   
-  // 3. Fetch Classe III totals (Combustível e Lubrificante)
-  // Combustível (ND 33.90.30) - FIX: Filter out LUBRIFICANTE_CONSOLIDADO
-  const combustivelRecords = safeClasseIIIData.filter(r => 
-    r.tipo_equipamento !== 'LUBRIFICANTE_CONSOLIDADO'
-  );
-  
-  // Lubrificante (ND 33.90.30) - FIX: Filter only LUBRIFICANTE_CONSOLIDADO
-  const lubrificanteRecords = safeClasseIIIData.filter(r => 
-    r.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO'
-  );
-
-  // Totais de Combustível (ND 33.90.30)
-  const totalDieselValor = combustivelRecords
-    .filter(r => r.tipo_combustivel === 'DIESEL' || r.tipo_combustivel === 'OD')
-    .reduce((sum, record) => sum + Number(record.valor_total || 0), 0);
-    
-  const totalGasolinaValor = combustivelRecords
-    .filter(r => r.tipo_combustivel === 'GASOLINA' || r.tipo_combustivel === 'GAS')
-    .reduce((sum, record) => sum + Number(record.valor_total || 0), 0);
-    
-  const totalDieselLitros = combustivelRecords
-    .filter(r => r.tipo_combustivel === 'DIESEL' || r.tipo_combustivel === 'OD')
-    .reduce((sum, record) => sum + Number(record.total_litros || 0), 0);
-    
-  const totalGasolinaLitros = combustivelRecords
-    .filter(r => r.tipo_combustivel === 'GASOLINA' || r.tipo_combustivel === 'GAS')
-    .reduce((sum, record) => sum + Number(record.total_litros || 0), 0);
-
-  const totalCombustivel = totalDieselValor + totalGasolinaValor;
-  
-  // Totais de Lubrificante (ND 33.90.30)
-  const totalLubrificanteValor = lubrificanteRecords
-    .reduce((sum, record) => sum + Number(record.valor_total || 0), 0);
-    
-  const totalLubrificanteLitros = lubrificanteRecords
-    .reduce((sum, record) => sum + Number(record.total_litros || 0), 0);
-    
   // 4. Processamento de Diárias (ND 33.90.15)
-  let totalDiariasND15_TaxaEmbarque = 0; // Taxa de Embarque (valor_taxa_embarque)
-  let totalDiariasND15_DiariaBase = 0; // Diárias (valor principal) (valor_nd_15 - valor_taxa_embarque)
-  let totalDiariasND30 = 0; // Deve ser 0
-  let totalMilitaresDiarias = 0;
-  let totalDiasViagem = 0; // Novo total
-
-  (safeDiariaData || []).forEach(record => {
-      // ND 15 é o total geral (Diária Base + Taxa de Embarque)
-      const totalGeral = Number(record.valor_nd_15 || 0);
-      const taxaEmbarque = Number(record.valor_taxa_embarque || 0);
-      
-      totalDiariasND15_TaxaEmbarque += taxaEmbarque;
-      totalDiariasND15_DiariaBase += totalGeral - taxaEmbarque;
-      
-      // totalDiariasND30 deve ser 0, mas vamos garantir que o campo valor_nd_30 do DB seja 0
-      totalDiariasND30 += Number(record.valor_nd_30 || 0); 
-      
-      totalMilitaresDiarias += Number(record.quantidade || 0);
-      totalDiasViagem += Number(record.dias_operacao || 0);
+  safeDiariaData.forEach(record => {
+    const omTotals = getOmTotals(record.organizacao, record.ug);
+    const totalGeral = Number(record.valor_nd_15 || 0);
+    const taxaEmbarque = Number(record.valor_taxa_embarque || 0);
+    const valorND30 = Number(record.valor_nd_30 || 0);
+    const quantidade = Number(record.quantidade || 0);
+    const diasOperacao = Number(record.dias_operacao || 0);
+    
+    omTotals.diarias.total += totalGeral + valorND30; // Total Diária (ND 15 + ND 30)
+    omTotals.diarias.totalND15 += totalGeral - taxaEmbarque;
+    omTotals.diarias.totalND30 += taxaEmbarque + valorND30; // Taxa de Embarque + ND 30
+    omTotals.diarias.totalMilitares += quantidade;
+    omTotals.diarias.totalDiasViagem += diasOperacao;
+    omTotals.totalOperacional += totalGeral + valorND30;
   });
   
-  // O total da Diária (ND 33.90.15) é a soma das duas subdivisões
-  const totalDiarias = totalDiariasND15_DiariaBase + totalDiariasND30; 
-  
   // 5. Processamento de Verba Operacional e Suprimento de Fundos
-  let totalVerbaOperacionalND30 = 0;
-  let totalVerbaOperacionalND39 = 0;
-  let totalVerbaOperacional = 0;
-  let totalEquipesVerba = 0;
-  let totalDiasVerba = 0;
-  
-  let totalSuprimentoFundosND30 = 0; // NOVO
-  let totalSuprimentoFundosND39 = 0; // NOVO
-  let totalSuprimentoFundos = 0; // NOVO
-  let totalEquipesSuprimento = 0; // NOVO (Efetivo)
-  let totalDiasSuprimento = 0; // NOVO
-  
-  (safeVerbaOperacionalData || []).forEach(record => {
-      const valorND30 = Number(record.valor_nd_30 || 0);
-      const valorND39 = Number(record.valor_nd_39 || 0);
-      const total = valorND30 + valorND39;
-      
-      if (record.detalhamento === 'Suprimento de Fundos') {
-          totalSuprimentoFundosND30 += valorND30;
-          totalSuprimentoFundosND39 += valorND39;
-          totalSuprimentoFundos += total;
-          totalEquipesSuprimento += Number(record.quantidade_equipes || 0);
-          totalDiasSuprimento += Number(record.dias_operacao || 0);
-      } else {
-          // Assume que é Verba Operacional (ou registro antigo sem detalhamento)
-          totalVerbaOperacionalND30 += valorND30;
-          totalVerbaOperacionalND39 += valorND39;
-          totalVerbaOperacional += total;
-          totalEquipesVerba += Number(record.quantidade_equipes || 0);
-          totalDiasVerba += Number(record.dias_operacao || 0);
-      }
+  safeVerbaOperacionalData.forEach(record => {
+    const omTotals = getOmTotals(record.organizacao, record.ug);
+    const valorND30 = Number(record.valor_nd_30 || 0);
+    const valorND39 = Number(record.valor_nd_39 || 0);
+    const total = valorND30 + valorND39;
+    const quantidadeEquipes = Number(record.quantidade_equipes || 0);
+    const diasOperacao = Number(record.dias_operacao || 0);
+    
+    omTotals.totalOperacional += total;
+
+    if (record.detalhamento === 'Suprimento de Fundos') {
+        omTotals.suprimentoFundos.total += total;
+        omTotals.suprimentoFundos.totalND30 += valorND30;
+        omTotals.suprimentoFundos.totalND39 += valorND39;
+        omTotals.suprimentoFundos.totalEquipes += quantidadeEquipes;
+        omTotals.suprimentoFundos.totalDias += diasOperacao;
+    } else {
+        omTotals.verbaOperacional.total += total;
+        omTotals.verbaOperacional.totalND30 += valorND30;
+        omTotals.verbaOperacional.totalND39 += valorND39;
+        omTotals.verbaOperacional.totalEquipes += quantidadeEquipes;
+        omTotals.verbaOperacional.totalDias += diasOperacao;
+    }
   });
   
   // 6. Processamento de Passagens (ND 33.90.33)
-  let totalPassagensND33 = 0;
-  let totalQuantidadePassagens = 0;
-  let totalTrechosPassagens = 0;
-  
-  (safePassagemData || []).forEach(record => {
-      const valorND33 = Number(record.valor_nd_33 || 0);
-      const quantidade = Number(record.quantidade_passagens || 0);
-      
-      totalPassagensND33 += valorND33;
-      totalQuantidadePassagens += quantidade;
-      
-      // Cada registro representa um trecho (ida ou ida/volta)
-      totalTrechosPassagens += 1; 
+  safePassagemData.forEach(record => {
+    const omTotals = getOmTotals(record.organizacao, record.ug);
+    const valorND33 = Number(record.valor_nd_33 || 0);
+    const quantidade = Number(record.quantidade_passagens || 0);
+    
+    omTotals.passagens.total += valorND33;
+    omTotals.passagens.totalQuantidade += quantidade;
+    omTotals.passagens.totalTrechos += 1; 
+    omTotals.totalOperacional += valorND33;
   });
   
-  // 7. Processamento de Concessionária (ND 33.90.39) - NOVO
-  let totalConcessionariaND39 = 0;
-  let totalConcessionariaAgua = 0; // Novo subtotal
-  let totalConcessionariaEnergia = 0; // Novo subtotal
-  let totalConcessionariaRegistros = 0;
-  
-  (safeConcessionariaData || []).forEach(record => {
-      const valorND39 = Number(record.valor_nd_39 || 0);
-      totalConcessionariaND39 += valorND39;
-      totalConcessionariaRegistros += 1;
-      
-      if (record.categoria === 'Água/Esgoto') {
-          totalConcessionariaAgua += valorND39;
-      } else if (record.categoria === 'Energia Elétrica') {
-          totalConcessionariaEnergia += valorND39;
-      }
+  // 7. Processamento de Concessionária (ND 33.90.39)
+  safeConcessionariaData.forEach(record => {
+    const omTotals = getOmTotals(record.organizacao, record.ug);
+    const valorND39 = Number(record.valor_nd_39 || 0);
+    
+    omTotals.concessionaria.total += valorND39;
+    omTotals.concessionaria.totalRegistros += 1;
+    omTotals.totalOperacional += valorND39;
+    
+    if (record.categoria === 'Água/Esgoto') {
+        omTotals.concessionaria.totalAgua += valorND39;
+    } else if (record.categoria === 'Energia Elétrica') {
+        omTotals.concessionaria.totalEnergia += valorND39;
+    }
   });
   
-  // 8. Processamento de Horas de Voo (ND 33.90.30 + ND 33.90.39) - NOVO
-  let totalHorasVoo = 0;
-  let quantidadeHorasVoo = 0;
-  const groupedHorasVoo: Record<string, { totalValor: number, totalHV: number }> = {};
-  
-  (safeHorasVooData || []).forEach(record => {
-      const valorTotal = Number(record.valor_total || 0);
-      const quantidadeHv = Number(record.quantidade_hv || 0);
-      // Assumindo que 'tipo_anv' existe no tipo de retorno do Supabase para horas_voo_registros
-      const tipoAnv = (record as Tables<'horas_voo_registros'> & { tipo_anv: string }).tipo_anv || 'Não Especificado';
-      
-      totalHorasVoo += valorTotal;
-      quantidadeHorasVoo += quantidadeHv;
-      
-      if (!groupedHorasVoo[tipoAnv]) {
-          groupedHorasVoo[tipoAnv] = { totalValor: 0, totalHV: 0 };
-      }
-      groupedHorasVoo[tipoAnv].totalValor += valorTotal;
-      groupedHorasVoo[tipoAnv].totalHV += quantidadeHv;
+  // 8. Processamento de Horas de Voo (AvEx)
+  safeHorasVooData.forEach(record => {
+    const omTotals = getOmTotals(record.organizacao, record.ug);
+    const valorTotal = Number(record.valor_total || 0);
+    const quantidadeHv = Number(record.quantidade_hv || 0);
+    const tipoAnv = record.tipo_anv || 'Não Especificado';
+    
+    omTotals.horasVoo.total += valorTotal;
+    omTotals.horasVoo.quantidadeHV += quantidadeHv;
+    omTotals.totalOperacional += valorTotal;
+    omTotals.totalAviacaoExercito += valorTotal;
+    
+    if (!omTotals.horasVoo.groupedHV[tipoAnv]) {
+        omTotals.horasVoo.groupedHV[tipoAnv] = { totalValor: 0, totalHV: 0 };
+    }
+    omTotals.horasVoo.groupedHV[tipoAnv].totalValor += valorTotal;
+    omTotals.horasVoo.groupedHV[tipoAnv].totalHV += quantidadeHv;
   });
-    
-  // Soma de todas as classes diversas (II, V, VI, VII, VIII, IX)
-  const totalClassesDiversas = totalClasseII + totalClasseV + totalClasseVI + totalClasseVII + totalClasseVIII + totalClasseIX;
-    
-  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
-  const totalLogisticoGeral = totalClasseI + totalClassesDiversas + totalCombustivel + totalLubrificanteValor; 
   
-  // Total Operacional (Diárias + Verba Operacional + Suprimento de Fundos + Passagens + Concessionária + Horas de Voo + Outros Operacionais)
-  const totalOutrosOperacionais = 0; // Placeholder para outros itens operacionais
-  const totalOperacional = totalDiarias + totalVerbaOperacional + totalSuprimentoFundos + totalPassagensND33 + totalConcessionariaND39 + totalHorasVoo + totalOutrosOperacionais; // ADICIONADO totalHorasVoo
+  // 9. Processamento de Material de Consumo (ND 33.90.30/39) - NOVO
+  safeMaterialConsumoData.forEach(record => {
+    const omTotals = getOmTotals(record.organizacao, record.ug);
+    const valorTotal = Number(record.valor_total || 0);
+    const valorND30 = Number(record.valor_nd_30 || 0);
+    const valorND39 = Number(record.valor_nd_39 || 0);
+    
+    omTotals.materialConsumo.total += valorTotal;
+    omTotals.materialConsumo.totalND30 += valorND30;
+    omTotals.materialConsumo.totalND39 += valorND39;
+    omTotals.totalOperacional += valorTotal;
+  });
   
-  // Novos totais (placeholders)
-  const totalMaterialPermanente = 0;
-  const totalAviacaoExercito = totalHorasVoo; // O valor monetário total de HV
-  
-  return {
-    totalLogisticoGeral,
-    totalOperacional,
-    totalClasseI,
-    totalClasseII,
-    totalClasseII_ND30,
-    totalClasseII_ND39,
-    totalItensClasseII,
-    groupedClasseIICategories,
-    
-    totalClasseV,
-    totalClasseV_ND30,
-    totalClasseV_ND39,
-    totalItensClasseV,
-    groupedClasseVCategories,
-    
-    totalClasseVI,
-    totalClasseVI_ND30,
-    totalClasseVI_ND39,
-    totalItensClasseVI,
-    groupedClasseVICategories,
-    
-    totalClasseVII,
-    totalClasseVII_ND30,
-    totalClasseVII_ND39,
-    totalItensClasseVII,
-    groupedClasseVIICategories,
-    
-    totalClasseVIII,
-    totalClasseVIII_ND30,
-    totalClasseVIII_ND39,
-    totalItensClasseVIII,
-    groupedClasseVIIICategories,
-    
-    totalClasseIX, // NOVO
-    totalClasseIX_ND30, // NOVO
-    totalClasseIX_ND39, // NOVO
-    totalItensClasseIX, // NOVO
-    groupedClasseIXCategories, // NOVO
-    
-    totalComplemento,
-    totalEtapaSolicitadaValor,
-    totalDiasEtapaSolicitada,
-    totalRefeicoesIntermediarias,
-    totalDieselValor,
-    totalGasolinaValor,
-    totalDieselLitros,
-    totalGasolinaLitros,
-    totalLubrificanteValor,
-    totalLubrificanteLitros, // Incluído no retorno
-    totalCombustivel,
-    totalMaterialPermanente,
-    totalAviacaoExercito,
-    totalRacoesOperacionaisGeral, // Retorna o total de rações operacionais
-    
-    // Diárias
-    totalDiarias,
-    totalDiariasND15: totalDiariasND15_DiariaBase, // Diárias (valor principal)
-    totalDiariasND30: totalDiariasND15_TaxaEmbarque, // Taxa de Embarque (ND 30)
-    totalMilitaresDiarias,
-    totalDiasViagem, // Total de dias de viagem
-    
-    // Verba Operacional
-    totalVerbaOperacional,
-    totalVerbaOperacionalND30,
-    totalVerbaOperacionalND39,
-    totalEquipesVerba, 
-    totalDiasVerba, 
-    
-    // Suprimento de Fundos
-    totalSuprimentoFundos,
-    totalSuprimentoFundosND30,
-    totalSuprimentoFundosND39,
-    totalEquipesSuprimento,
-    totalDiasSuprimento,
-    
-    // Passagens
-    totalPassagensND33,
-    totalQuantidadePassagens,
-    totalTrechosPassagens,
-    
-    // Concessionária
-    totalConcessionariaND39,
-    totalConcessionariaRegistros,
-    totalConcessionariaAgua, // NOVO
-    totalConcessionariaEnergia, // NOVO
-    
-    // Horas de Voo (AvEx)
-    totalHorasVoo, // Valor monetário total (igual a totalAviacaoExercito)
-    quantidadeHorasVoo, // Quantidade total de HV
-    groupedHorasVoo, // NEW
+  // 10. Consolidação Final e Totais Globais
+  let globalTotals: PTrabAggregatedTotals = {
+      totalLogisticoGeral: 0,
+      totalOperacional: 0,
+      totalMaterialPermanente: 0,
+      totalAviacaoExercito: 0,
+      totalRacoesOperacionaisGeral: 0,
+      
+      totalClasseI: 0,
+      totalComplemento: 0,
+      totalEtapaSolicitadaValor: 0,
+      totalDiasEtapaSolicitada: 0,
+      totalRefeicoesIntermediarias: 0,
+      
+      totalClasseII: 0, totalClasseII_ND30: 0, totalClasseII_ND39: 0, totalItensClasseII: 0, groupedClasseIICategories: {},
+      totalClasseV: 0, totalClasseV_ND30: 0, totalClasseV_ND39: 0, totalItensClasseV: 0, groupedClasseVCategories: {},
+      totalClasseVI: 0, totalClasseVI_ND30: 0, totalClasseVI_ND39: 0, totalItensClasseVI: 0, groupedClasseVICategories: {},
+      totalClasseVII: 0, totalClasseVII_ND30: 0, totalClasseVII_ND39: 0, totalItensClasseVII: 0, groupedClasseVIICategories: {},
+      totalClasseVIII: 0, totalClasseVIII_ND30: 0, totalClasseVIII_ND39: 0, totalItensClasseVIII: 0, groupedClasseVIIICategories: {},
+      totalClasseIX: 0, totalClasseIX_ND30: 0, totalClasseIX_ND39: 0, totalItensClasseIX: 0, groupedClasseIXCategories: {},
+      
+      totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0, totalCombustivel: 0,
+      
+      totalDiarias: 0, totalDiariasND15: 0, totalDiariasND30: 0, totalMilitaresDiarias: 0, totalDiasViagem: 0,
+      totalVerbaOperacional: 0, totalVerbaOperacionalND30: 0, totalVerbaOperacionalND39: 0, totalEquipesVerba: 0, totalDiasVerba: 0,
+      totalSuprimentoFundos: 0, totalSuprimentoFundosND30: 0, totalSuprimentoFundosND39: 0, totalEquipesSuprimento: 0, totalDiasSuprimento: 0,
+      totalPassagensND33: 0, totalQuantidadePassagens: 0, totalTrechosPassagens: 0,
+      totalConcessionariaND39: 0, totalConcessionariaRegistros: 0, totalConcessionariaAgua: 0, totalConcessionariaEnergia: 0,
+      totalHorasVoo: 0, quantidadeHorasVoo: 0, groupedHorasVoo: {},
+      totalMaterialConsumo: 0, totalMaterialConsumoND30: 0, totalMaterialConsumoND39: 0,
+      
+      groupedByOm,
   };
+  
+  // Itera sobre os totais por OM para calcular os totais globais
+  Object.values(groupedByOm).forEach(omTotals => {
+      // Atualiza o total geral da OM
+      omTotals.totalLogistica = omTotals.classeI.total + omTotals.classeII.total + omTotals.classeIII.total + omTotals.classeV.total + omTotals.classeVI.total + omTotals.classeVII.total + omTotals.classeVIII.total + omTotals.classeIX.total;
+      omTotals.totalOperacional = omTotals.diarias.total + omTotals.verbaOperacional.total + omTotals.suprimentoFundos.total + omTotals.passagens.total + omTotals.concessionaria.total + omTotals.horasVoo.total + omTotals.materialConsumo.total;
+      omTotals.totalGeral = omTotals.totalLogistica + omTotals.totalOperacional + omTotals.totalMaterialPermanente;
+      
+      // Soma para os totais globais
+      globalTotals.totalLogisticoGeral += omTotals.totalLogistica;
+      globalTotals.totalOperacional += omTotals.totalOperacional;
+      globalTotals.totalMaterialPermanente += omTotals.totalMaterialPermanente;
+      globalTotals.totalAviacaoExercito += omTotals.totalAviacaoExercito;
+      globalTotals.totalRacoesOperacionaisGeral += omTotals.classeI.totalRacoesOperacionaisGeral;
+      
+      // Detalhes Globais (apenas para manter a compatibilidade do modo 'global')
+      globalTotals.totalClasseI += omTotals.classeI.total;
+      globalTotals.totalComplemento += omTotals.classeI.totalComplemento;
+      globalTotals.totalEtapaSolicitadaValor += omTotals.classeI.totalEtapaSolicitadaValor;
+      globalTotals.totalDiasEtapaSolicitada += omTotals.classeI.totalDiasEtapaSolicitada;
+      globalTotals.totalRefeicoesIntermediarias += omTotals.classeI.totalRefeicoesIntermediarias;
+      
+      // Classes Diversas (Global)
+      const mergeClassTotals = (globalGroup: any, omGroup: any) => {
+          globalGroup.total += omGroup.total;
+          globalGroup.totalND30 += omGroup.totalND30;
+          globalGroup.totalND39 += omGroup.totalND39;
+          globalGroup.totalItens += omGroup.totalItens;
+          
+          Object.entries(omGroup.groupedCategories).forEach(([category, data]: [string, any]) => {
+              if (!globalGroup.groupedCategories[category]) {
+                  globalGroup.groupedCategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
+              }
+              globalGroup.groupedCategories[category].totalValor += data.totalValor;
+              globalGroup.groupedCategories[category].totalND30 += data.totalND30;
+              globalGroup.groupedCategories[category].totalND39 += data.totalND39;
+              globalGroup.groupedCategories[category].totalItens += data.totalItens;
+          });
+      };
+      
+      mergeClassTotals({ total: globalTotals.totalClasseII, totalND30: globalTotals.totalClasseII_ND30, totalND39: globalTotals.totalClasseII_ND39, totalItens: globalTotals.totalItensClasseII, groupedCategories: globalTotals.groupedClasseIICategories }, omTotals.classeII);
+      mergeClassTotals({ total: globalTotals.totalClasseV, totalND30: globalTotals.totalClasseV_ND30, totalND39: globalTotals.totalClasseV_ND39, totalItens: globalTotals.totalItensClasseV, groupedCategories: globalTotals.groupedClasseVCategories }, omTotals.classeV);
+      mergeClassTotals({ total: globalTotals.totalClasseVI, totalND30: globalTotals.totalClasseVI_ND30, totalND39: globalTotals.totalClasseVI_ND39, totalItens: globalTotals.totalItensClasseVI, groupedCategories: globalTotals.groupedClasseVICategories }, omTotals.classeVI);
+      mergeClassTotals({ total: globalTotals.totalClasseVII, totalND30: globalTotals.totalClasseVII_ND30, totalND39: globalTotals.totalClasseVII_ND39, totalItens: globalTotals.totalItensClasseVII, groupedCategories: globalTotals.groupedClasseVIICategories }, omTotals.classeVII);
+      mergeClassTotals({ total: globalTotals.totalClasseVIII, totalND30: globalTotals.totalClasseVIII_ND30, totalND39: globalTotals.totalClasseVIII_ND39, totalItens: globalTotals.totalItensClasseVIII, groupedCategories: globalTotals.groupedClasseVIIICategories }, omTotals.classeVIII);
+      mergeClassTotals({ total: globalTotals.totalClasseIX, totalND30: globalTotals.totalClasseIX_ND30, totalND39: globalTotals.totalClasseIX_ND39, totalItens: globalTotals.totalItensClasseIX, groupedCategories: globalTotals.groupedClasseIXCategories }, omTotals.classeIX);
+      
+      // Classe III (Global)
+      globalTotals.totalCombustivel += omTotals.classeIII.total;
+      globalTotals.totalDieselValor += omTotals.classeIII.totalDieselValor;
+      globalTotals.totalGasolinaValor += omTotals.classeIII.totalGasolinaValor;
+      globalTotals.totalDieselLitros += omTotals.classeIII.totalDieselLitros;
+      globalTotals.totalGasolinaLitros += omTotals.classeIII.totalGasolinaLitros;
+      globalTotals.totalLubrificanteValor += omTotals.classeIII.totalLubrificanteValor;
+      globalTotals.totalLubrificanteLitros += omTotals.classeIII.totalLubrificanteLitros;
+      
+      // Operacional (Global)
+      globalTotals.totalDiarias += omTotals.diarias.total;
+      globalTotals.totalDiariasND15 += omTotals.diarias.totalND15;
+      globalTotals.totalDiariasND30 += omTotals.diarias.totalND30;
+      globalTotals.totalMilitaresDiarias += omTotals.diarias.totalMilitares;
+      globalTotals.totalDiasViagem += omTotals.diarias.totalDiasViagem;
+      
+      globalTotals.totalVerbaOperacional += omTotals.verbaOperacional.total;
+      globalTotals.totalVerbaOperacionalND30 += omTotals.verbaOperacional.totalND30;
+      globalTotals.totalVerbaOperacionalND39 += omTotals.verbaOperacional.totalND39;
+      globalTotals.totalEquipesVerba += omTotals.verbaOperacional.totalEquipes;
+      globalTotals.totalDiasVerba += omTotals.verbaOperacional.totalDias;
+      
+      globalTotals.totalSuprimentoFundos += omTotals.suprimentoFundos.total;
+      globalTotals.totalSuprimentoFundosND30 += omTotals.suprimentoFundos.totalND30;
+      globalTotals.totalSuprimentoFundosND39 += omTotals.suprimentoFundos.totalND39;
+      globalTotals.totalEquipesSuprimento += omTotals.suprimentoFundos.totalEquipes;
+      globalTotals.totalDiasSuprimento += omTotals.suprimentoFundos.totalDias;
+      
+      globalTotals.totalPassagensND33 += omTotals.passagens.total;
+      globalTotals.totalQuantidadePassagens += omTotals.passagens.totalQuantidade;
+      globalTotals.totalTrechosPassagens += omTotals.passagens.totalTrechos;
+      
+      globalTotals.totalConcessionariaND39 += omTotals.concessionaria.total;
+      globalTotals.totalConcessionariaRegistros += omTotals.concessionaria.totalRegistros;
+      globalTotals.totalConcessionariaAgua += omTotals.concessionaria.totalAgua;
+      globalTotals.totalConcessionariaEnergia += omTotals.concessionaria.totalEnergia;
+      
+      globalTotals.totalHorasVoo += omTotals.horasVoo.total;
+      globalTotals.quantidadeHorasVoo += omTotals.horasVoo.quantidadeHV;
+      
+      Object.entries(omTotals.horasVoo.groupedHV).forEach(([tipoAnv, data]) => {
+          if (!globalTotals.groupedHorasVoo[tipoAnv]) {
+              globalTotals.groupedHorasVoo[tipoAnv] = { totalValor: 0, totalHV: 0 };
+          }
+          globalTotals.groupedHorasVoo[tipoAnv].totalValor += data.totalValor;
+          globalTotals.groupedHorasVoo[tipoAnv].totalHV += data.totalHV;
+      });
+      
+      globalTotals.totalMaterialConsumo += omTotals.materialConsumo.total;
+      globalTotals.totalMaterialConsumoND30 += omTotals.materialConsumo.totalND30;
+      globalTotals.totalMaterialConsumoND39 += omTotals.materialConsumo.totalND39;
+  });
+  
+  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
+  // Já calculado na iteração acima (globalTotals.totalLogisticoGeral)
+  
+  // Total Operacional (Diárias + Verba Operacional + Suprimento de Fundos + Passagens + Concessionária + Horas de Voo + Material Consumo)
+  // Já calculado na iteração acima (globalTotals.totalOperacional)
+  
+  return globalTotals as PTrabAggregatedTotals;
 };
 
 interface PTrabCostSummaryProps {
@@ -629,97 +701,690 @@ interface PTrabCostSummaryProps {
   creditGND4: number;
 }
 
+// Componente auxiliar para renderizar os detalhes de uma aba (Logística ou Operacional)
+interface TabDetailsProps {
+    mode: 'logistica' | 'operacional' | 'permanente' | 'avex';
+    data: OmTotals | PTrabAggregatedTotals;
+}
+
+const TabDetails = ({ mode, data }: TabDetailsProps) => {
+    const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
+    
+    // Função auxiliar para obter dados de classe (funciona para OmTotals e PTrabAggregatedTotals)
+    const getClassData = (key: keyof OmTotals | keyof PTrabAggregatedTotals) => {
+        // Se for OmTotals, a chave é direta (ex: data.classeII)
+        if ((data as OmTotals).omKey) {
+            return (data as OmTotals)[key as keyof OmTotals];
+        }
+        // Se for PTrabAggregatedTotals, a chave pode ser direta (ex: data.totalClasseII) ou agrupada (ex: data.groupedClasseIICategories)
+        return data;
+    };
+    
+    // Função auxiliar para obter dados de categoria (funciona para OmTotals e PTrabAggregatedTotals)
+    const getGroupedCategories = (key: 'classeII' | 'classeV' | 'classeVI' | 'classeVII' | 'classeVIII' | 'classeIX') => {
+        if ((data as OmTotals).omKey) {
+            return (data as OmTotals)[key].groupedCategories;
+        }
+        // Mapeamento de chaves globais para o objeto de categorias
+        const globalKeyMap = {
+            classeII: 'groupedClasseIICategories',
+            classeV: 'groupedClasseVCategories',
+            classeVI: 'groupedClasseVICategories',
+            classeVII: 'groupedClasseVIICategories',
+            classeVIII: 'groupedClasseVIIICategories',
+            classeIX: 'groupedClasseIXCategories',
+        };
+        return (data as PTrabAggregatedTotals)[globalKeyMap[key] as keyof PTrabAggregatedTotals] as Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }>;
+    };
+    
+    // Função auxiliar para obter o total da classe (funciona para OmTotals e PTrabAggregatedTotals)
+    const getClassTotal = (key: 'classeI' | 'classeII' | 'classeV' | 'classeVI' | 'classeVII' | 'classeVIII' | 'classeIX' | 'classeIII') => {
+        if ((data as OmTotals).omKey) {
+            return (data as OmTotals)[key].total;
+        }
+        // Mapeamento de chaves globais para o total
+        const globalKeyMap = {
+            classeI: 'totalClasseI',
+            classeII: 'totalClasseII',
+            classeV: 'totalClasseV',
+            classeVI: 'totalClasseVI',
+            classeVII: 'totalClasseVII',
+            classeVIII: 'totalClasseVIII',
+            classeIX: 'totalClasseIX',
+            classeIII: 'totalCombustivel',
+        };
+        return (data as PTrabAggregatedTotals)[globalKeyMap[key] as keyof PTrabAggregatedTotals] as number;
+    };
+    
+    // Função auxiliar para obter o total operacional (funciona para OmTotals e PTrabAggregatedTotals)
+    const getOpTotal = (key: 'diarias' | 'verbaOperacional' | 'suprimentoFundos' | 'passagens' | 'concessionaria' | 'horasVoo' | 'materialConsumo') => {
+        if ((data as OmTotals).omKey) {
+            return (data as OmTotals)[key].total;
+        }
+        // Mapeamento de chaves globais para o total
+        const globalKeyMap = {
+            diarias: 'totalDiarias',
+            verbaOperacional: 'totalVerbaOperacional',
+            suprimentoFundos: 'totalSuprimentoFundos',
+            passagens: 'totalPassagensND33',
+            concessionaria: 'totalConcessionariaND39',
+            horasVoo: 'totalHorasVoo',
+            materialConsumo: 'totalMaterialConsumo',
+        };
+        return (data as PTrabAggregatedTotals)[globalKeyMap[key] as keyof PTrabAggregatedTotals] as number;
+    };
+    
+    const renderClassAccordion = (
+        key: 'classeII' | 'classeV' | 'classeVI' | 'classeVII' | 'classeVIII' | 'classeIX', 
+        title: string, 
+        icon: React.ReactNode, 
+        unitLabel: string,
+        isRemonta: boolean = false
+    ) => {
+        const classData = getClassData(key) as OmTotals['classeII'];
+        const total = classData.total;
+        const groupedCategories = getGroupedCategories(key);
+        const sortedCategories = Object.entries(groupedCategories).sort(([a], [b]) => a.localeCompare(b));
+        
+        if (total === 0) return null;
+        
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value={`item-${key}`} className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground">
+                                {icon}
+                                {title}
+                            </div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                                {formatCurrency(total)}
+                            </span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            {sortedCategories.map(([category, data]) => (
+                                <div key={category} className="space-y-1">
+                                    <div className="flex justify-between text-muted-foreground font-semibold pt-1">
+                                        <span className="w-1/2 text-left">{category}</span>
+                                        <span className="w-1/4 text-right font-medium">
+                                            {formatNumber(data.totalItens)} {isRemonta ? 'animais' : unitLabel}
+                                        </span>
+                                        <span className="w-1/4 text-right font-medium">
+                                            {formatCurrency(data.totalValor)}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
+                                        <span className="w-1/2 text-left">ND 30 / ND 39</span>
+                                        <span className="w-1/4 text-right text-green-600 font-medium">
+                                            {formatCurrency(data.totalND30)}
+                                        </span>
+                                        <span className="w-1/4 text-right text-blue-600 font-medium">
+                                            {formatCurrency(data.totalND39)}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+    
+    const renderClasseI = () => {
+        const classeI = getClassData('classeI') as OmTotals['classeI'];
+        const total = classeI.total;
+        
+        if (total === 0) return null;
+        
+        return (
+            <Accordion type="single" collapsible className="w-full pt-0">
+                <AccordionItem value="item-classe-i" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground">
+                                <Utensils className="h-3 w-3 text-orange-500" />
+                                Classe I
+                            </div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                                {formatCurrency(total)}
+                            </span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            {/* Detalhe 1: Valor Complemento */}
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Complemento (Ref. Int.)</span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatNumber(classeI.totalRefeicoesIntermediarias)}
+                                </span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatCurrency(classeI.totalComplemento)}
+                                </span>
+                            </div>
+                            {/* Detalhe 2: Valor Etapa Solicitada */}
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Etapa Solicitada</span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatNumber(classeI.totalDiasEtapaSolicitada)} dias
+                                </span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatCurrency(classeI.totalEtapaSolicitadaValor)}
+                                </span>
+                            </div>
+                            {/* Detalhe 3: Ração Operacional */}
+                            {classeI.totalRacoesOperacionaisGeral > 0 && (
+                                <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                    <span className="w-1/2 text-left text-muted-foreground">Ração Operacional (R2/R3)</span>
+                                    <span className="w-1/4 text-right font-medium">
+                                        {formatNumber(classeI.totalRacoesOperacionaisGeral)} un.
+                                    </span>
+                                    <span className="w-1/4 text-right font-medium text-background">
+                                        {formatCurrency(0)}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+    
+    const renderClasseIII = () => {
+        const classeIII = getClassData('classeIII') as OmTotals['classeIII'];
+        const total = classeIII.total;
+        
+        if (total === 0) return null;
+        
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value="item-classe-iii" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground">
+                                <Fuel className="h-3 w-3 text-orange-500" />
+                                Classe III
+                            </div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                                {formatCurrency(total)}
+                            </span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            {/* Linha Óleo Diesel */}
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Óleo Diesel</span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatNumber(classeIII.totalDieselLitros)} L
+                                </span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatCurrency(classeIII.totalDieselValor)}
+                                </span>
+                            </div>
+                            {/* Linha Gasolina */}
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Gasolina</span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatNumber(classeIII.totalGasolinaLitros)} L
+                                </span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatCurrency(classeIII.totalGasolinaValor)}
+                                </span>
+                            </div>
+                            {/* Linha Lubrificante */}
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">
+                                    Lubrificante
+                                </span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatNumber(classeIII.totalLubrificanteLitros || 0, 2)} L
+                                </span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatCurrency(classeIII.totalLubrificanteValor)}
+                                </span>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+    
+    const renderDiarias = () => {
+        const diarias = getClassData('diarias') as OmTotals['diarias'];
+        const total = diarias.total;
+        
+        if (total === 0) return null;
+        
+        return (
+            <Accordion type="single" collapsible className="w-full pt-0">
+                <AccordionItem value="item-diarias" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground">
+                                <Briefcase className="h-3 w-3 text-blue-500" />
+                                Diárias
+                            </div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                                {formatCurrency(total)}
+                            </span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Total de Militares</span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatNumber(diarias.totalMilitares)}
+                                </span>
+                                <span className="w-1/4 text-right font-medium text-background"></span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Total de Dias de Viagem</span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatNumber(diarias.totalDiasViagem)} dias
+                                </span>
+                                <span className="w-1/4 text-right font-medium text-background"></span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                <span className="w-1/2 text-left font-semibold">Diárias (ND 15) / Taxa Embarque + ND 30</span>
+                                <span className="w-1/4 text-right font-medium text-green-600">
+                                    {formatCurrency(diarias.totalND15)}
+                                </span>
+                                <span className="w-1/4 text-right font-medium text-blue-600">
+                                    {formatCurrency(diarias.totalND30)}
+                                </span>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+    
+    const renderVerbaSuprimento = (key: 'verbaOperacional' | 'suprimentoFundos', title: string) => {
+        const group = getClassData(key) as OmTotals['verbaOperacional'];
+        const total = group.total;
+        
+        if (total === 0) return null;
+        
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value={`item-${key}`} className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground">
+                                {key === 'verbaOperacional' ? <ClipboardList className="h-3 w-3 text-blue-500" /> : <Wallet className="h-3 w-3 text-blue-500" />}
+                                {title}
+                            </div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                                {formatCurrency(total)}
+                            </span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Total de Equipes</span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatNumber(group.totalEquipes)}
+                                </span>
+                                <span className="w-1/4 text-right font-medium text-background"></span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Total de Dias</span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatNumber(group.totalDias)} dias
+                                </span>
+                                <span className="w-1/4 text-right font-medium text-background"></span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                <span className="w-1/2 text-left font-semibold">ND 30 / ND 39</span>
+                                <span className="w-1/4 text-right font-medium text-green-600">
+                                    {formatCurrency(group.totalND30)}
+                                </span>
+                                <span className="w-1/4 text-right font-medium text-blue-600">
+                                    {formatCurrency(group.totalND39)}
+                                </span>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+    
+    const renderPassagens = () => {
+        const passagens = getClassData('passagens') as OmTotals['passagens'];
+        const total = passagens.total;
+        
+        if (total === 0) return null;
+        
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value="item-passagens" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground">
+                                <Plane className="h-3 w-3 text-blue-500" />
+                                Passagens
+                            </div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                                {formatCurrency(total)}
+                            </span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Total de Passagens</span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatNumber(passagens.totalQuantidade)} un.
+                                </span>
+                                <span className="w-1/4 text-right font-medium text-background"></span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Total de Trechos Registrados</span>
+                                <span className="w-1/4 text-right font-medium">
+                                    {formatNumber(passagens.totalTrechos)}
+                                </span>
+                                <span className="w-1/4 text-right font-medium text-background"></span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                <span className="w-1/2 text-left font-semibold">ND 33 (Passagens)</span>
+                                <span className="w-1/4 text-right font-medium text-background"></span>
+                                <span className="w-1/4 text-right font-medium text-green-600">
+                                    {formatCurrency(total)}
+                                </span>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+    
+    const renderConcessionaria = () => {
+        const concessionaria = getClassData('concessionaria') as OmTotals['concessionaria'];
+        const total = concessionaria.total;
+        
+        if (total === 0) return null;
+        
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value="item-concessionaria" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground">
+                                <Droplet className="h-3 w-3 text-blue-500" />
+                                Concessionária
+                            </div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                                {formatCurrency(total)}
+                            </span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            {concessionaria.totalAgua > 0 && (
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span className="w-1/2 text-left">Água/Esgoto</span>
+                                    <span className="w-1/4 text-right font-medium text-background"></span>
+                                    <span className="w-1/4 text-right font-medium">
+                                        {formatCurrency(concessionaria.totalAgua)}
+                                    </span>
+                                </div>
+                            )}
+                            {concessionaria.totalEnergia > 0 && (
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span className="w-1/2 text-left">Energia Elétrica</span>
+                                    <span className="w-1/4 text-right font-medium text-background"></span>
+                                    <span className="w-1/4 text-right font-medium">
+                                        {formatCurrency(concessionaria.totalEnergia)}
+                                    </span>
+                                </div>
+                            )}
+                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                <span className="w-1/2 text-left font-semibold">ND 39 (Serviços de Terceiros)</span>
+                                <span className="w-1/4 text-right font-medium text-background"></span>
+                                <span className="w-1/4 text-right font-medium text-blue-600">
+                                    {formatCurrency(total)}
+                                </span>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+    
+    const renderMaterialConsumo = () => {
+        const materialConsumo = getClassData('materialConsumo') as OmTotals['materialConsumo'];
+        const total = materialConsumo.total;
+        
+        if (total === 0) return null;
+        
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value="item-material-consumo" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground">
+                                <Package className="h-3 w-3 text-blue-500" />
+                                Material de Consumo
+                            </div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                                {formatCurrency(total)}
+                            </span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                <span className="w-1/2 text-left font-semibold">ND 30 / ND 39</span>
+                                <span className="w-1/4 text-right font-medium text-green-600">
+                                    {formatCurrency(materialConsumo.totalND30)}
+                                </span>
+                                <span className="w-1/4 text-right font-medium text-blue-600">
+                                    {formatCurrency(materialConsumo.totalND39)}
+                                </span>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+    
+    const renderHorasVoo = () => {
+        const horasVoo = getClassData('horasVoo') as OmTotals['horasVoo'];
+        const total = horasVoo.total;
+        const groupedHV = horasVoo.groupedHV;
+        const sortedHV = Object.entries(groupedHV).sort(([a], [b]) => a.localeCompare(b));
+        
+        if (total === 0) return null;
+        
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value="item-horas-voo" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground">
+                                <Plane className="h-3 w-3 text-purple-500" />
+                                Horas de Voo (AvEx)
+                            </div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                                {formatNumber(horasVoo.quantidadeHV, 2)} HV
+                            </span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            {sortedHV.map(([tipoAnv, data]) => (
+                                <div key={tipoAnv} className="flex justify-between text-muted-foreground">
+                                    <span className="w-1/2 text-left">{tipoAnv}</span>
+                                    <span className="w-1/4 text-right font-medium text-background"></span>
+                                    <span className="w-1/4 text-right font-medium">
+                                        {formatNumber(data.totalHV, 2)} HV
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+
+    if (mode === 'logistica') {
+        const totalLogistica = (data as OmTotals).omKey ? (data as OmTotals).totalLogistica : (data as PTrabAggregatedTotals).totalLogisticoGeral;
+        
+        return (
+            <div className="space-y-3 border-l-4 border-orange-500 pl-3">
+                <div className="flex items-center justify-between text-xs font-semibold text-orange-600 mb-2">
+                    <div className="flex items-center gap-2">
+                        <Package className="h-3 w-3" />
+                        Logística
+                    </div>
+                    <span className="font-bold text-sm">{formatCurrency(totalLogistica)}</span>
+                </div>
+                
+                {renderClasseI()}
+                {renderClassAccordion('classeII', 'Classe II', <ClipboardList className="h-3 w-3 text-orange-500" />, 'un.')}
+                {renderClasseIII()}
+                {renderClassAccordion('classeV', 'Classe V', <Swords className="h-3 w-3 text-orange-500" />, 'un.')}
+                {renderClassAccordion('classeVI', 'Classe VI', <HardHat className="h-3 w-3 text-orange-500" />, 'un.')}
+                {renderClassAccordion('classeVII', 'Classe VII', <Radio className="h-3 w-3 text-orange-500" />, 'un.')}
+                {renderClassAccordion('classeVIII', 'Classe VIII', <HeartPulse className="h-3 w-3 text-orange-500" />, 'un.', true)}
+                {renderClassAccordion('classeIX', 'Classe IX', <Truck className="h-3 w-3 text-orange-500" />, 'vtr')}
+            </div>
+        );
+    }
+    
+    if (mode === 'operacional') {
+        const totalOperacional = (data as OmTotals).omKey ? (data as OmTotals).totalOperacional : (data as PTrabAggregatedTotals).totalOperacional;
+        
+        return (
+            <div className="space-y-3 border-l-4 border-blue-500 pl-3">
+                <div className="flex items-center justify-between text-xs font-semibold text-blue-600 mb-2">
+                    <div className="flex items-center gap-2">
+                        <Activity className="h-3 w-3" />
+                        Operacional
+                    </div>
+                    <span className="font-bold text-sm">{formatCurrency(totalOperacional)}</span>
+                </div>
+                
+                {renderDiarias()}
+                {renderPassagens()}
+                {renderVerbaSuprimento('verbaOperacional', 'Verba Operacional')}
+                {renderVerbaSuprimento('suprimentoFundos', 'Suprimento de Fundos')}
+                {renderConcessionaria()}
+                {renderMaterialConsumo()}
+                
+                {/* Outros Operacionais (Placeholder) */}
+                {/* A lógica de "Outros" é complexa de calcular aqui, então vamos focar nos itens implementados */}
+            </div>
+        );
+    }
+    
+    if (mode === 'permanente') {
+        const totalMaterialPermanente = (data as OmTotals).omKey ? (data as OmTotals).totalMaterialPermanente : (data as PTrabAggregatedTotals).totalMaterialPermanente;
+        
+        if (totalMaterialPermanente === 0) return null;
+        
+        return (
+            <div className="space-y-3 border-l-4 border-green-500 pl-3">
+                <div className="flex items-center justify-between text-xs font-semibold text-green-600 mb-2">
+                    <div className="flex items-center gap-2">
+                        <HardHat className="h-3 w-3" />
+                        Material Permanente
+                    </div>
+                    <span className="font-bold text-sm">{formatCurrency(totalMaterialPermanente)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                    <span className="w-1/2 text-left">Itens de Material Permanente</span>
+                    <span className="w-1/4 text-right font-medium"></span>
+                    <span className="w-1/4 text-right font-medium">
+                        {formatCurrency(totalMaterialPermanente)}
+                    </span>
+                </div>
+            </div>
+        );
+    }
+    
+    if (mode === 'avex') {
+        const totalAviacaoExercito = (data as OmTotals).omKey ? (data as OmTotals).totalAviacaoExercito : (data as PTrabAggregatedTotals).totalAviacaoExercito;
+        const quantidadeHorasVoo = (data as OmTotals).omKey ? (data as OmTotals).horasVoo.quantidadeHV : (data as PTrabAggregatedTotals).quantidadeHorasVoo;
+        
+        if (totalAviacaoExercito === 0) return null;
+        
+        return (
+            <div className="space-y-3 border-l-4 border-purple-500 pl-3">
+                <div className="flex items-center justify-between text-xs font-semibold text-purple-600 mb-2">
+                    <div className="flex items-center gap-2">
+                        <Plane className="h-3 w-3" />
+                        Aviação do Exército
+                    </div>
+                    <span className="font-bold text-sm">
+                        {formatNumber(quantidadeHorasVoo, 2)} HV
+                    </span>
+                </div>
+                {renderHorasVoo()}
+            </div>
+        );
+    }
+    
+    return null;
+};
+
+
 export const PTrabCostSummary = ({ 
   ptrabId, 
   onOpenCreditDialog,
   creditGND3,
   creditGND4,
 }: PTrabCostSummaryProps) => {
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<PTrabAggregatedTotals>({
     queryKey: ['ptrabTotals', ptrabId],
     queryFn: () => fetchPTrabTotals(ptrabId),
     enabled: !!ptrabId,
     refetchInterval: 10000,
     initialData: {
-      totalLogisticoGeral: 0,
-      totalOperacional: 0,
-      totalMaterialPermanente: 0,
-      totalAviacaoExercito: 0,
-      totalClasseI: 0,
-      totalClasseII: 0,
-      totalClasseV: 0,
-      totalCombustivel: 0,
-      totalLubrificanteValor: 0,
-      totalClasseII_ND30: 0,
-      totalClasseII_ND39: 0,
-      totalItensClasseII: 0,
-      groupedClasseIICategories: {},
-      totalClasseV_ND30: 0,
-      totalClasseV_ND39: 0,
-      totalItensClasseV: 0,
-      groupedClasseVCategories: {},
-      totalClasseVI: 0,
-      totalClasseVI_ND30: 0,
-      totalClasseVI_ND39: 0,
-      totalItensClasseVI: 0,
-      groupedClasseVICategories: {},
-      totalClasseVII: 0,
-      totalClasseVII_ND30: 0,
-      totalClasseVII_ND39: 0,
-      groupedClasseVIICategories: {},
-      totalItensClasseVII: 0,
-      totalClasseVIII: 0,
-      totalClasseVIII_ND30: 0,
-      totalClasseVIII_ND39: 0,
-      groupedClasseVIIICategories: {},
-      totalItensClasseVIII: 0,
-      totalClasseIX: 0, 
-      totalClasseIX_ND30: 0, 
-      totalClasseIX_ND39: 0, 
-      totalItensClasseIX: 0, 
-      groupedClasseIXCategories: {}, 
-      totalComplemento: 0,
-      totalEtapaSolicitadaValor: 0,
-      totalDiasEtapaSolicitada: 0,
-      totalRefeicoesIntermediarias: 0,
-      totalDieselValor: 0,
-      totalGasolinaValor: 0,
-      totalDieselLitros: 0,
-      totalGasolinaLitros: 0,
-      totalLubrificanteLitros: 0, 
-      totalRacoesOperacionaisGeral: 0, 
-      totalDiarias: 0,
-      totalDiariasND15: 0, 
-      totalDiariasND30: 0, 
-      totalMilitaresDiarias: 0,
-      totalDiasViagem: 0, 
-      totalVerbaOperacional: 0,
-      totalVerbaOperacionalND30: 0,
-      totalVerbaOperacionalND39: 0,
-      totalEquipesVerba: 0, 
-      totalDiasVerba: 0, 
-      // Suprimento de Fundos
-      totalSuprimentoFundos: 0,
-      totalSuprimentoFundosND30: 0,
-      totalSuprimentoFundosND39: 0,
-      totalEquipesSuprimento: 0,
-      totalDiasSuprimento: 0,
-      // Passagens
-      totalPassagensND33: 0,
-      totalQuantidadePassagens: 0,
-      totalTrechosPassagens: 0,
-      // Concessionária
-      totalConcessionariaND39: 0,
-      totalConcessionariaRegistros: 0,
-      totalConcessionariaAgua: 0, // NOVO
-      totalConcessionariaEnergia: 0, // NOVO
-      // Horas de Voo (AvEx)
-      totalHorasVoo: 0,
-      quantidadeHorasVoo: 0,
-      groupedHorasVoo: {},
+        totalLogisticoGeral: 0,
+        totalOperacional: 0,
+        totalMaterialPermanente: 0,
+        totalAviacaoExercito: 0,
+        totalRacoesOperacionaisGeral: 0,
+        totalClasseI: 0,
+        totalComplemento: 0,
+        totalEtapaSolicitadaValor: 0,
+        totalDiasEtapaSolicitada: 0,
+        totalRefeicoesIntermediarias: 0,
+        totalClasseII: 0, totalClasseII_ND30: 0, totalClasseII_ND39: 0, totalItensClasseII: 0, groupedClasseIICategories: {},
+        totalClasseV: 0, totalClasseV_ND30: 0, totalClasseV_ND39: 0, totalItensClasseV: 0, groupedClasseVCategories: {},
+        totalClasseVI: 0, totalClasseVI_ND30: 0, totalClasseVI_ND39: 0, totalItensClasseVI: 0, groupedClasseVICategories: {},
+        totalClasseVII: 0, totalClasseVII_ND30: 0, totalClasseVII_ND39: 0, totalItensClasseVII: 0, groupedClasseVIICategories: {},
+        totalClasseVIII: 0, totalClasseVIII_ND30: 0, totalClasseVIII_ND39: 0, totalItensClasseVIII: 0, groupedClasseVIIICategories: {},
+        totalClasseIX: 0, totalClasseIX_ND30: 0, totalClasseIX_ND39: 0, totalItensClasseIX: 0, groupedClasseIXCategories: {},
+        totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0, totalCombustivel: 0,
+        totalDiarias: 0, totalDiariasND15: 0, totalDiariasND30: 0, totalMilitaresDiarias: 0, totalDiasViagem: 0,
+        totalVerbaOperacional: 0, totalVerbaOperacionalND30: 0, totalVerbaOperacionalND39: 0, totalEquipesVerba: 0, totalDiasVerba: 0,
+        totalSuprimentoFundos: 0, totalSuprimentoFundosND30: 0, totalSuprimentoFundosND39: 0, totalEquipesSuprimento: 0, totalDiasSuprimento: 0,
+        totalPassagensND33: 0, totalQuantidadePassagens: 0, totalTrechosPassagens: 0,
+        totalConcessionariaND39: 0, totalConcessionariaRegistros: 0, totalConcessionariaAgua: 0, totalConcessionariaEnergia: 0,
+        totalHorasVoo: 0, quantidadeHorasVoo: 0, groupedHorasVoo: {},
+        totalMaterialConsumo: 0, totalMaterialConsumoND30: 0, totalMaterialConsumoND39: 0,
+        groupedByOm: {},
     },
   });
   
+  // NOVO ESTADO: Modo de visualização (global ou por OM)
+  const [viewMode, setViewMode] = useState<'global' | 'byOm'>('global');
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const detailsRef = useRef<HTMLDivElement>(null);
 
@@ -771,22 +1436,87 @@ export const PTrabCostSummary = ({
 
   const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
   
-  // FIX: Add nullish coalescing operator (?? {}) to ensure Object.entries receives an object
-  const sortedClasseIICategories = Object.entries(totals.groupedClasseIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
-  const sortedClasseVCategories = Object.entries(totals.groupedClasseVCategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
-  const sortedClasseVICategories = Object.entries(totals.groupedClasseVICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
-  const sortedClasseVIICategories = Object.entries(totals.groupedClasseVIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
-  const sortedClasseVIIICategories = Object.entries(totals.groupedClasseVIIICategories ?? {}).sort(([a], [b]) => a.localeCompare(b));
-  const sortedClasseIXCategories = Object.entries(totals.groupedClasseIXCategories ?? {}).sort(([a], [b]) => a.localeCompare(b)); // NOVO
+  // Prepara os dados agrupados por OM para iteração
+  const sortedOmTotals = useMemo(() => {
+      return Object.values(totals.groupedByOm).sort((a, b) => a.omName.localeCompare(b.omName));
+  }, [totals.groupedByOm]);
   
-  const sortedHorasVoo = Object.entries(totals.groupedHorasVoo ?? {}).sort(([a], [b]) => a.localeCompare(b)); // NEW: Sorting HV types
+  // Componente para renderizar os detalhes no modo GLOBAL
+  const renderGlobalDetails = () => (
+    <div className="space-y-2" ref={detailsRef}>
+        
+        {/* Aba Logística */}
+        <TabDetails mode="logistica" data={totals} />
+
+        {/* Aba Operacional */}
+        <div className="pt-4">
+            <TabDetails mode="operacional" data={totals} />
+        </div>
+        
+        {/* Aba Material Permanente */}
+        <div className="pt-4">
+            <TabDetails mode="permanente" data={totals} />
+        </div>
+        
+        {/* Aba Aviação do Exército */}
+        <div className="pt-4">
+            <TabDetails mode="avex" data={totals} />
+        </div>
+    </div>
+  );
+  
+  // Componente para renderizar os detalhes no modo POR OM
+  const renderOmDetails = () => (
+    <div className="space-y-4" ref={detailsRef}>
+        {sortedOmTotals.map(om => (
+            <Accordion type="single" collapsible key={om.omKey}>
+                <AccordionItem value={om.omKey} className="border-b">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-sm font-bold text-foreground">
+                            <div className="flex items-center gap-2">
+                                <Users className="h-4 w-4 text-primary" />
+                                {om.omName} ({formatCodug(om.ug)})
+                            </div>
+                            <span className="text-lg font-extrabold text-primary">
+                                {formatCurrency(om.totalGeral)}
+                            </span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-2 pb-0">
+                        <div className="space-y-4 pl-4 border-l border-border/50">
+                            {/* Sub-resumo por Aba dentro da OM */}
+                            <TabDetails mode="logistica" data={om} />
+                            <TabDetails mode="operacional" data={om} />
+                            {om.totalMaterialPermanente > 0 && <TabDetails mode="permanente" data={om} />}
+                            {om.totalAviacaoExercito > 0 && <TabDetails mode="avex" data={om} />}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        ))}
+    </div>
+  );
 
   return (
     <Card className="shadow-lg">
       <CardHeader className="pb-2 pt-3">
         <CardTitle className="text-xl font-bold">Resumo de Custos</CardTitle>
-        <CardDescription className="text-xs">
+        <CardDescription className="text-xs flex justify-between items-center">
           Visão consolidada dos custos logísticos e orçamentários.
+          
+          {/* NOVO: Toggle de Visualização */}
+          <div className="flex items-center space-x-2 text-xs font-medium text-muted-foreground">
+            <span className={cn(viewMode === 'global' && 'text-primary font-semibold')}>Global</span>
+            <Switch
+              checked={viewMode === 'byOm'}
+              onCheckedChange={(checked) => {
+                setViewMode(checked ? 'byOm' : 'global');
+                setIsDetailsOpen(false); // Fecha detalhes ao trocar o modo
+              }}
+              id="view-mode-toggle"
+            />
+            <span className={cn(viewMode === 'byOm' && 'text-primary font-semibold')}>Por OM</span>
+          </div>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 p-0 pb-3">
@@ -808,7 +1538,6 @@ export const PTrabCostSummary = ({
             <div className="flex justify-between text-purple-600 cursor-pointer" onClick={handleSummaryClick}>
               <span className="font-semibold text-sm">Aba Aviação do Exército</span>
               <span className="font-bold text-sm">
-                {/* ALTERADO: Exibir quantidade de HV formatada no resumo da aba */}
                 {formatNumber(totals.quantidadeHorasVoo, 2)} HV
               </span>
             </div>
@@ -849,759 +1578,8 @@ export const PTrabCostSummary = ({
             </AccordionTrigger>
             
             <AccordionContent className="pt-2 pb-0">
-              <div className="space-y-2" ref={detailsRef}>
-                
-                {/* Aba Logística */}
-                <div className="space-y-3 border-l-4 border-orange-500 pl-3">
-                  {/* Div 602 Modificado */}
-                  <div className="flex items-center justify-between text-xs font-semibold text-orange-600 mb-2">
-                    <div className="flex items-center gap-2">
-                        <Package className="h-3 w-3" />
-                        Logística
-                    </div>
-                    <span className="font-bold text-sm">{formatCurrency(totals.totalLogisticoGeral)}</span>
-                  </div>
-                  
-                  {/* Classe I - Subsistência */}
-                  <Accordion type="single" collapsible className="w-full pt-0">
-                    <AccordionItem value="item-classe-i" className="border-b-0">
-                      <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                          <div className="flex items-center gap-1 text-foreground">
-                            <Utensils className="h-3 w-3 text-orange-500" />
-                            Classe I
-                          </div>
-                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                            {formatCurrency(totals.totalClasseI)}
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                          {/* Detalhe 1: Valor Complemento */}
-                          <div className="flex justify-between text-muted-foreground">
-                            <span className="w-1/2 text-left">Complemento (Ref. Int.)</span>
-                            <span className="w-1/4 text-right font-medium">
-                              {formatNumber(totals.totalRefeicoesIntermediarias)}
-                            </span>
-                            <span className="w-1/4 text-right font-medium">
-                              {formatCurrency(totals.totalComplemento)}
-                            </span>
-                          </div>
-                          {/* Detalhe 2: Valor Etapa Solicitada */}
-                          <div className="flex justify-between text-muted-foreground">
-                            <span className="w-1/2 text-left">Etapa Solicitada</span>
-                            <span className="w-1/4 text-right font-medium">
-                              {formatNumber(totals.totalDiasEtapaSolicitada)} dias
-                            </span>
-                            <span className="w-1/4 text-right font-medium">
-                              {formatCurrency(totals.totalEtapaSolicitadaValor)}
-                            </span>
-                          </div>
-                          {/* Detalhe 3: Ração Operacional (Movido para debaixo da Etapa Solicitada) */}
-                          {totals.totalRacoesOperacionaisGeral > 0 && (
-                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                                <span className="w-1/2 text-left text-muted-foreground">Ração Operacional (R2/R3)</span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatNumber(totals.totalRacoesOperacionaisGeral)} un.
-                                </span>
-                                <span className="w-1/4 text-right font-medium text-background">
-                                    {formatCurrency(0)}
-                                </span>
-                            </div>
-                          )}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                  
-                  {/* Classe II - Material de Intendência */}
-                  <Accordion type="single" collapsible className="w-full pt-1">
-                    <AccordionItem value="item-classe-ii" className="border-b-0">
-                      <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                          <div className="flex items-center gap-1 text-foreground">
-                            <ClipboardList className="h-3 w-3 text-orange-500" />
-                            Classe II
-                          </div>
-                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                            {formatCurrency(totals.totalClasseII)}
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                          {/* Detalhes por Categoria */}
-                          {sortedClasseIICategories.map(([category, data]) => (
-                            <div key={category} className="space-y-1">
-                                <div className="flex justify-between text-muted-foreground font-semibold pt-1">
-                                    <span className="w-1/2 text-left">{category}</span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatNumber(data.totalItens)} un.
-                                    </span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatCurrency(data.totalValor)}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
-                                    <span className="w-1/2 text-left">ND 30 / ND 39</span>
-                                    <span className="w-1/4 text-right text-green-600 font-medium">
-                                        {formatCurrency(data.totalND30)}
-                                    </span>
-                                    <span className="w-1/4 text-right text-blue-600 font-medium">
-                                        {formatCurrency(data.totalND39)}
-                                    </span>
-                                </div>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-
-                  {/* Classe III - Combustíveis e Lubrificantes */}
-                  <Accordion type="single" collapsible className="w-full pt-1">
-                    <AccordionItem value="item-classe-iii" className="border-b-0">
-                      <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                          <div className="flex items-center gap-1 text-foreground">
-                            <Fuel className="h-3 w-3 text-orange-500" />
-                            Classe III
-                          </div>
-                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                            {formatCurrency(totals.totalCombustivel + totals.totalLubrificanteValor)}
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                          {/* Linha Óleo Diesel */}
-                          <div className="flex justify-between text-muted-foreground">
-                            <span className="w-1/2 text-left">Óleo Diesel</span>
-                            <span className="w-1/4 text-right font-medium">
-                              {formatNumber(totals.totalDieselLitros)} L
-                            </span>
-                            <span className="w-1/4 text-right font-medium">
-                              {formatCurrency(totals.totalDieselValor)}
-                            </span>
-                          </div>
-                          {/* Linha Gasolina */}
-                          <div className="flex justify-between text-muted-foreground">
-                            <span className="w-1/2 text-left">Gasolina</span>
-                            <span className="w-1/4 text-right font-medium">
-                              {formatNumber(totals.totalGasolinaLitros)} L
-                            </span>
-                            <span className="w-1/4 text-right font-medium">
-                              {formatCurrency(totals.totalGasolinaValor)}
-                            </span>
-                          </div>
-                          {/* Linha Lubrificante */}
-                          <div className="flex justify-between text-muted-foreground">
-                            <span className="w-1/2 text-left">
-                                Lubrificante
-                            </span>
-                            <span className="w-1/4 text-right font-medium">
-                              {/* Corrigido: totalLubrificanteLitros agora é garantido como número */}
-                              {formatNumber(Number(totals.totalLubrificanteLitros) || 0, 2)} L
-                            </span>
-                            <span className="w-1/4 text-right font-medium">
-                              {formatCurrency(totals.totalLubrificanteValor)}
-                            </span>
-                          </div>
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                  
-                  {/* Classe V - Armamento */}
-                  <Accordion type="single" collapsible className="w-full pt-1">
-                    <AccordionItem value="item-classe-v" className="border-b-0">
-                      <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                          <div className="flex items-center gap-1 text-foreground">
-                            <Swords className="h-3 w-3 text-orange-500" />
-                            Classe V
-                          </div>
-                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                            {formatCurrency(totals.totalClasseV)}
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                          {/* Detalhes por Categoria */}
-                          {sortedClasseVCategories.map(([category, data]) => (
-                            <div key={category} className="space-y-1">
-                                <div className="flex justify-between text-muted-foreground font-semibold pt-1">
-                                    <span className="w-1/2 text-left">{category}</span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatNumber(data.totalItens)} un.
-                                    </span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatCurrency(data.totalValor)}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
-                                    <span className="w-1/2 text-left">ND 30 / ND 39</span>
-                                    <span className="w-1/4 text-right text-green-600 font-medium">
-                                        {formatCurrency(data.totalND30)}
-                                    </span>
-                                    <span className="w-1/4 text-right text-blue-600 font-medium">
-                                        {formatCurrency(data.totalND39)}
-                                    </span>
-                                </div>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                  
-                  {/* Classe VI - Material de Engenharia */}
-                  <Accordion type="single" collapsible className="w-full pt-1">
-                    <AccordionItem value="item-classe-vi" className="border-b-0">
-                      <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                          <div className="flex items-center gap-1 text-foreground">
-                            <HardHat className="h-3 w-3 text-orange-500" />
-                            Classe VI
-                          </div>
-                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                            {formatCurrency(totals.totalClasseVI)}
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                          {/* Detalhes por Categoria */}
-                          {sortedClasseVICategories.map(([category, data]) => (
-                            <div key={category} className="space-y-1">
-                                <div className="flex justify-between text-muted-foreground font-semibold pt-1">
-                                    <span className="w-1/2 text-left">{category}</span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatNumber(data.totalItens)} un.
-                                    </span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatCurrency(data.totalValor)}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
-                                    <span className="w-1/2 text-left">ND 30 / ND 39</span>
-                                    <span className="w-1/4 text-right text-green-600 font-medium">
-                                        {formatCurrency(data.totalND30)}
-                                    </span>
-                                    <span className="w-1/4 text-right text-blue-600 font-medium">
-                                        {formatCurrency(data.totalND39)}
-                                    </span>
-                                </div>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                  
-                  {/* Classe VII - Comunicações e Informática */}
-                  <Accordion type="single" collapsible className="w-full pt-1">
-                    <AccordionItem value="item-classe-vii" className="border-b-0">
-                      <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                          <div className="flex items-center gap-1 text-foreground">
-                            <Radio className="h-3 w-3 text-orange-500" />
-                            Classe VII
-                          </div>
-                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                            {formatCurrency(totals.totalClasseVII)}
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                          {/* Detalhes por Categoria */}
-                          {sortedClasseVIICategories.map(([category, data]) => (
-                            <div key={category} className="space-y-1">
-                                <div className="flex justify-between text-muted-foreground font-semibold pt-1">
-                                    <span className="w-1/2 text-left">{category}</span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatNumber(data.totalItens)} un.
-                                    </span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatCurrency(data.totalValor)}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
-                                    <span className="w-1/2 text-left">ND 30 / ND 39</span>
-                                    <span className="w-1/4 text-right text-green-600 font-medium">
-                                        {formatCurrency(data.totalND30)}
-                                    </span>
-                                    <span className="w-1/4 text-right text-blue-600 font-medium">
-                                        {formatCurrency(data.totalND39)}
-                                    </span>
-                                </div>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                  
-                  {/* Classe VIII - Saúde e Remonta/Veterinária */}
-                  <Accordion type="single" collapsible className="w-full pt-1">
-                    <AccordionItem value="item-classe-viii" className="border-b-0">
-                      <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                          <div className="flex items-center gap-1 text-foreground">
-                            <HeartPulse className="h-3 w-3 text-orange-500" />
-                            Classe VIII
-                          </div>
-                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                            {formatCurrency(totals.totalClasseVIII)}
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                          {/* Detalhes por Categoria */}
-                          {sortedClasseVIIICategories.map(([category, data]) => (
-                            <div key={category} className="space-y-1">
-                                <div className="flex justify-between text-muted-foreground font-semibold pt-1">
-                                    <span className="w-1/2 text-left">{category}</span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {/* Se for Remonta, exibe a quantidade de animais */}
-                                        {category.includes('Remonta') ? `${formatNumber(data.totalItens)} animais` : `${formatNumber(data.totalItens)} un.`}
-                                    </span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatCurrency(data.totalValor)}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
-                                    <span className="w-1/2 text-left">ND 30 / ND 39</span>
-                                    <span className="w-1/4 text-right text-green-600 font-medium">
-                                        {formatCurrency(data.totalND30)}
-                                    </span>
-                                    <span className="w-1/4 text-right text-blue-600 font-medium">
-                                        {formatCurrency(data.totalND39)}
-                                    </span>
-                                </div>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                  
-                  {/* NOVO: Classe IX - Motomecanização */}
-                  <Accordion type="single" collapsible className="w-full pt-1">
-                    <AccordionItem value="item-classe-ix" className="border-b-0">
-                      <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                          <div className="flex items-center gap-1 text-foreground">
-                            <Truck className="h-3 w-3 text-orange-500" />
-                            Classe IX
-                          </div>
-                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                            {formatCurrency(totals.totalClasseIX)}
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                          {/* Detalhes por Categoria */}
-                          {sortedClasseIXCategories.map(([category, data]) => (
-                            <div key={category} className="space-y-1">
-                                <div className="flex justify-between text-muted-foreground font-semibold pt-1">
-                                    <span className="w-1/2 text-left">{category}</span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatNumber(data.totalItens)} vtr
-                                    </span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatCurrency(data.totalValor)}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
-                                    <span className="w-1/2 text-left">ND 30 / ND 39</span>
-                                    <span className="w-1/4 text-right text-green-600 font-medium">
-                                        {formatCurrency(data.totalND30)}
-                                    </span>
-                                    <span className="w-1/4 text-right text-blue-600 font-medium">
-                                        {formatCurrency(data.totalND39)}
-                                    </span>
-                                </div>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                </div>
-
-                {/* Aba Operacional (NOVO: Incluindo Diárias e Verba Operacional) */}
-                <div className="space-y-3 border-l-4 border-blue-500 pl-3 pt-4">
-                  <div className="flex items-center justify-between text-xs font-semibold text-blue-600 mb-2">
-                    <div className="flex items-center gap-2">
-                        <Activity className="h-3 w-3" />
-                        Operacional
-                    </div>
-                    <span className="font-bold text-sm">{formatCurrency(totals.totalOperacional)}</span>
-                  </div>
-                  
-                  {/* Diárias (ND 33.90.15) */}
-                  <Accordion type="single" collapsible className="w-full pt-0">
-                    <AccordionItem value="item-diarias" className="border-b-0">
-                      <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                          <div className="flex items-center gap-1 text-foreground">
-                            <Briefcase className="h-3 w-3 text-blue-500" />
-                            Diárias
-                          </div>
-                          <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                            {formatCurrency(totals.totalDiarias)}
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                          {/* Detalhe 1: Total de Militares */}
-                          <div className="flex justify-between text-muted-foreground">
-                            <span className="w-1/2 text-left">Total de Militares</span>
-                            <span className="w-1/4 text-right font-medium">
-                              {formatNumber(totals.totalMilitaresDiarias)}
-                            </span>
-                            <span className="w-1/4 text-right font-medium text-background">
-                                {/* Vazio */}
-                            </span>
-                          </div>
-                          {/* Detalhe 2: Total de Dias de Viagem */}
-                          <div className="flex justify-between text-muted-foreground">
-                            <span className="w-1/2 text-left">Total de Dias de Viagem</span>
-                            <span className="w-1/4 text-right font-medium">
-                              {formatNumber(totals.totalDiasViagem)} dias
-                            </span>
-                            <span className="w-1/4 text-right font-medium text-background">
-                                {/* Vazio */}
-                            </span>
-                          </div>
-                          
-                          {/* NOVO: Linha de Detalhe Consolidada */}
-                          <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                            <span className="w-1/2 text-left font-semibold">Diárias (ND 15) / Taxa Embarque (ND 30)</span>
-                            <span className="w-1/4 text-right font-medium text-green-600">
-                                {formatCurrency(totals.totalDiariasND15)}
-                            </span>
-                            <span className="w-1/4 text-right font-medium text-blue-600">
-                                {formatCurrency(totals.totalDiariasND30)}
-                            </span>
-                          </div>
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                  
-                  {/* Passagens (ND 33.90.33) - NOVO */}
-                  {totals.totalPassagensND33 > 0 && (
-                    <Accordion type="single" collapsible className="w-full pt-1">
-                        <AccordionItem value="item-passagens" className="border-b-0">
-                            <AccordionTrigger className="p-0 hover:no-underline">
-                                <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                                    <div className="flex items-center gap-1 text-foreground">
-                                        <Plane className="h-3 w-3 text-blue-500" />
-                                        Passagens
-                                    </div>
-                                    <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                                        {formatCurrency(totals.totalPassagensND33)}
-                                    </span>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-1 pb-0">
-                                <div className="space-y-1 pl-4 text-[10px]">
-                                    {/* Detalhe 1: Total de Passagens */}
-                                    <div className="flex justify-between text-muted-foreground">
-                                        <span className="w-1/2 text-left">Total de Passagens</span>
-                                        <span className="w-1/4 text-right font-medium">
-                                            {formatNumber(totals.totalQuantidadePassagens)} un.
-                                        </span>
-                                        <span className="w-1/4 text-right font-medium text-background">
-                                            {/* Vazio */}
-                                        </span>
-                                    </div>
-                                    {/* Detalhe 2: Total de Trechos */}
-                                    <div className="flex justify-between text-muted-foreground">
-                                        <span className="w-1/2 text-left">Total de Trechos Registrados</span>
-                                        <span className="w-1/4 text-right font-medium">
-                                            {formatNumber(totals.totalTrechosPassagens)}
-                                        </span>
-                                        <span className="w-1/4 text-right font-medium text-background">
-                                            {/* Vazio */}
-                                        </span>
-                                    </div>
-                                    
-                                    {/* Linha de Detalhe Consolidada (ND 33) */}
-                                    <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                                        <span className="w-1/2 text-left font-semibold">ND 33 (Passagens)</span>
-                                        <span className="w-1/4 text-right font-medium text-background">
-                                            {/* Vazio */}
-                                        </span>
-                                        <span className="w-1/4 text-right font-medium text-green-600">
-                                            {formatCurrency(totals.totalPassagensND33)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
-                  )}
-                  
-                  {/* Verba Operacional (ND 30/39) */}
-                  {totals.totalVerbaOperacional > 0 && (
-                    <Accordion type="single" collapsible className="w-full pt-1">
-                        <AccordionItem value="item-verba-operacional" className="border-b-0">
-                            <AccordionTrigger className="p-0 hover:no-underline">
-                                <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                                    <div className="flex items-center gap-1 text-foreground">
-                                        <ClipboardList className="h-3 w-3 text-blue-500" />
-                                        Verba Operacional
-                                    </div>
-                                    <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                                        {formatCurrency(totals.totalVerbaOperacional)}
-                                    </span>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-1 pb-0">
-                                <div className="space-y-1 pl-4 text-[10px]">
-                                    {/* Detalhe 1: Total de Equipes */}
-                                    <div className="flex justify-between text-muted-foreground">
-                                        <span className="w-1/2 text-left">Total de Equipes</span>
-                                        <span className="w-1/4 text-right font-medium">
-                                            {formatNumber(totals.totalEquipesVerba)}
-                                        </span>
-                                        <span className="w-1/4 text-right font-medium text-background">
-                                            {/* Vazio */}
-                                        </span>
-                                    </div>
-                                    {/* Detalhe 2: Total de Dias */}
-                                    <div className="flex justify-between text-muted-foreground">
-                                        <span className="w-1/2 text-left">Total de Dias</span>
-                                        <span className="w-1/4 text-right font-medium">
-                                            {formatNumber(totals.totalDiasVerba)} dias
-                                        </span>
-                                        <span className="w-1/4 text-right font-medium text-background">
-                                            {/* Vazio */}
-                                        </span>
-                                    </div>
-                                    
-                                    {/* Linha de Detalhe Consolidada (ND 30 / ND 39) */}
-                                    <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                                        <span className="w-1/2 text-left font-semibold">ND 30 / ND 39</span>
-                                        <span className="w-1/4 text-right font-medium text-green-600">
-                                            {formatCurrency(totals.totalVerbaOperacionalND30)}
-                                        </span>
-                                        <span className="w-1/4 text-right font-medium text-blue-600">
-                                            {formatCurrency(totals.totalVerbaOperacionalND39)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
-                  )}
-                  
-                  {/* NOVO: Suprimento de Fundos (ND 30/39) */}
-                  {totals.totalSuprimentoFundos > 0 && (
-                    <Accordion type="single" collapsible className="w-full pt-1">
-                        <AccordionItem value="item-suprimento-fundos" className="border-b-0">
-                            <AccordionTrigger className="p-0 hover:no-underline">
-                                <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                                    <div className="flex items-center gap-1 text-foreground">
-                                        <Wallet className="h-3 w-3 text-blue-500" />
-                                        Suprimento de Fundos
-                                    </div>
-                                    <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                                        {formatCurrency(totals.totalSuprimentoFundos)}
-                                    </span>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-1 pb-0">
-                                <div className="space-y-1 pl-4 text-[10px]">
-                                    {/* Detalhe 1: Total de Efetivo */}
-                                    <div className="flex justify-between text-muted-foreground">
-                                        <span className="w-1/2 text-left">Total de Efetivo</span>
-                                        <span className="w-1/4 text-right font-medium">
-                                            {formatNumber(totals.totalEquipesSuprimento)}
-                                        </span>
-                                        <span className="w-1/4 text-right font-medium text-background">
-                                            {/* Vazio */}
-                                        </span>
-                                    </div>
-                                    {/* Detalhe 2: Total de Dias */}
-                                    <div className="flex justify-between text-muted-foreground">
-                                        <span className="w-1/2 text-left">Total de Dias</span>
-                                        <span className="w-1/4 text-right font-medium">
-                                            {formatNumber(totals.totalDiasSuprimento)} dias
-                                        </span>
-                                        <span className="w-1/4 text-right font-medium text-background">
-                                            {/* Vazio */}
-                                        </span>
-                                    </div>
-                                    
-                                    {/* Linha de Detalhe Consolidada (ND 30 / ND 39) */}
-                                    <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                                        <span className="w-1/2 text-left font-semibold">ND 30 / ND 39</span>
-                                        <span className="w-1/4 text-right font-medium text-green-600">
-                                            {formatCurrency(totals.totalSuprimentoFundosND30)}
-                                        </span>
-                                        <span className="w-1/4 text-right font-medium text-blue-600">
-                                            {formatCurrency(totals.totalSuprimentoFundosND39)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
-                  )}
-                  
-                  {/* NOVO: Concessionária (ND 33.90.39) */}
-                  {totals.totalConcessionariaND39 > 0 && (
-                    <Accordion type="single" collapsible className="w-full pt-1">
-                        <AccordionItem value="item-concessionaria" className="border-b-0">
-                            <AccordionTrigger className="p-0 hover:no-underline">
-                                <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                                    <div className="flex items-center gap-1 text-foreground">
-                                        <Droplet className="h-3 w-3 text-blue-500" />
-                                        Concessionária
-                                    </div>
-                                    <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                                        {formatCurrency(totals.totalConcessionariaND39)}
-                                    </span>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-1 pb-0">
-                                <div className="space-y-1 pl-4 text-[10px]">
-                                    
-                                    {/* Detalhe 1: Água/Esgoto */}
-                                    {totals.totalConcessionariaAgua > 0 && (
-                                        <div className="flex justify-between text-muted-foreground">
-                                            <span className="w-1/2 text-left">Água/Esgoto</span>
-                                            <span className="w-1/4 text-right font-medium text-background">
-                                                {/* Vazio */}
-                                            </span>
-                                            <span className="w-1/4 text-right font-medium">
-                                                {formatCurrency(totals.totalConcessionariaAgua)}
-                                            </span>
-                                        </div>
-                                    )}
-                                    
-                                    {/* Detalhe 2: Energia Elétrica */}
-                                    {totals.totalConcessionariaEnergia > 0 && (
-                                        <div className="flex justify-between text-muted-foreground">
-                                            <span className="w-1/2 text-left">Energia Elétrica</span>
-                                            <span className="w-1/4 text-right font-medium text-background">
-                                                {/* Vazio */}
-                                            </span>
-                                            <span className="w-1/4 text-right font-medium">
-                                                {formatCurrency(totals.totalConcessionariaEnergia)}
-                                            </span>
-                                        </div>
-                                    )}
-                                    
-                                    {/* Linha de Detalhe Consolidada (ND 39) */}
-                                    <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                                        <span className="w-1/2 text-left font-semibold">ND 39 (Serviços de Terceiros)</span>
-                                        <span className="w-1/4 text-right font-medium text-background">
-                                            {/* Vazio */}
-                                        </span>
-                                        <span className="w-1/4 text-right font-medium text-blue-600">
-                                            {formatCurrency(totals.totalConcessionariaND39)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
-                  )}
-                  
-                  {/* Outros Operacionais (Placeholder) - Adjusted logic */}
-                  {totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33 - totals.totalConcessionariaND39 - totals.totalHorasVoo > 0 && (
-                    <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                        <span className="w-1/2 text-left">Outros Itens Operacionais</span>
-                        <span className="w-1/4 text-right font-medium">
-                            {/* Vazio */}
-                        </span>
-                        <span className="w-1/4 text-right font-medium">
-                            {formatCurrency(totals.totalOperacional - totals.totalDiarias - totals.totalVerbaOperacional - totals.totalSuprimentoFundos - totals.totalPassagensND33 - totals.totalConcessionariaND39 - totals.totalHorasVoo)}
-                        </span>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Aba Material Permanente (Placeholder) */}
-                <div className="space-y-3 border-l-4 border-green-500 pl-3 pt-4">
-                  <div className="flex items-center justify-between text-xs font-semibold text-green-600 mb-2">
-                    <div className="flex items-center gap-2">
-                        <HardHat className="h-3 w-3" />
-                        Material Permanente
-                    </div>
-                    <span className="font-bold text-sm">{formatCurrency(totals.totalMaterialPermanente)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span className="w-1/2 text-left">Itens de Material Permanente</span>
-                    <span className="w-1/4 text-right font-medium">
-                      {/* Vazio */}
-                    </span>
-                    <span className="w-1/4 text-right font-medium">
-                      {formatCurrency(totals.totalMaterialPermanente)}
-                    </span>
-                  </div>
-                </div>
-                
-                {/* Aba Aviação do Exército */}
-                <div className="space-y-3 border-l-4 border-purple-500 pl-3 pt-4">
-                  <div className="flex items-center justify-between text-xs font-semibold text-purple-600 mb-2">
-                    <div className="flex items-center gap-2">
-                        <Plane className="h-3 w-3" />
-                        Aviação do Exército
-                    </div>
-                    {/* Span 1563: Mostrar o total de HV solicitadas */}
-                    <span className="font-bold text-sm">
-                        {formatNumber(totals.quantidadeHorasVoo, 2)} HV
-                    </span>
-                  </div>
-                  
-                  {/* Detalhes por Tipo de Aeronave */}
-                  <div className="space-y-1 pl-4 text-[10px]">
-                    {sortedHorasVoo.map(([tipoAnv, data]) => (
-                        <div key={tipoAnv} className="flex justify-between text-muted-foreground">
-                            {/* Span 1570: Tipo de Aeronave */}
-                            <span className="w-1/2 text-left">{tipoAnv}</span>
-                            
-                            {/* Coluna vazia para alinhamento */}
-                            <span className="w-1/4 text-right font-medium text-background">
-                                {/* Vazio */}
-                            </span>
-                            
-                            {/* Span 1577 (Antigo 1574): Quantidade de HV por ANV (Movido para a direita) */}
-                            <span className="w-1/4 text-right font-medium">
-                                {formatNumber(data.totalHV, 2)} HV
-                            </span>
-                        </div>
-                    ))}
-                    
-                    {/* Linha de Total Geral de HV (para manter a informação de quantidade total) */}
-                    {/* REMOVIDO: Span 1582 e 1595 */}
-                    {/* {sortedHorasVoo.length > 1 && (
-                        <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1 font-semibold">
-                            <span className="w-1/2 text-left">Total Geral (R$)</span>
-                            <span className="w-1/4 text-right font-medium text-background">
-                                
-                            </span>
-                            <span className="w-1/4 text-right font-medium">
-                                {formatCurrency(totals.totalAviacaoExercito)}
-                            </span>
-                        </div>
-                    )} */}
-                  </div>
-                </div>
-                
-              </div>
+              {/* RENDERIZAÇÃO CONDICIONAL */}
+              {viewMode === 'global' ? renderGlobalDetails() : renderOmDetails()}
             </AccordionContent>
           </AccordionItem>
         </Accordion>
