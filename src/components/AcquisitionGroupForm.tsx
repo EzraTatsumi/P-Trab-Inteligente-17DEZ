@@ -179,7 +179,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
     const displayTitle = groupName.trim() || (initialGroup ? 'Editando Grupo' : 'Novo Grupo');
 
     return (
-        <Card className="border border-gray-300 bg-gray-50 p-4 shadow-lg">
+        <Card className="border border-gray-300 bg-background p-4 shadow-lg">
             <h4 className="font-bold text-lg mb-4">{displayTitle}</h4>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
