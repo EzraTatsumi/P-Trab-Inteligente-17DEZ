@@ -41,13 +41,14 @@ export function calculateGroupTotals(items: ItemAquisicao[]): { totalValue: numb
     let totalND39 = 0;
 
     items.forEach(item => {
-        const value = Number(item.valor_total || 0);
+        // CORREÇÃO 1, 5: Propriedade 'valor_total' agora existe em ItemAquisicao
+        const value = Number(item.valor_total || 0); 
         totalValue += value;
         
-        // Assumimos que o item de aquisição já tem a ND definida
-        if (item.nd === '33.90.30') {
+        // CORREÇÃO 2, 3, 6: Propriedade 'nd' agora existe em ItemAquisicao
+        if (item.nd === '33.90.30') { 
             totalND30 += value;
-        } else if (item.nd === '33.90.39') {
+        } else if (item.nd === '33.90.39') { 
             totalND39 += value;
         } else {
             // Fallback: se a ND não estiver definida, assume ND 30 (padrão para material de consumo)
@@ -88,7 +89,8 @@ export function generateConsolidatedMaterialConsumoMemoriaCalculo(group: Consoli
             memoria += `  ITENS DE AQUISIÇÃO (${itens.length}):\n`;
             itens.forEach(item => {
                 memoria += `  - ${item.descricao_item} (CATMAT: ${item.codigo_catmat || 'N/A'})\n`;
-                memoria += `    Qtd: ${item.quantidade} | Vl Unit: ${formatCurrency(item.valor_unitario)} | Vl Total: ${formatCurrency(item.valor_total)} (ND ${item.nd})\n`;
+                // CORREÇÃO 4, 5, 6: Propriedades 'quantidade', 'valor_total' e 'nd' agora existem
+                memoria += `    Qtd: ${item.quantidade} | Vl Unit: ${formatCurrency(item.valor_unitario)} | Vl Total: ${formatCurrency(item.valor_total)} (ND ${item.nd})\n`; 
             });
             memoria += `\n`;
         } else {

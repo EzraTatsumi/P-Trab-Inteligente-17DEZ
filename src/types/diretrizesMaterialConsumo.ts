@@ -1,49 +1,27 @@
 import { Tables } from "@/integrations/supabase/types";
 
-/**
- * Estrutura de um item de aquisição dentro de uma Diretriz de Material de Consumo.
- */
+// Estrutura de um item de aquisição importado do PNCP e armazenado na diretriz
 export interface ItemAquisicao {
-    id: string; // ID local temporário para manipulação no frontend
-    descricao_item: string; // Descrição completa do item
-    descricao_reduzida: string; // Novo campo: Descrição reduzida do item
-    valor_unitario: number;
-    numero_pregao: string;
-    uasg: string;
-    codigo_catmat: string;
-    // unidade_medida: string; // REMOVIDO
-}
-
-/**
- * Estrutura da Diretriz de Material de Consumo (Tabela diretrizes_material_consumo).
- */
-export interface DiretrizMaterialConsumo extends Omit<Tables<'diretrizes_material_consumo'>, 'itens_aquisicao'> {
-    // Sobrescreve itens_aquisicao para usar o tipo ItemAquisicao[]
-    itens_aquisicao: ItemAquisicao[];
-}
-
-/**
- * Estrutura de uma linha lida do Excel, com status de validação, antes de ser agrupada.
- */
-export interface StagingRow {
-    // Dados do Subitem ND
-    nr_subitem: string;
-    nome_subitem: string;
-    descricao_subitem: string | null;
-
-    // Dados do Item de Aquisição
+    id: string; // ID único (geralmente combinação de PNCP ID e número do item)
     codigo_catmat: string;
     descricao_item: string;
-    descricao_reduzida: string;
+    descricao_reduzida: string | null;
     valor_unitario: number;
     numero_pregao: string;
     uasg: string;
-    // unidade_medida: string; // REMOVIDO
-
-    // Status de Validação
-    isValid: boolean;
-    errors: string[];
-    isDuplicateInternal: boolean; // Duplicidade dentro do arquivo
-    isDuplicateExternal: boolean; // Duplicidade de Subitem ND no DB (apenas para o primeiro item do grupo)
-    originalRowIndex: number; // Linha original no Excel
+    om_nome: string;
+    
+    // Propriedades adicionadas para cálculo e agrupamento
+    quantidade: number; // Quantidade solicitada no PTrab
+    valor_total: number; // valor_unitario * quantidade
+    nd: '33.90.30' | '33.90.39'; // Natureza da Despesa
+    
+    // Propriedades injetadas do Subitem da ND (para rastreamento)
+    nr_subitem: string;
+    nome_subitem: string;
 }
+
+// Estrutura da tabela diretrizes_material_consumo
+export type DiretrizMaterialConsumo = Tables<'diretrizes_material_consumo'> & {
+    itens_aquisicao: ItemAquisicao[]; // Sobrescreve o tipo Json
+};
