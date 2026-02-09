@@ -867,7 +867,8 @@ const CategoryCard = ({
   nd30, 
   nd33,
   nd39,
-  extraInfo
+  extraInfo,
+  details
 }: { 
   label: string, 
   value: number, 
@@ -877,13 +878,22 @@ const CategoryCard = ({
   nd30?: number,
   nd33?: number,
   nd39?: number,
-  extraInfo?: string
+  extraInfo?: string,
+  details?: React.ReactNode
 }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
   // Exibe o card se houver valor financeiro OU se houver informação extra (ex: HVs)
   if (value === 0 && !extraInfo) return null;
 
   return (
-    <div className="flex flex-col p-3 rounded-xl border border-border/50 bg-card/40 hover:bg-accent/5 transition-all group">
+    <div 
+      className={cn(
+        "flex flex-col p-3 rounded-xl border border-border/50 bg-card/40 hover:bg-accent/5 transition-all group cursor-pointer",
+        isExpanded && "ring-1 ring-primary/30 bg-accent/5 shadow-sm"
+      )}
+      onClick={() => details && setIsExpanded(!isExpanded)}
+    >
       <div className="flex items-center gap-3 mb-2">
         <div className={cn("p-2 rounded-lg transition-colors", colorClass)}>
           <Icon className="h-4 w-4" />
@@ -903,6 +913,12 @@ const CategoryCard = ({
             )}
           </div>
         </div>
+        {details && (
+          <ChevronDown className={cn(
+            "h-3 w-3 ml-auto text-muted-foreground transition-transform duration-200",
+            isExpanded ? "rotate-180" : "rotate-0"
+          )} />
+        )}
       </div>
       
       {(nd15 !== undefined || nd30 !== undefined || nd33 !== undefined || nd39 !== undefined) && (
@@ -933,6 +949,12 @@ const CategoryCard = ({
           )}
         </div>
       )}
+
+      {isExpanded && details && (
+        <div className="mt-3 pt-3 border-t border-border/30 animate-in fade-in slide-in-from-top-1 duration-200">
+          {details}
+        </div>
+      )}
     </div>
   );
 };
@@ -952,6 +974,20 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
     const omGND3Total = om.totalLogistica + om.totalOperacional + om.totalAviacaoExercito;
     const impactPercentage = totalGND3 > 0 ? ((omGND3Total / totalGND3) * 100).toFixed(1) : '0.0';
 
+    const renderClassDetails = (group: any, unitLabel: string = 'un.') => (
+      <div className="space-y-1.5 text-[10px]">
+        {Object.entries(group.groupedCategories).sort(([a], [b]) => a.localeCompare(b)).map(([category, data]: [string, any]) => (
+          <div key={category} className="flex justify-between text-muted-foreground border-b border-border/20 pb-1 last:border-0">
+            <span className="font-medium">{category}</span>
+            <div className="flex flex-col items-end">
+              <span className="font-bold text-foreground">{formatCurrency(data.totalValor)}</span>
+              <span className="text-[8px]">{formatNumber(data.totalItens)} {unitLabel}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+
     return (
         <Dialog open={!!om} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[1000px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
@@ -963,7 +999,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                 </DialogHeader>
                 
                 <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                    {/* Bloco Logística - ORDENADO POR CLASSE NUMÉRICA */}
+                    {/* Bloco Logística */}
                     {om.totalLogistica > 0 && (
                         <div>
                             <h3 className="text-sm font-bold text-orange-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-orange-500/20 pb-1">
@@ -977,6 +1013,24 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     icon={Utensils} 
                                     colorClass="bg-orange-500/10 text-orange-600"
                                     nd30={om.classeI.total}
+                                    details={
+                                      <div className="space-y-1.5 text-[10px]">
+                                        <div className="flex justify-between text-muted-foreground">
+                                          <span>Complemento</span>
+                                          <span className="font-medium">{formatCurrency(om.classeI.totalComplemento)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-muted-foreground">
+                                          <span>Etapa Solicitada</span>
+                                          <span className="font-medium">{formatCurrency(om.classeI.totalEtapaSolicitadaValor)}</span>
+                                        </div>
+                                        {om.classeI.totalRacoesOperacionaisGeral > 0 && (
+                                          <div className="flex justify-between text-muted-foreground">
+                                            <span>Rações Operacionais</span>
+                                            <span className="font-medium">{om.classeI.totalRacoesOperacionaisGeral} un.</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    }
                                 />
                                 <CategoryCard 
                                     label="Classe II (Intendência)" 
@@ -985,6 +1039,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     colorClass="bg-orange-500/10 text-orange-600"
                                     nd30={om.classeII.totalND30}
                                     nd39={om.classeII.totalND39}
+                                    details={renderClassDetails(om.classeII)}
                                 />
                                 <CategoryCard 
                                     label="Classe III (Combustíveis)" 
@@ -992,6 +1047,22 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     icon={Fuel} 
                                     colorClass="bg-orange-500/10 text-orange-600"
                                     nd30={om.classeIII.total}
+                                    details={
+                                      <div className="space-y-1.5 text-[10px]">
+                                        <div className="flex justify-between text-muted-foreground">
+                                          <span>Óleo Diesel</span>
+                                          <span className="font-medium">{formatCurrency(om.classeIII.totalDieselValor)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-muted-foreground">
+                                          <span>Gasolina</span>
+                                          <span className="font-medium">{formatCurrency(om.classeIII.totalGasolinaValor)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-muted-foreground">
+                                          <span>Lubrificantes</span>
+                                          <span className="font-medium">{formatCurrency(om.classeIII.totalLubrificanteValor)}</span>
+                                        </div>
+                                      </div>
+                                    }
                                 />
                                 <CategoryCard 
                                     label="Classe V (Armamento)" 
@@ -1000,6 +1071,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     colorClass="bg-orange-500/10 text-orange-600"
                                     nd30={om.classeV.totalND30}
                                     nd39={om.classeV.totalND39}
+                                    details={renderClassDetails(om.classeV)}
                                 />
                                 <CategoryCard 
                                     label="Classe VI (Engenharia)" 
@@ -1008,6 +1080,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     colorClass="bg-orange-500/10 text-orange-600"
                                     nd30={om.classeVI.totalND30}
                                     nd39={om.classeVI.totalND39}
+                                    details={renderClassDetails(om.classeVI)}
                                 />
                                 <CategoryCard 
                                     label="Classe VII (Com/Inf)" 
@@ -1016,6 +1089,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     colorClass="bg-orange-500/10 text-orange-600"
                                     nd30={om.classeVII.totalND30}
                                     nd39={om.classeVII.totalND39}
+                                    details={renderClassDetails(om.classeVII)}
                                 />
                                 <CategoryCard 
                                     label="Classe VIII (Saúde/Remonta)" 
@@ -1024,6 +1098,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     colorClass="bg-orange-500/10 text-orange-600"
                                     nd30={om.classeVIII.totalND30}
                                     nd39={om.classeVIII.totalND39}
+                                    details={renderClassDetails(om.classeVIII)}
                                 />
                                 <CategoryCard 
                                     label="Classe IX (Motomecanização)" 
@@ -1032,12 +1107,13 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     colorClass="bg-orange-500/10 text-orange-600"
                                     nd30={om.classeIX.totalND30}
                                     nd39={om.classeIX.totalND39}
+                                    details={renderClassDetails(om.classeIX, 'vtr')}
                                 />
                             </div>
                         </div>
                     )}
 
-                    {/* Bloco Operacional - ORDENADO ALFABETICAMENTE */}
+                    {/* Bloco Operacional */}
                     {om.totalOperacional > 0 && (
                         <div>
                             <h3 className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-blue-500/20 pb-1">
@@ -1051,6 +1127,18 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     icon={Droplet} 
                                     colorClass="bg-blue-500/10 text-blue-600"
                                     nd39={om.concessionaria.total}
+                                    details={
+                                      <div className="space-y-1.5 text-[10px]">
+                                        <div className="flex justify-between text-muted-foreground">
+                                          <span>Água/Esgoto</span>
+                                          <span className="font-medium">{formatCurrency(om.concessionaria.totalAgua)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-muted-foreground">
+                                          <span>Energia Elétrica</span>
+                                          <span className="font-medium">{formatCurrency(om.concessionaria.totalEnergia)}</span>
+                                        </div>
+                                      </div>
+                                    }
                                 />
                                 <CategoryCard 
                                     label="Diárias" 
@@ -1059,6 +1147,18 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     colorClass="bg-blue-500/10 text-blue-600"
                                     nd15={om.diarias.totalND15}
                                     nd30={om.diarias.totalND30}
+                                    details={
+                                      <div className="space-y-1.5 text-[10px]">
+                                        <div className="flex justify-between text-muted-foreground">
+                                          <span>Militares</span>
+                                          <span className="font-medium">{om.diarias.totalMilitares}</span>
+                                        </div>
+                                        <div className="flex justify-between text-muted-foreground">
+                                          <span>Dias de Viagem</span>
+                                          <span className="font-medium">{om.diarias.totalDiasViagem}</span>
+                                        </div>
+                                      </div>
+                                    }
                                 />
                                 <CategoryCard 
                                     label="Material de Consumo" 
@@ -1074,6 +1174,18 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     icon={Plane} 
                                     colorClass="bg-blue-500/10 text-blue-600"
                                     nd33={om.passagens.total}
+                                    details={
+                                      <div className="space-y-1.5 text-[10px]">
+                                        <div className="flex justify-between text-muted-foreground">
+                                          <span>Quantidade</span>
+                                          <span className="font-medium">{om.passagens.totalQuantidade} un.</span>
+                                        </div>
+                                        <div className="flex justify-between text-muted-foreground">
+                                          <span>Trechos</span>
+                                          <span className="font-medium">{om.passagens.totalTrechos}</span>
+                                        </div>
+                                      </div>
+                                    }
                                 />
                                 <CategoryCard 
                                     label="Suprimento de Fundos" 
@@ -1082,6 +1194,18 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     colorClass="bg-blue-500/10 text-blue-600"
                                     nd30={om.suprimentoFundos.totalND30}
                                     nd39={om.suprimentoFundos.totalND39}
+                                    details={
+                                      <div className="space-y-1.5 text-[10px]">
+                                        <div className="flex justify-between text-muted-foreground">
+                                          <span>Equipes</span>
+                                          <span className="font-medium">{om.suprimentoFundos.totalEquipes}</span>
+                                        </div>
+                                        <div className="flex justify-between text-muted-foreground">
+                                          <span>Dias</span>
+                                          <span className="font-medium">{om.suprimentoFundos.totalDias}</span>
+                                        </div>
+                                      </div>
+                                    }
                                 />
                                 <CategoryCard 
                                     label="Verba Operacional" 
@@ -1090,6 +1214,18 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     colorClass="bg-blue-500/10 text-blue-600"
                                     nd30={om.verbaOperacional.totalND30}
                                     nd39={om.verbaOperacional.totalND39}
+                                    details={
+                                      <div className="space-y-1.5 text-[10px]">
+                                        <div className="flex justify-between text-muted-foreground">
+                                          <span>Equipes</span>
+                                          <span className="font-medium">{om.verbaOperacional.totalEquipes}</span>
+                                        </div>
+                                        <div className="flex justify-between text-muted-foreground">
+                                          <span>Dias</span>
+                                          <span className="font-medium">{om.verbaOperacional.totalDias}</span>
+                                        </div>
+                                      </div>
+                                    }
                                 />
                             </div>
                         </div>
@@ -1111,25 +1247,19 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     nd30={om.horasVoo.totalND30}
                                     nd39={om.horasVoo.totalND39}
                                     extraInfo={`${formatNumber(om.horasVoo.quantidadeHV, 2)} HV`}
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Bloco Material Permanente (Se existir) */}
-                    {om.totalMaterialPermanente > 0 && (
-                        <div>
-                            <h3 className="text-sm font-bold text-green-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-green-500/20 pb-1">
-                                <HardHat className="h-4 w-4" />
-                                Aba Material Permanente
-                            </h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                <CategoryCard 
-                                    label="Material Permanente" 
-                                    value={om.totalMaterialPermanente} 
-                                    icon={HardHat} 
-                                    colorClass="bg-green-500/10 text-green-600"
-                                    nd30={om.totalMaterialPermanente}
+                                    details={
+                                      <div className="space-y-1.5 text-[10px]">
+                                        {Object.entries(om.horasVoo.groupedHV).sort(([a], [b]) => a.localeCompare(b)).map(([tipoAnv, data]) => (
+                                          <div key={tipoAnv} className="flex justify-between text-muted-foreground border-b border-border/20 pb-1 last:border-0">
+                                            <span className="font-medium">{tipoAnv}</span>
+                                            <div className="flex flex-col items-end">
+                                              <span className="font-bold text-foreground">{formatCurrency(data.totalValor)}</span>
+                                              <span className="text-[8px]">{formatNumber(data.totalHV, 2)} HV</span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    }
                                 />
                             </div>
                         </div>
