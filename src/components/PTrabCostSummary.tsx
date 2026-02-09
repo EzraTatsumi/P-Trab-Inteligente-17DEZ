@@ -1,15 +1,9 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber, formatCodug } from "@/lib/formatUtils";
-import { Package, Fuel, Utensils, Loader2, ChevronDown, ChevronRight, HardHat, Plane, TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase, Droplet, Zap } from "lucide-react";
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from "@/components/ui/accordion";
+import { Package, Loader2, ChevronRight, HardHat, TrendingUp, Activity, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -26,22 +20,22 @@ interface OmTotals {
     totalMaterialPermanente: number;
     totalAviacaoExercito: number;
     
-    classeI: { total: number; totalComplemento: number; totalEtapaSolicitadaValor: number; totalDiasEtapaSolicitada: number; totalRefeicoesIntermediarias: number; totalRacoesOperacionaisGeral: number };
-    classeII: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, any> };
-    classeIII: { total: number, totalDieselValor: number, totalGasolinaValor: number, totalDieselLitros: number, totalGasolinaLitros: number, totalLubrificanteValor: number, totalLubrificanteLitros: number };
-    classeV: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, any> };
-    classeVI: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, any> };
-    classeVII: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, any> };
-    classeVIII: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, any> };
-    classeIX: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, any> };
+    classeI: { total: number; totalRacoesOperacionaisGeral: number };
+    classeII: { total: number, groupedCategories: Record<string, any> };
+    classeIII: { total: number };
+    classeV: { total: number, groupedCategories: Record<string, any> };
+    classeVI: { total: number, groupedCategories: Record<string, any> };
+    classeVII: { total: number, groupedCategories: Record<string, any> };
+    classeVIII: { total: number, groupedCategories: Record<string, any> };
+    classeIX: { total: number, groupedCategories: Record<string, any> };
     
-    diarias: { total: number, totalND15: number, totalND30: number, totalMilitares: number, totalDiasViagem: number };
-    verbaOperacional: { total: number, totalND30: number, totalND39: number, totalEquipes: number, totalDias: number };
-    suprimentoFundos: { total: number, totalND30: number, totalND39: number, totalEquipes: number, totalDias: number };
-    passagens: { total: number, totalQuantidade: number, totalTrechos: number };
-    concessionaria: { total: number, totalAgua: number, totalEnergia: number, totalRegistros: number };
-    horasVoo: { total: number, totalND30: number, totalND39: number, quantidadeHV: number, groupedHV: Record<string, any> };
-    materialConsumo: { total: number, totalND30: number, totalND39: number };
+    diarias: { total: number };
+    verbaOperacional: { total: number };
+    suprimentoFundos: { total: number };
+    passagens: { total: number };
+    concessionaria: { total: number };
+    horasVoo: { total: number, quantidadeHV: number, groupedHV: Record<string, any> };
+    materialConsumo: { total: number };
 }
 
 interface PTrabAggregatedTotals {
@@ -52,8 +46,13 @@ interface PTrabAggregatedTotals {
     totalRacoesOperacionaisGeral: number;
     quantidadeHorasVoo: number;
     groupedByOm: Record<string, OmTotals>;
-    // Outros campos simplificados para o useMemo global
-    [key: string]: any;
+}
+
+interface PTrabCostSummaryProps {
+  ptrabId: string;
+  onOpenCreditDialog: () => void;
+  creditGND3: number;
+  creditGND4: number;
 }
 
 // --- COMPONENTE: InteractiveCard ---
@@ -71,7 +70,9 @@ const InteractiveCard = ({ label, value, icon: Icon, colorClass, details, unit }
     const [isExpanded, setIsExpanded] = useState(false);
     if (value === 0) return null;
 
-    const detailEntries = Object.entries(details).filter(([_, val]) => val > 0);
+    // Proteção contra details nulo ou indefinido
+    const safeDetails = details || {};
+    const detailEntries = Object.entries(safeDetails).filter(([_, val]) => val > 0);
 
     return (
         <div 
@@ -98,7 +99,6 @@ const InteractiveCard = ({ label, value, icon: Icon, colorClass, details, unit }
                 <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform duration-300", isExpanded && "rotate-90")} />
             </div>
 
-            {/* Área Expandida - Detalhes */}
             <div className={cn(
                 "grid transition-all duration-300 ease-in-out",
                 isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
@@ -135,7 +135,6 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
     const omGND3Total = om.totalLogistica + om.totalOperacional + om.totalAviacaoExercito;
     const impactPercentage = totalGND3 > 0 ? ((omGND3Total / totalGND3) * 100).toFixed(1) : '0.0';
 
-    // Mapeamento de detalhes para os cards interativos
     const logisticaDetails = {
         "Classe I (Alimentação)": om.classeI.total,
         "Classe II (Intendência)": om.classeII.total,
@@ -157,9 +156,11 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
     };
 
     const aviacaoDetails: Record<string, number> = {};
-    Object.entries(om.horasVoo.groupedHV).forEach(([tipo, data]: [string, any]) => {
-        aviacaoDetails[`${tipo} (${formatNumber(data.totalHV, 1)} HV)`] = data.totalValor;
-    });
+    if (om.horasVoo && om.horasVoo.groupedHV) {
+        Object.entries(om.horasVoo.groupedHV).forEach(([tipo, data]: [string, any]) => {
+            aviacaoDetails[`${tipo} (${formatNumber(data.totalHV, 1)} HV)`] = data.totalValor;
+        });
+    }
 
     return (
         <Dialog open={!!om} onOpenChange={onClose}>
@@ -173,7 +174,6 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                 
                 <div className="flex-1 overflow-y-auto p-6 pt-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Card Logística */}
                         <InteractiveCard 
                             label="Aba Logística"
                             value={om.totalLogistica}
@@ -181,8 +181,6 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                             colorClass="bg-orange-500/10 text-orange-600"
                             details={logisticaDetails}
                         />
-
-                        {/* Card Operacional */}
                         <InteractiveCard 
                             label="Aba Operacional"
                             value={om.totalOperacional}
@@ -190,8 +188,6 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                             colorClass="bg-blue-500/10 text-blue-600"
                             details={operacionalDetails}
                         />
-
-                        {/* Card Aviação (Horas de Voo) */}
                         <InteractiveCard 
                             label="Aviação do Exército"
                             value={om.horasVoo.total}
@@ -199,8 +195,6 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                             colorClass="bg-purple-500/10 text-purple-600"
                             details={aviacaoDetails}
                         />
-                        
-                        {/* Card Material Permanente */}
                         <InteractiveCard 
                             label="Material Permanente"
                             value={om.totalMaterialPermanente}
@@ -230,31 +224,23 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
 
 // --- FUNÇÃO DE BUSCA DE TOTAIS ---
 
-const calculateDiasEtapaSolicitada = (diasOperacao: number): number => {
-  const diasRestantesNoCiclo = diasOperacao % 30;
-  const ciclosCompletos = Math.floor(diasOperacao / 30);
-  if (diasRestantesNoCiclo <= 22 && diasOperacao >= 30) return ciclosCompletos * 8;
-  else if (diasRestantesNoCiclo > 22) return (diasRestantesNoCiclo - 22) + (ciclosCompletos * 8);
-  else return 0;
-};
-
 const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     omKey: `${omName}|${ug}`, omName, ug, totalGeral: 0, totalLogistica: 0, totalOperacional: 0, totalMaterialPermanente: 0, totalAviacaoExercito: 0,
-    classeI: { total: 0, totalComplemento: 0, totalEtapaSolicitadaValor: 0, totalDiasEtapaSolicitada: 0, totalRefeicoesIntermediarias: 0, totalRacoesOperacionaisGeral: 0 },
-    classeII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
-    classeIII: { total: 0, totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0 },
-    classeV: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
-    classeVI: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
-    classeVII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
-    classeVIII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
-    classeIX: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
-    diarias: { total: 0, totalND15: 0, totalND30: 0, totalMilitares: 0, totalDiasViagem: 0 },
-    verbaOperacional: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
-    suprimentoFundos: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
-    passagens: { total: 0, totalQuantidade: 0, totalTrechos: 0 },
-    concessionaria: { total: 0, totalAgua: number = 0, totalEnergia: number = 0, totalRegistros: 0 },
-    horasVoo: { total: 0, totalND30: 0, totalND39: 0, quantidadeHV: 0, groupedHV: {} },
-    materialConsumo: { total: 0, totalND30: 0, totalND39: 0 },
+    classeI: { total: 0, totalRacoesOperacionaisGeral: 0 },
+    classeII: { total: 0, groupedCategories: {} },
+    classeIII: { total: 0 },
+    classeV: { total: 0, groupedCategories: {} },
+    classeVI: { total: 0, groupedCategories: {} },
+    classeVII: { total: 0, groupedCategories: {} },
+    classeVIII: { total: 0, groupedCategories: {} },
+    classeIX: { total: 0, groupedCategories: {} },
+    diarias: { total: 0 },
+    verbaOperacional: { total: 0 },
+    suprimentoFundos: { total: 0 },
+    passagens: { total: 0 },
+    concessionaria: { total: 0 },
+    horasVoo: { total: 0, quantidadeHV: 0, groupedHV: {} },
+    materialConsumo: { total: 0 },
 });
 
 const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals> => {
@@ -265,13 +251,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       return groupedByOm[key];
   };
   
-  const [
-    { data: classeIData }, { data: classeIIData }, { data: classeVData }, { data: classeVIData },
-    { data: classeVIIData }, { data: classeVIIISaudeData }, { data: classeVIIIRemontaData },
-    { data: classeIXData }, { data: classeIIIData }, { data: diariaData },
-    { data: verbaOperacionalData }, { data: passagemData }, { data: concessionariaData },
-    { data: horasVooData }, { data: materialConsumoData }
-  ] = await Promise.all([
+  const results = await Promise.all([
     supabase.from('classe_i_registros').select('*').eq('p_trab_id', ptrabId),
     supabase.from('classe_ii_registros').select('*').eq('p_trab_id', ptrabId),
     supabase.from('classe_v_registros').select('*').eq('p_trab_id', ptrabId),
@@ -289,12 +269,19 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     supabase.from('material_consumo_registros').select('*').eq('p_trab_id', ptrabId),
   ]);
 
-  // Processamento simplificado para agregação
+  const [
+    { data: classeIData }, { data: classeIIData }, { data: classeVData }, { data: classeVIData },
+    { data: classeVIIData }, { data: classeVIIISaudeData }, { data: classeVIIIRemontaData },
+    { data: classeIXData }, { data: classeIIIData }, { data: diariaData },
+    { data: verbaOperacionalData }, { data: passagemData }, { data: concessionariaData },
+    { data: horasVooData }, { data: materialConsumoData }
+  ] = results;
+
   (classeIData || []).forEach(record => {
     const om = getOmTotals(record.organizacao, record.ug);
     if (record.categoria === 'RACAO_QUENTE') {
-        om.classeI.total += record.total_qs + record.total_qr;
-        om.totalLogistica += record.total_qs + record.total_qr;
+        om.classeI.total += (record.total_qs || 0) + (record.total_qr || 0);
+        om.totalLogistica += (record.total_qs || 0) + (record.total_qr || 0);
     } else {
         om.classeI.totalRacoesOperacionaisGeral += (record.quantidade_r2 || 0) + (record.quantidade_r3 || 0);
     }
@@ -317,12 +304,13 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
   processGenericClass(classeVIData, 'classeVI');
   processGenericClass(classeVIIData, 'classeVII');
   processGenericClass(classeVIIISaudeData, 'classeVIII');
+  processGenericClass(classeVIIIRemontaData, 'classeVIII');
   processGenericClass(classeIXData, 'classeIX');
 
   (classeIIIData || []).forEach(record => {
     const om = getOmTotals(record.organizacao, record.ug);
-    om.classeIII.total += record.valor_total;
-    om.totalLogistica += record.valor_total;
+    om.classeIII.total += (record.valor_total || 0);
+    om.totalLogistica += (record.valor_total || 0);
   });
 
   (diariaData || []).forEach(record => {
@@ -342,30 +330,30 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
 
   (passagemData || []).forEach(record => {
     const om = getOmTotals(record.organizacao, record.ug);
-    om.passagens.total += record.valor_nd_33;
-    om.totalOperacional += record.valor_nd_33;
+    om.passagens.total += (record.valor_nd_33 || 0);
+    om.totalOperacional += (record.valor_nd_33 || 0);
   });
 
   (concessionariaData || []).forEach(record => {
     const om = getOmTotals(record.organizacao, record.ug);
-    om.concessionaria.total += record.valor_nd_39;
-    om.totalOperacional += record.valor_nd_39;
+    om.concessionaria.total += (record.valor_nd_39 || 0);
+    om.totalOperacional += (record.valor_nd_39 || 0);
   });
 
   (horasVooData || []).forEach(record => {
     const om = getOmTotals(record.organizacao, record.ug);
-    om.horasVoo.total += record.valor_total;
-    om.totalAviacaoExercito += record.valor_total;
+    om.horasVoo.total += (record.valor_total || 0);
+    om.totalAviacaoExercito += (record.valor_total || 0);
     const tipo = record.tipo_anv || 'Aeronave';
     if (!om.horasVoo.groupedHV[tipo]) om.horasVoo.groupedHV[tipo] = { totalValor: 0, totalHV: 0 };
-    om.horasVoo.groupedHV[tipo].totalValor += record.valor_total;
-    om.horasVoo.groupedHV[tipo].totalHV += record.quantidade_hv;
+    om.horasVoo.groupedHV[tipo].totalValor += (record.valor_total || 0);
+    om.horasVoo.groupedHV[tipo].totalHV += (record.quantidade_hv || 0);
   });
 
   (materialConsumoData || []).forEach(record => {
     const om = getOmTotals(record.organizacao, record.ug);
-    om.materialConsumo.total += record.valor_total;
-    om.totalOperacional += record.valor_total;
+    om.materialConsumo.total += (record.valor_total || 0);
+    om.totalOperacional += (record.valor_total || 0);
   });
 
   const globalTotals: PTrabAggregatedTotals = {
@@ -396,7 +384,6 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
   });
   
   const [viewMode, setViewMode] = useState<'global' | 'byOm'>('global');
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedOm, setSelectedOm] = useState<OmTotals | null>(null);
 
   if (isLoading || !totals) return <Card className="p-6 flex justify-center"><Loader2 className="animate-spin" /></Card>;
@@ -415,7 +402,6 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
       </CardHeader>
       <CardContent className="space-y-4 p-0 pb-3">
         
-        {/* Resumo Global ou por OM */}
         <div className="w-full space-y-1 text-sm px-6 pt-3">
             {viewMode === 'global' ? (
                 <>
@@ -446,7 +432,6 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
             )}
         </div>
 
-        {/* Botão de Alternância e Total */}
         <div className="px-6 py-2 border-t border-border/50 flex justify-between items-center">
             <div className="flex flex-col">
                 <span className="text-xs font-bold text-foreground">Total Geral</span>
@@ -457,7 +442,6 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
             <span className="text-lg font-black text-foreground">{formatCurrency(totalGeralFinal)}</span>
         </div>
 
-        {/* Saldos */}
         <div className="px-6 pt-2 space-y-2">
             <div className="flex justify-between items-center">
                 <h4 className="font-bold text-xs text-accent flex items-center gap-2"><TrendingUp className="h-3 w-3" /> Saldo GND 3</h4>
