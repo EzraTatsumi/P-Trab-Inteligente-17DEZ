@@ -1028,16 +1028,6 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                 Aba Operacional
                             </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                {/* Aviação do Exército (Se existir) */}
-                                {om.totalAviacaoExercito > 0 && (
-                                    <CategoryCard 
-                                        label="Aviação do Exército" 
-                                        value={om.totalAviacaoExercito} 
-                                        icon={Zap} 
-                                        colorClass="bg-purple-500/10 text-purple-600"
-                                        nd30={om.totalAviacaoExercito}
-                                    />
-                                )}
                                 <CategoryCard 
                                     label="Concessionária" 
                                     value={om.concessionaria.total} 
@@ -1088,6 +1078,25 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                         </div>
                     )}
                     
+                    {/* Bloco Aviação do Exército */}
+                    {om.totalAviacaoExercito > 0 && (
+                        <div>
+                            <h3 className="text-sm font-bold text-purple-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-purple-500/20 pb-1">
+                                <Plane className="h-4 w-4" />
+                                Aba Aviação do Exército
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                <CategoryCard 
+                                    label="Horas de Voo" 
+                                    value={om.horasVoo.total} 
+                                    icon={Zap} 
+                                    colorClass="bg-purple-500/10 text-purple-600"
+                                    nd30={om.horasVoo.total}
+                                />
+                            </div>
+                        </div>
+                    )}
+
                     {/* Bloco Material Permanente (Se existir) */}
                     {om.totalMaterialPermanente > 0 && (
                         <div>
