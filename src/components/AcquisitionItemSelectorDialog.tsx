@@ -262,7 +262,7 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                                                                         {item.isSelected && <Check className="h-3 w-3 text-white" />}
                                                                     </div>
                                                                     <div className="text-sm min-w-0 flex-1">
-                                                                        {/* Exibir descrição reduzida ou completa */}
+                                                                        {/* Exibir descrição reduzida */}
                                                                         <p className="font-medium truncate">
                                                                             {item.short_description || item.descricao_item}
                                                                         </p>
@@ -277,7 +277,7 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                                                                 </div>
                                                             </div>
                                                         </TooltipTrigger>
-                                                        <TooltipContent className="max-w-md">
+                                                        <TooltipContent className="max-w-md" side="right" sideOffset={10}>
                                                             <p className="font-bold mb-1">Descrição Completa:</p>
                                                             <p className="text-sm whitespace-normal">{item.descricao_item}</p>
                                                         </TooltipContent>
