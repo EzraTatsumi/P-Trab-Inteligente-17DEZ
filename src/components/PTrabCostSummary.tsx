@@ -13,7 +13,8 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tables } from "@/integrations/supabase/types";
-import { Switch } from "@/components/ui/switch"; // Importando Switch
+import { Switch } from "@/components/ui/switch"; 
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"; // Adicionando Dialog
 
 // Define the category constants
 const CATEGORIAS_CLASSE_II = ["Equipamento Individual", "Proteção Balística", "Material de Estacionamento"];
@@ -901,6 +902,179 @@ const CategoryCard = ({
   );
 };
 
+// NOVO COMPONENTE: Dialog para exibir detalhes da OM
+interface OmDetailsDialogProps {
+    om: OmTotals | null;
+    totals: PTrabAggregatedTotals;
+    onClose: () => void;
+}
+
+const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
+    if (!om) return null;
+    
+    // Calculate impact percentage
+    const totalGND3 = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito;
+    const omGND3Total = om.totalLogistica + om.totalOperacional + om.totalAviacaoExercito;
+    const impactPercentage = totalGND3 > 0 ? ((omGND3Total / totalGND3) * 100).toFixed(1) : '0.0';
+
+    return (
+        <Dialog open={!!om} onOpenChange={onClose}>
+            <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle className="text-2xl font-bold">{om.omName}</DialogTitle>
+                    <DialogDescription className="text-sm">
+                        UG: {formatCodug(om.ug)} | Total: {formatCurrency(om.totalGeral)}
+                    </DialogDescription>
+                </DialogHeader>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 py-4">
+                    {/* Seção Logística */}
+                    <CategoryCard 
+                        label="Classe I (Alimentação)" 
+                        value={om.classeI.total} 
+                        icon={Utensils} 
+                        colorClass="bg-orange-500/10 text-orange-600"
+                    />
+                    <CategoryCard 
+                        label="Classe II (Intendência)" 
+                        value={om.classeII.total} 
+                        icon={ClipboardList} 
+                        colorClass="bg-orange-500/10 text-orange-600"
+                        nd30={om.classeII.totalND30}
+                        nd39={om.classeII.totalND39}
+                    />
+                    <CategoryCard 
+                        label="Classe V (Armamento)" 
+                        value={om.classeV.total} 
+                        icon={Swords} 
+                        colorClass="bg-orange-500/10 text-orange-600"
+                        nd30={om.classeV.totalND30}
+                        nd39={om.classeV.totalND39}
+                    />
+                    <CategoryCard 
+                        label="Classe VI (Engenharia)" 
+                        value={om.classeVI.total} 
+                        icon={HardHat} 
+                        colorClass="bg-orange-500/10 text-orange-600"
+                        nd30={om.classeVI.totalND30}
+                        nd39={om.classeVI.totalND39}
+                    />
+                    <CategoryCard 
+                        label="Classe VII (Com/Inf)" 
+                        value={om.classeVII.total} 
+                        icon={Radio} 
+                        colorClass="bg-orange-500/10 text-orange-600"
+                        nd30={om.classeVII.totalND30}
+                        nd39={om.classeVII.totalND39}
+                    />
+                    <CategoryCard 
+                        label="Classe VIII (Saúde/Remonta)" 
+                        value={om.classeVIII.total} 
+                        icon={HeartPulse} 
+                        colorClass="bg-orange-500/10 text-orange-600"
+                        nd30={om.classeVIII.totalND30}
+                        nd39={om.classeVIII.totalND39}
+                    />
+                    <CategoryCard 
+                        label="Classe IX (Motomecanização)" 
+                        value={om.classeIX.total} 
+                        icon={Truck} 
+                        colorClass="bg-orange-500/10 text-orange-600"
+                        nd30={om.classeIX.totalND30}
+                        nd39={om.classeIX.totalND39}
+                    />
+                    <CategoryCard 
+                        label="Classe III (Combustíveis)" 
+                        value={om.classeIII.total} 
+                        icon={Fuel} 
+                        colorClass="bg-orange-500/10 text-orange-600"
+                    />
+
+                    {/* Seção Operacional */}
+                    <CategoryCard 
+                        label="Diárias" 
+                        value={om.diarias.total} 
+                        icon={Briefcase} 
+                        colorClass="bg-blue-500/10 text-blue-600"
+                        nd30={om.diarias.totalND30}
+                    />
+                    <CategoryCard 
+                        label="Passagens" 
+                        value={om.passagens.total} 
+                        icon={Plane} 
+                        colorClass="bg-blue-500/10 text-blue-600"
+                    />
+                    <CategoryCard 
+                        label="Verba Operacional" 
+                        value={om.verbaOperacional.total} 
+                        icon={Activity} 
+                        colorClass="bg-blue-500/10 text-blue-600"
+                        nd30={om.verbaOperacional.totalND30}
+                        nd39={om.verbaOperacional.totalND39}
+                    />
+                    <CategoryCard 
+                        label="Suprimento de Fundos" 
+                        value={om.suprimentoFundos.total} 
+                        icon={Wallet} 
+                        colorClass="bg-blue-500/10 text-blue-600"
+                        nd30={om.suprimentoFundos.totalND30}
+                        nd39={om.suprimentoFundos.totalND39}
+                    />
+                    <CategoryCard 
+                        label="Concessionária" 
+                        value={om.concessionaria.total} 
+                        icon={Droplet} 
+                        colorClass="bg-blue-500/10 text-blue-600"
+                        nd39={om.concessionaria.total}
+                    />
+                    <CategoryCard 
+                        label="Material de Consumo" 
+                        value={om.materialConsumo.total} 
+                        icon={Package} 
+                        colorClass="bg-blue-500/10 text-blue-600"
+                        nd30={om.materialConsumo.totalND30}
+                        nd39={om.materialConsumo.totalND39}
+                    />
+                    
+                    {/* Aviação do Exército (Se existir) */}
+                    {om.totalAviacaoExercito > 0 && (
+                        <CategoryCard 
+                            label="Aviação do Exército" 
+                            value={om.totalAviacaoExercito} 
+                            icon={Zap} 
+                            colorClass="bg-purple-500/10 text-purple-600"
+                        />
+                    )}
+                    
+                    {/* Material Permanente (Se existir) */}
+                    {om.totalMaterialPermanente > 0 && (
+                        <CategoryCard 
+                            label="Material Permanente" 
+                            value={om.totalMaterialPermanente} 
+                            icon={HardHat} 
+                            colorClass="bg-green-500/10 text-green-600"
+                        />
+                    )}
+                </div>
+                
+                {/* Indicador de impacto da OM no total geral */}
+                <div className="mt-6 pt-4 border-t border-border/30">
+                    <div className="flex justify-between items-end mb-2">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase">Impacto no Orçamento GND 3</span>
+                        <span className="text-xs font-bold text-primary">{impactPercentage}%</span>
+                    </div>
+                    <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden">
+                        <div 
+                            className="bg-primary h-full transition-all duration-700 ease-out" 
+                            style={{ width: `${impactPercentage}%` }}
+                        />
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 
 const TabDetails = ({ mode, data }: TabDetailsProps) => {
     const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
@@ -1509,194 +1683,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     return null;
 };
 
-// REFACTOR: renderOmDetails para usar CategoryCard e Grid
-const renderOmDetails = (sortedOmTotals: OmTotals[], totals: PTrabAggregatedTotals, detailsRef: React.RefObject<HTMLDivElement>, activeOmKey: string | undefined, setActiveOmKey: (key: string | undefined) => void) => (
-  <div className="space-y-3 mt-4" ref={detailsRef}>
-    {sortedOmTotals.map(om => {
-        // Calcula o impacto no total geral (Logística + Operacional)
-        const totalGND3 = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito;
-        const omGND3Total = om.totalLogistica + om.totalOperacional + om.totalAviacaoExercito;
-        const impactPercentage = totalGND3 > 0 ? ((omGND3Total / totalGND3) * 100).toFixed(1) : '0.0';
-
-        return (
-            <Accordion 
-                type="single" 
-                collapsible 
-                key={om.omKey} 
-                value={activeOmKey === om.omKey ? om.omKey : undefined}
-                onValueChange={(value) => setActiveOmKey(value)}
-                className="px-1"
-            >
-                <AccordionItem value={om.omKey} className="border rounded-2xl bg-card/20 overflow-hidden mb-2 px-3 border-border/40">
-                    <AccordionTrigger className="hover:no-underline py-4">
-                        <div className="flex justify-between items-center w-full pr-4">
-                            <div className="flex flex-col items-start">
-                                <span className="font-black text-sm text-foreground tracking-tight">{om.omName}</span>
-                                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
-                                    UG: {formatCodug(om.ug)}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div className="h-8 w-[1px] bg-border/50 hidden md:block" />
-                                <span className="text-base font-black text-primary bg-primary/10 px-4 py-1.5 rounded-full">
-                                    {formatCurrency(om.totalGeral)}
-                                </span>
-                            </div>
-                        </div>
-                    </AccordionTrigger>
-                    
-                    <AccordionContent className="pb-4 pt-2">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {/* Seção Logística */}
-                            <CategoryCard 
-                                label="Classe I (Alimentação)" 
-                                value={om.classeI.total} 
-                                icon={Utensils} 
-                                colorClass="bg-orange-500/10 text-orange-600"
-                            />
-                            <CategoryCard 
-                                label="Classe II (Intendência)" 
-                                value={om.classeII.total} 
-                                icon={ClipboardList} 
-                                colorClass="bg-orange-500/10 text-orange-600"
-                                nd30={om.classeII.totalND30}
-                                nd39={om.classeII.totalND39}
-                            />
-                            <CategoryCard 
-                                label="Classe V (Armamento)" 
-                                value={om.classeV.total} 
-                                icon={Swords} 
-                                colorClass="bg-orange-500/10 text-orange-600"
-                                nd30={om.classeV.totalND30}
-                                nd39={om.classeV.totalND39}
-                            />
-                            <CategoryCard 
-                                label="Classe VI (Engenharia)" 
-                                value={om.classeVI.total} 
-                                icon={HardHat} 
-                                colorClass="bg-orange-500/10 text-orange-600"
-                                nd30={om.classeVI.totalND30}
-                                nd39={om.classeVI.totalND39}
-                            />
-                            <CategoryCard 
-                                label="Classe VII (Com/Inf)" 
-                                value={om.classeVII.total} 
-                                icon={Radio} 
-                                colorClass="bg-orange-500/10 text-orange-600"
-                                nd30={om.classeVII.totalND30}
-                                nd39={om.classeVII.totalND39}
-                            />
-                            <CategoryCard 
-                                label="Classe VIII (Saúde/Remonta)" 
-                                value={om.classeVIII.total} 
-                                icon={HeartPulse} 
-                                colorClass="bg-orange-500/10 text-orange-600"
-                                nd30={om.classeVIII.totalND30}
-                                nd39={om.classeVIII.totalND39}
-                            />
-                            <CategoryCard 
-                                label="Classe IX (Motomecanização)" 
-                                value={om.classeIX.total} 
-                                icon={Truck} 
-                                colorClass="bg-orange-500/10 text-orange-600"
-                                nd30={om.classeIX.totalND30}
-                                nd39={om.classeIX.totalND39}
-                            />
-                            <CategoryCard 
-                                label="Classe III (Combustíveis)" 
-                                value={om.classeIII.total} 
-                                icon={Fuel} 
-                                colorClass="bg-orange-500/10 text-orange-600"
-                            />
-
-                            {/* Seção Operacional */}
-                            <CategoryCard 
-                                label="Diárias" 
-                                value={om.diarias.total} 
-                                icon={Briefcase} 
-                                colorClass="bg-blue-500/10 text-blue-600"
-                                nd30={om.diarias.totalND30}
-                            />
-                            <CategoryCard 
-                                label="Passagens" 
-                                value={om.passagens.total} 
-                                icon={Plane} 
-                                colorClass="bg-blue-500/10 text-blue-600"
-                            />
-                            <CategoryCard 
-                                label="Verba Operacional" 
-                                value={om.verbaOperacional.total} 
-                                icon={Activity} 
-                                colorClass="bg-blue-500/10 text-blue-600"
-                                nd30={om.verbaOperacional.totalND30}
-                                nd39={om.verbaOperacional.totalND39}
-                            />
-                            <CategoryCard 
-                                label="Suprimento de Fundos" 
-                                value={om.suprimentoFundos.total} 
-                                icon={Wallet} 
-                                colorClass="bg-blue-500/10 text-blue-600"
-                                nd30={om.suprimentoFundos.totalND30}
-                                nd39={om.suprimentoFundos.totalND39}
-                            />
-                            <CategoryCard 
-                                label="Concessionária" 
-                                value={om.concessionaria.total} 
-                                icon={Droplet} 
-                                colorClass="bg-blue-500/10 text-blue-600"
-                                nd39={om.concessionaria.total}
-                            />
-                            <CategoryCard 
-                                label="Material de Consumo" 
-                                value={om.materialConsumo.total} 
-                                icon={Package} 
-                                colorClass="bg-blue-500/10 text-blue-600"
-                                nd30={om.materialConsumo.totalND30}
-                                nd39={om.materialConsumo.totalND39}
-                            />
-                            
-                            {/* Aviação do Exército (Se existir) */}
-                            {om.totalAviacaoExercito > 0 && (
-                                <CategoryCard 
-                                    label="Aviação do Exército" 
-                                    value={om.totalAviacaoExercito} 
-                                    icon={Zap} 
-                                    colorClass="bg-purple-500/10 text-purple-600"
-                                />
-                            )}
-                            
-                            {/* Material Permanente (Se existir) */}
-                            {om.totalMaterialPermanente > 0 && (
-                                <CategoryCard 
-                                    label="Material Permanente" 
-                                    value={om.totalMaterialPermanente} 
-                                    icon={HardHat} 
-                                    colorClass="bg-green-500/10 text-green-600"
-                                />
-                            )}
-                        </div>
-                        
-                        {/* Indicador de impacto da OM no total geral */}
-                        <div className="mt-6 pt-4 border-t border-border/30">
-                            <div className="flex justify-between items-end mb-2">
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase">Impacto no Orçamento GND 3</span>
-                                <span className="text-xs font-bold text-primary">{impactPercentage}%</span>
-                            </div>
-                            <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden">
-                                <div 
-                                    className="bg-primary h-full transition-all duration-700 ease-out" 
-                                    style={{ width: `${impactPercentage}%` }}
-                                />
-                            </div>
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
-        );
-    })}
-  </div>
-);
-
+// REMOVIDO: renderOmDetails (substituído pelo OmDetailsDialog)
 
 export const PTrabCostSummary = ({ 
   ptrabId, 
@@ -1738,22 +1725,16 @@ export const PTrabCostSummary = ({
     },
   });
   
-  // NOVO ESTADO: Modo de visualização (global ou por OM)
+  // ESTADOS ATUALIZADOS
   const [viewMode, setViewMode] = useState<'global' | 'byOm'>('global');
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  // Estado para controlar qual OM está expandida no modo 'byOm'
-  const [activeOmKey, setActiveOmKey] = useState<string | undefined>(undefined);
+  const [selectedOm, setSelectedOm] = useState<OmTotals | null>(null); // NOVO: OM selecionada para o Dialog
   
   const detailsRef = useRef<HTMLDivElement>(null);
 
   const handleSummaryClick = () => {
     const newState = !isDetailsOpen;
     setIsDetailsOpen(newState);
-    
-    // Se estiver fechando, resetar a OM ativa
-    if (!newState) {
-        setActiveOmKey(undefined);
-    }
     
     if (newState) {
       setTimeout(() => {
@@ -1762,17 +1743,8 @@ export const PTrabCostSummary = ({
     }
   };
   
-  const handleOmSummaryClick = (omKey: string) => {
-      // Se a OM clicada já estiver ativa, feche-a. Caso contrário, abra-a.
-      const newActiveKey = activeOmKey === omKey ? undefined : omKey;
-      setActiveOmKey(newActiveKey);
-      setIsDetailsOpen(!!newActiveKey); // Abre o accordion principal se houver uma OM ativa
-      
-      if (newActiveKey) {
-          setTimeout(() => {
-              detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 100); 
-      }
+  const handleOmClick = (om: OmTotals) => {
+      setSelectedOm(om);
   };
 
 
@@ -1814,7 +1786,6 @@ export const PTrabCostSummary = ({
   
   // Prepara os dados agrupados por OM para iteração
   const sortedOmTotals = useMemo(() => {
-      // CORREÇÃO: Adiciona fallback para objeto vazio para evitar erro 'Cannot convert undefined or null to object'
       const omGroups = totals.groupedByOm || {}; 
       return Object.values(omGroups).sort((a, b) => a.omName.localeCompare(b.omName));
   }, [totals.groupedByOm]);
@@ -1883,13 +1854,11 @@ export const PTrabCostSummary = ({
                   {sortedOmTotals.map(om => (
                       <div 
                           key={om.omKey} 
-                          className="flex justify-between items-center text-foreground cursor-pointer p-1 rounded-md transition-colors hover:bg-muted/50" // Aprimoramento visual
-                          onClick={() => handleOmSummaryClick(om.omKey)} // Chama a nova função de clique
+                          className="flex justify-between items-center text-foreground cursor-pointer p-1 rounded-md transition-colors hover:bg-muted/50" 
+                          onClick={() => handleOmClick(om)} // Abre o Dialog
                       >
-                          {/* Nome da OM (sem ícone, sem CODUG, fonte e tamanho do original) */}
                           <span className="font-semibold text-sm text-foreground">{om.omName}</span>
-                          {/* Total Geral da OM (cor única, fonte e tamanho do original) */}
-                          <span className="font-bold text-sm text-primary">{formatCurrency(om.totalGeral)}</span> {/* Destaque em text-primary */}
+                          <span className="font-bold text-sm text-primary">{formatCurrency(om.totalGeral)}</span> 
                       </div>
                   ))}
               </div>
@@ -1904,20 +1873,19 @@ export const PTrabCostSummary = ({
         <div className="flex justify-between items-center">
             <CardTitle className="text-xl font-bold">Resumo de Custos</CardTitle>
             
-            {/* NOVO: Toggle de Visualização (Movido para cá) */}
-            <div className="flex items-center space-x-2 text-xs font-medium text-muted-foreground">
-                <span className={cn(viewMode === 'global' && 'text-primary font-semibold')}>Global</span>
-                <Switch
-                  checked={viewMode === 'byOm'}
-                  onCheckedChange={(checked) => {
-                    setViewMode(checked ? 'byOm' : 'global');
+            {/* NOVO: Botão para alternar para o modo Por OM (Substituindo o Switch) */}
+            <Button
+                variant={viewMode === 'byOm' ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => {
+                    setViewMode(viewMode === 'byOm' ? 'global' : 'byOm');
                     setIsDetailsOpen(false); // Fecha detalhes ao trocar o modo
-                    setActiveOmKey(undefined); // Reseta a OM ativa
-                  }}
-                  id="view-mode-toggle"
-                />
-                <span className={cn(viewMode === 'byOm' && 'text-primary font-semibold')}>Por OM</span>
-            </div>
+                    setSelectedOm(null); // Garante que o diálogo está fechado
+                }}
+            >
+                {viewMode === 'byOm' ? 'Voltar ao Global' : 'Ver por OM'}
+            </Button>
         </div>
         
         <CardDescription className="text-xs">
@@ -1929,7 +1897,7 @@ export const PTrabCostSummary = ({
         {/* Resumo de Custos (Alternado) */}
         {renderCostSummary()}
         
-        {/* Accordion para Detalhes */}
+        {/* Accordion para Detalhes (Apenas para o modo Global) */}
         <Accordion 
           type="single" 
           collapsible 
@@ -1937,10 +1905,9 @@ export const PTrabCostSummary = ({
           // Controla o estado de abertura do accordion principal
           value={isDetailsOpen ? "summary-details" : undefined}
           onValueChange={(value) => {
-              setIsDetailsOpen(value === "summary-details");
-              // Se fechar o global, resetar a OM ativa
-              if (viewMode === 'global' && value !== "summary-details") {
-                  setActiveOmKey(undefined);
+              // Só permite abrir/fechar se estiver no modo global
+              if (viewMode === 'global') {
+                  setIsDetailsOpen(value === "summary-details");
               }
           }}
         >
@@ -1952,11 +1919,8 @@ export const PTrabCostSummary = ({
               className="py-0 px-0 hover:no-underline flex items-center justify-between w-full text-xs text-muted-foreground border-t border-border/50"
               onClick={(e) => {
                 e.preventDefault(); 
-                // Se estiver no modo OM e houver uma OM ativa, o clique deve fechar o detalhe da OM.
-                if (viewMode === 'byOm' && activeOmKey) {
-                    setActiveOmKey(undefined);
-                    setIsDetailsOpen(false);
-                } else {
+                // Se estiver no modo OM, o clique não faz nada (o detalhe é no clique da OM individual)
+                if (viewMode === 'global') {
                     handleSummaryClick();
                 }
               }}
@@ -1965,20 +1929,23 @@ export const PTrabCostSummary = ({
                 <span className="text-base font-bold text-foreground">Total Geral</span>
                 <div className="flex flex-col items-end gap-0">
                     <span className="text-lg font-bold text-foreground">{formatCurrency(totalGeralFinal)}</span>
-                    <span className="font-semibold text-primary flex items-center gap-1 text-xs lowercase">
-                        {isDetailsOpen ? "menos detalhes" : "mais detalhes"}
-                        <ChevronDown className={cn(
-                          "h-4 w-4 shrink-0 transition-transform duration-200",
-                          isDetailsOpen ? "rotate-180" : "rotate-0"
-                        )} />
-                    </span>
+                    {/* O botão de detalhes só aparece se estiver no modo global */}
+                    {viewMode === 'global' && (
+                        <span className="font-semibold text-primary flex items-center gap-1 text-xs lowercase">
+                            {isDetailsOpen ? "menos detalhes" : "mais detalhes"}
+                            <ChevronDown className={cn(
+                              "h-4 w-4 shrink-0 transition-transform duration-200",
+                              isDetailsOpen ? "rotate-180" : "rotate-0"
+                            )} />
+                        </span>
+                    )}
                 </div>
               </div>
             </AccordionTrigger>
             
             <AccordionContent className="pt-2 pb-0">
-              {/* RENDERIZAÇÃO CONDICIONAL */}
-              {viewMode === 'global' ? renderGlobalDetails() : renderOmDetails(sortedOmTotals, totals, detailsRef, activeOmKey, setActiveOmKey)}
+              {/* RENDERIZAÇÃO CONDICIONAL: Apenas detalhes globais aqui */}
+              {viewMode === 'global' && renderGlobalDetails()}
             </AccordionContent>
           </AccordionItem>
         </Accordion>
@@ -2013,6 +1980,13 @@ export const PTrabCostSummary = ({
         </div>
         
       </CardContent>
+      
+      {/* NOVO: Dialog para exibir detalhes da OM */}
+      <OmDetailsDialog 
+          om={selectedOm} 
+          totals={totals} 
+          onClose={() => setSelectedOm(null)} 
+      />
     </Card>
   );
 };
