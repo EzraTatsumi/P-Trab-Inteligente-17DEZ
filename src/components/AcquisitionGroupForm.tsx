@@ -207,10 +207,13 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                             id="groupName"
                             value={groupName}
                             onChange={(e) => setGroupName(e.target.value)}
-                            placeholder="Ex: Material de Escritório - QG"
+                            placeholder="Ex: Material de Expediente"
                             required
                             disabled={isSaving}
                         />
+                        <p className="text-xs text-muted-foreground">
+                            Texto da Coluna Despesas P Trab Op - Material de Consumo ({groupName.trim() || 'Nome do Grupo'})
+                        </p>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="groupPurpose">Finalidade (Opcional)</Label>
@@ -221,6 +224,9 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                             placeholder="Ex: Apoio à Seção de Logística"
                             disabled={isSaving}
                         />
+                        <p className="text-xs text-muted-foreground">
+                            Finalidade para a Memória de Cálculo não automatizada.
+                        </p>
                     </div>
                 </div>
                 
@@ -263,7 +269,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                                     <TableRow>
                                                         <TableHead className="w-[100px] text-center">Qtd *</TableHead>
                                                         <TableHead>Item de Aquisição</TableHead>
-                                                        <TableHead className="text-right w-[120px]">Valor Unitário</TableHead>
+                                                        <TableHead className="text-center w-[120px]">Valor Unitário</TableHead>
                                                         <TableHead className="text-right w-[120px]">Total Item</TableHead>
                                                         <TableHead className="w-[50px] text-center">Ação</TableHead>
                                                     </TableRow>
@@ -292,7 +298,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                                                     Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}
                                                                 </p>
                                                             </TableCell>
-                                                            <TableCell className="text-right text-sm text-muted-foreground">
+                                                            <TableCell className="text-center text-sm text-muted-foreground">
                                                                 {formatCurrency(item.valor_unitario)}
                                                             </TableCell>
                                                             <TableCell className="text-right text-sm font-medium">
