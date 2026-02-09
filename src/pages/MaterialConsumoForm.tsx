@@ -69,6 +69,9 @@ interface CalculatedMaterialConsumo extends TablesInsert<'material_consumo_regis
     ug_favorecida: string;
     // Novo: Armazena os grupos de aquisição (para rastreamento)
     acquisitionGroups: AcquisitionGroup[];
+    // Adicionando 'efetivo' e 'dias_operacao' aqui para rastreamento, embora não sejam persistidos diretamente
+    efetivo: number;
+    dias_operacao: number;
 }
 
 // Estado inicial para o formulário (Seção 1 & 2)
@@ -229,37 +232,39 @@ const MaterialConsumoForm = () => {
     
     // --- Mutations ---
 
+    // Função auxiliar para mapear CalculatedMaterialConsumo para TablesInsert<'material_consumo_registros'>
+    const mapToDbInsert = (g: CalculatedMaterialConsumo): TablesInsert<'material_consumo_registros'> => {
+        const group = g.acquisitionGroups[0];
+        
+        // Retorna APENAS os campos que existem na tabela 'material_consumo_registros'
+        return {
+            p_trab_id: g.p_trab_id,
+            organizacao: g.organizacao,
+            ug: g.ug,
+            om_detentora: g.om_detentora,
+            ug_detentora: g.ug_detentora,
+            dias_operacao: g.dias_operacao,
+            fase_atividade: g.fase_atividade,
+            
+            // Campos específicos do Grupo de Aquisição
+            group_name: group.groupName,
+            group_purpose: group.groupPurpose,
+            itens_aquisicao: group.items as unknown as Json,
+            
+            // Valores calculados
+            valor_total: g.valor_total,
+            valor_nd_30: g.valor_nd_30,
+            valor_nd_39: g.valor_nd_39,
+            detalhamento_customizado: g.detalhamento_customizado,
+            
+            // Nota: 'efetivo' não está na tabela, então não é incluído aqui.
+        } as TablesInsert<'material_consumo_registros'>;
+    };
+
     // 1. Mutation for saving multiple new records (INSERT)
     const insertMutation = useMutation({
         mutationFn: async (newGroups: CalculatedMaterialConsumo[]) => {
-            // Cada item em newGroups é um AcquisitionGroup completo que se tornará um registro no DB
-            const recordsToInsert: TablesInsert<'material_consumo_registros'>[] = newGroups.map(g => {
-                // O registro CalculatedMaterialConsumo já contém os dados do grupo no seu array acquisitionGroups[0]
-                const group = g.acquisitionGroups[0];
-                
-                // REMOVENDO 'efetivo' daqui, pois não existe na tabela material_consumo_registros
-                return {
-                    p_trab_id: g.p_trab_id,
-                    organizacao: g.organizacao,
-                    ug: g.ug,
-                    om_detentora: g.om_detentora,
-                    ug_detentora: g.ug_detentora,
-                    dias_operacao: g.dias_operacao,
-                    // efetivo: g.efetivo, // REMOVIDO
-                    fase_atividade: g.fase_atividade,
-                    
-                    // Campos específicos do Grupo de Aquisição
-                    group_name: group.groupName,
-                    group_purpose: group.groupPurpose,
-                    itens_aquisicao: group.items as unknown as Json,
-                    
-                    // Valores calculados
-                    valor_total: g.valor_total,
-                    valor_nd_30: g.valor_nd_30,
-                    valor_nd_39: g.valor_nd_39,
-                    detalhamento_customizado: g.detalhamento_customizado,
-                };
-             });
+            const recordsToInsert = newGroups.map(mapToDbInsert);
 
             const { error } = await supabase
                 .from('material_consumo_registros')
@@ -307,29 +312,7 @@ const MaterialConsumoForm = () => {
             if (deleteError) throw deleteError;
             
             // 2. Insert new records
-            const recordsToInsert: TablesInsert<'material_consumo_registros'>[] = newRecords.map(g => {
-                const group = g.acquisitionGroups[0];
-                // REMOVENDO 'efetivo' daqui, pois não existe na tabela material_consumo_registros
-                return {
-                    p_trab_id: g.p_trab_id,
-                    organizacao: g.organizacao,
-                    ug: g.ug,
-                    om_detentora: g.om_detentora,
-                    ug_detentora: g.ug_detentora,
-                    dias_operacao: g.dias_operacao,
-                    // efetivo: g.efetivo, // REMOVIDO
-                    fase_atividade: g.fase_atividade,
-                    
-                    group_name: group.groupName,
-                    group_purpose: group.groupPurpose,
-                    itens_aquisicao: group.items as unknown as Json,
-                    
-                    valor_total: g.valor_total,
-                    valor_nd_30: g.valor_nd_30,
-                    valor_nd_39: g.valor_nd_39,
-                    detalhamento_customizado: g.detalhamento_customizado,
-                };
-             });
+            const recordsToInsert = newRecords.map(mapToDbInsert);
 
             const { error: insertError } = await supabase
                 .from('material_consumo_registros')
@@ -656,7 +639,7 @@ const MaterialConsumoForm = () => {
                         om_detentora: formData.om_destino,
                         ug_detentora: formData.ug_destino, // CORREÇÃO: Usando ug_destino
                         dias_operacao: formData.dias_operacao,
-                        // efetivo: formData.efetivo, // REMOVIDO
+                        efetivo: formData.efetivo, // Incluído aqui para a função de memória
                         fase_atividade: formData.fase_atividade,
                         group_name: group.groupName,
                         group_purpose: group.groupPurpose,
@@ -837,7 +820,7 @@ const MaterialConsumoForm = () => {
                     om_detentora: newFormData.om_destino,
                     ug_detentora: newFormData.ug_destino, // CORREÇÃO: Usando ug_destino
                     dias_operacao: newFormData.dias_operacao,
-                    // efetivo: newFormData.efetivo, // REMOVIDO
+                    efetivo: newFormData.efetivo, // Incluído aqui para a função de memória
                     fase_atividade: newFormData.fase_atividade,
                     group_name: group.groupName,
                     group_purpose: group.groupPurpose,
@@ -940,7 +923,7 @@ const MaterialConsumoForm = () => {
                         om_detentora: formData.om_destino,
                         ug_detentora: formData.ug_destino, // CORREÇÃO: Usando ug_destino
                         dias_operacao: formData.dias_operacao,
-                        // efetivo: formData.efetivo, // REMOVIDO
+                        efetivo: formData.efetivo, // Incluído aqui para a função de memória
                         fase_atividade: formData.fase_atividade,
                         group_name: group.groupName,
                         group_purpose: group.groupPurpose,
