@@ -244,15 +244,13 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                                     >
                                         <CollapsibleTrigger asChild>
                                             <div className="flex justify-between items-center p-3 bg-muted rounded-md cursor-pointer hover:bg-muted/80 transition-colors">
-                                                <div className="flex items-center gap-4">
-                                                    <span className="font-semibold text-sm">
-                                                        {group.nr_subitem} - {group.nome_subitem} 
-                                                    </span>
+                                                <span className="font-semibold text-sm">
+                                                    {group.nr_subitem} - {group.nome_subitem} 
                                                     {/* NOVO TEXTO DE CONTAGEM */}
-                                                    <span className="text-xs font-normal text-primary">
+                                                    <span className="ml-2 text-xs font-normal text-primary">
                                                         ({selectedCount} / {totalCount} itens selecionados)
                                                     </span>
-                                                </div>
+                                                </span>
                                                 {expandedSubitems[group.nr_subitem] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                             </div>
                                         </CollapsibleTrigger>

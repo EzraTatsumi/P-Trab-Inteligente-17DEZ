@@ -1,48 +1,49 @@
 import { Tables } from "@/integrations/supabase/types";
 
-// 1. ItemAquisicao: Represents a single item imported from PNCP/ARP, stored inside itens_aquisicao JSONB array.
+/**
+ * Estrutura de um item de aquisição dentro de uma Diretriz de Material de Consumo.
+ */
 export interface ItemAquisicao {
-    id: string; // Unique ID (e.g., PNCP control + item number)
-    codigo_catmat: string;
-    descricao_item: string; // Full description
-    descricao_reduzida: string | null; // Short description from catalogo_catmat
+    id: string; // ID local temporário para manipulação no frontend
+    descricao_item: string; // Descrição completa do item
+    descricao_reduzida: string; // Novo campo: Descrição reduzida do item
     valor_unitario: number;
     numero_pregao: string;
     uasg: string;
-    
-    // Fields added during form processing:
-    quantidade: number; // Quantity requested for this item
-    valor_total: number; // valor_unitario * quantidade
-    nd: '33.90.30' | '33.90.39'; // Natureza da Despesa (inferred from item type/context)
-    
-    // Fields injected from the parent Diretriz (used in AcquisitionGroupForm)
-    nr_subitem: string;
-    nome_subitem: string;
+    codigo_catmat: string;
+    // unidade_medida: string; // REMOVIDO
 }
 
-// 2. DiretrizMaterialConsumo: Represents a row in the 'diretrizes_material_consumo' table, with typed JSONB field.
+/**
+ * Estrutura da Diretriz de Material de Consumo (Tabela diretrizes_material_consumo).
+ */
 export interface DiretrizMaterialConsumo extends Omit<Tables<'diretrizes_material_consumo'>, 'itens_aquisicao'> {
+    // Sobrescreve itens_aquisicao para usar o tipo ItemAquisicao[]
     itens_aquisicao: ItemAquisicao[];
 }
 
-// 3. StagingRow: Represents a row read from the Excel file during import, used for validation staging.
+/**
+ * Estrutura de uma linha lida do Excel, com status de validação, antes de ser agrupada.
+ */
 export interface StagingRow {
-    // Fields for Diretriz (Subitem ND)
+    // Dados do Subitem ND
     nr_subitem: string;
     nome_subitem: string;
     descricao_subitem: string | null;
-    
-    // Fields for ItemAquisicao (Acquisition Item)
-    item_id: string; // Unique ID for the item (PNCP control + item number)
+
+    // Dados do Item de Aquisição
     codigo_catmat: string;
     descricao_item: string;
-    descricao_reduzida: string | null;
+    descricao_reduzida: string;
     valor_unitario: number;
     numero_pregao: string;
     uasg: string;
-    nd: '33.90.30' | '33.90.39';
-    
-    // Status/Validation fields
-    status: 'ok' | 'error' | 'warning';
-    message: string;
+    // unidade_medida: string; // REMOVIDO
+
+    // Status de Validação
+    isValid: boolean;
+    errors: string[];
+    isDuplicateInternal: boolean; // Duplicidade dentro do arquivo
+    isDuplicateExternal: boolean; // Duplicidade de Subitem ND no DB (apenas para o primeiro item do grupo)
+    originalRowIndex: number; // Linha original no Excel
 }

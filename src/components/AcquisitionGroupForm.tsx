@@ -106,7 +106,6 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
         
         items.forEach(item => {
             // Chave de agrupamento: Nr Subitem + Nome Subitem
-            // Usamos nr_subitem e nome_subitem que agora são injetados pelo seletor
             const key = `${item.nr_subitem}-${item.nome_subitem}`;
             if (!groups[key]) {
                 groups[key] = {
@@ -228,8 +227,8 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                         onOpenChange={(open) => setExpandedSubitems(prev => ({ ...prev, [group.subitemNr]: open }))}
                                     >
                                         <CollapsibleTrigger asChild>
-                                            {/* CORREÇÃO: Aplicando a cor #E2EEEE e exibindo o total do grupo */}
-                                            <div className="flex justify-between items-center p-2 bg-[#E2EEEE] border border-gray-300 rounded-md cursor-pointer hover:bg-gray-200 transition-colors">
+                                            {/* CORREÇÃO: Aplicando a cor verde clara e exibindo o total do grupo */}
+                                            <div className="flex justify-between items-center p-2 bg-green-50/70 border border-green-200 rounded-md cursor-pointer hover:bg-green-100 transition-colors">
                                                 <span className="font-semibold text-sm">
                                                     {group.subitemNr} - {group.subitemNome} ({group.items.length} itens)
                                                 </span>
@@ -326,8 +325,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                     <Button 
                         type="submit" 
                         disabled={isSaving || !groupName.trim() || items.length === 0}
-                        // CORREÇÃO: Usando a classe padrão do botão primário
-                        className="w-auto" 
+                        className="w-auto bg-gray-500 hover:bg-gray-600 text-white"
                     >
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Salvar Grupo

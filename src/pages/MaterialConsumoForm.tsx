@@ -417,11 +417,9 @@ const MaterialConsumoForm = () => {
                 newGroups = [...prev.acquisitionGroups, finalGroup];
             }
             
-            // CRUCIAL: Retorna um novo objeto de estado para forçar a re-renderização
             return { ...prev, acquisitionGroups: newGroups };
         });
         
-        // CORREÇÃO DE FLUXO: Fecha o formulário inline e limpa o item de edição
         setIsGroupFormOpen(false);
         setGroupToEdit(undefined);
         toast.success(`Grupo "${finalGroup.groupName}" salvo no formulário.`);
@@ -450,17 +448,14 @@ const MaterialConsumoForm = () => {
         toast.info("Grupo de aquisição removido do formulário.");
     };
     
-    // NOVO: Função para renderizar a lista de grupos de aquisição no formulário
-    const renderAcquisitionGroupsList = () => {
-        const groups = formData.acquisitionGroups;
-        
-        if (groups.length === 0) {
+    const renderAcquisitionGroups = () => {
+        if (formData.acquisitionGroups.length === 0) {
             return (
-                <Alert variant="default" className="border border-gray-300 bg-gray-100">
-                    <AlertCircle className="h-4 w-4 text-red-500" />
+                <Alert variant="default" className="border border-gray-300">
+                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
                     <AlertTitle>Nenhum Grupo Adicionado</AlertTitle>
                     <AlertDescription>
-                        Crie um grupo para selecionar os itens de aquisição necessários.
+                        Adicione um grupo para selecionar os itens de aquisição necessários.
                     </AlertDescription>
                 </Alert>
             );
@@ -468,7 +463,7 @@ const MaterialConsumoForm = () => {
         
         return (
             <div className="space-y-3">
-                {groups.map(group => (
+                {formData.acquisitionGroups.map(group => (
                     <Collapsible key={group.tempId} defaultOpen>
                         <Card className="border-l-4 border-primary/70">
                             <CollapsibleTrigger asChild>
@@ -504,53 +499,22 @@ const MaterialConsumoForm = () => {
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead className="w-[100px] text-center">Qtd</TableHead>
                                                 <TableHead>Item</TableHead>
-                                                <TableHead className="text-right w-[120px]">Vlr Unitário</TableHead>
-                                                <TableHead className="text-right w-[120px]">Total</TableHead>
-                                                <TableHead className="w-[50px]"></TableHead>
+                                                <TableHead className="text-center">Qtd</TableHead>
+                                                <TableHead className="text-right">Total</TableHead>
+                                                <TableHead className="w-[100px] text-center">ND</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {group.items.map(item => (
                                                 <TableRow key={item.id}>
-                                                    <TableCell className="w-[100px] text-center text-xs">
-                                                        {item.quantidade}
-                                                    </TableCell>
                                                     <TableCell className="text-xs">
                                                         {item.descricao_item}
-                                                        <p className="text-muted-foreground text-[10px]">
-                                                            CATMAT: {item.codigo_catmat} | ND: {item.nd}
-                                                        </p>
+                                                        <p className="text-muted-foreground text-[10px]">CATMAT: {item.codigo_catmat}</p>
                                                     </TableCell>
-                                                    <TableCell className="text-right text-xs text-muted-foreground">
-                                                        {formatCurrency(item.valor_unitario)}
-                                                    </TableCell>
-                                                    <TableCell className="text-right text-sm font-medium">
-                                                        {formatCurrency(item.valor_total)}
-                                                    </TableCell>
-                                                    <TableCell className="text-center">
-                                                        {/* Botão de remoção individual (apenas para visualização, a edição é no form inline) */}
-                                                        <TooltipProvider>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button 
-                                                                        type="button" 
-                                                                        variant="ghost" 
-                                                                        size="icon" 
-                                                                        className="h-8 w-8"
-                                                                        onClick={() => toast.info("Edite a quantidade ou remova o item no formulário de edição do grupo.")}
-                                                                        disabled
-                                                                    >
-                                                                        <Minus className="h-4 w-4 text-muted-foreground" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>
-                                                                    Edite no formulário do grupo
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-                                                    </TableCell>
+                                                    <TableCell className="text-center text-xs">{item.quantidade}</TableCell>
+                                                    <TableCell className="text-right text-xs font-medium">{formatCurrency(item.valor_total)}</TableCell>
+                                                    <TableCell className="text-center text-xs font-medium">{item.nd}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -565,7 +529,7 @@ const MaterialConsumoForm = () => {
                                         disabled={isSaving}
                                     >
                                         <Pencil className="mr-2 h-4 w-4" />
-                                        Editar Grupo
+                                        Editar
                                     </Button>
                                     <Button 
                                         type="button" 
@@ -575,7 +539,7 @@ const MaterialConsumoForm = () => {
                                         disabled={isSaving}
                                     >
                                         <Trash2 className="mr-2 h-4 w-4" />
-                                        Excluir Grupo
+                                        Excluir
                                     </Button>
                                 </div>
                             </CollapsibleContent>
@@ -625,8 +589,8 @@ const MaterialConsumoForm = () => {
                     groupKey: group.tempId,
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
-                    om_detentora: formData.om_destino, // CORRIGIDO
-                    ug_detentora: formData.ug_destino, // CORRIGIDO
+                    om_detentora: formData.om_destino,
+                    ug_detentora: formData.ug_destino,
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
@@ -635,8 +599,8 @@ const MaterialConsumoForm = () => {
                         p_trab_id: ptrabId!,
                         organizacao: formData.om_favorecida,
                         ug: formData.ug_favorecida,
-                        om_detentora: formData.om_destino, // CORRIGIDO
-                        ug_detentora: formData.ug_destino, // CORRIGIDO
+                        om_detentora: formData.om_destino,
+                        ug_detentora: formData.ug_destino,
                         dias_operacao: formData.dias_operacao,
                         efetivo: formData.efetivo,
                         fase_atividade: formData.fase_atividade,
@@ -662,8 +626,8 @@ const MaterialConsumoForm = () => {
                     p_trab_id: ptrabId!,
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
-                    om_detentora: formData.om_destino, // CORRIGIDO
-                    ug_detentora: formData.ug_destino, // CORRIGIDO
+                    om_detentora: formData.om_destino,
+                    ug_detentora: formData.ug_destino,
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
@@ -806,8 +770,8 @@ const MaterialConsumoForm = () => {
                 groupKey: group.tempId,
                 organizacao: newFormData.om_favorecida,
                 ug: newFormData.ug_favorecida,
-                om_detentora: newFormData.om_destino, 
-                ug_detentora: newFormData.ug_destino, 
+                om_detentora: newFormData.om_destino,
+                ug_detentora: newFormData.ug_detentora,
                 dias_operacao: newFormData.dias_operacao,
                 efetivo: newFormData.efetivo,
                 fase_atividade: newFormData.fase_atividade,
@@ -816,8 +780,8 @@ const MaterialConsumoForm = () => {
                     p_trab_id: ptrabId!,
                     organizacao: newFormData.om_favorecida,
                     ug: newFormData.ug_favorecida,
-                    om_detentora: newFormData.om_destino, 
-                    ug_detentora: newFormData.ug_destino, 
+                    om_detentora: newFormData.om_destino,
+                    ug_detentora: newFormData.ug_detentora,
                     dias_operacao: newFormData.dias_operacao,
                     efetivo: newFormData.efetivo,
                     fase_atividade: newFormData.fase_atividade,
@@ -841,22 +805,22 @@ const MaterialConsumoForm = () => {
             return {
                 tempId: group.tempId, 
                 p_trab_id: ptrabId!,
-                organizacao: formData.om_favorecida,
-                ug: formData.ug_favorecida,
-                om_detentora: formData.om_destino, 
-                ug_detentora: formData.ug_destino, 
-                dias_operacao: formData.dias_operacao,
-                efetivo: formData.efetivo,
-                fase_atividade: formData.fase_atividade,
+                organizacao: newFormData.om_favorecida,
+                ug: newFormData.ug_favorecida,
+                om_detentora: newFormData.om_destino,
+                ug_detentora: newFormData.ug_detentora,
+                dias_operacao: newFormData.dias_operacao,
+                efetivo: newFormData.efetivo,
+                fase_atividade: newFormData.fase_atividade,
                 
-                valor_total: group.totalValue,
+                valor_total: totalValue,
                 valor_nd_30: group.totalND30,
                 valor_nd_39: group.totalND39,
                 
-                totalGeral: group.totalValue,
+                totalGeral: totalValue,
                 memoria_calculo_display: memoria, 
-                om_favorecida: formData.om_favorecida,
-                ug_favorecida: formData.ug_favorecida,
+                om_favorecida: newFormData.om_favorecida,
+                ug_favorecida: newFormData.ug_favorecida,
                 detalhamento_customizado: tempGroupRecord.records[0].detalhamento_customizado,
                 acquisitionGroups: [group],
             } as CalculatedMaterialConsumo;
@@ -867,7 +831,7 @@ const MaterialConsumoForm = () => {
         
         toast.info("Modo Edição ativado. Altere os dados na Seção 2 e clique em 'Recalcular/Revisar Lote'.");
         
-        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleConfirmDelete = (group: ConsolidatedMaterialConsumoRecord) => {
@@ -907,8 +871,8 @@ const MaterialConsumoForm = () => {
                     groupKey: group.tempId,
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
-                    om_detentora: formData.om_destino, // CORRIGIDO
-                    ug_detentora: formData.ug_destino, // CORRIGIDO
+                    om_detentora: formData.om_destino,
+                    ug_detentora: formData.ug_destino,
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
@@ -917,8 +881,8 @@ const MaterialConsumoForm = () => {
                         p_trab_id: ptrabId!,
                         organizacao: formData.om_favorecida,
                         ug: formData.ug_favorecida,
-                        om_detentora: formData.om_destino, // CORRIGIDO
-                        ug_detentora: formData.ug_destino, // CORRIGIDO
+                        om_detentora: formData.om_destino,
+                        ug_detentora: formData.ug_destino,
                         dias_operacao: formData.dias_operacao,
                         efetivo: formData.efetivo,
                         fase_atividade: formData.fase_atividade,
@@ -944,8 +908,8 @@ const MaterialConsumoForm = () => {
                     p_trab_id: ptrabId!,
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
-                    om_detentora: formData.om_destino, // CORRIGIDO
-                    ug_detentora: formData.ug_destino, // CORRIGIDO
+                    om_detentora: formData.om_destino,
+                    ug_detentora: formData.ug_destino,
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
@@ -1345,7 +1309,7 @@ const MaterialConsumoForm = () => {
                                         </Card>
                                         
                                         {/* Gerenciamento de Grupos de Aquisição */}
-                                        <Card className="mt-4 rounded-lg p-4 bg-background">
+                                        <Card className="mt-4 rounded-lg p-4 bg-gray-50">
                                             <h4 className="semibold text-base mb-4">
                                                 Grupos de Aquisição ({formData.acquisitionGroups.length})
                                             </h4>
@@ -1364,7 +1328,7 @@ const MaterialConsumoForm = () => {
                                             )}
                                             
                                             {/* Lista de Grupos Adicionados */}
-                                            {!isGroupFormOpen && renderAcquisitionGroupsList()}
+                                            {!isGroupFormOpen && renderAcquisitionGroups()}
                                             
                                             {/* Botão para Adicionar Novo Grupo */}
                                             {!isGroupFormOpen && (
@@ -1388,7 +1352,7 @@ const MaterialConsumoForm = () => {
                                                     {formatCurrency(calculos.totalGeral)}
                                                 </span>
                                             </div>
-                                        </Card> {/* CORREÇÃO: Fechamento da tag Card */}
+                                        </Card>
                                         
                                         {/* BOTÕES DE AÇÃO */}
                                         <div className="flex justify-end gap-3 pt-4">
