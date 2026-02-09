@@ -1,16 +1,16 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import React, { useState, useCallback, useMemo } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, Download, Upload, Loader2, AlertTriangle, CheckCircle, XCircle, List, Info, FileWarning } from "lucide-react";
+import { Loader2, FileSpreadsheet, Upload, Download, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { DiretrizMaterialConsumo, StagingRow } from "@/types/diretrizesMaterialConsumo";
 import { exportMaterialConsumoToExcel, processMaterialConsumoImport, persistMaterialConsumoImport } from '@/lib/materialConsumoExportImport';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useSession } from '@/components/SessionContextProvider';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from '@/components/ui/badge';
-import { formatCurrency, formatCodug } from '@/lib/formatUtils';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/formatUtils';
+import { Badge } from '@/components/ui/badge';
 
 interface MaterialConsumoExportImportDialogProps {
     open: boolean;
@@ -20,9 +20,6 @@ interface MaterialConsumoExportImportDialogProps {
     onImportSuccess: () => void;
 }
 
-// Estados do fluxo de importação
-type ImportStep = 'select_file' | 'processing' | 'review';
-
 const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDialogProps> = ({
     open,
     onOpenChange,
@@ -31,364 +28,232 @@ const MaterialConsumoExportImportDialog: React.FC<MaterialConsumoExportImportDia
     onImportSuccess,
 }) => {
     const { user } = useSession();
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    
-    const [step, setStep] = useState<ImportStep>('select_file');
     const [isProcessing, setIsProcessing] = useState(false);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    
-    // Dados de Staging
-    const [stagedData, setStagedData] = useState<StagingRow[]>([]);
-    const [importSummary, setImportSummary] = useState({
-        totalRows: 0,
-        totalValid: 0,
-        totalInvalid: 0,
-        totalDuplicates: 0, // Duplicatas internas (no arquivo)
-        totalExisting: 0, // Itens já cadastrados (no DB)
-    });
+    const [file, setFile] = useState<File | null>(null);
+    const [stagingData, setStagingData] = useState<StagingRow[] | null>(null);
+    const [importStep, setImportStep] = useState<'upload' | 'review'>('upload');
 
-    // Limpa o estado ao fechar
-    const handleOpenChangeWrapper = (newOpen: boolean) => {
-        if (!newOpen) {
-            setStep('select_file');
-            setSelectedFile(null);
-            setStagedData([]);
-        }
-        onOpenChange(newOpen);
-    };
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-    const handleExport = useCallback(async () => {
-        if (diretrizes.length === 0) {
-            toast.warning("Não há dados para exportar no ano selecionado.");
-            return;
-        }
-        setIsProcessing(true);
+    const handleExport = () => {
         try {
-            await exportMaterialConsumoToExcel(diretrizes, selectedYear);
-            toast.success("Exportação concluída!", { description: `Arquivo Diretrzes_MaterialConsumo_${selectedYear}.xlsx baixado.` });
-        } catch (error) {
-            console.error("Erro na exportação:", error);
-            toast.error("Falha ao exportar dados para Excel.");
-        } finally {
-            setIsProcessing(false);
+            exportMaterialConsumoToExcel(diretrizes, selectedYear);
+        } catch (e) {
+            toast.error("Falha ao exportar para Excel.");
         }
-    }, [diretrizes, selectedYear]);
+    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            if (file.type !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' && file.type !== 'application/vnd.ms-excel') {
-                toast.error("Formato de arquivo inválido. Por favor, use um arquivo .xlsx.");
-                setSelectedFile(null);
+        const selectedFile = e.target.files?.[0];
+        if (selectedFile) {
+            if (!selectedFile.name.endsWith('.xlsx')) {
+                toast.error("Por favor, selecione um arquivo Excel (.xlsx).");
+                setFile(null);
                 return;
             }
-            setSelectedFile(file);
+            setFile(selectedFile);
+            setStagingData(null);
         }
     };
-    
+
     const handleProcessFile = useCallback(async () => {
-        if (!selectedFile || !user?.id) {
-            toast.error("Selecione um arquivo e certifique-se de estar logado.");
-            return;
-        }
-        
-        setStep('processing');
+        if (!file) return;
+
         setIsProcessing(true);
-        setStagedData([]);
-        
         try {
-            const result = await processMaterialConsumoImport(selectedFile, selectedYear, user.id);
-            
-            setStagedData(result.stagedData);
-            setImportSummary({
-                totalRows: result.stagedData.length,
-                totalValid: result.totalValid,
-                totalInvalid: result.totalInvalid,
-                totalDuplicates: result.totalDuplicates,
-                totalExisting: result.totalExisting,
-            });
-            
-            setStep('review');
-            
+            const rows = await processMaterialConsumoImport(file);
+            setStagingData(rows);
+            setImportStep('review');
+            toast.info(`Arquivo processado. ${rows.length} linhas prontas para revisão.`);
         } catch (error: any) {
-            console.error("Erro no processamento:", error);
-            toast.error("Falha ao processar o arquivo.", { description: error.message || "Verifique o formato do arquivo e tente novamente." });
-            setStep('select_file');
+            toast.error(error.message || "Erro ao processar o arquivo.");
+            setStagingData(null);
         } finally {
             setIsProcessing(false);
         }
-    }, [selectedFile, selectedYear, user?.id]);
+    }, [file]);
 
-    const handleConfirmImport = useCallback(async () => {
-        if (importSummary.totalValid === 0) {
-            toast.error("Nenhuma linha válida para importação. Corrija os erros e tente novamente.");
-            return;
-        }
-        
-        if (!confirm(`Atenção: Você está prestes a mesclar ${importSummary.totalValid} itens válidos às diretrizes de Material de Consumo do ano ${selectedYear}. Deseja continuar?`)) {
+    const handleCommitImport = useCallback(async () => {
+        if (!stagingData || !user?.id) return;
+
+        const rowsToImport = stagingData.filter(row => row.status === 'ok');
+        if (rowsToImport.length === 0) {
+            toast.error("Nenhum dado válido para importar.");
             return;
         }
 
         setIsProcessing(true);
         try {
-            // Chamada para a função de persistência
-            await persistMaterialConsumoImport(stagedData, selectedYear, user!.id);
-            
-            onImportSuccess(); 
-            
-            toast.success("Importação concluída!", { description: `As diretrizes de Material de Consumo para o ano ${selectedYear} foram atualizadas com ${importSummary.totalValid} itens.` });
-            
-            handleOpenChangeWrapper(false);
-
+            await persistMaterialConsumoImport(rowsToImport, selectedYear, user.id);
+            onImportSuccess();
+            handleClose();
         } catch (error: any) {
-            console.error("Erro na persistência:", error);
-            toast.error("Falha ao salvar as diretrizes.", { description: error.message || "Erro de banco de dados." });
+            toast.error(error.message || "Erro ao salvar dados no banco.");
         } finally {
             setIsProcessing(false);
         }
-    }, [stagedData, selectedYear, user?.id, importSummary, onImportSuccess, handleOpenChangeWrapper]);
-    
-    const totalSubitensAgrupados = useMemo(() => {
-        const subitemKeys = new Set<string>();
-        stagedData.filter(r => r.isValid).forEach(r => {
-            subitemKeys.add(`${r.nr_subitem}|${r.nome_subitem}`);
-        });
-        return subitemKeys.size;
-    }, [stagedData]);
+    }, [stagingData, selectedYear, user?.id, onImportSuccess]);
 
-    const renderSelectFileStep = () => (
-        <div className="space-y-4">
-            <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Download className="h-5 w-5 text-primary" /> {/* Ícone de Download (seta para baixo) para Importar */}
-                    1. Selecionar Arquivo
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                    Carregue um arquivo Excel (.xlsx) contendo as colunas: NR_SUBITEM, NOME_SUBITEM, DESCRICAO_SUBITEM, CODIGO_CATMAT, DESCRICAO_ITEM, DESCRICAO_REDUZIDA, VALOR_UNITARIO, NUMERO_PREGAO, UASG.
-                </p>
-                
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    accept=".xlsx"
-                    className="hidden"
-                />
-                
-                <Button 
-                    onClick={() => fileInputRef.current?.click()}
-                    variant="outline"
-                    className="w-full"
-                    disabled={isProcessing}
-                >
-                    {selectedFile ? (
-                        <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-                    ) : (
-                        <FileSpreadsheet className="mr-2 h-4 w-4" />
-                    )}
-                    {selectedFile ? selectedFile.name : "Selecionar Arquivo (.xlsx)"}
-                </Button>
-            </div>
-            
-            <div className="flex justify-end">
-                <Button 
-                    onClick={handleProcessFile}
-                    disabled={isProcessing || !selectedFile}
-                >
-                    {isProcessing ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                        <List className="mr-2 h-4 w-4" />
-                    )}
-                    Analisar e Pré-visualizar
-                </Button>
-            </div>
-        </div>
-    );
+    const handleClose = () => {
+        setFile(null);
+        setStagingData(null);
+        setImportStep('upload');
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+        onOpenChange(false);
+    };
     
-    const renderReviewStep = () => (
-        <div className="space-y-4">
-            {/* Resumo Estatístico (Baseado no ItemAquisicaoBulkUploadDialog) */}
-            <div className="grid grid-cols-5 gap-4 text-center">
-                <div className="p-3 border rounded-lg bg-muted/50">
-                    <p className="text-2xl font-bold text-foreground">{importSummary.totalRows}</p>
-                    <p className="text-sm text-muted-foreground">Linhas Processadas</p>
-                </div>
-                <div className="p-3 border rounded-lg bg-green-50/50 border-green-200 dark:bg-green-950/50 dark:border-green-800">
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{importSummary.totalValid}</p>
-                    <p className="text-sm text-muted-foreground">Itens Válidos</p>
-                </div>
-                <div className="p-3 border rounded-lg bg-red-50/50 border-red-200 dark:bg-red-950/50 dark:border-red-800">
-                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">{importSummary.totalInvalid}</p>
-                    <p className="text-sm text-muted-foreground">Itens com Erro</p>
-                </div>
-                {/* Duplicados (Internos) */}
-                <div className="p-3 border rounded-lg bg-yellow-50/50 border-yellow-200 dark:bg-yellow-950/50 dark:border-yellow-800">
-                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{importSummary.totalDuplicates}</p>
-                    <p className="text-sm text-muted-foreground">Duplicados (Arquivo)</p>
-                </div>
-                {/* Já Cadastrados (Externos) */}
-                <div className="p-3 border rounded-lg bg-orange-50/50 border-orange-200 dark:bg-orange-950/50 dark:border-orange-800">
-                    <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{importSummary.totalExisting}</p>
-                    <p className="text-sm text-muted-foreground">Já Cadastrados</p>
-                </div>
-            </div>
-            
-            {importSummary.totalInvalid > 0 && (
-                <div className="flex items-center p-3 bg-red-100 border border-red-300 rounded-md text-red-800">
-                    <FileWarning className="h-5 w-5 mr-2 flex-shrink-0" />
-                    <p className="text-sm font-medium">
-                        {importSummary.totalInvalid} linhas possuem erros, são duplicatas internas ou já estão cadastradas e serão ignoradas na importação.
-                    </p>
-                </div>
-            )}
-            
-            {/* Tabela de Pré-visualização */}
-            <h3 className="text-base font-semibold mt-4 flex items-center gap-2">
-                <List className="h-4 w-4" />
-                Pré-visualização dos Itens
-            </h3>
-            <ScrollArea className="h-[300px] border rounded-lg">
-                <Table>
-                    <TableHeader className="sticky top-0 bg-background z-10">
-                        <TableRow>
-                            <TableHead className="w-[5%] text-center">Linha</TableHead>
-                            <TableHead className="w-[20%]">Subitem ND</TableHead>
-                            <TableHead className="w-[30%]">Item de Aquisição</TableHead>
-                            <TableHead className="w-[10%] text-center">Pregão</TableHead>
-                            <TableHead className="w-[10%] text-center">UASG</TableHead>
-                            <TableHead className="w-[10%] text-right">Valor</TableHead>
-                            <TableHead className="w-[15%]">Status/Erros</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {stagedData.map((row, index) => (
-                            <TableRow key={index} className={cn(
-                                !row.isValid && "bg-red-50/50",
-                                row.isDuplicateInternal && "bg-yellow-50/50",
-                                row.isDuplicateExternal && "bg-orange-50/50"
-                            )}>
-                                <TableCell className="text-center text-xs p-2">{row.originalRowIndex}</TableCell>
-                                <TableCell className="text-xs font-medium p-2">
-                                    {row.nr_subitem} - {row.nome_subitem}
-                                    {/* REMOVIDO: Descrição do subitem */}
-                                    {/* REMOVIDO: Badge de Existente no DB, pois agora é tratado no Status/Erros */}
-                                </TableCell>
-                                <TableCell className="text-xs p-2">
-                                    {row.descricao_item}
-                                    <p className="text-muted-foreground/70 text-[10px]">
-                                        Reduzida: {row.descricao_reduzida || 'N/A'} | CATMAT: {row.codigo_catmat}
-                                    </p>
-                                </TableCell>
-                                <TableCell className="text-center text-xs p-2">{row.numero_pregao}</TableCell>
-                                <TableCell className="text-center text-xs p-2">{formatCodug(row.uasg)}</TableCell>
-                                <TableCell className="text-right font-bold text-xs p-2">{formatCurrency(row.valor_unitario)}</TableCell>
-                                <TableCell className="p-2">
-                                    {row.isValid ? (
-                                        <Badge variant="ptrab-aprovado" className="text-xs">Válido</Badge>
-                                    ) : (
-                                        <div className="space-y-1">
-                                            <Badge variant="destructive" className="text-xs flex items-center justify-center">
-                                                <XCircle className="h-3 w-3 mr-1" />
-                                                Inválido
-                                            </Badge>
-                                            {row.errors.map((err, i) => (
-                                                <p key={i} className="text-[10px] text-red-600">
-                                                    - {err}
-                                                </p>
-                                            ))}
-                                            {row.isDuplicateInternal && (
-                                                <p className="text-[10px] text-yellow-700">
-                                                    - Duplicata no arquivo
-                                                </p>
-                                            )}
-                                            {row.isDuplicateExternal && (
-                                                <p className="text-[10px] text-orange-700">
-                                                    - Já cadastrado no DB
-                                                </p>
-                                            )}
-                                        </div>
-                                    )}
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </ScrollArea>
-            
-            <DialogFooter className="mt-4">
-                <Button 
-                    onClick={handleConfirmImport}
-                    disabled={isProcessing || importSummary.totalValid === 0}
-                    className="bg-green-600 hover:bg-green-700"
-                >
-                    {isProcessing ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                        <Download className="mr-2 h-4 w-4" /> 
-                    )}
-                    Confirmar Importação ({importSummary.totalValid} Itens)
-                </Button>
-                <Button variant="outline" onClick={() => setStep('select_file')} disabled={isProcessing}>
-                    Voltar
-                </Button>
-            </DialogFooter>
-        </div>
-    );
+    const totalErrors = useMemo(() => stagingData?.filter(r => r.status === 'error').length || 0, [stagingData]);
+    const totalWarnings = useMemo(() => stagingData?.filter(r => r.status === 'warning').length || 0, [stagingData]);
+    const totalOk = useMemo(() => stagingData?.filter(r => r.status === 'ok').length || 0, [stagingData]);
 
     return (
-        <Dialog open={open} onOpenChange={handleOpenChangeWrapper}>
+        <Dialog open={open} onOpenChange={handleClose}>
             <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <FileSpreadsheet className="h-5 w-5" />
-                        Exportar/Importar Material de Consumo
+                        Exportar/Importar Diretrizes de Material de Consumo (Ano {selectedYear})
                     </DialogTitle>
-                    <DialogDescription>
-                        Gerencie as diretrizes de Material de Consumo (Subitens da ND) para o ano {selectedYear}.
-                    </DialogDescription>
                 </DialogHeader>
 
-                {/* Seção de Exportação (Sempre visível) */}
-                <div className="p-4 border rounded-lg bg-muted/50 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <Upload className="h-5 w-5 text-primary" /> 
-                        <h3 className="text-lg font-semibold">Exportar Dados</h3>
-                    </div>
+                {/* EXPORT SECTION */}
+                <div className="border-b pb-4 mb-4">
+                    <h3 className="text-lg font-semibold mb-2">Exportar Diretrizes Existentes</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                        Exporte as diretrizes cadastradas para o ano {selectedYear} para um arquivo Excel.
+                    </p>
                     <Button 
                         onClick={handleExport} 
-                        disabled={isProcessing || diretrizes.length === 0}
+                        disabled={diretrizes.length === 0 || isProcessing}
+                        variant="outline"
                     >
-                        {isProcessing ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Upload className="mr-2 h-4 w-4" /> 
-                        )}
-                        Exportar ({diretrizes.length} Subitens)
+                        <Download className="mr-2 h-4 w-4" />
+                        Exportar ({diretrizes.length} diretrizes)
                     </Button>
                 </div>
-                
-                {/* Seção de Importação (Fluxo de 2 passos) */}
-                <div className="border-t pt-4">
-                    <h2 className="text-xl font-bold mb-4">Importação de Diretrizes</h2>
+
+                {/* IMPORT SECTION */}
+                <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Importar Novas Diretrizes (UPSERT)</h3>
                     
-                    {step === 'select_file' && renderSelectFileStep()}
-                    {step === 'processing' && (
-                        <div className="text-center py-12">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-                            <p className="text-muted-foreground mt-2">Analisando e validando dados do Excel...</p>
+                    {importStep === 'upload' && (
+                        <div className="space-y-3">
+                            <p className="text-sm text-muted-foreground">
+                                Selecione um arquivo Excel (.xlsx) contendo os dados dos subitens e itens de aquisição.
+                            </p>
+                            <Input
+                                type="file"
+                                accept=".xlsx"
+                                onChange={handleFileChange}
+                                ref={fileInputRef}
+                                disabled={isProcessing}
+                            />
+                            <Button 
+                                onClick={handleProcessFile} 
+                                disabled={!file || isProcessing}
+                                className="w-full"
+                            >
+                                {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                {isProcessing ? "Processando..." : "Processar Arquivo"}
+                            </Button>
+                            <Alert variant="default" className="border-l-4 border-blue-500">
+                                <AlertCircle className="h-4 w-4 text-blue-500" />
+                                <AlertTitle>Atenção ao Formato</AlertTitle>
+                                <AlertDescription>
+                                    O arquivo deve seguir o formato de exportação. A importação fará um UPSERT (cria ou atualiza) baseado no 'Nr Subitem'.
+                                </AlertDescription>
+                            </Alert>
                         </div>
                     )}
-                    {step === 'review' && renderReviewStep()}
+
+                    {importStep === 'review' && stagingData && (
+                        <div className="space-y-4">
+                            <Alert variant={totalErrors > 0 ? "destructive" : "default"} className={cn(totalErrors === 0 && "border-l-4 border-green-500")}>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Revisão de Dados</AlertTitle>
+                                <AlertDescription>
+                                    {totalErrors > 0 
+                                        ? `Foram encontrados ${totalErrors} erro(s). Corrija o arquivo ou filtre os itens válidos para continuar.`
+                                        : `Todos os ${stagingData.length} itens foram validados. Total de itens prontos para importação: ${totalOk}.`
+                                    }
+                                </AlertDescription>
+                            </Alert>
+
+                            <div className="max-h-[40vh] overflow-y-auto border rounded-md">
+                                <Table>
+                                    <TableHeader className="sticky top-0 bg-background z-10">
+                                        <TableRow>
+                                            <TableHead className="w-[100px]">Status</TableHead>
+                                            <TableHead className="w-[100px]">Subitem</TableHead>
+                                            <TableHead>Item de Aquisição</TableHead>
+                                            <TableHead className="w-[120px] text-right">Valor Unitário</TableHead>
+                                            <TableHead className="w-[150px]">Mensagem</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {stagingData.map((row, index) => (
+                                            <TableRow key={index} className={cn(
+                                                row.status === 'error' && 'bg-red-50/50',
+                                                row.status === 'warning' && 'bg-yellow-50/50'
+                                            )}>
+                                                <TableCell>
+                                                    <Badge variant={row.status === 'ok' ? 'ptrab-aprovado' : row.status === 'error' ? 'destructive' : 'secondary'}>
+                                                        {row.status.toUpperCase()}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-xs">
+                                                    <p className="font-semibold">{row.nr_subitem}</p>
+                                                    <p className="text-muted-foreground">{row.nome_subitem}</p>
+                                                </TableCell>
+                                                <TableCell className="text-xs">
+                                                    {row.descricao_item || 'N/A'}
+                                                    <p className="text-muted-foreground text-[10px]">
+                                                        CATMAT: {row.codigo_catmat || 'N/A'} | Pregão: {row.numero_pregao || 'N/A'}
+                                                    </p>
+                                                </TableCell>
+                                                <TableCell className="text-right text-xs font-medium">
+                                                    {row.valor_unitario ? formatCurrency(row.valor_unitario) : 'R$ 0,00'}
+                                                </TableCell>
+                                                <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">
+                                                    {row.message}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {step === 'select_file' && (
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => handleOpenChangeWrapper(false)} disabled={isProcessing}>
+                <DialogFooter className="mt-4">
+                    {importStep === 'review' && (
+                        <>
+                            <Button 
+                                onClick={() => setImportStep('upload')} 
+                                variant="outline"
+                                disabled={isProcessing}
+                            >
+                                <XCircle className="mr-2 h-4 w-4" />
+                                Cancelar Revisão
+                            </Button>
+                            <Button 
+                                onClick={handleCommitImport} 
+                                disabled={totalErrors > 0 || totalOk === 0 || isProcessing}
+                            >
+                                {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                                Confirmar Importação ({totalOk} itens)
+                            </Button>
+                        </>
+                    )}
+                    {importStep === 'upload' && (
+                        <Button onClick={handleClose} variant="outline">
                             Fechar
                         </Button>
-                    </DialogFooter>
-                )}
+                    )}
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
