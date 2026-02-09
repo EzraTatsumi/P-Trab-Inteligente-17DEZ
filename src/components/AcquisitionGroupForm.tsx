@@ -241,6 +241,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                             </div>
                                         </CollapsibleTrigger>
                                         <CollapsibleContent className="pt-2">
+                                            {/* INÍCIO DA REFACTORIZAÇÃO: Renderiza a tabela para este subitem */}
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
@@ -291,6 +292,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                                     ))}
                                                 </TableBody>
                                             </Table>
+                                            {/* FIM DA REFACTORIZAÇÃO */}
                                         </CollapsibleContent>
                                     </Collapsible>
                                 ))}
