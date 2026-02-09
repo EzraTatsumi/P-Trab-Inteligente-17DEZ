@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber, formatCodug } from "@/lib/formatUtils";
-import { Package, Loader2, ChevronRight, HardHat, TrendingUp, Activity, Zap } from "lucide-react";
+import { Package, Loader2, ChevronRight, HardHat, TrendingUp, Activity, Zap, Swords, Radio, HeartPulse, Truck, Briefcase, Droplet, Plane, Utensils, Fuel, Wallet, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -20,22 +20,22 @@ interface OmTotals {
     totalMaterialPermanente: number;
     totalAviacaoExercito: number;
     
-    classeI: { total: number; totalRacoesOperacionaisGeral: number };
-    classeII: { total: number, groupedCategories: Record<string, any> };
-    classeIII: { total: number };
-    classeV: { total: number, groupedCategories: Record<string, any> };
-    classeVI: { total: number, groupedCategories: Record<string, any> };
-    classeVII: { total: number, groupedCategories: Record<string, any> };
-    classeVIII: { total: number, groupedCategories: Record<string, any> };
-    classeIX: { total: number, groupedCategories: Record<string, any> };
+    classeI: { total: number; details: Record<string, number> };
+    classeII: { total: number, details: Record<string, number> };
+    classeIII: { total: number, details: Record<string, number> };
+    classeV: { total: number, details: Record<string, number> };
+    classeVI: { total: number, details: Record<string, number> };
+    classeVII: { total: number, details: Record<string, number> };
+    classeVIII: { total: number, details: Record<string, number> };
+    classeIX: { total: number, details: Record<string, number> };
     
-    diarias: { total: number };
-    verbaOperacional: { total: number };
-    suprimentoFundos: { total: number };
-    passagens: { total: number };
-    concessionaria: { total: number };
-    horasVoo: { total: number, quantidadeHV: number, groupedHV: Record<string, any> };
-    materialConsumo: { total: number };
+    diarias: { total: number, details: Record<string, number> };
+    verbaOperacional: { total: number, details: Record<string, number> };
+    suprimentoFundos: { total: number, details: Record<string, number> };
+    passagens: { total: number, details: Record<string, number> };
+    concessionaria: { total: number, details: Record<string, number> };
+    horasVoo: { total: number, details: Record<string, number> };
+    materialConsumo: { total: number, details: Record<string, number> };
 }
 
 interface PTrabAggregatedTotals {
@@ -43,8 +43,6 @@ interface PTrabAggregatedTotals {
     totalOperacional: number;
     totalMaterialPermanente: number;
     totalAviacaoExercito: number;
-    totalRacoesOperacionaisGeral: number;
-    quantidadeHorasVoo: number;
     groupedByOm: Record<string, OmTotals>;
 }
 
@@ -63,40 +61,37 @@ interface InteractiveCardProps {
     icon: any;
     colorClass: string;
     details: Record<string, number>;
-    unit?: string;
 }
 
-const InteractiveCard = ({ label, value, icon: Icon, colorClass, details, unit }: InteractiveCardProps) => {
+const InteractiveCard = ({ label, value, icon: Icon, colorClass, details }: InteractiveCardProps) => {
     const [isExpanded, setIsExpanded] = useState(false);
     if (value === 0) return null;
 
-    // Proteção robusta contra details nulo ou indefinido
-    const safeDetails = details && typeof details === 'object' ? details : {};
-    const detailEntries = Object.entries(safeDetails).filter(([_, val]) => typeof val === 'number' && val > 0);
+    const detailEntries = Object.entries(details || {}).filter(([_, val]) => val > 0);
 
     return (
         <div 
             className={cn(
-                "group flex flex-col rounded-xl border transition-all duration-300 overflow-hidden cursor-pointer",
+                "group flex flex-col rounded-xl border transition-all duration-300 overflow-hidden cursor-pointer mb-2",
                 isExpanded 
-                    ? "ring-2 ring-primary border-transparent bg-card shadow-lg scale-[1.02]" 
+                    ? "ring-2 ring-primary border-transparent bg-card shadow-md scale-[1.01]" 
                     : "border-border/50 bg-card/40 hover:bg-accent/5"
             )}
             onClick={() => setIsExpanded(!isExpanded)}
         >
-            <div className="p-4 flex items-center justify-between">
+            <div className="p-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className={cn("p-2 rounded-lg transition-transform group-hover:scale-110", colorClass)}>
-                        <Icon className="h-5 w-5" />
+                        <Icon className="h-4 w-4" />
                     </div>
                     <div>
-                        <p className="text-[10px] uppercase font-bold text-muted-foreground leading-none mb-1">{label}</p>
-                        <p className="text-sm font-black text-foreground">
-                            {unit ? `${formatNumber(value, 2)} ${unit}` : formatCurrency(value)}
+                        <p className="text-[9px] uppercase font-bold text-muted-foreground leading-none mb-1">{label}</p>
+                        <p className="text-xs font-black text-foreground">
+                            {formatCurrency(value)}
                         </p>
                     </div>
                 </div>
-                <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform duration-300", isExpanded && "rotate-90")} />
+                <ChevronRight className={cn("h-3 w-3 text-muted-foreground transition-transform duration-300", isExpanded && "rotate-90")} />
             </div>
 
             <div className={cn(
@@ -104,12 +99,12 @@ const InteractiveCard = ({ label, value, icon: Icon, colorClass, details, unit }
                 isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
             )}>
                 <div className="overflow-hidden">
-                    <div className="px-4 pb-4 pt-2 border-t border-dashed border-border/50 space-y-2 mx-4 mt-1">
+                    <div className="px-3 pb-3 pt-1 border-t border-dashed border-border/50 space-y-1.5 mx-3 mt-1">
                         {detailEntries.map(([name, val]) => (
-                            <div key={name} className="flex justify-between items-center text-[11px]">
+                            <div key={name} className="flex justify-between items-center text-[10px]">
                                 <span className="text-muted-foreground font-medium">{name}</span>
                                 <span className="font-bold text-foreground">
-                                    {unit && name.includes("Total") ? `${formatNumber(val as number, 2)} ${unit}` : formatCurrency(val as number)}
+                                    {formatCurrency(val)}
                                 </span>
                             </div>
                         ))}
@@ -131,40 +126,9 @@ interface OmDetailsDialogProps {
 const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
     if (!om) return null;
     
-    const totalGND3 = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito;
-    const omGND3Total = om.totalLogistica + om.totalOperacional + om.totalAviacaoExercito;
-    const impactPercentage = totalGND3 > 0 ? ((omGND3Total / totalGND3) * 100).toFixed(1) : '0.0';
-
-    const logisticaDetails = {
-        "Classe I (Alimentação)": om.classeI.total,
-        "Classe II (Intendência)": om.classeII.total,
-        "Classe III (Combustíveis)": om.classeIII.total,
-        "Classe V (Armamento)": om.classeV.total,
-        "Classe VI (Engenharia)": om.classeVI.total,
-        "Classe VII (Comunicações)": om.classeVII.total,
-        "Classe VIII (Saúde/Remonta)": om.classeVIII.total,
-        "Classe IX (Manutenção)": om.classeIX.total,
-    };
-
-    const operacionalDetails = {
-        "Diárias": om.diarias.total,
-        "Passagens": om.passagens.total,
-        "Verba Operacional": om.verbaOperacional.total,
-        "Suprimento de Fundos": om.suprimentoFundos.total,
-        "Concessionárias": om.concessionaria.total,
-        "Material de Consumo": om.materialConsumo.total,
-    };
-
-    const aviacaoDetails: Record<string, number> = {};
-    if (om.horasVoo && om.horasVoo.groupedHV) {
-        Object.entries(om.horasVoo.groupedHV).forEach(([tipo, data]: [string, any]) => {
-            aviacaoDetails[`${tipo} (${formatNumber(data.totalHV, 1)} HV)`] = data.totalValor;
-        });
-    }
-
     return (
         <Dialog open={!!om} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[800px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+            <DialogContent className="sm:max-w-[95vw] md:max-w-[900px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
                 <DialogHeader className="p-6 pb-4 border-b border-border/50 bg-card">
                     <DialogTitle className="text-2xl font-bold">{om.omName}</DialogTitle>
                     <DialogDescription className="text-sm">
@@ -173,48 +137,44 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                 </DialogHeader>
                 
                 <div className="flex-1 overflow-y-auto p-6 pt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <InteractiveCard 
-                            label="Aba Logística"
-                            value={om.totalLogistica}
-                            icon={Package}
-                            colorClass="bg-orange-500/10 text-orange-600"
-                            details={logisticaDetails}
-                        />
-                        <InteractiveCard 
-                            label="Aba Operacional"
-                            value={om.totalOperacional}
-                            icon={Activity}
-                            colorClass="bg-blue-500/10 text-blue-600"
-                            details={operacionalDetails}
-                        />
-                        <InteractiveCard 
-                            label="Aviação do Exército"
-                            value={om.horasVoo.total}
-                            icon={Zap}
-                            colorClass="bg-purple-500/10 text-purple-600"
-                            details={aviacaoDetails}
-                        />
-                        <InteractiveCard 
-                            label="Material Permanente"
-                            value={om.totalMaterialPermanente}
-                            icon={HardHat}
-                            colorClass="bg-green-500/10 text-green-600"
-                            details={{ "Itens de Investimento": om.totalMaterialPermanente }}
-                        />
-                    </div>
-                </div>
-                
-                <div className="p-6 pt-4 border-t border-border/30 bg-muted/5">
-                    <div className="flex justify-between items-end mb-2">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase">Impacto no Orçamento GND 3</span>
-                        <span className="text-xs font-bold text-primary">{impactPercentage}%</span>
-                    </div>
-                    <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden">
-                        <div 
-                            className="bg-primary h-full transition-all duration-700 ease-out" 
-                            style={{ width: `${impactPercentage}%` }}
-                        />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        
+                        {/* BLOCO 1: LOGÍSTICA */}
+                        <div className="space-y-4">
+                            <h4 className="text-[10px] font-black uppercase text-orange-600 flex items-center gap-2 mb-2">
+                                <Package className="h-3 w-3" /> Aba Logística
+                            </h4>
+                            <InteractiveCard label="Classe I" value={om.classeI.total} icon={Utensils} colorClass="bg-orange-500/10 text-orange-600" details={om.classeI.details} />
+                            <InteractiveCard label="Classe II" value={om.classeII.total} icon={HardHat} colorClass="bg-orange-500/10 text-orange-600" details={om.classeII.details} />
+                            <InteractiveCard label="Classe III" value={om.classeIII.total} icon={Fuel} colorClass="bg-orange-500/10 text-orange-600" details={om.classeIII.details} />
+                            <InteractiveCard label="Classe V" value={om.classeV.total} icon={Swords} colorClass="bg-orange-500/10 text-orange-600" details={om.classeV.details} />
+                            <InteractiveCard label="Classe VI" value={om.classeVI.total} icon={Truck} colorClass="bg-orange-500/10 text-orange-600" details={om.classeVI.details} />
+                            <InteractiveCard label="Classe VII" value={om.classeVII.total} icon={Radio} colorClass="bg-orange-500/10 text-orange-600" details={om.classeVII.details} />
+                            <InteractiveCard label="Classe VIII" value={om.classeVIII.total} icon={HeartPulse} colorClass="bg-orange-500/10 text-orange-600" details={om.classeVIII.details} />
+                            <InteractiveCard label="Classe IX" value={om.classeIX.total} icon={Activity} colorClass="bg-orange-500/10 text-orange-600" details={om.classeIX.details} />
+                        </div>
+
+                        {/* BLOCO 2: OPERACIONAL */}
+                        <div className="space-y-4">
+                            <h4 className="text-[10px] font-black uppercase text-blue-600 flex items-center gap-2 mb-2">
+                                <Briefcase className="h-3 w-3" /> Aba Operacional
+                            </h4>
+                            <InteractiveCard label="Diárias" value={om.diarias.total} icon={Wallet} colorClass="bg-blue-500/10 text-blue-600" details={om.diarias.details} />
+                            <InteractiveCard label="Passagens" value={om.passagens.total} icon={Plane} colorClass="bg-blue-500/10 text-blue-600" details={om.passagens.details} />
+                            <InteractiveCard label="Verba Operacional" value={om.verbaOperacional.total} icon={ClipboardList} colorClass="bg-blue-500/10 text-blue-600" details={om.verbaOperacional.details} />
+                            <InteractiveCard label="Suprimento de Fundos" value={om.suprimentoFundos.total} icon={Wallet} colorClass="bg-blue-500/10 text-blue-600" details={om.suprimentoFundos.details} />
+                            <InteractiveCard label="Concessionárias" value={om.concessionaria.total} icon={Droplet} colorClass="bg-blue-500/10 text-blue-600" details={om.concessionaria.details} />
+                            <InteractiveCard label="Material de Consumo" value={om.materialConsumo.total} icon={Package} colorClass="bg-blue-500/10 text-blue-600" details={om.materialConsumo.details} />
+                        </div>
+
+                        {/* BLOCO 3: AVIAÇÃO E INVESTIMENTO */}
+                        <div className="space-y-4">
+                            <h4 className="text-[10px] font-black uppercase text-purple-600 flex items-center gap-2 mb-2">
+                                <Zap className="h-3 w-3" /> Aviação e Investimento
+                            </h4>
+                            <InteractiveCard label="Horas de Voo" value={om.horasVoo.total} icon={Zap} colorClass="bg-purple-500/10 text-purple-600" details={om.horasVoo.details} />
+                            <InteractiveCard label="Material Permanente" value={om.totalMaterialPermanente} icon={HardHat} colorClass="bg-green-500/10 text-green-600" details={{ "Itens de Investimento": om.totalMaterialPermanente }} />
+                        </div>
                     </div>
                 </div>
             </DialogContent>
@@ -225,29 +185,22 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
 // --- FUNÇÃO DE BUSCA DE TOTAIS ---
 
 const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
-    omKey: `${omName}|${ug}`,
-    omName,
-    ug,
-    totalGeral: 0,
-    totalLogistica: 0,
-    totalOperacional: 0,
-    totalMaterialPermanente: 0,
-    totalAviacaoExercito: 0,
-    classeI: { total: 0, totalRacoesOperacionaisGeral: 0 },
-    classeII: { total: 0, groupedCategories: {} },
-    classeIII: { total: 0 },
-    classeV: { total: 0, groupedCategories: {} },
-    classeVI: { total: 0, groupedCategories: {} },
-    classeVII: { total: 0, groupedCategories: {} },
-    classeVIII: { total: 0, groupedCategories: {} },
-    classeIX: { total: 0, groupedCategories: {} },
-    diarias: { total: 0 },
-    verbaOperacional: { total: 0 },
-    suprimentoFundos: { total: 0 },
-    passagens: { total: 0 },
-    concessionaria: { total: 0 },
-    horasVoo: { total: 0, quantidadeHV: 0, groupedHV: {} },
-    materialConsumo: { total: 0 },
+    omKey: `${omName}|${ug}`, omName, ug, totalGeral: 0, totalLogistica: 0, totalOperacional: 0, totalMaterialPermanente: 0, totalAviacaoExercito: 0,
+    classeI: { total: 0, details: {} },
+    classeII: { total: 0, details: {} },
+    classeIII: { total: 0, details: {} },
+    classeV: { total: 0, details: {} },
+    classeVI: { total: 0, details: {} },
+    classeVII: { total: 0, details: {} },
+    classeVIII: { total: 0, details: {} },
+    classeIX: { total: 0, details: {} },
+    diarias: { total: 0, details: {} },
+    verbaOperacional: { total: 0, details: {} },
+    suprimentoFundos: { total: 0, details: {} },
+    passagens: { total: 0, details: {} },
+    concessionaria: { total: 0, details: {} },
+    horasVoo: { total: 0, details: {} },
+    materialConsumo: { total: 0, details: {} },
 });
 
 const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals> => {
@@ -255,9 +208,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
   
   const getOmTotals = (omName: string, ug: string): OmTotals => {
       const key = `${omName || 'N/A'}|${ug || 'N/A'}`;
-      if (!groupedByOm[key]) {
-          groupedByOm[key] = initializeOmTotals(omName || 'OM Não Informada', ug || '000000');
-      }
+      if (!groupedByOm[key]) groupedByOm[key] = initializeOmTotals(omName || 'OM Não Informada', ug || '000000');
       return groupedByOm[key];
   };
   
@@ -289,11 +240,14 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
 
   (classeIData || []).forEach(record => {
     const om = getOmTotals(record.organizacao, record.ug);
+    const val = (record.total_qs || 0) + (record.total_qr || 0);
     if (record.categoria === 'RACAO_QUENTE') {
-        om.classeI.total += (record.total_qs || 0) + (record.total_qr || 0);
-        om.totalLogistica += (record.total_qs || 0) + (record.total_qr || 0);
+        om.classeI.total += val;
+        om.totalLogistica += val;
+        om.classeI.details["Ração Quente"] = (om.classeI.details["Ração Quente"] || 0) + val;
     } else {
-        om.classeI.totalRacoesOperacionaisGeral += (record.quantidade_r2 || 0) + (record.quantidade_r3 || 0);
+        // Ração Operacional (Valor estimado se disponível, ou apenas contagem)
+        om.classeI.details["Ração Operacional"] = (om.classeI.details["Ração Operacional"] || 0) + val;
     }
   });
 
@@ -304,8 +258,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
         (om[key] as any).total += val;
         om.totalLogistica += val;
         const cat = record.categoria || 'Geral';
-        if (!(om[key] as any).groupedCategories[cat]) (om[key] as any).groupedCategories[cat] = { totalValor: 0 };
-        (om[key] as any).groupedCategories[cat].totalValor += val;
+        (om[key] as any).details[cat] = ((om[key] as any).details[cat] || 0) + val;
     });
   };
 
@@ -319,8 +272,11 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
 
   (classeIIIData || []).forEach(record => {
     const om = getOmTotals(record.organizacao, record.ug);
-    om.classeIII.total += (record.valor_total || 0);
-    om.totalLogistica += (record.valor_total || 0);
+    const val = (record.valor_total || 0);
+    om.classeIII.total += val;
+    om.totalLogistica += val;
+    const tipo = record.tipo_combustivel || 'Outros';
+    om.classeIII.details[tipo] = (om.classeIII.details[tipo] || 0) + val;
   });
 
   (diariaData || []).forEach(record => {
@@ -328,57 +284,69 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     const val = (record.valor_nd_15 || 0) + (record.valor_nd_30 || 0);
     om.diarias.total += val;
     om.totalOperacional += val;
+    const dest = record.destino || 'Geral';
+    om.diarias.details[dest] = (om.diarias.details[dest] || 0) + val;
   });
 
   (verbaOperacionalData || []).forEach(record => {
     const om = getOmTotals(record.organizacao, record.ug);
     const val = (record.valor_nd_30 || 0) + (record.valor_nd_39 || 0);
     om.totalOperacional += val;
-    if (record.detalhamento === 'Suprimento de Fundos') om.suprimentoFundos.total += val;
-    else om.verbaOperacional.total += val;
+    if (record.detalhamento === 'Suprimento de Fundos') {
+        om.suprimentoFundos.total += val;
+        om.suprimentoFundos.details["Geral"] = (om.suprimentoFundos.details["Geral"] || 0) + val;
+    } else {
+        om.verbaOperacional.total += val;
+        const obj = record.objeto_aquisicao || 'Geral';
+        om.verbaOperacional.details[obj] = (om.verbaOperacional.details[obj] || 0) + val;
+    }
   });
 
   (passagemData || []).forEach(record => {
     const om = getOmTotals(record.organizacao, record.ug);
-    om.passagens.total += (record.valor_nd_33 || 0);
-    om.totalOperacional += (record.valor_nd_33 || 0);
+    const val = (record.valor_nd_33 || 0);
+    om.passagens.total += val;
+    om.totalOperacional += val;
+    const dest = record.destino || 'Geral';
+    om.passagens.details[dest] = (om.passagens.details[dest] || 0) + val;
   });
 
   (concessionariaData || []).forEach(record => {
     const om = getOmTotals(record.organizacao, record.ug);
-    om.concessionaria.total += (record.valor_nd_39 || 0);
-    om.totalOperacional += (record.valor_nd_39 || 0);
+    const val = (record.valor_nd_39 || 0);
+    om.concessionaria.total += val;
+    om.totalOperacional += val;
+    const cat = record.categoria || 'Geral';
+    om.concessionaria.details[cat] = (om.concessionaria.details[cat] || 0) + val;
   });
 
   (horasVooData || []).forEach(record => {
     const om = getOmTotals(record.organizacao, record.ug);
-    om.horasVoo.total += (record.valor_total || 0);
-    om.totalAviacaoExercito += (record.valor_total || 0);
+    const val = (record.valor_total || 0);
+    om.horasVoo.total += val;
+    om.totalAviacaoExercito += val;
     const tipo = record.tipo_anv || 'Aeronave';
-    if (!om.horasVoo.groupedHV[tipo]) om.horasVoo.groupedHV[tipo] = { totalValor: 0, totalHV: 0 };
-    om.horasVoo.groupedHV[tipo].totalValor += (record.valor_total || 0);
-    om.horasVoo.groupedHV[tipo].totalHV += (record.quantidade_hv || 0);
+    om.horasVoo.details[tipo] = (om.horasVoo.details[tipo] || 0) + val;
   });
 
   (materialConsumoData || []).forEach(record => {
     const om = getOmTotals(record.organizacao, record.ug);
-    om.materialConsumo.total += (record.valor_total || 0);
-    om.totalOperacional += (record.valor_total || 0);
+    const val = (record.valor_total || 0);
+    om.materialConsumo.total += val;
+    om.totalOperacional += val;
+    const group = record.group_name || 'Geral';
+    om.materialConsumo.details[group] = (om.materialConsumo.details[group] || 0) + val;
   });
 
   const globalTotals: PTrabAggregatedTotals = {
       totalLogisticoGeral: 0, totalOperacional: 0, totalMaterialPermanente: 0, totalAviacaoExercito: 0,
-      totalRacoesOperacionaisGeral: 0, quantidadeHorasVoo: 0, groupedByOm
+      groupedByOm
   };
 
-  // Processamento final seguro
-  const omList = Object.values(groupedByOm);
-  omList.forEach(om => {
+  Object.values(groupedByOm).forEach(om => {
       globalTotals.totalLogisticoGeral += (om.totalLogistica || 0);
       globalTotals.totalOperacional += (om.totalOperacional || 0);
       globalTotals.totalAviacaoExercito += (om.totalAviacaoExercito || 0);
-      globalTotals.totalRacoesOperacionaisGeral += (om.classeI?.totalRacoesOperacionaisGeral || 0);
-      globalTotals.quantidadeHorasVoo += (om.horasVoo?.quantidadeHV || 0);
       om.totalGeral = (om.totalLogistica || 0) + (om.totalOperacional || 0) + (om.totalAviacaoExercito || 0);
   });
 
