@@ -608,30 +608,38 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       globalTotals.totalDiasEtapaSolicitada += omTotals.classeI.totalDiasEtapaSolicitada;
       globalTotals.totalRefeicoesIntermediarias += omTotals.classeI.totalRefeicoesIntermediarias;
       
-      // Classes Diversas (Global)
-      const mergeClassTotals = (globalGroup: any, omGroup: any) => {
-          globalGroup.total += omGroup.total;
-          globalGroup.totalND30 += omGroup.totalND30;
-          globalGroup.totalND39 += omGroup.totalND39;
-          globalGroup.totalItens += omGroup.totalItens;
+      // Classes Diversas (Global) - CORREÇÃO: Atualizando o objeto globalTotals diretamente
+      const mergeClassTotals = (globalKey: 'ClasseII' | 'ClasseV' | 'ClasseVI' | 'ClasseVII' | 'ClasseVIII' | 'ClasseIX', omGroup: any) => {
+          const totalKey = `total${globalKey}` as keyof PTrabAggregatedTotals;
+          const nd30Key = `total${globalKey}_ND30` as keyof PTrabAggregatedTotals;
+          const nd39Key = `total${globalKey}_ND39` as keyof PTrabAggregatedTotals;
+          const itensKey = `totalItens${globalKey}` as keyof PTrabAggregatedTotals;
+          const groupedKey = `grouped${globalKey}Categories` as keyof PTrabAggregatedTotals;
+          
+          (globalTotals[totalKey] as number) += omGroup.total;
+          (globalTotals[nd30Key] as number) += omGroup.totalND30;
+          (globalTotals[nd39Key] as number) += omGroup.totalND39;
+          (globalTotals[itensKey] as number) += omGroup.totalItens;
+          
+          const globalGrouped = globalTotals[groupedKey] as Record<string, any>;
           
           Object.entries(omGroup.groupedCategories).forEach(([category, data]: [string, any]) => {
-              if (!globalGroup.groupedCategories[category]) {
-                  globalGroup.groupedCategories[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
+              if (!globalGrouped[category]) {
+                  globalGrouped[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
               }
-              globalGroup.groupedCategories[category].totalValor += data.totalValor;
-              globalGroup.groupedCategories[category].totalND30 += data.totalND30;
-              globalGroup.groupedCategories[category].totalND39 += data.totalND39;
-              globalGroup.groupedCategories[category].totalItens += data.totalItens;
+              globalGrouped[category].totalValor += data.totalValor;
+              globalGrouped[category].totalND30 += data.totalND30;
+              globalGrouped[category].totalND39 += data.totalND39;
+              globalGrouped[category].totalItens += data.totalItens;
           });
       };
       
-      mergeClassTotals({ total: globalTotals.totalClasseII, totalND30: globalTotals.totalClasseII_ND30, totalND39: globalTotals.totalClasseII_ND39, totalItens: globalTotals.totalItensClasseII, groupedCategories: globalTotals.groupedClasseIICategories }, omTotals.classeII);
-      mergeClassTotals({ total: globalTotals.totalClasseV, totalND30: globalTotals.totalClasseV_ND30, totalND39: globalTotals.totalClasseV_ND39, totalItens: globalTotals.totalItensClasseV, groupedCategories: globalTotals.groupedClasseVCategories }, omTotals.classeV);
-      mergeClassTotals({ total: globalTotals.totalClasseVI, totalND30: globalTotals.totalClasseVI_ND30, totalND39: globalTotals.totalClasseVI_ND39, totalItens: globalTotals.totalItensClasseVI, groupedCategories: globalTotals.groupedClasseVICategories }, omTotals.classeVI);
-      mergeClassTotals({ total: globalTotals.totalClasseVII, totalND30: globalTotals.totalClasseVII_ND30, totalND39: globalTotals.totalClasseVII_ND39, totalItens: globalTotals.totalItensClasseVII, groupedCategories: globalTotals.groupedClasseVIICategories }, omTotals.classeVII);
-      mergeClassTotals({ total: globalTotals.totalClasseVIII, totalND30: globalTotals.totalClasseVIII_ND30, totalND39: globalTotals.totalClasseVIII_ND39, totalItens: globalTotals.totalItensClasseVIII, groupedCategories: globalTotals.groupedClasseVIIICategories }, omTotals.classeVIII);
-      mergeClassTotals({ total: globalTotals.totalClasseIX, totalND30: globalTotals.totalClasseIX_ND30, totalND39: globalTotals.totalClasseIX_ND39, totalItens: globalTotals.totalItensClasseIX, groupedCategories: globalTotals.groupedClasseIXCategories }, omTotals.classeIX);
+      mergeClassTotals('ClasseII', omTotals.classeII);
+      mergeClassTotals('ClasseV', omTotals.classeV);
+      mergeClassTotals('ClasseVI', omTotals.classeVI);
+      mergeClassTotals('ClasseVII', omTotals.classeVII);
+      mergeClassTotals('ClasseVIII', omTotals.classeVIII);
+      mergeClassTotals('ClasseIX', omTotals.classeIX);
       
       // Classe III (Global)
       globalTotals.totalCombustivel += omTotals.classeIII.total;
@@ -685,12 +693,6 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       globalTotals.totalMaterialConsumoND30 += omTotals.materialConsumo.totalND30;
       globalTotals.totalMaterialConsumoND39 += omTotals.materialConsumo.totalND39;
   });
-  
-  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
-  // Já calculado na iteração acima (globalTotals.totalLogisticoGeral)
-  
-  // Total Operacional (Diárias + Verba Operacional + Suprimento de Fundos + Passagens + Concessionária + Horas de Voo + Material Consumo)
-  // Já calculado na iteração acima (globalTotals.totalOperacional)
   
   return globalTotals as PTrabAggregatedTotals;
 };
