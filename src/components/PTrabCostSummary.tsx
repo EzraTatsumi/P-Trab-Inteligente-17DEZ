@@ -930,7 +930,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                 </DialogHeader>
                 
                 <div className="space-y-8 py-4">
-                    {/* Bloco Logística */}
+                    {/* Bloco Logística - ORDENADO POR CLASSE NUMÉRICA */}
                     {om.totalLogistica > 0 && (
                         <div>
                             <h3 className="text-sm font-bold text-orange-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-orange-500/20 pb-1">
@@ -951,6 +951,12 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     colorClass="bg-orange-500/10 text-orange-600"
                                     nd30={om.classeII.totalND30}
                                     nd39={om.classeII.totalND39}
+                                />
+                                <CategoryCard 
+                                    label="Classe III (Combustíveis)" 
+                                    value={om.classeIII.total} 
+                                    icon={Fuel} 
+                                    colorClass="bg-orange-500/10 text-orange-600"
                                 />
                                 <CategoryCard 
                                     label="Classe V (Armamento)" 
@@ -992,17 +998,11 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     nd30={om.classeIX.totalND30}
                                     nd39={om.classeIX.totalND39}
                                 />
-                                <CategoryCard 
-                                    label="Classe III (Combustíveis)" 
-                                    value={om.classeIII.total} 
-                                    icon={Fuel} 
-                                    colorClass="bg-orange-500/10 text-orange-600"
-                                />
                             </div>
                         </div>
                     )}
 
-                    {/* Bloco Operacional */}
+                    {/* Bloco Operacional - ORDENADO ALFABETICAMENTE */}
                     {om.totalOperacional > 0 && (
                         <div>
                             <h3 className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-blue-500/20 pb-1">
@@ -1010,6 +1010,22 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                 Aba Operacional
                             </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {/* Aviação do Exército (Se existir) */}
+                                {om.totalAviacaoExercito > 0 && (
+                                    <CategoryCard 
+                                        label="Aviação do Exército" 
+                                        value={om.totalAviacaoExercito} 
+                                        icon={Zap} 
+                                        colorClass="bg-purple-500/10 text-purple-600"
+                                    />
+                                )}
+                                <CategoryCard 
+                                    label="Concessionária" 
+                                    value={om.concessionaria.total} 
+                                    icon={Droplet} 
+                                    colorClass="bg-blue-500/10 text-blue-600"
+                                    nd39={om.concessionaria.total}
+                                />
                                 <CategoryCard 
                                     label="Diárias" 
                                     value={om.diarias.total} 
@@ -1018,18 +1034,18 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     nd30={om.diarias.totalND30}
                                 />
                                 <CategoryCard 
+                                    label="Material de Consumo" 
+                                    value={om.materialConsumo.total} 
+                                    icon={Package} 
+                                    colorClass="bg-blue-500/10 text-blue-600"
+                                    nd30={om.materialConsumo.totalND30}
+                                    nd39={om.materialConsumo.totalND39}
+                                />
+                                <CategoryCard 
                                     label="Passagens" 
                                     value={om.passagens.total} 
                                     icon={Plane} 
                                     colorClass="bg-blue-500/10 text-blue-600"
-                                />
-                                <CategoryCard 
-                                    label="Verba Operacional" 
-                                    value={om.verbaOperacional.total} 
-                                    icon={Activity} 
-                                    colorClass="bg-blue-500/10 text-blue-600"
-                                    nd30={om.verbaOperacional.totalND30}
-                                    nd39={om.verbaOperacional.totalND39}
                                 />
                                 <CategoryCard 
                                     label="Suprimento de Fundos" 
@@ -1040,30 +1056,13 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     nd39={om.suprimentoFundos.totalND39}
                                 />
                                 <CategoryCard 
-                                    label="Concessionária" 
-                                    value={om.concessionaria.total} 
-                                    icon={Droplet} 
+                                    label="Verba Operacional" 
+                                    value={om.verbaOperacional.total} 
+                                    icon={Activity} 
                                     colorClass="bg-blue-500/10 text-blue-600"
-                                    nd39={om.concessionaria.total}
+                                    nd30={om.verbaOperacional.totalND30}
+                                    nd39={om.verbaOperacional.totalND39}
                                 />
-                                <CategoryCard 
-                                    label="Material de Consumo" 
-                                    value={om.materialConsumo.total} 
-                                    icon={Package} 
-                                    colorClass="bg-blue-500/10 text-blue-600"
-                                    nd30={om.materialConsumo.totalND30}
-                                    nd39={om.materialConsumo.totalND39}
-                                />
-                                
-                                {/* Aviação do Exército (Se existir, agrupada no operacional) */}
-                                {om.totalAviacaoExercito > 0 && (
-                                    <CategoryCard 
-                                        label="Aviação do Exército" 
-                                        value={om.totalAviacaoExercito} 
-                                        icon={Zap} 
-                                        colorClass="bg-purple-500/10 text-purple-600"
-                                    />
-                                )}
                             </div>
                         </div>
                     )}
