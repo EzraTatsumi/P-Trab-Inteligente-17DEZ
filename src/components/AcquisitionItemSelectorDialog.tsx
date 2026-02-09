@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSession } from '@/components/SessionContextProvider';
-import { DiretrizMaterialConsumo, ItemAquisicao, ItemAquisicaoTemplate } from "@/types/diretrizesMaterialConsumo";
+import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatCurrency, formatNumber } from '@/lib/formatUtils';
@@ -15,11 +15,8 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Importar Tooltip
 
 // Tipo para o item de aquisição com status de seleção
-interface SelectableItem extends ItemAquisicaoTemplate {
+interface SelectableItem extends ItemAquisicao {
     isSelected: boolean;
-    // Adiciona campos de agrupamento que são injetados aqui
-    nr_subitem: string; 
-    nome_subitem: string;
 }
 
 // Tipo para o grupo de subitem na UI
@@ -56,10 +53,10 @@ const fetchDiretrizesMaterialConsumo = async (year: number, userId: string): Pro
         
     if (error) throw error;
     
-    // Mapear o tipo JSONB para ItemAquisicaoTemplate[]
+    // Mapear o tipo JSONB para ItemAquisicao[]
     return (data || []).map(d => ({
         ...d,
-        itens_aquisicao: (d.itens_aquisicao as unknown as ItemAquisicaoTemplate[]) || [],
+        itens_aquisicao: (d.itens_aquisicao as unknown as ItemAquisicao[]) || [],
     })) as DiretrizMaterialConsumo[];
 };
 
@@ -74,7 +71,7 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
     const { user } = useSession();
     const userId = user?.id;
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedItemsMap, setSelectedItemsMap] = useState<Record<string, ItemAquisicaoTemplate>>({});
+    const [selectedItemsMap, setSelectedItemsMap] = useState<Record<string, ItemAquisicao>>({});
     const [expandedSubitems, setExpandedSubitems] = useState<Record<string, boolean>>({});
 
     // 1. Fetch das Diretrizes
@@ -88,12 +85,9 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
     // 2. Inicialização do Mapa de Seleção (apenas na abertura)
     useEffect(() => {
         if (open) {
-            const initialMap: Record<string, ItemAquisicaoTemplate> = {};
-            // Usamos ItemAquisicaoTemplate para o mapa, pois é o que está armazenado na diretriz
+            const initialMap: Record<string, ItemAquisicao> = {};
             initialItems.forEach(item => {
-                // Clonamos apenas os campos do template para o mapa
-                const { quantidade, valor_total, nr_subitem, nome_subitem, ...template } = item;
-                initialMap[item.id] = template;
+                initialMap[item.id] = item;
             });
             setSelectedItemsMap(initialMap);
             setSearchTerm('');
@@ -151,47 +145,20 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
     }, [diretrizes, searchTerm, selectedItemsMap]);
     
     // 4. Handlers de Seleção
-    const handleToggleItem = (item: SelectableItem) => {
+    const handleToggleItem = (item: ItemAquisicao) => {
         setSelectedItemsMap(prev => {
             const newMap = { ...prev };
-            // Clonamos apenas os campos do template para o mapa
-            const { isSelected, nr_subitem, nome_subitem, ...template } = item;
-            
             if (newMap[item.id]) {
                 delete newMap[item.id];
             } else {
-                newMap[item.id] = template;
+                newMap[item.id] = item;
             }
             return newMap;
         });
     };
     
     const handleConfirmSelection = () => {
-        const selectedItems = Object.values(selectedItemsMap).map(item => {
-            // Encontra a diretriz para obter os campos de agrupamento (nr_subitem, nome_subitem)
-            // Isso é necessário porque o selectedItemsMap só guarda o template.
-            let nr_subitem = 'N/A';
-            let nome_subitem = 'N/A';
-            
-            for (const diretriz of diretrizes) {
-                const foundItem = diretriz.itens_aquisicao.find(i => i.id === item.id);
-                if (foundItem) {
-                    nr_subitem = diretriz.nr_subitem;
-                    nome_subitem = diretriz.nome_subitem;
-                    break;
-                }
-            }
-            
-            return {
-                ...item,
-                // Adiciona campos obrigatórios para o tipo ItemAquisicao completo
-                quantidade: 1, // Default quantity
-                valor_total: item.valor_unitario, // Default total (1 * unit price)
-                nr_subitem: nr_subitem,
-                nome_subitem: nome_subitem,
-            } as ItemAquisicao;
-        });
-        
+        const selectedItems = Object.values(selectedItemsMap);
         onSelect(selectedItems);
         onOpenChange(false);
     };
@@ -277,13 +244,15 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                                     >
                                         <CollapsibleTrigger asChild>
                                             <div className="flex justify-between items-center p-3 bg-muted rounded-md cursor-pointer hover:bg-muted/80 transition-colors">
-                                                <span className="font-semibold text-sm">
-                                                    {group.nr_subitem} - {group.nome_subitem} 
+                                                <div className="flex items-center gap-4">
+                                                    <span className="font-semibold text-sm">
+                                                        {group.nr_subitem} - {group.nome_subitem} 
+                                                    </span>
                                                     {/* NOVO TEXTO DE CONTAGEM */}
-                                                    <span className="ml-2 text-xs font-normal text-primary">
+                                                    <span className="text-xs font-normal text-primary">
                                                         ({selectedCount} / {totalCount} itens selecionados)
                                                     </span>
-                                                </span>
+                                                </div>
                                                 {expandedSubitems[group.nr_subitem] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                             </div>
                                         </CollapsibleTrigger>

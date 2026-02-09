@@ -1,348 +1,555 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Loader2, Search, AlertCircle, Check, XCircle, Package, FileText } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchArpItemsByCatmat, fetchCatmatShortDescription, saveNewCatmatEntry } from '@/integrations/supabase/api';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, FileText, DollarSign, Loader2, Import } from "lucide-react";
+import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { DetailedArpItem } from '@/types/pncp';
-import { formatCurrency, formatDate, formatPregao } from '@/lib/formatUtils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { cn } from '@/lib/utils';
-import { ItemAquisicaoTemplate } from '@/types/diretrizesMaterialConsumo'; // Importar ItemAquisicaoTemplate
-import PriceSearchForm, { SelectedPriceItem } from './pncp/PriceSearchForm';
-
-// Tipo para o item de ARP selecionado
-export interface SelectedArpItem extends ItemAquisicaoTemplate {
-    // Campos adicionais para rastreamento de ARP
-    numeroControlePncpAta: string;
-    numeroItem: string;
-}
+import { InspectionItem, InspectionStatus } from '@/types/pncpInspection'; // NOVO: Importar tipos de inspeção
+import { toast } from "sonner";
+import ArpUasgSearch from './pncp/ArpUasgSearch'; // Importa o novo componente
+import ArpCatmatSearch from './pncp/ArpCatmatSearch'; // NOVO: Importa o componente wrapper
+import PriceSearchForm from './pncp/PriceSearchForm'; // NOVO: Importa o componente de busca por preço médio
+import { fetchCatmatShortDescription, fetchCatmatFullDescription, fetchAllExistingAcquisitionItems } from '@/integrations/supabase/api'; // Importa as funções de busca CATMAT e a nova função de busca de itens
+import PNCPInspectionDialog from './pncp/PNCPInspectionDialog'; // NOVO: Importar o diálogo de inspeção
+import { supabase } from '@/integrations/supabase/client'; // Importar o cliente Supabase para obter o user ID
 
 interface ItemAquisicaoPNCPDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    // Callback para retornar o item selecionado (ARP ou Ref. Preço)
-    onSelect: (item: SelectedArpItem | SelectedPriceItem) => void;
+    onImport: (items: ItemAquisicao[]) => void;
+    // NOVO: Lista de itens já existentes na diretriz de destino
+    existingItemsInDiretriz: ItemAquisicao[]; 
+    // NOVO: Função para iniciar a edição de um item no formulário principal
+    onReviewItem: (item: ItemAquisicao) => void;
+    // NOVO: Ano de referência para a busca de duplicidade global
+    selectedYear: number; 
 }
 
-const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({ onOpenChange, open, onSelect }) => {
-    const queryClient = useQueryClient();
-    const [codigoItem, setCodigoItem] = useState('');
-    const [searchDates, setSearchDates] = useState({ dataVigenciaInicialMin: '2023-01-01', dataVigenciaInicialMax: '2024-12-31' });
-    const [selectedItem, setSelectedItem] = useState<SelectedArpItem | SelectedPriceItem | null>(null);
-    const [catmatDetails, setCatmatDetails] = useState<{ shortDescription: string | null, isCataloged: boolean }>({ shortDescription: null, isCataloged: false });
-    const [isCatmatLoading, setIsCatmatLoading] = useState(false);
-    const [isSavingCatmat, setIsSavingCatmat] = useState(false);
-    const [tab, setTab] = useState<'arp' | 'price'>('arp');
+// NOVO TIPO DE ESTADO: Armazena o item detalhado selecionado e seus metadados de origem
+interface SelectedItemState {
+    item: DetailedArpItem | ItemAquisicao; // Pode ser um item ARP ou um item de Preço Médio
+    pregaoFormatado: string;
+    uasg: string;
+    isPriceReference: boolean; // Flag para indicar se é um item de preço médio
+}
 
-    // Query para buscar itens de ARP
-    const { data: arpItems, isLoading: isLoadingArp, isError: isErrorArp, error: errorArp, refetch: refetchArp } = useQuery<DetailedArpItem[]>({
-        queryKey: ['arpItemsByCatmat', codigoItem, searchDates],
-        queryFn: () => fetchArpItemsByCatmat({ codigoItem: codigoItem.replace(/\D/g, ''), ...searchDates }),
-        enabled: false, // Desabilitado por padrão
-        retry: 1,
-    });
+// Função auxiliar para normalizar strings para comparação (Incluindo normalização Unicode)
+const normalizeString = (str: string | number | null | undefined): string => {
+    // 1. Converte para string, trata null/undefined como string vazia
+    const s = String(str || '').trim();
     
-    // Efeito para buscar a descrição reduzida do CATMAT
+    // 2. Normaliza caracteres Unicode (NFD) e remove diacríticos (acentos)
+    const normalized = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    // 3. Converte para maiúsculas e colapsa múltiplos espaços internos em um único espaço
+    return normalized.toUpperCase().replace(/\s+/g, ' ');
+};
+
+// Função para normalizar strings removendo todos os caracteres não-dígitos (para CATMAT e UASG)
+const normalizeDigits = (value: string | number | null | undefined) =>
+    normalizeString(value).replace(/[^\d]/g, "");
+
+// Função para normalizar o Pregão, padronizando o ano para 2 dígitos
+const normalizePregao = (value: string | number | null | undefined): string => {
+    const s = normalizeString(value); 
+    
+    // Remove todos os caracteres não-dígitos
+    let digits = s.replace(/[^\d]/g, ''); 
+    
+    if (digits.length < 3) return digits; 
+
+    // Heurística para separar o ano (assume que os últimos 2 ou 4 dígitos são o ano)
+    let yearPart = '';
+    let numberPart = digits;
+
+    // Tenta extrair 4 dígitos de ano (Ex: 2025)
+    if (digits.length >= 4 && digits.slice(-4).startsWith('20')) {
+        yearPart = digits.slice(-4).slice(-2); // "25"
+        numberPart = digits.slice(0, -4); // "90001"
+    } 
+    // Tenta extrai 2 dígitos de ano (Ex: 25)
+    else if (digits.length >= 2) {
+        yearPart = digits.slice(-2); // "25"
+        numberPart = digits.slice(0, -2); // "90001"
+    }
+    
+    // Retorna o número sem zeros à esquerda + ano de 2 dígitos
+    return `${numberPart.replace(/^0+/, '')}${yearPart}`; // Ex: "9000125"
+};
+
+interface DuplicateCheckResult {
+    isDuplicate: boolean;
+    matchingKeys: string[];
+}
+
+/**
+ * Implementa a lógica de verificação de duplicidade flexível (4 de 6).
+ * 
+ * @param newItem O item que está sendo importado (PNCP).
+ * @param existingItem O item já existente no banco de dados.
+ * @returns Objeto com status de duplicidade e chaves correspondentes.
+ */
+const isFlexibleDuplicate = (newItem: ItemAquisicao, existingItem: ItemAquisicao): DuplicateCheckResult => {
+    const result: DuplicateCheckResult = {
+        isDuplicate: false,
+        matchingKeys: [],
+    };
+    
+    // --- 1. Critérios Obrigatórios (Chave de Contrato) ---
+    
+    // Comparação de Pregão (Normalizada para dígitos e ano de 2 dígitos)
+    const pregaoMatch =
+        normalizePregao(newItem.numero_pregao) ===
+        normalizePregao(existingItem.numero_pregao);
+    
+    // Comparação de UASG (Normalizada para 6 dígitos brutos)
+    const uasgMatch =
+        normalizeDigits(newItem.uasg).slice(0, 6) ===
+        normalizeDigits(existingItem.uasg).slice(0, 6);
+    
+    // Comparação numérica exata para valor unitário (após parse e arredondamento)
+    const newValue = newItem.valor_unitario;
+    const existingValue = existingItem.valor_unitario;
+
+    // Arredondar para 2 casas decimais antes de comparar para evitar erros de ponto flutuante.
+    const valorMatch =
+        Math.round(newValue * 100) === Math.round(existingValue * 100);
+
+    if (!pregaoMatch || !uasgMatch || !valorMatch) {
+        return result; // Falha na Chave de Contrato
+    }
+
+    // --- 2. Critérios Opcionais (Pelo menos um deve ser igual) ---
+    
+    // Comparação de CATMAT (Normalizada para dígitos)
+    const catmatMatch =
+        normalizeDigits(newItem.codigo_catmat) ===
+        normalizeDigits(existingItem.codigo_catmat);
+    
+    // Comparação de Descrição Completa (Normalizada)
+    const descCompletaMatch =
+        normalizeString(newItem.descricao_item) ===
+        normalizeString(existingItem.descricao_item);
+    
+    // Comparação de Descrição Reduzida (Normalizada)
+    const descReduzidaMatch =
+        normalizeString(newItem.descricao_reduzida) ===
+        normalizeString(existingItem.descricao_reduzida);
+
+    if (catmatMatch) result.matchingKeys.push('CATMAT');
+    if (descCompletaMatch) result.matchingKeys.push('Descrição Completa');
+    if (descReduzidaMatch && normalizeString(newItem.descricao_reduzida).length > 0) {
+        // Só considera a descrição reduzida se ela não for vazia (ou seja, se foi preenchida/encontrada)
+        result.matchingKeys.push('Nome Reduzido');
+    }
+
+    // Se a Chave de Contrato for idêntica, verifica se pelo menos uma Chave de Item é idêntica.
+    const optionalMatch = result.matchingKeys.length > 0;
+
+    if (optionalMatch) {
+        result.isDuplicate = true;
+    }
+
+    return result;
+};
+
+
+const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
+    open,
+    onOpenChange,
+    onImport,
+    existingItemsInDiretriz,
+    onReviewItem, 
+    selectedYear, 
+}) => {
+    const [selectedTab, setSelectedTab] = useState("arp-uasg");
+    const [selectedItemsState, setSelectedItemsState] = useState<SelectedItemState[]>([]);
+    const [isInspecting, setIsInspecting] = useState(false);
+    
+    const [inspectionList, setInspectionList] = useState<InspectionItem[]>([]);
+    const [isInspectionDialogOpen, setIsInspectionDialogOpen] = useState(false);
+    
+    const dialogContentRef = useRef<HTMLDivElement>(null);
+
+    const scrollToTop = () => {
+        if (dialogContentRef.current) {
+            dialogContentRef.current.scrollTo(0, 0);
+        }
+    };
+
     useEffect(() => {
-        const fetchDetails = async () => {
-            const code = codigoItem.replace(/\D/g, '');
-            if (code.length !== 9) {
-                setCatmatDetails({ shortDescription: null, isCataloged: false });
+        if (open) {
+            setSelectedItemsState([]);
+            setInspectionList([]);
+            setIsInspectionDialogOpen(false);
+            scrollToTop(); 
+        }
+    }, [open]);
+    
+    const handleClearSelection = () => {
+        setSelectedItemsState([]);
+    };
+    
+    // NOVO: Função para limpar apenas a seleção de preço médio
+    const handleClearPriceSelection = () => {
+        setSelectedItemsState(prev => prev.filter(s => !s.isPriceReference));
+    };
+    
+    // Função para alternar a seleção de um item detalhado (ARP)
+    const handleItemPreSelect = (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => {
+        // Limpa qualquer seleção de preço médio ao selecionar um item ARP
+        handleClearPriceSelection();
+        
+        setSelectedItemsState(prev => {
+            const id = item.id;
+            const existingIndex = prev.findIndex(s => s.item.id === id && !s.isPriceReference);
+            
+            if (existingIndex !== -1) {
+                // Remover item (desselecionar)
+                return prev.filter((_, index) => index !== existingIndex);
+            } else {
+                // Adicionar item (selecionar)
+                return [...prev, { item, pregaoFormatado, uasg, isPriceReference: false }];
+            }
+        });
+    };
+    
+    // NOVO: Função para selecionar um item de preço médio (apenas um por vez)
+    const handlePriceSelect = (item: ItemAquisicao) => {
+        // 1. Limpa todas as seleções ARP e outras referências de preço
+        const newSelection = selectedItemsState.filter(s => !s.isPriceReference);
+        
+        // 2. Adiciona o novo item de preço médio
+        setSelectedItemsState(prev => [...newSelection, { 
+            item: item, 
+            pregaoFormatado: item.numero_pregao, 
+            uasg: item.uasg, 
+            isPriceReference: true 
+        }]);
+        
+        // 3. NÃO DISPARA A INSPEÇÃO AQUI. O usuário deve clicar no botão.
+    };
+    
+    // Mapeia apenas os IDs para passar para os componentes de busca
+    const selectedItemIds = selectedItemsState.map(s => s.item.id);
+
+    // Filtra itens ARP para contagem
+    const selectedArpItems = selectedItemsState.filter(s => !s.isPriceReference);
+    // Filtra itens de Preço Médio para contagem
+    const selectedPriceItems = selectedItemsState.filter(s => s.isPriceReference);
+    
+    // Determine which flow is active
+    const isPriceFlowActive = selectedPriceItems.length > 0;
+    const isArpFlowActive = selectedArpItems.length > 0;
+    
+    // Item selecionado para inspeção (se for preço médio, é o primeiro item de preço)
+    const selectedItemForInspection = isPriceFlowActive ? selectedPriceItems[0].item as ItemAquisicao : null;
+
+    // NOVO: Função para iniciar a inspeção (agora aceita um parâmetro para forçar a inspeção de apenas 1 item)
+    const handleStartInspection = async (isPriceReferenceFlow: boolean = false) => {
+        
+        const itemsToInspect = isPriceReferenceFlow 
+            ? selectedPriceItems
+            : selectedArpItems;
+            
+        if (itemsToInspect.length === 0) {
+            toast.error("Selecione pelo menos um item detalhado para importar.");
+            return;
+        }
+        
+        setIsInspecting(true);
+        toast.info("Iniciando inspeção e validação dos itens selecionados...");
+        
+        try {
+            // 1. Obter o ID do usuário
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                toast.error("Sessão expirada. Por favor, faça login novamente.");
+                setIsInspecting(false);
                 return;
             }
-            
-            setIsCatmatLoading(true);
-            try {
-                const details = await fetchCatmatShortDescription(code);
-                setCatmatDetails(details);
-            } catch (e) {
-                console.error("Erro ao buscar detalhes do CATMAT:", e);
-                setCatmatDetails({ shortDescription: null, isCataloged: false });
-            } finally {
-                setIsCatmatLoading(false);
-            }
-        };
-        
-        fetchDetails();
-    }, [codigoItem]);
+            const userId = user.id;
 
-    const handleSearchArp = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (codigoItem.replace(/\D/g, '').length !== 9) {
-            toast.error("O Código CATMAT/CATSER deve ter 9 dígitos.");
-            return;
-        }
-        setSelectedItem(null);
-        refetchArp();
-    };
-    
-    const handleSelectArpItem = (item: DetailedArpItem) => {
-        // Verifica se a descrição reduzida está disponível
-        if (!catmatDetails.shortDescription) {
-            toast.error("A descrição reduzida do CATMAT é obrigatória. Por favor, preencha e salve no catálogo.");
-            return;
-        }
-        
-        const selected: SelectedArpItem = {
-            id: crypto.randomUUID(),
-            codigo_catmat: item.codigoItem,
-            descricao_item: item.descricaoItem,
-            descricao_reduzida: catmatDetails.shortDescription, // Usa a descrição reduzida do catálogo
-            valor_unitario: item.valorUnitario,
-            numero_pregao: item.pregaoFormatado,
-            uasg: item.uasg,
-            numeroControlePncpAta: item.numeroControlePncpAta,
-            numeroItem: item.id.split('-').pop() || '',
-            nd: '33.90.30', // ND padrão para ARP (pode ser ajustado se necessário)
-        };
-        
-        setSelectedItem(selected);
-    };
-    
-    const handleSelectPriceItem = (item: SelectedPriceItem) => {
-        setSelectedItem(item);
-    };
-
-    const handleConfirmSelection = () => {
-        if (selectedItem) {
-            onSelect(selectedItem);
-            onOpenChange(false);
-        }
-    };
-    
-    const handleSaveCatmat = async () => {
-        if (!codigoItem.trim() || !catmatDetails.shortDescription) {
-            toast.error("Preencha o código CATMAT e a descrição reduzida.");
-            return;
-        }
-        
-        setIsSavingCatmat(true);
-        try {
-            // Busca a descrição completa (se não tiver)
-            let fullDescription = '';
-            if (arpItems && arpItems.length > 0) {
-                fullDescription = arpItems[0].descricaoItem;
-            } else {
-                // Se não houver ARP, precisamos de uma descrição completa de fallback
-                fullDescription = catmatDetails.shortDescription; 
-            }
+            // 2. Buscar todos os itens existentes do usuário para o ano selecionado (outras diretrizes)
+            const allExistingItems = await fetchAllExistingAcquisitionItems(selectedYear, userId);
             
-            await saveNewCatmatEntry(
-                codigoItem, 
-                fullDescription, 
-                catmatDetails.shortDescription
-            );
+            // 3. COMBINAR ITENS: Itens do banco + Itens da diretriz atual (estado local)
+            const combinedExistingItems = [
+                ...allExistingItems,
+                ...existingItemsInDiretriz
+            ];
             
-            toast.success("Descrição reduzida salva no catálogo!");
-            queryClient.invalidateQueries({ queryKey: ['catmatShortDescription', codigoItem] });
+            const inspectionPromises = itemsToInspect.map(async ({ item: selectedItem, pregaoFormatado, uasg, isPriceReference }) => {
+                
+                // 4. Mapeamento inicial para ItemAquisicao
+                let initialMappedItem: ItemAquisicao;
+                let originalPncpItem: DetailedArpItem;
+                
+                if (isPriceReference) {
+                    // Se for referência de preço, o item já é um ItemAquisicao
+                    initialMappedItem = selectedItem as ItemAquisicao;
+                    // Criamos um DetailedArpItem fake para o PNCPInspectionDialog
+                    originalPncpItem = {
+                        id: initialMappedItem.id,
+                        numeroAta: 'REF. PREÇO',
+                        codigoItem: initialMappedItem.codigo_catmat,
+                        descricaoItem: initialMappedItem.descricao_item,
+                        valorUnitario: initialMappedItem.valor_unitario,
+                        quantidadeHomologada: 1,
+                        numeroControlePncpAta: 'REF_PRECO',
+                        pregaoFormatado: initialMappedItem.numero_pregao,
+                        uasg: initialMappedItem.uasg,
+                        omNome: 'PNCP - Preço Médio',
+                        dataVigenciaInicial: new Date().toISOString().split('T')[0],
+                        dataVigenciaFinal: new Date().toISOString().split('T')[0],
+                    };
+                } else {
+                    // Se for ARP, mapeamos o DetailedArpItem
+                    const arpItem = selectedItem as DetailedArpItem;
+                    originalPncpItem = arpItem;
+                    
+                    initialMappedItem = {
+                        id: arpItem.id, 
+                        descricao_item: arpItem.descricaoItem || '',
+                        descricao_reduzida: '', 
+                        valor_unitario: arpItem.valorUnitario, 
+                        numero_pregao: pregaoFormatado, 
+                        uasg: uasg, 
+                        codigo_catmat: arpItem.codigoItem, 
+                    };
+                }
+                
+                let status: InspectionStatus = 'pending';
+                let messages: string[] = [];
+                let shortDescription: string | null = null;
+                let isCatmatCataloged = false; 
+                
+                let fullPncpDescription: string | null = null; 
+                let nomePdm: string | null = null; 
+                
+                // --- BUSCAS DE DADOS INDEPENDENTES DO STATUS ---
+                
+                // 5. Busca da Descrição Completa e PDM no PNCP (API externa)
+                const pncpDetails = await fetchCatmatFullDescription(initialMappedItem.codigo_catmat);
+                fullPncpDescription = pncpDetails.fullDescription;
+                nomePdm = pncpDetails.nomePdm; 
+                
+                // 6. Busca da Descrição Reduzida no Catálogo CATMAT (DB local)
+                const catalogStatus = await fetchCatmatShortDescription(initialMappedItem.codigo_catmat);
+                shortDescription = catalogStatus.shortDescription;
+                isCatmatCataloged = catalogStatus.isCataloged;
+                
+                // Se encontrado no catálogo local, preenche a descrição reduzida no item mapeado
+                if (shortDescription) {
+                    initialMappedItem.descricao_reduzida = shortDescription;
+                } else {
+                    // Fallback seguro para descrição reduzida (primeiras 50 letras da descrição completa)
+                    const itemDescription = initialMappedItem.descricao_item || fullPncpDescription || '';
+                    initialMappedItem.descricao_reduzida = itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : '');
+                }
+                
+                // --- VERIFICAÇÃO DE DUPLICIDADE E STATUS FINAL ---
+                
+                // 7. Verificação de Duplicidade Global (Nova Lógica)
+                let duplicateResult: DuplicateCheckResult = { isDuplicate: false, matchingKeys: [] };
+                
+                // Itera sobre todos os itens existentes para encontrar a primeira duplicidade
+                for (const existingItem of combinedExistingItems) {
+                    duplicateResult = isFlexibleDuplicate(initialMappedItem, existingItem);
+                    if (duplicateResult.isDuplicate) {
+                        break; // Encontrou duplicidade, pode parar
+                    }
+                }
+                
+                if (duplicateResult.isDuplicate) {
+                    status = 'duplicate';
+                    const keys = duplicateResult.matchingKeys.join(', ');
+                    messages.push(`Chaves de Item idênticas: ${keys}`);
+                } else {
+                    // 8. Determinação do Status para itens NÃO duplicados
+                    
+                    // CORREÇÃO APLICADA AQUI: Se o item está catalogado E tem shortDescription, ele é válido.
+                    if (isCatmatCataloged && shortDescription) { 
+                        status = 'valid';
+                        messages.push('Pronto para importação.');
+                    } else {
+                        status = 'needs_catmat_info';
+                        
+                        if (isPriceReference) {
+                            // Se for PriceReference E não tiver shortDescription, adicionamos a mensagem específica
+                            messages.push('Item de referência de preço. Requer preenchimento de Pregão/UASG e descrição reduzida.');
+                        } else if (isCatmatCataloged && !shortDescription) {
+                            // Item catalogado, mas sem shortDescription (deve ser preenchido)
+                            messages.push('Item catalogado localmente, mas requer descrição reduzida.');
+                        } else {
+                            // Item não catalogado
+                            messages.push('Requer descrição reduzida para o catálogo CATMAT.');
+                        }
+                    }
+                }
+                
+                return {
+                    originalPncpItem: originalPncpItem,
+                    mappedItem: initialMappedItem,
+                    status: status,
+                    messages: messages,
+                    // Se shortDescription foi encontrado, use-o para preencher o campo de input do usuário.
+                    userShortDescription: shortDescription || '', 
+                    fullPncpDescription: fullPncpDescription || 'Descrição completa não encontrada no PNCP.', 
+                    nomePdm: nomePdm, 
+                    isCatmatCataloged: isCatmatCataloged, 
+                } as InspectionItem;
+            });
+            
+            const results = await Promise.all(inspectionPromises);
+            setInspectionList(results);
+            
+            // 9. Abrir o diálogo de inspeção
+            setIsInspectionDialogOpen(true);
             
         } catch (error) {
-            toast.error("Falha ao salvar descrição reduzida.");
-            console.error(error);
+            console.error("Erro durante a inspeção PNCP:", error);
+            toast.error("Falha ao inspecionar itens. Tente novamente.");
         } finally {
-            setIsSavingCatmat(false);
+            setIsInspecting(false);
         }
     };
-
-    const isArpSearchDisabled = isLoadingArp || isCatmatLoading || isSavingCatmat;
-    const isPriceSearchDisabled = isLoadingArp || isCatmatLoading || isSavingCatmat;
-
+    
+    // Função chamada pelo PNCPInspectionDialog para iniciar a edição no formulário principal
+    const handleReviewItem = (item: ItemAquisicao) => {
+        // 1. Fecha o diálogo de inspeção
+        setIsInspectionDialogOpen(false);
+        // 2. Rola o diálogo PNCP para o topo (para ver o cabeçalho)
+        scrollToTop();
+        // 3. Chama a função de revisão do componente pai (MaterialConsumoDiretrizFormDialog)
+        onReviewItem(item);
+        
+        // 4. Fecha o diálogo principal (ItemAquisicaoPNCPDialog)
+        onOpenChange(false);
+    };
+    
+    // Função chamada pelo PNCPInspectionDialog após a validação/resolução
+    const handleFinalImport = (items: ItemAquisicao[]) => {
+        // 1. Chama a importação no componente pai (MaterialConsumoDiretrizFormDialog)
+        onImport(items);
+        
+        // 2. Reseta o estado interno para a tela de busca
+        setSelectedItemsState([]);
+        setInspectionList([]);
+        setIsInspectionDialogOpen(false);
+        
+        // 3. Rola o diálogo PNCP para o topo (para ver o cabeçalho)
+        scrollToTop();
+        
+        // 4. Fecha o diálogo principal (ItemAquisicaoPNCPDialog)
+        onOpenChange(false);
+        
+        toast.success(`Importação de ${items.length} itens concluída. Pronto para nova busca.`);
+    };
+    
+    // Determine which flow is active
+    const isAnyItemSelected = isPriceFlowActive || isArpFlowActive;
+    const isButtonDisabled = isInspecting || !isAnyItemSelected;
+    
+    const buttonText = isPriceFlowActive 
+        ? `Inspecionar Preço Médio (${selectedPriceItems.length})`
+        : `Inspecionar e Importar (${selectedArpItems.length})`;
+        
+    const handleButtonClick = () => {
+        // If price items are selected, use the price flow (true). Otherwise, use ARP flow (false).
+        const flowType = isPriceFlowActive; 
+        handleStartInspection(flowType);
+    };
+    
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            {/* Adiciona a ref ao DialogContent */}
+            <DialogContent ref={dialogContentRef} className="max-w-7xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Importar Item de Aquisição (PNCP)</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Search className="h-5 w-5" />
+                        Importação de Itens PNCP
+                    </DialogTitle>
+                    <DialogDescription>
+                        Selecione o método de busca no Portal Nacional de Contratações Públicas (PNCP).
+                    </DialogDescription>
                 </DialogHeader>
-                
-                <div className="space-y-4 py-2">
-                    {/* CATMAT Input e Status */}
-                    <div className="grid grid-cols-3 gap-4 border-b pb-4">
-                        <div className="space-y-2 col-span-2">
-                            <Label htmlFor="codigoItem">Código CATMAT/CATSER (9 dígitos) *</Label>
-                            <Input
-                                id="codigoItem"
-                                value={codigoItem}
-                                onChange={(e) => setCodigoItem(e.target.value)}
-                                placeholder="Ex: 301000000"
-                                maxLength={9}
-                                required
-                                disabled={isArpSearchDisabled}
-                            />
-                        </div>
-                        <div className="space-y-2 col-span-1">
-                            <Label htmlFor="shortDescription">Descrição Reduzida (Catálogo)</Label>
-                            <div className="flex items-center gap-2">
-                                <Input
-                                    id="shortDescription"
-                                    value={catmatDetails.shortDescription || ''}
-                                    onChange={(e) => setCatmatDetails(prev => ({ ...prev, shortDescription: e.target.value }))}
-                                    placeholder="Preencha para catalogar"
-                                    disabled={isArpSearchDisabled || isCatmatLoading}
-                                />
-                                <Button 
-                                    type="button" 
-                                    size="icon" 
-                                    onClick={handleSaveCatmat}
-                                    disabled={isSavingCatmat || !codigoItem.trim() || !catmatDetails.shortDescription}
-                                >
-                                    {isSavingCatmat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                </Button>
-                            </div>
-                            {isCatmatLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-                        </div>
-                    </div>
-                    
-                    {/* Tabs de Busca */}
-                    <div className="flex justify-center">
-                        <div className="flex space-x-1 rounded-xl bg-muted p-1">
-                            <Button 
-                                type="button" 
-                                onClick={() => setTab('arp')} 
-                                variant={tab === 'arp' ? 'default' : 'ghost'}
-                                className="flex-1"
-                            >
-                                <FileText className="mr-2 h-4 w-4" />
-                                Atas de Registro de Preço (ARP)
-                            </Button>
-                            <Button 
-                                type="button" 
-                                onClick={() => setTab('price')} 
-                                variant={tab === 'price' ? 'default' : 'ghost'}
-                                className="flex-1"
-                            >
-                                <Search className="mr-2 h-4 w-4" />
-                                Referência de Preço (Estatísticas)
-                            </Button>
-                        </div>
-                    </div>
-                    
-                    {/* Conteúdo da Tab ARP */}
-                    {tab === 'arp' && (
-                        <div className="space-y-4">
-                            <form onSubmit={handleSearchArp} className="flex gap-4">
-                                <Input
-                                    type="date"
-                                    value={searchDates.dataVigenciaInicialMin}
-                                    onChange={(e) => setSearchDates(prev => ({ ...prev, dataVigenciaInicialMin: e.target.value }))}
-                                    disabled={isArpSearchDisabled}
-                                />
-                                <Input
-                                    type="date"
-                                    value={searchDates.dataVigenciaInicialMax}
-                                    onChange={(e) => setSearchDates(prev => ({ ...prev, dataVigenciaInicialMax: e.target.value }))}
-                                    disabled={isArpSearchDisabled}
-                                />
-                                <Button type="submit" disabled={isArpSearchDisabled || codigoItem.length !== 9} className="w-full">
-                                    {isArpSearchDisabled ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-                                    Buscar ARPs
-                                </Button>
-                            </form>
-                            
-                            {isLoadingArp && (
-                                <div className="text-center py-8">
-                                    <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
-                                    <p className="text-sm text-muted-foreground mt-2">Buscando ARPs...</p>
-                                </div>
-                            )}
-                            
-                            {isErrorArp && (
-                                <Alert variant="destructive">
-                                    <AlertCircle className="h-4 w-4" />
-                                    <AlertTitle>Erro na Busca de ARP</AlertTitle>
-                                    <AlertDescription>
-                                        {errorArp instanceof Error ? errorArp.message : "Falha ao buscar Atas de Registro de Preço."}
-                                    </AlertDescription>
-                                </Alert>
-                            )}
-                            
-                            {arpItems && arpItems.length > 0 && (
-                                <Card>
-                                    <CardHeader className="pb-3">
-                                        <CardTitle className="text-lg font-semibold">
-                                            {arpItems.length} Itens de ARP Encontrados
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="pt-2 max-h-[30vh] overflow-y-auto">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Pregão/UASG</TableHead>
-                                                    <TableHead>OM Gerenciadora</TableHead>
-                                                    <TableHead className="text-right">Valor Unitário</TableHead>
-                                                    <TableHead className="text-center">Vigência</TableHead>
-                                                    <TableHead className="w-[100px] text-center">Ação</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {arpItems.map(item => (
-                                                    <TableRow key={item.id} className={cn(selectedItem?.id === item.id && 'bg-primary/10')}>
-                                                        <TableCell>
-                                                            <span className="font-medium">{formatPregao(item.pregaoFormatado)}</span>
-                                                            <p className="text-xs text-muted-foreground">UASG: {item.uasg}</p>
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {item.omNome}
-                                                        </TableCell>
-                                                        <TableCell className="text-right font-bold text-green-600">
-                                                            {formatCurrency(item.valorUnitario)}
-                                                        </TableCell>
-                                                        <TableCell className="text-center text-xs">
-                                                            {formatDate(item.dataVigenciaInicial)} - {formatDate(item.dataVigenciaFinal)}
-                                                        </TableCell>
-                                                        <TableCell className="text-center">
-                                                            <Button 
-                                                                type="button" 
-                                                                size="sm" 
-                                                                onClick={() => handleSelectArpItem(item)}
-                                                                disabled={isArpSearchDisabled}
-                                                            >
-                                                                {selectedItem?.id === item.id ? <Check className="h-4 w-4" /> : "Selecionar"}
-                                                            </Button>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </CardContent>
-                                </Card>
-                            )}
-                            
-                            {arpItems && arpItems.length === 0 && !isLoadingArp && (
-                                <Alert>
-                                    <AlertCircle className="h-4 w-4" />
-                                    <AlertTitle>Nenhuma ARP Encontrada</AlertTitle>
-                                    <AlertDescription>
-                                        Nenhuma Ata de Registro de Preço ativa foi encontrada para este CATMAT no período. Tente a busca por Referência de Preço.
-                                    </AlertDescription>
-                                </Alert>
-                            )}
-                        </div>
-                    )}
-                    
-                    {/* Conteúdo da Tab Referência de Preço */}
-                    {tab === 'price' && (
-                        <PriceSearchForm 
-                            onSelect={handleSelectPriceItem} 
-                            onClose={() => onOpenChange(false)}
+
+                <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-3 mb-4">
+                        <TabsTrigger value="arp-uasg" className="flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            ARP por UASG
+                        </TabsTrigger>
+                        <TabsTrigger value="arp-catmat" className="flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            ARP por CATMAT
+                        </TabsTrigger>
+                        <TabsTrigger value="avg-price" className="flex items-center gap-2">
+                            <DollarSign className="h-4 w-4" />
+                            Pesquisa de Preço
+                        </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="arp-uasg">
+                        <ArpUasgSearch 
+                            onItemPreSelect={handleItemPreSelect} 
+                            selectedItemIds={selectedItemIds}
+                            onClearSelection={handleClearSelection} 
+                            scrollContainerRef={dialogContentRef}
                         />
-                    )}
+                    </TabsContent>
+                    
+                    <TabsContent value="arp-catmat">
+                        <ArpCatmatSearch
+                            onItemPreSelect={handleItemPreSelect} 
+                            selectedItemIds={selectedItemIds}
+                            onClearSelection={handleClearSelection} 
+                            scrollContainerRef={dialogContentRef}
+                        />
+                    </TabsContent>
+                    
+                    <TabsContent value="avg-price">
+                        <PriceSearchForm 
+                            onPriceSelect={handlePriceSelect} 
+                            isInspecting={isInspecting} 
+                            onClearPriceSelection={handleClearPriceSelection}
+                            selectedItemForInspection={selectedItemForInspection}
+                        />
+                    </TabsContent>
+                </Tabs>
+
+                {/* Rodapé com o botão de importação */}
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                    <Button 
+                        type="button" 
+                        onClick={handleButtonClick}
+                        disabled={isButtonDisabled}
+                    >
+                        {isInspecting ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                            <Import className="h-4 w-4 mr-2" />
+                        )}
+                        {buttonText}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isInspecting}>
+                        Fechar
+                    </Button>
                 </div>
-                
-                <DialogFooter>
-                    <Button onClick={() => onOpenChange(false)} variant="outline">
-                        Cancelar
-                    </Button>
-                    <Button onClick={handleConfirmSelection} disabled={!selectedItem}>
-                        <Check className="mr-2 h-4 w-4" />
-                        Confirmar Item
-                    </Button>
-                </DialogFooter>
             </DialogContent>
+            
+            {/* Diálogo de Inspeção */}
+            {isInspectionDialogOpen && (
+                <PNCPInspectionDialog
+                    open={isInspectionDialogOpen}
+                    onOpenChange={setIsInspectionDialogOpen}
+                    inspectionList={inspectionList}
+                    onFinalImport={handleFinalImport}
+                    onReviewItem={handleReviewItem} 
+                />
+            )}
         </Dialog>
     );
 };

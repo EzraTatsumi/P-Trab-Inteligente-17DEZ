@@ -13,7 +13,7 @@ import {
 } from "@/types/pncp"; // Importa os novos tipos PNCP
 import { formatPregao } from "@/lib/formatUtils";
 import { TablesInsert } from "./types"; // Importar TablesInsert
-import { ItemAquisicao, ItemAquisicaoTemplate } from "@/types/diretrizesMaterialConsumo"; // UPDATED: Importar ItemAquisicao e ItemAquisicaoTemplate
+import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo"; // NOVO: Importar ItemAquisicao
 
 // Interface para a resposta consolidada da Edge Function
 interface EdgeFunctionResponse {
@@ -509,7 +509,7 @@ export async function fetchAllExistingAcquisitionItems(year: number, userId: str
     try {
         const { data, error } = await supabase
             .from('diretrizes_material_consumo')
-            .select('itens_aquisicao, nr_subitem, nome_subitem')
+            .select('itens_aquisicao')
             .eq('user_id', userId)
             .eq('ano_referencia', year);
 
@@ -517,18 +517,8 @@ export async function fetchAllExistingAcquisitionItems(year: number, userId: str
 
         // Flatten the array of arrays (itens_aquisicao is a JSONB array in the DB)
         const allItems = (data || []).flatMap(diretriz => {
-            // Ensure the JSONB field is treated as an array of ItemAquisicaoTemplate
-            const templates = (diretriz.itens_aquisicao as unknown as ItemAquisicaoTemplate[]) || [];
-            
-            // Mapeia ItemAquisicaoTemplate para ItemAquisicao, injetando os campos de agrupamento
-            return templates.map(template => ({
-                ...template,
-                nr_subitem: diretriz.nr_subitem,
-                nome_subitem: diretriz.nome_subitem,
-                // Adiciona valores padrão para os campos de cálculo (necessários para o tipo ItemAquisicao)
-                quantidade: 0, 
-                valor_total: 0,
-            })) as ItemAquisicao[];
+            // Ensure the JSONB field is treated as an array of ItemAquisicao
+            return (diretriz.itens_aquisicao as unknown as ItemAquisicao[]) || [];
         });
 
         return allItems;

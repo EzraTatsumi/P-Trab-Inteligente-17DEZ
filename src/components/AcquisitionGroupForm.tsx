@@ -75,7 +75,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                     
                     newItemsMap[selectedItem.id] = {
                         ...selectedItem,
-                        quantidade: quantity, 
+                        quantidade: quantity,
                         valor_total: valorTotal,
                     };
                 }
@@ -97,28 +97,27 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
 
     // Calcula o valor total do grupo
     const totalValue = useMemo(() => {
-        return items.reduce((sum, item) => sum + Number(item.valor_total || 0), 0); 
+        return items.reduce((sum, item) => sum + Number(item.valor_total || 0), 0);
     }, [items]);
     
     // Agrupa os itens por subitem para exibição
     const groupedItems = useMemo<GroupedItem[]>(() => {
-        if (items.length === 0) return [];
-        
         const groups: Record<string, GroupedItem> = {};
         
         items.forEach(item => {
             // Chave de agrupamento: Nr Subitem + Nome Subitem
+            // Usamos nr_subitem e nome_subitem que agora são injetados pelo seletor
             const key = `${item.nr_subitem}-${item.nome_subitem}`;
             if (!groups[key]) {
                 groups[key] = {
-                    subitemNr: item.nr_subitem, 
-                    subitemNome: item.nome_subitem, 
+                    subitemNr: item.nr_subitem,
+                    subitemNome: item.nome_subitem,
                     items: [],
                     totalValue: 0, // Inicializa o total
                 };
             }
             groups[key].items.push(item);
-            groups[key].totalValue += Number(item.valor_total || 0); // Soma o valor 
+            groups[key].totalValue += Number(item.valor_total || 0); // Soma o valor
         });
         
         return Object.values(groups).sort((a, b) => a.subitemNr.localeCompare(b.subitemNr));
@@ -229,8 +228,8 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                         onOpenChange={(open) => setExpandedSubitems(prev => ({ ...prev, [group.subitemNr]: open }))}
                                     >
                                         <CollapsibleTrigger asChild>
-                                            {/* CORREÇÃO: Aplicando a cor verde clara e exibindo o total do grupo */}
-                                            <div className="flex justify-between items-center p-2 bg-green-50/70 border border-green-200 rounded-md cursor-pointer hover:bg-green-100 transition-colors">
+                                            {/* CORREÇÃO: Aplicando a cor #E2EEEE e exibindo o total do grupo */}
+                                            <div className="flex justify-between items-center p-2 bg-[#E2EEEE] border border-gray-300 rounded-md cursor-pointer hover:bg-gray-200 transition-colors">
                                                 <span className="font-semibold text-sm">
                                                     {group.subitemNr} - {group.subitemNome} ({group.items.length} itens)
                                                 </span>
@@ -261,7 +260,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                                                 <Input
                                                                     type="number"
                                                                     min={0}
-                                                                    value={item.quantidade === 0 ? "" : item.quantidade} 
+                                                                    value={item.quantidade === 0 ? "" : item.quantidade}
                                                                     onChange={(e) => handleQuantityChange(item.id, e.target.value)}
                                                                     className="w-full text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                     disabled={isSaving}
@@ -270,15 +269,14 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                                             <TableCell className="text-xs">
                                                                 {item.descricao_item}
                                                                 <p className="text-muted-foreground text-[10px]">
-                                                                    CATMAT: {item.codigo_catmat} | ND: 
-                                                                    {item.nd} 
+                                                                    CATMAT: {item.codigo_catmat} | ND: {item.nd}
                                                                 </p>
                                                             </TableCell>
                                                             <TableCell className="text-right text-xs text-muted-foreground">
                                                                 {formatCurrency(item.valor_unitario)}
                                                             </TableCell>
                                                             <TableCell className="text-right text-sm font-medium">
-                                                                {formatCurrency(item.valor_total)} 
+                                                                {formatCurrency(item.valor_total)}
                                                             </TableCell>
                                                             <TableCell className="text-center">
                                                                 <Button 
@@ -328,7 +326,8 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                     <Button 
                         type="submit" 
                         disabled={isSaving || !groupName.trim() || items.length === 0}
-                        className="w-auto bg-gray-500 hover:bg-gray-600 text-white"
+                        // CORREÇÃO: Usando a classe padrão do botão primário
+                        className="w-auto" 
                     >
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Salvar Grupo

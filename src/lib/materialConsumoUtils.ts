@@ -41,7 +41,7 @@ export function calculateGroupTotals(items: ItemAquisicao[]): { totalValue: numb
     let totalND39 = 0;
 
     items.forEach(item => {
-        const value = Number(item.valor_total || 0); 
+        const value = Number(item.valor_total || 0);
         totalValue += value;
         
         // Assumimos que o item de aquisição já tem a ND definida
@@ -88,7 +88,7 @@ export function generateConsolidatedMaterialConsumoMemoriaCalculo(group: Consoli
             memoria += `  ITENS DE AQUISIÇÃO (${itens.length}):\n`;
             itens.forEach(item => {
                 memoria += `  - ${item.descricao_item} (CATMAT: ${item.codigo_catmat || 'N/A'})\n`;
-                memoria += `    Qtd: ${item.quantidade} | Vl Unit: ${formatCurrency(item.valor_unitario)} | Vl Total: ${formatCurrency(item.valor_total)} (ND ${item.nd})\n`; 
+                memoria += `    Qtd: ${item.quantidade} | Vl Unit: ${formatCurrency(item.valor_unitario)} | Vl Total: ${formatCurrency(item.valor_total)} (ND ${item.nd})\n`;
             });
             memoria += `\n`;
         } else {
