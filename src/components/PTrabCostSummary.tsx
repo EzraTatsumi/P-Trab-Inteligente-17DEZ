@@ -156,8 +156,8 @@ interface PTrabAggregatedTotals {
     totalConcessionariaEnergia: number;
     
     totalHorasVoo: number;
-    totalHorasVooND30: number; 
-    totalHorasVooND39: number; 
+    totalHorasVooND30: number; // ADICIONADO
+    totalHorasVooND39: number; // ADICIONADO
     quantidadeHorasVoo: number;
     groupedHorasVoo: Record<string, { totalValor: number, totalHV: number }>;
     
@@ -698,8 +698,8 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       globalTotals.totalConcessionariaEnergia += omTotals.concessionaria.totalEnergia;
       
       globalTotals.totalHorasVoo += omTotals.horasVoo.total;
-      globalTotals.totalHorasVooND30 += omTotals.horasVoo.totalND30; 
-      globalTotals.totalHorasVooND39 += omTotals.horasVoo.totalND39; 
+      globalTotals.totalHorasVooND30 += omTotals.horasVoo.totalND30; // ADICIONADO
+      globalTotals.totalHorasVooND39 += omTotals.horasVoo.totalND39; // ADICIONADO
       globalTotals.quantidadeHorasVoo += omTotals.horasVoo.quantidadeHV;
       
       Object.entries(omTotals.horasVoo.groupedHV).forEach(([tipoAnv, data]) => {
@@ -852,8 +852,8 @@ const getHorasVooData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['hora
     const globalData = data as PTrabAggregatedTotals;
     return {
         total: globalData.totalHorasVoo,
-        totalND30: globalData.totalHorasVooND30, 
-        totalND39: globalData.totalHorasVooND39, 
+        totalND30: globalData.totalHorasVooND30, // CORRIGIDO
+        totalND39: globalData.totalHorasVooND39, // CORRIGIDO
         quantidadeHV: globalData.quantidadeHorasVoo,
         groupedHV: globalData.groupedHorasVoo,
     };
@@ -871,6 +871,74 @@ const getMaterialConsumoData = (data: OmTotals | PTrabAggregatedTotals): OmTotal
         totalND30: globalData.totalMaterialConsumoND30,
         totalND39: globalData.totalMaterialConsumoND39,
     };
+};
+
+// NOVO COMPONENTE: CategoryCard
+const CategoryCard = ({ 
+  label, 
+  value, 
+  icon: Icon, 
+  colorClass, 
+  nd15,
+  nd30, 
+  nd33,
+  nd39 
+}: { 
+  label: string, 
+  value: number, 
+  icon: any, 
+  colorClass: string,
+  nd15?: number,
+  nd30?: number,
+  nd33?: number,
+  nd39?: number
+}) => {
+  if (value === 0) return null;
+
+  return (
+    <div className="flex flex-col p-3 rounded-xl border border-border/50 bg-card/40 hover:bg-accent/5 transition-all group">
+      <div className="flex items-center gap-3 mb-2">
+        <div className={cn("p-2 rounded-lg transition-colors", colorClass)}>
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold leading-none mb-1">
+            {label}
+          </span>
+          <span className="text-sm font-extrabold text-foreground leading-none">
+            {formatCurrency(value)}
+          </span>
+        </div>
+      </div>
+      
+      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-auto pt-2 border-t border-dashed border-border/50">
+          {nd15 !== undefined && nd15 > 0 && (
+            <div className="flex flex-col">
+              <span className="text-[8px] text-muted-foreground uppercase font-bold">ND 15</span>
+              <span className="text-[10px] font-semibold text-purple-600 leading-none">{formatCurrency(nd15)}</span>
+            </div>
+          )}
+          {nd30 !== undefined && nd30 > 0 && (
+            <div className="flex flex-col">
+              <span className="text-[8px] text-muted-foreground uppercase font-bold">ND 30</span>
+              <span className="text-[10px] font-semibold text-green-600 leading-none">{formatCurrency(nd30)}</span>
+            </div>
+          )}
+          {nd33 !== undefined && nd33 > 0 && (
+            <div className="flex flex-col">
+              <span className="text-[8px] text-muted-foreground uppercase font-bold">ND 33</span>
+              <span className="text-[10px] font-semibold text-amber-600 leading-none">{formatCurrency(nd33)}</span>
+            </div>
+          )}
+          {nd39 !== undefined && nd39 > 0 && (
+            <div className="flex flex-col">
+              <span className="text-[8px] text-muted-foreground uppercase font-bold">ND 39</span>
+              <span className="text-[10px] font-semibold text-blue-600 leading-none">{formatCurrency(nd39)}</span>
+            </div>
+          )}
+      </div>
+    </div>
+  );
 };
 
 // NOVO COMPONENTE: Dialog para exibir detalhes da OM
@@ -900,21 +968,165 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                 
                 <div className="flex-1 overflow-y-auto p-6 pt-4">
                     <div className="space-y-8">
-                        {/* Utiliza o TabDetails para cada seção para obter o mesmo comportamento de accordion da visão Global */}
+                        {/* Bloco Logística - ORDENADO POR CLASSE NUMÉRICA */}
                         {om.totalLogistica > 0 && (
-                            <TabDetails mode="logistica" data={om} />
+                            <div>
+                                <h3 className="text-sm font-bold text-orange-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-orange-500/20 pb-1">
+                                    <Package className="h-4 w-4" />
+                                    Aba Logística
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                    <CategoryCard 
+                                        label="Classe I (Alimentação)" 
+                                        value={om.classeI.total} 
+                                        icon={Utensils} 
+                                        colorClass="bg-orange-500/10 text-orange-600"
+                                        nd30={om.classeI.total}
+                                    />
+                                    <CategoryCard 
+                                        label="Classe II (Intendência)" 
+                                        value={om.classeII.total} 
+                                        icon={ClipboardList} 
+                                        colorClass="bg-orange-500/10 text-orange-600"
+                                        nd30={om.classeII.totalND30}
+                                        nd39={om.classeII.totalND39}
+                                    />
+                                    <CategoryCard 
+                                        label="Classe III (Combustíveis)" 
+                                        value={om.classeIII.total} 
+                                        icon={Fuel} 
+                                        colorClass="bg-orange-500/10 text-orange-600"
+                                        nd30={om.classeIII.total}
+                                    />
+                                    <CategoryCard 
+                                        label="Classe V (Armamento)" 
+                                        value={om.classeV.total} 
+                                        icon={Swords} 
+                                        colorClass="bg-orange-500/10 text-orange-600"
+                                        nd30={om.classeV.totalND30}
+                                        nd39={om.classeV.totalND39}
+                                    />
+                                    <CategoryCard 
+                                        label="Classe VI (Engenharia)" 
+                                        value={om.classeVI.total} 
+                                        icon={HardHat} 
+                                        colorClass="bg-orange-500/10 text-orange-600"
+                                        nd30={om.classeVI.totalND30}
+                                        nd39={om.classeVI.totalND39}
+                                    />
+                                    <CategoryCard 
+                                        label="Classe VII (Com/Inf)" 
+                                        value={om.classeVII.total} 
+                                        icon={Radio} 
+                                        colorClass="bg-orange-500/10 text-orange-600"
+                                        nd30={om.classeVII.totalND30}
+                                        nd39={om.classeVII.totalND39}
+                                    />
+                                    <CategoryCard 
+                                        label="Classe VIII (Saúde/Remonta)" 
+                                        value={om.classeVIII.total} 
+                                        icon={HeartPulse} 
+                                        colorClass="bg-orange-500/10 text-orange-600"
+                                        nd30={om.classeVIII.totalND30}
+                                        nd39={om.classeVIII.totalND39}
+                                    />
+                                    <CategoryCard 
+                                        label="Classe IX (Motomecanização)" 
+                                        value={om.classeIX.total} 
+                                        icon={Truck} 
+                                        colorClass="bg-orange-500/10 text-orange-600"
+                                        nd30={om.classeIX.totalND30}
+                                        nd39={om.classeIX.totalND39}
+                                    />
+                                </div>
+                            </div>
                         )}
 
+                        {/* Bloco Operacional - ORDENADO ALFABETICAMENTE */}
                         {om.totalOperacional > 0 && (
-                            <TabDetails mode="operacional" data={om} />
+                            <div>
+                                <h3 className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-blue-500/20 pb-1">
+                                    <Activity className="h-4 w-4" />
+                                    Aba Operacional
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                    {/* Aviação do Exército */}
+                                    {om.horasVoo.total > 0 && (
+                                        <CategoryCard 
+                                            label="Aviação do Exército" 
+                                            value={om.horasVoo.total} 
+                                            icon={Zap} 
+                                            colorClass="bg-purple-500/10 text-purple-600"
+                                            nd30={om.horasVoo.totalND30}
+                                            nd39={om.horasVoo.totalND39}
+                                        />
+                                    )}
+                                    <CategoryCard 
+                                        label="Concessionária" 
+                                        value={om.concessionaria.total} 
+                                        icon={Droplet} 
+                                        colorClass="bg-blue-500/10 text-blue-600"
+                                        nd39={om.concessionaria.total}
+                                    />
+                                    <CategoryCard 
+                                        label="Diárias" 
+                                        value={om.diarias.total} 
+                                        icon={Briefcase} 
+                                        colorClass="bg-blue-500/10 text-blue-600"
+                                        nd15={om.diarias.totalND15}
+                                        nd30={om.diarias.totalND30}
+                                    />
+                                    <CategoryCard 
+                                        label="Material de Consumo" 
+                                        value={om.materialConsumo.total} 
+                                        icon={Package} 
+                                        colorClass="bg-blue-500/10 text-blue-600"
+                                        nd30={om.materialConsumo.totalND30}
+                                        nd39={om.materialConsumo.totalND39}
+                                    />
+                                    <CategoryCard 
+                                        label="Passagens" 
+                                        value={om.passagens.total} 
+                                        icon={Plane} 
+                                        colorClass="bg-blue-500/10 text-blue-600"
+                                        nd33={om.passagens.total}
+                                    />
+                                    <CategoryCard 
+                                        label="Suprimento de Fundos" 
+                                        value={om.suprimentoFundos.total} 
+                                        icon={Wallet} 
+                                        colorClass="bg-blue-500/10 text-blue-600"
+                                        nd30={om.suprimentoFundos.totalND30}
+                                        nd39={om.suprimentoFundos.totalND39}
+                                    />
+                                    <CategoryCard 
+                                        label="Verba Operacional" 
+                                        value={om.verbaOperacional.total} 
+                                        icon={Activity} 
+                                        colorClass="bg-blue-500/10 text-blue-600"
+                                        nd30={om.verbaOperacional.totalND30}
+                                        nd39={om.verbaOperacional.totalND39}
+                                    />
+                                </div>
+                            </div>
                         )}
                         
-                        {om.totalAviacaoExercito > 0 && (
-                            <TabDetails mode="avex" data={om} />
-                        )}
-
+                        {/* Bloco Material Permanente (Se existir) */}
                         {om.totalMaterialPermanente > 0 && (
-                            <TabDetails mode="permanente" data={om} />
+                            <div>
+                                <h3 className="text-sm font-bold text-green-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-green-500/20 pb-1">
+                                    <HardHat className="h-4 w-4" />
+                                    Aba Material Permanente
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                    <CategoryCard 
+                                        label="Material Permanente" 
+                                        value={om.totalMaterialPermanente} 
+                                        icon={HardHat} 
+                                        colorClass="bg-green-500/10 text-green-600"
+                                    />
+                                </div>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -1143,7 +1355,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                                     Lubrificante
                                 </span>
                                 <span className="w-1/4 text-right font-medium">
-                                    {formatNumber(classeIII.totalLubrificanteLitros || 0, 2) || 0} L
+                                    {formatNumber(classeIII.totalLubrificanteLitros || 0, 2)} L
                                 </span>
                                 <span className="w-1/4 text-right font-medium">
                                     {formatCurrency(classeIII.totalLubrificanteValor)}
