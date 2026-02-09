@@ -1288,7 +1288,7 @@ const MaterialConsumoForm = () => {
                                         
                                         {/* Gerenciamento de Grupos de Aquisição */}
                                         <Card className="mt-4 rounded-lg p-4 bg-background">
-                                            <h4 className="font-semibold text-base mb-4">
+                                            <h4 className="semibold text-base mb-4">
                                                 Grupos de Aquisição ({formData.acquisitionGroups.length})
                                             </h4>
                                             
@@ -1606,7 +1606,7 @@ const MaterialConsumoForm = () => {
                                             </Card>
                                         );
                                     })}
-                                </div>
+                                </section>
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
