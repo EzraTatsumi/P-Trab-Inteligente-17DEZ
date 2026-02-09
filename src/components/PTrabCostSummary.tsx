@@ -707,17 +707,165 @@ interface TabDetailsProps {
     data: OmTotals | PTrabAggregatedTotals;
 }
 
+// Função auxiliar para extrair dados de classe I de forma unificada
+const getClasseIData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['classeI'] => {
+    if ((data as OmTotals).omKey) {
+        return (data as OmTotals).classeI;
+    }
+    // Modo Global
+    const globalData = data as PTrabAggregatedTotals;
+    return {
+        total: globalData.totalClasseI,
+        totalComplemento: globalData.totalComplemento,
+        totalEtapaSolicitadaValor: globalData.totalEtapaSolicitadaValor,
+        totalDiasEtapaSolicitada: globalData.totalDiasEtapaSolicitada,
+        totalRefeicoesIntermediarias: globalData.totalRefeicoesIntermediarias,
+        totalRacoesOperacionaisGeral: globalData.totalRacoesOperacionaisGeral,
+    };
+};
+
+// Função auxiliar para extrair dados de classe III de forma unificada
+const getClasseIIIData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['classeIII'] => {
+    if ((data as OmTotals).omKey) {
+        return (data as OmTotals).classeIII;
+    }
+    // Modo Global
+    const globalData = data as PTrabAggregatedTotals;
+    return {
+        total: globalData.totalCombustivel,
+        totalDieselValor: globalData.totalDieselValor,
+        totalGasolinaValor: globalData.totalGasolinaValor,
+        totalDieselLitros: globalData.totalDieselLitros,
+        totalGasolinaLitros: globalData.totalGasolinaLitros,
+        totalLubrificanteValor: globalData.totalLubrificanteValor,
+        totalLubrificanteLitros: globalData.totalLubrificanteLitros,
+    };
+};
+
+// Função auxiliar para extrair dados de Diárias de forma unificada
+const getDiariasData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['diarias'] => {
+    if ((data as OmTotals).omKey) {
+        return (data as OmTotals).diarias;
+    }
+    // Modo Global
+    const globalData = data as PTrabAggregatedTotals;
+    return {
+        total: globalData.totalDiarias,
+        totalND15: globalData.totalDiariasND15,
+        totalND30: globalData.totalDiariasND30,
+        totalMilitares: globalData.totalMilitaresDiarias,
+        totalDiasViagem: globalData.totalDiasViagem,
+    };
+};
+
+// Função auxiliar para extrair dados de Verba Operacional de forma unificada
+const getVerbaOperacionalData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['verbaOperacional'] => {
+    if ((data as OmTotals).omKey) {
+        return (data as OmTotals).verbaOperacional;
+    }
+    // Modo Global
+    const globalData = data as PTrabAggregatedTotals;
+    return {
+        total: globalData.totalVerbaOperacional,
+        totalND30: globalData.totalVerbaOperacionalND30,
+        totalND39: globalData.totalVerbaOperacionalND39,
+        totalEquipes: globalData.totalEquipesVerba,
+        totalDias: globalData.totalDiasVerba,
+    };
+};
+
+// Função auxiliar para extrair dados de Suprimento de Fundos de forma unificada
+const getSuprimentoFundosData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['suprimentoFundos'] => {
+    if ((data as OmTotals).omKey) {
+        return (data as OmTotals).suprimentoFundos;
+    }
+    // Modo Global
+    const globalData = data as PTrabAggregatedTotals;
+    return {
+        total: globalData.totalSuprimentoFundos,
+        totalND30: globalData.totalSuprimentoFundosND30,
+        totalND39: globalData.totalSuprimentoFundosND39,
+        totalEquipes: globalData.totalEquipesSuprimento,
+        totalDias: globalData.totalDiasSuprimento,
+    };
+};
+
+// Função auxiliar para extrair dados de Passagens de forma unificada
+const getPassagensData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['passagens'] => {
+    if ((data as OmTotals).omKey) {
+        return (data as OmTotals).passagens;
+    }
+    // Modo Global
+    const globalData = data as PTrabAggregatedTotals;
+    return {
+        total: globalData.totalPassagensND33,
+        totalQuantidade: globalData.totalQuantidadePassagens,
+        totalTrechos: globalData.totalTrechosPassagens,
+    };
+};
+
+// Função auxiliar para extrair dados de Concessionária de forma unificada
+const getConcessionariaData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['concessionaria'] => {
+    if ((data as OmTotals).omKey) {
+        return (data as OmTotals).concessionaria;
+    }
+    // Modo Global
+    const globalData = data as PTrabAggregatedTotals;
+    return {
+        total: globalData.totalConcessionariaND39,
+        totalAgua: globalData.totalConcessionariaAgua,
+        totalEnergia: globalData.totalConcessionariaEnergia,
+        totalRegistros: globalData.totalConcessionariaRegistros,
+    };
+};
+
+// Função auxiliar para extrair dados de Horas Voo de forma unificada
+const getHorasVooData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['horasVoo'] => {
+    if ((data as OmTotals).omKey) {
+        return (data as OmTotals).horasVoo;
+    }
+    // Modo Global
+    const globalData = data as PTrabAggregatedTotals;
+    return {
+        total: globalData.totalHorasVoo,
+        quantidadeHV: globalData.quantidadeHorasVoo,
+        groupedHV: globalData.groupedHorasVoo,
+    };
+};
+
+// Função auxiliar para extrair dados de Material Consumo de forma unificada
+const getMaterialConsumoData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['materialConsumo'] => {
+    if ((data as OmTotals).omKey) {
+        return (data as OmTotals).materialConsumo;
+    }
+    // Modo Global
+    const globalData = data as PTrabAggregatedTotals;
+    return {
+        total: globalData.totalMaterialConsumo,
+        totalND30: globalData.totalMaterialConsumoND30,
+        totalND39: globalData.totalMaterialConsumoND39,
+    };
+};
+
+
 const TabDetails = ({ mode, data }: TabDetailsProps) => {
     const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
     
     // Função auxiliar para obter dados de classe (funciona para OmTotals e PTrabAggregatedTotals)
-    const getClassData = (key: keyof OmTotals | keyof PTrabAggregatedTotals) => {
-        // Se for OmTotals, a chave é direta (ex: data.classeII)
+    const getClassData = (key: 'classeII' | 'classeV' | 'classeVI' | 'classeVII' | 'classeVIII' | 'classeIX') => {
         if ((data as OmTotals).omKey) {
-            return (data as OmTotals)[key as keyof OmTotals];
+            return (data as OmTotals)[key];
         }
-        // Se for PTrabAggregatedTotals, a chave pode ser direta (ex: data.totalClasseII) ou agrupada (ex: data.groupedClasseIICategories)
-        return data;
+        // Mapeamento de chaves globais para o objeto de classe
+        const globalKeyMap = {
+            classeII: { total: (data as PTrabAggregatedTotals).totalClasseII, totalND30: (data as PTrabAggregatedTotals).totalClasseII_ND30, totalND39: (data as PTrabAggregatedTotals).totalClasseII_ND39, totalItens: (data as PTrabAggregatedTotals).totalItensClasseII, groupedCategories: (data as PTrabAggregatedTotals).groupedClasseIICategories },
+            classeV: { total: (data as PTrabAggregatedTotals).totalClasseV, totalND30: (data as PTrabAggregatedTotals).totalClasseV_ND30, totalND39: (data as PTrabAggregatedTotals).totalClasseV_ND39, totalItens: (data as PTrabAggregatedTotals).totalItensClasseV, groupedCategories: (data as PTrabAggregatedTotals).groupedClasseVCategories },
+            classeVI: { total: (data as PTrabAggregatedTotals).totalClasseVI, totalND30: (data as PTrabAggregatedTotals).totalClasseVI_ND30, totalND39: (data as PTrabAggregatedTotals).totalClasseVI_ND39, totalItens: (data as PTrabAggregatedTotals).totalItensClasseVI, groupedCategories: (data as PTrabAggregatedTotals).groupedClasseVICategories },
+            classeVII: { total: (data as PTrabAggregatedTotals).totalClasseVII, totalND30: (data as PTrabAggregatedTotals).totalClasseVII_ND30, totalND39: (data as PTrabAggregatedTotals).totalClasseVII_ND39, totalItens: (data as PTrabAggregatedTotals).totalItensClasseVII, groupedCategories: (data as PTrabAggregatedTotals).groupedClasseVIICategories },
+            classeVIII: { total: (data as PTrabAggregatedTotals).totalClasseVIII, totalND30: (data as PTrabAggregatedTotals).totalClasseVIII_ND30, totalND39: (data as PTrabAggregatedTotals).totalClasseVIII_ND39, totalItens: (data as PTrabAggregatedTotals).totalItensClasseVIII, groupedCategories: (data as PTrabAggregatedTotals).groupedClasseVIIICategories },
+            classeIX: { total: (data as PTrabAggregatedTotals).totalClasseIX, totalND30: (data as PTrabAggregatedTotals).totalClasseIX_ND30, totalND39: (data as PTrabAggregatedTotals).totalClasseIX_ND39, totalItens: (data as PTrabAggregatedTotals).totalItensClasseIX, groupedCategories: (data as PTrabAggregatedTotals).groupedClasseIXCategories },
+        };
+        return globalKeyMap[key] as OmTotals['classeII'];
     };
     
     // Função auxiliar para obter dados de categoria (funciona para OmTotals e PTrabAggregatedTotals)
@@ -737,43 +885,6 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
         return (data as PTrabAggregatedTotals)[globalKeyMap[key] as keyof PTrabAggregatedTotals] as Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }>;
     };
     
-    // Função auxiliar para obter o total da classe (funciona para OmTotals e PTrabAggregatedTotals)
-    const getClassTotal = (key: 'classeI' | 'classeII' | 'classeV' | 'classeVI' | 'classeVII' | 'classeVIII' | 'classeIX' | 'classeIII') => {
-        if ((data as OmTotals).omKey) {
-            return (data as OmTotals)[key].total;
-        }
-        // Mapeamento de chaves globais para o total
-        const globalKeyMap = {
-            classeI: 'totalClasseI',
-            classeII: 'totalClasseII',
-            classeV: 'totalClasseV',
-            classeVI: 'totalClasseVI',
-            classeVII: 'totalClasseVII',
-            classeVIII: 'totalClasseVIII',
-            classeIX: 'totalClasseIX',
-            classeIII: 'totalCombustivel',
-        };
-        return (data as PTrabAggregatedTotals)[globalKeyMap[key] as keyof PTrabAggregatedTotals] as number;
-    };
-    
-    // Função auxiliar para obter o total operacional (funciona para OmTotals e PTrabAggregatedTotals)
-    const getOpTotal = (key: 'diarias' | 'verbaOperacional' | 'suprimentoFundos' | 'passagens' | 'concessionaria' | 'horasVoo' | 'materialConsumo') => {
-        if ((data as OmTotals).omKey) {
-            return (data as OmTotals)[key].total;
-        }
-        // Mapeamento de chaves globais para o total
-        const globalKeyMap = {
-            diarias: 'totalDiarias',
-            verbaOperacional: 'totalVerbaOperacional',
-            suprimentoFundos: 'totalSuprimentoFundos',
-            passagens: 'totalPassagensND33',
-            concessionaria: 'totalConcessionariaND39',
-            horasVoo: 'totalHorasVoo',
-            materialConsumo: 'totalMaterialConsumo',
-        };
-        return (data as PTrabAggregatedTotals)[globalKeyMap[key] as keyof PTrabAggregatedTotals] as number;
-    };
-    
     const renderClassAccordion = (
         key: 'classeII' | 'classeV' | 'classeVI' | 'classeVII' | 'classeVIII' | 'classeIX', 
         title: string, 
@@ -781,7 +892,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
         unitLabel: string,
         isRemonta: boolean = false
     ) => {
-        const classData = getClassData(key) as OmTotals['classeII'];
+        const classData = getClassData(key);
         const total = classData.total;
         const groupedCategories = getGroupedCategories(key);
         const sortedCategories = Object.entries(groupedCategories).sort(([a], [b]) => a.localeCompare(b));
@@ -834,10 +945,10 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     };
     
     const renderClasseI = () => {
-        const classeI = getClassData('classeI') as OmTotals['classeI'];
+        const classeI = getClasseIData(data);
         const total = classeI.total;
         
-        if (total === 0) return null;
+        if (total === 0 && classeI.totalRacoesOperacionaisGeral === 0) return null;
         
         return (
             <Accordion type="single" collapsible className="w-full pt-0">
@@ -896,7 +1007,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     };
     
     const renderClasseIII = () => {
-        const classeIII = getClassData('classeIII') as OmTotals['classeIII'];
+        const classeIII = getClasseIIIData(data);
         const total = classeIII.total;
         
         if (total === 0) return null;
@@ -957,7 +1068,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     };
     
     const renderDiarias = () => {
-        const diarias = getClassData('diarias') as OmTotals['diarias'];
+        const diarias = getDiariasData(data);
         const total = diarias.total;
         
         if (total === 0) return null;
@@ -1009,7 +1120,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     };
     
     const renderVerbaSuprimento = (key: 'verbaOperacional' | 'suprimentoFundos', title: string) => {
-        const group = getClassData(key) as OmTotals['verbaOperacional'];
+        const group = key === 'verbaOperacional' ? getVerbaOperacionalData(data) : getSuprimentoFundosData(data);
         const total = group.total;
         
         if (total === 0) return null;
@@ -1061,7 +1172,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     };
     
     const renderPassagens = () => {
-        const passagens = getClassData('passagens') as OmTotals['passagens'];
+        const passagens = getPassagensData(data);
         const total = passagens.total;
         
         if (total === 0) return null;
@@ -1111,7 +1222,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     };
     
     const renderConcessionaria = () => {
-        const concessionaria = getClassData('concessionaria') as OmTotals['concessionaria'];
+        const concessionaria = getConcessionariaData(data);
         const total = concessionaria.total;
         
         if (total === 0) return null;
@@ -1165,7 +1276,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     };
     
     const renderMaterialConsumo = () => {
-        const materialConsumo = getClassData('materialConsumo') as OmTotals['materialConsumo'];
+        const materialConsumo = getMaterialConsumoData(data);
         const total = materialConsumo.total;
         
         if (total === 0) return null;
@@ -1203,12 +1314,12 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     };
     
     const renderHorasVoo = () => {
-        const horasVoo = getClassData('horasVoo') as OmTotals['horasVoo'];
+        const horasVoo = getHorasVooData(data);
         const total = horasVoo.total;
         const groupedHV = horasVoo.groupedHV;
         const sortedHV = Object.entries(groupedHV).sort(([a], [b]) => a.localeCompare(b));
         
-        if (total === 0) return null;
+        if (total === 0 && horasVoo.quantidadeHV === 0) return null;
         
         return (
             <Accordion type="single" collapsible className="w-full pt-1">
@@ -1319,10 +1430,11 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     }
     
     if (mode === 'avex') {
-        const totalAviacaoExercito = (data as OmTotals).omKey ? (data as OmTotals).totalAviacaoExercito : (data as PTrabAggregatedTotals).totalAviacaoExercito;
-        const quantidadeHorasVoo = (data as OmTotals).omKey ? (data as OmTotals).horasVoo.quantidadeHV : (data as PTrabAggregatedTotals).quantidadeHorasVoo;
+        const horasVoo = getHorasVooData(data);
+        const totalAviacaoExercito = horasVoo.total;
+        const quantidadeHorasVoo = horasVoo.quantidadeHV;
         
-        if (totalAviacaoExercito === 0) return null;
+        if (totalAviacaoExercito === 0 && quantidadeHorasVoo === 0) return null;
         
         return (
             <div className="space-y-3 border-l-4 border-purple-500 pl-3">
