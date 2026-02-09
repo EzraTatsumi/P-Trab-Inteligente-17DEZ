@@ -326,7 +326,8 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                     <Button 
                         type="submit" 
                         disabled={isSaving || !groupName.trim() || items.length === 0}
-                        className="w-auto bg-gray-500 hover:bg-gray-600 text-white"
+                        // CORREÇÃO: Usando a classe padrão do botão primário
+                        className="w-auto" 
                     >
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Salvar Grupo
