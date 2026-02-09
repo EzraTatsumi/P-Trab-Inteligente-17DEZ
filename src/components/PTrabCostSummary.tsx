@@ -1882,23 +1882,8 @@ export const PTrabCostSummary = ({
   return (
     <Card className="shadow-lg">
       <CardHeader className="pb-2 pt-3">
-        {/* NOVO LAYOUT DO HEADER */}
         <div className="flex justify-between items-center">
             <CardTitle className="text-xl font-bold">Resumo de Custos</CardTitle>
-            
-            {/* NOVO: Botão para alternar para o modo Por OM (Substituindo o Switch) */}
-            <Button
-                variant={viewMode === 'byOm' ? 'default' : 'outline'}
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => {
-                    setViewMode(viewMode === 'byOm' ? 'global' : 'byOm');
-                    setIsDetailsOpen(false); // Fecha detalhes ao trocar o modo
-                    setSelectedOm(null); // Garante que o diálogo está fechado
-                }}
-            >
-                {viewMode === 'byOm' ? 'Voltar ao Global' : 'Ver por OM'}
-            </Button>
         </div>
         
         <CardDescription className="text-xs">
@@ -1938,8 +1923,26 @@ export const PTrabCostSummary = ({
                 }
               }}
             >
-              <div className="flex justify-between items-center w-full">
-                <span className="text-base font-bold text-foreground">Total Geral</span>
+              <div className="flex justify-between items-center w-full py-2">
+                <div className="flex flex-col items-start gap-1">
+                    <span className="text-base font-bold text-foreground">Total Geral</span>
+                    
+                    {/* NOVO: Botão para alternar para o modo Por OM (Movido para cá) */}
+                    <Button
+                        variant={viewMode === 'byOm' ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-6 text-[10px] px-2"
+                        onClick={(e) => {
+                            e.stopPropagation(); // Evita abrir o accordion ao clicar no botão
+                            setViewMode(viewMode === 'byOm' ? 'global' : 'byOm');
+                            setIsDetailsOpen(false); // Fecha detalhes ao trocar o modo
+                            setSelectedOm(null); // Garante que o diálogo está fechado
+                        }}
+                    >
+                        {viewMode === 'byOm' ? 'Voltar ao Global' : 'Ver por OM'}
+                    </Button>
+                </div>
+                
                 <div className="flex flex-col items-end gap-0">
                     <span className="text-lg font-bold text-foreground">{formatCurrency(totalGeralFinal)}</span>
                     {/* O botão de detalhes só aparece se estiver no modo global */}
