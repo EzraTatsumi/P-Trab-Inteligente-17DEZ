@@ -267,9 +267,11 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                                                 />
                                                             </TableCell>
                                                             <TableCell className="text-xs">
-                                                                {item.descricao_item}
+                                                                <p className="font-medium">
+                                                                    {item.descricao_reduzida || item.descricao_item}
+                                                                </p>
                                                                 <p className="text-muted-foreground text-[10px]">
-                                                                    CATMAT: {item.codigo_catmat} | ND: {item.nd}
+                                                                    CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({item.uasg})
                                                                 </p>
                                                             </TableCell>
                                                             <TableCell className="text-right text-xs text-muted-foreground">
