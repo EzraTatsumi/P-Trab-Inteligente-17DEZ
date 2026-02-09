@@ -866,7 +866,8 @@ const CategoryCard = ({
   nd15,
   nd30, 
   nd33,
-  nd39 
+  nd39,
+  extraInfo
 }: { 
   label: string, 
   value: number, 
@@ -875,9 +876,11 @@ const CategoryCard = ({
   nd15?: number,
   nd30?: number,
   nd33?: number,
-  nd39?: number
+  nd39?: number,
+  extraInfo?: string
 }) => {
-  if (value === 0) return null;
+  // Exibe o card se houver valor financeiro OU se houver informação extra (ex: HVs)
+  if (value === 0 && !extraInfo) return null;
 
   return (
     <div className="flex flex-col p-3 rounded-xl border border-border/50 bg-card/40 hover:bg-accent/5 transition-all group">
@@ -889,9 +892,16 @@ const CategoryCard = ({
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold leading-none mb-1">
             {label}
           </span>
-          <span className="text-sm font-extrabold text-foreground leading-none">
-            {formatCurrency(value)}
-          </span>
+          <div className="flex flex-col">
+            <span className="text-sm font-extrabold text-foreground leading-none">
+              {formatCurrency(value)}
+            </span>
+            {extraInfo && (
+              <span className="text-[10px] font-bold text-primary mt-1">
+                {extraInfo}
+              </span>
+            )}
+          </div>
         </div>
       </div>
       
@@ -1086,7 +1096,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                     )}
                     
                     {/* Bloco Aviação do Exército */}
-                    {om.totalAviacaoExercito > 0 && (
+                    {(om.totalAviacaoExercito > 0 || om.horasVoo.quantidadeHV > 0) && (
                         <div>
                             <h3 className="text-sm font-bold text-purple-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-purple-500/20 pb-1">
                                 <Plane className="h-4 w-4" />
@@ -1100,6 +1110,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     colorClass="bg-purple-500/10 text-purple-600"
                                     nd30={om.horasVoo.totalND30}
                                     nd39={om.horasVoo.totalND39}
+                                    extraInfo={`${formatNumber(om.horasVoo.quantidadeHV, 2)} HV`}
                                 />
                             </div>
                         </div>
