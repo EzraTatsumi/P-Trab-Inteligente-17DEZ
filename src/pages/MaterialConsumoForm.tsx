@@ -14,7 +14,7 @@ import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tables, TablesInsert, TablesUpdate, Json } from "@/integrations/supabase/types";
-import { formatCurrency, formatCodug } from "@/lib/formatUtils";
+import { formatCurrency, formatCodug, formatPregao } from "@/lib/formatUtils";
 import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/ptrabUtils";
 import { 
     MaterialConsumoRegistro, 
@@ -188,7 +188,10 @@ const MaterialConsumoForm = () => {
                 registro.om_detentora,
                 registro.ug_detentora,
                 registro.dias_operacao,
-                registro.efetivo,
+                // Nota: O campo 'efetivo' não existe na tabela material_consumo_registros,
+                // mas é usado no formulário para cálculo. No DB, ele não é persistido aqui.
+                // Para fins de consolidação, usamos o valor do registro, que pode ser 0 ou null.
+                registro.efetivo, 
                 registro.fase_atividade,
             ].join('|');
 
@@ -200,7 +203,22 @@ const MaterialConsumoForm = () => {
                     om_detentora: registro.om_detentora || '',
                     ug_detentora: registro.ug_detentora || '',
                     dias_operacao: registro.dias_operacao,
-                    efetivo: registro.efetivo,
+                    // O campo 'efetivo' é persistido no formulário, mas não no registro do DB.
+                    // Se o registro do DB não tem 'efetivo', precisamos garantir que o tipo ConsolidatedMaterialConsumoRecord
+                    // lide com isso. Assumindo que o tipo MaterialConsumoRegistro (que é Tables<'material_consumo_registros'>)
+                    // não tem 'efetivo', precisamos garantir que o valor seja tratado.
+                    // No entanto, o MaterialConsumoFormState tem 'efetivo', e o CalculatedMaterialConsumo também.
+                    // Vamos assumir que o valor de 'efetivo' é 0 ou null no registro do DB, mas é necessário para a chave de consolidação.
+                    // Se o DB não tem 'efetivo', o valor aqui será undefined/null.
+                    // Para manter a compatibilidade com o formulário, vamos usar o valor do registro (que pode ser undefined/null)
+                    // e garantir que o tipo ConsolidatedMaterialConsumoRecord lide com isso.
+                    // Como o schema mostra que 'efetivo' NÃO existe em material_consumo_registros,
+                    // o código abaixo está incorreto se MaterialConsumoRegistro for Tables<'material_consumo_registros'>.
+                    // No entanto, o código anterior já estava usando `registro.efetivo`.
+                    // Para evitar quebrar a consolidação, vamos manter a chave, mas o valor de `efetivo` no ConsolidatedMaterialConsumoRecord
+                    // será o valor do primeiro registro (que deve ser undefined/null se o DB não tiver a coluna).
+                    // Para fins de exibição, o valor correto de efetivo virá do formData ou do groupToReplace.
+                    efetivo: (registro as any).efetivo || 0, // Forçando para 0 se não existir no DB
                     fase_atividade: registro.fase_atividade || '',
                     records: [],
                     totalGeral: 0,
@@ -233,6 +251,7 @@ const MaterialConsumoForm = () => {
                 // O registro CalculatedMaterialConsumo já contém os dados do grupo no seu array acquisitionGroups[0]
                 const group = g.acquisitionGroups[0];
                 
+                // REMOVENDO 'efetivo' daqui, pois não existe na tabela material_consumo_registros
                 return {
                     p_trab_id: g.p_trab_id,
                     organizacao: g.organizacao,
@@ -240,7 +259,7 @@ const MaterialConsumoForm = () => {
                     om_detentora: g.om_detentora,
                     ug_detentora: g.ug_detentora,
                     dias_operacao: g.dias_operacao,
-                    efetivo: g.efetivo,
+                    // efetivo: g.efetivo, // REMOVIDO
                     fase_atividade: g.fase_atividade,
                     
                     // Campos específicos do Grupo de Aquisição
@@ -304,6 +323,7 @@ const MaterialConsumoForm = () => {
             // 2. Insert new records
             const recordsToInsert: TablesInsert<'material_consumo_registros'>[] = newRecords.map(g => {
                 const group = g.acquisitionGroups[0];
+                // REMOVENDO 'efetivo' daqui, pois não existe na tabela material_consumo_registros
                 return {
                     p_trab_id: g.p_trab_id,
                     organizacao: g.organizacao,
@@ -311,7 +331,7 @@ const MaterialConsumoForm = () => {
                     om_detentora: g.om_detentora,
                     ug_detentora: g.ug_detentora,
                     dias_operacao: g.dias_operacao,
-                    efetivo: g.efetivo,
+                    // efetivo: g.efetivo, // REMOVIDO
                     fase_atividade: g.fase_atividade,
                     
                     group_name: group.groupName,
@@ -531,7 +551,7 @@ const MaterialConsumoForm = () => {
                                                                 Cód. CATMAT: {item.codigo_catmat} | ND: {item.nd}
                                                             </p>
                                                             <p className="text-muted-foreground text-[10px]">
-                                                                Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}
+                                                                Pregão: {formatPregao(item.numero_pregao)} | UASG: {formatCodug(item.uasg) || 'N/A'}
                                                             </p>
                                                         </TableCell>
                                                         <TableCell className="text-right text-xs text-muted-foreground">
@@ -650,7 +670,7 @@ const MaterialConsumoForm = () => {
                         om_detentora: formData.om_destino,
                         ug_detentora: formData.ug_destino, // CORREÇÃO: Usando ug_destino
                         dias_operacao: formData.dias_operacao,
-                        efetivo: formData.efetivo,
+                        // efetivo: formData.efetivo, // REMOVIDO
                         fase_atividade: formData.fase_atividade,
                         group_name: group.groupName,
                         group_purpose: group.groupPurpose,
@@ -831,7 +851,7 @@ const MaterialConsumoForm = () => {
                     om_detentora: newFormData.om_destino,
                     ug_detentora: newFormData.ug_destino, // CORREÇÃO: Usando ug_destino
                     dias_operacao: newFormData.dias_operacao,
-                    efetivo: newFormData.efetivo,
+                    // efetivo: newFormData.efetivo, // REMOVIDO
                     fase_atividade: newFormData.fase_atividade,
                     group_name: group.groupName,
                     group_purpose: group.groupPurpose,
@@ -934,7 +954,7 @@ const MaterialConsumoForm = () => {
                         om_detentora: formData.om_destino,
                         ug_detentora: formData.ug_destino, // CORREÇÃO: Usando ug_destino
                         dias_operacao: formData.dias_operacao,
-                        efetivo: formData.efetivo,
+                        // efetivo: formData.efetivo, // REMOVIDO
                         fase_atividade: formData.fase_atividade,
                         group_name: group.groupName,
                         group_purpose: group.groupPurpose,

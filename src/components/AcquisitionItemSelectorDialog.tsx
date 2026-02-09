@@ -10,7 +10,7 @@ import { useSession } from '@/components/SessionContextProvider';
 import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { formatCurrency, formatNumber } from '@/lib/formatUtils';
+import { formatCurrency, formatNumber, formatCodug, formatPregao } from '@/lib/formatUtils';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Importar Tooltip
 
@@ -283,7 +283,7 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                                                                         </p>
                                                                         {/* Exibir CATMAT | Pregão (UASG) */}
                                                                         <p className="text-xs text-muted-foreground">
-                                                                            CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({item.uasg})
+                                                                            CATMAT: {item.codigo_catmat} | Pregão: {formatPregao(item.numero_pregao)} ({formatCodug(item.uasg)})
                                                                         </p>
                                                                     </div>
                                                                 </div>
