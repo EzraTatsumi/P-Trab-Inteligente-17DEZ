@@ -1000,12 +1000,12 @@ export type Database = {
           ug: string
           om_detentora?: string | null
           ug_detentora?: string | null
-          dias_operacao: number
-          efetivo: number
+          dias_operacao?: number
+          efetivo?: number
           fase_atividade?: string | null
           group_name: string
           group_purpose?: string | null
-          itens_aquisicao: Json
+          itens_aquisicao?: Json
           valor_total?: number
           valor_nd_30?: number
           valor_nd_39?: number
@@ -1390,7 +1390,6 @@ export type Database = {
           categoria?: string
           nome_concessionaria?: string
           consumo_pessoa_dia?: number
-          fonte_consumo?: string | null
           custo_unitario?: number
           fonte_custo?: string | null
           unidade_custo?: string
