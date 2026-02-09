@@ -894,9 +894,9 @@ const CategoryCard = ({
           </span>
           <div className="flex flex-col">
             <span className="text-sm font-extrabold text-foreground leading-none">
-              {formatCurrency(value)}
+              {value > 0 ? formatCurrency(value) : extraInfo}
             </span>
-            {extraInfo && (
+            {value > 0 && extraInfo && (
               <span className="text-[10px] font-bold text-primary mt-1">
                 {extraInfo}
               </span>
