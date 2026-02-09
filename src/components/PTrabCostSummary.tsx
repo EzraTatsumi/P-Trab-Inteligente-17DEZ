@@ -1319,7 +1319,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
         const groupedHV = horasVoo.groupedHV;
         const sortedHV = Object.entries(groupedHV).sort(([a], [b]) => a.localeCompare(b));
         
-        if (total === 0 && horasVoo.quantidadeHV === 0) return null;
+        if (total === 0) return null;
         
         return (
             <Accordion type="single" collapsible className="w-full pt-1">
@@ -1434,7 +1434,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
         const totalAviacaoExercito = horasVoo.total;
         const quantidadeHorasVoo = horasVoo.quantidadeHV;
         
-        if (totalAviacaoExercito === 0 && quantidadeHorasVoo === 0) return null;
+        if (totalAviacaoExercito === 0) return null;
         
         return (
             <div className="space-y-3 border-l-4 border-purple-500 pl-3">
@@ -1617,8 +1617,6 @@ export const PTrabCostSummary = ({
                     <AccordionTrigger className="p-0 hover:no-underline">
                         <div className="flex justify-between items-center w-full text-sm font-bold text-foreground">
                             <div className="flex items-center gap-2">
-                                {/* Removido: <Users className="h-4 w-4 text-primary" /> */}
-                                {/* Removido: ({formatCodug(om.ug)}) */}
                                 {om.omName} 
                             </div>
                             <span className="text-lg font-extrabold text-primary">
@@ -1681,13 +1679,13 @@ export const PTrabCostSummary = ({
                   {sortedOmTotals.map(om => (
                       <div 
                           key={om.omKey} 
-                          className="flex justify-between text-foreground cursor-pointer" 
+                          className="flex justify-between items-center text-foreground cursor-pointer p-1 rounded-md transition-colors hover:bg-muted/50" // Aprimoramento visual
                           onClick={() => handleOmSummaryClick(om.omKey)} // Chama a nova função de clique
                       >
                           {/* Nome da OM (sem ícone, sem CODUG, fonte e tamanho do original) */}
                           <span className="font-semibold text-sm text-foreground">{om.omName}</span>
                           {/* Total Geral da OM (cor única, fonte e tamanho do original) */}
-                          <span className="font-bold text-sm text-foreground">{formatCurrency(om.totalGeral)}</span>
+                          <span className="font-bold text-sm text-primary">{formatCurrency(om.totalGeral)}</span> {/* Destaque em text-primary */}
                       </div>
                   ))}
               </div>
@@ -1698,24 +1696,28 @@ export const PTrabCostSummary = ({
   return (
     <Card className="shadow-lg">
       <CardHeader className="pb-2 pt-3">
-        <CardTitle className="text-xl font-bold">Resumo de Custos</CardTitle>
-        <CardDescription className="text-xs flex justify-between items-center">
+        {/* NOVO LAYOUT DO HEADER */}
+        <div className="flex justify-between items-center">
+            <CardTitle className="text-xl font-bold">Resumo de Custos</CardTitle>
+            
+            {/* NOVO: Toggle de Visualização (Movido para cá) */}
+            <div className="flex items-center space-x-2 text-xs font-medium text-muted-foreground">
+                <span className={cn(viewMode === 'global' && 'text-primary font-semibold')}>Global</span>
+                <Switch
+                  checked={viewMode === 'byOm'}
+                  onCheckedChange={(checked) => {
+                    setViewMode(checked ? 'byOm' : 'global');
+                    setIsDetailsOpen(false); // Fecha detalhes ao trocar o modo
+                    setActiveOmKey(undefined); // Reseta a OM ativa
+                  }}
+                  id="view-mode-toggle"
+                />
+                <span className={cn(viewMode === 'byOm' && 'text-primary font-semibold')}>Por OM</span>
+            </div>
+        </div>
+        
+        <CardDescription className="text-xs">
           Visão consolidada dos custos logísticos e orçamentários.
-          
-          {/* NOVO: Toggle de Visualização */}
-          <div className="flex items-center space-x-2 text-xs font-medium text-muted-foreground">
-            <span className={cn(viewMode === 'global' && 'text-primary font-semibold')}>Global</span>
-            <Switch
-              checked={viewMode === 'byOm'}
-              onCheckedChange={(checked) => {
-                setViewMode(checked ? 'byOm' : 'global');
-                setIsDetailsOpen(false); // Fecha detalhes ao trocar o modo
-                setActiveOmKey(undefined); // Reseta a OM ativa
-              }}
-              id="view-mode-toggle"
-            />
-            <span className={cn(viewMode === 'byOm' && 'text-primary font-semibold')}>Por OM</span>
-          </div>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 p-0 pb-3">
