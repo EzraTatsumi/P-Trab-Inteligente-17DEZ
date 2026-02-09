@@ -231,7 +231,12 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                             </Alert>
                         ) : (
                             <TooltipProvider>
-                                {groupedAndFilteredItems.map(group => (
+                                {groupedAndFilteredItems.map(group => {
+                                    // NOVO CÁLCULO: Contagem de itens selecionados no grupo
+                                    const selectedCount = group.items.filter(item => item.isSelected).length;
+                                    const totalCount = group.items.length;
+                                    
+                                    return (
                                     <Collapsible 
                                         key={group.nr_subitem}
                                         open={expandedSubitems[group.nr_subitem] ?? false}
@@ -240,7 +245,11 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                                         <CollapsibleTrigger asChild>
                                             <div className="flex justify-between items-center p-3 bg-muted rounded-md cursor-pointer hover:bg-muted/80 transition-colors">
                                                 <span className="font-semibold text-sm">
-                                                    {group.nr_subitem} - {group.nome_subitem} ({group.items.length} itens)
+                                                    {group.nr_subitem} - {group.nome_subitem} 
+                                                    {/* NOVO TEXTO DE CONTAGEM */}
+                                                    <span className="ml-2 text-xs font-normal text-primary">
+                                                        ({selectedCount} / {totalCount} itens selecionados)
+                                                    </span>
                                                 </span>
                                                 {expandedSubitems[group.nr_subitem] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                             </div>
@@ -290,7 +299,8 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                                             </div>
                                         </CollapsibleContent>
                                     </Collapsible>
-                                ))}
+                                    );
+                                })}
                             </TooltipProvider>
                         )}
                     </div>
