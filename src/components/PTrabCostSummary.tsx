@@ -198,6 +198,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     classeVI: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeVII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeVIII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeVIII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeIX: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     diarias: { total: 0, totalND15: 0, totalND30: 0, totalMilitares: 0, totalDiasViagem: 0 },
     verbaOperacional: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
@@ -1666,35 +1667,23 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                     </span>
                 </div>
                 
-                {/* Detalhes por Tipo de Aeronave (Tornado colapsável via Accordion) */}
-                <Accordion type="single" collapsible className="w-full pt-0">
-                    <AccordionItem value="item-avex-details" className="border-b-0">
-                        <AccordionTrigger className="p-0 hover:no-underline">
-                            <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                                <div className="flex items-center gap-1 text-foreground">
-                                    <Zap className="h-3 w-3 text-purple-500" />
-                                    Horas de Voo
-                                </div>
-                                <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                                    {formatCurrency(totalAviacaoExercito)}
-                                </span>
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-1 pb-0">
-                            <div className="space-y-1 pl-4 text-[10px]">
-                                {sortedHorasVoo.map(([tipoAnv, data]) => (
-                                    <div key={tipoAnv} className="flex justify-between text-muted-foreground">
-                                        <span className="w-1/2 text-left">{tipoAnv}</span>
-                                        <span className="w-1/4 text-right font-medium text-background"></span>
-                                        <span className="w-1/4 text-right font-medium">
-                                            {formatNumber(data.totalHV, 2)} HV
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
+                {/* Detalhes por Tipo de Aeronave (Exibidos diretamente) */}
+                <div className="space-y-1 pl-4 text-[10px]">
+                    {sortedHorasVoo.map(([tipoAnv, data]) => (
+                        <div key={tipoAnv} className="flex justify-between text-muted-foreground border-b border-border/30 pb-1">
+                            <span className="w-1/2 text-left flex items-center gap-1">
+                                <Zap className="h-2 w-2 text-purple-500" />
+                                {tipoAnv}
+                            </span>
+                            <span className="w-1/4 text-right font-medium">
+                                {formatNumber(data.totalHV, 2)} HV
+                            </span>
+                            <span className="w-1/4 text-right font-medium">
+                                {formatCurrency(data.totalValor)}
+                            </span>
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     };
