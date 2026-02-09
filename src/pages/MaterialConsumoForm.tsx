@@ -455,7 +455,7 @@ const MaterialConsumoForm = () => {
         
         if (groups.length === 0) {
             return (
-                <Alert variant="default" className="border border-gray-300">
+                <Alert variant="default" className="border border-gray-300 p-4 bg-background rounded-lg border">
                     <AlertCircle className="h-4 w-4 text-muted-foreground" />
                     <AlertTitle>Nenhum Grupo Adicionado</AlertTitle>
                     <AlertDescription>
@@ -1212,7 +1212,7 @@ const MaterialConsumoForm = () => {
                 <Card>
                     <CardHeader>
                         <CardTitle>
-                            Aquisição de Material de Consumo
+                            Material de Consumo
                         </CardTitle>
                         <CardDescription>
                             Detalhamento das necessidades de aquisição de Material de Consumo.
