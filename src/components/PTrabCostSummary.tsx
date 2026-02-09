@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tables } from "@/integrations/supabase/types";
 import { Switch } from "@/components/ui/switch"; 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"; // Adicionando Dialog
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 // Define the category constants
 const CATEGORIAS_CLASSE_II = ["Equipamento Individual", "Proteção Balística", "Material de Estacionamento"];
@@ -64,7 +64,7 @@ interface OmTotals {
     suprimentoFundos: { total: number, totalND30: number, totalND39: number, totalEquipes: number, totalDias: number };
     passagens: { total: number, totalQuantidade: number, totalTrechos: number };
     concessionaria: { total: number, totalAgua: number, totalEnergia: number, totalRegistros: number };
-    horasVoo: { total: number, quantidadeHV: number, groupedHV: Record<string, { totalValor: number, totalHV: number }> };
+    horasVoo: { total: number, totalND30: number, totalND39: number, quantidadeHV: number, groupedHV: Record<string, { totalValor: number, totalHV: number }> };
     materialConsumo: { total: number, totalND30: number, totalND39: number };
 }
 
@@ -159,9 +159,9 @@ interface PTrabAggregatedTotals {
     quantidadeHorasVoo: number;
     groupedHorasVoo: Record<string, { totalValor: number, totalHV: number }>;
     
-    totalMaterialConsumo: number; // NOVO
-    totalMaterialConsumoND30: number; // NOVO
-    totalMaterialConsumoND39: number; // NOVO
+    totalMaterialConsumo: number;
+    totalMaterialConsumoND30: number;
+    totalMaterialConsumoND39: number;
 
     // Nova Estrutura Agrupada por OM
     groupedByOm: Record<string, OmTotals>;
@@ -204,7 +204,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     suprimentoFundos: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
     passagens: { total: 0, totalQuantidade: 0, totalTrechos: 0 },
     concessionaria: { total: 0, totalAgua: 0, totalEnergia: 0, totalRegistros: 0 },
-    horasVoo: { total: 0, quantidadeHV: 0, groupedHV: {} },
+    horasVoo: { total: 0, totalND30: 0, totalND39: 0, quantidadeHV: 0, groupedHV: {} },
     materialConsumo: { total: 0, totalND30: 0, totalND39: 0 },
 });
 
@@ -279,7 +279,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     { data: passagemData, error: passagemError },
     { data: concessionariaData, error: concessionariaError },
     { data: horasVooData, error: horasVooError },
-    { data: materialConsumoData, error: materialConsumoError }, // NOVO
+    { data: materialConsumoData, error: materialConsumoError },
   ] = await Promise.all([
     supabase
       .from('classe_ii_registros')
@@ -319,9 +319,9 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       .select('valor_total, valor_nd_39, dias_operacao, efetivo, categoria, organizacao, ug'),
     supabase
       .from('horas_voo_registros')
-      .select('valor_total, quantidade_hv, tipo_anv, organizacao, ug'),
+      .select('valor_total, valor_nd_30, valor_nd_39, quantidade_hv, tipo_anv, organizacao, ug'),
     supabase
-      .from('material_consumo_registros') // NOVO
+      .from('material_consumo_registros')
       .select('valor_total, valor_nd_30, valor_nd_39, organizacao, ug'),
   ]);
 
@@ -355,7 +355,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
   const safePassagemData = passagemData || []; 
   const safeConcessionariaData = concessionariaData || [];
   const safeHorasVooData = horasVooData || [];
-  const safeMaterialConsumoData = materialConsumoData || []; // NOVO
+  const safeMaterialConsumoData = materialConsumoData || [];
   
   // Processamento de Classes Diversas (II, V, VI, VII, VIII, IX)
   const allClasseItemsData = [
@@ -525,12 +525,16 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
   safeHorasVooData.forEach(record => {
     const omTotals = getOmTotals(record.organizacao, record.ug);
     const valorTotal = Number(record.valor_total || 0);
+    const valorND30 = Number(record.valor_nd_30 || 0);
+    const valorND39 = Number(record.valor_nd_39 || 0);
     const quantidadeHv = Number(record.quantidade_hv || 0);
     const tipoAnv = record.tipo_anv || 'Não Especificado';
     
     omTotals.horasVoo.total += valorTotal;
+    omTotals.horasVoo.totalND30 += valorND30;
+    omTotals.horasVoo.totalND39 += valorND39;
     omTotals.horasVoo.quantidadeHV += quantidadeHv;
-    omTotals.totalOperacional += valorTotal;
+    // omTotals.totalOperacional += valorTotal; // REMOVIDO: AvEx é tratada separadamente no resumo para evitar duplicidade
     omTotals.totalAviacaoExercito += valorTotal;
     
     if (!omTotals.horasVoo.groupedHV[tipoAnv]) {
@@ -540,7 +544,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     omTotals.horasVoo.groupedHV[tipoAnv].totalHV += quantidadeHv;
   });
   
-  // 9. Processamento de Material de Consumo (ND 33.90.30/39) - NOVO
+  // 9. Processamento de Material de Consumo (ND 33.90.30/39)
   safeMaterialConsumoData.forEach(record => {
     const omTotals = getOmTotals(record.organizacao, record.ug);
     const valorTotal = Number(record.valor_total || 0);
@@ -591,8 +595,9 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
   Object.values(groupedByOm).forEach(omTotals => {
       // Atualiza o total geral da OM
       omTotals.totalLogistica = omTotals.classeI.total + omTotals.classeII.total + omTotals.classeIII.total + omTotals.classeV.total + omTotals.classeVI.total + omTotals.classeVII.total + omTotals.classeVIII.total + omTotals.classeIX.total;
-      omTotals.totalOperacional = omTotals.diarias.total + omTotals.verbaOperacional.total + omTotals.suprimentoFundos.total + omTotals.passagens.total + omTotals.concessionaria.total + omTotals.horasVoo.total + omTotals.materialConsumo.total;
-      omTotals.totalGeral = omTotals.totalLogistica + omTotals.totalOperacional + omTotals.totalMaterialPermanente;
+      // CORREÇÃO: totalOperacional agora exclui AvEx para evitar duplicidade na soma final do componente
+      omTotals.totalOperacional = omTotals.diarias.total + omTotals.verbaOperacional.total + omTotals.suprimentoFundos.total + omTotals.passagens.total + omTotals.concessionaria.total + omTotals.materialConsumo.total;
+      omTotals.totalGeral = omTotals.totalLogistica + omTotals.totalOperacional + omTotals.totalMaterialPermanente + omTotals.totalAviacaoExercito;
       
       // Soma para os totais globais
       globalTotals.totalLogisticoGeral += omTotals.totalLogistica;
@@ -608,7 +613,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       globalTotals.totalDiasEtapaSolicitada += omTotals.classeI.totalDiasEtapaSolicitada;
       globalTotals.totalRefeicoesIntermediarias += omTotals.classeI.totalRefeicoesIntermediarias;
       
-      // Classes Diversas (Global) - CORREÇÃO: Atualizando o objeto globalTotals diretamente
+      // Classes Diversas (Global)
       const mergeClassTotals = (globalKey: 'ClasseII' | 'ClasseV' | 'ClasseVI' | 'ClasseVII' | 'ClasseVIII' | 'ClasseIX', omGroup: any) => {
           const totalKey = `total${globalKey}` as keyof PTrabAggregatedTotals;
           const nd30Key = `total${globalKey}_ND30` as keyof PTrabAggregatedTotals;
@@ -831,6 +836,8 @@ const getHorasVooData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['hora
     const globalData = data as PTrabAggregatedTotals;
     return {
         total: globalData.totalHorasVoo,
+        totalND30: globalData.totalMaterialConsumoND30, // Fallback para global se necessário
+        totalND39: globalData.totalMaterialConsumoND39,
         quantidadeHV: globalData.quantidadeHorasVoo,
         groupedHV: globalData.groupedHorasVoo,
     };
@@ -1091,7 +1098,8 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     value={om.horasVoo.total} 
                                     icon={Zap} 
                                     colorClass="bg-purple-500/10 text-purple-600"
-                                    nd30={om.horasVoo.total}
+                                    nd30={om.horasVoo.totalND30}
+                                    nd39={om.horasVoo.totalND39}
                                 />
                             </div>
                         </div>
@@ -1645,9 +1653,6 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                 {renderVerbaSuprimento('suprimentoFundos', 'Suprimento de Fundos')}
                 {renderConcessionaria()}
                 {renderMaterialConsumo()}
-                
-                {/* Outros Operacionais (Placeholder) */}
-                {/* A lógica de "Outros" é complexa de calcular aqui, então vamos focar nos itens implementados */}
             </div>
         );
     }
@@ -1699,7 +1704,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                     </span>
                 </div>
                 
-                {/* Detalhes por Tipo de Aeronave (Restaurado conforme imagem) */}
+                {/* Detalhes por Tipo de Aeronave */}
                 <div className="space-y-1 pl-4 text-[10px]">
                     {sortedHorasVoo.map(([tipoAnv, data]) => (
                         <div key={tipoAnv} className="flex justify-between text-muted-foreground">
@@ -1718,7 +1723,6 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     return null;
 };
 
-// REMOVIDO: renderOmDetails (substituído pelo OmDetailsDialog)
 
 export const PTrabCostSummary = ({ 
   ptrabId, 
@@ -1760,17 +1764,14 @@ export const PTrabCostSummary = ({
     },
   });
   
-  // ESTADOS ATUALIZADOS
   const [viewMode, setViewMode] = useState<'global' | 'byOm'>('global');
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [selectedOm, setSelectedOm] = useState<OmTotals | null>(null); // NOVO: OM selecionada para o Dialog
+  const [selectedOm, setSelectedOm] = useState<OmTotals | null>(null);
   
   const detailsRef = useRef<HTMLDivElement>(null);
 
-  // CORREÇÃO: useMemo movido para antes dos retornos antecipados para seguir as regras dos hooks
   const sortedOmTotals = useMemo(() => {
       const omGroups = data?.groupedByOm || {}; 
-      // ORDENAÇÃO: Por totalGeral decrescente
       return Object.values(omGroups).sort((a, b) => b.totalGeral - a.totalGeral);
   }, [data?.groupedByOm]);
 
@@ -1824,33 +1825,21 @@ export const PTrabCostSummary = ({
   const saldoGND3 = creditGND3 - (totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito);
   const saldoGND4 = creditGND4 - totals.totalMaterialPermanente;
 
-  const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
-  
-  // Componente para renderizar os detalhes no modo GLOBAL
   const renderGlobalDetails = () => (
     <div className="space-y-2" ref={detailsRef}>
-        
-        {/* Aba Logística */}
         <TabDetails mode="logistica" data={totals} />
-
-        {/* Aba Operacional */}
         <div className="pt-4">
             <TabDetails mode="operacional" data={totals} />
         </div>
-        
-        {/* Aba Material Permanente */}
         <div className="pt-4">
             <TabDetails mode="permanente" data={totals} />
         </div>
-        
-        {/* Aba Aviação do Exército */}
         <div className="pt-4">
             <TabDetails mode="avex" data={totals} />
         </div>
     </div>
   );
   
-  // NOVO: Renderização do Resumo de Custos (Alternado)
   const renderCostSummary = () => {
       if (viewMode === 'global') {
           return (
@@ -1876,7 +1865,6 @@ export const PTrabCostSummary = ({
             </div>
           );
       } else {
-          // Modo 'byOm'
           if (sortedOmTotals.length === 0) {
               return (
                   <div className="w-full space-y-1 text-sm px-6 pt-3 text-muted-foreground">
@@ -1897,7 +1885,7 @@ export const PTrabCostSummary = ({
                           <div 
                               key={om.omKey} 
                               className="flex justify-between items-center text-foreground cursor-pointer p-1 rounded-md transition-colors hover:bg-muted/50" 
-                              onClick={() => handleOmClick(om)} // Abre o Dialog
+                              onClick={() => handleOmClick(om)}
                           >
                               <span className="font-semibold text-sm text-foreground">{om.omName}</span>
                               <div className="flex items-center gap-2">
@@ -1918,39 +1906,29 @@ export const PTrabCostSummary = ({
         <div className="flex justify-between items-center">
             <CardTitle className="text-xl font-bold">Resumo de Custos</CardTitle>
         </div>
-        
         <CardDescription className="text-xs">
           Visão consolidada dos custos logísticos e orçamentários.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 p-0 pb-3">
-        
-        {/* Resumo de Custos (Alternado) */}
         {renderCostSummary()}
-        
-        {/* Accordion para Detalhes (Apenas para o modo Global) */}
         <Accordion 
           type="single" 
           collapsible 
           className="w-full px-6 pt-0"
-          // Controla o estado de abertura do accordion principal
           value={isDetailsOpen ? "summary-details" : undefined}
           onValueChange={(value) => {
-              // Só permite abrir/fechar se estiver no modo global
               if (viewMode === 'global') {
                   setIsDetailsOpen(value === "summary-details");
               }
           }}
         >
           <AccordionItem value="summary-details" className="border-b-0">
-            
-            {/* Accordion Trigger Principal: Contém o Total Geral e o botão Mais Detalhes */}
             <AccordionTrigger 
               simple
               className="py-0 px-0 hover:no-underline flex items-center justify-between w-full text-xs text-muted-foreground border-t border-border/50"
               onClick={(e) => {
                 e.preventDefault(); 
-                // Se estiver no modo OM, o clique não faz nada (o detalhe é no clique da OM individual)
                 if (viewMode === 'global') {
                     handleSummaryClick();
                 }
@@ -1959,26 +1937,22 @@ export const PTrabCostSummary = ({
               <div className="flex justify-between items-center w-full py-2">
                 <div className="flex flex-col items-start gap-1">
                     <span className="text-base font-bold text-foreground">Total Geral</span>
-                    
-                    {/* NOVO: Botão para alternar para o modo Por OM (Movido para cá) */}
                     <Button
                         variant={viewMode === 'byOm' ? 'default' : 'outline'}
                         size="sm"
                         className="h-6 text-[10px] px-2"
                         onClick={(e) => {
-                            e.stopPropagation(); // Evita abrir o accordion ao clicar no botão
+                            e.stopPropagation();
                             setViewMode(viewMode === 'byOm' ? 'global' : 'byOm');
-                            setIsDetailsOpen(false); // Fecha detalhes ao trocar o modo
-                            setSelectedOm(null); // Garante que o diálogo está fechado
+                            setIsDetailsOpen(false);
+                            setSelectedOm(null);
                         }}
                     >
                         {viewMode === 'byOm' ? 'Voltar ao Global' : 'Ver por OM'}
                     </Button>
                 </div>
-                
                 <div className="flex flex-col items-end gap-0">
                     <span className="text-lg font-bold text-foreground">{formatCurrency(totalGeralFinal)}</span>
-                    {/* O botão de detalhes só aparece se estiver no modo global */}
                     {viewMode === 'global' && (
                         <span className="font-semibold text-primary flex items-center gap-1 text-xs lowercase">
                             {isDetailsOpen ? "menos detalhes" : "mais detalhes"}
@@ -1991,15 +1965,11 @@ export const PTrabCostSummary = ({
                 </div>
               </div>
             </AccordionTrigger>
-            
             <AccordionContent className="pt-2 pb-0">
-              {/* RENDERIZAÇÃO CONDICIONAL: Apenas detalhes globais aqui */}
               {viewMode === 'global' && renderGlobalDetails()}
             </AccordionContent>
           </AccordionItem>
         </Accordion>
-        
-        {/* Seção de Crédito (abaixo do Accordion) */}
         <div className="px-6 pt-0 border-t border-border/50 space-y-2 mt-[-1.5rem]">
             <div className="flex justify-between items-center">
                 <h4 className="font-bold text-sm text-accent flex items-center gap-2">
@@ -2027,10 +1997,7 @@ export const PTrabCostSummary = ({
                 Informar Crédito
             </Button>
         </div>
-        
       </CardContent>
-      
-      {/* NOVO: Dialog para exibir detalhes da OM */}
       <OmDetailsDialog 
           om={selectedOm} 
           totals={totals} 
