@@ -455,7 +455,7 @@ const MaterialConsumoForm = () => {
         
         if (groups.length === 0) {
             return (
-                <Alert variant="default" className="border border-gray-300 p-4 bg-background rounded-lg border">
+                <Alert variant="default" className="border border-gray-300 bg-background">
                     <AlertCircle className="h-4 w-4 text-muted-foreground" />
                     <AlertTitle>Nenhum Grupo Adicionado</AlertTitle>
                     <AlertDescription>
