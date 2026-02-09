@@ -882,8 +882,9 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                                     <span className="w-1/4 text-right font-medium">
                                         {formatNumber(classeI.totalRacoesOperacionaisGeral)} un.
                                     </span>
-                                    <span className="w-1/4 text-right font-medium text-background">
-                                        {formatCurrency(0)}
+                                    <span className="w-1/4 text-right font-medium text-foreground">
+                                        {/* Mantido como 0 pois o custo não é orçamentário direto */}
+                                        {formatCurrency(0)} 
                                     </span>
                                 </div>
                             )}
@@ -1386,17 +1387,38 @@ export const PTrabCostSummary = ({
   // NOVO ESTADO: Modo de visualização (global ou por OM)
   const [viewMode, setViewMode] = useState<'global' | 'byOm'>('global');
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  // Estado para controlar qual OM está expandida no modo 'byOm'
+  const [activeOmKey, setActiveOmKey] = useState<string | undefined>(undefined);
+  
   const detailsRef = useRef<HTMLDivElement>(null);
 
   const handleSummaryClick = () => {
     const newState = !isDetailsOpen;
     setIsDetailsOpen(newState);
     
+    // Se estiver fechando, resetar a OM ativa
+    if (!newState) {
+        setActiveOmKey(undefined);
+    }
+    
     if (newState) {
       setTimeout(() => {
           detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100); 
     }
+  };
+  
+  const handleOmSummaryClick = (omKey: string) => {
+      // Se a OM clicada já estiver ativa, feche-a. Caso contrário, abra-a.
+      const newActiveKey = activeOmKey === omKey ? undefined : omKey;
+      setActiveOmKey(newActiveKey);
+      setIsDetailsOpen(!!newActiveKey); // Abre o accordion principal se houver uma OM ativa
+      
+      if (newActiveKey) {
+          setTimeout(() => {
+              detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100); 
+      }
   };
 
 
@@ -1471,13 +1493,21 @@ export const PTrabCostSummary = ({
   const renderOmDetails = () => (
     <div className="space-y-4" ref={detailsRef}>
         {sortedOmTotals.map(om => (
-            <Accordion type="single" collapsible key={om.omKey}>
+            // Usamos o estado activeOmKey para controlar qual OM está aberta
+            <Accordion 
+                type="single" 
+                collapsible 
+                key={om.omKey} 
+                value={activeOmKey === om.omKey ? om.omKey : undefined}
+                onValueChange={(value) => setActiveOmKey(value)}
+            >
                 <AccordionItem value={om.omKey} className="border-b">
                     <AccordionTrigger className="p-0 hover:no-underline">
                         <div className="flex justify-between items-center w-full text-sm font-bold text-foreground">
                             <div className="flex items-center gap-2">
-                                <Users className="h-4 w-4 text-primary" />
-                                {om.omName} ({formatCodug(om.ug)})
+                                {/* Removido: <Users className="h-4 w-4 text-primary" /> */}
+                                {/* Removido: ({formatCodug(om.ug)}) */}
+                                {om.omName} 
                             </div>
                             <span className="text-lg font-extrabold text-primary">
                                 {formatCurrency(om.totalGeral)}
@@ -1540,12 +1570,12 @@ export const PTrabCostSummary = ({
                       <div 
                           key={om.omKey} 
                           className="flex justify-between text-foreground cursor-pointer" 
-                          onClick={handleSummaryClick}
+                          onClick={() => handleOmSummaryClick(om.omKey)} // Chama a nova função de clique
                       >
                           {/* Nome da OM (sem ícone, sem CODUG, fonte e tamanho do original) */}
-                          <span className="font-semibold text-sm">{om.omName}</span>
+                          <span className="font-semibold text-sm text-foreground">{om.omName}</span>
                           {/* Total Geral da OM (cor única, fonte e tamanho do original) */}
-                          <span className="font-bold text-sm">{formatCurrency(om.totalGeral)}</span>
+                          <span className="font-bold text-sm text-foreground">{formatCurrency(om.totalGeral)}</span>
                       </div>
                   ))}
               </div>
@@ -1568,6 +1598,7 @@ export const PTrabCostSummary = ({
               onCheckedChange={(checked) => {
                 setViewMode(checked ? 'byOm' : 'global');
                 setIsDetailsOpen(false); // Fecha detalhes ao trocar o modo
+                setActiveOmKey(undefined); // Reseta a OM ativa
               }}
               id="view-mode-toggle"
             />
@@ -1585,8 +1616,15 @@ export const PTrabCostSummary = ({
           type="single" 
           collapsible 
           className="w-full px-6 pt-0"
+          // Controla o estado de abertura do accordion principal
           value={isDetailsOpen ? "summary-details" : undefined}
-          onValueChange={(value) => setIsDetailsOpen(value === "summary-details")}
+          onValueChange={(value) => {
+              setIsDetailsOpen(value === "summary-details");
+              // Se fechar o global, resetar a OM ativa
+              if (viewMode === 'global' && value !== "summary-details") {
+                  setActiveOmKey(undefined);
+              }
+          }}
         >
           <AccordionItem value="summary-details" className="border-b-0">
             
@@ -1596,7 +1634,13 @@ export const PTrabCostSummary = ({
               className="py-0 px-0 hover:no-underline flex items-center justify-between w-full text-xs text-muted-foreground border-t border-border/50"
               onClick={(e) => {
                 e.preventDefault(); 
-                handleSummaryClick();
+                // Se estiver no modo OM e houver uma OM ativa, o clique deve fechar o detalhe da OM.
+                if (viewMode === 'byOm' && activeOmKey) {
+                    setActiveOmKey(undefined);
+                    setIsDetailsOpen(false);
+                } else {
+                    handleSummaryClick();
+                }
               }}
             >
               <div className="flex justify-between items-center w-full">
