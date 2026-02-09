@@ -19,6 +19,7 @@ interface GroupedItem {
     subitemNr: string;
     subitemNome: string;
     items: ItemAquisicao[];
+    totalValue: number; // NOVO: Valor total dos itens neste subitem
 }
 
 interface AcquisitionGroupFormProps {
@@ -111,9 +112,11 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                     subitemNr: item.nr_subitem,
                     subitemNome: item.nome_subitem,
                     items: [],
+                    totalValue: 0, // Inicializa o total
                 };
             }
             groups[key].items.push(item);
+            groups[key].totalValue += Number(item.valor_total || 0); // Soma o valor
         });
         
         return Object.values(groups).sort((a, b) => a.subitemNr.localeCompare(b.subitemNr));
@@ -224,11 +227,17 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                         onOpenChange={(open) => setExpandedSubitems(prev => ({ ...prev, [group.subitemNr]: open }))}
                                     >
                                         <CollapsibleTrigger asChild>
-                                            <div className="flex justify-between items-center p-2 bg-muted/50 rounded-md cursor-pointer hover:bg-muted transition-colors">
+                                            {/* CORREÇÃO: Aplicando a cor verde clara e exibindo o total do grupo */}
+                                            <div className="flex justify-between items-center p-2 bg-green-50/70 border border-green-200 rounded-md cursor-pointer hover:bg-green-100 transition-colors">
                                                 <span className="font-semibold text-sm">
                                                     {group.subitemNr} - {group.subitemNome} ({group.items.length} itens)
                                                 </span>
-                                                {expandedSubitems[group.subitemNr] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-sm text-green-700">
+                                                        {formatCurrency(group.totalValue)}
+                                                    </span>
+                                                    {expandedSubitems[group.subitemNr] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                                </div>
                                             </div>
                                         </CollapsibleTrigger>
                                         <CollapsibleContent className="pt-2">
