@@ -1225,10 +1225,10 @@ const MaterialConsumoForm = () => {
                 <Card>
                     <CardHeader>
                         <CardTitle>
-                            Aquisição de Material de Consumo
+                            Material de Consumo
                         </CardTitle>
                         <CardDescription>
-                            Detalhamento das necessidades de aquisição de Material de Consumo.
+                            Levantamento de necessidades de Material de Consumo.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -1358,7 +1358,7 @@ const MaterialConsumoForm = () => {
                                         
                                         {/* Gerenciamento de Grupos de Aquisição */}
                                         <Card className="mt-4 rounded-lg p-4 bg-background">
-                                            <h4 className="semibold text-base mb-4">
+                                            <h4 className="text-base font-semibold mb-4">
                                                 Grupos de Aquisição ({formData.acquisitionGroups.length})
                                             </h4>
                                             
