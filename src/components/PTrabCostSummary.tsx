@@ -3,12 +3,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber, formatCodug } from "@/lib/formatUtils";
-import { Package, Loader2, ChevronRight, HardHat, TrendingUp, Activity, Zap, Swords, Radio, HeartPulse, Truck, Briefcase, Droplet, Plane, Utensils, Fuel, Wallet, ClipboardList } from "lucide-react";
+import { 
+    Package, Loader2, ChevronRight, HardHat, TrendingUp, Activity, 
+    Zap, Swords, Radio, HeartPulse, Truck, Briefcase, Droplet, 
+    Plane, Utensils, Fuel, Wallet, ClipboardList, Building2, ChevronDown
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
-// --- TIPOS E CONSTANTES ---
+// --- TIPOS ---
 
 interface OmTotals {
     omKey: string;
@@ -20,22 +26,10 @@ interface OmTotals {
     totalMaterialPermanente: number;
     totalAviacaoExercito: number;
     
-    classeI: { total: number; details: Record<string, number> };
-    classeII: { total: number, details: Record<string, number> };
-    classeIII: { total: number, details: Record<string, number> };
-    classeV: { total: number, details: Record<string, number> };
-    classeVI: { total: number, details: Record<string, number> };
-    classeVII: { total: number, details: Record<string, number> };
-    classeVIII: { total: number, details: Record<string, number> };
-    classeIX: { total: number, details: Record<string, number> };
-    
-    diarias: { total: number, details: Record<string, number> };
-    verbaOperacional: { total: number, details: Record<string, number> };
-    suprimentoFundos: { total: number, details: Record<string, number> };
-    passagens: { total: number, details: Record<string, number> };
-    concessionaria: { total: number, details: Record<string, number> };
-    horasVoo: { total: number, details: Record<string, number> };
-    materialConsumo: { total: number, details: Record<string, number> };
+    // Detalhamento por Classe/Item
+    logistica: Record<string, { total: number, details: Record<string, number> }>;
+    operacional: Record<string, { total: number, details: Record<string, number> }>;
+    aviacao: Record<string, { total: number, details: Record<string, number> }>;
 }
 
 interface PTrabAggregatedTotals {
@@ -43,6 +37,7 @@ interface PTrabAggregatedTotals {
     totalOperacional: number;
     totalMaterialPermanente: number;
     totalAviacaoExercito: number;
+    totalGeral: number;
     groupedByOm: Record<string, OmTotals>;
 }
 
@@ -53,69 +48,60 @@ interface PTrabCostSummaryProps {
   creditGND4: number;
 }
 
-// --- COMPONENTE: InteractiveCard ---
+// --- SUBCOMPONENTE: Card de Categoria Expansível ---
 
-interface InteractiveCardProps {
+interface ExpandableCategoryCardProps {
     label: string;
-    value: number;
+    total: number;
     icon: any;
     colorClass: string;
     details: Record<string, number>;
 }
 
-const InteractiveCard = ({ label, value, icon: Icon, colorClass, details }: InteractiveCardProps) => {
-    const [isExpanded, setIsExpanded] = useState(false);
-    if (value === 0) return null;
+const ExpandableCategoryCard = ({ label, total, icon: Icon, colorClass, details }: ExpandableCategoryCardProps) => {
+    const [isOpen, setIsOpen] = useState(false);
+    if (total === 0) return null;
 
     const detailEntries = Object.entries(details || {}).filter(([_, val]) => val > 0);
 
     return (
-        <div 
-            className={cn(
-                "group flex flex-col rounded-xl border transition-all duration-300 overflow-hidden cursor-pointer mb-2",
-                isExpanded 
-                    ? "ring-2 ring-primary border-transparent bg-card shadow-md scale-[1.01]" 
-                    : "border-border/50 bg-card/40 hover:bg-accent/5"
-            )}
-            onClick={() => setIsExpanded(!isExpanded)}
-        >
-            <div className="p-3 flex items-center justify-between">
+        <div className="flex flex-col mb-2">
+            <button 
+                onClick={() => setIsOpen(!isOpen)}
+                className={cn(
+                    "flex items-center justify-between p-3 rounded-xl border transition-all duration-200",
+                    isOpen 
+                        ? "bg-accent/10 border-accent shadow-sm ring-1 ring-accent/20" 
+                        : "bg-card border-border/50 hover:border-accent/40 hover:bg-accent/5"
+                )}
+            >
                 <div className="flex items-center gap-3">
-                    <div className={cn("p-2 rounded-lg transition-transform group-hover:scale-110", colorClass)}>
+                    <div className={cn("p-2 rounded-lg", colorClass)}>
                         <Icon className="h-4 w-4" />
                     </div>
-                    <div>
-                        <p className="text-[9px] uppercase font-bold text-muted-foreground leading-none mb-1">{label}</p>
-                        <p className="text-xs font-black text-foreground">
-                            {formatCurrency(value)}
-                        </p>
+                    <div className="text-left">
+                        <p className="text-[10px] uppercase font-bold text-muted-foreground leading-none mb-1">{label}</p>
+                        <p className="text-sm font-black text-foreground">{formatCurrency(total)}</p>
                     </div>
                 </div>
-                <ChevronRight className={cn("h-3 w-3 text-muted-foreground transition-transform duration-300", isExpanded && "rotate-90")} />
-            </div>
+                <ChevronDown className={cn("h-4 w-4 transition-transform text-muted-foreground", isOpen && "rotate-180")} />
+            </button>
 
-            <div className={cn(
-                "grid transition-all duration-300 ease-in-out",
-                isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-            )}>
-                <div className="overflow-hidden">
-                    <div className="px-3 pb-3 pt-1 border-t border-dashed border-border/50 space-y-1.5 mx-3 mt-1">
-                        {detailEntries.map(([name, val]) => (
-                            <div key={name} className="flex justify-between items-center text-[10px]">
-                                <span className="text-muted-foreground font-medium">{name}</span>
-                                <span className="font-bold text-foreground">
-                                    {formatCurrency(val)}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
+            {isOpen && (
+                <div className="mx-2 p-3 bg-muted/20 border-x border-b rounded-b-xl space-y-2 animate-in slide-in-from-top-1 duration-200">
+                    {detailEntries.map(([name, val]) => (
+                        <div key={name} className="flex justify-between items-center text-[11px] border-b border-dotted border-border pb-1 last:border-0">
+                            <span className="text-muted-foreground font-medium">{name}</span>
+                            <span className="font-bold text-foreground">{formatCurrency(val)}</span>
+                        </div>
+                    ))}
                 </div>
-            </div>
+            )}
         </div>
     );
 };
 
-// --- COMPONENTE: OmDetailsDialog ---
+// --- COMPONENTE: Dialog de Detalhes da OM ---
 
 interface OmDetailsDialogProps {
     om: OmTotals | null;
@@ -128,53 +114,75 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
     
     return (
         <Dialog open={!!om} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[95vw] md:max-w-[900px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
-                <DialogHeader className="p-6 pb-4 border-b border-border/50 bg-card">
-                    <DialogTitle className="text-2xl font-bold">{om.omName}</DialogTitle>
-                    <DialogDescription className="text-sm">
-                        UG: {formatCodug(om.ug)} | Total Geral: {formatCurrency(om.totalGeral)}
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader className="border-b pb-4">
+                    <DialogTitle className="flex items-center gap-2 text-xl font-black uppercase tracking-tight">
+                        <Building2 className="h-5 w-5 text-primary" /> {om.omName}
+                    </DialogTitle>
+                    <DialogDescription>
+                        UG: {formatCodug(om.ug)} | Total da OM: <span className="font-bold text-foreground">{formatCurrency(om.totalGeral)}</span>
                     </DialogDescription>
                 </DialogHeader>
                 
-                <div className="flex-1 overflow-y-auto p-6 pt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        
-                        {/* BLOCO 1: LOGÍSTICA */}
-                        <div className="space-y-4">
-                            <h4 className="text-[10px] font-black uppercase text-orange-600 flex items-center gap-2 mb-2">
-                                <Package className="h-3 w-3" /> Aba Logística
-                            </h4>
-                            <InteractiveCard label="Classe I" value={om.classeI.total} icon={Utensils} colorClass="bg-orange-500/10 text-orange-600" details={om.classeI.details} />
-                            <InteractiveCard label="Classe II" value={om.classeII.total} icon={HardHat} colorClass="bg-orange-500/10 text-orange-600" details={om.classeII.details} />
-                            <InteractiveCard label="Classe III" value={om.classeIII.total} icon={Fuel} colorClass="bg-orange-500/10 text-orange-600" details={om.classeIII.details} />
-                            <InteractiveCard label="Classe V" value={om.classeV.total} icon={Swords} colorClass="bg-orange-500/10 text-orange-600" details={om.classeV.details} />
-                            <InteractiveCard label="Classe VI" value={om.classeVI.total} icon={Truck} colorClass="bg-orange-500/10 text-orange-600" details={om.classeVI.details} />
-                            <InteractiveCard label="Classe VII" value={om.classeVII.total} icon={Radio} colorClass="bg-orange-500/10 text-orange-600" details={om.classeVII.details} />
-                            <InteractiveCard label="Classe VIII" value={om.classeVIII.total} icon={HeartPulse} colorClass="bg-orange-500/10 text-orange-600" details={om.classeVIII.details} />
-                            <InteractiveCard label="Classe IX" value={om.classeIX.total} icon={Activity} colorClass="bg-orange-500/10 text-orange-600" details={om.classeIX.details} />
-                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                    {/* BLOCO 1: LOGÍSTICA */}
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-black uppercase text-orange-600 border-b pb-1 flex items-center gap-2">
+                            <Package className="h-3 w-3" /> Aba Logística
+                        </h4>
+                        {Object.entries(om.logistica).map(([label, data]) => (
+                            <ExpandableCategoryCard 
+                                key={label}
+                                label={label}
+                                total={data.total}
+                                icon={label.includes('Classe I') ? Utensils : label.includes('Classe II') ? HardHat : label.includes('Classe III') ? Fuel : label.includes('Classe V') ? Swords : label.includes('Classe VI') ? Truck : label.includes('Classe VII') ? Radio : label.includes('Classe VIII') ? HeartPulse : Activity}
+                                colorClass="bg-orange-500/10 text-orange-600"
+                                details={data.details}
+                            />
+                        ))}
+                    </div>
 
-                        {/* BLOCO 2: OPERACIONAL */}
-                        <div className="space-y-4">
-                            <h4 className="text-[10px] font-black uppercase text-blue-600 flex items-center gap-2 mb-2">
-                                <Briefcase className="h-3 w-3" /> Aba Operacional
-                            </h4>
-                            <InteractiveCard label="Diárias" value={om.diarias.total} icon={Wallet} colorClass="bg-blue-500/10 text-blue-600" details={om.diarias.details} />
-                            <InteractiveCard label="Passagens" value={om.passagens.total} icon={Plane} colorClass="bg-blue-500/10 text-blue-600" details={om.passagens.details} />
-                            <InteractiveCard label="Verba Operacional" value={om.verbaOperacional.total} icon={ClipboardList} colorClass="bg-blue-500/10 text-blue-600" details={om.verbaOperacional.details} />
-                            <InteractiveCard label="Suprimento de Fundos" value={om.suprimentoFundos.total} icon={Wallet} colorClass="bg-blue-500/10 text-blue-600" details={om.suprimentoFundos.details} />
-                            <InteractiveCard label="Concessionárias" value={om.concessionaria.total} icon={Droplet} colorClass="bg-blue-500/10 text-blue-600" details={om.concessionaria.details} />
-                            <InteractiveCard label="Material de Consumo" value={om.materialConsumo.total} icon={Package} colorClass="bg-blue-500/10 text-blue-600" details={om.materialConsumo.details} />
-                        </div>
+                    {/* BLOCO 2: OPERACIONAL */}
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-black uppercase text-blue-600 border-b pb-1 flex items-center gap-2">
+                            <Briefcase className="h-3 w-3" /> Aba Operacional
+                        </h4>
+                        {Object.entries(om.operacional).map(([label, data]) => (
+                            <ExpandableCategoryCard 
+                                key={label}
+                                label={label}
+                                total={data.total}
+                                icon={label.includes('Diárias') ? Wallet : label.includes('Passagens') ? Plane : label.includes('Concessionária') ? Droplet : label.includes('Material de Consumo') ? Package : ClipboardList}
+                                colorClass="bg-blue-500/10 text-blue-600"
+                                details={data.details}
+                            />
+                        ))}
+                    </div>
 
-                        {/* BLOCO 3: AVIAÇÃO E INVESTIMENTO */}
-                        <div className="space-y-4">
-                            <h4 className="text-[10px] font-black uppercase text-purple-600 flex items-center gap-2 mb-2">
-                                <Zap className="h-3 w-3" /> Aviação e Investimento
-                            </h4>
-                            <InteractiveCard label="Horas de Voo" value={om.horasVoo.total} icon={Zap} colorClass="bg-purple-500/10 text-purple-600" details={om.horasVoo.details} />
-                            <InteractiveCard label="Material Permanente" value={om.totalMaterialPermanente} icon={HardHat} colorClass="bg-green-500/10 text-green-600" details={{ "Itens de Investimento": om.totalMaterialPermanente }} />
-                        </div>
+                    {/* BLOCO 3: AVIAÇÃO E INVESTIMENTO */}
+                    <div className="space-y-4">
+                        <h4 className="text-[10px] font-black uppercase text-purple-600 border-b pb-1 flex items-center gap-2">
+                            <Zap className="h-3 w-3" /> Aviação e Investimento
+                        </h4>
+                        {Object.entries(om.aviacao).map(([label, data]) => (
+                            <ExpandableCategoryCard 
+                                key={label}
+                                label={label}
+                                total={data.total}
+                                icon={label.includes('Horas de Voo') ? Zap : HardHat}
+                                colorClass="bg-purple-500/10 text-purple-600"
+                                details={data.details}
+                            />
+                        ))}
+                        {om.totalMaterialPermanente > 0 && (
+                            <ExpandableCategoryCard 
+                                label="Material Permanente"
+                                total={om.totalMaterialPermanente}
+                                icon={HardHat}
+                                colorClass="bg-green-500/10 text-green-600"
+                                details={{ "Itens de Investimento": om.totalMaterialPermanente }}
+                            />
+                        )}
                     </div>
                 </div>
             </DialogContent>
@@ -182,34 +190,32 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
     );
 };
 
-// --- FUNÇÃO DE BUSCA DE TOTAIS ---
+// --- LÓGICA DE BUSCA E PROCESSAMENTO ---
 
 const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     omKey: `${omName}|${ug}`, omName, ug, totalGeral: 0, totalLogistica: 0, totalOperacional: 0, totalMaterialPermanente: 0, totalAviacaoExercito: 0,
-    classeI: { total: 0, details: {} },
-    classeII: { total: 0, details: {} },
-    classeIII: { total: 0, details: {} },
-    classeV: { total: 0, details: {} },
-    classeVI: { total: 0, details: {} },
-    classeVII: { total: 0, details: {} },
-    classeVIII: { total: 0, details: {} },
-    classeIX: { total: 0, details: {} },
-    diarias: { total: 0, details: {} },
-    verbaOperacional: { total: 0, details: {} },
-    suprimentoFundos: { total: 0, details: {} },
-    passagens: { total: 0, details: {} },
-    concessionaria: { total: 0, details: {} },
-    horasVoo: { total: 0, details: {} },
-    materialConsumo: { total: 0, details: {} },
+    logistica: {}, operacional: {}, aviacao: {}
 });
 
 const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals> => {
   const groupedByOm: Record<string, OmTotals> = {};
   
-  const getOmTotals = (omName: string, ug: string): OmTotals => {
+  const getOm = (omName: string, ug: string): OmTotals => {
       const key = `${omName || 'N/A'}|${ug || 'N/A'}`;
       if (!groupedByOm[key]) groupedByOm[key] = initializeOmTotals(omName || 'OM Não Informada', ug || '000000');
       return groupedByOm[key];
+  };
+
+  const addToCategory = (om: OmTotals, aba: 'logistica' | 'operacional' | 'aviacao', label: string, value: number, detailName: string) => {
+      if (!om[aba][label]) om[aba][label] = { total: 0, details: {} };
+      om[aba][label].total += value;
+      om[aba][label].details[detailName] = (om[aba][label].details[detailName] || 0) + value;
+      
+      if (aba === 'logistica') om.totalLogistica += value;
+      else if (aba === 'operacional') om.totalOperacional += value;
+      else if (aba === 'aviacao') om.totalAviacaoExercito += value;
+      
+      om.totalGeral += value;
   };
   
   const results = await Promise.all([
@@ -231,129 +237,86 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
   ]);
 
   const [
-    { data: classeIData }, { data: classeIIData }, { data: classeVData }, { data: classeVIData },
-    { data: classeVIIData }, { data: classeVIIISaudeData }, { data: classeVIIIRemontaData },
-    { data: classeIXData }, { data: classeIIIData }, { data: diariaData },
-    { data: verbaOperacionalData }, { data: passagemData }, { data: concessionariaData },
-    { data: horasVooData }, { data: materialConsumoData }
+    { data: c1 }, { data: c2 }, { data: c5 }, { data: c6 }, { data: c7 }, { data: c8s }, { data: c8r },
+    { data: c9 }, { data: c3 }, { data: dr }, { data: vo }, { data: pr }, { data: cr }, { data: hv }, { data: mc }
   ] = results;
 
-  (classeIData || []).forEach(record => {
-    const om = getOmTotals(record.organizacao, record.ug);
-    const val = (record.total_qs || 0) + (record.total_qr || 0);
-    if (record.categoria === 'RACAO_QUENTE') {
-        om.classeI.total += val;
-        om.totalLogistica += val;
-        om.classeI.details["Ração Quente"] = (om.classeI.details["Ração Quente"] || 0) + val;
-    } else {
-        // Ração Operacional (Valor estimado se disponível, ou apenas contagem)
-        om.classeI.details["Ração Operacional"] = (om.classeI.details["Ração Operacional"] || 0) + val;
-    }
+  (c1 || []).forEach(r => {
+      const om = getOm(r.organizacao, r.ug);
+      const val = (r.total_qs || 0) + (r.total_qr || 0);
+      const label = r.categoria === 'RACAO_QUENTE' ? 'Ração Quente' : 'Ração Operacional';
+      addToCategory(om, 'logistica', 'Classe I - Subsistência', val, label);
   });
 
-  const processGenericClass = (data: any[], key: keyof OmTotals) => {
-    (data || []).forEach(record => {
-        const om = getOmTotals(record.organizacao, record.ug);
-        const val = Number(record.valor_total || 0);
-        (om[key] as any).total += val;
-        om.totalLogistica += val;
-        const cat = record.categoria || 'Geral';
-        (om[key] as any).details[cat] = ((om[key] as any).details[cat] || 0) + val;
-    });
+  const processClass = (data: any[], label: string) => {
+      (data || []).forEach(r => {
+          const om = getOm(r.organizacao, r.ug);
+          addToCategory(om, 'logistica', label, Number(r.valor_total || 0), r.categoria || 'Geral');
+      });
   };
 
-  processGenericClass(classeIIData, 'classeII');
-  processGenericClass(classeVData, 'classeV');
-  processGenericClass(classeVIData, 'classeVI');
-  processGenericClass(classeVIIData, 'classeVII');
-  processGenericClass(classeVIIISaudeData, 'classeVIII');
-  processGenericClass(classeVIIIRemontaData, 'classeVIII');
-  processGenericClass(classeIXData, 'classeIX');
+  processClass(c2, 'Classe II - Intendência');
+  processClass(c5, 'Classe V - Armamento');
+  processClass(c6, 'Classe VI - Engenharia');
+  processClass(c7, 'Classe VII - Comunicações');
+  processClass(c8s, 'Classe VIII - Saúde');
+  processClass(c8r, 'Classe VIII - Remonta');
+  processClass(c9, 'Classe IX - Manutenção');
 
-  (classeIIIData || []).forEach(record => {
-    const om = getOmTotals(record.organizacao, record.ug);
-    const val = (record.valor_total || 0);
-    om.classeIII.total += val;
-    om.totalLogistica += val;
-    const tipo = record.tipo_combustivel || 'Outros';
-    om.classeIII.details[tipo] = (om.classeIII.details[tipo] || 0) + val;
+  (c3 || []).forEach(r => {
+      const om = getOm(r.organizacao, r.ug);
+      addToCategory(om, 'logistica', 'Classe III - Combustíveis', Number(r.valor_total || 0), r.tipo_combustivel || 'Outros');
   });
 
-  (diariaData || []).forEach(record => {
-    const om = getOmTotals(record.organizacao, record.ug);
-    const val = (record.valor_nd_15 || 0) + (record.valor_nd_30 || 0);
-    om.diarias.total += val;
-    om.totalOperacional += val;
-    const dest = record.destino || 'Geral';
-    om.diarias.details[dest] = (om.diarias.details[dest] || 0) + val;
+  (dr || []).forEach(r => {
+      const om = getOm(r.organizacao, r.ug);
+      const val = (r.valor_nd_15 || 0) + (r.valor_nd_30 || 0);
+      addToCategory(om, 'operacional', 'Pagamento de Diárias', val, r.destino || 'Geral');
   });
 
-  (verbaOperacionalData || []).forEach(record => {
-    const om = getOmTotals(record.organizacao, record.ug);
-    const val = (record.valor_nd_30 || 0) + (record.valor_nd_39 || 0);
-    om.totalOperacional += val;
-    if (record.detalhamento === 'Suprimento de Fundos') {
-        om.suprimentoFundos.total += val;
-        om.suprimentoFundos.details["Geral"] = (om.suprimentoFundos.details["Geral"] || 0) + val;
-    } else {
-        om.verbaOperacional.total += val;
-        const obj = record.objeto_aquisicao || 'Geral';
-        om.verbaOperacional.details[obj] = (om.verbaOperacional.details[obj] || 0) + val;
-    }
+  (vo || []).forEach(r => {
+      const om = getOm(r.organizacao, r.ug);
+      const val = (r.valor_nd_30 || 0) + (r.valor_nd_39 || 0);
+      const label = r.detalhamento === 'Suprimento de Fundos' ? 'Suprimento de Fundos' : 'Verba Operacional';
+      addToCategory(om, 'operacional', label, val, r.objeto_aquisicao || 'Geral');
   });
 
-  (passagemData || []).forEach(record => {
-    const om = getOmTotals(record.organizacao, record.ug);
-    const val = (record.valor_nd_33 || 0);
-    om.passagens.total += val;
-    om.totalOperacional += val;
-    const dest = record.destino || 'Geral';
-    om.passagens.details[dest] = (om.passagens.details[dest] || 0) + val;
+  (pr || []).forEach(r => {
+      const om = getOm(r.organizacao, r.ug);
+      addToCategory(om, 'operacional', 'Passagens', Number(r.valor_nd_33 || 0), r.destino || 'Geral');
   });
 
-  (concessionariaData || []).forEach(record => {
-    const om = getOmTotals(record.organizacao, record.ug);
-    const val = (record.valor_nd_39 || 0);
-    om.concessionaria.total += val;
-    om.totalOperacional += val;
-    const cat = record.categoria || 'Geral';
-    om.concessionaria.details[cat] = (om.concessionaria.details[cat] || 0) + val;
+  (cr || []).forEach(r => {
+      const om = getOm(r.organizacao, r.ug);
+      addToCategory(om, 'operacional', 'Concessionárias', Number(r.valor_nd_39 || 0), r.categoria || 'Geral');
   });
 
-  (horasVooData || []).forEach(record => {
-    const om = getOmTotals(record.organizacao, record.ug);
-    const val = (record.valor_total || 0);
-    om.horasVoo.total += val;
-    om.totalAviacaoExercito += val;
-    const tipo = record.tipo_anv || 'Aeronave';
-    om.horasVoo.details[tipo] = (om.horasVoo.details[tipo] || 0) + val;
+  (hv || []).forEach(r => {
+      const om = getOm(r.organizacao, r.ug);
+      addToCategory(om, 'aviacao', 'Horas de Voo', Number(r.valor_total || 0), `${r.tipo_anv || 'Aeronave'} (${formatNumber(r.quantidade_hv, 1)} HV)`);
   });
 
-  (materialConsumoData || []).forEach(record => {
-    const om = getOmTotals(record.organizacao, record.ug);
-    const val = (record.valor_total || 0);
-    om.materialConsumo.total += val;
-    om.totalOperacional += val;
-    const group = record.group_name || 'Geral';
-    om.materialConsumo.details[group] = (om.materialConsumo.details[group] || 0) + val;
+  (mc || []).forEach(r => {
+      const om = getOm(r.organizacao, r.ug);
+      addToCategory(om, 'operacional', 'Material de Consumo', Number(r.valor_total || 0), r.group_name || 'Geral');
   });
 
   const globalTotals: PTrabAggregatedTotals = {
-      totalLogisticoGeral: 0, totalOperacional: 0, totalMaterialPermanente: 0, totalAviacaoExercito: 0,
+      totalLogisticoGeral: 0, totalOperacional: 0, totalMaterialPermanente: 0, totalAviacaoExercito: 0, totalGeral: 0,
       groupedByOm
   };
 
   Object.values(groupedByOm).forEach(om => {
-      globalTotals.totalLogisticoGeral += (om.totalLogistica || 0);
-      globalTotals.totalOperacional += (om.totalOperacional || 0);
-      globalTotals.totalAviacaoExercito += (om.totalAviacaoExercito || 0);
-      om.totalGeral = (om.totalLogistica || 0) + (om.totalOperacional || 0) + (om.totalAviacaoExercito || 0);
+      globalTotals.totalLogisticoGeral += om.totalLogistica;
+      globalTotals.totalOperacional += om.totalOperacional;
+      globalTotals.totalAviacaoExercito += om.totalAviacaoExercito;
+      globalTotals.totalGeral += om.totalGeral;
   });
 
   return globalTotals;
 };
 
-// --- COMPONENTE PRINCIPAL: PTrabCostSummary ---
+// --- COMPONENTE PRINCIPAL ---
 
 export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, creditGND4 }: PTrabCostSummaryProps) => {
   const { data: totals, isLoading } = useQuery<PTrabAggregatedTotals>({
@@ -363,75 +326,119 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
     refetchInterval: 10000,
   });
   
-  const [viewMode, setViewMode] = useState<'global' | 'byOm'>('global');
+  const [viewMode, setViewMode] = useState<'global' | 'om'>('global');
   const [selectedOm, setSelectedOm] = useState<OmTotals | null>(null);
 
   if (isLoading || !totals) return <Card className="p-6 flex justify-center"><Loader2 className="animate-spin" /></Card>;
 
-  const totalGeralFinal = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito;
   const saldoGND3 = creditGND3 - (totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito);
   const saldoGND4 = creditGND4 - totals.totalMaterialPermanente;
 
-  const sortedOmTotals = Object.values(totals.groupedByOm || {}).sort((a, b) => b.totalGeral - a.totalGeral);
+  const sortedOms = Object.values(totals.groupedByOm).sort((a, b) => b.totalGeral - a.totalGeral);
 
   return (
-    <Card className="shadow-lg">
-      <CardHeader className="pb-2 pt-3">
-        <CardTitle className="text-xl font-bold">Resumo de Custos</CardTitle>
-        <CardDescription className="text-xs">Visão consolidada dos custos logísticos e orçamentários.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4 p-0 pb-3">
+    <Card className="shadow-lg border-none bg-transparent">
+      <CardHeader className="px-0 pt-0 pb-6 flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-xl font-black flex items-center gap-2 text-primary">
+            <TrendingUp className="h-5 w-5" /> Resumo de Custos
+          </CardTitle>
+          <CardDescription>Visão consolidada do P Trab</CardDescription>
+        </div>
         
-        <div className="w-full space-y-1 text-sm px-6 pt-3">
-            {viewMode === 'global' ? (
-                <>
-                    <div className="flex justify-between text-orange-600 font-semibold">
-                        <span>Aba Logística</span>
-                        <span>{formatCurrency(totals.totalLogisticoGeral)}</span>
-                    </div>
-                    <div className="flex justify-between text-blue-600 font-semibold">
-                        <span>Aba Operacional</span>
-                        <span>{formatCurrency(totals.totalOperacional)}</span>
-                    </div>
-                    <div className="flex justify-between text-purple-600 font-semibold">
-                        <span>Aviação do Exército</span>
-                        <span>{formatCurrency(totals.totalAviacaoExercito)}</span>
-                    </div>
-                    <div className="flex justify-between text-green-600 font-semibold">
-                        <span>Aba Material Permanente</span>
-                        <span>{formatCurrency(totals.totalMaterialPermanente)}</span>
-                    </div>
-                </>
-            ) : (
-                sortedOmTotals.map(om => (
-                    <div key={om.omKey} className="flex justify-between items-center p-1 hover:bg-muted/50 rounded cursor-pointer" onClick={() => setSelectedOm(om)}>
-                        <span className="font-semibold">{om.omName}</span>
-                        <span className="font-bold text-primary">{formatCurrency(om.totalGeral)}</span>
-                    </div>
-                ))
-            )}
+        <div className="flex items-center space-x-2 bg-muted/50 p-2 rounded-lg border">
+          <Label htmlFor="view-mode" className={cn("text-[10px] font-bold", viewMode === 'global' ? "text-primary" : "text-muted-foreground")}>GLOBAL</Label>
+          <Switch 
+            id="view-mode" 
+            checked={viewMode === 'om'} 
+            onCheckedChange={(s) => setViewMode(s ? 'om' : 'global')} 
+          />
+          <Label htmlFor="view-mode" className={cn("text-[10px] font-bold", viewMode === 'om' ? "text-primary" : "text-muted-foreground")}>POR OM</Label>
         </div>
+      </CardHeader>
 
-        <div className="px-6 py-2 border-t border-border/50 flex justify-between items-center">
-            <div className="flex flex-col">
-                <span className="text-xs font-bold text-foreground">Total Geral</span>
-                <Button variant="outline" size="sm" className="h-6 text-[10px] mt-1" onClick={() => setViewMode(viewMode === 'global' ? 'byOm' : 'global')}>
-                    {viewMode === 'global' ? 'Ver por OM' : 'Voltar ao Global'}
-                </Button>
+      <CardContent className="px-0 space-y-6">
+        {viewMode === 'global' ? (
+          <div className="grid gap-3">
+            <div className="flex items-center justify-between p-3 rounded-xl border-l-4 border-l-orange-600 bg-card shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-500/10 rounded-lg text-orange-600"><Package className="h-4 w-4" /></div>
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Logística</span>
+                </div>
+                <span className="font-black text-sm">{formatCurrency(totals.totalLogisticoGeral)}</span>
             </div>
-            <span className="text-lg font-black text-foreground">{formatCurrency(totalGeralFinal)}</span>
-        </div>
+            <div className="flex items-center justify-between p-3 rounded-xl border-l-4 border-l-blue-600 bg-card shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-500/10 rounded-lg text-blue-600"><Activity className="h-4 w-4" /></div>
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Operacional</span>
+                </div>
+                <span className="font-black text-sm">{formatCurrency(totals.totalOperacional)}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl border-l-4 border-l-purple-600 bg-card shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-500/10 rounded-lg text-purple-600"><Zap className="h-4 w-4" /></div>
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Aviação</span>
+                </div>
+                <span className="font-black text-sm">{formatCurrency(totals.totalAviacaoExercito)}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl border-l-4 border-l-green-600 bg-card shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-500/10 rounded-lg text-green-600"><HardHat className="h-4 w-4" /></div>
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Mat. Permanente</span>
+                </div>
+                <span className="font-black text-sm">{formatCurrency(totals.totalMaterialPermanente)}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+            {sortedOms.map((om) => (
+              <div 
+                key={om.omKey}
+                onClick={() => setSelectedOm(om)}
+                className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-card/50 hover:bg-accent/5 cursor-pointer transition-all"
+              >
+                <div className="flex flex-col flex-1 mr-4">
+                  <span className="font-bold text-xs truncate max-w-[180px]">{om.omName}</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-primary" style={{ width: `${(om.totalGeral / totals.totalGeral) * 100}%` }} />
+                    </div>
+                    <span className="text-[9px] font-bold text-muted-foreground">
+                      {((om.totalGeral / totals.totalGeral) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+                <span className="font-black text-xs text-primary whitespace-nowrap">{formatCurrency(om.totalGeral)}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
-        <div className="px-6 pt-2 space-y-2">
+        {/* RODAPÉ DE TOTAIS E SALDOS */}
+        <div className="pt-4 border-t space-y-4">
             <div className="flex justify-between items-center">
-                <h4 className="font-bold text-xs text-accent flex items-center gap-2"><TrendingUp className="h-3 w-3" /> Saldo GND 3</h4>
-                <span className={cn("font-bold text-base", saldoGND3 >= 0 ? "text-green-600" : "text-destructive")}>{formatCurrency(saldoGND3)}</span>
+                <span className="text-sm font-black uppercase tracking-wider">Total Geral</span>
+                <span className="text-xl font-black text-foreground">{formatCurrency(totals.totalGeral)}</span>
             </div>
-            <div className="flex justify-between items-center">
-                <h4 className="font-bold text-xs text-accent flex items-center gap-2"><TrendingUp className="h-3 w-3" /> Saldo GND 4</h4>
-                <span className={cn("font-bold text-base", saldoGND4 >= 0 ? "text-green-600" : "text-destructive")}>{formatCurrency(saldoGND4)}</span>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">Saldo GND 3</p>
+                    <p className={cn("text-sm font-black", saldoGND3 >= 0 ? "text-green-600" : "text-destructive")}>
+                        {formatCurrency(saldoGND3)}
+                    </p>
+                </div>
+                <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">Saldo GND 4</p>
+                    <p className={cn("text-sm font-black", saldoGND4 >= 0 ? "text-green-600" : "text-destructive")}>
+                        {formatCurrency(saldoGND4)}
+                    </p>
+                </div>
             </div>
-            <Button onClick={onOpenCreditDialog} variant="outline" className="w-full mt-2 border-accent text-accent hover:bg-accent/10 h-8 text-xs">Informar Crédito</Button>
+
+            <Button onClick={onOpenCreditDialog} variant="outline" className="w-full border-accent text-accent hover:bg-accent/10 font-bold uppercase text-[10px] tracking-widest h-10">
+                Informar Crédito Disponível
+            </Button>
         </div>
       </CardContent>
       
