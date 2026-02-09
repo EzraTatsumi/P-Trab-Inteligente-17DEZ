@@ -2,6 +2,10 @@ import { Tables } from "@/integrations/supabase/types";
 
 /**
  * Estrutura de um item de aquisição dentro de uma Diretriz de Material de Consumo.
+ * 
+ * NOTA: Esta interface é usada tanto para o catálogo (referência) quanto para o cálculo (solicitação).
+ * Os campos de cálculo (quantidade, valor_total, nd, nr_subitem, nome_subitem) são preenchidos
+ * no momento da seleção/cálculo no formulário.
  */
 export interface ItemAquisicao {
     id: string; // ID local temporário para manipulação no frontend
@@ -11,7 +15,13 @@ export interface ItemAquisicao {
     numero_pregao: string;
     uasg: string;
     codigo_catmat: string;
-    // unidade_medida: string; // REMOVIDO
+    // --- Campos de Cálculo e Contexto Adicionados ---
+    quantidade: number; // Quantidade solicitada
+    valor_total: number; // Valor total (unitário * quantidade)
+    nd: string; // Natureza da Despesa (ex: '33.90.30')
+    nr_subitem: string; // Número do Subitem da ND (para agrupamento)
+    nome_subitem: string; // Nome do Subitem da ND (para agrupamento)
+    // --- Fim dos Campos Adicionados ---
 }
 
 /**
