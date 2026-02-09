@@ -216,7 +216,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                         </p>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="groupPurpose">Finalidade (Opcional)</Label>
+                        <Label htmlFor="groupPurpose">Finalidade:</Label>
                         <Input
                             id="groupPurpose"
                             value={groupPurpose}
