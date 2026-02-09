@@ -191,7 +191,7 @@ const MaterialConsumoForm = () => {
                 // Nota: O campo 'efetivo' não existe na tabela material_consumo_registros,
                 // mas é usado no formulário para cálculo. No DB, ele não é persistido aqui.
                 // Para fins de consolidação, usamos o valor do registro, que pode ser 0 ou null.
-                registro.efetivo, 
+                (registro as any).efetivo, 
                 registro.fase_atividade,
             ].join('|');
 
@@ -203,22 +203,8 @@ const MaterialConsumoForm = () => {
                     om_detentora: registro.om_detentora || '',
                     ug_detentora: registro.ug_detentora || '',
                     dias_operacao: registro.dias_operacao,
-                    // O campo 'efetivo' é persistido no formulário, mas não no registro do DB.
-                    // Se o registro do DB não tem 'efetivo', precisamos garantir que o tipo ConsolidatedMaterialConsumoRecord
-                    // lide com isso. Assumindo que o tipo MaterialConsumoRegistro (que é Tables<'material_consumo_registros'>)
-                    // não tem 'efetivo', precisamos garantir que o valor seja tratado.
-                    // No entanto, o MaterialConsumoFormState tem 'efetivo', e o CalculatedMaterialConsumo também.
-                    // Vamos assumir que o valor de 'efetivo' é 0 ou null no registro do DB, mas é necessário para a chave de consolidação.
-                    // Se o DB não tem 'efetivo', o valor aqui será undefined/null.
-                    // Para manter a compatibilidade com o formulário, vamos usar o valor do registro (que pode ser undefined/null)
-                    // e garantir que o tipo ConsolidatedMaterialConsumoRecord lide com isso.
-                    // Como o schema mostra que 'efetivo' NÃO existe em material_consumo_registros,
-                    // o código abaixo está incorreto se MaterialConsumoRegistro for Tables<'material_consumo_registros'>.
-                    // No entanto, o código anterior já estava usando `registro.efetivo`.
-                    // Para evitar quebrar a consolidação, vamos manter a chave, mas o valor de `efetivo` no ConsolidatedMaterialConsumoRecord
-                    // será o valor do primeiro registro (que deve ser undefined/null se o DB não tiver a coluna).
-                    // Para fins de exibição, o valor correto de efetivo virá do formData ou do groupToReplace.
-                    efetivo: (registro as any).efetivo || 0, // Forçando para 0 se não existir no DB
+                    // Forçando para 0 se não existir no DB
+                    efetivo: (registro as any).efetivo || 0, 
                     fase_atividade: registro.fase_atividade || '',
                     records: [],
                     totalGeral: 0,
@@ -1447,7 +1433,7 @@ const MaterialConsumoForm = () => {
                             {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({itemsToDisplay.length} Grupo(s))
+                                        3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({itemsToDisplay.length} {itemsToDisplay.length === 1 ? 'Grupo' : 'Grupos'})
                                     </h3>
                                     
                                     {/* Alerta de Validação Final (Dirty Check) */}
@@ -1471,7 +1457,8 @@ const MaterialConsumoForm = () => {
                                             const isOmDestinoDifferent = item.om_favorecida !== item.om_detentora || item.ug_favorecida !== item.ug_detentora;
                                             
                                             const groupCount = item.acquisitionGroups.length;
-                                            const groupText = groupCount === 1 ? 'Grupo' : 'Grupos';
+                                            // Como cada itemToDisplay é um CalculatedMaterialConsumo, ele contém apenas 1 AcquisitionGroup
+                                            const groupName = item.acquisitionGroups[0]?.groupName || 'Grupo de Aquisição'; 
 
                                             return (
                                                 <Card 
@@ -1485,7 +1472,7 @@ const MaterialConsumoForm = () => {
                                                         
                                                         <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/30">
                                                             <h4 className="font-bold text-base text-foreground">
-                                                                Material de Consumo ({groupCount} {groupText})
+                                                                Material de Consumo ({groupName})
                                                             </h4>
                                                             <div className="flex items-center gap-2">
                                                                 <p className="font-extrabold text-lg text-foreground text-right">
@@ -1526,10 +1513,7 @@ const MaterialConsumoForm = () => {
                                                             <span className="text-muted-foreground">ND 33.90.30:</span>
                                                             <span className="font-medium text-green-600">{formatCurrency(totalND30)}</span>
                                                         </div>
-                                                        <div className="flex justify-between text-xs">
-                                                            <span className="text-muted-foreground">ND 33.90.39:</span>
-                                                            <span className="font-medium text-green-600">{formatCurrency(totalND39)}</span>
-                                                        </div>
+                                                        {/* REMOVIDO: ND 33.90.39 */}
                                                     </CardContent>
                                                 </Card>
                                             );
@@ -1540,7 +1524,7 @@ const MaterialConsumoForm = () => {
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
                                             <span className="font-bold text-base uppercase">
-                                                VALOR TOTAL DO LOTE
+                                                VALOR TOTAL DA OM
                                             </span>
                                             <span className="font-extrabold text-xl text-foreground">
                                                 {formatCurrency(totalPendingGroups)}
