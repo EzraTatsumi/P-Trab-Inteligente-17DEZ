@@ -70,9 +70,9 @@ const InteractiveCard = ({ label, value, icon: Icon, colorClass, details, unit }
     const [isExpanded, setIsExpanded] = useState(false);
     if (value === 0) return null;
 
-    // Proteção contra details nulo ou indefinido
-    const safeDetails = details || {};
-    const detailEntries = Object.entries(safeDetails).filter(([_, val]) => val > 0);
+    // Proteção robusta contra details nulo ou indefinido
+    const safeDetails = details && typeof details === 'object' ? details : {};
+    const detailEntries = Object.entries(safeDetails).filter(([_, val]) => typeof val === 'number' && val > 0);
 
     return (
         <div 
@@ -109,7 +109,7 @@ const InteractiveCard = ({ label, value, icon: Icon, colorClass, details, unit }
                             <div key={name} className="flex justify-between items-center text-[11px]">
                                 <span className="text-muted-foreground font-medium">{name}</span>
                                 <span className="font-bold text-foreground">
-                                    {unit && name.includes("Total") ? `${formatNumber(val, 2)} ${unit}` : formatCurrency(val)}
+                                    {unit && name.includes("Total") ? `${formatNumber(val as number, 2)} ${unit}` : formatCurrency(val as number)}
                                 </span>
                             </div>
                         ))}
@@ -225,7 +225,14 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
 // --- FUNÇÃO DE BUSCA DE TOTAIS ---
 
 const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
-    omKey: `${omName}|${ug}`, omName, ug, totalGeral: 0, totalLogistica: 0, totalOperacional: 0, totalMaterialPermanente: 0, totalAviacaoExercito: 0,
+    omKey: `${omName}|${ug}`,
+    omName,
+    ug,
+    totalGeral: 0,
+    totalLogistica: 0,
+    totalOperacional: 0,
+    totalMaterialPermanente: 0,
+    totalAviacaoExercito: 0,
     classeI: { total: 0, totalRacoesOperacionaisGeral: 0 },
     classeII: { total: 0, groupedCategories: {} },
     classeIII: { total: 0 },
@@ -245,9 +252,12 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
 
 const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals> => {
   const groupedByOm: Record<string, OmTotals> = {};
+  
   const getOmTotals = (omName: string, ug: string): OmTotals => {
-      const key = `${omName}|${ug}`;
-      if (!groupedByOm[key]) groupedByOm[key] = initializeOmTotals(omName, ug);
+      const key = `${omName || 'N/A'}|${ug || 'N/A'}`;
+      if (!groupedByOm[key]) {
+          groupedByOm[key] = initializeOmTotals(omName || 'OM Não Informada', ug || '000000');
+      }
       return groupedByOm[key];
   };
   
@@ -361,13 +371,15 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       totalRacoesOperacionaisGeral: 0, quantidadeHorasVoo: 0, groupedByOm
   };
 
-  Object.values(groupedByOm).forEach(om => {
-      globalTotals.totalLogisticoGeral += om.totalLogistica;
-      globalTotals.totalOperacional += om.totalOperacional;
-      globalTotals.totalAviacaoExercito += om.totalAviacaoExercito;
-      globalTotals.totalRacoesOperacionaisGeral += om.classeI.totalRacoesOperacionaisGeral;
-      globalTotals.quantidadeHorasVoo += om.horasVoo.quantidadeHV;
-      om.totalGeral = om.totalLogistica + om.totalOperacional + om.totalAviacaoExercito;
+  // Processamento final seguro
+  const omList = Object.values(groupedByOm);
+  omList.forEach(om => {
+      globalTotals.totalLogisticoGeral += (om.totalLogistica || 0);
+      globalTotals.totalOperacional += (om.totalOperacional || 0);
+      globalTotals.totalAviacaoExercito += (om.totalAviacaoExercito || 0);
+      globalTotals.totalRacoesOperacionaisGeral += (om.classeI?.totalRacoesOperacionaisGeral || 0);
+      globalTotals.quantidadeHorasVoo += (om.horasVoo?.quantidadeHV || 0);
+      om.totalGeral = (om.totalLogistica || 0) + (om.totalOperacional || 0) + (om.totalAviacaoExercito || 0);
   });
 
   return globalTotals;
@@ -392,7 +404,7 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
   const saldoGND3 = creditGND3 - (totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito);
   const saldoGND4 = creditGND4 - totals.totalMaterialPermanente;
 
-  const sortedOmTotals = Object.values(totals.groupedByOm).sort((a, b) => b.totalGeral - a.totalGeral);
+  const sortedOmTotals = Object.values(totals.groupedByOm || {}).sort((a, b) => b.totalGeral - a.totalGeral);
 
   return (
     <Card className="shadow-lg">
