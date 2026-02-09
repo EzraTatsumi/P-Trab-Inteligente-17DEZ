@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sanitizeError } from "@/lib/errorUtils";
 import { Tables, TablesUpdate, Json } from "@/integrations/supabase/types";
-import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
+import { DiretrizMaterialConsumo, ItemAquisicao, ItemAquisicaoTemplate } from "@/types/diretrizesMaterialConsumo";
 import { useSession } from '@/components/SessionContextProvider';
 
 // Função de busca de dados
@@ -20,10 +20,10 @@ const fetchDiretrizesMaterialConsumo = async (year: number, userId: string): Pro
         
     if (error) throw error;
     
-    // Mapear o tipo JSONB para ItemAquisicao[]
+    // Mapear o tipo JSONB para ItemAquisicaoTemplate[]
     return (data || []).map(d => ({
         ...d,
-        itens_aquisicao: (d.itens_aquisicao as unknown as ItemAquisicao[]) || [],
+        itens_aquisicao: (d.itens_aquisicao as unknown as ItemAquisicaoTemplate[]) || [],
     })) as DiretrizMaterialConsumo[];
 };
 
@@ -34,6 +34,7 @@ const updateDiretriz = async (diretriz: DiretrizMaterialConsumo) => {
     // Garante que itens_aquisicao é passado como Json
     const dbData: TablesUpdate<'diretrizes_material_consumo'> = {
         ...updateData,
+        // O tipo ItemAquisicaoTemplate[] é o que está sendo salvo no DB
         itens_aquisicao: updateData.itens_aquisicao as unknown as Json,
         updated_at: new Date().toISOString(),
     };
@@ -99,15 +100,19 @@ export function useMaterialConsumoDiretrizes(selectedYear: number) {
         }
         
         // 2. Criar cópias mutáveis das diretrizes
+        // NOTA: O item que está sendo movido é um ItemAquisicao (completo), mas a diretriz armazena ItemAquisicaoTemplate.
+        // Precisamos converter o item de volta para ItemAquisicaoTemplate para inserção/remoção.
+        const { quantidade, valor_total, nr_subitem, nome_subitem, ...itemTemplate } = item;
+        
         const newSourceDiretriz = { ...sourceDiretriz, itens_aquisicao: [...sourceDiretriz.itens_aquisicao] };
         const newTargetDiretriz = { ...targetDiretriz, itens_aquisicao: [...targetDiretriz.itens_aquisicao] };
 
-        // 3. Remover da origem
+        // 3. Remover da origem (usando o ID do template)
         newSourceDiretriz.itens_aquisicao = newSourceDiretriz.itens_aquisicao.filter(i => i.id !== item.id);
         
-        // 4. Adicionar ao destino (garantindo que não haja duplicatas pelo ID local, embora não deva ocorrer)
+        // 4. Adicionar ao destino (garantindo que não haja duplicatas pelo ID local)
         if (!newTargetDiretriz.itens_aquisicao.some(i => i.id === item.id)) {
-            newTargetDiretriz.itens_aquisicao.push(item);
+            newTargetDiretriz.itens_aquisicao.push(itemTemplate);
         }
 
         // 5. Otimisticamente atualizar o cache (melhora a UX)

@@ -1,55 +1,45 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Plus, Pencil, Trash2, Loader2, BookOpen, FileSpreadsheet, Search } from "lucide-react";
-import { toast } from "sonner";
-import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import CurrencyInput from "@/components/CurrencyInput";
-import { 
-    formatCurrencyInput, 
-    numberToRawDigits, 
-    formatCurrency, 
-    formatCodug, 
-    formatPregao // NOVO: Importar formatPregao
-} from "@/lib/formatUtils";
-import SubitemCatalogDialog from './SubitemCatalogDialog';
-import CatmatCatalogDialog from './CatmatCatalogDialog';
-import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog';
-import ItemAquisicaoPNCPDialog from './ItemAquisicaoPNCPDialog';
+import { toast } from "sonner";
+import { Loader2, Save, Plus, Trash2, Search, AlertCircle, Check, XCircle, FileText } from "lucide-react";
+import { useFormNavigation } from "@/hooks/useFormNavigation";
+import { formatCurrencyInput, numberToRawDigits, formatCurrency, parseInputToNumber, formatNumber } from "@/lib/formatUtils";
+import { DiretrizMaterialConsumo, ItemAquisicao, ItemAquisicaoTemplate } from "@/types/diretrizesMaterialConsumo";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchCatmatShortDescription, fetchCatmatFullDescription, saveNewCatmatEntry, fetchAllExistingAcquisitionItems } from '@/integrations/supabase/api';
+import { useSession } from '@/components/SessionContextProvider';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+// Tipo para o item de aquisição no estado do formulário (inclui rawValor para input)
+type ItemAquisicaoForm = Omit<ItemAquisicaoTemplate, 'id'> & { 
+    id?: string; // ID opcional para novos itens
+    rawValor: string; 
+};
 
 interface MaterialConsumoDiretrizFormDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     selectedYear: number;
     diretrizToEdit: DiretrizMaterialConsumo | null;
-    onSave: (data: Partial<DiretrizMaterialConsumo> & { 
-        ano_referencia: number, 
-    }) => Promise<void>;
+    onSave: (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => Promise<void>;
     loading: boolean;
 }
 
-// Estado inicial para o formulário de Item de Aquisição
-const initialItemForm: Omit<ItemAquisicao, 'id'> & { rawValor: string } = {
+const initialItemState: ItemAquisicaoForm = {
     descricao_item: '',
-    descricao_reduzida: '', 
+    descricao_reduzida: '',
     valor_unitario: 0,
-    rawValor: numberToRawDigits(0),
+    rawValor: '',
     numero_pregao: '',
     uasg: '',
     codigo_catmat: '',
-    // unidade_medida: '', // REMOVIDO
-};
-
-// Definindo o tipo interno do formulário
-type InternalMaterialConsumoForm = Omit<DiretrizMaterialConsumo, 'user_id' | 'created_at' | 'updated_at'> & { 
-    id?: string,
-    ano_referencia: number;
+    nd: '33.90.30', // Default ND
 };
 
 const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDialogProps> = ({
@@ -60,571 +50,463 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     onSave,
     loading,
 }) => {
+    const { user } = useSession();
+    const queryClient = useQueryClient();
     const { handleEnterToNextField } = useFormNavigation();
     
-    // Referência para o formulário de edição do item
-    const itemFormRef = useRef<HTMLDivElement>(null);
-
-    const getInitialFormState = (editData: DiretrizMaterialConsumo | null): InternalMaterialConsumoForm => {
-        if (editData) {
-            return {
-                ...editData,
-                itens_aquisicao: editData.itens_aquisicao,
-                ano_referencia: editData.ano_referencia,
-            };
-        }
-        
-        return { 
-            id: undefined, // Adiciona 'id' opcional
-            nr_subitem: '', 
-            nome_subitem: '', 
-            descricao_subitem: '', 
-            itens_aquisicao: [],
-            ano_referencia: selectedYear,
-            ativo: true,
-        };
-    };
-
-    const [subitemForm, setSubitemForm] = useState<InternalMaterialConsumoForm>(() => getInitialFormState(diretrizToEdit));
-    
-    const [itemForm, setItemForm] = useState<typeof initialItemForm>(initialItemForm);
+    const [nrSubitem, setNrSubitem] = useState('');
+    const [nomeSubitem, setNomeSubitem] = useState('');
+    const [descricaoSubitem, setDescricaoSubitem] = useState<string | null>(null);
+    const [itensAquisicao, setItensAquisicao] = useState<ItemAquisicaoTemplate[]>([]);
+    const [isItemFormOpen, setIsItemFormOpen] = useState(false);
+    const [currentItem, setCurrentItem] = useState<ItemAquisicaoForm>(initialItemState);
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
+    const [isCatmatLoading, setIsCatmatLoading] = useState(false);
+    const [isSavingInternal, setIsSavingInternal] = useState(false);
     
-    // NOVO ESTADO: Item de aquisição que veio para revisão (do PNCP)
-    const [itemToReview, setItemToReview] = useState<ItemAquisicao | null>(null);
+    // Estado para armazenar todos os itens de aquisição existentes do usuário para o ano (para checagem de duplicidade)
+    const [existingAcquisitionItems, setExistingAcquisitionItems] = useState<ItemAquisicao[]>([]);
     
-    // NOVO ESTADO: Controle do diálogo do catálogo de Subitem
-    const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+    // Query para buscar todos os itens existentes (para checagem de duplicidade)
+    const { data: existingItemsData, isLoading: isLoadingExistingItems } = useQuery({
+        queryKey: ['allExistingAcquisitionItems', selectedYear, user?.id],
+        queryFn: () => fetchAllExistingAcquisitionItems(selectedYear, user!.id),
+        enabled: !!user?.id && selectedYear > 0 && open,
+        initialData: [],
+    });
     
-    // NOVO ESTADO: Controle do diálogo do catálogo CATMAT
-    const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
-    
-    // NOVO ESTADO: Controle do diálogo de importação em massa
-    const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
-    
-    // NOVO ESTADO: Controle do diálogo de importação PNCP
-    const [isPNCPSearchOpen, setIsPNCPSearchOpen] = useState(false);
+    useEffect(() => {
+        if (existingItemsData) {
+            setExistingAcquisitionItems(existingItemsData);
+        }
+    }, [existingItemsData]);
 
     useEffect(() => {
-        setSubitemForm(getInitialFormState(diretrizToEdit));
-        
-        // Ao editar, precisamos garantir que o itemForm reflita a estrutura ItemAquisicao
-        if (diretrizToEdit && editingItemId) {
-            const item = diretrizToEdit.itens_aquisicao.find(i => i.id === editingItemId);
-            if (item) {
-                handleEditItem(item);
-            }
+        if (diretrizToEdit) {
+            setNrSubitem(diretrizToEdit.nr_subitem);
+            setNomeSubitem(diretrizToEdit.nome_subitem);
+            setDescricaoSubitem(diretrizToEdit.descricao_subitem || null);
+            // Mapeia de volta para ItemAquisicaoTemplate[]
+            setItensAquisicao(diretrizToEdit.itens_aquisicao || []);
         } else {
-            setItemForm(initialItemForm);
+            setNrSubitem('');
+            setNomeSubitem('');
+            setDescricaoSubitem(null);
+            setItensAquisicao([]);
         }
+        setIsItemFormOpen(false);
+        setCurrentItem(initialItemState);
         setEditingItemId(null);
-    }, [diretrizToEdit, open, selectedYear]);
+    }, [diretrizToEdit, open]);
     
-    // Efeito para lidar com o item que veio para revisão
-    useEffect(() => {
-        if (itemToReview) {
-            handleEditItem(itemToReview);
-            setItemToReview(null); // Limpa o estado após o uso
-        }
-    }, [itemToReview]);
+    const isEditingDiretriz = !!diretrizToEdit;
+    const isGlobalLoading = loading || isLoadingExistingItems || isSavingInternal;
 
-    const handleItemCurrencyChange = (rawValue: string) => {
+    // --- Lógica de Itens de Aquisição ---
+    
+    const handleOpenItemForm = () => {
+        setCurrentItem(initialItemState);
+        setEditingItemId(null);
+        setIsItemFormOpen(true);
+    };
+    
+    const handleEditItem = (item: ItemAquisicaoTemplate) => {
+        setEditingItemId(item.id);
+        setCurrentItem({
+            ...item,
+            rawValor: numberToRawDigits(item.valor_unitario),
+        });
+        setIsItemFormOpen(true);
+    };
+    
+    const handleRemoveItem = (itemId: string) => {
+        setItensAquisicao(prev => prev.filter(item => item.id !== itemId));
+        toast.info("Item de aquisição removido.");
+    };
+    
+    const handleItemChange = (field: keyof ItemAquisicaoForm, value: string) => {
+        setCurrentItem(prev => ({ ...prev, [field]: value }));
+    };
+    
+    const handleCurrencyChange = (rawValue: string) => {
         const { numericValue, digits } = formatCurrencyInput(rawValue);
-        setItemForm(prev => ({
-            ...prev,
-            valor_unitario: numericValue,
-            rawValor: digits,
+        setCurrentItem(prev => ({ 
+            ...prev, 
+            valor_unitario: numericValue, 
+            rawValor: digits 
         }));
     };
     
-    // Função para lidar com a mudança do input UASG, aplicando a formatação
-    const handleUasgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const rawValue = e.target.value;
-        // Remove caracteres não numéricos e armazena apenas os dígitos
-        const rawDigits = rawValue.replace(/\D/g, '');
-        setItemForm({ ...itemForm, uasg: rawDigits }); 
-    };
-
-    // Função auxiliar para gerar a chave de unicidade de um item
-    const generateItemKey = (item: ItemAquisicao | typeof initialItemForm): string => {
-        // Normaliza e remove espaços extras
-        const normalize = (str: string) => 
-            (str || '')
-            .trim()
-            .toUpperCase()
-            .replace(/\s+/g, ' ');
+    const handleCatmatBlur = async () => {
+        const code = currentItem.codigo_catmat.trim();
+        if (!code) return;
+        
+        setIsCatmatLoading(true);
+        try {
+            // 1. Busca descrição reduzida no catálogo local
+            const { shortDescription, isCataloged } = await fetchCatmatShortDescription(code);
             
-        // Usamos a descrição completa para a chave de unicidade, mas mantemos os outros campos
-        const desc = normalize(item.descricao_item); 
-        const catmat = normalize(item.codigo_catmat);
-        const pregao = normalize(item.numero_pregao);
-        const uasg = normalize(item.uasg);
-        
-        return `${desc}|${catmat}|${pregao}|${uasg}`;
+            // 2. Se não catalogado ou sem descrição reduzida, busca descrição completa no PNCP
+            if (!isCataloged || !shortDescription) {
+                const { fullDescription, nomePdm } = await fetchCatmatFullDescription(code);
+                
+                if (fullDescription) {
+                    // Se encontrou no PNCP, usa a descrição completa e sugere a reduzida
+                    setCurrentItem(prev => ({
+                        ...prev,
+                        descricao_item: fullDescription,
+                        descricao_reduzida: shortDescription || nomePdm || fullDescription.substring(0, 50),
+                    }));
+                    
+                    if (!isCataloged) {
+                        toast.warning("CATMAT encontrado no PNCP, mas não no catálogo local. Preencha a descrição reduzida para catalogar.");
+                    }
+                } else {
+                    toast.warning("CATMAT não encontrado no catálogo local nem no PNCP.");
+                }
+            } else {
+                // Se encontrou no catálogo local, preenche a descrição reduzida
+                setCurrentItem(prev => ({
+                    ...prev,
+                    descricao_reduzida: shortDescription,
+                }));
+                toast.success("CATMAT encontrado no catálogo local.");
+            }
+        } catch (error) {
+            toast.error("Erro ao consultar CATMAT.");
+        } finally {
+            setIsCatmatLoading(false);
+        }
     };
-
-    const handleAddItem = () => {
-        if (!itemForm.descricao_item || itemForm.valor_unitario <= 0) {
-            toast.error("Preencha a Descrição Completa do Item e o Valor Unitário.");
+    
+    const handleSaveItem = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        if (!currentItem.descricao_item.trim() || !currentItem.descricao_reduzida.trim() || !currentItem.codigo_catmat.trim()) {
+            toast.error("Descrição completa, reduzida e código CATMAT são obrigatórios.");
+            return;
+        }
+        if (currentItem.valor_unitario <= 0) {
+            toast.error("O valor unitário deve ser maior que zero.");
             return;
         }
         
-        if (!itemForm.numero_pregao || itemForm.numero_pregao.trim() === '') {
-            toast.error("O campo 'Pregão/Ref. Preço' é obrigatório.");
-            return;
-        }
-
-        if (!itemForm.uasg || itemForm.uasg.trim() === '' || itemForm.uasg.length !== 6) {
-            toast.error("O campo 'UASG' é obrigatório e deve ter 6 dígitos.");
-            return;
-        }
-
-        const newItem: ItemAquisicao = {
-            // Se estiver editando, mantém o ID. Se for novo, gera um ID local.
-            id: editingItemId || Math.random().toString(36).substring(2, 9), 
-            descricao_item: itemForm.descricao_item,
-            descricao_reduzida: itemForm.descricao_reduzida, 
-            valor_unitario: itemForm.valor_unitario,
-            numero_pregao: itemForm.numero_pregao,
-            uasg: itemForm.uasg,
-            codigo_catmat: itemForm.codigo_catmat, 
-            // unidade_medida: itemForm.unidade_medida, // REMOVIDO
-        };
+        setIsSavingInternal(true);
         
-        // 1. Verificar duplicidade antes de adicionar/atualizar
-        const newItemKey = generateItemKey(newItem);
-        const isDuplicate = subitemForm.itens_aquisicao.some(existingItem => {
-            // Se estiver editando, permite que o item atual mantenha sua chave
-            if (editingItemId && existingItem.id === editingItemId) return false;
-            return generateItemKey(existingItem) === newItemKey;
-        });
-        
-        if (isDuplicate) {
-            toast.error("Este item de aquisição já existe nesta diretriz (duplicidade de Descrição Completa, CATMAT, Pregão e UASG).");
-            return;
+        try {
+            // 1. Salvar/Atualizar CATMAT no catálogo local se a descrição reduzida for nova
+            const { shortDescription, isCataloged } = await fetchCatmatShortDescription(currentItem.codigo_catmat);
+            
+            if (!isCataloged || shortDescription !== currentItem.descricao_reduzida) {
+                await saveNewCatmatEntry(
+                    currentItem.codigo_catmat, 
+                    currentItem.descricao_item, 
+                    currentItem.descricao_reduzida
+                );
+                toast.info("CATMAT atualizado/catalogado com descrição reduzida.");
+                // Invalida a query do catálogo para refletir a mudança
+                queryClient.invalidateQueries({ queryKey: ['catmatShortDescription', currentItem.codigo_catmat] });
+            }
+            
+            // 2. Criar ou Atualizar o Item de Aquisição
+            const itemToSave: ItemAquisicaoTemplate = {
+                id: editingItemId || crypto.randomUUID(),
+                descricao_item: currentItem.descricao_item.trim(),
+                descricao_reduzida: currentItem.descricao_reduzida.trim(),
+                valor_unitario: currentItem.valor_unitario,
+                numero_pregao: currentItem.numero_pregao.trim(),
+                uasg: currentItem.uasg.trim(),
+                codigo_catmat: currentItem.codigo_catmat.trim(),
+                nd: currentItem.nd,
+            };
+            
+            setItensAquisicao(prev => {
+                if (editingItemId) {
+                    return prev.map(item => item.id === editingItemId ? itemToSave : item);
+                } else {
+                    return [...prev, itemToSave];
+                }
+            });
+            
+            setIsItemFormOpen(false);
+            setCurrentItem(initialItemState);
+            setEditingItemId(null);
+            toast.success(`Item de aquisição ${editingItemId ? 'atualizado' : 'adicionado'} com sucesso.`);
+            
+        } catch (error) {
+            toast.error("Falha ao salvar item de aquisição.");
+            console.error(error);
+        } finally {
+            setIsSavingInternal(false);
         }
-
-        const updatedItens = editingItemId
-            ? subitemForm.itens_aquisicao.map(t => t.id === editingItemId ? newItem : t)
-            : [...subitemForm.itens_aquisicao, newItem];
-
-        setSubitemForm(prev => ({ ...prev, itens_aquisicao: updatedItens }));
-
-        // Resetar formulário de item
-        setEditingItemId(null);
-        setItemForm(initialItemForm);
     };
+    
+    // --- Lógica de Diretriz Principal ---
 
-    const handleEditItem = (item: ItemAquisicao) => {
-        setEditingItemId(item.id);
-        setItemForm({
-            descricao_item: item.descricao_item,
-            descricao_reduzida: item.descricao_reduzida, 
-            valor_unitario: item.valor_unitario,
-            rawValor: numberToRawDigits(item.valor_unitario),
-            numero_pregao: item.numero_pregao,
-            uasg: item.uasg,
-            codigo_catmat: item.codigo_catmat, 
-            // unidade_medida: item.unidade_medida, // REMOVIDO
-        });
+    const handleSaveDiretriz = async (e: React.FormEvent) => {
+        e.preventDefault();
         
-        // Rola a tela para o formulário de edição
-        itemFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    };
-
-    const handleDeleteItem = (itemId: string) => {
-        const updatedItens = subitemForm.itens_aquisicao.filter(t => t.id !== itemId);
-        setSubitemForm(prev => ({ ...prev, itens_aquisicao: updatedItens }));
-    };
-
-    const handleSave = async () => {
-        if (!subitemForm.nr_subitem || !subitemForm.nome_subitem) {
-            toast.error("Preencha o Número e o Nome do Subitem da ND.");
+        if (!nrSubitem.trim() || !nomeSubitem.trim()) {
+            toast.error("Número e Nome do Subitem são obrigatórios.");
+            return;
+        }
+        if (itensAquisicao.length === 0) {
+            toast.error("Adicione pelo menos um item de aquisição à diretriz.");
             return;
         }
         
-        if (subitemForm.itens_aquisicao.length === 0) {
-            toast.error("Adicione pelo menos um item de aquisição.");
-            return;
+        // Checagem de duplicidade (apenas para novos registros)
+        if (!isEditingDiretriz) {
+            const isDuplicate = existingAcquisitionItems.some(item => 
+                item.nr_subitem === nrSubitem.trim() && item.nome_subitem === nomeSubitem.trim()
+            );
+            if (isDuplicate) {
+                toast.error("Já existe um Subitem da ND com este número e nome para este ano.");
+                return;
+            }
         }
-        
-        const dataToSave = {
-            ...subitemForm,
+
+        const dataToSave: Partial<DiretrizMaterialConsumo> & { ano_referencia: number } = {
+            id: diretrizToEdit?.id,
             ano_referencia: selectedYear,
-            id: subitemForm.id,
-            // Garantir que itens_aquisicao seja um array limpo
-            itens_aquisicao: subitemForm.itens_aquisicao,
+            nr_subitem: nrSubitem.trim(),
+            nome_subitem: nomeSubitem.trim(),
+            descricao_subitem: descricaoSubitem?.trim() || null,
+            // Salva ItemAquisicaoTemplate[]
+            itens_aquisicao: itensAquisicao, 
+            ativo: diretrizToEdit?.ativo ?? true,
         };
-
+        
         await onSave(dataToSave);
         onOpenChange(false);
     };
 
-    // Função para receber itens importados do Excel
-    const handleBulkImport = (newItems: ItemAquisicao[]) => {
-        if (newItems.length === 0) {
-            toast.info("Nenhum item novo para adicionar.");
-            setIsBulkUploadOpen(false); 
-            return;
-        }
-        
-        // 1. Adiciona os novos itens válidos aos existentes
-        setSubitemForm(prev => ({
-            ...prev,
-            itens_aquisicao: [...prev.itens_aquisicao, ...newItems],
-        }));
-        
-        toast.success(`${newItems.length} itens importados com sucesso e adicionados à lista.`);
-
-        // 2. Limpa o formulário de item individual
-        setItemForm(initialItemForm);
-        setEditingItemId(null);
-        
-        // 3. FECHAR O DIÁLOGO DE IMPORTAÇÃO EM MASSA
-        setIsBulkUploadOpen(false); 
-    };
-    
-    // NOVO: Função para receber itens importados do PNCP (após inspeção)
-    const handlePNCPImport = (newItems: ItemAquisicao[]) => {
-        if (newItems.length === 0) {
-            toast.info("Nenhum item novo para adicionar.");
-            return;
-        }
-        
-        // Verifica se o primeiro item é um item de Preço Médio (que precisa de UASG/Pregão manual)
-        // Itens de Preço Médio têm UASG vazia e Pregão padrão 'Em processo de abertura'
-        const firstItem = newItems[0];
-        const isPriceReferenceItem = firstItem.uasg === '' && firstItem.numero_pregao === 'Em processo de abertura';
-
-        if (isPriceReferenceItem) {
-            // 1. Adiciona o item à lista (com UASG/Pregão vazios)
-            setSubitemForm(prev => ({
-                ...prev,
-                itens_aquisicao: [...prev.itens_aquisicao, firstItem],
-            }));
-            
-            // 2. Coloca o item em modo de edição para que o usuário preencha os campos faltantes
-            handleEditItem(firstItem);
-            toast.info("Item de Preço Médio importado. Por favor, preencha a UASG e o Pregão/Ref. Preço antes de adicionar.");
-            
-            // Se houver mais itens (o que não deve acontecer no fluxo de Preço Médio), eles são descartados
-            if (newItems.length > 1) {
-                console.warn("Múltiplos itens de preço médio importados. Apenas o primeiro foi enviado para edição.");
-            }
-        } else {
-            // Se for ARP (ou qualquer outro item com UASG/Pregão preenchidos), adiciona diretamente
-            
-            // 1. Adiciona os novos itens válidos aos existentes
-            setSubitemForm(prev => ({
-                ...prev,
-                itens_aquisicao: [...prev.itens_aquisicao, ...newItems],
-            }));
-            
-            toast.success(`${newItems.length} itens importados do PNCP com sucesso e adicionados à lista.`);
-
-            // 2. Limpa o formulário de item individual
-            setItemForm(initialItemForm);
-            setEditingItemId(null);
-        }
-        
-        // 3. NÃO FECHA O DIÁLOGO PNCP (Isso é controlado pelo ItemAquisicaoPNCPDialog)
-    };
-    
-    // NOVO: Função para receber um item para revisão (chamado pelo PNCPInspectionDialog)
-    const handleReviewItem = (item: ItemAquisicao) => {
-        // Define o item no estado para que o useEffect o processe
-        setItemToReview(item);
-    };
-
-
-    // Função para receber dados do catálogo de Subitem e atualizar o formulário
-    const handleCatalogSelect = (catalogItem: { nr_subitem: string, nome_subitem: string, descricao_subitem: string | null }) => {
-        setSubitemForm(prev => ({
-            ...prev,
-            nr_subitem: catalogItem.nr_subitem,
-            nome_subitem: catalogItem.nome_subitem,
-            descricao_subitem: catalogItem.descricao_subitem,
-        }));
-        setIsCatalogOpen(false);
-    };
-    
-    // Função para receber dados do catálogo CATMAT e atualizar o formulário de item
-    const handleCatmatSelect = (catmatItem: { code: string, description: string, short_description: string | null }) => {
-        setItemForm(prev => ({
-            ...prev,
-            codigo_catmat: catmatItem.code,
-            // Descrição Completa recebe a descrição completa do CATMAT
-            descricao_item: catmatItem.description, 
-            // Descrição Reduzida recebe o nome reduzido do CATMAT
-            descricao_reduzida: catmatItem.short_description || '', 
-        }));
-        setIsCatmatCatalogOpen(false);
-    };
-    
-    const isEditingSubitem = !!subitemForm.id;
-    
-    // 1. Ordenar os itens de aquisição por descrição completa
-    const sortedItens = [...subitemForm.itens_aquisicao].sort((a, b) => 
-        a.descricao_item.localeCompare(b.descricao_item)
-    );
-
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-                    <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>
-                        {isEditingSubitem ? `Editar Subitem ND: ${subitemForm.nr_subitem}` : "Novo Subitem da Natureza da Despesa"}
-                    </DialogTitle>
-                    <DialogDescription>
-                        Cadastre o subitem da ND e os itens de aquisição associados.
-                    </DialogDescription>
+                    <DialogTitle>{isEditingDiretriz ? "Editar Subitem da ND" : "Novo Subitem da ND"}</DialogTitle>
+                    <p className="text-sm text-muted-foreground">Ano de Referência: {selectedYear}</p>
                 </DialogHeader>
-
-                <div className="space-y-6 py-2">
-                    {/* Seção de Dados do Subitem (Card 266 equivalente) */}
-                    <Card className="p-4">
-                        <div className="flex justify-between items-center mb-4">
-                            <CardTitle className="text-base">
-                                Dados do Subitem da ND
-                            </CardTitle>
-                            <Button 
-                                type="button" 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => setIsCatalogOpen(true)}
-                                disabled={loading}
-                            >
-                                <BookOpen className="h-4 w-4 mr-2" />
-                                Catálogo ND
-                            </Button>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="nr_subitem">Número do Subitem *</Label>
-                                <Input
-                                    id="nr_subitem"
-                                    value={subitemForm.nr_subitem}
-                                    onChange={(e) => setSubitemForm({ ...subitemForm, nr_subitem: e.target.value })}
-                                    placeholder="Ex: 01"
-                                    disabled={loading}
-                                    onKeyDown={handleEnterToNextField}
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2 col-span-2">
-                                <Label htmlFor="nome_subitem">Nome do Subitem *</Label>
-                                <Input
-                                    id="nome_subitem"
-                                    value={subitemForm.nome_subitem}
-                                    onChange={(e) => setSubitemForm({ ...subitemForm, nome_subitem: e.target.value })}
-                                    placeholder="Ex: Material de Expediente"
-                                    disabled={loading}
-                                    onKeyDown={handleEnterToNextField}
-                                    required
-                                />
-                            </div>
-                        </div>
-                        
-                        <div className="space-y-2 mt-4">
-                            <Label htmlFor="descricao_subitem">Descrição do Subitem (Propósito)</Label>
-                            <Textarea
-                                id="descricao_subitem"
-                                value={subitemForm.descricao_subitem || ''}
-                                onChange={(e) => setSubitemForm({ ...subitemForm, descricao_subitem: e.target.value })}
-                                placeholder="Descreva o propósito geral deste subitem da ND."
-                                disabled={loading}
-                                rows={3}
+                
+                <form onSubmit={handleSaveDiretriz} className="space-y-6 py-2">
+                    
+                    {/* DADOS PRINCIPAIS DA DIRETRIZ */}
+                    <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="nrSubitem">Nr Subitem *</Label>
+                            <Input
+                                id="nrSubitem"
+                                value={nrSubitem}
+                                onChange={(e) => setNrSubitem(e.target.value)}
+                                placeholder="Ex: 01"
+                                required
+                                disabled={isGlobalLoading}
+                                onKeyDown={handleEnterToNextField}
                             />
                         </div>
-                    </Card>
-
-                    {/* Seção de Gerenciamento de Itens de Aquisição (Card 325 equivalente) */}
-                    <Card className="p-4 space-y-4">
-                        <div className="flex justify-between items-center">
-                            <CardTitle className="text-base font-semibold">
-                                {editingItemId ? "Editar Item de Aquisição" : "Adicionar Novo Item de Aquisição"}
-                            </CardTitle>
-                            <div className="flex gap-2">
-                                {/* NOVO BOTÃO: Importar API PNCP */}
-                                <Button 
-                                    type="button" 
-                                    variant="secondary" 
-                                    size="sm" 
-                                    onClick={() => setIsPNCPSearchOpen(true)}
-                                    disabled={loading}
-                                >
-                                    <Search className="h-4 w-4 mr-2" />
-                                    Importar API PNCP
-                                </Button>
-                                
-                                {/* Botão Importar Excel */}
-                                <Button 
-                                    type="button" 
-                                    variant="secondary" 
-                                    size="sm" 
-                                    onClick={() => setIsBulkUploadOpen(true)}
-                                    disabled={loading}
-                                >
-                                    <FileSpreadsheet className="h-4 w-4 mr-2" />
-                                    Importar Excel
-                                </Button>
-                            </div>
+                        <div className="space-y-2 col-span-2">
+                            <Label htmlFor="nomeSubitem">Nome do Subitem *</Label>
+                            <Input
+                                id="nomeSubitem"
+                                value={nomeSubitem}
+                                onChange={(e) => setNomeSubitem(e.target.value)}
+                                placeholder="Ex: Material de Escritório"
+                                required
+                                disabled={isGlobalLoading}
+                                onKeyDown={handleEnterToNextField}
+                            />
                         </div>
+                        <div className="space-y-2 col-span-3">
+                            <Label htmlFor="descricaoSubitem">Descrição Detalhada (Opcional)</Label>
+                            <Textarea
+                                id="descricaoSubitem"
+                                value={descricaoSubitem || ''}
+                                onChange={(e) => setDescricaoSubitem(e.target.value)}
+                                placeholder="Descrição completa do subitem para referência."
+                                disabled={isGlobalLoading}
+                                rows={2}
+                            />
+                        </div>
+                    </div>
+                    
+                    {/* GERENCIAMENTO DE ITENS DE AQUISIÇÃO */}
+                    <div className="space-y-4 border-t pt-4">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                            Itens de Aquisição ({itensAquisicao.length})
+                        </h3>
                         
-                        {/* Formulário de Item - Reorganizado em três linhas lógicas */}
-                        <div className="border p-3 rounded-lg bg-muted/50 space-y-4" ref={itemFormRef}>
-                            {/* PRIMEIRA LINHA: CATMAT, Botão CATMAT e Descrição Completa */}
-                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                                {/* Campo Código CATMAT (1 coluna) */}
-                                <div className="space-y-2 col-span-1">
-                                    <Label htmlFor="item-catmat">Cód. CATMAT</Label>
-                                    <Input
-                                        id="item-catmat"
-                                        value={itemForm.codigo_catmat}
-                                        onChange={(e) => setItemForm({ ...itemForm, codigo_catmat: e.target.value })}
-                                        placeholder="Ex: 123456789"
-                                        onKeyDown={handleEnterToNextField}
-                                    />
-                                    {/* CORREÇÃO: Botão Catálogo CATMAT movido para baixo do input Cód. CATMAT, removendo mt-2 */}
-                                    <Button 
-                                        type="button" 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => setIsCatmatCatalogOpen(true)}
-                                        disabled={loading}
-                                        className="w-full" // w-full para ocupar a largura da coluna
-                                    >
-                                        <BookOpen className="h-4 w-4 mr-2" />
-                                        CATMAT
+                        {/* Formulário de Adição/Edição de Item */}
+                        {isItemFormOpen && (
+                            <Card className="p-4 bg-muted/50">
+                                <h4 className="font-semibold mb-3">{editingItemId ? "Editar Item" : "Adicionar Novo Item"}</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    
+                                    {/* CATMAT */}
+                                    <div className="space-y-2 col-span-1">
+                                        <Label htmlFor="codigo_catmat">Cód. CATMAT *</Label>
+                                        <Input
+                                            id="codigo_catmat"
+                                            value={currentItem.codigo_catmat}
+                                            onChange={(e) => handleItemChange('codigo_catmat', e.target.value)}
+                                            onBlur={handleCatmatBlur}
+                                            placeholder="Ex: 301000000"
+                                            required
+                                            disabled={isGlobalLoading || isCatmatLoading}
+                                        />
+                                        {isCatmatLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                                    </div>
+                                    
+                                    {/* ND */}
+                                    <div className="space-y-2 col-span-1">
+                                        <Label htmlFor="nd">Natureza da Despesa *</Label>
+                                        <Input
+                                            id="nd"
+                                            value={currentItem.nd}
+                                            onChange={(e) => handleItemChange('nd', e.target.value as '33.90.30' | '33.90.39')}
+                                            placeholder="Ex: 33.90.30"
+                                            required
+                                            disabled={isGlobalLoading}
+                                        />
+                                    </div>
+                                    
+                                    {/* VALOR UNITÁRIO */}
+                                    <div className="space-y-2 col-span-2">
+                                        <Label htmlFor="valor_unitario">Valor Unitário (R$) *</Label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                                            <Input
+                                                id="valor_unitario"
+                                                type="text"
+                                                inputMode="numeric"
+                                                className="pl-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                value={currentItem.rawValor.length === 0 && currentItem.valor_unitario === 0 ? "" : formatCurrencyInput(currentItem.rawValor).formatted}
+                                                onChange={(e) => handleCurrencyChange(e.target.value)}
+                                                required
+                                                disabled={isGlobalLoading}
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* DESCRIÇÃO REDUZIDA */}
+                                    <div className="space-y-2 col-span-2">
+                                        <Label htmlFor="descricao_reduzida">Descrição Reduzida (Catálogo) *</Label>
+                                        <Input
+                                            id="descricao_reduzida"
+                                            value={currentItem.descricao_reduzida}
+                                            onChange={(e) => handleItemChange('descricao_reduzida', e.target.value)}
+                                            placeholder="Ex: Caneta esferográfica azul"
+                                            required
+                                            disabled={isGlobalLoading}
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Usada para exibição resumida.
+                                        </p>
+                                    </div>
+                                    
+                                    {/* PREGÃO / UASG */}
+                                    <div className="space-y-2 col-span-1">
+                                        <Label htmlFor="numero_pregao">Pregão (Opcional)</Label>
+                                        <Input
+                                            id="numero_pregao"
+                                            value={currentItem.numero_pregao}
+                                            onChange={(e) => handleItemChange('numero_pregao', e.target.value)}
+                                            placeholder="Ex: 001/2024"
+                                            disabled={isGlobalLoading}
+                                        />
+                                    </div>
+                                    <div className="space-y-2 col-span-1">
+                                        <Label htmlFor="uasg">UASG (Opcional)</Label>
+                                        <Input
+                                            id="uasg"
+                                            value={currentItem.uasg}
+                                            onChange={(e) => handleItemChange('uasg', e.target.value)}
+                                            placeholder="Ex: 160001"
+                                            disabled={isGlobalLoading}
+                                        />
+                                    </div>
+                                    
+                                    {/* DESCRIÇÃO COMPLETA */}
+                                    <div className="space-y-2 col-span-4">
+                                        <Label htmlFor="descricao_item">Descrição Completa *</Label>
+                                        <Textarea
+                                            id="descricao_item"
+                                            value={currentItem.descricao_item}
+                                            onChange={(e) => handleItemChange('descricao_item', e.target.value)}
+                                            placeholder="Descrição detalhada do item, conforme PNCP/Catálogo."
+                                            required
+                                            disabled={isGlobalLoading}
+                                            rows={3}
+                                        />
+                                    </div>
+                                </div>
+                                
+                                <div className="flex justify-end gap-3 pt-4 border-t mt-4">
+                                    <Button type="button" variant="outline" onClick={() => setIsItemFormOpen(false)} disabled={isGlobalLoading}>
+                                        <XCircle className="mr-2 h-4 w-4" />
+                                        Cancelar
+                                    </Button>
+                                    <Button type="button" onClick={handleSaveItem} disabled={isGlobalLoading || isCatmatLoading}>
+                                        {isGlobalLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                        {editingItemId ? "Atualizar Item" : "Adicionar Item"}
                                     </Button>
                                 </div>
-                                
-                                {/* Campo Descrição Completa (4 colunas) */}
-                                <div className="space-y-2 col-span-4">
-                                    <Label htmlFor="item-descricao">Descrição Completa *</Label>
-                                    <Textarea 
-                                        id="item-descricao"
-                                        value={itemForm.descricao_item}
-                                        onChange={(e) => setItemForm({ ...itemForm, descricao_item: e.target.value })}
-                                        placeholder="Ex: Caneta Esferográfica Azul 1.0mm"
-                                        rows={2} 
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            {/* SEGUNDA LINHA: Nome Reduzido, Valor, Pregão, UASG */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                {/* Campo Nome Reduzido (1 coluna) */}
-                                <div className="space-y-2 col-span-1">
-                                    <Label htmlFor="item-descricao-reduzida">Nome Reduzido</Label>
-                                    <Input
-                                        id="item-descricao-reduzida"
-                                        value={itemForm.descricao_reduzida}
-                                        onChange={(e) => setItemForm({ ...itemForm, descricao_reduzida: e.target.value })}
-                                        placeholder="Ex: Caneta Azul"
-                                        onKeyDown={handleEnterToNextField}
-                                    />
-                                </div>
-                                
-                                {/* Campo Valor Unitário (1 coluna) */}
-                                <div className="space-y-2 col-span-1">
-                                    <Label htmlFor="item-valor">Valor Unitário (R$) *</Label>
-                                    <CurrencyInput
-                                        id="item-valor"
-                                        rawDigits={itemForm.rawValor}
-                                        onChange={handleItemCurrencyChange}
-                                        placeholder="0,00"
-                                        onKeyDown={handleEnterToNextField}
-                                        required
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                        * Valor estimado.
-                                    </p>
-                                </div>
-                                
-                                {/* Campo Pregão (1 coluna) */}
-                                <div className="space-y-2 col-span-1">
-                                    <Label htmlFor="item-pregao">Pregão/Ref. Preço *</Label>
-                                    <Input
-                                        id="item-pregao"
-                                        value={itemForm.numero_pregao}
-                                        onChange={(e) => setItemForm({ ...itemForm, numero_pregao: e.target.value })}
-                                        placeholder="Ex: 90.001/24"
-                                        onKeyDown={handleEnterToNextField}
-                                        required
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                        *Em processo de abertura.
-                                    </p>
-                                </div>
-                                
-                                {/* Campo UASG (1 coluna) */}
-                                <div className="space-y-2 col-span-1">
-                                    <Label htmlFor="item-uasg">UASG *</Label>
-                                    <Input
-                                        id="item-uasg"
-                                        value={itemForm.uasg}
-                                        onChange={handleUasgChange} 
-                                        placeholder="Ex: 160.001"
-                                        onKeyDown={handleEnterToNextField}
-                                        maxLength={6}
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            
-                            {/* TERCEIRA LINHA: Botão de Ação */}
-                            <div className="grid grid-cols-1">
-                                <Button 
-                                    type="button" 
-                                    onClick={handleAddItem}
-                                    disabled={
-                                        !itemForm.descricao_item || 
-                                        itemForm.valor_unitario <= 0 ||
-                                        !itemForm.numero_pregao || 
-                                        itemForm.uasg.length !== 6
-                                    }
-                                >
-                                    {editingItemId ? <Pencil className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
-                                    {editingItemId ? "Atualizar Item" : "Adicionar Item"}
-                                </Button>
-                            </div>
-                        </div>
+                            </Card>
+                        )}
                         
-                        {/* Tabela de Itens de Aquisição */}
-                        {sortedItens.length > 0 ? (
+                        {/* Lista de Itens */}
+                        {itensAquisicao.length > 0 && (
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[20%]">Nome Reduzido</TableHead>
-                                        <TableHead className="w-[20%]">Descrição Completa</TableHead>
-                                        <TableHead className="w-[10%] text-center">Cód. CATMAT</TableHead>
-                                        <TableHead className="w-[10%] text-center">Pregão/Ref.</TableHead>
-                                        <TableHead className="w-[10%] text-center">UASG</TableHead>
-                                        <TableHead className="w-[10%] text-right">Valor Unitário</TableHead>
-                                        <TableHead className="w-[10%] text-right">Ações</TableHead>
+                                        <TableHead className="w-[100px] text-center">ND</TableHead>
+                                        <TableHead>Item de Aquisição</TableHead>
+                                        <TableHead className="text-right">Vlr Unitário</TableHead>
+                                        <TableHead className="w-[100px] text-center">Ações</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {sortedItens.map(item => (
+                                    {itensAquisicao.map(item => (
                                         <TableRow key={item.id}>
-                                            <TableCell className="font-medium text-sm">{item.descricao_reduzida || 'N/A'}</TableCell>
-                                            <TableCell className="font-medium text-xs">{item.descricao_item}</TableCell>
-                                            <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
-                                            <TableCell className="text-center text-sm">{formatPregao(item.numero_pregao) || 'N/A'}</TableCell>
-                                            <TableCell className="text-center text-sm">{formatCodug(item.uasg) || 'N/A'}</TableCell>
-                                            <TableCell className="text-right font-bold text-primary text-sm">
-                                                {formatCurrency(item.valor_unitario)}
+                                            <TableCell className="text-center text-xs font-medium">{item.nd}</TableCell>
+                                            <TableCell>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <div className="flex flex-col cursor-help">
+                                                                <span className="font-medium">{item.descricao_reduzida}</span>
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({item.uasg})
+                                                                </span>
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent className="max-w-md">
+                                                            <p className="font-bold mb-1">Descrição Completa:</p>
+                                                            <p className="text-sm whitespace-normal">{item.descricao_item}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                             </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    <Button variant="ghost" size="icon" onClick={() => handleEditItem(item)}>
+                                            <TableCell className="text-right font-medium">{formatCurrency(item.valor_unitario)}</TableCell>
+                                            <TableCell className="text-center">
+                                                <div className="flex justify-center gap-1">
+                                                    <Button 
+                                                        type="button" 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        onClick={() => handleEditItem(item)}
+                                                        disabled={isGlobalLoading || isItemFormOpen}
+                                                    >
                                                         <Pencil className="h-4 w-4" />
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteItem(item.id)} className="text-destructive hover:bg-destructive/10">
-                                                        <Trash2 className="h-4 w-4" />
+                                                    <Button 
+                                                        type="button" 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        onClick={() => handleRemoveItem(item.id)}
+                                                        disabled={isGlobalLoading || isItemFormOpen}
+                                                    >
+                                                        <Trash2 className="h-4 w-4 text-destructive" />
                                                     </Button>
                                                 </div>
                                             </TableCell>
@@ -632,60 +514,33 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     ))}
                                 </TableBody>
                             </Table>
-                        ) : (
-                            <p className="text-muted-foreground text-center py-4">Nenhum item de aquisição cadastrado. Adicione itens acima ou importe via Excel.</p>
                         )}
-                    </Card>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-4 border-t">
-                    <Button 
-                        type="button" 
-                        onClick={handleSave}
-                        disabled={loading || !subitemForm.nr_subitem || !subitemForm.nome_subitem || subitemForm.itens_aquisicao.length === 0}
-                    >
-                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        {isEditingSubitem ? "Salvar Alterações" : "Cadastrar Subitem"}
-                    </Button>
-                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-                        Cancelar
-                    </Button>
-                </div>
+                        
+                        {!isItemFormOpen && (
+                            <Button 
+                                type="button" 
+                                onClick={handleOpenItemForm}
+                                disabled={isGlobalLoading}
+                                variant="outline"
+                                className="w-full mt-4"
+                            >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Adicionar Item de Aquisição
+                            </Button>
+                        )}
+                    </div>
+                    
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isGlobalLoading}>
+                            Cancelar
+                        </Button>
+                        <Button type="submit" disabled={isGlobalLoading || itensAquisicao.length === 0}>
+                            {isGlobalLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                            Salvar Diretriz
+                        </Button>
+                    </DialogFooter>
+                </form>
             </DialogContent>
-            
-            {/* Diálogo do Catálogo de Subitem */}
-            <SubitemCatalogDialog 
-                open={isCatalogOpen}
-                onOpenChange={setIsCatalogOpen}
-                onSelect={handleCatalogSelect}
-            />
-            
-            {/* Diálogo do Catálogo CATMAT */}
-            <CatmatCatalogDialog
-                open={isCatmatCatalogOpen}
-                onOpenChange={setIsCatmatCatalogOpen}
-                onSelect={handleCatmatSelect}
-            />
-            
-            {/* Diálogo de Importação em Massa */}
-            <ItemAquisicaoBulkUploadDialog
-                open={isBulkUploadOpen}
-                onOpenChange={setIsBulkUploadOpen}
-                onImport={handleBulkImport}
-                // NOVO: Passa a lista de itens já existentes na diretriz atual
-                existingItemsInDiretriz={subitemForm.itens_aquisicao} 
-            />
-            
-            {/* NOVO: Diálogo de Importação PNCP */}
-            <ItemAquisicaoPNCPDialog
-                open={isPNCPSearchOpen}
-                onOpenChange={setIsPNCPSearchOpen}
-                onImport={handlePNCPImport}
-                // NOVO: Passa a lista de itens já existentes na diretriz atual
-                existingItemsInDiretriz={subitemForm.itens_aquisicao}
-                onReviewItem={handleReviewItem} // NOVO: Passando a função de revisão
-                selectedYear={selectedYear} // Passa o ano de referência
-            />
         </Dialog>
     );
 };

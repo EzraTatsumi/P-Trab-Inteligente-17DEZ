@@ -1,9 +1,10 @@
 import { Tables } from "@/integrations/supabase/types";
 
 /**
- * Estrutura de um item de aquisição dentro de uma Diretriz de Material de Consumo.
+ * Estrutura de um item de aquisição (template) armazenado na Diretriz.
+ * Contém dados de catálogo, preço e a ND associada.
  */
-export interface ItemAquisicao {
+export interface ItemAquisicaoTemplate {
     id: string; // ID local temporário para manipulação no frontend
     descricao_item: string; // Descrição completa do item
     descricao_reduzida: string; // Novo campo: Descrição reduzida do item
@@ -11,10 +12,16 @@ export interface ItemAquisicao {
     numero_pregao: string;
     uasg: string;
     codigo_catmat: string;
-    // NOVO: Campos necessários para cálculo e agrupamento
+    nd: '33.90.30' | '33.90.39'; // Natureza da Despesa (Deve ser definida no template)
+}
+
+/**
+ * Estrutura completa de um item de aquisição, incluindo dados de cálculo e agrupamento,
+ * usada nos Registros do PTrab.
+ */
+export interface ItemAquisicao extends ItemAquisicaoTemplate {
     quantidade: number; // Quantidade solicitada no PTrab
     valor_total: number; // Valor unitário * quantidade
-    nd: '33.90.30' | '33.90.39'; // Natureza da Despesa
     nr_subitem: string; // Número do subitem (ex: 01)
     nome_subitem: string; // Nome do subitem (ex: Material de Escritório)
 }
@@ -23,8 +30,8 @@ export interface ItemAquisicao {
  * Estrutura da Diretriz de Material de Consumo (Tabela diretrizes_material_consumo).
  */
 export interface DiretrizMaterialConsumo extends Omit<Tables<'diretrizes_material_consumo'>, 'itens_aquisicao'> {
-    // Sobrescreve itens_aquisicao para usar o tipo ItemAquisicao[]
-    itens_aquisicao: ItemAquisicao[];
+    // Sobrescreve itens_aquisicao para usar o tipo ItemAquisicaoTemplate[]
+    itens_aquisicao: ItemAquisicaoTemplate[];
 }
 
 /**
@@ -36,14 +43,13 @@ export interface StagingRow {
     nome_subitem: string;
     descricao_subitem: string | null;
 
-    // Dados do Item de Aquisição
+    // Dados do Item de Aquisição (Agora usa ItemAquisicaoTemplate fields)
     codigo_catmat: string;
     descricao_item: string;
     descricao_reduzida: string;
     valor_unitario: number;
     numero_pregao: string;
     uasg: string;
-    // unidade_medida: string; // REMOVIDO
 
     // Status de Validação
     isValid: boolean;

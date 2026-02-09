@@ -734,13 +734,15 @@ const MaterialConsumoForm = () => {
         
         // 2. Reconstruir a lista de AcquisitionGroups a partir de TODOS os registros do grupo
         const groupsFromRecords: AcquisitionGroup[] = group.records.map(registro => {
-            const { totalValue, totalND30: nd30, totalND39: nd39 } = calculateGroupTotals((registro.itens_aquisicao as unknown as ItemAquisicao[]) || []);
+            // O registro do DB armazena ItemAquisicao (completo)
+            const items = (registro.itens_aquisicao as unknown as ItemAquisicao[]) || [];
+            const { totalValue, totalND30: nd30, totalND39: nd39 } = calculateGroupTotals(items);
             
             return {
                 tempId: registro.id, // Usamos o ID real do DB como tempId
                 groupName: registro.group_name,
                 groupPurpose: registro.group_purpose || null,
-                items: (registro.itens_aquisicao as unknown as ItemAquisicao[]) || [],
+                items: items,
                 totalValue: totalValue,
                 totalND30: nd30,
                 totalND39: nd39,
