@@ -760,7 +760,7 @@ const MaterialConsumoForm = () => {
                 organizacao: newFormData.om_favorecida,
                 ug: newFormData.ug_favorecida,
                 om_detentora: newFormData.om_destino,
-                ug_detentora: newFormData.ug_detentora,
+                ug_detentora: newFormData.ug_destino,
                 dias_operacao: newFormData.dias_operacao,
                 efetivo: newFormData.efetivo,
                 fase_atividade: newFormData.fase_atividade,
@@ -797,7 +797,7 @@ const MaterialConsumoForm = () => {
                 organizacao: newFormData.om_favorecida,
                 ug: newFormData.ug_favorecida,
                 om_detentora: newFormData.om_destino,
-                ug_detentora: newFormData.ug_detentora,
+                ug_detentora: newFormData.ug_destino,
                 dias_operacao: newFormData.dias_operacao,
                 efetivo: newFormData.efetivo,
                 fase_atividade: newFormData.fase_atividade,
@@ -1150,10 +1150,10 @@ const MaterialConsumoForm = () => {
                 <Card>
                     <CardHeader>
                         <CardTitle>
-                            Material de Consumo (ND 33.90.30/39)
+                            Material de Consumo
                         </CardTitle>
                         <CardDescription>
-                            Aquisição de Material de Consumo.
+                            Detalhamento das necessidades de aquisição de Material de Consumo.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
