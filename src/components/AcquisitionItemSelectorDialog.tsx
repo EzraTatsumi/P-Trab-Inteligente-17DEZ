@@ -130,9 +130,12 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                     };
                 }
                 
-                // Adiciona os itens filtrados ao grupo
+                // Adiciona os itens filtrados ao grupo, INJETANDO os dados do subitem
                 groups[subitemKey].items.push(...filteredItems.map(item => ({
                     ...item,
+                    // INJEÇÃO DOS DADOS DO SUBITEM NA ESTRUTURA DO ITEM DE AQUISIÇÃO
+                    nr_subitem: diretriz.nr_subitem,
+                    nome_subitem: diretriz.nome_subitem,
                     isSelected: !!selectedItemsMap[item.id],
                 })));
             }
