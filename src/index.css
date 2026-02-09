@@ -19,10 +19,10 @@ All colors MUST be HSL.
     --popover-foreground: 210 24% 16%;
 
     /* Cores principais */
-    --primary: 218 70% 30%; /* Azul escuro mais vibrante (Restaurado) */
+    --primary: 218 50% 15%; /* Azul escuro da Hero Section */
     --primary-foreground: 0 0% 100%; /* Texto branco */
     --primary-light: 218 40% 25%; /* Azul um pouco mais claro */
-    --primary-dark: 218 80% 20%; /* Azul ainda mais escuro (Ajustado para o gradiente) */
+    --primary-dark: 218 60% 10%; /* Azul ainda mais escuro */
 
     --secondary: 180 70% 30%; /* Verde-água escuro (manter para outros elementos) */
     --secondary-foreground: 0 0% 100%;
@@ -40,7 +40,7 @@ All colors MUST be HSL.
 
     --border: 220 10% 85%; /* Borda clara */
     --input: 220 10% 85%;
-    --ring: 218 70% 30%; /* Anel com a cor primary (Ajustado) */
+    --ring: 218 50% 15%; /* Anel com a cor primary */
 
     --radius: 1rem;
 
@@ -84,10 +84,10 @@ All colors MUST be HSL.
     --popover: 210 35% 12%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 218 70% 30%; /* Azul escuro mais vibrante (Restaurado) */
+    --primary: 218 50% 15%; /* Azul escuro da Hero Section (manter igual ao light para consistência) */
     --primary-foreground: 0 0% 100%;
     --primary-light: 218 40% 25%;
-    --primary-dark: 218 80% 20%;
+    --primary-dark: 218 60% 10%;
 
     --secondary: 180 60% 50%; /* Verde-água médio */
     --secondary-foreground: 0 0% 100%;
@@ -105,7 +105,7 @@ All colors MUST be HSL.
 
     --border: 220 10% 25%; /* Borda escura */
     --input: 220 10% 25%;
-    --ring: 218 70% 30%;
+    --ring: 218 50% 15%;
 
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary-dark)) 0%, hsl(var(--primary)) 100%);
     --gradient-hero: linear-gradient(180deg, hsl(var(--primary-dark)) 0%, hsl(var(--primary)) 100%);
