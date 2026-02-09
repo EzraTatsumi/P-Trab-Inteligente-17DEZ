@@ -1627,7 +1627,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
         if (totalMaterialPermanente === 0) return null;
         
         return (
-            <div className="space-y-3 border-l-4 border-green-500 pl-3">
+            <div className="space-y-3 border-l-4 border-green-500 pl-3 pt-4">
                 <div className="flex items-center justify-between text-xs font-semibold text-green-600 mb-2">
                     <div className="flex items-center gap-2">
                         <HardHat className="h-3 w-3" />
@@ -1637,7 +1637,9 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground">
                     <span className="w-1/2 text-left">Itens de Material Permanente</span>
-                    <span className="w-1/4 text-right font-medium"></span>
+                    <span className="w-1/4 text-right font-medium">
+                        {/* Vazio */}
+                    </span>
                     <span className="w-1/4 text-right font-medium">
                         {formatCurrency(totalMaterialPermanente)}
                     </span>
