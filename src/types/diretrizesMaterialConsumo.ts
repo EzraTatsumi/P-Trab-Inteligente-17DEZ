@@ -11,7 +11,12 @@ export interface ItemAquisicao {
     numero_pregao: string;
     uasg: string;
     codigo_catmat: string;
-    // unidade_medida: string; // REMOVIDO
+    // NOVO: Campos necessários para cálculo e agrupamento
+    quantidade: number; // Quantidade solicitada no PTrab
+    valor_total: number; // Valor unitário * quantidade
+    nd: '33.90.30' | '33.90.39'; // Natureza da Despesa
+    nr_subitem: string; // Número do subitem (ex: 01)
+    nome_subitem: string; // Nome do subitem (ex: Material de Escritório)
 }
 
 /**

@@ -512,7 +512,7 @@ const MaterialConsumoForm = () => {
                                                         {item.descricao_item}
                                                         <p className="text-muted-foreground text-[10px]">CATMAT: {item.codigo_catmat}</p>
                                                     </TableCell>
-                                                    <TableCell className="text-center text-xs">{item.quantidade}</TableCell>
+                                                    <TableCell className="text-center text-xs">{item.quantidade}</TableCell> 
                                                     <TableCell className="text-right text-xs font-medium">{formatCurrency(item.valor_total)}</TableCell>
                                                     <TableCell className="text-center text-xs font-medium">{item.nd}</TableCell>
                                                 </TableRow>
@@ -627,7 +627,7 @@ const MaterialConsumoForm = () => {
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
                     om_detentora: formData.om_destino,
-                    ug_detentora: formData.ug_destino,
+                    ug_detentora: formData.ug_destino, 
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
@@ -771,7 +771,7 @@ const MaterialConsumoForm = () => {
                 organizacao: newFormData.om_favorecida,
                 ug: newFormData.ug_favorecida,
                 om_detentora: newFormData.om_destino,
-                ug_detentora: newFormData.ug_detentora,
+                ug_detentora: newFormData.ug_destino, 
                 dias_operacao: newFormData.dias_operacao,
                 efetivo: newFormData.efetivo,
                 fase_atividade: newFormData.fase_atividade,
@@ -781,7 +781,7 @@ const MaterialConsumoForm = () => {
                     organizacao: newFormData.om_favorecida,
                     ug: newFormData.ug_favorecida,
                     om_detentora: newFormData.om_destino,
-                    ug_detentora: newFormData.ug_detentora,
+                    ug_detentora: newFormData.ug_destino,
                     dias_operacao: newFormData.dias_operacao,
                     efetivo: newFormData.efetivo,
                     fase_atividade: newFormData.fase_atividade,
@@ -808,7 +808,7 @@ const MaterialConsumoForm = () => {
                 organizacao: newFormData.om_favorecida,
                 ug: newFormData.ug_favorecida,
                 om_detentora: newFormData.om_destino,
-                ug_detentora: newFormData.ug_detentora,
+                ug_detentora: newFormData.ug_destino, 
                 dias_operacao: newFormData.dias_operacao,
                 efetivo: newFormData.efetivo,
                 fase_atividade: newFormData.fase_atividade,
@@ -909,7 +909,7 @@ const MaterialConsumoForm = () => {
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
                     om_detentora: formData.om_destino,
-                    ug_detentora: formData.ug_destino,
+                    ug_detentora: formData.ug_destino, 
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,

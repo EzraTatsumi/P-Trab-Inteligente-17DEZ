@@ -56,7 +56,7 @@ const MaterialConsumoMemoria: React.FC<MaterialConsumoMemoriaProps> = ({
                     Memória de Cálculo: {group.organizacao} (UG: {formatCodug(group.ug)})
                     <div className="flex items-center gap-2">
                         {isCustomized && !isEditing && (
-                            <Badge variant="success" className="text-xs">Customizada</Badge>
+                            <Badge variant="ptrab-aprovado" className="text-xs">Customizada</Badge>
                         )}
                         <span className="font-extrabold text-lg text-foreground">
                             {formatCurrency(group.totalGeral)}
