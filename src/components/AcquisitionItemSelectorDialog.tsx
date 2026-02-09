@@ -107,6 +107,7 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
             const filteredItems = diretriz.itens_aquisicao.filter(item => {
                 const searchString = [
                     item.descricao_item,
+                    item.short_description, // Incluindo a descrição reduzida na busca
                     item.codigo_catmat,
                     item.numero_pregao,
                     item.uasg,
@@ -250,22 +251,26 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                                                     onClick={() => handleToggleItem(item)}
                                                 >
                                                     <div className="flex items-center gap-3">
+                                                        {/* Indicador de Seleção (Corrigido para ser um círculo perfeito) */}
                                                         <div className={cn(
-                                                            "h-4 w-4 rounded-full border-2 flex items-center justify-center",
+                                                            "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0",
                                                             item.isSelected ? "bg-primary border-primary" : "border-gray-300"
                                                         )}>
                                                             {item.isSelected && <Check className="h-3 w-3 text-white" />}
                                                         </div>
-                                                        <div className="text-sm">
-                                                            <p className="font-medium">{item.descricao_item}</p>
+                                                        <div className="text-sm min-w-0 flex-1">
+                                                            {/* Exibir descrição reduzida ou completa */}
+                                                            <p className="font-medium truncate">
+                                                                {item.short_description || item.descricao_item}
+                                                            </p>
+                                                            {/* Exibir CATMAT | Pregão (UASG) */}
                                                             <p className="text-xs text-muted-foreground">
-                                                                CATMAT: {item.codigo_catmat} | ND: {item.nd} | Pregão: {item.numero_pregao}
+                                                                CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({item.uasg})
                                                             </p>
                                                         </div>
                                                     </div>
-                                                    <div className="text-right shrink-0">
+                                                    <div className="text-right shrink-0 ml-4">
                                                         <p className="font-semibold text-sm">{formatCurrency(item.valor_unitario)}</p>
-                                                        <p className="text-xs text-muted-foreground">Vlr Unitário</p>
                                                     </div>
                                                 </div>
                                             ))}
