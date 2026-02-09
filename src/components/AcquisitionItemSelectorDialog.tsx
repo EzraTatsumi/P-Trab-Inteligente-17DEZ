@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatCurrency, formatNumber } from '@/lib/formatUtils';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Importar Tooltip
 
 // Tipo para o item de aquisição com status de seleção
 interface SelectableItem extends ItemAquisicao {
@@ -225,59 +226,68 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                                 </AlertDescription>
                             </Alert>
                         ) : (
-                            groupedAndFilteredItems.map(group => (
-                                <Collapsible 
-                                    key={group.nr_subitem}
-                                    open={expandedSubitems[group.nr_subitem] ?? false}
-                                    onOpenChange={(open) => setExpandedSubitems(prev => ({ ...prev, [group.nr_subitem]: open }))}
-                                >
-                                    <CollapsibleTrigger asChild>
-                                        <div className="flex justify-between items-center p-3 bg-muted rounded-md cursor-pointer hover:bg-muted/80 transition-colors">
-                                            <span className="font-semibold text-sm">
-                                                {group.nr_subitem} - {group.nome_subitem} ({group.items.length} itens)
-                                            </span>
-                                            {expandedSubitems[group.nr_subitem] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                        </div>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent className="pt-2">
-                                        <div className="space-y-1">
-                                            {group.items.map(item => (
-                                                <div 
-                                                    key={item.id} 
-                                                    className={cn(
-                                                        "flex items-center justify-between p-2 border rounded-md cursor-pointer transition-colors",
-                                                        item.isSelected ? "bg-primary/10 border-primary/50" : "hover:bg-gray-50"
-                                                    )}
-                                                    onClick={() => handleToggleItem(item)}
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        {/* Indicador de Seleção (Corrigido para ser um círculo perfeito) */}
-                                                        <div className={cn(
-                                                            "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0",
-                                                            item.isSelected ? "bg-primary border-primary" : "border-gray-300"
-                                                        )}>
-                                                            {item.isSelected && <Check className="h-3 w-3 text-white" />}
-                                                        </div>
-                                                        <div className="text-sm min-w-0 flex-1">
-                                                            {/* Exibir descrição reduzida ou completa */}
-                                                            <p className="font-medium truncate">
-                                                                {item.short_description || item.descricao_item}
-                                                            </p>
-                                                            {/* Exibir CATMAT | Pregão (UASG) */}
-                                                            <p className="text-xs text-muted-foreground">
-                                                                CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({item.uasg})
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right shrink-0 ml-4">
-                                                        <p className="font-semibold text-sm">{formatCurrency(item.valor_unitario)}</p>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </CollapsibleContent>
-                                </Collapsible>
-                            ))
+                            <TooltipProvider>
+                                {groupedAndFilteredItems.map(group => (
+                                    <Collapsible 
+                                        key={group.nr_subitem}
+                                        open={expandedSubitems[group.nr_subitem] ?? false}
+                                        onOpenChange={(open) => setExpandedSubitems(prev => ({ ...prev, [group.nr_subitem]: open }))}
+                                    >
+                                        <CollapsibleTrigger asChild>
+                                            <div className="flex justify-between items-center p-3 bg-muted rounded-md cursor-pointer hover:bg-muted/80 transition-colors">
+                                                <span className="font-semibold text-sm">
+                                                    {group.nr_subitem} - {group.nome_subitem} ({group.items.length} itens)
+                                                </span>
+                                                {expandedSubitems[group.nr_subitem] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                            </div>
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent className="pt-2">
+                                            <div className="space-y-1">
+                                                {group.items.map(item => (
+                                                    <Tooltip key={item.id}>
+                                                        <TooltipTrigger asChild>
+                                                            <div 
+                                                                className={cn(
+                                                                    "flex items-center justify-between p-2 border rounded-md cursor-pointer transition-colors",
+                                                                    item.isSelected ? "bg-primary/10 border-primary/50" : "hover:bg-gray-50"
+                                                                )}
+                                                                onClick={() => handleToggleItem(item)}
+                                                            >
+                                                                <div className="flex items-center gap-3">
+                                                                    {/* Indicador de Seleção (Corrigido para ser um círculo perfeito) */}
+                                                                    <div className={cn(
+                                                                        "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0",
+                                                                        item.isSelected ? "bg-primary border-primary" : "border-gray-300"
+                                                                    )}>
+                                                                        {item.isSelected && <Check className="h-3 w-3 text-white" />}
+                                                                    </div>
+                                                                    <div className="text-sm min-w-0 flex-1">
+                                                                        {/* Exibir descrição reduzida ou completa */}
+                                                                        <p className="font-medium truncate">
+                                                                            {item.short_description || item.descricao_item}
+                                                                        </p>
+                                                                        {/* Exibir CATMAT | Pregão (UASG) */}
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({item.uasg})
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right shrink-0 ml-4">
+                                                                    <p className="font-semibold text-sm">{formatCurrency(item.valor_unitario)}</p>
+                                                                </div>
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent className="max-w-md">
+                                                            <p className="font-bold mb-1">Descrição Completa:</p>
+                                                            <p className="text-sm whitespace-normal">{item.descricao_item}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                ))}
+                                            </div>
+                                        </CollapsibleContent>
+                                    </Collapsible>
+                                ))}
+                            </TooltipProvider>
                         )}
                     </div>
                 </div>
