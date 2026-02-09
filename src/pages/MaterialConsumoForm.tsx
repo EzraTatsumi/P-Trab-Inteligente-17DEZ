@@ -429,7 +429,7 @@ const MaterialConsumoForm = () => {
             return { ...prev, acquisitionGroups: newGroups };
         });
         
-        // CORREÇÃO DE FLUXO: Fecha o formulário inline e limpa o item de edição
+        // CORREÇÃO DE FLUXO: Fech o formulário inline e limpa o item de edição
         setIsGroupFormOpen(false);
         setGroupToEdit(undefined);
         toast.success(`Grupo "${finalGroup.groupName}" salvo no formulário.`);

@@ -983,8 +983,8 @@ export type Database = {
           dias_operacao: number
           efetivo: number
           fase_atividade: string | null
-          group_name: string
-          group_purpose: string | null
+          group_name: string // ADICIONADO
+          group_purpose: string | null // ADICIONADO
           itens_aquisicao: Json
           valor_total: number
           valor_nd_30: number
@@ -1003,8 +1003,8 @@ export type Database = {
           dias_operacao?: number
           efetivo?: number
           fase_atividade?: string | null
-          group_name: string
-          group_purpose?: string | null
+          group_name: string // ADICIONADO
+          group_purpose?: string | null // ADICIONADO
           itens_aquisicao?: Json
           valor_total?: number
           valor_nd_30?: number
@@ -1023,8 +1023,8 @@ export type Database = {
           dias_operacao?: number
           efetivo?: number
           fase_atividade?: string | null
-          group_name?: string
-          group_purpose?: string | null
+          group_name?: string // ADICIONADO
+          group_purpose?: string | null // ADICIONADO
           itens_aquisicao?: Json
           valor_total?: number
           valor_nd_30?: number
@@ -2066,12 +2066,10 @@ export type CompositeTypes<
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DefaultSchema["CompositeTypes"]
 }
-  ? (DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"])[CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+  ? (DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : never
 
 export const Constants = {
   public: {
