@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Save, Package, FileText, Loader2, Trash2, Pencil } from "lucide-react";
 import { AcquisitionGroup } from "@/lib/materialConsumoUtils";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { formatCurrency, formatNumber, formatCodug } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, formatCodug, formatPregao } from "@/lib/formatUtils";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -221,11 +221,11 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                             id="groupPurpose"
                             value={groupPurpose}
                             onChange={(e) => setGroupPurpose(e.target.value)}
-                            placeholder="Ex: Apoio à Seção de Logística"
+                            placeholder="Ex: a montagem da Base Operacional"
                             disabled={isSaving}
                         />
                         <p className="text-xs text-muted-foreground">
-                            Finalidade para a Memória de Cálculo não automatizada.
+                            *Cabeçalho personalizado para a Memória de Cálculo não automatizada.
                         </p>
                     </div>
                 </div>
@@ -295,7 +295,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                                                     Cód. CATMAT: {item.codigo_catmat || 'N/A'}
                                                                 </p>
                                                                 <p className="text-muted-foreground text-[10px]">
-                                                                    Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}
+                                                                    Pregão: {formatPregao(item.numero_pregao)} | UASG: {formatCodug(item.uasg) || 'N/A'}
                                                                 </p>
                                                             </TableCell>
                                                             <TableCell className="text-center text-sm text-muted-foreground">
