@@ -50,7 +50,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
     const [items, setItems] = useState<ItemAquisicao[]>(initialGroup?.items || []);
     const [tempId] = useState(initialGroup?.tempId || crypto.randomUUID());
     
-    // Estado para controlar a expansão dos subitens
+    // Estado para controlar a expansão dos subitens. Inicialmente, todos abertos se houver itens.
     const [expandedSubitems, setExpandedSubitems] = useState<Record<string, boolean>>({});
 
     // Efeito para processar itens retornados do seletor
@@ -84,6 +84,9 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
             // 3. Atualiza a lista de itens (mantendo apenas os selecionados)
             setItems(Object.values(newItemsMap));
             onClearSelectedItems(); // Limpa o estado global do seletor
+            
+            // 4. FECHA TODOS OS GRUPOS DE SUBITENS APÓS A SELEÇÃO
+            setExpandedSubitems({}); 
             
             // Calcula quantos itens foram adicionados/removidos
             const addedCount = Object.values(newItemsMap).filter(item => !existingItemIds.has(item.id)).length;
@@ -184,6 +187,9 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
             totalND39: 0, // Placeholder
         } as AcquisitionGroup);
         
+        // Fecha todos os subitens após salvar o grupo
+        setExpandedSubitems({});
+        
         console.log("[AcquisitionGroupForm] onSave chamado com sucesso.");
     };
     
@@ -232,6 +238,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                 {groupedItems.map(group => (
                                     <Collapsible 
                                         key={group.subitemNr} 
+                                        // Controla o estado de expansão
                                         open={expandedSubitems[group.subitemNr] ?? true}
                                         onOpenChange={(open) => setExpandedSubitems(prev => ({ ...prev, [group.subitemNr]: open }))}
                                     >

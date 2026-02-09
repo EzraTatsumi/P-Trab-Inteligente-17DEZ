@@ -471,12 +471,12 @@ const MaterialConsumoForm = () => {
         return (
             <div className="space-y-3">
                 {groups.map(group => (
-                    <Collapsible key={group.tempId} defaultOpen>
+                    <Collapsible key={group.tempId} defaultOpen={false}> {/* Alterado para defaultOpen={false} */}
                         <Card className="border-l-2 border-primary/70">
                             <CollapsibleTrigger asChild>
                                 <div className="flex justify-between items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors">
                                     <div className="flex items-center gap-2">
-                                        <Package className="h-4 w-4 text-primary" />
+                                        {/* REMOVIDO: <Package className="h-4 w-4 text-primary" /> */}
                                         <span className="font-semibold">{group.groupName}</span>
                                         <Badge variant="secondary" className="text-xs">
                                             {group.items.length} Itens
@@ -500,7 +500,7 @@ const MaterialConsumoForm = () => {
                                     </div>
                                 </div>
                             </CollapsibleTrigger>
-                            <CollapsibleContent className="border-t p-3 bg-background max-h-[100px] overflow-y-auto">
+                            <CollapsibleContent className="border-t p-3 bg-background max-h-[350px] overflow-y-auto">
                                 <div className="space-y-2">
                                     <p className="text-sm text-muted-foreground">Finalidade: {group.groupPurpose || 'Não especificada'}</p>
                                     <Table>
@@ -1169,6 +1169,7 @@ const MaterialConsumoForm = () => {
     
     const handleItemsSelected = (items: ItemAquisicao[]) => {
         setSelectedItemsFromSelector(items);
+        setIsItemSelectorOpen(false); // Fechar o seletor após a seleção
         // O AcquisitionGroupForm irá processar esta lista no seu useEffect
     };
     
