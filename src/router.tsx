@@ -53,6 +53,14 @@ const routes: RouteObject[] = [
   { path: "/ptrab/horas-voo-avex", element: <HorasVooForm /> },
   { path: "/ptrab/concessionaria", element: <ConcessionariaForm /> },
   { path: "/ptrab/material-consumo", element: <MaterialConsumoForm /> },
+  { path: "/config/custos-operacionais", element: <CustosOperacionaisPage /> },
+  { path: "/config/diretrizes", element: <DiretrizesCusteioPage /> },
+  { path: "/config/visualizacao", element: <VisualizacaoConfigPage /> },
+  { path: "/config/om", element: <OmConfigPage /> },
+  { path: "/config/om/bulk-upload", element: <OmBulkUploadPage /> },
+  { path: "/config/ptrab-export-import", element: <PTrabExportImportPage /> },
+  { path: "/config/profile", element: <UserProfilePage /> },
+  { path: "/share-ptrab", element: <SharePage /> },
   { path: "*", element: <NotFound /> },
 ];
 
