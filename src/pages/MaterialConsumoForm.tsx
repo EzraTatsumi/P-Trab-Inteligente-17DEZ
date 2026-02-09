@@ -625,8 +625,8 @@ const MaterialConsumoForm = () => {
                     groupKey: group.tempId,
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
-                    om_detentora: formData.om_destino,
-                    ug_detentora: formData.ug_destino,
+                    om_detentora: formData.om_destino, // CORRIGIDO
+                    ug_detentora: formData.ug_destino, // CORRIGIDO
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
@@ -635,8 +635,8 @@ const MaterialConsumoForm = () => {
                         p_trab_id: ptrabId!,
                         organizacao: formData.om_favorecida,
                         ug: formData.ug_favorecida,
-                        om_detentora: formData.om_destino,
-                        ug_detentora: formData.ug_destino,
+                        om_detentora: formData.om_destino, // CORRIGIDO
+                        ug_detentora: formData.ug_destino, // CORRIGIDO
                         dias_operacao: formData.dias_operacao,
                         efetivo: formData.efetivo,
                         fase_atividade: formData.fase_atividade,
@@ -662,8 +662,8 @@ const MaterialConsumoForm = () => {
                     p_trab_id: ptrabId!,
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
-                    om_detentora: formData.om_destino,
-                    ug_detentora: formData.ug_destino,
+                    om_detentora: formData.om_destino, // CORRIGIDO
+                    ug_detentora: formData.ug_destino, // CORRIGIDO
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
@@ -806,8 +806,8 @@ const MaterialConsumoForm = () => {
                 groupKey: group.tempId,
                 organizacao: newFormData.om_favorecida,
                 ug: newFormData.ug_favorecida,
-                om_detentora: newFormData.om_destino,
-                ug_detentora: newFormData.ug_detentora,
+                om_detentora: newFormData.om_destino, // CORRIGIDO
+                ug_detentora: newFormData.ug_destino, // CORRIGIDO
                 dias_operacao: newFormData.dias_operacao,
                 efetivo: newFormData.efetivo,
                 fase_atividade: newFormData.fase_atividade,
@@ -816,8 +816,8 @@ const MaterialConsumoForm = () => {
                     p_trab_id: ptrabId!,
                     organizacao: newFormData.om_favorecida,
                     ug: newFormData.ug_favorecida,
-                    om_detentora: newFormData.om_destino,
-                    ug_detentora: newFormData.ug_detentora,
+                    om_detentora: newFormData.om_destino, // CORRIGIDO
+                    ug_detentora: newFormData.ug_destino, // CORRIGIDO
                     dias_operacao: newFormData.dias_operacao,
                     efetivo: newFormData.efetivo,
                     fase_atividade: newFormData.fase_atividade,
@@ -843,8 +843,8 @@ const MaterialConsumoForm = () => {
                 p_trab_id: ptrabId!,
                 organizacao: formData.om_favorecida,
                 ug: formData.ug_favorecida,
-                om_detentora: formData.om_destino,
-                ug_detentora: formData.ug_detentora,
+                om_detentora: formData.om_destino, // CORRIGIDO
+                ug_detentora: formData.ug_destino, // CORRIGIDO
                 dias_operacao: formData.dias_operacao,
                 efetivo: formData.efetivo,
                 fase_atividade: formData.fase_atividade,
@@ -907,8 +907,8 @@ const MaterialConsumoForm = () => {
                     groupKey: group.tempId,
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
-                    om_detentora: formData.om_destino,
-                    ug_detentora: formData.ug_destino,
+                    om_detentora: formData.om_destino, // CORRIGIDO
+                    ug_detentora: formData.ug_destino, // CORRIGIDO
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
@@ -917,8 +917,8 @@ const MaterialConsumoForm = () => {
                         p_trab_id: ptrabId!,
                         organizacao: formData.om_favorecida,
                         ug: formData.ug_favorecida,
-                        om_detentora: formData.om_destino,
-                        ug_detentora: formData.ug_destino,
+                        om_detentora: formData.om_destino, // CORRIGIDO
+                        ug_detentora: formData.ug_destino, // CORRIGIDO
                         dias_operacao: formData.dias_operacao,
                         efetivo: formData.efetivo,
                         fase_atividade: formData.fase_atividade,
@@ -944,8 +944,8 @@ const MaterialConsumoForm = () => {
                     p_trab_id: ptrabId!,
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
-                    om_detentora: formData.om_destino,
-                    ug_detentora: formData.ug_destino,
+                    om_detentora: formData.om_destino, // CORRIGIDO
+                    ug_detentora: formData.ug_destino, // CORRIGIDO
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
@@ -1388,7 +1388,7 @@ const MaterialConsumoForm = () => {
                                                     {formatCurrency(calculos.totalGeral)}
                                                 </span>
                                             </div>
-                                        </Card>
+                                        </div>
                                         
                                         {/* BOTÕES DE AÇÃO */}
                                         <div className="flex justify-end gap-3 pt-4">
