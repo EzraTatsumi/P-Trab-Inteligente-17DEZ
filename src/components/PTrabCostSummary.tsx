@@ -1627,7 +1627,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
         if (totalMaterialPermanente === 0) return null;
         
         return (
-            <div className="space-y-3 border-l-4 border-green-500 pl-3 pt-4">
+            <div className="space-y-3 border-l-4 border-green-500 pl-3">
                 <div className="flex items-center justify-between text-xs font-semibold text-green-600 mb-2">
                     <div className="flex items-center gap-2">
                         <HardHat className="h-3 w-3" />
@@ -1806,10 +1806,14 @@ export const PTrabCostSummary = ({
         </div>
         
         {/* Aba Material Permanente */}
-        <TabDetails mode="permanente" data={totals} />
+        <div className="pt-4">
+            <TabDetails mode="permanente" data={totals} />
+        </div>
         
         {/* Aba Aviação do Exército */}
-        <TabDetails mode="avex" data={totals} />
+        <div className="pt-4">
+            <TabDetails mode="avex" data={totals} />
+        </div>
     </div>
   );
   
