@@ -278,9 +278,9 @@ const MaterialConsumoForm = () => {
                 ug_favorecida: prev.ug_favorecida,
                 om_destino: prev.om_destino,
                 ug_destino: prev.ug_destino,
-                dias_operacao: prev.dias_operacao,
-                efetivo: prev.efetivo,
-                fase_atividade: prev.fase_atividade,
+                dias_operacao: 0,
+                efetivo: 0,
+                fase_atividade: "",
                 acquisitionGroups: [], // Limpa os grupos selecionados após salvar
             }));
             
@@ -371,7 +371,10 @@ const MaterialConsumoForm = () => {
     
     // Efeito de inicialização da OM Favorecida e OM Destino
     useEffect(() => {
-        if (ptrabData && !editingId) {
+        // Salvaguarda: Se estiver no modo Novo Registro E já houver grupos pendentes, NÃO reseta os campos de contexto.
+        const shouldResetContext = !editingId && formData.acquisitionGroups.length === 0;
+
+        if (ptrabData && shouldResetContext) {
             // Modo Novo Registro: Limpar
             setFormData(prev => ({
                 ...initialFormState,
@@ -517,9 +520,12 @@ const MaterialConsumoForm = () => {
                                                         {item.quantidade}
                                                     </TableCell>
                                                     <TableCell className="text-xs">
-                                                        {item.descricao_item}
+                                                        {item.descricao_reduzida || item.descricao_item}
                                                         <p className="text-muted-foreground text-[10px]">
-                                                            CATMAT: {item.codigo_catmat} | ND: {item.nd}
+                                                            Cód. CATMAT: {item.codigo_catmat} | ND: {item.nd}
+                                                        </p>
+                                                        <p className="text-muted-foreground text-[10px]">
+                                                            Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}
                                                         </p>
                                                     </TableCell>
                                                     <TableCell className="text-right text-xs text-muted-foreground">
