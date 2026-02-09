@@ -21,7 +21,7 @@ interface ConsolidatedMaterialConsumoMemoriaProps {
     handleRestaurarMemoriaAutomatica: (registroId: string) => Promise<void>;
 }
 
-const ConsolidatedMaterialConsumoMemoria: React.FC<ConsolidatedMaterialConsumoMemoriaProps> = ({
+export const ConsolidatedMaterialConsumoMemoria: React.FC<ConsolidatedMaterialConsumoMemoriaProps> = ({
     group,
     isPTrabEditable,
     isSaving,
@@ -130,5 +130,3 @@ const ConsolidatedMaterialConsumoMemoria: React.FC<ConsolidatedMaterialConsumoMe
         </Card>
     );
 };
-
-export default ConsolidatedMaterialConsumoMemoria;
