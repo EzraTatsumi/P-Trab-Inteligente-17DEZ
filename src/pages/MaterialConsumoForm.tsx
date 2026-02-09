@@ -472,7 +472,7 @@ const MaterialConsumoForm = () => {
             <div className="space-y-3">
                 {groups.map(group => (
                     <Collapsible key={group.tempId} defaultOpen>
-                        <Card className="border-l-4 border-primary/70">
+                        <Card className="border-l-2 border-primary/70">
                             <CollapsibleTrigger asChild>
                                 <div className="flex justify-between items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors">
                                     <div className="flex items-center gap-2">
@@ -500,7 +500,7 @@ const MaterialConsumoForm = () => {
                                     </div>
                                 </div>
                             </CollapsibleTrigger>
-                            <CollapsibleContent className="border-t p-3 bg-background">
+                            <CollapsibleContent className="border-t p-3 bg-background max-h-[100px] overflow-y-auto">
                                 <div className="space-y-2">
                                     <p className="text-sm text-muted-foreground">Finalidade: {group.groupPurpose || 'Não especificada'}</p>
                                     <Table>
