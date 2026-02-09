@@ -64,7 +64,7 @@ interface OmTotals {
     suprimentoFundos: { total: number, totalND30: number, totalND39: number, totalEquipes: number, totalDias: number };
     passagens: { total: number, totalQuantidade: number, totalTrechos: number };
     concessionaria: { total: number, totalAgua: number, totalEnergia: number, totalRegistros: number };
-    horasVoo: { total: number, quantidadeHV: number, groupedHV: Record<string, { totalValor: number, totalHV: number }> };
+    horasVoo: { total: number, totalND30: number, totalND39: number, quantidadeHV: number, groupedHV: Record<string, { totalValor: number, totalHV: number }> };
     materialConsumo: { total: number, totalND30: number, totalND39: number };
 }
 
@@ -204,7 +204,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     suprimentoFundos: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
     passagens: { total: 0, totalQuantidade: 0, totalTrechos: 0 },
     concessionaria: { total: 0, totalAgua: 0, totalEnergia: 0, totalRegistros: 0 },
-    horasVoo: { total: 0, quantidadeHV: 0, groupedHV: {} },
+    horasVoo: { total: 0, totalND30: 0, totalND39: 0, quantidadeHV: 0, groupedHV: {} },
     materialConsumo: { total: 0, totalND30: 0, totalND39: 0 },
 });
 
@@ -319,7 +319,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       .select('valor_total, valor_nd_39, dias_operacao, efetivo, categoria, organizacao, ug'),
     supabase
       .from('horas_voo_registros')
-      .select('valor_total, quantidade_hv, tipo_anv, organizacao, ug'),
+      .select('valor_total, valor_nd_30, valor_nd_39, quantidade_hv, tipo_anv, organizacao, ug'),
     supabase
       .from('material_consumo_registros') // NOVO
       .select('valor_total, valor_nd_30, valor_nd_39, organizacao, ug'),
@@ -525,10 +525,14 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
   safeHorasVooData.forEach(record => {
     const omTotals = getOmTotals(record.organizacao, record.ug);
     const valorTotal = Number(record.valor_total || 0);
+    const valorND30 = Number(record.valor_nd_30 || 0);
+    const valorND39 = Number(record.valor_nd_39 || 0);
     const quantidadeHv = Number(record.quantidade_hv || 0);
     const tipoAnv = record.tipo_anv || 'Não Especificado';
     
     omTotals.horasVoo.total += valorTotal;
+    omTotals.horasVoo.totalND30 += valorND30;
+    omTotals.horasVoo.totalND39 += valorND39;
     omTotals.horasVoo.quantidadeHV += quantidadeHv;
     omTotals.totalOperacional += valorTotal;
     omTotals.totalAviacaoExercito += valorTotal;
@@ -831,6 +835,8 @@ const getHorasVooData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['hora
     const globalData = data as PTrabAggregatedTotals;
     return {
         total: globalData.totalHorasVoo,
+        totalND30: globalData.totalMaterialConsumoND30, // Fallback global
+        totalND39: globalData.totalMaterialConsumoND39, // Fallback global
         quantidadeHV: globalData.quantidadeHorasVoo,
         groupedHV: globalData.groupedHorasVoo,
     };
@@ -856,14 +862,18 @@ const CategoryCard = ({
   value, 
   icon: Icon, 
   colorClass, 
+  nd15,
   nd30, 
+  nd33,
   nd39 
 }: { 
   label: string, 
   value: number, 
   icon: any, 
   colorClass: string,
+  nd15?: number,
   nd30?: number,
+  nd33?: number,
   nd39?: number
 }) => {
   if (value === 0) return null;
@@ -884,22 +894,32 @@ const CategoryCard = ({
         </div>
       </div>
       
-      {(nd30 !== undefined || nd39 !== undefined) && (
-        <div className="flex items-center gap-2 mt-auto pt-2 border-t border-dashed border-border/50">
-          {nd30 !== undefined && (
+      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-auto pt-2 border-t border-dashed border-border/50">
+          {nd15 !== undefined && nd15 > 0 && (
+            <div className="flex flex-col">
+              <span className="text-[8px] text-muted-foreground uppercase font-bold">ND 15</span>
+              <span className="text-[10px] font-semibold text-blue-600 leading-none">{formatCurrency(nd15)}</span>
+            </div>
+          )}
+          {nd30 !== undefined && nd30 > 0 && (
             <div className="flex flex-col">
               <span className="text-[8px] text-muted-foreground uppercase font-bold">ND 30</span>
               <span className="text-[10px] font-semibold text-green-600 leading-none">{formatCurrency(nd30)}</span>
             </div>
           )}
-          {nd39 !== undefined && (
-            <div className="flex flex-col ml-auto text-right">
+          {nd33 !== undefined && nd33 > 0 && (
+            <div className="flex flex-col">
+              <span className="text-[8px] text-muted-foreground uppercase font-bold">ND 33</span>
+              <span className="text-[10px] font-semibold text-orange-600 leading-none">{formatCurrency(nd33)}</span>
+            </div>
+          )}
+          {nd39 !== undefined && nd39 > 0 && (
+            <div className="flex flex-col">
               <span className="text-[8px] text-muted-foreground uppercase font-bold">ND 39</span>
               <span className="text-[10px] font-semibold text-blue-600 leading-none">{formatCurrency(nd39)}</span>
             </div>
           )}
-        </div>
-      )}
+      </div>
     </div>
   );
 };
@@ -943,6 +963,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     value={om.classeI.total} 
                                     icon={Utensils} 
                                     colorClass="bg-orange-500/10 text-orange-600"
+                                    nd30={om.classeI.total}
                                 />
                                 <CategoryCard 
                                     label="Classe II (Intendência)" 
@@ -957,6 +978,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     value={om.classeIII.total} 
                                     icon={Fuel} 
                                     colorClass="bg-orange-500/10 text-orange-600"
+                                    nd30={om.classeIII.total}
                                 />
                                 <CategoryCard 
                                     label="Classe V (Armamento)" 
@@ -1010,13 +1032,15 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                 Aba Operacional
                             </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {/* Aviação do Exército (Se existir) */}
-                                {om.totalAviacaoExercito > 0 && (
+                                {/* Aviação do Exército */}
+                                {om.horasVoo.total > 0 && (
                                     <CategoryCard 
                                         label="Aviação do Exército" 
-                                        value={om.totalAviacaoExercito} 
+                                        value={om.horasVoo.total} 
                                         icon={Zap} 
                                         colorClass="bg-purple-500/10 text-purple-600"
+                                        nd30={om.horasVoo.totalND30}
+                                        nd39={om.horasVoo.totalND39}
                                     />
                                 )}
                                 <CategoryCard 
@@ -1031,6 +1055,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     value={om.diarias.total} 
                                     icon={Briefcase} 
                                     colorClass="bg-blue-500/10 text-blue-600"
+                                    nd15={om.diarias.totalND15}
                                     nd30={om.diarias.totalND30}
                                 />
                                 <CategoryCard 
@@ -1046,6 +1071,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     value={om.passagens.total} 
                                     icon={Plane} 
                                     colorClass="bg-blue-500/10 text-blue-600"
+                                    nd33={om.passagens.total}
                                 />
                                 <CategoryCard 
                                     label="Suprimento de Fundos" 
@@ -1603,6 +1629,15 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                                     </span>
                                 </div>
                             ))}
+                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                <span className="w-1/2 text-left font-semibold">ND 30 / ND 39</span>
+                                <span className="w-1/4 text-right font-medium text-green-600">
+                                    {formatCurrency(horasVoo.totalND30)}
+                                </span>
+                                <span className="w-1/4 text-right font-medium text-blue-600">
+                                    {formatCurrency(horasVoo.totalND39)}
+                                </span>
+                            </div>
                         </div>
                     </AccordionContent>
                 </AccordionItem>
