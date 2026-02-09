@@ -285,46 +285,60 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
   ] = await Promise.all([
     supabase
       .from('classe_ii_registros')
-      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39')
+      .eq('p_trab_id', ptrabId),
     supabase
       .from('classe_v_registros')
-      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39')
+      .eq('p_trab_id', ptrabId),
     supabase
       .from('classe_vi_registros')
-      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39')
+      .eq('p_trab_id', ptrabId),
     supabase
       .from('classe_vii_registros')
-      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39')
+      .eq('p_trab_id', ptrabId),
     supabase
       .from('classe_viii_saude_registros')
-      .select('valor_total, itens_saude, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+      .select('valor_total, itens_saude, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39')
+      .eq('p_trab_id', ptrabId),
     supabase
       .from('classe_viii_remonta_registros')
-      .select('valor_total, itens_remonta, dias_operacao, organizacao, ug, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais'),
+      .select('valor_total, itens_remonta, dias_operacao, organizacao, ug, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais')
+      .eq('p_trab_id', ptrabId),
     supabase
       .from('classe_ix_registros')
-      .select('valor_total, itens_motomecanizacao, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+      .select('valor_total, itens_motomecanizacao, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39')
+      .eq('p_trab_id', ptrabId),
     supabase
       .from('classe_iii_registros')
-      .select('valor_total, tipo_combustivel, total_litros, tipo_equipamento, organizacao, ug, consumo_lubrificante_litro, preco_lubrificante'),
+      .select('valor_total, tipo_combustivel, total_litros, tipo_equipamento, organizacao, ug, consumo_lubrificante_litro, preco_lubrificante')
+      .eq('p_trab_id', ptrabId),
     supabase
       .from('diaria_registros')
-      .select('valor_total, valor_nd_15, valor_taxa_embarque, quantidade, dias_operacao, valor_nd_30, organizacao, ug'), 
+      .select('valor_total, valor_nd_15, valor_taxa_embarque, quantidade, dias_operacao, valor_nd_30, organizacao, ug')
+      .eq('p_trab_id', ptrabId),
     supabase
       .from('verba_operacional_registros')
-      .select('valor_nd_30, valor_nd_39, valor_total_solicitado, dias_operacao, quantidade_equipes, detalhamento, organizacao, ug'),
+      .select('valor_nd_30, valor_nd_39, valor_total_solicitado, dias_operacao, quantidade_equipes, detalhamento, organizacao, ug')
+      .eq('p_trab_id', ptrabId),
     supabase
       .from('passagem_registros')
-      .select('valor_total, valor_nd_33, quantidade_passagens, is_ida_volta, origem, destino, organizacao, ug'),
+      .select('valor_total, valor_nd_33, quantidade_passagens, is_ida_volta, origem, destino, organizacao, ug')
+      .eq('p_trab_id', ptrabId),
     supabase
       .from('concessionaria_registros')
-      .select('valor_total, valor_nd_39, dias_operacao, efetivo, categoria, organizacao, ug'),
+      .select('valor_total, valor_nd_39, dias_operacao, efetivo, categoria, organizacao, ug')
+      .eq('p_trab_id', ptrabId),
     supabase
       .from('horas_voo_registros')
-      .select('valor_total, valor_nd_30, valor_nd_39, quantidade_hv, tipo_anv, organizacao, ug'),
+      .select('valor_total, valor_nd_30, valor_nd_39, quantidade_hv, tipo_anv, organizacao, ug')
+      .eq('p_trab_id', ptrabId),
     supabase
       .from('material_consumo_registros')
-      .select('valor_total, valor_nd_30, valor_nd_39, organizacao, ug'),
+      .select('valor_total, valor_nd_30, valor_nd_39, organizacao, ug')
+      .eq('p_trab_id', ptrabId),
   ]);
 
   // Logar erros, mas não lançar exceção
@@ -536,7 +550,6 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     omTotals.horasVoo.totalND30 += valorND30;
     omTotals.horasVoo.totalND39 += valorND39;
     omTotals.horasVoo.quantidadeHV += quantidadeHv;
-    omTotals.totalOperacional += valorTotal;
     omTotals.totalAviacaoExercito += valorTotal;
     
     if (!omTotals.horasVoo.groupedHV[tipoAnv]) {
@@ -597,8 +610,8 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
   Object.values(groupedByOm).forEach(omTotals => {
       // Atualiza o total geral da OM
       omTotals.totalLogistica = omTotals.classeI.total + omTotals.classeII.total + omTotals.classeIII.total + omTotals.classeV.total + omTotals.classeVI.total + omTotals.classeVII.total + omTotals.classeVIII.total + omTotals.classeIX.total;
-      omTotals.totalOperacional = omTotals.diarias.total + omTotals.verbaOperacional.total + omTotals.suprimentoFundos.total + omTotals.passagens.total + omTotals.concessionaria.total + omTotals.horasVoo.total + omTotals.materialConsumo.total;
-      omTotals.totalGeral = omTotals.totalLogistica + omTotals.totalOperacional + omTotals.totalMaterialPermanente;
+      omTotals.totalOperacional = omTotals.diarias.total + omTotals.verbaOperacional.total + omTotals.suprimentoFundos.total + omTotals.passagens.total + omTotals.concessionaria.total + omTotals.materialConsumo.total;
+      omTotals.totalGeral = omTotals.totalLogistica + omTotals.totalOperacional + omTotals.totalMaterialPermanente + omTotals.totalAviacaoExercito;
       
       // Soma para os totais globais
       globalTotals.totalLogisticoGeral += omTotals.totalLogistica;
