@@ -476,7 +476,6 @@ const MaterialConsumoForm = () => {
                             <CollapsibleTrigger asChild>
                                 <div className="flex justify-between items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors">
                                     <div className="flex items-center gap-2">
-                                        {/* REMOVIDO: <Package className="h-4 w-4 text-primary" /> */}
                                         <span className="font-semibold">{group.groupName}</span>
                                         <Badge variant="secondary" className="text-xs">
                                             {group.items.length} Itens
@@ -500,66 +499,70 @@ const MaterialConsumoForm = () => {
                                     </div>
                                 </div>
                             </CollapsibleTrigger>
-                            <CollapsibleContent className="border-t p-3 bg-background max-h-[350px] overflow-y-auto">
+                            <CollapsibleContent className="border-t p-3 bg-background">
                                 <div className="space-y-2">
+                                    {/* P de Finalidade (Fixo) */}
                                     <p className="text-sm text-muted-foreground">Finalidade: {group.groupPurpose || 'Não especificada'}</p>
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead className="w-[100px] text-center">Qtd</TableHead>
-                                                <TableHead>Item</TableHead>
-                                                <TableHead className="text-right w-[120px]">Vlr Unitário</TableHead>
-                                                <TableHead className="text-right w-[120px]">Total</TableHead>
-                                                <TableHead className="w-[50px]"></TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {group.items.map(item => (
-                                                <TableRow key={item.id}>
-                                                    <TableCell className="w-[100px] text-center text-xs">
-                                                        {item.quantidade}
-                                                    </TableCell>
-                                                    <TableCell className="text-xs">
-                                                        {item.descricao_reduzida || item.descricao_item}
-                                                        <p className="text-muted-foreground text-[10px]">
-                                                            Cód. CATMAT: {item.codigo_catmat} | ND: {item.nd}
-                                                        </p>
-                                                        <p className="text-muted-foreground text-[10px]">
-                                                            Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}
-                                                        </p>
-                                                    </TableCell>
-                                                    <TableCell className="text-right text-xs text-muted-foreground">
-                                                        {formatCurrency(item.valor_unitario)}
-                                                    </TableCell>
-                                                    <TableCell className="text-right text-sm font-medium">
-                                                        {formatCurrency(item.valor_total)}
-                                                    </TableCell>
-                                                    <TableCell className="text-center">
-                                                        {/* Botão de remoção individual (apenas para visualização, a edição é no form inline) */}
-                                                        <TooltipProvider>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button 
-                                                                        type="button" 
-                                                                        variant="ghost" 
-                                                                        size="icon" 
-                                                                        className="h-8 w-8"
-                                                                        onClick={() => toast.info("Edite a quantidade ou remova o item no formulário de edição do grupo.")}
-                                                                        disabled
-                                                                    >
-                                                                        <Minus className="h-4 w-4 text-muted-foreground" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>
-                                                                    Edite no formulário do grupo
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-                                                    </TableCell>
+                                    
+                                    <div className="max-h-[350px] overflow-y-auto relative">
+                                        <Table>
+                                            <TableHeader className="sticky top-0 bg-background z-10">
+                                                <TableRow>
+                                                    <TableHead className="w-[100px] text-center">Qtd</TableHead>
+                                                    <TableHead>Item</TableHead>
+                                                    <TableHead className="text-right w-[120px]">Vlr Unitário</TableHead>
+                                                    <TableHead className="text-right w-[120px]">Total</TableHead>
+                                                    <TableHead className="w-[50px]"></TableHead>
                                                 </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {group.items.map(item => (
+                                                    <TableRow key={item.id}>
+                                                        <TableCell className="w-[100px] text-center text-xs">
+                                                            {item.quantidade}
+                                                        </TableCell>
+                                                        <TableCell className="text-xs">
+                                                            {item.descricao_reduzida || item.descricao_item}
+                                                            <p className="text-muted-foreground text-[10px]">
+                                                                Cód. CATMAT: {item.codigo_catmat} | ND: {item.nd}
+                                                            </p>
+                                                            <p className="text-muted-foreground text-[10px]">
+                                                                Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}
+                                                            </p>
+                                                        </TableCell>
+                                                        <TableCell className="text-right text-xs text-muted-foreground">
+                                                            {formatCurrency(item.valor_unitario)}
+                                                        </TableCell>
+                                                        <TableCell className="text-right text-sm font-medium">
+                                                            {formatCurrency(item.valor_total)}
+                                                        </TableCell>
+                                                        <TableCell className="text-center">
+                                                            {/* Botão de remoção individual (apenas para visualização, a edição é no form inline) */}
+                                                            <TooltipProvider>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button 
+                                                                            type="button" 
+                                                                            variant="ghost" 
+                                                                            size="icon" 
+                                                                            className="h-8 w-8"
+                                                                            onClick={() => toast.info("Edite a quantidade ou remova o item no formulário de edição do grupo.")}
+                                                                            disabled
+                                                                        >
+                                                                            <Minus className="h-4 w-4 text-muted-foreground" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        Edite no formulário do grupo
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
                                 </div>
                                 <div className="flex justify-end gap-2 pt-3 border-t mt-3">
                                     <Button 
