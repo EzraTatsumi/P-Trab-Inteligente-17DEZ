@@ -2,141 +2,103 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    /* Modo Claro */
-    --background: 220 20% 98%; /* Fundo geral da aplicação, muito claro */
-    --foreground: 220 20% 15%; /* Texto escuro */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
 
-    --card: 0 0% 100%; /* Cards brancos para contraste */
-    --card-foreground: 220 20% 15%;
-
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+ 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 24% 16%;
+    --popover-foreground: 222.2 84% 4.9%;
+ 
+    --primary: 221 83% 53%; /* Azul principal */
+    --primary-foreground: 210 20% 98%;
+ 
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+ 
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+ 
+    --accent: 39 92% 58%; /* Amarelo/Laranja para destaque */
+    --accent-foreground: 222.2 47.4% 11.2%;
+ 
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 98%;
 
-    /* Cores principais */
-    --primary: 218 50% 15%; /* Azul escuro da Hero Section */
-    --primary-foreground: 0 0% 100%; /* Texto branco */
-    --primary-light: 218 40% 25%; /* Azul um pouco mais claro */
-    --primary-dark: 218 60% 10%; /* Azul ainda mais escuro */
-
-    --secondary: 180 70% 30%; /* Verde-água escuro (manter para outros elementos) */
-    --secondary-foreground: 0 0% 100%;
-    --secondary-light: 180 60% 40%;
-
-    --accent: 40 90% 60%; /* Laranja/Amarelo vibrante da Hero Section */
-    --accent-foreground: 220 20% 15%; /* Texto escuro para elementos com accent */
-    --accent-light: 40 100% 70%;
-
-    --muted: 220 10% 90%; /* Cinza claro para muted backgrounds */
-    --muted-foreground: 220 10% 40%; /* Cinza médio para muted text */
-
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 220 10% 85%; /* Borda clara */
-    --input: 220 10% 85%;
-    --ring: 218 50% 15%; /* Anel com a cor primary */
-
-    --radius: 1rem;
-
-    /* Gradientes sofisticados */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary-dark)) 0%, hsl(var(--primary)) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(var(--primary-dark)) 0%, hsl(var(--primary)) 100%); /* Gradiente de azul escuro */
-    --gradient-accent: linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--accent-light)) 100%);
-    --gradient-mesh: radial-gradient(at 0% 0%, hsl(var(--primary) / 0.2) 0px, transparent 50%),
-                     radial-gradient(at 100% 100%, hsl(var(--secondary) / 0.15) 0px, transparent 50%);
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221 83% 53%;
+ 
+    --radius: 0.5rem;
     
-    /* Sombras refinadas */
-    --shadow-xs: 0 1px 2px 0 hsl(220 20% 15% / 0.05);
-    --shadow-sm: 0 2px 8px -2px hsl(220 20% 15% / 0.08);
-    --shadow-md: 0 4px 16px -4px hsl(220 20% 15% / 0.1);
-    --shadow-lg: 0 8px 32px -8px hsl(220 20% 15% / 0.12);
-    --shadow-xl: 0 16px 48px -12px hsl(220 20% 15% / 0.15);
-    --shadow-glow: 0 0 32px hsl(var(--accent) / 0.25);
-
-    /* Transições suaves */
-    --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-fast: all 0.2s ease-out;
-
-    --sidebar-background: 0 0% 99%;
-    --sidebar-foreground: 210 24% 16%;
-    --sidebar-primary: 210 100% 16%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 20% 97%;
-    --sidebar-accent-foreground: 210 100% 16%;
-    --sidebar-border: 210 16% 93%;
-    --sidebar-ring: 210 100% 16%;
+    /* Cores customizadas para o PTrab */
+    --ptrab-aberto: 39 92% 58%; /* Amarelo */
+    --ptrab-em-andamento: 221 83% 53%; /* Azul */
+    --ptrab-aprovado: 142.1 76.2% 36.3%; /* Verde */
+    --ptrab-arquivado: 215.4 16.3% 46.9%; /* Cinza */
+    --ptrab-importado: 262 80% 60%; /* Roxo */
+    --ptrab-consolidado: 180 100% 30%; /* Ciano */
+    --ptrab-shared: 200 80% 50%; /* Azul Claro */
+    --ptrab-collaborator: 200 50% 70%; /* Azul Mais Claro */
+    
+    /* Cores do Hero (Fundo) */
+    /* Ajustando o tom escuro para um azul mais claro e menos saturado */
+    --background-hero-start: 230 20% 15%; /* Azul Escuro (Quase Preto) */
+    --background-hero-end: 230 30% 25%; /* Azul Médio (Clareado) */
   }
-
+ 
   .dark {
-    /* Modo Escuro */
-    --background: 220 15% 10%; /* Fundo muito escuro, com um toque de azul */
-    --foreground: 220 20% 90%; /* Texto claro */
-
-    --card: 220 15% 15%; /* Card ligeiramente mais claro que o fundo para contraste */
-    --card-foreground: 220 20% 90%;
-
-    --popover: 210 35% 12%;
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 218 50% 15%; /* Azul escuro da Hero Section (manter igual ao light para consistência) */
-    --primary-foreground: 0 0% 100%;
-    --primary-light: 218 40% 25%;
-    --primary-dark: 218 60% 10%;
-
-    --secondary: 180 60% 50%; /* Verde-água médio */
-    --secondary-foreground: 0 0% 100%;
-    --secondary-light: 180 50% 60%;
-
-    --accent: 40 90% 60%; /* Laranja/Amarelo vibrante (manter igual ao light) */
-    --accent-foreground: 220 15% 10%; /* Texto escuro */
-    --accent-light: 40 100% 70%;
-
-    --muted: 220 10% 20%; /* Cinza escuro */
-    --muted-foreground: 220 10% 60%; /* Cinza médio */
-
-    --destructive: 0 65% 45%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 220 10% 25%; /* Borda escura */
-    --input: 220 10% 25%;
-    --ring: 218 50% 15%;
-
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary-dark)) 0%, hsl(var(--primary)) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(var(--primary-dark)) 0%, hsl(var(--primary)) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--accent-light)) 100%);
-    --gradient-mesh: radial-gradient(at 0% 0%, hsl(var(--primary) / 0.2) 0px, transparent 50%),
-                     radial-gradient(at 100% 100%, hsl(var(--secondary) / 0.15) 0px, transparent 50%);
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 20% 98%;
+ 
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 20% 98%;
+ 
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 20% 98%;
+ 
+    --primary: 210 20% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+ 
+    --secondary: 217.2 32.4% 14.8%;
+    --secondary-foreground: 210 20% 98%;
+ 
+    --muted: 217.2 32.4% 14.8%;
+    --muted-foreground: 215 20.2% 65.1%;
+ 
+    --accent: 39 92% 58%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+ 
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 20% 98%;
+ 
+    --border: 217.2 32.4% 14.8%;
+    --input: 217.2 32.4% 14.8%;
+    --ring: 212.7 26.8% 83.9%;
     
-    --shadow-xs: 0 1px 2px 0 hsl(0 0% 0% / 0.3);
-    --shadow-sm: 0 2px 8px -2px hsl(0 0% 0% / 0.4);
-    --shadow-md: 0 4px 16px -4px hsl(0 0% 0% / 0.5);
-    --shadow-lg: 0 8px 32px -8px hsl(0 0% 0% / 0.6);
-    --shadow-xl: 0 16px 48px -12px hsl(0 0% 0% / 0.7);
-    --shadow-glow: 0 0 32px hsl(var(--accent) / 0.35);
-
-    --sidebar-background: 210 35% 12%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 210 90% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 30% 18%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 210 25% 22%;
-    --sidebar-ring: 210 90% 48%;
+    /* Cores do Hero (Fundo) */
+    --background-hero-start: 230 20% 15%;
+    --background-hero-end: 230 30% 25%;
   }
 }
 
-@layer base {
-  * {
-    @apply border-border;
+@layer utilities {
+  /* Gradiente de fundo para o Hero */
+  .bg-gradient-hero {
+    background: linear-gradient(180deg, hsl(var(--background-hero-start)) 0%, hsl(var(--background-hero-end)) 100%);
   }
+  
+  /* Gradiente de fundo para o Hero (Dark Mode) */
+  .dark .bg-gradient-hero {
+    background: linear-gradient(180deg, hsl(var(--background-hero-start)) 0%, hsl(var(--background-hero-end)) 100%);
+  }
+}
 
-  body {
-    @apply bg-background text-foreground;
+@layer components {
+  .container {
+    @apply mx-auto max-w-7xl;
   }
 }
