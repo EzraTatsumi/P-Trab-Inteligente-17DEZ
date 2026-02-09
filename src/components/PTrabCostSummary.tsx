@@ -1624,10 +1624,8 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     if (mode === 'permanente') {
         const totalMaterialPermanente = (data as OmTotals).omKey ? (data as OmTotals).totalMaterialPermanente : (data as PTrabAggregatedTotals).totalMaterialPermanente;
         
-        if (totalMaterialPermanente === 0) return null;
-        
         return (
-            <div className="space-y-3 border-l-4 border-green-500 pl-3">
+            <div className="space-y-3 border-l-4 border-green-500 pl-3 pt-4">
                 <div className="flex items-center justify-between text-xs font-semibold text-green-600 mb-2">
                     <div className="flex items-center gap-2">
                         <HardHat className="h-3 w-3" />
@@ -1637,7 +1635,9 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground">
                     <span className="w-1/2 text-left">Itens de Material Permanente</span>
-                    <span className="w-1/4 text-right font-medium"></span>
+                    <span className="w-1/4 text-right font-medium">
+                        {/* Vazio */}
+                    </span>
                     <span className="w-1/4 text-right font-medium">
                         {formatCurrency(totalMaterialPermanente)}
                     </span>
@@ -1666,18 +1666,35 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                     </span>
                 </div>
                 
-                {/* Detalhes por Tipo de Aeronave (Restaurado conforme imagem) */}
-                <div className="space-y-1 pl-4 text-[10px]">
-                    {sortedHorasVoo.map(([tipoAnv, data]) => (
-                        <div key={tipoAnv} className="flex justify-between text-muted-foreground">
-                            <span className="w-1/2 text-left">{tipoAnv}</span>
-                            <span className="w-1/4 text-right font-medium text-background"></span>
-                            <span className="w-1/4 text-right font-medium">
-                                {formatNumber(data.totalHV, 2)} HV
-                            </span>
-                        </div>
-                    ))}
-                </div>
+                {/* Detalhes por Tipo de Aeronave (Tornado colapsável via Accordion) */}
+                <Accordion type="single" collapsible className="w-full pt-0">
+                    <AccordionItem value="item-avex-details" className="border-b-0">
+                        <AccordionTrigger className="p-0 hover:no-underline">
+                            <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                                <div className="flex items-center gap-1 text-foreground">
+                                    <Zap className="h-3 w-3 text-purple-500" />
+                                    Horas de Voo
+                                </div>
+                                <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                                    {formatCurrency(totalAviacaoExercito)}
+                                </span>
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-1 pb-0">
+                            <div className="space-y-1 pl-4 text-[10px]">
+                                {sortedHorasVoo.map(([tipoAnv, data]) => (
+                                    <div key={tipoAnv} className="flex justify-between text-muted-foreground">
+                                        <span className="w-1/2 text-left">{tipoAnv}</span>
+                                        <span className="w-1/4 text-right font-medium text-background"></span>
+                                        <span className="w-1/4 text-right font-medium">
+                                            {formatNumber(data.totalHV, 2)} HV
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
             </div>
         );
     };
