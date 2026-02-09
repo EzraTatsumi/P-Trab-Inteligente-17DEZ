@@ -32,15 +32,27 @@ export interface AcquisitionGroup {
     totalND39: number;
 }
 
+// Tipo de formulário (não usado no DB, mas para tipagem do estado do formulário)
+export interface MaterialConsumoFormType {
+    om_favorecida: string; 
+    ug_favorecida: string; 
+    om_detentora: string; 
+    ug_detentora: string; 
+    dias_operacao: number;
+    efetivo: number; 
+    fase_atividade: string;
+    acquisitionGroups: AcquisitionGroup[];
+}
+
 /**
  * Calcula os totais de ND 30 e ND 39 para um grupo de aquisição.
  */
-export function calculateGroupTotals(items: ItemAquisicao[]): { totalValue: number, totalND30: number, totalND39: number } {
+export function calculateGroupTotals(group: { items: ItemAquisicao[], totalValue?: number }): { totalValue: number, totalND30: number, totalND39: number } {
     let totalValue = 0;
     let totalND30 = 0;
     let totalND39 = 0;
 
-    items.forEach(item => {
+    group.items.forEach(item => {
         const value = Number(item.valor_total || 0);
         totalValue += value;
         
@@ -56,6 +68,47 @@ export function calculateGroupTotals(items: ItemAquisicao[]): { totalValue: numb
     });
 
     return { totalValue, totalND30, totalND39 };
+}
+
+/**
+ * Gera a memória de cálculo para um único registro de Material de Consumo (um grupo de aquisição).
+ */
+export function generateMaterialConsumoMemoriaCalculo(registro: MaterialConsumoRegistro): string {
+    const omFavorecida = `${registro.organizacao} (UG: ${formatCodug(registro.ug)})`;
+    const omDetentora = `${registro.om_detentora} (UG: ${formatCodug(registro.ug_detentora)})`;
+    const fase = registro.fase_atividade || 'Não Definida';
+    const itens = (registro.itens_aquisicao as unknown as ItemAquisicao[]) || [];
+    
+    let memoria = `MEMÓRIA DE CÁLCULO - MATERIAL DE CONSUMO (ND 33.90.30/39)\n`;
+    memoria += `----------------------------------------------------------------\n`;
+    memoria += `OM Favorecida: ${omFavorecida}\n`;
+    memoria += `OM Destino Recurso: ${omDetentora}\n`;
+    memoria += `Fase da Atividade: ${fase}\n`;
+    memoria += `Período: ${registro.dias_operacao} dias | Efetivo: ${registro.efetivo} militares\n`;
+    memoria += `\n`;
+    
+    memoria += `GRUPO: ${registro.group_name}\n`;
+    memoria += `Finalidade: ${registro.group_purpose || 'N/A'}\n`;
+    memoria += `Valor Total do Grupo: ${formatCurrency(registro.valor_total)}\n`;
+    memoria += `\n`;
+    
+    if (itens.length > 0) {
+        memoria += `  ITENS DE AQUISIÇÃO (${itens.length}):\n`;
+        itens.forEach(item => {
+            memoria += `  - ${item.descricao_item} (CATMAT: ${item.codigo_catmat || 'N/A'})\n`;
+            memoria += `    Qtd: ${item.quantidade} | Vl Unit: ${formatCurrency(item.valor_unitario)} | Vl Total: ${formatCurrency(item.valor_total)} (ND ${item.nd})\n`;
+        });
+        memoria += `\n`;
+    } else {
+        memoria += `  (Nenhum item de aquisição detalhado)\n\n`;
+    }
+    
+    memoria += `----------------------------------------------------------------\n`;
+    memoria += `TOTAL GERAL (ND 30): ${formatCurrency(registro.valor_nd_30)}\n`;
+    memoria += `TOTAL GERAL (ND 39): ${formatCurrency(registro.valor_nd_39)}\n`;
+    memoria += `TOTAL GERAL (GND 3): ${formatCurrency(registro.valor_total)}\n`;
+    
+    return memoria;
 }
 
 /**
