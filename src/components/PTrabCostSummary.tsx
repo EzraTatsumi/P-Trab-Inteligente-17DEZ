@@ -1337,7 +1337,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                 {renderHorasVoo()}
             </div>
         );
-    }
+    };
     
     return null;
 };
@@ -1438,7 +1438,9 @@ export const PTrabCostSummary = ({
   
   // Prepara os dados agrupados por OM para iteração
   const sortedOmTotals = useMemo(() => {
-      return Object.values(totals.groupedByOm).sort((a, b) => a.omName.localeCompare(b.omName));
+      // CORREÇÃO: Adiciona fallback para objeto vazio para evitar erro 'Cannot convert undefined or null to object'
+      const omGroups = totals.groupedByOm || {}; 
+      return Object.values(omGroups).sort((a, b) => a.omName.localeCompare(b.omName));
   }, [totals.groupedByOm]);
   
   // Componente para renderizar os detalhes no modo GLOBAL
