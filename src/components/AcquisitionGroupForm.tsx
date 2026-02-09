@@ -212,7 +212,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                             disabled={isSaving}
                         />
                         <p className="text-xs text-muted-foreground">
-                            Texto da Coluna Despesas P Trab Op - Material de Consumo ({groupName.trim() || 'Nome do Grupo'})
+                            Coluna Despesas (P Trab Op): <br /> Material de Consumo ({groupName.trim() || 'Nome do Grupo'})
                         </p>
                     </div>
                     <div className="space-y-2">

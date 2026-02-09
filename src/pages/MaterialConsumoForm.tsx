@@ -472,7 +472,7 @@ const MaterialConsumoForm = () => {
             <div className="space-y-3">
                 {groups.map(group => (
                     <Collapsible key={group.tempId} defaultOpen={false}> {/* Alterado para defaultOpen={false} */}
-                        <Card className="border-l-2 border-primary/70">
+                        <Card className=""> {/* REMOVIDO: border-l-2 border-primary/70 */}
                             <CollapsibleTrigger asChild>
                                 <div className="flex justify-between items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors border rounded-md">
                                     <div className="flex items-center gap-2">
@@ -502,7 +502,11 @@ const MaterialConsumoForm = () => {
                             <CollapsibleContent className="border-t p-3 bg-background">
                                 <div className="space-y-2">
                                     {/* P de Finalidade (Fixo) */}
-                                    <p className="text-sm text-muted-foreground">Finalidade: {group.groupPurpose || 'Não especificada'}</p>
+                                    {group.groupPurpose && (
+                                        <p className="text-sm text-muted-foreground">
+                                            Finalidade: Aquisição de Material de Consumo para atender {group.groupPurpose}.
+                                        </p>
+                                    )}
                                     
                                     <div className="max-h-[350px] overflow-y-auto relative">
                                         <Table>
