@@ -13,6 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import MaterialConsumoItemSelectorDialog from "@/components/MaterialConsumoItemSelectorDialog"; // Importação atualizada
 
 // Tipo para agrupar itens por subitem para exibição
 interface GroupedItem {

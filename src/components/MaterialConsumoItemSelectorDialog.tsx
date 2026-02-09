@@ -1,305 +1,299 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Search, Check, Package, Plus, FileSpreadsheet } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, Search, Check, Package, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useMaterialConsumoDiretrizes } from "@/hooks/useMaterialConsumoDiretrizes";
+import { useSession } from '@/components/SessionContextProvider';
 import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { formatCurrency, formatNumber } from "@/lib/formatUtils";
-import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { formatCurrency, formatNumber } from '@/lib/formatUtils';
+import { cn } from '@/lib/utils';
 
-interface MaterialConsumoItemSelectorDialogProps {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    selectedYear: number;
-    initialSelections: ItemAquisicao[];
-    onSelect: (items: ItemAquisicao[]) => void;
-    onAddDiretriz: () => void;
-}
-
-// Tipo auxiliar para rastrear o estado de seleção
+// Tipo para o item de aquisição com status de seleção
 interface SelectableItem extends ItemAquisicao {
     isSelected: boolean;
 }
 
-const MaterialConsumoItemSelectorDialog: React.FC<MaterialConsumoItemSelectorDialogProps> = ({
+// Tipo para o grupo de subitem na UI
+interface SubitemGroup {
+    nr_subitem: string;
+    nome_subitem: string;
+    descricao_subitem: string | null;
+    items: SelectableItem[];
+}
+
+interface AcquisitionItemSelectorDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    selectedYear: number;
+    // Itens que já estão no grupo (para pré-seleção)
+    initialItems: ItemAquisicao[]; 
+    // Callback para retornar os itens selecionados
+    onSelect: (items: ItemAquisicao[]) => void;
+    // Handler para navegar para a tela de diretrizes
+    onAddDiretriz: () => void;
+}
+
+// --- Data Fetching ---
+const fetchDiretrizesMaterialConsumo = async (year: number, userId: string): Promise<DiretrizMaterialConsumo[]> => {
+    if (!year || !userId) return [];
+    
+    const { data, error } = await supabase
+        .from('diretrizes_material_consumo')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('ano_referencia', year)
+        .eq('ativo', true)
+        .order('nr_subitem', { ascending: true });
+        
+    if (error) throw error;
+    
+    // Mapear o tipo JSONB para ItemAquisicao[]
+    return (data || []).map(d => ({
+        ...d,
+        itens_aquisicao: (d.itens_aquisicao as unknown as ItemAquisicao[]) || [],
+    })) as DiretrizMaterialConsumo[];
+};
+
+const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps> = ({
     open,
     onOpenChange,
     selectedYear,
-    initialSelections,
+    initialItems,
     onSelect,
     onAddDiretriz,
 }) => {
-    const { diretrizes, isLoading } = useMaterialConsumoDiretrizes(selectedYear);
-    const [searchTerm, setSearchTerm] = useState("");
+    const { user } = useSession();
+    const userId = user?.id;
+    const [searchTerm, setSearchTerm] = useState('');
     const [selectedItemsMap, setSelectedItemsMap] = useState<Record<string, ItemAquisicao>>({});
-    
-    // Estado para controlar a expansão das diretrizes
-    const [expandedDiretrizes, setExpandedDiretrizes] = useState<Record<string, boolean>>({});
+    const [expandedSubitems, setExpandedSubitems] = useState<Record<string, boolean>>({});
 
-    // Efeito para inicializar o mapa de seleção com base nos itens iniciais
+    // 1. Fetch das Diretrizes
+    const { data: diretrizes, isLoading, error } = useQuery({
+        queryKey: ['diretrizesMaterialConsumoSelector', selectedYear, userId],
+        queryFn: () => fetchDiretrizesMaterialConsumo(selectedYear, userId!),
+        enabled: !!userId && selectedYear > 0,
+        initialData: [],
+    });
+    
+    // 2. Inicialização do Mapa de Seleção (apenas na abertura)
     useEffect(() => {
         if (open) {
             const initialMap: Record<string, ItemAquisicao> = {};
-            initialSelections.forEach(item => {
+            initialItems.forEach(item => {
                 initialMap[item.id] = item;
             });
             setSelectedItemsMap(initialMap);
+            setSearchTerm('');
         }
-    }, [open, initialSelections]);
+    }, [open, initialItems]);
 
-    // 1. Indexação e Filtragem de todos os itens disponíveis
-    const filteredDiretrizes = useMemo(() => {
-        if (isLoading || !diretrizes) return [];
+    // 3. Processamento e Agrupamento dos Itens (Memoized)
+    const groupedAndFilteredItems = useMemo<SubitemGroup[]>(() => {
+        if (!diretrizes || diretrizes.length === 0) return [];
 
+        const groups: Record<string, SubitemGroup> = {};
         const lowerCaseSearch = searchTerm.toLowerCase().trim();
 
-        return diretrizes
-            .map(diretriz => {
-                // Mapear itens_aquisicao (Json) de volta para ItemAquisicao[]
-                const itemsAquisicao = (diretriz.itens_aquisicao as unknown as ItemAquisicao[]) || [];
+        diretrizes.forEach(diretriz => {
+            const subitemKey = diretriz.nr_subitem;
+            
+            // Filtra os itens de aquisição dentro da diretriz
+            const filteredItems = diretriz.itens_aquisicao.filter(item => {
+                const searchString = [
+                    item.descricao_item,
+                    item.short_description, // Incluindo a descrição reduzida na busca
+                    item.codigo_catmat,
+                    item.numero_pregao,
+                    item.uasg,
+                    diretriz.nr_subitem,
+                    diretriz.nome_subitem,
+                ].join(' ').toLowerCase();
                 
-                // 1. Filtrar itens dentro da diretriz
-                const filteredItems = itemsAquisicao.filter(item => {
-                    if (!lowerCaseSearch) return true;
-                    
-                    const searchString = [
-                        item.descricao_item,
-                        item.codigo_catmat,
-                        item.numero_pregao,
-                        item.uasg,
-                        diretriz.nr_subitem,
-                        diretriz.nome_subitem,
-                    ].join(' ').toLowerCase();
-                    
-                    return searchString.includes(lowerCaseSearch);
-                });
-
-                // 2. Se a diretriz ou qualquer item corresponder, incluir
-                const diretrizMatches = diretriz.nr_subitem.toLowerCase().includes(lowerCaseSearch) ||
-                                        diretriz.nome_subitem.toLowerCase().includes(lowerCaseSearch) ||
-                                        filteredItems.length > 0;
-
-                if (diretrizMatches) {
-                    return {
-                        ...diretriz,
-                        itens_aquisicao: filteredItems,
+                return searchString.includes(lowerCaseSearch);
+            });
+            
+            if (filteredItems.length > 0) {
+                if (!groups[subitemKey]) {
+                    groups[subitemKey] = {
+                        nr_subitem: diretriz.nr_subitem,
+                        nome_subitem: diretriz.nome_subitem,
+                        descricao_subitem: diretriz.descricao_subitem,
+                        items: [],
                     };
                 }
-                return null;
-            })
-            .filter((d): d is DiretrizMaterialConsumo => d !== null);
-    }, [diretrizes, searchTerm, isLoading]);
-    
-    // 2. Contagem de itens selecionados
-    const selectedCount = Object.keys(selectedItemsMap).length;
+                
+                // Adiciona os itens filtrados ao grupo
+                groups[subitemKey].items.push(...filteredItems.map(item => ({
+                    ...item,
+                    isSelected: !!selectedItemsMap[item.id],
+                })));
+            }
+        });
 
-    // 3. Handlers de Seleção
+        return Object.values(groups).sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
+    }, [diretrizes, searchTerm, selectedItemsMap]);
+    
+    // 4. Handlers de Seleção
     const handleToggleItem = (item: ItemAquisicao) => {
         setSelectedItemsMap(prev => {
             const newMap = { ...prev };
             if (newMap[item.id]) {
                 delete newMap[item.id];
             } else {
-                // Ao selecionar, garantimos que a quantidade inicial seja 1 e o valor total seja calculado
-                newMap[item.id] = {
-                    ...item,
-                    quantidade: 1,
-                    valor_total: item.valor_unitario * 1,
-                };
+                newMap[item.id] = item;
             }
             return newMap;
         });
     };
     
-    const handleSelectAllInDiretriz = (diretriz: DiretrizMaterialConsumo, select: boolean) => {
-        setSelectedItemsMap(prev => {
-            const newMap = { ...prev };
-            const itemsAquisicao = (diretriz.itens_aquisicao as unknown as ItemAquisicao[]) || [];
-            
-            itemsAquisicao.forEach(item => {
-                if (select) {
-                    // Adicionar, garantindo quantidade inicial 1
-                    newMap[item.id] = {
-                        ...item,
-                        quantidade: 1,
-                        valor_total: item.valor_unitario * 1,
-                    };
-                } else {
-                    delete newMap[item.id];
-                }
-            });
-            return newMap;
-        });
-    };
-
     const handleConfirmSelection = () => {
-        const finalItems = Object.values(selectedItemsMap);
-        onSelect(finalItems);
+        const selectedItems = Object.values(selectedItemsMap);
+        onSelect(selectedItems);
         onOpenChange(false);
-        toast.success(`${finalItems.length} itens selecionados.`);
     };
     
-    const handleOpenDiretrizConfig = () => {
-        onOpenChange(false);
-        onAddDiretriz();
-    };
+    const totalSelected = Object.keys(selectedItemsMap).length;
     
-    // Verifica se todos os itens visíveis de uma diretriz estão selecionados
-    const isDiretrizFullySelected = (diretriz: DiretrizMaterialConsumo) => {
-        const itemsAquisicao = (diretriz.itens_aquisicao as unknown as ItemAquisicao[]) || [];
-        if (itemsAquisicao.length === 0) return false;
-        return itemsAquisicao.every(item => selectedItemsMap[item.id]);
-    };
-    
-    // Verifica se pelo menos um item visível de uma diretriz está selecionado
-    const isDiretrizPartiallySelected = (diretriz: DiretrizMaterialConsumo) => {
-        const itemsAquisicao = (diretriz.itens_aquisicao as unknown as ItemAquisicao[]) || [];
-        if (itemsAquisicao.length === 0) return false;
-        return itemsAquisicao.some(item => selectedItemsMap[item.id]);
-    };
+    // Se não houver diretrizes cadastradas
+    if (!isLoading && diretrizes.length === 0) {
+        return (
+            <Dialog open={open} onOpenChange={onOpenChange}>
+                <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                        <DialogTitle>Selecionar Itens de Aquisição</DialogTitle>
+                    </DialogHeader>
+                    <Alert variant="default" className="border-l-4 border-yellow-500">
+                        <AlertCircle className="h-4 w-4 text-yellow-500" />
+                        <AlertTitle>Diretrizes Não Encontradas</AlertTitle>
+                        <AlertDescription>
+                            Não há diretrizes de Material de Consumo cadastradas para o ano {selectedYear}. Por favor, cadastre-as em Configurações.
+                        </AlertDescription>
+                    </Alert>
+                    <DialogFooter>
+                        <Button onClick={onAddDiretriz} variant="secondary">
+                            <Package className="mr-2 h-4 w-4" />
+                            Ir para Configurações
+                        </Button>
+                        <Button onClick={() => onOpenChange(false)} variant="outline">
+                            Fechar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        );
+    }
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Package className="h-5 w-5" />
-                        Selecionar Itens de Aquisição (ND 33.90.30/39)
-                    </DialogTitle>
-                    <p className="text-sm text-muted-foreground">
-                        Selecione os itens de aquisição cadastrados nas diretrizes do ano {selectedYear}.
-                    </p>
+                    <DialogTitle>Selecionar Itens de Aquisição (Ano {selectedYear})</DialogTitle>
                 </DialogHeader>
-
-                <div className="flex items-center gap-2 mb-4">
-                    <div className="relative flex-1">
+                
+                <div className="space-y-4 py-2">
+                    {/* Barra de Busca */}
+                    <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Buscar por CATMAT, Pregão, UASG ou descrição..."
+                            placeholder="Buscar por item, CATMAT, pregão ou subitem..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             disabled={isLoading}
                             className="pl-10"
                         />
                     </div>
-                    <Button 
-                        variant="outline" 
-                        onClick={handleOpenDiretrizConfig}
-                        disabled={isLoading}
-                    >
-                        <FileSpreadsheet className="h-4 w-4 mr-2" />
-                        Gerenciar Diretrizes
-                    </Button>
-                </div>
-
-                {isLoading ? (
-                    <div className="flex-1 flex items-center justify-center">
-                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                        <span className="ml-2 text-muted-foreground">Carregando diretrizes...</span>
-                    </div>
-                ) : filteredDiretrizes.length === 0 ? (
-                    <div className="flex-1 flex items-center justify-center text-center text-muted-foreground">
-                        <p>Nenhuma diretriz ou item encontrado para o ano {selectedYear}.</p>
-                    </div>
-                ) : (
-                    <ScrollArea className="flex-1 pr-4">
-                        <div className="space-y-4">
-                            {filteredDiretrizes.map(diretriz => {
-                                const isFullySelected = isDiretrizFullySelected(diretriz);
-                                const isPartiallySelected = isDiretrizPartiallySelected(diretriz);
-                                
-                                return (
-                                    <Collapsible 
-                                        key={diretriz.id}
-                                        open={expandedDiretrizes[diretriz.id] ?? false}
-                                        onOpenChange={(open) => setExpandedDiretrizes(prev => ({ ...prev, [diretriz.id]: open }))}
-                                    >
-                                        <CollapsibleTrigger asChild>
-                                            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-md cursor-pointer hover:bg-muted transition-colors border">
-                                                <div className="flex items-center gap-3">
-                                                    <Checkbox
-                                                        checked={isFullySelected}
-                                                        indeterminate={!isFullySelected && isPartiallySelected}
-                                                        onCheckedChange={(checked) => handleSelectAllInDiretriz(diretriz, checked === true)}
-                                                        disabled={diretriz.itens_aquisicao.length === 0}
-                                                        className="h-5 w-5"
-                                                    />
-                                                    <span className="font-semibold text-sm">
-                                                        {diretriz.nr_subitem} - {diretriz.nome_subitem} 
-                                                        <span className="text-xs text-muted-foreground ml-2">
-                                                            ({diretriz.itens_aquisicao.length} itens disponíveis)
-                                                        </span>
-                                                    </span>
+                    
+                    {/* Lista de Subitens Agrupados */}
+                    <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
+                        {isLoading ? (
+                            <div className="text-center py-8">
+                                <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+                                <p className="text-sm text-muted-foreground mt-2">Carregando diretrizes...</p>
+                            </div>
+                        ) : groupedAndFilteredItems.length === 0 ? (
+                            <Alert>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Nenhum Item Encontrado</AlertTitle>
+                                <AlertDescription>
+                                    A busca não retornou resultados ou não há itens de aquisição cadastrados nas diretrizes ativas.
+                                </AlertDescription>
+                            </Alert>
+                        ) : (
+                            groupedAndFilteredItems.map(group => (
+                                <Collapsible 
+                                    key={group.nr_subitem}
+                                    open={expandedSubitems[group.nr_subitem] ?? false}
+                                    onOpenChange={(open) => setExpandedSubitems(prev => ({ ...prev, [group.nr_subitem]: open }))}
+                                >
+                                    <CollapsibleTrigger asChild>
+                                        <div className="flex justify-between items-center p-3 bg-muted rounded-md cursor-pointer hover:bg-muted/80 transition-colors">
+                                            <span className="font-semibold text-sm">
+                                                {group.nr_subitem} - {group.nome_subitem} ({group.items.length} itens)
+                                            </span>
+                                            {expandedSubitems[group.nr_subitem] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                        </div>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="pt-2">
+                                        <div className="space-y-1">
+                                            {group.items.map(item => (
+                                                <div 
+                                                    key={item.id} 
+                                                    className={cn(
+                                                        "flex items-center justify-between p-2 border rounded-md cursor-pointer transition-colors",
+                                                        item.isSelected ? "bg-primary/10 border-primary/50" : "hover:bg-gray-50"
+                                                    )}
+                                                    onClick={() => handleToggleItem(item)}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        {/* Indicador de Seleção (Corrigido para ser um círculo perfeito) */}
+                                                        <div className={cn(
+                                                            "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0",
+                                                            item.isSelected ? "bg-primary border-primary" : "border-gray-300"
+                                                        )}>
+                                                            {item.isSelected && <Check className="h-3 w-3 text-white" />}
+                                                        </div>
+                                                        <div className="text-sm min-w-0 flex-1">
+                                                            {/* Exibir descrição reduzida ou completa */}
+                                                            <p className="font-medium truncate">
+                                                                {item.short_description || item.descricao_item}
+                                                            </p>
+                                                            {/* Exibir CATMAT | Pregão (UASG) */}
+                                                            <p className="text-xs text-muted-foreground">
+                                                                CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({item.uasg})
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right shrink-0 ml-4">
+                                                        <p className="font-semibold text-sm">{formatCurrency(item.valor_unitario)}</p>
+                                                    </div>
                                                 </div>
-                                                {expandedDiretrizes[diretriz.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                            </div>
-                                        </CollapsibleTrigger>
-                                        <CollapsibleContent className="pt-2">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead className="w-[50px]"></TableHead>
-                                                        <TableHead>Item de Aquisição</TableHead>
-                                                        <TableHead className="text-right w-[120px]">Vlr Unitário</TableHead>
-                                                        <TableHead className="text-center w-[100px]">ND</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {diretriz.itens_aquisicao.map(item => (
-                                                        <TableRow key={item.id} className={cn(selectedItemsMap[item.id] && "bg-primary/5")}>
-                                                            <TableCell>
-                                                                <Checkbox
-                                                                    checked={!!selectedItemsMap[item.id]}
-                                                                    onCheckedChange={() => handleToggleItem(item)}
-                                                                />
-                                                            </TableCell>
-                                                            <TableCell className="text-xs">
-                                                                {item.descricao_item}
-                                                                <p className="text-muted-foreground text-[10px]">
-                                                                    CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao}
-                                                                </p>
-                                                            </TableCell>
-                                                            <TableCell className="text-right text-xs font-medium">
-                                                                {formatCurrency(item.valor_unitario)}
-                                                            </TableCell>
-                                                            <TableCell className="text-center text-xs font-medium">
-                                                                <Badge variant={item.nd === '33.90.30' ? 'secondary' : 'outline'}>
-                                                                    {item.nd}
-                                                                </Badge>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        </CollapsibleContent>
-                                    </Collapsible>
-                                );
-                            })}
-                        </div>
-                    </ScrollArea>
-                )}
-
+                                            ))}
+                                        </div>
+                                    </CollapsibleContent>
+                                </Collapsible>
+                            ))
+                        )}
+                    </div>
+                </div>
+                
                 <DialogFooter className="mt-4">
                     <div className="flex justify-between items-center w-full">
-                        <p className="font-semibold">
-                            Itens Selecionados: <span className="text-primary">{selectedCount}</span>
+                        <p className="text-sm font-medium">
+                            Itens Selecionados: <span className="font-bold text-primary">{totalSelected}</span>
                         </p>
-                        <div className="flex gap-2">
-                            <Button variant="outline" onClick={() => onOpenChange(false)}>
-                                Cancelar
-                            </Button>
-                            <Button onClick={handleConfirmSelection} disabled={selectedCount === 0 || isLoading}>
-                                <Check className="h-4 w-4 mr-2" />
-                                Confirmar Seleção ({selectedCount})
-                            </Button>
-                        </div>
+                        <Button 
+                            onClick={handleConfirmSelection} 
+                            disabled={totalSelected === 0}
+                        >
+                            <Check className="mr-2 h-4 w-4" />
+                            Confirmar Seleção ({totalSelected})
+                        </Button>
                     </div>
                 </DialogFooter>
             </DialogContent>
@@ -307,4 +301,4 @@ const MaterialConsumoItemSelectorDialog: React.FC<MaterialConsumoItemSelectorDia
     );
 };
 
-export default MaterialConsumoItemSelectorDialog;
+export default AcquisitionItemSelectorDialog;
