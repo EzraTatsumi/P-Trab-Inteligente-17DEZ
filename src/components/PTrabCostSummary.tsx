@@ -192,13 +192,13 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     totalMaterialPermanente: 0,
     totalAviacaoExercito: 0,
     classeI: { total: 0, totalComplemento: 0, totalEtapaSolicitadaValor: 0, totalDiasEtapaSolicitada: 0, totalRefeicoesIntermediarias: 0, totalRacoesOperacionaisGeral: 0 },
-    classeII: { total: 0, totalND30: number, totalND39: number, totalItens: 0, groupedCategories: {} },
+    classeII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeIII: { total: 0, totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0 },
-    classeV: { total: 0, totalND30: number, totalND39: number, totalItens: 0, groupedCategories: {} },
-    classeVI: { total: 0, totalND30: number, totalND39: number, totalItens: 0, groupedCategories: {} },
-    classeVII: { total: 0, totalND30: number, totalND39: number, totalItens: 0, groupedCategories: {} },
-    classeVIII: { total: 0, totalND30: number, totalND39: number, totalItens: 0, groupedCategories: {} },
-    classeIX: { total: 0, totalND30: number, totalND39: number, totalItens: 0, groupedCategories: {} },
+    classeV: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeVI: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeVII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeVIII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeIX: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     diarias: { total: 0, totalND15: 0, totalND30: 0, totalMilitares: 0, totalDiasViagem: 0 },
     verbaOperacional: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
     suprimentoFundos: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
@@ -1734,6 +1734,13 @@ export const PTrabCostSummary = ({
   
   const detailsRef = useRef<HTMLDivElement>(null);
 
+  // CORREÇÃO: useMemo movido para antes dos retornos antecipados para seguir as regras dos hooks
+  const sortedOmTotals = useMemo(() => {
+      const omGroups = data?.groupedByOm || {}; 
+      // ORDENAÇÃO: Por totalGeral decrescente
+      return Object.values(omGroups).sort((a, b) => b.totalGeral - a.totalGeral);
+  }, [data?.groupedByOm]);
+
   const handleSummaryClick = () => {
     const newState = !isDetailsOpen;
     setIsDetailsOpen(newState);
@@ -1785,13 +1792,6 @@ export const PTrabCostSummary = ({
   const saldoGND4 = creditGND4 - totals.totalMaterialPermanente;
 
   const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
-  
-  // Prepara os dados agrupados por OM para iteração
-  const sortedOmTotals = useMemo(() => {
-      const omGroups = totals.groupedByOm || {}; 
-      // ORDENAÇÃO: Por totalGeral decrescente
-      return Object.values(omGroups).sort((a, b) => b.totalGeral - a.totalGeral);
-  }, [totals.groupedByOm]);
   
   // Componente para renderizar os detalhes no modo GLOBAL
   const renderGlobalDetails = () => (
