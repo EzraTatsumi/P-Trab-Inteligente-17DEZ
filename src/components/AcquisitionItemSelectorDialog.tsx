@@ -108,7 +108,8 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
             const filteredItems = diretriz.itens_aquisicao.filter(item => {
                 const searchString = [
                     item.descricao_item,
-                    item.short_description, // Incluindo a descrição reduzida na busca
+                    // CORREÇÃO: Usar descricao_reduzida na busca
+                    item.descricao_reduzida, 
                     item.codigo_catmat,
                     item.numero_pregao,
                     item.uasg,
@@ -264,7 +265,7 @@ const AcquisitionItemSelectorDialog: React.FC<AcquisitionItemSelectorDialogProps
                                                                     <div className="text-sm min-w-0 flex-1">
                                                                         {/* Exibir descrição reduzida ou completa */}
                                                                         <p className="font-medium truncate">
-                                                                            {item.short_description || item.descricao_item}
+                                                                            {item.descricao_reduzida || item.descricao_item}
                                                                         </p>
                                                                         {/* Exibir CATMAT | Pregão (UASG) */}
                                                                         <p className="text-xs text-muted-foreground">
