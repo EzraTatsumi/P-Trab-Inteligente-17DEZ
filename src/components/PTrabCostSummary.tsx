@@ -1498,6 +1498,60 @@ export const PTrabCostSummary = ({
         ))}
     </div>
   );
+  
+  // NOVO: Renderização do Resumo de Custos (Alternado)
+  const renderCostSummary = () => {
+      if (viewMode === 'global') {
+          return (
+            <div className="w-full space-y-1 text-sm px-6 pt-3">
+                <div className="flex justify-between text-orange-600 cursor-pointer" onClick={handleSummaryClick}>
+                  <span className="font-semibold text-sm">Aba Logística</span>
+                  <span className="font-bold text-sm">{formatCurrency(totals.totalLogisticoGeral)}</span>
+                </div>
+                <div className="flex justify-between text-blue-600 cursor-pointer" onClick={handleSummaryClick}>
+                  <span className="font-semibold text-sm">Aba Operacional</span>
+                  <span className="font-bold text-sm">{formatCurrency(totals.totalOperacional)}</span>
+                </div>
+                <div className="flex justify-between text-green-600 cursor-pointer" onClick={handleSummaryClick}>
+                  <span className="font-semibold text-sm">Aba Material Permanente</span>
+                  <span className="font-bold text-sm">{formatCurrency(totals.totalMaterialPermanente)}</span>
+                </div>
+                <div className="flex justify-between text-purple-600 cursor-pointer" onClick={handleSummaryClick}>
+                  <span className="font-semibold text-sm">Aba Aviação do Exército</span>
+                  <span className="font-bold text-sm">
+                    {formatNumber(totals.quantidadeHorasVoo, 2)} HV
+                  </span>
+                </div>
+            </div>
+          );
+      } else {
+          // Modo 'byOm'
+          if (sortedOmTotals.length === 0) {
+              return (
+                  <div className="w-full space-y-1 text-sm px-6 pt-3 text-muted-foreground">
+                      Nenhuma OM com custos registrados.
+                  </div>
+              );
+          }
+          
+          return (
+              <div className="w-full space-y-1 text-sm px-6 pt-3">
+                  {sortedOmTotals.map(om => (
+                      <div 
+                          key={om.omKey} 
+                          className="flex justify-between text-foreground cursor-pointer" 
+                          onClick={handleSummaryClick}
+                      >
+                          {/* Nome da OM (sem ícone, sem CODUG, fonte e tamanho do original) */}
+                          <span className="font-semibold text-sm">{om.omName}</span>
+                          {/* Total Geral da OM (cor única, fonte e tamanho do original) */}
+                          <span className="font-bold text-sm">{formatCurrency(om.totalGeral)}</span>
+                      </div>
+                  ))}
+              </div>
+          );
+      }
+  };
 
   return (
     <Card className="shadow-lg">
@@ -1523,27 +1577,8 @@ export const PTrabCostSummary = ({
       </CardHeader>
       <CardContent className="space-y-4 p-0 pb-3">
         
-        {/* Resumo de Custos (sempre visível) */}
-        <div className="w-full space-y-1 text-sm px-6 pt-3">
-            <div className="flex justify-between text-orange-600 cursor-pointer" onClick={handleSummaryClick}>
-              <span className="font-semibold text-sm">Aba Logística</span>
-              <span className="font-bold text-sm">{formatCurrency(totals.totalLogisticoGeral)}</span>
-            </div>
-            <div className="flex justify-between text-blue-600 cursor-pointer" onClick={handleSummaryClick}>
-              <span className="font-semibold text-sm">Aba Operacional</span>
-              <span className="font-bold text-sm">{formatCurrency(totals.totalOperacional)}</span>
-            </div>
-            <div className="flex justify-between text-green-600 cursor-pointer" onClick={handleSummaryClick}>
-              <span className="font-semibold text-sm">Aba Material Permanente</span>
-              <span className="font-bold text-sm">{formatCurrency(totals.totalMaterialPermanente)}</span>
-            </div>
-            <div className="flex justify-between text-purple-600 cursor-pointer" onClick={handleSummaryClick}>
-              <span className="font-semibold text-sm">Aba Aviação do Exército</span>
-              <span className="font-bold text-sm">
-                {formatNumber(totals.quantidadeHorasVoo, 2)} HV
-              </span>
-            </div>
-        </div>
+        {/* Resumo de Custos (Alternado) */}
+        {renderCostSummary()}
         
         {/* Accordion para Detalhes */}
         <Accordion 
