@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Save, Package, FileText, Loader2, Trash2, Pencil } from "lucide-react";
 import { AcquisitionGroup } from "@/lib/materialConsumoUtils";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { formatCurrency, formatNumber } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber, formatCodug } from "@/lib/formatUtils";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -271,7 +271,10 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                                                     {item.descricao_reduzida || item.descricao_item}
                                                                 </p>
                                                                 <p className="text-muted-foreground text-[10px]">
-                                                                    CATMAT: {item.codigo_catmat} | Pregão: {item.numero_pregao} ({item.uasg})
+                                                                    Cód. CATMAT: {item.codigo_catmat || 'N/A'}
+                                                                </p>
+                                                                <p className="text-muted-foreground text-[10px]">
+                                                                    Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}
                                                                 </p>
                                                             </TableCell>
                                                             <TableCell className="text-right text-xs text-muted-foreground">
