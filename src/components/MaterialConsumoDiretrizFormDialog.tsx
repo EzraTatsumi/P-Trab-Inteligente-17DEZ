@@ -43,7 +43,12 @@ const initialItemForm: Omit<ItemAquisicao, 'id'> & { rawValor: string } = {
     numero_pregao: '',
     uasg: '',
     codigo_catmat: '',
-    // unidade_medida: '', // REMOVIDO
+    // Inicializa campos opcionais para ItemAquisicao
+    quantidade: 0,
+    valor_total: 0,
+    nd: '',
+    nr_subitem: '',
+    nome_subitem: '',
 };
 
 // Definindo o tipo interno do formulário
@@ -188,7 +193,12 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             numero_pregao: itemForm.numero_pregao,
             uasg: itemForm.uasg,
             codigo_catmat: itemForm.codigo_catmat, 
-            // unidade_medida: itemForm.unidade_medida, // REMOVIDO
+            // Inicializa campos opcionais para ItemAquisicao
+            quantidade: itemForm.quantidade || 0,
+            valor_total: itemForm.valor_total || 0,
+            nd: itemForm.nd || '',
+            nr_subitem: itemForm.nr_subitem || '',
+            nome_subitem: itemForm.nome_subitem || '',
         };
         
         // 1. Verificar duplicidade antes de adicionar/atualizar
@@ -225,7 +235,12 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             numero_pregao: item.numero_pregao,
             uasg: item.uasg,
             codigo_catmat: item.codigo_catmat, 
-            // unidade_medida: item.unidade_medida, // REMOVIDO
+            // Inicializa campos opcionais para ItemAquisicao (usando || para garantir valor)
+            quantidade: item.quantidade || 0,
+            valor_total: item.valor_total || 0,
+            nd: item.nd || '',
+            nr_subitem: item.nr_subitem || '',
+            nome_subitem: item.nome_subitem || '',
         });
         
         // Rola a tela para o formulário de edição

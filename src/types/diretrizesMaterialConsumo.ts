@@ -16,11 +16,11 @@ export interface ItemAquisicao {
     uasg: string;
     codigo_catmat: string;
     // --- Campos de Cálculo e Contexto Adicionados ---
-    quantidade: number; // Quantidade solicitada
-    valor_total: number; // Valor total (unitário * quantidade)
-    nd: string; // Natureza da Despesa (ex: '33.90.30')
-    nr_subitem: string; // Número do Subitem da ND (para agrupamento)
-    nome_subitem: string; // Nome do Subitem da ND (para agrupamento)
+    quantidade?: number; // Quantidade solicitada
+    valor_total?: number; // Valor total (unitário * quantidade)
+    nd?: string; // Natureza da Despesa (ex: '33.90.30')
+    nr_subitem?: string; // Número do Subitem da ND (para agrupamento)
+    nome_subitem?: string; // Nome do Subitem da ND (para agrupamento)
     // --- Fim dos Campos Adicionados ---
 }
 

@@ -259,7 +259,13 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                         validItems.push({
                             id: Math.random().toString(36).substring(2, 9), // ID temporário
                             ...newItemData,
-                        });
+                            // Inicializa campos opcionais para ItemAquisicao
+                            quantidade: 0,
+                            valor_total: 0,
+                            nd: '',
+                            nr_subitem: '',
+                            nome_subitem: '',
+                        } as ItemAquisicao); // Cast necessário para garantir que todos os campos opcionais estejam presentes (embora agora sejam opcionais)
                         
                     } catch (e: any) {
                         errorItems.push({
@@ -491,7 +497,7 @@ const ItemAquisicaoBulkUploadDialog: React.FC<ItemAquisicaoBulkUploadDialogProps
                             
                             {/* NOVO: Alerta de Itens Já Cadastrados (Externos) */}
                             {hasExisting && (
-                                <Alert variant="default" className="mt-4 bg-orange-50/50 border-orange-200 text-orange-900 dark:bg-orange-950/50 dark:border-orange-800 dark:text-orange-300">
+                                <Alert variant="default" className="mt-4 bg-orange-50/50 border-orange-200 dark:bg-orange-950/50 dark:border-orange-800 dark:text-orange-300">
                                     <AlertTriangle className="h-4 w-4 text-orange-900 dark:text-orange-400" />
                                     <AlertTitle>Itens Já Cadastrados ({existingItems.length})</AlertTitle>
                                     <AlertDescription className="max-h-32 overflow-y-auto text-sm">

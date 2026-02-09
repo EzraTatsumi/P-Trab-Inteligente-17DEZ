@@ -262,6 +262,13 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
             // Campos padrão para itens de preço médio (requerem preenchimento manual posterior)
             numero_pregao: 'Em processo de abertura', 
             uasg: '', // Vazio, pois não há UASG de referência
+            
+            // Inicializa campos opcionais para ItemAquisicao
+            quantidade: 0,
+            valor_total: 0,
+            nd: '',
+            nr_subitem: '',
+            nome_subitem: '',
         };
         
         // 3. Envia o item para o componente pai para ser armazenado como item selecionado

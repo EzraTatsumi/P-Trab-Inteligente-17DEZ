@@ -317,6 +317,12 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         numero_pregao: pregaoFormatado, 
                         uasg: uasg, 
                         codigo_catmat: arpItem.codigoItem, 
+                        // Inicializa campos opcionais para ItemAquisicao
+                        quantidade: 0,
+                        valor_total: 0,
+                        nd: '',
+                        nr_subitem: '',
+                        nome_subitem: '',
                     };
                 }
                 
