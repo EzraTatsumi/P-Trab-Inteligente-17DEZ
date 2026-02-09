@@ -42,7 +42,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import AcquisitionGroupForm from "@/components/AcquisitionGroupForm";
 import MaterialConsumoMemoria from "@/components/MaterialConsumoMemoria";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo"; // Importar ItemAquisicao
-import AcquisitionGroupRow from "@/components/AcquisitionGroupRow"; // NOVO: Importar o componente de linha
 
 // Tipos de dados
 type MaterialConsumoRegistroDB = Tables<'material_consumo_registros'>; 
@@ -68,11 +67,6 @@ interface CalculatedMaterialConsumo extends TablesInsert<'material_consumo_regis
     ug_favorecida: string;
     // Novo: Armazena os grupos de aquisição (para rastreamento)
     acquisitionGroups: AcquisitionGroup[];
-}
-
-// NOVO TIPO: Representa um lote consolidado de registros (um grupo de aquisição)
-interface ConsolidatedMaterialConsumo extends ConsolidatedMaterialConsumoRecord {
-    groupKey: string; 
 }
 
 // Estado inicial para o formulário (Seção 1 & 2)
@@ -494,24 +488,22 @@ const MaterialConsumoForm = () => {
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead className="w-[100px]">CATMAT</TableHead>
-                                                <TableHead>Descrição</TableHead>
-                                                <TableHead className="text-center w-[80px]">Qtd</TableHead>
-                                                <TableHead className="text-right w-[120px]">Valor Total</TableHead>
+                                                <TableHead>Item</TableHead>
+                                                <TableHead className="text-center">Qtd</TableHead>
+                                                <TableHead className="text-right">Total</TableHead>
+                                                <TableHead className="w-[100px] text-center">ND</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {group.items.map((item, index) => (
-                                                <TableRow key={item.id || index}>
-                                                    <TableCell className="text-xs font-mono">{item.codigo_catmat}</TableCell>
+                                            {group.items.map(item => (
+                                                <TableRow key={item.id}>
                                                     <TableCell className="text-xs">
                                                         {item.descricao_item}
-                                                        <p className="text-muted-foreground text-[10px] mt-0.5">
-                                                            {item.numero_pregao} | {item.uasg} | ND {item.nd}
-                                                        </p>
+                                                        <p className="text-muted-foreground text-[10px]">CATMAT: {item.codigo_catmat}</p>
                                                     </TableCell>
                                                     <TableCell className="text-center text-xs">{item.quantidade}</TableCell>
                                                     <TableCell className="text-right text-xs font-medium">{formatCurrency(item.valor_total)}</TableCell>
+                                                    <TableCell className="text-center text-xs font-medium">{item.nd}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -768,7 +760,7 @@ const MaterialConsumoForm = () => {
                 organizacao: newFormData.om_favorecida,
                 ug: newFormData.ug_favorecida,
                 om_detentora: newFormData.om_destino,
-                ug_detentora: newFormData.ug_detentora,
+                ug_detentora: newFormData.ug_destino,
                 dias_operacao: newFormData.dias_operacao,
                 efetivo: newFormData.efetivo,
                 fase_atividade: newFormData.fase_atividade,
@@ -805,7 +797,7 @@ const MaterialConsumoForm = () => {
                 organizacao: newFormData.om_favorecida,
                 ug: newFormData.ug_favorecida,
                 om_detentora: newFormData.om_destino,
-                ug_detentora: newFormData.ug_detentora,
+                ug_detentora: newFormData.ug_destino,
                 dias_operacao: newFormData.dias_operacao,
                 efetivo: newFormData.efetivo,
                 fase_atividade: newFormData.fase_atividade,
@@ -834,16 +826,6 @@ const MaterialConsumoForm = () => {
     const handleConfirmDelete = (group: ConsolidatedMaterialConsumoRecord) => {
         setGroupToDelete(group); 
         setShowDeleteDialog(true);
-    };
-    
-    // NOVO: Handler para edição de grupo (usado pelo AcquisitionGroupRow)
-    const handleEditGroup = (group: ConsolidatedMaterialConsumo) => {
-        handleEdit(group);
-    };
-    
-    // NOVO: Handler para exclusão de grupo (usado pelo AcquisitionGroupRow)
-    const handleConfirmDeleteGroup = (group: ConsolidatedMaterialConsumo) => {
-        handleConfirmDelete(group);
     };
 
     // Adiciona o item calculado à lista pendente OU prepara a atualização (staging)
@@ -1504,43 +1486,121 @@ const MaterialConsumoForm = () => {
                             )}
 
                             {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
-                            {consolidatedRegistros && consolidatedRegistros.length > 0 ? (
+                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
-                                        <Package className="h-5 w-5 text-accent" />
-                                        Grupos de Aquisição Cadastrados ({consolidatedRegistros.length})
+                                        <Sparkles className="h-5 w-5 text-accent" />
+                                        OMs Cadastradas ({consolidatedRegistros.length})
                                     </h3>
                                     
-                                    {/* Lista de Grupos de Aquisição */}
-                                    <div className="space-y-3">
-                                        {consolidatedRegistros.map((group) => (
-                                            <AcquisitionGroupRow 
-                                                key={group.groupKey} 
-                                                group={group as ConsolidatedMaterialConsumo}
-                                                isPTrabEditable={isPTrabEditable}
-                                                onEdit={handleEditGroup}
-                                                onDelete={handleConfirmDeleteGroup}
-                                                isSaving={isSaving}
-                                                forceOpen={editingId === group.records[0].id}
-                                            />
-                                        ))}
-                                    </div>
-                                </section>
-                            ) : (
-                                <section className="space-y-4 border-b pb-6">
-                                    <h3 className="text-xl font-bold flex items-center gap-2">
-                                        <Package className="h-5 w-5 text-accent" />
-                                        Grupos de Aquisição Cadastrados (0)
-                                    </h3>
-                                    <Card className="p-8 text-center border-2 border-dashed border-muted-foreground/50 bg-muted/20">
-                                        <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-                                        <p className="text-lg font-semibold text-muted-foreground">
-                                            Nenhum grupo de aquisição registrado.
-                                        </p>
-                                        <p className="text-sm text-muted-foreground mt-1">
-                                            Crie um novo grupo na Seção 2 para detalhar os itens de Material de Consumo.
-                                        </p>
-                                    </Card>
+                                    {consolidatedRegistros.map((group) => {
+                                        const totalOM = group.totalGeral;
+                                        const totalND30Consolidado = group.totalND30;
+                                        const totalND39Consolidado = group.totalND39;
+                                        
+                                        const diasOperacaoConsolidado = group.dias_operacao;
+                                        const efetivoConsolidado = group.efetivo;
+                                        
+                                        const omName = group.organizacao;
+                                        const ug = group.ug;
+                                        const faseAtividade = group.fase_atividade || 'Não Definida';
+                                        
+                                        const diasText = diasOperacaoConsolidado === 1 ? 'dia' : 'dias';
+                                        const efetivoText = efetivoConsolidado === 1 ? 'militar' : 'militares';
+                                        
+                                        const isDifferentOm = group.om_detentora !== group.organizacao || group.ug_detentora !== group.ug;
+                                        const omDestino = group.om_detentora;
+                                        const ugDestino = group.ug_detentora;
+                                        
+                                        const totalGroups = group.records.length;
+                                        const groupText = totalGroups === 1 ? 'Grupo' : 'Grupos';
+
+                                        return (
+                                            <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
+                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                        {omName} (UG: {formatCodug(ug)})
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {faseAtividade}
+                                                        </Badge>
+                                                    </h3>
+                                                    <span className="font-extrabold text-xl text-primary">
+                                                        {formatCurrency(totalOM)}
+                                                    </span>
+                                                </div>
+                                                
+                                                {/* CORPO CONSOLIDADO */}
+                                                <div className="space-y-3">
+                                                    <Card 
+                                                        key={group.groupKey} 
+                                                        className="p-3 bg-background border"
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex flex-col">
+                                                                <div className="flex items-center gap-2">
+                                                                    <h4 className="font-semibold text-base text-foreground">
+                                                                        Material de Consumo
+                                                                    </h4>
+                                                                </div>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {totalGroups} {groupText} | Período: {diasOperacaoConsolidado} {diasText} | Efetivo: {efetivoConsolidado} {efetivoText}
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-extrabold text-xl text-foreground">
+                                                                    {formatCurrency(totalOM)}
+                                                                </span>
+                                                                {/* Botões de Ação */}
+                                                                <div className="flex gap-1 shrink-0">
+                                                                    <Button
+                                                                        type="button" 
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-8 w-8"
+                                                                        onClick={() => handleEdit(group)} 
+                                                                        disabled={!isPTrabEditable || isSaving || pendingGroups.length > 0}
+                                                                    >
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button
+                                                                        type="button" 
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => handleConfirmDelete(group)} 
+                                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Detalhes da Alocação */}
+                                                        <div className="pt-2 border-t mt-2">
+                                                            {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
+                                                                    {omDestino} ({formatCodug(ugDestino)})
+                                                                </span>
+                                                            </div>
+                                                            {/* ND 33.90.30 */}
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-muted-foreground">ND 33.90.30:</span>
+                                                                <span className="text-green-600">{formatCurrency(totalND30Consolidado)}</span>
+                                                            </div>
+                                                            {/* ND 33.90.39 */}
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-muted-foreground">ND 33.90.39:</span>
+                                                                <span className="text-green-600">{formatCurrency(totalND39Consolidado)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </Card>
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
                                 </section>
                             )}
 
