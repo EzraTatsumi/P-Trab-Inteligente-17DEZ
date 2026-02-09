@@ -929,133 +929,161 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                     </DialogDescription>
                 </DialogHeader>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 py-4">
-                    {/* Seção Logística */}
-                    <CategoryCard 
-                        label="Classe I (Alimentação)" 
-                        value={om.classeI.total} 
-                        icon={Utensils} 
-                        colorClass="bg-orange-500/10 text-orange-600"
-                    />
-                    <CategoryCard 
-                        label="Classe II (Intendência)" 
-                        value={om.classeII.total} 
-                        icon={ClipboardList} 
-                        colorClass="bg-orange-500/10 text-orange-600"
-                        nd30={om.classeII.totalND30}
-                        nd39={om.classeII.totalND39}
-                    />
-                    <CategoryCard 
-                        label="Classe V (Armamento)" 
-                        value={om.classeV.total} 
-                        icon={Swords} 
-                        colorClass="bg-orange-500/10 text-orange-600"
-                        nd30={om.classeV.totalND30}
-                        nd39={om.classeV.totalND39}
-                    />
-                    <CategoryCard 
-                        label="Classe VI (Engenharia)" 
-                        value={om.classeVI.total} 
-                        icon={HardHat} 
-                        colorClass="bg-orange-500/10 text-orange-600"
-                        nd30={om.classeVI.totalND30}
-                        nd39={om.classeVI.totalND39}
-                    />
-                    <CategoryCard 
-                        label="Classe VII (Com/Inf)" 
-                        value={om.classeVII.total} 
-                        icon={Radio} 
-                        colorClass="bg-orange-500/10 text-orange-600"
-                        nd30={om.classeVII.totalND30}
-                        nd39={om.classeVII.totalND39}
-                    />
-                    <CategoryCard 
-                        label="Classe VIII (Saúde/Remonta)" 
-                        value={om.classeVIII.total} 
-                        icon={HeartPulse} 
-                        colorClass="bg-orange-500/10 text-orange-600"
-                        nd30={om.classeVIII.totalND30}
-                        nd39={om.classeVIII.totalND39}
-                    />
-                    <CategoryCard 
-                        label="Classe IX (Motomecanização)" 
-                        value={om.classeIX.total} 
-                        icon={Truck} 
-                        colorClass="bg-orange-500/10 text-orange-600"
-                        nd30={om.classeIX.totalND30}
-                        nd39={om.classeIX.totalND39}
-                    />
-                    <CategoryCard 
-                        label="Classe III (Combustíveis)" 
-                        value={om.classeIII.total} 
-                        icon={Fuel} 
-                        colorClass="bg-orange-500/10 text-orange-600"
-                    />
+                <div className="space-y-8 py-4">
+                    {/* Bloco Logística */}
+                    {om.totalLogistica > 0 && (
+                        <div>
+                            <h3 className="text-sm font-bold text-orange-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-orange-500/20 pb-1">
+                                <Package className="h-4 w-4" />
+                                Aba Logística
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <CategoryCard 
+                                    label="Classe I (Alimentação)" 
+                                    value={om.classeI.total} 
+                                    icon={Utensils} 
+                                    colorClass="bg-orange-500/10 text-orange-600"
+                                />
+                                <CategoryCard 
+                                    label="Classe II (Intendência)" 
+                                    value={om.classeII.total} 
+                                    icon={ClipboardList} 
+                                    colorClass="bg-orange-500/10 text-orange-600"
+                                    nd30={om.classeII.totalND30}
+                                    nd39={om.classeII.totalND39}
+                                />
+                                <CategoryCard 
+                                    label="Classe V (Armamento)" 
+                                    value={om.classeV.total} 
+                                    icon={Swords} 
+                                    colorClass="bg-orange-500/10 text-orange-600"
+                                    nd30={om.classeV.totalND30}
+                                    nd39={om.classeV.totalND39}
+                                />
+                                <CategoryCard 
+                                    label="Classe VI (Engenharia)" 
+                                    value={om.classeVI.total} 
+                                    icon={HardHat} 
+                                    colorClass="bg-orange-500/10 text-orange-600"
+                                    nd30={om.classeVI.totalND30}
+                                    nd39={om.classeVI.totalND39}
+                                />
+                                <CategoryCard 
+                                    label="Classe VII (Com/Inf)" 
+                                    value={om.classeVII.total} 
+                                    icon={Radio} 
+                                    colorClass="bg-orange-500/10 text-orange-600"
+                                    nd30={om.classeVII.totalND30}
+                                    nd39={om.classeVII.totalND39}
+                                />
+                                <CategoryCard 
+                                    label="Classe VIII (Saúde/Remonta)" 
+                                    value={om.classeVIII.total} 
+                                    icon={HeartPulse} 
+                                    colorClass="bg-orange-500/10 text-orange-600"
+                                    nd30={om.classeVIII.totalND30}
+                                    nd39={om.classeVIII.totalND39}
+                                />
+                                <CategoryCard 
+                                    label="Classe IX (Motomecanização)" 
+                                    value={om.classeIX.total} 
+                                    icon={Truck} 
+                                    colorClass="bg-orange-500/10 text-orange-600"
+                                    nd30={om.classeIX.totalND30}
+                                    nd39={om.classeIX.totalND39}
+                                />
+                                <CategoryCard 
+                                    label="Classe III (Combustíveis)" 
+                                    value={om.classeIII.total} 
+                                    icon={Fuel} 
+                                    colorClass="bg-orange-500/10 text-orange-600"
+                                />
+                            </div>
+                        </div>
+                    )}
 
-                    {/* Seção Operacional */}
-                    <CategoryCard 
-                        label="Diárias" 
-                        value={om.diarias.total} 
-                        icon={Briefcase} 
-                        colorClass="bg-blue-500/10 text-blue-600"
-                        nd30={om.diarias.totalND30}
-                    />
-                    <CategoryCard 
-                        label="Passagens" 
-                        value={om.passagens.total} 
-                        icon={Plane} 
-                        colorClass="bg-blue-500/10 text-blue-600"
-                    />
-                    <CategoryCard 
-                        label="Verba Operacional" 
-                        value={om.verbaOperacional.total} 
-                        icon={Activity} 
-                        colorClass="bg-blue-500/10 text-blue-600"
-                        nd30={om.verbaOperacional.totalND30}
-                        nd39={om.verbaOperacional.totalND39}
-                    />
-                    <CategoryCard 
-                        label="Suprimento de Fundos" 
-                        value={om.suprimentoFundos.total} 
-                        icon={Wallet} 
-                        colorClass="bg-blue-500/10 text-blue-600"
-                        nd30={om.suprimentoFundos.totalND30}
-                        nd39={om.suprimentoFundos.totalND39}
-                    />
-                    <CategoryCard 
-                        label="Concessionária" 
-                        value={om.concessionaria.total} 
-                        icon={Droplet} 
-                        colorClass="bg-blue-500/10 text-blue-600"
-                        nd39={om.concessionaria.total}
-                    />
-                    <CategoryCard 
-                        label="Material de Consumo" 
-                        value={om.materialConsumo.total} 
-                        icon={Package} 
-                        colorClass="bg-blue-500/10 text-blue-600"
-                        nd30={om.materialConsumo.totalND30}
-                        nd39={om.materialConsumo.totalND39}
-                    />
-                    
-                    {/* Aviação do Exército (Se existir) */}
-                    {om.totalAviacaoExercito > 0 && (
-                        <CategoryCard 
-                            label="Aviação do Exército" 
-                            value={om.totalAviacaoExercito} 
-                            icon={Zap} 
-                            colorClass="bg-purple-500/10 text-purple-600"
-                        />
+                    {/* Bloco Operacional */}
+                    {om.totalOperacional > 0 && (
+                        <div>
+                            <h3 className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-blue-500/20 pb-1">
+                                <Activity className="h-4 w-4" />
+                                Aba Operacional
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <CategoryCard 
+                                    label="Diárias" 
+                                    value={om.diarias.total} 
+                                    icon={Briefcase} 
+                                    colorClass="bg-blue-500/10 text-blue-600"
+                                    nd30={om.diarias.totalND30}
+                                />
+                                <CategoryCard 
+                                    label="Passagens" 
+                                    value={om.passagens.total} 
+                                    icon={Plane} 
+                                    colorClass="bg-blue-500/10 text-blue-600"
+                                />
+                                <CategoryCard 
+                                    label="Verba Operacional" 
+                                    value={om.verbaOperacional.total} 
+                                    icon={Activity} 
+                                    colorClass="bg-blue-500/10 text-blue-600"
+                                    nd30={om.verbaOperacional.totalND30}
+                                    nd39={om.verbaOperacional.totalND39}
+                                />
+                                <CategoryCard 
+                                    label="Suprimento de Fundos" 
+                                    value={om.suprimentoFundos.total} 
+                                    icon={Wallet} 
+                                    colorClass="bg-blue-500/10 text-blue-600"
+                                    nd30={om.suprimentoFundos.totalND30}
+                                    nd39={om.suprimentoFundos.totalND39}
+                                />
+                                <CategoryCard 
+                                    label="Concessionária" 
+                                    value={om.concessionaria.total} 
+                                    icon={Droplet} 
+                                    colorClass="bg-blue-500/10 text-blue-600"
+                                    nd39={om.concessionaria.total}
+                                />
+                                <CategoryCard 
+                                    label="Material de Consumo" 
+                                    value={om.materialConsumo.total} 
+                                    icon={Package} 
+                                    colorClass="bg-blue-500/10 text-blue-600"
+                                    nd30={om.materialConsumo.totalND30}
+                                    nd39={om.materialConsumo.totalND39}
+                                />
+                                
+                                {/* Aviação do Exército (Se existir, agrupada no operacional) */}
+                                {om.totalAviacaoExercito > 0 && (
+                                    <CategoryCard 
+                                        label="Aviação do Exército" 
+                                        value={om.totalAviacaoExercito} 
+                                        icon={Zap} 
+                                        colorClass="bg-purple-500/10 text-purple-600"
+                                    />
+                                )}
+                            </div>
+                        </div>
                     )}
                     
-                    {/* Material Permanente (Se existir) */}
+                    {/* Bloco Material Permanente (Se existir) */}
                     {om.totalMaterialPermanente > 0 && (
-                        <CategoryCard 
-                            label="Material Permanente" 
-                            value={om.totalMaterialPermanente} 
-                            icon={HardHat} 
-                            colorClass="bg-green-500/10 text-green-600"
-                        />
+                        <div>
+                            <h3 className="text-sm font-bold text-green-600 uppercase tracking-wider mb-3 flex items-center gap-2 border-b border-green-500/20 pb-1">
+                                <HardHat className="h-4 w-4" />
+                                Aba Material Permanente
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <CategoryCard 
+                                    label="Material Permanente" 
+                                    value={om.totalMaterialPermanente} 
+                                    icon={HardHat} 
+                                    colorClass="bg-green-500/10 text-green-600"
+                                />
+                            </div>
+                        </div>
                     )}
                 </div>
                 
