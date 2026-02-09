@@ -856,14 +856,18 @@ const CategoryCard = ({
   value, 
   icon: Icon, 
   colorClass, 
+  nd15,
   nd30, 
+  nd33,
   nd39 
 }: { 
   label: string, 
   value: number, 
   icon: any, 
   colorClass: string,
+  nd15?: number,
   nd30?: number,
+  nd33?: number,
   nd39?: number
 }) => {
   if (value === 0) return null;
@@ -884,16 +888,28 @@ const CategoryCard = ({
         </div>
       </div>
       
-      {(nd30 !== undefined || nd39 !== undefined) && (
-        <div className="flex items-center gap-2 mt-auto pt-2 border-t border-dashed border-border/50">
-          {nd30 !== undefined && (
+      {(nd15 !== undefined || nd30 !== undefined || nd33 !== undefined || nd39 !== undefined) && (
+        <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-auto pt-2 border-t border-dashed border-border/50">
+          {nd15 !== undefined && nd15 > 0 && (
+            <div className="flex flex-col">
+              <span className="text-[8px] text-muted-foreground uppercase font-bold">ND 15</span>
+              <span className="text-[10px] font-semibold text-purple-600 leading-none">{formatCurrency(nd15)}</span>
+            </div>
+          )}
+          {nd30 !== undefined && nd30 > 0 && (
             <div className="flex flex-col">
               <span className="text-[8px] text-muted-foreground uppercase font-bold">ND 30</span>
               <span className="text-[10px] font-semibold text-green-600 leading-none">{formatCurrency(nd30)}</span>
             </div>
           )}
-          {nd39 !== undefined && (
-            <div className="flex flex-col ml-auto text-right">
+          {nd33 !== undefined && nd33 > 0 && (
+            <div className="flex flex-col">
+              <span className="text-[8px] text-muted-foreground uppercase font-bold">ND 33</span>
+              <span className="text-[10px] font-semibold text-cyan-600 leading-none">{formatCurrency(nd33)}</span>
+            </div>
+          )}
+          {nd39 !== undefined && nd39 > 0 && (
+            <div className="flex flex-col text-right">
               <span className="text-[8px] text-muted-foreground uppercase font-bold">ND 39</span>
               <span className="text-[10px] font-semibold text-blue-600 leading-none">{formatCurrency(nd39)}</span>
             </div>
@@ -921,15 +937,15 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
 
     return (
         <Dialog open={!!om} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
+            <DialogContent className="sm:max-w-[1000px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+                <DialogHeader className="p-6 pb-4 border-b border-border/50">
                     <DialogTitle className="text-2xl font-bold">{om.omName}</DialogTitle>
                     <DialogDescription className="text-sm">
                         UG: {formatCodug(om.ug)} | Total: {formatCurrency(om.totalGeral)}
                     </DialogDescription>
                 </DialogHeader>
                 
-                <div className="space-y-8 py-4">
+                <div className="flex-1 overflow-y-auto p-6 space-y-8">
                     {/* Bloco Logística - ORDENADO POR CLASSE NUMÉRICA */}
                     {om.totalLogistica > 0 && (
                         <div>
@@ -937,12 +953,13 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                 <Package className="h-4 w-4" />
                                 Aba Logística
                             </h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 <CategoryCard 
                                     label="Classe I (Alimentação)" 
                                     value={om.classeI.total} 
                                     icon={Utensils} 
                                     colorClass="bg-orange-500/10 text-orange-600"
+                                    nd30={om.classeI.total}
                                 />
                                 <CategoryCard 
                                     label="Classe II (Intendência)" 
@@ -957,6 +974,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     value={om.classeIII.total} 
                                     icon={Fuel} 
                                     colorClass="bg-orange-500/10 text-orange-600"
+                                    nd30={om.classeIII.total}
                                 />
                                 <CategoryCard 
                                     label="Classe V (Armamento)" 
@@ -1009,7 +1027,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                 <Activity className="h-4 w-4" />
                                 Aba Operacional
                             </h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 {/* Aviação do Exército (Se existir) */}
                                 {om.totalAviacaoExercito > 0 && (
                                     <CategoryCard 
@@ -1017,6 +1035,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                         value={om.totalAviacaoExercito} 
                                         icon={Zap} 
                                         colorClass="bg-purple-500/10 text-purple-600"
+                                        nd30={om.totalAviacaoExercito}
                                     />
                                 )}
                                 <CategoryCard 
@@ -1031,6 +1050,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     value={om.diarias.total} 
                                     icon={Briefcase} 
                                     colorClass="bg-blue-500/10 text-blue-600"
+                                    nd15={om.diarias.totalND15}
                                     nd30={om.diarias.totalND30}
                                 />
                                 <CategoryCard 
@@ -1046,6 +1066,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     value={om.passagens.total} 
                                     icon={Plane} 
                                     colorClass="bg-blue-500/10 text-blue-600"
+                                    nd33={om.passagens.total}
                                 />
                                 <CategoryCard 
                                     label="Suprimento de Fundos" 
@@ -1074,12 +1095,13 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                 <HardHat className="h-4 w-4" />
                                 Aba Material Permanente
                             </h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 <CategoryCard 
                                     label="Material Permanente" 
                                     value={om.totalMaterialPermanente} 
                                     icon={HardHat} 
                                     colorClass="bg-green-500/10 text-green-600"
+                                    nd30={om.totalMaterialPermanente}
                                 />
                             </div>
                         </div>
@@ -1087,7 +1109,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                 </div>
                 
                 {/* Indicador de impacto da OM no total geral */}
-                <div className="mt-6 pt-4 border-t border-border/30">
+                <div className="p-6 pt-4 border-t border-border/30 bg-muted/20">
                     <div className="flex justify-between items-end mb-2">
                         <span className="text-[10px] font-bold text-muted-foreground uppercase">Impacto no Orçamento GND 3</span>
                         <span className="text-xs font-bold text-primary">{impactPercentage}%</span>
