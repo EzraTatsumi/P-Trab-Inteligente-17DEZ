@@ -455,8 +455,8 @@ const MaterialConsumoForm = () => {
         
         if (groups.length === 0) {
             return (
-                <Alert variant="default" className="border border-gray-300">
-                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                <Alert variant="default" className="border border-gray-300 bg-gray-100">
+                    <AlertCircle className="h-4 w-4 text-red-500" />
                     <AlertTitle>Nenhum Grupo Adicionado</AlertTitle>
                     <AlertDescription>
                         Crie um grupo para selecionar os itens de aquisição necessários.
@@ -840,22 +840,22 @@ const MaterialConsumoForm = () => {
             return {
                 tempId: group.tempId, 
                 p_trab_id: ptrabId!,
-                organizacao: newFormData.om_favorecida,
-                ug: newFormData.ug_favorecida,
-                om_detentora: newFormData.om_destino,
-                ug_detentora: newFormData.ug_detentora,
-                dias_operacao: newFormData.dias_operacao,
-                efetivo: newFormData.efetivo,
-                fase_atividade: newFormData.fase_atividade,
+                organizacao: formData.om_favorecida,
+                ug: formData.ug_favorecida,
+                om_detentora: formData.om_destino,
+                ug_detentora: formData.ug_destino,
+                dias_operacao: formData.dias_operacao,
+                efetivo: formData.efetivo,
+                fase_atividade: formData.fase_atividade,
                 
-                valor_total: totalValue,
+                valor_total: group.totalValue,
                 valor_nd_30: group.totalND30,
                 valor_nd_39: group.totalND39,
                 
-                totalGeral: totalValue,
+                totalGeral: group.totalValue,
                 memoria_calculo_display: memoria, 
-                om_favorecida: newFormData.om_favorecida,
-                ug_favorecida: newFormData.ug_favorecida,
+                om_favorecida: formData.om_favorecida,
+                ug_favorecida: formData.ug_favorecida,
                 detalhamento_customizado: tempGroupRecord.records[0].detalhamento_customizado,
                 acquisitionGroups: [group],
             } as CalculatedMaterialConsumo;
@@ -1212,7 +1212,7 @@ const MaterialConsumoForm = () => {
                 <Card>
                     <CardHeader>
                         <CardTitle>
-                            Aquisição de Material de Consumo
+                            Material de Consumo
                         </CardTitle>
                         <CardDescription>
                             Detalhamento das necessidades de aquisição de Material de Consumo.
