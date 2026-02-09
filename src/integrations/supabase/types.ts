@@ -2066,10 +2066,12 @@ export type CompositeTypes<
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DefaultSchema["CompositeTypes"]
+  schema: keyof DatabaseWithoutInternals
 }
-  ? (DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+  ? (DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"])[CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {
