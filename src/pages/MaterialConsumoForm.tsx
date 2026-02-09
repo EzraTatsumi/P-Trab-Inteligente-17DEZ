@@ -445,8 +445,8 @@ const MaterialConsumoForm = () => {
     const renderAcquisitionGroups = () => {
         if (formData.acquisitionGroups.length === 0) {
             return (
-                <Alert variant="default" className="border-l-4 border-yellow-500">
-                    <AlertCircle className="h-4 w-4 text-yellow-500" />
+                <Alert variant="default" className="border-l-4 border-gray-300">
+                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
                     <AlertTitle>Nenhum Grupo Adicionado</AlertTitle>
                     <AlertDescription>
                         Adicione um grupo para selecionar os itens de aquisição necessários.
@@ -1606,7 +1606,7 @@ const MaterialConsumoForm = () => {
                                             </Card>
                                         );
                                     })}
-                                </section>
+                                </div>
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
