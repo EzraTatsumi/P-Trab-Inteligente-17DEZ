@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check, Package, Minus, ChevronDown, ChevronUp, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check, Package, Minus, ChevronDown, ChevronUp, FileSpreadsheet, FileText } from "lucide-react";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
@@ -42,6 +42,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import AcquisitionGroupForm from "@/components/AcquisitionGroupForm";
 import MaterialConsumoMemoria from "@/components/MaterialConsumoMemoria";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo"; // Importar ItemAquisicao
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Importar Tooltip
 
 // Tipos de dados
 type MaterialConsumoRegistroDB = Tables<'material_consumo_registros'>; 
@@ -258,7 +259,7 @@ const MaterialConsumoForm = () => {
             return recordsToInsert;
         },
         onSuccess: () => {
-            toast.success(`Sucesso! ${pendingGroups.length} Grupo(s) de Aquisição adicionado(s).`);
+            toast.success(`Sucesso! ${pendingGroups.length} Grupo(s) de Aquisição adicionado(s)`);
             setPendingGroups([]);
             setLastStagedFormData(null);
             queryClient.invalidateQueries({ queryKey: ['materialConsumoRegistros', ptrabId] });
@@ -444,9 +445,13 @@ const MaterialConsumoForm = () => {
     const renderAcquisitionGroups = () => {
         if (formData.acquisitionGroups.length === 0) {
             return (
-                <Card className="p-4 text-center text-muted-foreground border-dashed">
-                    Nenhum Grupo de Aquisição criado.
-                </Card>
+                <Alert variant="default" className="border-l-4 border-yellow-500">
+                    <AlertCircle className="h-4 w-4 text-yellow-500" />
+                    <AlertTitle>Nenhum Grupo Adicionado</AlertTitle>
+                    <AlertDescription>
+                        Adicione um grupo para selecionar os itens de aquisição necessários.
+                    </AlertDescription>
+                </Alert>
             );
         }
         
@@ -585,7 +590,7 @@ const MaterialConsumoForm = () => {
                     fase_atividade: formData.fase_atividade,
                     records: [{
                         id: group.tempId, 
-                        p_trab_id: ptrabId,
+                        p_trab_id: ptrabId!,
                         organizacao: formData.om_favorecida,
                         ug: formData.ug_favorecida,
                         om_detentora: formData.om_destino,
@@ -760,7 +765,7 @@ const MaterialConsumoForm = () => {
                 organizacao: newFormData.om_favorecida,
                 ug: newFormData.ug_favorecida,
                 om_detentora: newFormData.om_destino,
-                ug_detentora: newFormData.ug_destino,
+                ug_detentora: newFormData.ug_detentora,
                 dias_operacao: newFormData.dias_operacao,
                 efetivo: newFormData.efetivo,
                 fase_atividade: newFormData.fase_atividade,
@@ -797,7 +802,7 @@ const MaterialConsumoForm = () => {
                 organizacao: newFormData.om_favorecida,
                 ug: newFormData.ug_favorecida,
                 om_detentora: newFormData.om_destino,
-                ug_detentora: newFormData.ug_destino,
+                ug_detentora: newFormData.ug_detentora,
                 dias_operacao: newFormData.dias_operacao,
                 efetivo: newFormData.efetivo,
                 fase_atividade: newFormData.fase_atividade,
@@ -1284,7 +1289,7 @@ const MaterialConsumoForm = () => {
                                         {/* Gerenciamento de Grupos de Aquisição */}
                                         <Card className="mt-4 rounded-lg p-4 bg-background">
                                             <h4 className="font-semibold text-base mb-4">
-                                                Grupos de Aquisição
+                                                Grupos de Aquisição ({formData.acquisitionGroups.length})
                                             </h4>
                                             
                                             {/* Formulário Inline de Criação/Edição */}
@@ -1308,7 +1313,7 @@ const MaterialConsumoForm = () => {
                                                         type="button" 
                                                         onClick={handleOpenGroupForm}
                                                         disabled={!isPTrabEditable || isSaving}
-                                                        variant="secondary"
+                                                        variant="outline"
                                                         className="w-full"
                                                     >
                                                         <Plus className="mr-2 h-4 w-4" />
