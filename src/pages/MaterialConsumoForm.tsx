@@ -625,7 +625,7 @@ const MaterialConsumoForm = () => {
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
                     om_detentora: formData.om_destino,
-                    ug_detentora: formData.ug_destino,
+                    ug_detentora: formData.ug_destino, // CORREÇÃO: Usando ug_destino
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
@@ -635,7 +635,7 @@ const MaterialConsumoForm = () => {
                         organizacao: formData.om_favorecida,
                         ug: formData.ug_favorecida,
                         om_detentora: formData.om_destino,
-                        ug_detentora: formData.ug_destino,
+                        ug_detentora: formData.ug_destino, // CORREÇÃO: Usando ug_destino
                         dias_operacao: formData.dias_operacao,
                         efetivo: formData.efetivo,
                         fase_atividade: formData.fase_atividade,
@@ -662,7 +662,7 @@ const MaterialConsumoForm = () => {
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
                     om_detentora: formData.om_destino,
-                    ug_detentora: formData.ug_destino,
+                    ug_detentora: formData.ug_destino, // CORREÇÃO: Usando ug_destino
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
@@ -787,7 +787,7 @@ const MaterialConsumoForm = () => {
             om_favorecida: group.organizacao, 
             ug_favorecida: group.ug, 
             om_destino: group.om_detentora,
-            ug_destino: group.ug_detentora,
+            ug_destino: group.ug_detentora, 
             dias_operacao: group.dias_operacao,
             efetivo: group.efetivo, 
             fase_atividade: group.fase_atividade || "",
@@ -806,7 +806,7 @@ const MaterialConsumoForm = () => {
                 organizacao: newFormData.om_favorecida,
                 ug: newFormData.ug_favorecida,
                 om_detentora: newFormData.om_destino,
-                ug_detentora: newFormData.ug_destino,
+                ug_detentora: newFormData.ug_destino, // CORREÇÃO: Usando ug_destino
                 dias_operacao: newFormData.dias_operacao,
                 efetivo: newFormData.efetivo,
                 fase_atividade: newFormData.fase_atividade,
@@ -816,7 +816,7 @@ const MaterialConsumoForm = () => {
                     organizacao: newFormData.om_favorecida,
                     ug: newFormData.ug_favorecida,
                     om_detentora: newFormData.om_destino,
-                    ug_detentora: newFormData.ug_detentora,
+                    ug_detentora: newFormData.ug_destino, // CORREÇÃO: Usando ug_destino
                     dias_operacao: newFormData.dias_operacao,
                     efetivo: newFormData.efetivo,
                     fase_atividade: newFormData.fase_atividade,
@@ -843,7 +843,7 @@ const MaterialConsumoForm = () => {
                 organizacao: newFormData.om_favorecida,
                 ug: newFormData.ug_favorecida,
                 om_detentora: newFormData.om_destino,
-                ug_detentora: newFormData.ug_detentora,
+                ug_detentora: newFormData.ug_destino, // CORREÇÃO: Usando ug_destino
                 dias_operacao: newFormData.dias_operacao,
                 efetivo: newFormData.efetivo,
                 fase_atividade: newFormData.fase_atividade,
@@ -907,7 +907,7 @@ const MaterialConsumoForm = () => {
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
                     om_detentora: formData.om_destino,
-                    ug_detentora: formData.ug_destino,
+                    ug_detentora: formData.ug_destino, // CORREÇÃO: Usando ug_destino
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
@@ -917,7 +917,7 @@ const MaterialConsumoForm = () => {
                         organizacao: formData.om_favorecida,
                         ug: formData.ug_favorecida,
                         om_detentora: formData.om_destino,
-                        ug_detentora: formData.ug_destino,
+                        ug_detentora: formData.ug_destino, // CORREÇÃO: Usando ug_destino
                         dias_operacao: formData.dias_operacao,
                         efetivo: formData.efetivo,
                         fase_atividade: formData.fase_atividade,
@@ -944,7 +944,7 @@ const MaterialConsumoForm = () => {
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
                     om_detentora: formData.om_destino,
-                    ug_detentora: formData.ug_destino,
+                    ug_detentora: formData.ug_destino, // CORREÇÃO: Usando ug_destino
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,

@@ -124,9 +124,11 @@ const MaterialConsumoMemoria: React.FC<MaterialConsumoMemoriaProps> = ({
                                 </Button>
                             </div>
                         )}
-                    </CardContent>
-                </Card>
-            );
-        };
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
 
 export default MaterialConsumoMemoria;
