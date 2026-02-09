@@ -1789,7 +1789,8 @@ export const PTrabCostSummary = ({
   // Prepara os dados agrupados por OM para iteração
   const sortedOmTotals = useMemo(() => {
       const omGroups = totals.groupedByOm || {}; 
-      return Object.values(omGroups).sort((a, b) => a.omName.localeCompare(b.omName));
+      // ORDENAÇÃO: Por totalGeral decrescente
+      return Object.values(omGroups).sort((a, b) => b.totalGeral - a.totalGeral);
   }, [totals.groupedByOm]);
   
   // Componente para renderizar os detalhes no modo GLOBAL
@@ -1851,18 +1852,28 @@ export const PTrabCostSummary = ({
               );
           }
           
+          const totalGND3 = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito;
+
           return (
               <div className="w-full space-y-1 text-sm px-6 pt-3">
-                  {sortedOmTotals.map(om => (
-                      <div 
-                          key={om.omKey} 
-                          className="flex justify-between items-center text-foreground cursor-pointer p-1 rounded-md transition-colors hover:bg-muted/50" 
-                          onClick={() => handleOmClick(om)} // Abre o Dialog
-                      >
-                          <span className="font-semibold text-sm text-foreground">{om.omName}</span>
-                          <span className="font-bold text-sm text-primary">{formatCurrency(om.totalGeral)}</span> 
-                      </div>
-                  ))}
+                  {sortedOmTotals.map(om => {
+                      const omGND3Total = om.totalLogistica + om.totalOperacional + om.totalAviacaoExercito;
+                      const impactPercentage = totalGND3 > 0 ? ((omGND3Total / totalGND3) * 100).toFixed(1) : '0.0';
+                      
+                      return (
+                          <div 
+                              key={om.omKey} 
+                              className="flex justify-between items-center text-foreground cursor-pointer p-1 rounded-md transition-colors hover:bg-muted/50" 
+                              onClick={() => handleOmClick(om)} // Abre o Dialog
+                          >
+                              <span className="font-semibold text-sm text-foreground">{om.omName}</span>
+                              <div className="flex items-center gap-2">
+                                  <span className="text-xs font-medium text-muted-foreground/80">({impactPercentage}%)</span>
+                                  <span className="font-bold text-sm text-primary">{formatCurrency(om.totalGeral)}</span> 
+                              </div>
+                          </div>
+                      );
+                  })}
               </div>
           );
       }
