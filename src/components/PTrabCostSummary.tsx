@@ -192,13 +192,13 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     totalMaterialPermanente: 0,
     totalAviacaoExercito: 0,
     classeI: { total: 0, totalComplemento: 0, totalEtapaSolicitadaValor: 0, totalDiasEtapaSolicitada: 0, totalRefeicoesIntermediarias: 0, totalRacoesOperacionaisGeral: 0 },
-    classeII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeII: { total: 0, totalND30: number, totalND39: number, totalItens: 0, groupedCategories: {} },
     classeIII: { total: 0, totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0 },
-    classeV: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
-    classeVI: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
-    classeVII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
-    classeVIII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
-    classeIX: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeV: { total: 0, totalND30: number, totalND39: number, totalItens: 0, groupedCategories: {} },
+    classeVI: { total: 0, totalND30: number, totalND39: number, totalItens: 0, groupedCategories: {} },
+    classeVII: { total: 0, totalND30: number, totalND39: number, totalItens: 0, groupedCategories: {} },
+    classeVIII: { total: 0, totalND30: number, totalND39: number, totalItens: 0, groupedCategories: {} },
+    classeIX: { total: 0, totalND30: number, totalND39: number, totalItens: 0, groupedCategories: {} },
     diarias: { total: 0, totalND15: 0, totalND30: 0, totalMilitares: 0, totalDiasViagem: 0 },
     verbaOperacional: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
     suprimentoFundos: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
@@ -1569,46 +1569,6 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
             </Accordion>
         );
     };
-    
-    const renderHorasVoo = () => {
-        const horasVoo = getHorasVooData(data);
-        const total = horasVoo.total;
-        const groupedHV = horasVoo.groupedHV;
-        const sortedHV = Object.entries(groupedHV).sort(([a], [b]) => a.localeCompare(b));
-        
-        if (total === 0) return null;
-        
-        return (
-            <Accordion type="single" collapsible className="w-full pt-1">
-                <AccordionItem value="item-horas-voo" className="border-b-0">
-                    <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-1 text-foreground">
-                                <Plane className="h-3 w-3 text-purple-500" />
-                                Horas de Voo (AvEx)
-                            </div>
-                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                                {formatNumber(horasVoo.quantidadeHV, 2)} HV
-                            </span>
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                            {sortedHV.map(([tipoAnv, data]) => (
-                                <div key={tipoAnv} className="flex justify-between text-muted-foreground">
-                                    <span className="w-1/2 text-left">{tipoAnv}</span>
-                                    <span className="w-1/4 text-right font-medium text-background"></span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatNumber(data.totalHV, 2)} HV
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
-        );
-    };
 
     if (mode === 'logistica') {
         const totalLogistica = (data as OmTotals).omKey ? (data as OmTotals).totalLogistica : (data as PTrabAggregatedTotals).totalLogisticoGeral;
@@ -1690,11 +1650,12 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
         const horasVoo = getHorasVooData(data);
         const totalAviacaoExercito = horasVoo.total;
         const quantidadeHorasVoo = horasVoo.quantidadeHV;
+        const sortedHorasVoo = Object.entries(horasVoo.groupedHV).sort(([a], [b]) => a.localeCompare(b));
         
-        if (totalAviacaoExercito === 0) return null;
+        if (totalAviacaoExercito === 0 && quantidadeHorasVoo === 0) return null;
         
         return (
-            <div className="space-y-3 border-l-4 border-purple-500 pl-3">
+            <div className="space-y-3 border-l-4 border-purple-500 pl-3 pt-4">
                 <div className="flex items-center justify-between text-xs font-semibold text-purple-600 mb-2">
                     <div className="flex items-center gap-2">
                         <Plane className="h-3 w-3" />
@@ -1704,7 +1665,19 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                         {formatNumber(quantidadeHorasVoo, 2)} HV
                     </span>
                 </div>
-                {renderHorasVoo()}
+                
+                {/* Detalhes por Tipo de Aeronave (Restaurado conforme imagem) */}
+                <div className="space-y-1 pl-4 text-[10px]">
+                    {sortedHorasVoo.map(([tipoAnv, data]) => (
+                        <div key={tipoAnv} className="flex justify-between text-muted-foreground">
+                            <span className="w-1/2 text-left">{tipoAnv}</span>
+                            <span className="w-1/4 text-right font-medium text-background"></span>
+                            <span className="w-1/4 text-right font-medium">
+                                {formatNumber(data.totalHV, 2)} HV
+                            </span>
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     };
