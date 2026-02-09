@@ -1,21 +1,14 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { formatCurrency, formatNumber, formatCodug } from "@/lib/formatUtils";
-import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase, Droplet, Zap, Users } from "lucide-react";
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from "@/components/ui/accordion";
+import { formatCurrency, formatNumber } from "@/lib/formatUtils";
+import { Loader2, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Tables } from "@/integrations/supabase/types";
-import { Switch } from "@/components/ui/switch"; // Importando Switch
+import { Switch } from "@/components/ui/switch";
 
-// Define the category constants
+// Define the category constants (kept for fetchPTrabTotals logic)
 const CATEGORIAS_CLASSE_II = ["Equipamento Individual", "Proteção Balística", "Material de Estacionamento"];
 const CATEGORIAS_CLASSE_V = ["Armt L", "Armt P", "IODCT", "DQBRN"];
 const CATEGORIAS_CLASSE_VI = ["Embarcação", "Equipamento de Engenharia", "Gerador"];
@@ -158,14 +151,25 @@ interface PTrabAggregatedTotals {
     quantidadeHorasVoo: number;
     groupedHorasVoo: Record<string, { totalValor: number, totalHV: number }>;
     
-    totalMaterialConsumo: number; // NOVO
-    totalMaterialConsumoND30: number; // NOVO
-    totalMaterialConsumoND39: number; // NOVO
+    totalMaterialConsumo: number;
+    totalMaterialConsumoND30: number;
+    totalMaterialConsumoND39: number;
 
     // Nova Estrutura Agrupada por OM
     groupedByOm: Record<string, OmTotals>;
 }
 
+// Tipos para a nova estrutura do componente
+type AbaGlobal = {
+  nome: string;
+  valor: number;
+  cor: string;
+};
+
+type OM = {
+  nome: string;
+  valor: number;
+};
 
 // Helper function to calculate days of requested stage (diasEtapaSolicitada)
 const calculateDiasEtapaSolicitada = (diasOperacao: number): number => {
@@ -278,7 +282,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     { data: passagemData, error: passagemError },
     { data: concessionariaData, error: concessionariaError },
     { data: horasVooData, error: horasVooError },
-    { data: materialConsumoData, error: materialConsumoError }, // NOVO
+    { data: materialConsumoData, error: materialConsumoError },
   ] = await Promise.all([
     supabase
       .from('classe_ii_registros')
@@ -320,7 +324,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       .from('horas_voo_registros')
       .select('valor_total, quantidade_hv, tipo_anv, organizacao, ug'),
     supabase
-      .from('material_consumo_registros') // NOVO
+      .from('material_consumo_registros')
       .select('valor_total, valor_nd_30, valor_nd_39, organizacao, ug'),
   ]);
 
@@ -354,7 +358,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
   const safePassagemData = passagemData || []; 
   const safeConcessionariaData = concessionariaData || [];
   const safeHorasVooData = horasVooData || [];
-  const safeMaterialConsumoData = materialConsumoData || []; // NOVO
+  const safeMaterialConsumoData = materialConsumoData || [];
   
   // Processamento de Classes Diversas (II, V, VI, VII, VIII, IX)
   const allClasseItemsData = [
@@ -539,7 +543,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     omTotals.horasVoo.groupedHV[tipoAnv].totalHV += quantidadeHv;
   });
   
-  // 9. Processamento de Material de Consumo (ND 33.90.30/39) - NOVO
+  // 9. Processamento de Material de Consumo (ND 33.90.30/39)
   safeMaterialConsumoData.forEach(record => {
     const omTotals = getOmTotals(record.organizacao, record.ug);
     const valorTotal = Number(record.valor_total || 0);
@@ -685,12 +689,6 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       globalTotals.totalMaterialConsumoND39 += omTotals.materialConsumo.totalND39;
   });
   
-  // O total logístico para o PTrab é a soma da Classe I (ND 30) + Classes (ND 30 + ND 39) + Classe III (Combustível + Lubrificante)
-  // Já calculado na iteração acima (globalTotals.totalLogisticoGeral)
-  
-  // Total Operacional (Diárias + Verba Operacional + Suprimento de Fundos + Passagens + Concessionária + Horas de Voo + Material Consumo)
-  // Já calculado na iteração acima (globalTotals.totalOperacional)
-  
   return globalTotals as PTrabAggregatedTotals;
 };
 
@@ -700,761 +698,6 @@ interface PTrabCostSummaryProps {
   creditGND3: number;
   creditGND4: number;
 }
-
-// Componente auxiliar para renderizar os detalhes de uma aba (Logística ou Operacional)
-interface TabDetailsProps {
-    mode: 'logistica' | 'operacional' | 'permanente' | 'avex';
-    data: OmTotals | PTrabAggregatedTotals;
-}
-
-// Função auxiliar para extrair dados de classe I de forma unificada
-const getClasseIData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['classeI'] => {
-    if ((data as OmTotals).omKey) {
-        return (data as OmTotals).classeI;
-    }
-    // Modo Global
-    const globalData = data as PTrabAggregatedTotals;
-    return {
-        total: globalData.totalClasseI,
-        totalComplemento: globalData.totalComplemento,
-        totalEtapaSolicitadaValor: globalData.totalEtapaSolicitadaValor,
-        totalDiasEtapaSolicitada: globalData.totalDiasEtapaSolicitada,
-        totalRefeicoesIntermediarias: globalData.totalRefeicoesIntermediarias,
-        totalRacoesOperacionaisGeral: globalData.totalRacoesOperacionaisGeral,
-    };
-};
-
-// Função auxiliar para extrair dados de classe III de forma unificada
-const getClasseIIIData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['classeIII'] => {
-    if ((data as OmTotals).omKey) {
-        return (data as OmTotals).classeIII;
-    }
-    // Modo Global
-    const globalData = data as PTrabAggregatedTotals;
-    return {
-        total: globalData.totalCombustivel,
-        totalDieselValor: globalData.totalDieselValor,
-        totalGasolinaValor: globalData.totalGasolinaValor,
-        totalDieselLitros: globalData.totalDieselLitros,
-        totalGasolinaLitros: globalData.totalGasolinaLitros,
-        totalLubrificanteValor: globalData.totalLubrificanteValor,
-        totalLubrificanteLitros: globalData.totalLubrificanteLitros,
-    };
-};
-
-// Função auxiliar para extrair dados de Diárias de forma unificada
-const getDiariasData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['diarias'] => {
-    if ((data as OmTotals).omKey) {
-        return (data as OmTotals).diarias;
-    }
-    // Modo Global
-    const globalData = data as PTrabAggregatedTotals;
-    return {
-        total: globalData.totalDiarias,
-        totalND15: globalData.totalDiariasND15,
-        totalND30: globalData.totalDiariasND30,
-        totalMilitares: globalData.totalMilitaresDiarias,
-        totalDiasViagem: globalData.totalDiasViagem,
-    };
-};
-
-// Função auxiliar para extrair dados de Verba Operacional de forma unificada
-const getVerbaOperacionalData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['verbaOperacional'] => {
-    if ((data as OmTotals).omKey) {
-        return (data as OmTotals).verbaOperacional;
-    }
-    // Modo Global
-    const globalData = data as PTrabAggregatedTotals;
-    return {
-        total: globalData.totalVerbaOperacional,
-        totalND30: globalData.totalVerbaOperacionalND30,
-        totalND39: globalData.totalVerbaOperacionalND39,
-        totalEquipes: globalData.totalEquipesVerba,
-        totalDias: globalData.totalDiasVerba,
-    };
-};
-
-// Função auxiliar para extrair dados de Suprimento de Fundos de forma unificada
-const getSuprimentoFundosData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['suprimentoFundos'] => {
-    if ((data as OmTotals).omKey) {
-        return (data as OmTotals).suprimentoFundos;
-    }
-    // Modo Global
-    const globalData = data as PTrabAggregatedTotals;
-    return {
-        total: globalData.totalSuprimentoFundos,
-        totalND30: globalData.totalSuprimentoFundosND30,
-        totalND39: globalData.totalSuprimentoFundosND39,
-        totalEquipes: globalData.totalEquipesSuprimento,
-        totalDias: globalData.totalDiasSuprimento,
-    };
-};
-
-// Função auxiliar para extrair dados de Passagens de forma unificada
-const getPassagensData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['passagens'] => {
-    if ((data as OmTotals).omKey) {
-        return (data as OmTotals).passagens;
-    }
-    // Modo Global
-    const globalData = data as PTrabAggregatedTotals;
-    return {
-        total: globalData.totalPassagensND33,
-        totalQuantidade: globalData.totalQuantidadePassagens,
-        totalTrechos: globalData.totalTrechosPassagens,
-    };
-};
-
-// Função auxiliar para extrair dados de Concessionária de forma unificada
-const getConcessionariaData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['concessionaria'] => {
-    if ((data as OmTotals).omKey) {
-        return (data as OmTotals).concessionaria;
-    }
-    // Modo Global
-    const globalData = data as PTrabAggregatedTotals;
-    return {
-        total: globalData.totalConcessionariaND39,
-        totalAgua: globalData.totalConcessionariaAgua,
-        totalEnergia: globalData.totalConcessionariaEnergia,
-        totalRegistros: globalData.totalConcessionariaRegistros,
-    };
-};
-
-// Função auxiliar para extrair dados de Horas Voo de forma unificada
-const getHorasVooData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['horasVoo'] => {
-    if ((data as OmTotals).omKey) {
-        return (data as OmTotals).horasVoo;
-    }
-    // Modo Global
-    const globalData = data as PTrabAggregatedTotals;
-    return {
-        total: globalData.totalHorasVoo,
-        quantidadeHV: globalData.quantidadeHorasVoo,
-        groupedHV: globalData.groupedHorasVoo,
-    };
-};
-
-// Função auxiliar para extrair dados de Material Consumo de forma unificada
-const getMaterialConsumoData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['materialConsumo'] => {
-    if ((data as OmTotals).omKey) {
-        return (data as OmTotals).materialConsumo;
-    }
-    // Modo Global
-    const globalData = data as PTrabAggregatedTotals;
-    return {
-        total: globalData.totalMaterialConsumo,
-        totalND30: globalData.totalMaterialConsumoND30,
-        totalND39: globalData.totalMaterialConsumoND39,
-    };
-};
-
-
-const TabDetails = ({ mode, data }: TabDetailsProps) => {
-    const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
-    
-    // Função auxiliar para obter dados de classe (funciona para OmTotals e PTrabAggregatedTotals)
-    const getClassData = (key: 'classeII' | 'classeV' | 'classeVI' | 'classeVII' | 'classeVIII' | 'classeIX') => {
-        if ((data as OmTotals).omKey) {
-            return (data as OmTotals)[key];
-        }
-        // Mapeamento de chaves globais para o objeto de classe
-        const globalKeyMap = {
-            classeII: { total: (data as PTrabAggregatedTotals).totalClasseII, totalND30: (data as PTrabAggregatedTotals).totalClasseII_ND30, totalND39: (data as PTrabAggregatedTotals).totalClasseII_ND39, totalItens: (data as PTrabAggregatedTotals).totalItensClasseII, groupedCategories: (data as PTrabAggregatedTotals).groupedClasseIICategories },
-            classeV: { total: (data as PTrabAggregatedTotals).totalClasseV, totalND30: (data as PTrabAggregatedTotals).totalClasseV_ND30, totalND39: (data as PTrabAggregatedTotals).totalClasseV_ND39, totalItens: (data as PTrabAggregatedTotals).totalItensClasseV, groupedCategories: (data as PTrabAggregatedTotals).groupedClasseVCategories },
-            classeVI: { total: (data as PTrabAggregatedTotals).totalClasseVI, totalND30: (data as PTrabAggregatedTotals).totalClasseVI_ND30, totalND39: (data as PTrabAggregatedTotals).totalClasseVI_ND39, totalItens: (data as PTrabAggregatedTotals).totalItensClasseVI, groupedCategories: (data as PTrabAggregatedTotals).groupedClasseVICategories },
-            classeVII: { total: (data as PTrabAggregatedTotals).totalClasseVII, totalND30: (data as PTrabAggregatedTotals).totalClasseVII_ND30, totalND39: (data as PTrabAggregatedTotals).totalClasseVII_ND39, totalItens: (data as PTrabAggregatedTotals).totalItensClasseVII, groupedCategories: (data as PTrabAggregatedTotals).groupedClasseVIICategories },
-            classeVIII: { total: (data as PTrabAggregatedTotals).totalClasseVIII, totalND30: (data as PTrabAggregatedTotals).totalClasseVIII_ND30, totalND39: (data as PTrabAggregatedTotals).totalClasseVIII_ND39, totalItens: (data as PTrabAggregatedTotals).totalItensClasseVIII, groupedCategories: (data as PTrabAggregatedTotals).groupedClasseVIIICategories },
-            classeIX: { total: (data as PTrabAggregatedTotals).totalClasseIX, totalND30: (data as PTrabAggregatedTotals).totalClasseIX_ND30, totalND39: (data as PTrabAggregatedTotals).totalClasseIX_ND39, totalItens: (data as PTrabAggregatedTotals).totalItensClasseIX, groupedCategories: (data as PTrabAggregatedTotals).groupedClasseIXCategories },
-        };
-        return globalKeyMap[key] as OmTotals['classeII'];
-    };
-    
-    // Função auxiliar para obter dados de categoria (funciona para OmTotals e PTrabAggregatedTotals)
-    const getGroupedCategories = (key: 'classeII' | 'classeV' | 'classeVI' | 'classeVII' | 'classeVIII' | 'classeIX') => {
-        if ((data as OmTotals).omKey) {
-            return (data as OmTotals)[key].groupedCategories;
-        }
-        // Mapeamento de chaves globais para o objeto de categorias
-        const globalKeyMap = {
-            classeII: 'groupedClasseIICategories',
-            classeV: 'groupedClasseVCategories',
-            classeVI: 'groupedClasseVICategories',
-            classeVII: 'groupedClasseVIICategories',
-            classeVIII: 'groupedClasseVIIICategories',
-            classeIX: 'groupedClasseIXCategories',
-        };
-        return (data as PTrabAggregatedTotals)[globalKeyMap[key] as keyof PTrabAggregatedTotals] as Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }>;
-    };
-    
-    const renderClassAccordion = (
-        key: 'classeII' | 'classeV' | 'classeVI' | 'classeVII' | 'classeVIII' | 'classeIX', 
-        title: string, 
-        icon: React.ReactNode, 
-        unitLabel: string,
-        isRemonta: boolean = false
-    ) => {
-        const classData = getClassData(key);
-        const total = classData.total;
-        const groupedCategories = getGroupedCategories(key);
-        const sortedCategories = Object.entries(groupedCategories).sort(([a], [b]) => a.localeCompare(b));
-        
-        if (total === 0) return null;
-        
-        return (
-            <Accordion type="single" collapsible className="w-full pt-1">
-                <AccordionItem value={`item-${key}`} className="border-b-0">
-                    <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-1 text-foreground">
-                                {icon}
-                                {title}
-                            </div>
-                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                                {formatCurrency(total)}
-                            </span>
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                            {sortedCategories.map(([category, data]) => (
-                                <div key={category} className="space-y-1">
-                                    <div className="flex justify-between text-muted-foreground font-semibold pt-1">
-                                        <span className="w-1/2 text-left">{category}</span>
-                                        <span className="w-1/4 text-right font-medium">
-                                            {formatNumber(data.totalItens)} {isRemonta ? 'animais' : unitLabel}
-                                        </span>
-                                        <span className="w-1/4 text-right font-medium">
-                                            {formatCurrency(data.totalValor)}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
-                                        <span className="w-1/2 text-left">ND 30 / ND 39</span>
-                                        <span className="w-1/4 text-right text-green-600 font-medium">
-                                            {formatCurrency(data.totalND30)}
-                                        </span>
-                                        <span className="w-1/4 text-right text-blue-600 font-medium">
-                                            {formatCurrency(data.totalND39)}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
-        );
-    };
-    
-    const renderClasseI = () => {
-        const classeI = getClasseIData(data);
-        const total = classeI.total;
-        
-        if (total === 0 && classeI.totalRacoesOperacionaisGeral === 0) return null;
-        
-        return (
-            <Accordion type="single" collapsible className="w-full pt-0">
-                <AccordionItem value="item-classe-i" className="border-b-0">
-                    <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-1 text-foreground">
-                                <Utensils className="h-3 w-3 text-orange-500" />
-                                Classe I
-                            </div>
-                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                                {formatCurrency(total)}
-                            </span>
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                            {/* Detalhe 1: Valor Complemento */}
-                            <div className="flex justify-between text-muted-foreground">
-                                <span className="w-1/2 text-left">Complemento (Ref. Int.)</span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatNumber(classeI.totalRefeicoesIntermediarias)}
-                                </span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatCurrency(classeI.totalComplemento)}
-                                </span>
-                            </div>
-                            {/* Detalhe 2: Valor Etapa Solicitada */}
-                            <div className="flex justify-between text-muted-foreground">
-                                <span className="w-1/2 text-left">Etapa Solicitada</span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatNumber(classeI.totalDiasEtapaSolicitada)} dias
-                                </span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatCurrency(classeI.totalEtapaSolicitadaValor)}
-                                </span>
-                            </div>
-                            {/* Detalhe 3: Ração Operacional */}
-                            {classeI.totalRacoesOperacionaisGeral > 0 && (
-                                <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                                    <span className="w-1/2 text-left text-muted-foreground">Ração Operacional (R2/R3)</span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatNumber(classeI.totalRacoesOperacionaisGeral)} un.
-                                    </span>
-                                    <span className="w-1/4 text-right font-medium text-foreground">
-                                        {/* Mantido como 0 pois o custo não é orçamentário direto */}
-                                        {formatCurrency(0)} 
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
-        );
-    };
-    
-    const renderClasseIII = () => {
-        const classeIII = getClasseIIIData(data);
-        const total = classeIII.total;
-        
-        if (total === 0) return null;
-        
-        return (
-            <Accordion type="single" collapsible className="w-full pt-1">
-                <AccordionItem value="item-classe-iii" className="border-b-0">
-                    <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-1 text-foreground">
-                                <Fuel className="h-3 w-3 text-orange-500" />
-                                Classe III
-                            </div>
-                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                                {formatCurrency(total)}
-                            </span>
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                            {/* Linha Óleo Diesel */}
-                            <div className="flex justify-between text-muted-foreground">
-                                <span className="w-1/2 text-left">Óleo Diesel</span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatNumber(classeIII.totalDieselLitros)} L
-                                </span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatCurrency(classeIII.totalDieselValor)}
-                                </span>
-                            </div>
-                            {/* Linha Gasolina */}
-                            <div className="flex justify-between text-muted-foreground">
-                                <span className="w-1/2 text-left">Gasolina</span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatNumber(classeIII.totalGasolinaLitros)} L
-                                </span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatCurrency(classeIII.totalGasolinaValor)}
-                                </span>
-                            </div>
-                            {/* Linha Lubrificante */}
-                            <div className="flex justify-between text-muted-foreground">
-                                <span className="w-1/2 text-left">
-                                    Lubrificante
-                                </span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatNumber(classeIII.totalLubrificanteLitros || 0, 2)} L
-                                </span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatCurrency(classeIII.totalLubrificanteValor)}
-                                </span>
-                            </div>
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
-        );
-    };
-    
-    const renderDiarias = () => {
-        const diarias = getDiariasData(data);
-        const total = diarias.total;
-        
-        if (total === 0) return null;
-        
-        return (
-            <Accordion type="single" collapsible className="w-full pt-0">
-                <AccordionItem value="item-diarias" className="border-b-0">
-                    <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-1 text-foreground">
-                                <Briefcase className="h-3 w-3 text-blue-500" />
-                                Diárias
-                            </div>
-                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                                {formatCurrency(total)}
-                            </span>
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                            <div className="flex justify-between text-muted-foreground">
-                                <span className="w-1/2 text-left">Total de Militares</span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatNumber(diarias.totalMilitares)}
-                                </span>
-                                <span className="w-1/4 text-right font-medium text-background"></span>
-                            </div>
-                            <div className="flex justify-between text-muted-foreground">
-                                <span className="w-1/2 text-left">Total de Dias de Viagem</span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatNumber(diarias.totalDiasViagem)} dias
-                                </span>
-                                <span className="w-1/4 text-right font-medium text-background"></span>
-                            </div>
-                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                                <span className="w-1/2 text-left font-semibold">Diárias (ND 15) / Taxa Embarque + ND 30</span>
-                                <span className="w-1/4 text-right font-medium text-green-600">
-                                    {formatCurrency(diarias.totalND15)}
-                                </span>
-                                <span className="w-1/4 text-right font-medium text-blue-600">
-                                    {formatCurrency(diarias.totalND30)}
-                                </span>
-                            </div>
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
-        );
-    };
-    
-    const renderVerbaSuprimento = (key: 'verbaOperacional' | 'suprimentoFundos', title: string) => {
-        const group = key === 'verbaOperacional' ? getVerbaOperacionalData(data) : getSuprimentoFundosData(data);
-        const total = group.total;
-        
-        if (total === 0) return null;
-        
-        return (
-            <Accordion type="single" collapsible className="w-full pt-1">
-                <AccordionItem value={`item-${key}`} className="border-b-0">
-                    <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-1 text-foreground">
-                                {key === 'verbaOperacional' ? <ClipboardList className="h-3 w-3 text-blue-500" /> : <Wallet className="h-3 w-3 text-blue-500" />}
-                                {title}
-                            </div>
-                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                                {formatCurrency(total)}
-                            </span>
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                            <div className="flex justify-between text-muted-foreground">
-                                <span className="w-1/2 text-left">Total de Equipes</span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatNumber(group.totalEquipes)}
-                                </span>
-                                <span className="w-1/4 text-right font-medium text-background"></span>
-                            </div>
-                            <div className="flex justify-between text-muted-foreground">
-                                <span className="w-1/2 text-left">Total de Dias</span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatNumber(group.totalDias)} dias
-                                </span>
-                                <span className="w-1/4 text-right font-medium text-background"></span>
-                            </div>
-                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                                <span className="w-1/2 text-left font-semibold">ND 30 / ND 39</span>
-                                <span className="w-1/4 text-right font-medium text-green-600">
-                                    {formatCurrency(group.totalND30)}
-                                </span>
-                                <span className="w-1/4 text-right font-medium text-blue-600">
-                                    {formatCurrency(group.totalND39)}
-                                </span>
-                            </div>
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
-        );
-    };
-    
-    const renderPassagens = () => {
-        const passagens = getPassagensData(data);
-        const total = passagens.total;
-        
-        if (total === 0) return null;
-        
-        return (
-            <Accordion type="single" collapsible className="w-full pt-1">
-                <AccordionItem value="item-passagens" className="border-b-0">
-                    <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-1 text-foreground">
-                                <Plane className="h-3 w-3 text-blue-500" />
-                                Passagens
-                            </div>
-                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                                {formatCurrency(total)}
-                            </span>
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                            <div className="flex justify-between text-muted-foreground">
-                                <span className="w-1/2 text-left">Total de Passagens</span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatNumber(passagens.totalQuantidade)} un.
-                                </span>
-                                <span className="w-1/4 text-right font-medium text-background"></span>
-                            </div>
-                            <div className="flex justify-between text-muted-foreground">
-                                <span className="w-1/2 text-left">Total de Trechos Registrados</span>
-                                <span className="w-1/4 text-right font-medium">
-                                    {formatNumber(passagens.totalTrechos)}
-                                </span>
-                                <span className="w-1/4 text-right font-medium text-background"></span>
-                            </div>
-                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                                <span className="w-1/2 text-left font-semibold">ND 33 (Passagens)</span>
-                                <span className="w-1/4 text-right font-medium text-background"></span>
-                                <span className="w-1/4 text-right font-medium text-green-600">
-                                    {formatCurrency(total)}
-                                </span>
-                            </div>
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
-        );
-    };
-    
-    const renderConcessionaria = () => {
-        const concessionaria = getConcessionariaData(data);
-        const total = concessionaria.total;
-        
-        if (total === 0) return null;
-        
-        return (
-            <Accordion type="single" collapsible className="w-full pt-1">
-                <AccordionItem value="item-concessionaria" className="border-b-0">
-                    <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-1 text-foreground">
-                                <Droplet className="h-3 w-3 text-blue-500" />
-                                Concessionária
-                            </div>
-                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                                {formatCurrency(total)}
-                            </span>
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                            {concessionaria.totalAgua > 0 && (
-                                <div className="flex justify-between text-muted-foreground">
-                                    <span className="w-1/2 text-left">Água/Esgoto</span>
-                                    <span className="w-1/4 text-right font-medium text-background"></span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatCurrency(concessionaria.totalAgua)}
-                                    </span>
-                                </div>
-                            )}
-                            {concessionaria.totalEnergia > 0 && (
-                                <div className="flex justify-between text-muted-foreground">
-                                    <span className="w-1/2 text-left">Energia Elétrica</span>
-                                    <span className="w-1/4 text-right font-medium text-background"></span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatCurrency(concessionaria.totalEnergia)}
-                                    </span>
-                                </div>
-                            )}
-                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                                <span className="w-1/2 text-left font-semibold">ND 39 (Serviços de Terceiros)</span>
-                                <span className="w-1/4 text-right font-medium text-background"></span>
-                                <span className="w-1/4 text-right font-medium text-blue-600">
-                                    {formatCurrency(total)}
-                                </span>
-                            </div>
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
-        );
-    };
-    
-    const renderMaterialConsumo = () => {
-        const materialConsumo = getMaterialConsumoData(data);
-        const total = materialConsumo.total;
-        
-        if (total === 0) return null;
-        
-        return (
-            <Accordion type="single" collapsible className="w-full pt-1">
-                <AccordionItem value="item-material-consumo" className="border-b-0">
-                    <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-1 text-foreground">
-                                <Package className="h-3 w-3 text-blue-500" />
-                                Material de Consumo
-                            </div>
-                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                                {formatCurrency(total)}
-                            </span>
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
-                                <span className="w-1/2 text-left font-semibold">ND 30 / ND 39</span>
-                                <span className="w-1/4 text-right font-medium text-green-600">
-                                    {formatCurrency(materialConsumo.totalND30)}
-                                </span>
-                                <span className="w-1/4 text-right font-medium text-blue-600">
-                                    {formatCurrency(materialConsumo.totalND39)}
-                                </span>
-                            </div>
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
-        );
-    };
-    
-    const renderHorasVoo = () => {
-        const horasVoo = getHorasVooData(data);
-        const total = horasVoo.total;
-        const groupedHV = horasVoo.groupedHV;
-        const sortedHV = Object.entries(groupedHV).sort(([a], [b]) => a.localeCompare(b));
-        
-        if (total === 0) return null;
-        
-        return (
-            <Accordion type="single" collapsible className="w-full pt-1">
-                <AccordionItem value="item-horas-voo" className="border-b-0">
-                    <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-1 text-foreground">
-                                <Plane className="h-3 w-3 text-purple-500" />
-                                Horas de Voo (AvEx)
-                            </div>
-                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
-                                {formatNumber(horasVoo.quantidadeHV, 2)} HV
-                            </span>
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-1 pb-0">
-                        <div className="space-y-1 pl-4 text-[10px]">
-                            {sortedHV.map(([tipoAnv, data]) => (
-                                <div key={tipoAnv} className="flex justify-between text-muted-foreground">
-                                    <span className="w-1/2 text-left">{tipoAnv}</span>
-                                    <span className="w-1/4 text-right font-medium text-background"></span>
-                                    <span className="w-1/4 text-right font-medium">
-                                        {formatNumber(data.totalHV, 2)} HV
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
-        );
-    };
-
-    if (mode === 'logistica') {
-        const totalLogistica = (data as OmTotals).omKey ? (data as OmTotals).totalLogistica : (data as PTrabAggregatedTotals).totalLogisticoGeral;
-        
-        return (
-            <div className="space-y-3 border-l-4 border-orange-500 pl-3">
-                <div className="flex items-center justify-between text-xs font-semibold text-orange-600 mb-2">
-                    <div className="flex items-center gap-2">
-                        <Package className="h-3 w-3" />
-                        Logística
-                    </div>
-                    <span className="font-bold text-sm">{formatCurrency(totalLogistica)}</span>
-                </div>
-                
-                {renderClasseI()}
-                {renderClassAccordion('classeII', 'Classe II', <ClipboardList className="h-3 w-3 text-orange-500" />, 'un.')}
-                {renderClasseIII()}
-                {renderClassAccordion('classeV', 'Classe V', <Swords className="h-3 w-3 text-orange-500" />, 'un.')}
-                {renderClassAccordion('classeVI', 'Classe VI', <HardHat className="h-3 w-3 text-orange-500" />, 'un.')}
-                {renderClassAccordion('classeVII', 'Classe VII', <Radio className="h-3 w-3 text-orange-500" />, 'un.')}
-                {renderClassAccordion('classeVIII', 'Classe VIII', <HeartPulse className="h-3 w-3 text-orange-500" />, 'un.', true)}
-                {renderClassAccordion('classeIX', 'Classe IX', <Truck className="h-3 w-3 text-orange-500" />, 'vtr')}
-            </div>
-        );
-    }
-    
-    if (mode === 'operacional') {
-        const totalOperacional = (data as OmTotals).omKey ? (data as OmTotals).totalOperacional : (data as PTrabAggregatedTotals).totalOperacional;
-        
-        return (
-            <div className="space-y-3 border-l-4 border-blue-500 pl-3">
-                <div className="flex items-center justify-between text-xs font-semibold text-blue-600 mb-2">
-                    <div className="flex items-center gap-2">
-                        <Activity className="h-3 w-3" />
-                        Operacional
-                    </div>
-                    <span className="font-bold text-sm">{formatCurrency(totalOperacional)}</span>
-                </div>
-                
-                {renderDiarias()}
-                {renderPassagens()}
-                {renderVerbaSuprimento('verbaOperacional', 'Verba Operacional')}
-                {renderVerbaSuprimento('suprimentoFundos', 'Suprimento de Fundos')}
-                {renderConcessionaria()}
-                {renderMaterialConsumo()}
-                
-                {/* Outros Operacionais (Placeholder) */}
-                {/* A lógica de "Outros" é complexa de calcular aqui, então vamos focar nos itens implementados */}
-            </div>
-        );
-    }
-    
-    if (mode === 'permanente') {
-        const totalMaterialPermanente = (data as OmTotals).omKey ? (data as OmTotals).totalMaterialPermanente : (data as PTrabAggregatedTotals).totalMaterialPermanente;
-        
-        if (totalMaterialPermanente === 0) return null;
-        
-        return (
-            <div className="space-y-3 border-l-4 border-green-500 pl-3">
-                <div className="flex items-center justify-between text-xs font-semibold text-green-600 mb-2">
-                    <div className="flex items-center gap-2">
-                        <HardHat className="h-3 w-3" />
-                        Material Permanente
-                    </div>
-                    <span className="font-bold text-sm">{formatCurrency(totalMaterialPermanente)}</span>
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground">
-                    <span className="w-1/2 text-left">Itens de Material Permanente</span>
-                    <span className="w-1/4 text-right font-medium"></span>
-                    <span className="w-1/4 text-right font-medium">
-                        {formatCurrency(totalMaterialPermanente)}
-                    </span>
-                </div>
-            </div>
-        );
-    }
-    
-    if (mode === 'avex') {
-        const horasVoo = getHorasVooData(data);
-        const totalAviacaoExercito = horasVoo.total;
-        const quantidadeHorasVoo = horasVoo.quantidadeHV;
-        
-        if (totalAviacaoExercito === 0) return null;
-        
-        return (
-            <div className="space-y-3 border-l-4 border-purple-500 pl-3">
-                <div className="flex items-center justify-between text-xs font-semibold text-purple-600 mb-2">
-                    <div className="flex items-center gap-2">
-                        <Plane className="h-3 w-3" />
-                        Aviação do Exército
-                    </div>
-                    <span className="font-bold text-sm">
-                        {formatNumber(quantidadeHorasVoo, 2)} HV
-                    </span>
-                </div>
-                {renderHorasVoo()}
-            </div>
-        );
-    };
-    
-    return null;
-};
-
 
 export const PTrabCostSummary = ({ 
   ptrabId, 
@@ -1495,44 +738,6 @@ export const PTrabCostSummary = ({
         groupedByOm: {},
     },
   });
-  
-  // NOVO ESTADO: Modo de visualização (global ou por OM)
-  const [viewMode, setViewMode] = useState<'global' | 'byOm'>('global');
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  // Estado para controlar qual OM está expandida no modo 'byOm'
-  const [activeOmKey, setActiveOmKey] = useState<string | undefined>(undefined);
-  
-  const detailsRef = useRef<HTMLDivElement>(null);
-
-  const handleSummaryClick = () => {
-    const newState = !isDetailsOpen;
-    setIsDetailsOpen(newState);
-    
-    // Se estiver fechando, resetar a OM ativa
-    if (!newState) {
-        setActiveOmKey(undefined);
-    }
-    
-    if (newState) {
-      setTimeout(() => {
-          detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100); 
-    }
-  };
-  
-  const handleOmSummaryClick = (omKey: string) => {
-      // Se a OM clicada já estiver ativa, feche-a. Caso contrário, abra-a.
-      const newActiveKey = activeOmKey === omKey ? undefined : omKey;
-      setActiveOmKey(newActiveKey);
-      setIsDetailsOpen(!!newActiveKey); // Abre o accordion principal se houver uma OM ativa
-      
-      if (newActiveKey) {
-          setTimeout(() => {
-              detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 100); 
-      }
-  };
-
 
   if (isLoading) {
     return (
@@ -1563,251 +768,225 @@ export const PTrabCostSummary = ({
   
   const totals = data!;
   
-  const totalGeralFinal = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalMaterialPermanente + totals.totalAviacaoExercito;
-
-  const saldoGND3 = creditGND3 - (totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito);
-  const saldoGND4 = creditGND4 - totals.totalMaterialPermanente;
-
-  const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
+  // --- Data Transformation ---
   
-  // Prepara os dados agrupados por OM para iteração
-  const sortedOmTotals = useMemo(() => {
-      // CORREÇÃO: Adiciona fallback para objeto vazio para evitar erro 'Cannot convert undefined or null to object'
-      const omGroups = totals.groupedByOm || {}; 
-      return Object.values(omGroups).sort((a, b) => a.omName.localeCompare(b.omName));
+  const dadosGlobal: AbaGlobal[] = useMemo(() => {
+    const items: AbaGlobal[] = [
+      { nome: "Aba Logística", valor: totals.totalLogisticoGeral, cor: "text-orange-600" },
+      { nome: "Aba Operacional", valor: totals.totalOperacional, cor: "text-blue-600" },
+      { nome: "Aba Material Permanente", valor: totals.totalMaterialPermanente, cor: "text-green-600" },
+      { nome: "Aba Aviação do Exército", valor: totals.totalAviacaoExercito, cor: "text-purple-600" },
+    ];
+    // Filtra itens com valor zero, exceto se todos forem zero
+    const hasAnyValue = items.some(item => item.valor > 0);
+    return hasAnyValue ? items.filter(item => item.valor > 0) : items;
+  }, [totals]);
+
+  const dadosPorOM: OM[] = useMemo(() => {
+    const omGroups = totals.groupedByOm || {}; 
+    return Object.values(omGroups)
+      .map(om => ({
+        nome: om.omName,
+        valor: om.totalGeral,
+      }))
+      .filter(om => om.valor > 0);
   }, [totals.groupedByOm]);
   
-  // Componente para renderizar os detalhes no modo GLOBAL
-  const renderGlobalDetails = () => (
-    <div className="space-y-2" ref={detailsRef}>
-        
-        {/* Aba Logística */}
-        <TabDetails mode="logistica" data={totals} />
-
-        {/* Aba Operacional */}
-        <div className="pt-4">
-            <TabDetails mode="operacional" data={totals} />
-        </div>
-        
-        {/* Aba Material Permanente */}
-        <div className="pt-4">
-            <TabDetails mode="permanente" data={totals} />
-        </div>
-        
-        {/* Aba Aviação do Exército */}
-        <div className="pt-4">
-            <TabDetails mode="avex" data={totals} />
-        </div>
-    </div>
-  );
+  // --- New Component Logic ---
   
-  // Componente para renderizar os detalhes no modo POR OM
-  const renderOmDetails = () => (
-    <div className="space-y-4" ref={detailsRef}>
-        {sortedOmTotals.map(om => (
-            // Usamos o estado activeOmKey para controlar qual OM está aberta
-            <Accordion 
-                type="single" 
-                collapsible 
-                key={om.omKey} 
-                value={activeOmKey === om.omKey ? om.omKey : undefined}
-                onValueChange={(value) => setActiveOmKey(value)}
-            >
-                <AccordionItem value={om.omKey} className="border-b">
-                    <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-sm font-bold text-foreground">
-                            <div className="flex items-center gap-2">
-                                {om.omName} 
-                            </div>
-                            <span className="text-lg font-extrabold text-primary">
-                                {formatCurrency(om.totalGeral)}
-                            </span>
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-2 pb-0">
-                        <div className="space-y-4 pl-4 border-l border-border/50">
-                            {/* Sub-resumo por Aba dentro da OM */}
-                            <TabDetails mode="logistica" data={om} />
-                            <TabDetails mode="operacional" data={om} />
-                            {om.totalMaterialPermanente > 0 && <TabDetails mode="permanente" data={om} />}
-                            {om.totalAviacaoExercito > 0 && <TabDetails mode="avex" data={om} />}
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
-        ))}
-    </div>
-  );
+  const [modo, setModo] = useState<"global" | "om">("global");
   
-  // NOVO: Renderização do Resumo de Custos (Alternado)
-  const renderCostSummary = () => {
-      if (viewMode === 'global') {
-          return (
-            <div className="w-full space-y-1 text-sm px-6 pt-3">
-                <div className="flex justify-between text-orange-600 cursor-pointer" onClick={handleSummaryClick}>
-                  <span className="font-semibold text-sm">Aba Logística</span>
-                  <span className="font-bold text-sm">{formatCurrency(totals.totalLogisticoGeral)}</span>
-                </div>
-                <div className="flex justify-between text-blue-600 cursor-pointer" onClick={handleSummaryClick}>
-                  <span className="font-semibold text-sm">Aba Operacional</span>
-                  <span className="font-bold text-sm">{formatCurrency(totals.totalOperacional)}</span>
-                </div>
-                <div className="flex justify-between text-green-600 cursor-pointer" onClick={handleSummaryClick}>
-                  <span className="font-semibold text-sm">Aba Material Permanente</span>
-                  <span className="font-bold text-sm">{formatCurrency(totals.totalMaterialPermanente)}</span>
-                </div>
-                <div className="flex justify-between text-purple-600 cursor-pointer" onClick={handleSummaryClick}>
-                  <span className="font-semibold text-sm">Aba Aviação do Exército</span>
-                  <span className="font-bold text-sm">
-                    {formatNumber(totals.quantidadeHorasVoo, 2)} HV
-                  </span>
-                </div>
-            </div>
-          );
-      } else {
-          // Modo 'byOm'
-          if (sortedOmTotals.length === 0) {
-              return (
-                  <div className="w-full space-y-1 text-sm px-6 pt-3 text-muted-foreground">
-                      Nenhuma OM com custos registrados.
-                  </div>
-              );
-          }
-          
-          return (
-              <div className="w-full space-y-1 text-sm px-6 pt-3">
-                  {sortedOmTotals.map(om => (
-                      <div 
-                          key={om.omKey} 
-                          className="flex justify-between items-center text-foreground cursor-pointer p-1 rounded-md transition-colors hover:bg-muted/50" // Aprimoramento visual
-                          onClick={() => handleOmSummaryClick(om.omKey)} // Chama a nova função de clique
-                      >
-                          {/* Nome da OM (sem ícone, sem CODUG, fonte e tamanho do original) */}
-                          <span className="font-semibold text-sm text-foreground">{om.omName}</span>
-                          {/* Total Geral da OM (cor única, fonte e tamanho do original) */}
-                          <span className="font-bold text-sm text-primary">{formatCurrency(om.totalGeral)}</span> {/* Destaque em text-primary */}
-                      </div>
-                  ))}
-              </div>
-          );
-      }
-  };
+  const totalGeral = useMemo(() => {
+    if (modo === "global") {
+      return dadosGlobal.reduce((acc, item) => acc + item.valor, 0);
+    }
+    return dadosPorOM.reduce((acc, item) => acc + item.valor, 0);
+  }, [modo, dadosGlobal, dadosPorOM]);
 
+  const dadosOMOrdenados = useMemo(() => {
+    return [...dadosPorOM].sort((a, b) => b.valor - a.valor);
+  }, [dadosPorOM]);
+
+  const calculatedGND3 = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito;
+  const calculatedGND4 = totals.totalMaterialPermanente;
+  
+  const saldoGND3 = creditGND3 - calculatedGND3;
+  const saldoGND4 = creditGND4 - calculatedGND4;
+  
   return (
     <Card className="shadow-lg">
+      
+      {/* HEADER */}
       <CardHeader className="pb-2 pt-3">
-        {/* NOVO LAYOUT DO HEADER */}
         <div className="flex justify-between items-center">
-            <CardTitle className="text-xl font-bold">Resumo de Custos</CardTitle>
-            
-            {/* NOVO: Toggle de Visualização (Movido para cá) */}
-            <div className="flex items-center space-x-2 text-xs font-medium text-muted-foreground">
-                <span className={cn(viewMode === 'global' && 'text-primary font-semibold')}>Global</span>
-                <Switch
-                  checked={viewMode === 'byOm'}
-                  onCheckedChange={(checked) => {
-                    setViewMode(checked ? 'byOm' : 'global');
-                    setIsDetailsOpen(false); // Fecha detalhes ao trocar o modo
-                    setActiveOmKey(undefined); // Reseta a OM ativa
-                  }}
-                  id="view-mode-toggle"
-                />
-                <span className={cn(viewMode === 'byOm' && 'text-primary font-semibold')}>Por OM</span>
-            </div>
+          <h2 className="text-xl font-bold text-foreground">
+            Resumo de Custos
+          </h2>
+
+          {/* Toggle (Adapted to shadcn/ui Switch) */}
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <span className={cn(modo === "global" ? "text-primary font-semibold" : "text-muted-foreground")}>
+              Global
+            </span>
+
+            <Switch
+              checked={modo === "om"}
+              onCheckedChange={(checked) => setModo(checked ? "om" : "global")}
+              id="view-mode-toggle"
+            />
+
+            <span className={cn(modo === "om" ? "text-primary font-semibold" : "text-muted-foreground")}>
+              Por OM
+            </span>
+          </div>
         </div>
-        
+
         <CardDescription className="text-xs">
           Visão consolidada dos custos logísticos e orçamentários.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4 p-0 pb-3">
+
+      <CardContent className="p-6 pt-0">
         
-        {/* Resumo de Custos (Alternado) */}
-        {renderCostSummary()}
-        
-        {/* Accordion para Detalhes */}
-        <Accordion 
-          type="single" 
-          collapsible 
-          className="w-full px-6 pt-0"
-          // Controla o estado de abertura do accordion principal
-          value={isDetailsOpen ? "summary-details" : undefined}
-          onValueChange={(value) => {
-              setIsDetailsOpen(value === "summary-details");
-              // Se fechar o global, resetar a OM ativa
-              if (viewMode === 'global' && value !== "summary-details") {
-                  setActiveOmKey(undefined);
-              }
-          }}
-        >
-          <AccordionItem value="summary-details" className="border-b-0">
-            
-            {/* Accordion Trigger Principal: Contém o Total Geral e o botão Mais Detalhes */}
-            <AccordionTrigger 
-              simple
-              className="py-0 px-0 hover:no-underline flex items-center justify-between w-full text-xs text-muted-foreground border-t border-border/50"
-              onClick={(e) => {
-                e.preventDefault(); 
-                // Se estiver no modo OM e houver uma OM ativa, o clique deve fechar o detalhe da OM.
-                if (viewMode === 'byOm' && activeOmKey) {
-                    setActiveOmKey(undefined);
-                    setIsDetailsOpen(false);
-                } else {
-                    handleSummaryClick();
-                }
-              }}
-            >
-              <div className="flex justify-between items-center w-full">
-                <span className="text-base font-bold text-foreground">Total Geral</span>
-                <div className="flex flex-col items-end gap-0">
-                    <span className="text-lg font-bold text-foreground">{formatCurrency(totalGeralFinal)}</span>
-                    <span className="font-semibold text-primary flex items-center gap-1 text-xs lowercase">
-                        {isDetailsOpen ? "menos detalhes" : "mais detalhes"}
-                        <ChevronDown className={cn(
-                          "h-4 w-4 shrink-0 transition-transform duration-200",
-                          isDetailsOpen ? "rotate-180" : "rotate-0"
-                        )} />
-                    </span>
-                </div>
-              </div>
-            </AccordionTrigger>
-            
-            <AccordionContent className="pt-2 pb-0">
-              {/* RENDERIZAÇÃO CONDICIONAL */}
-              {viewMode === 'global' ? renderGlobalDetails() : renderOmDetails()}
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-        
-        {/* Seção de Crédito (abaixo do Accordion) */}
-        <div className="px-6 pt-0 border-t border-border/50 space-y-2 mt-[-1.5rem]">
-            <div className="flex justify-between items-center">
-                <h4 className="font-bold text-sm text-accent flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4" />
-                    Saldo GND 3
-                </h4>
-                <span className={cn("font-bold text-lg", saldoGND3 >= 0 ? "text-green-600" : "text-destructive")}>
-                    {formatCurrency(saldoGND3)}
+        {/* GLOBAL MODE */}
+        {modo === "global" && (
+          <div className="mt-3 space-y-3">
+            {dadosGlobal.map((item) => (
+              <div
+                key={item.nome}
+                className="flex justify-between items-center"
+              >
+                <span
+                  className={cn("font-medium text-sm", item.cor)}
+                >
+                  {item.nome}
                 </span>
-            </div>
-            <div className="flex justify-between items-center">
-                <h4 className="font-bold text-sm text-accent flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4" />
-                    Saldo GND 4
-                </h4>
-                <span className={cn("font-bold text-lg", saldoGND4 >= 0 ? "text-green-600" : "text-destructive")}>
-                    {formatCurrency(saldoGND4)}
-                </span >
-            </div>
-            <Button 
-                onClick={onOpenCreditDialog} 
-                variant="outline" 
-                className="w-full mt-2 border-accent text-accent hover:bg-accent/10 h-8 text-sm"
-            >
-                Informar Crédito
-            </Button>
+
+                <span className="font-semibold text-sm text-foreground">
+                  {formatCurrency(item.valor)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* POR OM MODE (MODERNO) */}
+        {modo === "om" && (
+          <div className="mt-3 space-y-3">
+            {dadosOMOrdenados.length === 0 ? (
+                <div className="text-center text-muted-foreground py-4 text-sm">
+                    Nenhuma OM com custos registrados.
+                </div>
+            ) : (
+                dadosOMOrdenados.map((om, index) => {
+                    const percentual =
+                        totalGeral > 0
+                        ? ((om.valor / totalGeral) * 100).toFixed(1)
+                        : "0";
+
+                    return (
+                        <div
+                            key={om.nome}
+                            className="group bg-gray-50 hover:bg-white 
+                                    transition-all duration-200
+                                    border border-gray-200 
+                                    rounded-lg p-3 
+                                    shadow-sm hover:shadow-md"
+                        >
+                            <div className="flex justify-between items-center">
+                                
+                                {/* Lado esquerdo */}
+                                <div className="flex items-center gap-3">
+                                    
+                                    {/* Ranking badge (Adapted to use Tailwind colors) */}
+                                    <div className="w-8 h-8 rounded-md 
+                                                    bg-indigo-600
+                                                    text-white flex items-center 
+                                                    justify-center font-semibold text-xs">
+                                        {index + 1}
+                                    </div>
+
+                                    <div>
+                                        <div className="font-medium text-sm text-foreground">
+                                            {om.nome}
+                                        </div>
+
+                                        <div className="text-xs text-muted-foreground">
+                                            {percentual}% do total
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Valor */}
+                                <div className="text-right">
+                                    <div className="text-base font-semibold text-foreground group-hover:text-indigo-600 transition-colors">
+                                        {formatCurrency(om.valor)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Barra proporcional */}
+                            <div className="mt-2">
+                                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                    <div
+                                        className="bg-indigo-600 h-1.5 rounded-full transition-all duration-700"
+                                        style={{ width: `${percentual}%` }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })
+            )}
+          </div>
+        )}
+
+        {/* TOTAL */}
+        <div className="border-t border-border mt-6 pt-4 flex justify-between items-center">
+          <span className="font-semibold text-base text-foreground">
+            Total Geral
+          </span>
+
+          <span className="text-xl font-bold text-primary">
+            {formatCurrency(totalGeral)}
+          </span>
         </div>
-        
+
+        {/* SALDOS */}
+        <div className="mt-4 space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-amber-600 font-medium">
+              Saldo GND 3
+            </span>
+
+            <span
+              className={cn("font-semibold", saldoGND3 < 0 ? "text-red-600" : "text-green-600")}
+            >
+              {formatCurrency(saldoGND3)}
+            </span>
+          </div>
+
+          <div className="flex justify-between">
+            <span className="text-amber-600 font-medium">
+              Saldo GND 4
+            </span>
+
+            <span
+              className={cn("font-semibold", saldoGND4 < 0 ? "text-red-600" : "text-green-600")}
+            >
+              {formatCurrency(saldoGND4)}
+            </span>
+          </div>
+        </div>
+
+        {/* BOTÃO */}
+        <Button 
+          onClick={onOpenCreditDialog} 
+          variant="outline" 
+          className="mt-6 w-full border-amber-500 text-amber-600 font-medium hover:bg-amber-50 transition-all"
+        >
+          Informar Crédito
+        </Button>
       </CardContent>
     </Card>
   );
