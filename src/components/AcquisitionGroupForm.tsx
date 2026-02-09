@@ -263,9 +263,12 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                                                     <TableRow>
                                                         <TableHead className="w-[100px] text-center">Qtd *</TableHead>
                                                         <TableHead>Item de Aquisição</TableHead>
-                                                        <TableHead className="text-right w-[120px]">Vlr Unitário</TableHead>
+                                                        <TableHead className="text-right w-[120px] flex flex-col justify-center items-end leading-none py-2">
+                                                            <span className="text-[10px]">Valor</span>
+                                                            <span className="text-[10px]">Unitário</span>
+                                                        </TableHead>
                                                         <TableHead className="text-right w-[120px]">Total Item</TableHead>
-                                                        <TableHead className="w-[50px]"></TableHead>
+                                                        <TableHead className="w-[50px] text-center">Ação</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>

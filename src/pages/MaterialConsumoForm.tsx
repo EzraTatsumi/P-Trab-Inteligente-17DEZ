@@ -474,7 +474,7 @@ const MaterialConsumoForm = () => {
                     <Collapsible key={group.tempId} defaultOpen={false}> {/* Alterado para defaultOpen={false} */}
                         <Card className="border-l-2 border-primary/70">
                             <CollapsibleTrigger asChild>
-                                <div className="flex justify-between items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                                <div className="flex justify-between items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors border rounded-md">
                                     <div className="flex items-center gap-2">
                                         <span className="font-semibold">{group.groupName}</span>
                                         <Badge variant="secondary" className="text-xs">
