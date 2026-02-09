@@ -1,22 +1,37 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Save, X, Package, FileText, Loader2 } from "lucide-react";
+import { Plus, Save, Package, FileText, Loader2, Trash2, Pencil } from "lucide-react";
 import { AcquisitionGroup } from "@/lib/materialConsumoUtils";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { formatCurrency } from "@/lib/formatUtils";
+import { formatCurrency, formatNumber } from "@/lib/formatUtils";
 import { toast } from "sonner";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+// Tipo para agrupar itens por subitem para exibição
+interface GroupedItem {
+    subitemNr: string;
+    subitemNome: string;
+    items: ItemAquisicao[];
+}
 
 interface AcquisitionGroupFormProps {
     initialGroup?: AcquisitionGroup;
     onSave: (group: AcquisitionGroup) => void;
     onCancel: () => void;
     isSaving: boolean;
-    // Propriedade para simular a importação (próximo passo)
-    onOpenImport: (groupId: string) => void; 
+    // NOVO: Handler para abrir o seletor de itens
+    onOpenItemSelector: (currentItems: ItemAquisicao[]) => void; 
+    // NOVO: Lista de itens selecionados (retorno do seletor)
+    selectedItemsFromSelector: ItemAquisicao[] | null;
+    // NOVO: Handler para limpar os itens selecionados do seletor
+    onClearSelectedItems: () => void;
 }
 
 const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({ 
@@ -24,20 +39,127 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
     onSave, 
     onCancel, 
     isSaving,
-    onOpenImport,
+    onOpenItemSelector,
+    selectedItemsFromSelector,
+    onClearSelectedItems,
 }) => {
     const [groupName, setGroupName] = useState(initialGroup?.groupName || '');
     const [groupPurpose, setGroupPurpose] = useState(initialGroup?.groupPurpose || '');
+    // Usamos um ID temporário para cada item para garantir que a quantidade seja rastreada
     const [items, setItems] = useState<ItemAquisicao[]>(initialGroup?.items || []);
     const [tempId] = useState(initialGroup?.tempId || crypto.randomUUID());
     
-    // Placeholder para cálculo (será substituído por calculateGroupTotals)
-    const totalValue = items.reduce((sum, item) => sum + Number(item.valor_total || 0), 0);
+    // Estado para controlar a expansão dos subitens
+    const [expandedSubitems, setExpandedSubitems] = useState<Record<string, boolean>>({});
+
+    // Efeito para processar itens retornados do seletor
+    useEffect(() => {
+        if (selectedItemsFromSelector) {
+            // 1. Criar um mapa de IDs dos itens existentes para fácil verificação
+            const existingItemIds = new Set(items.map(i => i.id));
+            
+            // 2. Processar os itens selecionados
+            const newItemsMap: Record<string, ItemAquisicao> = {};
+            
+            selectedItemsFromSelector.forEach(selectedItem => {
+                const existingItem = items.find(i => i.id === selectedItem.id);
+                
+                if (existingItem) {
+                    // Item já existia: mantém a quantidade e o valor total atual
+                    newItemsMap[selectedItem.id] = existingItem;
+                } else {
+                    // Novo item: quantidade 1, recalcula valor total
+                    const quantity = 1;
+                    const valorTotal = selectedItem.valor_unitario * quantity;
+                    
+                    newItemsMap[selectedItem.id] = {
+                        ...selectedItem,
+                        quantidade: quantity,
+                        valor_total: valorTotal,
+                    };
+                }
+            });
+            
+            // 3. Atualiza a lista de itens (mantendo apenas os selecionados)
+            setItems(Object.values(newItemsMap));
+            onClearSelectedItems(); // Limpa o estado global do seletor
+            
+            // Calcula quantos itens foram adicionados/removidos
+            const addedCount = Object.values(newItemsMap).filter(item => !existingItemIds.has(item.id)).length;
+            const removedCount = items.filter(item => !newItemsMap[item.id]).length;
+            
+            if (addedCount > 0 || removedCount > 0) {
+                toast.success(`Seleção atualizada. Adicionados: ${addedCount}, Removidos: ${removedCount}.`);
+            }
+        }
+    }, [selectedItemsFromSelector]); // Depende apenas dos itens retornados do seletor
+
+    // Calcula o valor total do grupo
+    const totalValue = useMemo(() => {
+        return items.reduce((sum, item) => sum + Number(item.valor_total || 0), 0);
+    }, [items]);
+    
+    // Agrupa os itens por subitem para exibição
+    const groupedItems = useMemo<GroupedItem[]>(() => {
+        const groups: Record<string, GroupedItem> = {};
+        
+        items.forEach(item => {
+            // Chave de agrupamento: Nr Subitem + Nome Subitem
+            const key = `${item.nr_subitem}-${item.nome_subitem}`;
+            if (!groups[key]) {
+                groups[key] = {
+                    subitemNr: item.nr_subitem,
+                    subitemNome: item.nome_subitem,
+                    items: [],
+                };
+            }
+            groups[key].items.push(item);
+        });
+        
+        return Object.values(groups).sort((a, b) => a.subitemNr.localeCompare(b.subitemNr));
+    }, [items]);
+    
+    // Handler para mudança de quantidade
+    const handleQuantityChange = (itemId: string, rawValue: string) => {
+        const quantity = parseInt(rawValue) || 0;
+        
+        setItems(prevItems => {
+            return prevItems.map(item => {
+                if (item.id === itemId) {
+                    const newQuantity = Math.max(0, quantity);
+                    const newValorTotal = newQuantity * item.valor_unitario;
+                    return {
+                        ...item,
+                        quantidade: newQuantity,
+                        valor_total: newValorTotal,
+                    };
+                }
+                return item;
+            });
+        });
+    };
+    
+    // Handler para remover item
+    const handleRemoveItem = (itemId: string) => {
+        setItems(prevItems => prevItems.filter(item => item.id !== itemId));
+        toast.info("Item removido do grupo.");
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!groupName.trim()) {
             toast.error("O Nome do Grupo de Aquisição é obrigatório.");
+            return;
+        }
+        if (items.length === 0) {
+            toast.error("Adicione pelo menos um item de aquisição ao grupo.");
+            return;
+        }
+        
+        // Verifica se há alguma quantidade zero
+        const hasZeroQuantity = items.some(item => item.quantidade === 0);
+        if (hasZeroQuantity) {
+            toast.error("A quantidade de todos os itens deve ser maior que zero.");
             return;
         }
         
@@ -54,45 +176,10 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
         } as AcquisitionGroup);
     };
     
-    // Placeholder para simular a importação (próximo passo)
-    const handleSimulateImport = () => {
-        // Simulação de importação de 2 itens
-        const simulatedItems: ItemAquisicao[] = [
-            {
-                id: crypto.randomUUID(),
-                codigo_catmat: '123456789',
-                descricao_item: 'Caneta Esferográfica Azul',
-                valor_unitario: 1.50,
-                quantidade: 100,
-                valor_total: 150.00,
-                nd: '33.90.30',
-                numero_pregao: '001/24',
-                uasg: '123456',
-                om_detentora: 'CMDO 1ª RM',
-                ug_detentora: '123456',
-            },
-            {
-                id: crypto.randomUUID(),
-                codigo_catmat: '987654321',
-                descricao_item: 'Papel A4 Branco',
-                valor_unitario: 25.00,
-                quantidade: 50,
-                valor_total: 1250.00,
-                nd: '33.90.30',
-                numero_pregao: '002/24',
-                uasg: '654321',
-                om_detentora: 'CMDO 1ª RM',
-                ug_detentora: '123456',
-            }
-        ];
-        setItems(simulatedItems);
-        toast.info("Itens de aquisição simulados adicionados ao grupo.");
-    };
-    
     const displayTitle = groupName.trim() || (initialGroup ? 'Editando Grupo' : 'Novo Grupo');
 
     return (
-        <Card className="border border-gray-300 bg-background p-4 shadow-lg">
+        <Card className="border border-gray-300 bg-gray-50 p-4 shadow-lg">
             <h4 className="font-bold text-lg mb-4">{displayTitle}</h4>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -120,23 +207,83 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                 </div>
                 
                 <div className="space-y-2">
-                    <Label htmlFor="items">Itens de Subitens da ND ({items.length} itens)</Label>
-                    <Card className="p-3 bg-background">
-                        {items.length === 0 ? (
+                    <Label htmlFor="items">Itens de Aquisição ({items.length} itens)</Label>
+                    <Card className="p-3 bg-background border">
+                        
+                        {/* Lista de Itens Agrupados */}
+                        {groupedItems.length === 0 ? (
                             <div className="text-center text-muted-foreground py-4">
-                                Nenhum item importado.
+                                Nenhum item selecionado. Clique em "Importar/Alterar Itens" para adicionar.
                             </div>
                         ) : (
-                            <div className="space-y-2 max-h-40 overflow-y-auto">
-                                {items.map(item => (
-                                    <div key={item.id} className="flex justify-between items-center text-sm border-b pb-1 last:border-b-0">
-                                        <span className="truncate font-medium">
-                                            {item.descricao_item}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground ml-2 shrink-0">
-                                            {formatCurrency(item.valor_total)}
-                                        </span>
-                                    </div>
+                            <div className="space-y-3">
+                                {groupedItems.map(group => (
+                                    <Collapsible 
+                                        key={group.subitemNr} 
+                                        open={expandedSubitems[group.subitemNr] ?? true}
+                                        onOpenChange={(open) => setExpandedSubitems(prev => ({ ...prev, [group.subitemNr]: open }))}
+                                    >
+                                        <CollapsibleTrigger asChild>
+                                            <div className="flex justify-between items-center p-2 bg-muted/50 rounded-md cursor-pointer hover:bg-muted transition-colors">
+                                                <span className="font-semibold text-sm">
+                                                    {group.subitemNr} - {group.subitemNome} ({group.items.length} itens)
+                                                </span>
+                                                {expandedSubitems[group.subitemNr] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                            </div>
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent className="pt-2">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className="w-[100px] text-center">Qtd *</TableHead>
+                                                        <TableHead>Item de Aquisição</TableHead>
+                                                        <TableHead className="text-right w-[120px]">Vlr Unitário</TableHead>
+                                                        <TableHead className="text-right w-[120px]">Total Item</TableHead>
+                                                        <TableHead className="w-[50px]"></TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {group.items.map(item => (
+                                                        <TableRow key={item.id}>
+                                                            <TableCell className="w-[100px]">
+                                                                <Input
+                                                                    type="number"
+                                                                    min={0}
+                                                                    value={item.quantidade === 0 ? "" : item.quantidade}
+                                                                    onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                                                                    className="w-full text-center h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                    disabled={isSaving}
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell className="text-xs">
+                                                                {item.descricao_item}
+                                                                <p className="text-muted-foreground text-[10px]">
+                                                                    CATMAT: {item.codigo_catmat} | ND: {item.nd}
+                                                                </p>
+                                                            </TableCell>
+                                                            <TableCell className="text-right text-xs text-muted-foreground">
+                                                                {formatCurrency(item.valor_unitario)}
+                                                            </TableCell>
+                                                            <TableCell className="text-right text-sm font-medium">
+                                                                {formatCurrency(item.valor_total)}
+                                                            </TableCell>
+                                                            <TableCell className="text-center">
+                                                                <Button 
+                                                                    type="button" 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    onClick={() => handleRemoveItem(item.id)}
+                                                                    disabled={isSaving}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                                </Button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </CollapsibleContent>
+                                    </Collapsible>
                                 ))}
                             </div>
                         )}
@@ -153,10 +300,10 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                 <div className="flex justify-between gap-3 pt-2">
                     <Button 
                         type="button" 
-                        variant="default" 
-                        onClick={handleSimulateImport} // Usando a simulação por enquanto
+                        variant="secondary" 
+                        onClick={() => onOpenItemSelector(items)}
                         disabled={isSaving}
-                        className="flex-1 bg-teal-700 hover:bg-teal-800 text-white"
+                        className="flex-1"
                     >
                         <Package className="mr-2 h-4 w-4" />
                         Importar/Alterar Itens de Subitens da ND ({items.length} itens)
@@ -166,7 +313,7 @@ const AcquisitionGroupForm: React.FC<AcquisitionGroupFormProps> = ({
                 <div className="flex justify-end gap-3 pt-2">
                     <Button 
                         type="submit" 
-                        disabled={isSaving || !groupName.trim()}
+                        disabled={isSaving || !groupName.trim() || items.length === 0}
                         className="w-auto bg-gray-500 hover:bg-gray-600 text-white"
                     >
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}

@@ -43,6 +43,7 @@ import AcquisitionGroupForm from "@/components/AcquisitionGroupForm";
 import MaterialConsumoMemoria from "@/components/MaterialConsumoMemoria";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo"; // Importar ItemAquisicao
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Importar Tooltip
+import AcquisitionItemSelectorDialog from "@/components/AcquisitionItemSelectorDialog"; // NOVO IMPORT
 
 // Tipos de dados
 type MaterialConsumoRegistroDB = Tables<'material_consumo_registros'>; 
@@ -154,6 +155,11 @@ const MaterialConsumoForm = () => {
     // Estado para o formulário inline de criação de grupo
     const [isGroupFormOpen, setIsGroupFormOpen] = useState(false);
     const [groupToEdit, setGroupToEdit] = useState<AcquisitionGroup | undefined>(undefined);
+    
+    // NOVO ESTADO: Controle do Dialog de Seleção de Itens
+    const [isItemSelectorOpen, setIsItemSelectorOpen] = useState(false);
+    const [itemsToPreselect, setItemsToPreselect] = useState<ItemAquisicao[]>([]);
+    const [selectedItemsFromSelector, setSelectedItemsFromSelector] = useState<ItemAquisicao[] | null>(null);
     
     // Dados mestres
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
@@ -445,7 +451,7 @@ const MaterialConsumoForm = () => {
     const renderAcquisitionGroups = () => {
         if (formData.acquisitionGroups.length === 0) {
             return (
-                <Alert variant="default" className="border-l-4 border-gray-300">
+                <Alert variant="default" className="border border-gray-300">
                     <AlertCircle className="h-4 w-4 text-muted-foreground" />
                     <AlertTitle>Nenhum Grupo Adicionado</AlertTitle>
                     <AlertDescription>
@@ -1111,6 +1117,22 @@ const MaterialConsumoForm = () => {
         navigate('/config/custos-operacionais', { state: { openMaterialConsumo: true } });
     };
     
+    // --- Handlers do Seletor de Itens ---
+    const handleOpenItemSelector = (currentItems: ItemAquisicao[]) => {
+        setItemsToPreselect(currentItems);
+        setIsItemSelectorOpen(true);
+    };
+    
+    const handleItemsSelected = (items: ItemAquisicao[]) => {
+        setSelectedItemsFromSelector(items);
+        // O AcquisitionGroupForm irá processar esta lista no seu useEffect
+    };
+    
+    const handleClearSelectedItems = () => {
+        setSelectedItemsFromSelector(null);
+        setItemsToPreselect([]);
+    };
+    
     // =================================================================
     // RENDERIZAÇÃO
     // =================================================================
@@ -1287,7 +1309,7 @@ const MaterialConsumoForm = () => {
                                         </Card>
                                         
                                         {/* Gerenciamento de Grupos de Aquisição */}
-                                        <Card className="mt-4 rounded-lg p-4 bg-background">
+                                        <Card className="mt-4 rounded-lg p-4 bg-gray-50">
                                             <h4 className="semibold text-base mb-4">
                                                 Grupos de Aquisição ({formData.acquisitionGroups.length})
                                             </h4>
@@ -1299,7 +1321,9 @@ const MaterialConsumoForm = () => {
                                                     onSave={handleSaveAcquisitionGroup}
                                                     onCancel={handleCancelGroupForm}
                                                     isSaving={isSaving}
-                                                    onOpenImport={handleAddDiretriz} // Simulação de importação
+                                                    onOpenItemSelector={handleOpenItemSelector}
+                                                    selectedItemsFromSelector={selectedItemsFromSelector}
+                                                    onClearSelectedItems={handleClearSelectedItems}
                                                 />
                                             )}
                                             
@@ -1662,6 +1686,16 @@ const MaterialConsumoForm = () => {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+                
+                {/* NOVO: Dialogo de Seleção de Itens */}
+                <AcquisitionItemSelectorDialog
+                    open={isItemSelectorOpen}
+                    onOpenChange={setIsItemSelectorOpen}
+                    selectedYear={new Date().getFullYear()} // Usar ano atual como fallback, ou buscar o ano padrão do PTrab
+                    initialItems={itemsToPreselect}
+                    onSelect={handleItemsSelected}
+                    onAddDiretriz={handleAddDiretriz}
+                />
             </div>
         </div>
     );
