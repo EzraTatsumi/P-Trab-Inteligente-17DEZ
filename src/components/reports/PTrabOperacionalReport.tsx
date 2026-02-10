@@ -681,7 +681,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 case 'COMPLEMENTO DE ALIMENTAÇÃO':
                     const compItem = data as { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' };
                     const r = compItem.registro;
-                    despesasLabel = `${type} (${r.group_name}${compItem.subType ? ` - ${compItem.subType}` : ''})`;
+                    despesasLabel = `${type} (${r.group_name})`;
                     
                     if (r.categoria_complemento === 'genero' && compItem.subType) {
                         totalLinha = compItem.subType === 'QS' ? (r.efetivo * r.dias_operacao * r.valor_etapa_qs) : (r.efetivo * r.dias_operacao * r.valor_etapa_qr);
@@ -1008,7 +1008,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                               case 'COMPLEMENTO DE ALIMENTAÇÃO':
                                   const compItem = data as { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' };
                                   const r = compItem.registro;
-                                  despesasLabel = `${type} (${r.group_name}${compItem.subType ? ` - ${compItem.subType}` : ''})`;
+                                  despesasLabel = `${type} (${r.group_name})`;
                                   
                                   if (r.categoria_complemento === 'genero' && compItem.subType) {
                                       totalLinha = compItem.subType === 'QS' ? (r.efetivo * r.dias_operacao * r.valor_etapa_qs) : (r.efetivo * r.dias_operacao * r.valor_etapa_qr);
