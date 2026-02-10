@@ -25,6 +25,12 @@ import {
     ConsolidatedConcessionariaRecord,
     generateConsolidatedConcessionariaMemoriaCalculo, 
 } from "@/lib/concessionariaUtils"; 
+import { 
+    generateMaterialConsumoMemoriaForItems, 
+    splitMaterialConsumoItems, 
+    calculateGroupTotals 
+} from "@/lib/materialConsumoUtils";
+import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 
 interface PTrabOperacionalReportProps {
   ptrabData: PTrabData;
@@ -127,6 +133,11 @@ const EXPENSE_ORDER_MAP: Record<string, number> = {
 type ExpenseRow = {
     type: keyof typeof EXPENSE_ORDER_MAP;
     data: DiariaRegistro | ConsolidatedPassagemReport | ConsolidatedConcessionariaReport | VerbaOperacionalRegistro | MaterialConsumoRegistro;
+    isContinuation?: boolean;
+    partialItems?: ItemAquisicao[];
+    partialTotal?: number;
+    partialND30?: number;
+    partialND39?: number;
 };
 
 
@@ -330,9 +341,23 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         allRows.push({ type: 'CONCESSIONÁRIA', data: consolidated });
     });
 
-    // Material de Consumo (Cada registro é uma linha)
+    // Material de Consumo (Cada registro é uma linha, mas pode ser dividido se exceder 15 linhas de detalhamento)
     group.materialConsumo.forEach(registro => {
-        allRows.push({ type: 'MATERIAL DE CONSUMO', data: registro });
+        const items = (registro.itens_aquisicao as unknown as ItemAquisicao[]) || [];
+        const chunks = splitMaterialConsumoItems(items, 15);
+
+        chunks.forEach((chunk, index) => {
+            const { totalValue, totalND30, totalND39 } = calculateGroupTotals(chunk);
+            allRows.push({ 
+                type: 'MATERIAL DE CONSUMO', 
+                data: registro,
+                isContinuation: index > 0,
+                partialItems: chunk,
+                partialTotal: totalValue,
+                partialND30: totalND30,
+                partialND39: totalND39
+            });
+        });
     });
 
     group.verbaOperacional.forEach(registro => {
@@ -473,7 +498,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         worksheet.mergeCells(`A${currentRow}:I${currentRow}`); 
         currentRow++;
     };
-    addHeaderRow('MINISTÉRIO DA DEFESA');
+    addHeaderRow('MINISTÉESA');
     addHeaderRow('EXÉRCITO BRASILEIRO');
     addHeaderRow(ptrabData.comando_militar_area.toUpperCase());
     const omExtensoRow = worksheet.getRow(currentRow);
@@ -600,10 +625,29 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                     break;
                 case 'MATERIAL DE CONSUMO':
                     const matConsumo = data as MaterialConsumoRegistro;
-                    if (matConsumo.group_name) despesasLabel = `${type} (${matConsumo.group_name})`;
-                    totalLinha = matConsumo.valor_nd_30 + matConsumo.valor_nd_39;
-                    nd30 = matConsumo.valor_nd_30; nd39 = matConsumo.valor_nd_39;
-                    memoria = generateMaterialConsumoMemoriaCalculo(matConsumo);
+                    const isContinuation = rowItem.isContinuation;
+                    if (matConsumo.group_name) {
+                        despesasLabel = `${type} (${matConsumo.group_name})`;
+                        if (isContinuation) {
+                            despesasLabel += `\n\nContinuação`;
+                        }
+                    }
+                    totalLinha = rowItem.partialTotal ?? (matConsumo.valor_total);
+                    nd30 = rowItem.partialND30 ?? (matConsumo.valor_nd_30);
+                    nd39 = rowItem.partialND39 ?? (matConsumo.valor_nd_39);
+                    
+                    if (rowItem.partialItems) {
+                        const context = {
+                            organizacao: matConsumo.organizacao,
+                            efetivo: matConsumo.efetivo,
+                            dias_operacao: matConsumo.dias_operacao,
+                            fase_atividade: matConsumo.fase_atividade
+                        };
+                        memoria = generateMaterialConsumoMemoriaForItems(matConsumo, rowItem.partialItems, context);
+                    } else {
+                        memoria = generateMaterialConsumoMemoriaCalculo(matConsumo);
+                    }
+                    
                     omDetentora = matConsumo.om_detentora || matConsumo.organizacao;
                     ugDetentora = matConsumo.ug_detentora || matConsumo.ug;
                     break;
@@ -814,7 +858,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 <th rowSpan={2} className="col-despesas-op">DESPESAS</th>
                 <th rowSpan={2} className="col-om-op">OM (UGE)<br/>CODUG</th>
                 <th colSpan={6} className="col-nd-group">NATUREZA DE DESPESA</th>
-                <th rowSpan={2} className="col-detalhamento-op">DETALHAMENTO / MEMÓRIA DE CÁLCULO<br/>(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)<br/>OBSERVAR A DIRETRIZ DE CUSTEIO OPERACIONAL</th>
+                <th rowSpan={2} className="col-detalhamento-op">DETALHAMENTO / MEMÓRIA DE CÁLCULO<br/>(DISCRIMINAR EFETIVOS, QUANTIDADES, VALORES UNITÁRIOS E TOTAIS)\nOBSERVAR A DIRETRIZ DE CUSTEIO OPERACIONAL</th>
               </tr>
               <tr>
                   <th className="col-nd-op-small">33.90.15</th>
@@ -877,10 +921,29 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                   break;
                               case 'MATERIAL DE CONSUMO':
                                   const matConsumo = data as MaterialConsumoRegistro;
-                                  if (matConsumo.group_name) despesasLabel = `${type} (${matConsumo.group_name})`;
-                                  totalLinha = matConsumo.valor_nd_30 + matConsumo.valor_nd_39;
-                                  nd30 = matConsumo.valor_nd_30; nd39 = matConsumo.valor_nd_39;
-                                  memoria = generateMaterialConsumoMemoriaCalculo(matConsumo);
+                                  const isContinuation = rowItem.isContinuation;
+                                  if (matConsumo.group_name) {
+                                      despesasLabel = `${type} (${matConsumo.group_name})`;
+                                      if (isContinuation) {
+                                          despesasLabel += `<br/><br/>Continuação`;
+                                      }
+                                  }
+                                  totalLinha = rowItem.partialTotal ?? (matConsumo.valor_total);
+                                  nd30 = rowItem.partialND30 ?? (matConsumo.valor_nd_30);
+                                  nd39 = rowItem.partialND39 ?? (matConsumo.valor_nd_39);
+                                  
+                                  if (rowItem.partialItems) {
+                                      const context = {
+                                          organizacao: matConsumo.organizacao,
+                                          efetivo: matConsumo.efetivo,
+                                          dias_operacao: matConsumo.dias_operacao,
+                                          fase_atividade: matConsumo.fase_atividade
+                                      };
+                                      memoria = generateMaterialConsumoMemoriaForItems(matConsumo, rowItem.partialItems, context);
+                                  } else {
+                                      memoria = generateMaterialConsumoMemoriaCalculo(matConsumo);
+                                  }
+                                  
                                   omDetentora = matConsumo.om_detentora || matConsumo.organizacao;
                                   ugDetentora = matConsumo.ug_detentora || matConsumo.ug;
                                   break;
@@ -903,7 +966,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                           }
 
                           return (
-                              <tr key={`${type}-${omName}-${(data as any).id || (data as any).groupKey}`} className="expense-row">
+                              <tr key={`${type}-${omName}-${(data as any).id || (data as any).groupKey}-${rowItem.isContinuation ? 'cont' : 'orig'}`} className="expense-row">
                                 <td className="col-despesas-op"> 
                                   <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: despesasLabel }} />
                                 </td>

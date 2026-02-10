@@ -57,10 +57,11 @@ export function calculateGroupTotals(items: ItemAquisicao[]): { totalValue: numb
 }
 
 /**
- * Gera a memória de cálculo para um ÚNICO registro (Grupo de Aquisição).
+ * Gera a memória de cálculo para um subconjunto de itens de um registro.
  */
-export function generateMaterialConsumoMemoriaCalculo(
-    registro: MaterialConsumoRegistro, 
+export function generateMaterialConsumoMemoriaForItems(
+    registro: MaterialConsumoRegistro,
+    items: ItemAquisicao[],
     context: { organizacao: string, efetivo: number, dias_operacao: number, fase_atividade: string | null }
 ): string {
     const { organizacao, efetivo, dias_operacao, fase_atividade } = context;
@@ -75,9 +76,8 @@ export function generateMaterialConsumoMemoriaCalculo(
     
     const groupName = registro.group_name;
     const groupPurpose = registro.group_purpose;
-    const itens = (registro.itens_aquisicao as unknown as ItemAquisicao[]) || [];
     
-    // Cabeçalho do Grupo: Prioriza a Finalidade se existir com o novo padrão de texto
+    // Cabeçalho do Grupo
     let texto = "";
     if (groupPurpose && groupPurpose.trim().length > 0) {
         texto = `33.90.30 - Aquisição de Material de Consumo para atender ${groupPurpose.trim()}.\n\n`;
@@ -90,10 +90,13 @@ export function generateMaterialConsumoMemoriaCalculo(
     
     // Listagem de Itens e Coleta de Pregões/UASGs
     const pregaoUasgPairs = new Map<string, string>();
+    let partialTotal = 0;
 
-    itens.forEach(item => {
+    items.forEach(item => {
         const nomeItem = item.descricao_reduzida || item.descricao_item;
-        texto += `- ${item.quantidade} ${nomeItem} x ${formatCurrency(item.valor_unitario)}/unid. = ${formatCurrency(item.valor_total)}.\n`;
+        const itemTotal = Number(item.valor_total || 0);
+        texto += `- ${item.quantidade} ${nomeItem} x ${formatCurrency(item.valor_unitario)}/unid. = ${formatCurrency(itemTotal)}.\n`;
+        partialTotal += itemTotal;
         
         if (item.numero_pregao && item.uasg) {
             const pairKey = `${formatPregao(item.numero_pregao)}|${formatCodug(item.uasg)}`;
@@ -103,7 +106,7 @@ export function generateMaterialConsumoMemoriaCalculo(
     
     // Linha em branco antes do Total
     texto += `\n`;
-    texto += `Total: ${formatCurrency(registro.valor_total)}.\n`;
+    texto += `Total: ${formatCurrency(partialTotal)}.\n`;
     
     // Rodapé de Pregão/UASG
     if (pregaoUasgPairs.size > 0) {
@@ -113,6 +116,52 @@ export function generateMaterialConsumoMemoriaCalculo(
     }
     
     return texto.trim();
+}
+
+/**
+ * Divide os itens de aquisição em blocos respeitando o limite de linhas (fórmulas + pregões).
+ */
+export function splitMaterialConsumoItems(items: ItemAquisicao[], limit: number = 15): ItemAquisicao[][] {
+    const chunks: ItemAquisicao[][] = [];
+    let currentChunk: ItemAquisicao[] = [];
+    let currentLines = 0;
+    let currentPairs = new Set<string>();
+
+    items.forEach(item => {
+        const pairKey = item.numero_pregao && item.uasg ? `${item.numero_pregao}|${item.uasg}` : null;
+        const pairIsNew = pairKey && !currentPairs.has(pairKey);
+        
+        // Cada item ocupa 1 linha de fórmula. Se o pregão for novo no bloco, ocupa +1 linha.
+        const linesForThisItem = 1 + (pairIsNew ? 1 : 0);
+
+        if (currentChunk.length > 0 && currentLines + linesForThisItem > limit) {
+            chunks.push(currentChunk);
+            currentChunk = [];
+            currentLines = 0;
+            currentPairs = new Set<string>();
+        }
+
+        currentChunk.push(item);
+        currentLines += linesForThisItem;
+        if (pairKey) currentPairs.add(pairKey);
+    });
+
+    if (currentChunk.length > 0) {
+        chunks.push(currentChunk);
+    }
+
+    return chunks;
+}
+
+/**
+ * Gera a memória de cálculo para um ÚNICO registro (Grupo de Aquisição).
+ */
+export function generateMaterialConsumoMemoriaCalculo(
+    registro: MaterialConsumoRegistro, 
+    context: { organizacao: string, efetivo: number, dias_operacao: number, fase_atividade: string | null }
+): string {
+    const itens = (registro.itens_aquisicao as unknown as ItemAquisicao[]) || [];
+    return generateMaterialConsumoMemoriaForItems(registro, itens, context);
 }
 
 /**
