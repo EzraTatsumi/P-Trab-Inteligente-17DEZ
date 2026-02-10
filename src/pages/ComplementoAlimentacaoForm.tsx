@@ -37,6 +37,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
+import { RmSelector } from "@/components/RmSelector";
 import { cn } from "@/lib/utils"; 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -53,6 +54,8 @@ import CurrencyInput from "@/components/CurrencyInput";
 interface ComplementoAlimentacaoFormState {
     om_favorecida: string; 
     ug_favorecida: string; 
+    rm_vinculacao: string;
+    codug_rm_vinculacao: string;
     om_destino: string; 
     ug_destino: string; 
     dias_operacao: number;
@@ -76,6 +79,8 @@ interface ComplementoAlimentacaoFormState {
 const initialFormState: ComplementoAlimentacaoFormState = {
     om_favorecida: "", 
     ug_favorecida: "", 
+    rm_vinculacao: "",
+    codug_rm_vinculacao: "",
     om_destino: "",
     ug_destino: "",
     dias_operacao: 0,
@@ -107,7 +112,6 @@ const ComplementoAlimentacaoForm = () => {
     const [editingId, setEditingId] = useState<string | null>(null);
     
     const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
-    const [selectedOmQsId, setSelectedOmQsId] = useState<string | undefined>(undefined);
     const [selectedOmQrId, setSelectedOmQrId] = useState<string | undefined>(undefined);
     
     const [isGroupFormOpen, setIsGroupFormOpen] = useState(false);
@@ -130,10 +134,6 @@ const ComplementoAlimentacaoForm = () => {
         if (omData) {
             setSelectedOmFavorecidaId(omData.id);
             
-            // Regra Geral: UASG (QS) = RM de Vinculação
-            const rmOm = oms?.find(om => om.nome_om === omData.rm_vinculacao && om.codug_om === omData.codug_rm_vinculacao);
-            setSelectedOmQsId(rmOm?.id || undefined);
-
             // Regra Geral: UASG (QR) = OM Favorecida
             setSelectedOmQrId(omData.id);
 
@@ -141,6 +141,8 @@ const ComplementoAlimentacaoForm = () => {
                 ...prev, 
                 om_favorecida: omData.nome_om, 
                 ug_favorecida: omData.codug_om, 
+                rm_vinculacao: omData.rm_vinculacao,
+                codug_rm_vinculacao: omData.codug_rm_vinculacao,
                 om_qs: omData.rm_vinculacao,
                 ug_qs: omData.codug_rm_vinculacao,
                 om_qr: omData.nome_om,
@@ -203,7 +205,7 @@ const ComplementoAlimentacaoForm = () => {
                             {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">1. Dados da Organização</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                     <div className="space-y-2">
                                         <Label>OM Favorecida *</Label>
                                         <OmSelector selectedOmId={selectedOmFavorecidaId} onChange={handleOmFavorecidaChange} placeholder="Selecione a OM" />
@@ -211,6 +213,13 @@ const ComplementoAlimentacaoForm = () => {
                                     <div className="space-y-2">
                                         <Label>UG Favorecida</Label>
                                         <Input value={formatCodug(formData.ug_favorecida)} disabled className="bg-muted/50" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>RM de Vinculação *</Label>
+                                        <RmSelector 
+                                            value={formData.rm_vinculacao} 
+                                            onChange={(name, codug) => setFormData({...formData, rm_vinculacao: name, codug_rm_vinculacao: codug})} 
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Fase da Atividade *</Label>
@@ -292,7 +301,11 @@ const ComplementoAlimentacaoForm = () => {
                                                         </div>
                                                         <div className="space-y-2">
                                                             <Label>UASG (QS)</Label>
-                                                            <OmSelector selectedOmId={selectedOmQsId} onChange={(om) => setFormData({...formData, om_qs: om?.nome_om || "", ug_qs: om?.codug_om || ""})} placeholder="Selecione a UASG do QS" />
+                                                            <RmSelector 
+                                                                value={formData.om_qs} 
+                                                                onChange={(name, codug) => setFormData({...formData, om_qs: name, ug_qs: codug})} 
+                                                                placeholder="Selecione a UASG do QS" 
+                                                            />
                                                         </div>
                                                     </div>
 
