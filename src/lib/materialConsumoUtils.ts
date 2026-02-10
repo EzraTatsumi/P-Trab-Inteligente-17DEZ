@@ -91,7 +91,8 @@ export function generateMaterialConsumoMemoriaCalculo(
         
         if (item.numero_pregao && item.uasg) {
             const pairKey = `${formatPregao(item.numero_pregao)}|${formatCodug(item.uasg)}`;
-            pregaoUasgPairs.set(pairKey, `(Pregão: ${formatPregao(item.numero_pregao)} - ${formatCodug(item.uasg)}).`);
+            // NOVO PADRÃO: (Pregão <nr Pregão> - UASG <Nr UASG>) sem ponto final
+            pregaoUasgPairs.set(pairKey, `(Pregão ${formatPregao(item.numero_pregao)} - UASG ${formatCodug(item.uasg)})`);
         }
     });
     
