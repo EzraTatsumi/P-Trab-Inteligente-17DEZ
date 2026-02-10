@@ -97,10 +97,12 @@ interface ComplementoAlimentacaoFormState {
     fase_atividade: string;
     categoria_complemento: 'genero' | 'agua' | 'lanche';
     
-    // Gênero Alimentício
-    genero_efetivo: number;
-    genero_dias: number;
+    // Campos unificados
+    efetivo: number;
+    dias_operacao: number;
     publico: string;
+
+    // Gênero Alimentício
     valor_etapa_qs: number;
     pregao_qs: string;
     om_qs: string;
@@ -111,8 +113,6 @@ interface ComplementoAlimentacaoFormState {
     ug_qr: string;
 
     // Água Mineral
-    agua_efetivo: number;
-    agua_dias: number;
     agua_consumo_dia: number;
     agua_tipo_envase: string;
     agua_volume_envase: number;
@@ -122,8 +122,6 @@ interface ComplementoAlimentacaoFormState {
     agua_ug_uasg: string;
 
     // Lanche/Catanho
-    lanche_efetivo: number;
-    lanche_dias: number;
     lanche_pregao: string;
     lanche_om_uasg: string;
     lanche_ug_uasg: string;
@@ -142,9 +140,10 @@ const initialFormState: ComplementoAlimentacaoFormState = {
     fase_atividade: "",
     categoria_complemento: 'genero',
     
-    genero_efetivo: 0,
-    genero_dias: 0,
+    efetivo: 0,
+    dias_operacao: 0,
     publico: "OSP",
+
     valor_etapa_qs: 0,
     pregao_qs: "",
     om_qs: "",
@@ -154,8 +153,6 @@ const initialFormState: ComplementoAlimentacaoFormState = {
     om_qr: "",
     ug_qr: "",
 
-    agua_efetivo: 0,
-    agua_dias: 0,
     agua_consumo_dia: 0,
     agua_tipo_envase: "Garrafa",
     agua_volume_envase: 0.5,
@@ -164,8 +161,6 @@ const initialFormState: ComplementoAlimentacaoFormState = {
     agua_om_uasg: "",
     agua_ug_uasg: "",
 
-    lanche_efetivo: 0,
-    lanche_dias: 0,
     lanche_pregao: "",
     lanche_om_uasg: "",
     lanche_ug_uasg: "",
@@ -181,44 +176,41 @@ const compareFormData = (current: ComplementoAlimentacaoFormState, staged: Compl
     if (
         current.om_favorecida !== staged.om_favorecida ||
         current.ug_favorecida !== staged.ug_favorecida ||
-        current.fase_atividade !== staged.fase_atividade
+        current.fase_atividade !== staged.fase_atividade ||
+        current.efetivo !== staged.efetivo ||
+        current.dias_operacao !== staged.dias_operacao ||
+        current.publico !== staged.publico ||
+        current.categoria_complemento !== staged.categoria_complemento
     ) return true;
 
-    if (current.categoria_complemento === staged.categoria_complemento) {
-        const cat = current.categoria_complemento;
+    const cat = current.categoria_complemento;
 
-        if (cat === 'genero') {
-            if (
-                current.genero_efetivo !== staged.genero_efetivo ||
-                current.genero_dias !== staged.genero_dias ||
-                current.publico !== staged.publico ||
-                current.valor_etapa_qs !== staged.valor_etapa_qs ||
-                current.pregao_qs !== staged.pregao_qs ||
-                current.om_qs !== staged.om_qs ||
-                current.valor_etapa_qr !== staged.valor_etapa_qr ||
-                current.pregao_qr !== staged.pregao_qr ||
-                current.om_qr !== staged.om_qr
-            ) return true;
-        } else if (cat === 'agua') {
-            if (
-                current.agua_efetivo !== staged.agua_efetivo ||
-                current.agua_dias !== staged.agua_dias ||
-                current.agua_consumo_dia !== staged.agua_consumo_dia ||
-                current.agua_tipo_envase !== staged.agua_tipo_envase ||
-                current.agua_volume_envase !== staged.agua_volume_envase ||
-                current.agua_valor_unitario !== staged.agua_valor_unitario ||
-                current.agua_pregao !== staged.agua_pregao ||
-                current.agua_om_uasg !== staged.agua_om_uasg
-            ) return true;
-        } else if (cat === 'lanche') {
-            if (
-                current.lanche_efetivo !== staged.lanche_efetivo ||
-                current.lanche_dias !== staged.lanche_dias ||
-                current.lanche_pregao !== staged.lanche_pregao ||
-                current.lanche_om_uasg !== staged.lanche_om_uasg ||
-                JSON.stringify(current.lanche_items) !== JSON.stringify(staged.lanche_items)
-            ) return true;
-        }
+    if (cat === 'genero') {
+        if (
+            current.valor_etapa_qs !== staged.valor_etapa_qs ||
+            current.pregao_qs !== staged.pregao_qs ||
+            current.om_qs !== staged.om_qs ||
+            current.valor_etapa_qr !== staged.valor_etapa_qr ||
+            current.pregao_qr !== staged.pregao_qr ||
+            current.om_qr !== staged.om_qr
+        ) return true;
+    } else if (cat === 'agua') {
+        if (
+            current.agua_consumo_dia !== staged.agua_consumo_dia ||
+            current.agua_tipo_envase !== staged.agua_tipo_envase ||
+            current.agua_volume_envase !== staged.agua_volume_envase ||
+            current.agua_valor_unitario !== staged.agua_valor_unitario ||
+            current.agua_pregao !== staged.agua_pregao ||
+            current.agua_om_uasg !== staged.agua_om_uasg ||
+            current.agua_ug_uasg !== staged.agua_ug_uasg
+        ) return true;
+    } else if (cat === 'lanche') {
+        if (
+            current.lanche_pregao !== staged.lanche_pregao ||
+            current.lanche_om_uasg !== staged.lanche_om_uasg ||
+            current.lanche_ug_uasg !== staged.lanche_ug_uasg ||
+            JSON.stringify(current.lanche_items) !== JSON.stringify(staged.lanche_items)
+        ) return true;
     }
 
     return false;
@@ -473,27 +465,27 @@ const ComplementoAlimentacaoForm = () => {
 
     // Cálculos em tempo real
     const currentTotalQS = useMemo(() => {
-        return formData.genero_efetivo * formData.valor_etapa_qs * formData.genero_dias;
-    }, [formData.genero_efetivo, formData.valor_etapa_qs, formData.genero_dias]);
+        return formData.efetivo * formData.valor_etapa_qs * formData.dias_operacao;
+    }, [formData.efetivo, formData.valor_etapa_qs, formData.dias_operacao]);
 
     const currentTotalQR = useMemo(() => {
-        return formData.genero_efetivo * formData.valor_etapa_qr * formData.genero_dias;
-    }, [formData.genero_efetivo, formData.valor_etapa_qr, formData.genero_dias]);
+        return formData.efetivo * formData.valor_etapa_qr * formData.dias_operacao;
+    }, [formData.efetivo, formData.valor_etapa_qr, formData.dias_operacao]);
 
     const currentTotalAgua = useMemo(() => {
-        const totalLitros = formData.agua_efetivo * formData.agua_consumo_dia * formData.agua_dias;
+        const totalLitros = formData.efetivo * formData.agua_consumo_dia * formData.dias_operacao;
         if (formData.agua_volume_envase <= 0) return 0;
         const totalGarrafas = Math.ceil(totalLitros / formData.agua_volume_envase);
         return totalGarrafas * formData.agua_valor_unitario;
-    }, [formData.agua_efetivo, formData.agua_consumo_dia, formData.agua_dias, formData.agua_volume_envase, formData.agua_valor_unitario]);
+    }, [formData.efetivo, formData.agua_consumo_dia, formData.dias_operacao, formData.agua_volume_envase, formData.agua_valor_unitario]);
 
     const currentKitValue = useMemo(() => {
         return formData.lanche_items.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
     }, [formData.lanche_items]);
 
     const currentTotalLanche = useMemo(() => {
-        return currentKitValue * formData.lanche_efetivo * formData.lanche_dias;
-    }, [currentKitValue, formData.lanche_efetivo, formData.lanche_dias]);
+        return currentKitValue * formData.efetivo * formData.dias_operacao;
+    }, [currentKitValue, formData.efetivo, formData.dias_operacao]);
 
     const currentCategoryTotal = useMemo(() => {
         if (formData.categoria_complemento === 'genero') {
@@ -531,8 +523,8 @@ const ComplementoAlimentacaoForm = () => {
                 ug_favorecida: formData.ug_favorecida,
                 om_destino: formData.om_qr,
                 ug_destino: formData.ug_qr,
-                dias_operacao: formData.genero_dias,
-                efetivo: formData.genero_efetivo,
+                dias_operacao: formData.dias_operacao,
+                efetivo: formData.efetivo,
                 fase_atividade: formData.fase_atividade,
                 publico: formData.publico,
                 valor_total: totalGeral,
@@ -551,8 +543,8 @@ const ComplementoAlimentacaoForm = () => {
                 ug_favorecida: formData.ug_favorecida,
                 om_destino: formData.agua_om_uasg,
                 ug_destino: formData.agua_ug_uasg,
-                dias_operacao: formData.agua_dias,
-                efetivo: formData.agua_efetivo,
+                dias_operacao: formData.dias_operacao,
+                efetivo: formData.efetivo,
                 fase_atividade: formData.fase_atividade,
                 publico: formData.publico,
                 valor_total: totalValue,
@@ -569,8 +561,8 @@ const ComplementoAlimentacaoForm = () => {
                 ug_favorecida: formData.ug_favorecida,
                 om_destino: formData.lanche_om_uasg,
                 ug_destino: formData.lanche_ug_uasg,
-                dias_operacao: formData.lanche_dias,
-                efetivo: formData.lanche_efetivo,
+                dias_operacao: formData.dias_operacao,
+                efetivo: formData.efetivo,
                 fase_atividade: formData.fase_atividade,
                 publico: formData.publico,
                 valor_total: totalValue,
@@ -606,9 +598,9 @@ const ComplementoAlimentacaoForm = () => {
 
     const isSaveDisabled = useMemo(() => {
         if (!isBaseFormReady) return true;
+        if (formData.efetivo <= 0 || formData.dias_operacao <= 0) return true;
         
         if (isGenero) {
-            if (formData.genero_efetivo <= 0 || formData.genero_dias <= 0) return true;
             return (
                 formData.valor_etapa_qs <= 0 || 
                 !formData.pregao_qs || 
@@ -618,18 +610,23 @@ const ComplementoAlimentacaoForm = () => {
                 !formData.om_qr
             );
         } else if (formData.categoria_complemento === 'agua') {
-            if (formData.agua_efetivo <= 0 || formData.agua_dias <= 0) return true;
             return (
                 formData.agua_consumo_dia <= 0 ||
                 !formData.agua_tipo_envase ||
                 formData.agua_volume_envase <= 0 ||
                 formData.agua_valor_unitario <= 0 ||
                 !formData.agua_pregao ||
-                !formData.agua_om_uasg
+                !formData.agua_om_uasg ||
+                !formData.agua_ug_uasg
             );
         } else {
-            if (formData.lanche_efetivo <= 0 || formData.lanche_dias <= 0) return true;
-            return formData.lanche_items.length === 0 || formData.lanche_items.some(i => !i.descricao || i.quantidade <= 0 || i.valor_unitario <= 0) || !formData.lanche_pregao || !formData.lanche_om_uasg;
+            return (
+                formData.lanche_items.length === 0 || 
+                formData.lanche_items.some(i => !i.descricao || i.quantidade <= 0 || i.valor_unitario <= 0) || 
+                !formData.lanche_pregao || 
+                !formData.lanche_om_uasg ||
+                !formData.lanche_ug_uasg
+            );
         }
     }, [formData, isBaseFormReady, isGenero]);
 
@@ -726,11 +723,11 @@ const ComplementoAlimentacaoForm = () => {
             ug_favorecida: group.ug,
             fase_atividade: group.fase_atividade,
             categoria_complemento: first.categoria_complemento as any,
+            efetivo: first.efetivo,
+            dias_operacao: first.dias_operacao,
+            publico: first.publico || "OSP",
             
             ...(first.categoria_complemento === 'genero' && {
-                genero_efetivo: first.efetivo,
-                genero_dias: first.dias_operacao,
-                publico: first.publico || "OSP",
                 valor_etapa_qs: first.valor_etapa_qs,
                 pregao_qs: first.pregao_qs || "",
                 om_qs: first.om_qs || "",
@@ -741,8 +738,6 @@ const ComplementoAlimentacaoForm = () => {
                 ug_qr: first.ug_qr || "",
             }),
             ...(first.categoria_complemento === 'agua' && {
-                agua_efetivo: first.efetivo,
-                agua_dias: first.dias_operacao,
                 agua_consumo_dia: first.agua_consumo_dia || 0,
                 agua_tipo_envase: first.agua_tipo_envase || "Garrafa",
                 agua_volume_envase: first.agua_volume_envase || 0.5,
@@ -752,8 +747,6 @@ const ComplementoAlimentacaoForm = () => {
                 agua_ug_uasg: first.ug_detentora,
             }),
             ...(first.categoria_complemento === 'lanche' && {
-                lanche_efetivo: first.efetivo,
-                lanche_dias: first.dias_operacao,
                 lanche_pregao: first.pregao_qs || "", 
                 lanche_om_uasg: first.om_detentora,
                 lanche_ug_uasg: first.ug_detentora,
@@ -848,8 +841,8 @@ const ComplementoAlimentacaoForm = () => {
                                                         <Label>Efetivo *</Label>
                                                         <Input 
                                                             type="number" 
-                                                            value={formData.genero_efetivo || ""} 
-                                                            onChange={(e) => setFormData({...formData, genero_efetivo: parseInt(e.target.value) || 0})}
+                                                            value={formData.efetivo || ""} 
+                                                            onChange={(e) => setFormData({...formData, efetivo: parseInt(e.target.value) || 0})}
                                                             placeholder="Ex: 150"
                                                             disabled={!isPTrabEditable || isSaving}
                                                             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -863,8 +856,8 @@ const ComplementoAlimentacaoForm = () => {
                                                         <Label>Período (Nr Dias) *</Label>
                                                         <Input 
                                                             type="number" 
-                                                            value={formData.genero_dias || ""} 
-                                                            onChange={(e) => setFormData({...formData, genero_dias: parseInt(e.target.value) || 0})}
+                                                            value={formData.dias_operacao || ""} 
+                                                            onChange={(e) => setFormData({...formData, dias_operacao: parseInt(e.target.value) || 0})}
                                                             placeholder="Ex: 15"
                                                             disabled={!isPTrabEditable || isSaving}
                                                             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
