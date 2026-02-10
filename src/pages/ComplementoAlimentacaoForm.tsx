@@ -1346,12 +1346,6 @@ const ComplementoAlimentacaoForm = () => {
                                                                             <h4 className="font-semibold text-base text-foreground">
                                                                                 Complemento de Alimentação ({registro.group_name})
                                                                             </h4>
-                                                                            <Badge 
-                                                                                variant="secondary" 
-                                                                                className={cn("text-[10px] font-bold uppercase", getCategoryBadgeClasses(registro.categoria_complemento))}
-                                                                            >
-                                                                                {registro.categoria_complemento}
-                                                                            </Badge>
                                                                         </div>
                                                                         <p className="text-xs text-muted-foreground">
                                                                             Período: {registro.dias_operacao} {diasText} | Efetivo: {registro.efetivo} {efetivoText}
