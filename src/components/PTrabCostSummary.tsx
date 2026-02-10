@@ -156,6 +156,8 @@ interface PTrabAggregatedTotals {
     totalConcessionariaEnergia: number;
     
     totalHorasVoo: number;
+    totalHorasVooND30: number;
+    totalHorasVooND39: number;
     quantidadeHorasVoo: number;
     groupedHorasVoo: Record<string, { totalValor: number, totalHV: number }>;
     
@@ -205,7 +207,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     totalMaterialPermanente: 0,
     totalAviacaoExercito: 0,
     classeI: { total: 0, totalComplemento: 0, totalEtapaSolicitadaValor: 0, totalDiasEtapaSolicitada: 0, totalRefeicoesIntermediarias: 0, totalRacoesOperacionaisGeral: 0 },
-    classeII: { total: 0, totalND30: number = 0, totalND39: number = 0, totalItens: 0, groupedCategories: {} },
+    classeII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeIII: { total: 0, totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0 },
     classeV: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeVI: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
@@ -582,7 +584,8 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
         totalSuprimentoFundos: 0, totalSuprimentoFundosND30: 0, totalSuprimentoFundosND39: 0, totalEquipesSuprimento: 0, totalDiasSuprimento: 0,
         totalPassagensND33: 0, totalQuantidadePassagens: 0, totalTrechosPassagens: 0,
         totalConcessionariaND39: 0, totalConcessionariaRegistros: 0, totalConcessionariaAgua: 0, totalConcessionariaEnergia: 0,
-        totalHorasVoo: 0, quantidadeHorasVoo: 0, groupedHorasVoo: {},
+        
+        totalHorasVoo: 0, totalHorasVooND30: 0, totalHorasVooND39: 0, quantidadeHorasVoo: 0, groupedHorasVoo: {},
         totalMaterialConsumo: 0, totalMaterialConsumoND30: 0, totalMaterialConsumoND39: 0,
         
         groupedByOm,
@@ -680,6 +683,8 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
         globalTotals.totalConcessionariaEnergia += omTotals.concessionaria.totalEnergia;
         
         globalTotals.totalHorasVoo += omTotals.horasVoo.total;
+        globalTotals.totalHorasVooND30 += omTotals.horasVoo.totalND30;
+        globalTotals.totalHorasVooND39 += omTotals.horasVoo.totalND39;
         globalTotals.quantidadeHorasVoo += omTotals.horasVoo.quantidadeHV;
         
         Object.entries(omTotals.horasVoo.groupedHV).forEach(([tipoAnv, data]) => {
@@ -836,8 +841,8 @@ const getHorasVooData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['hora
     const globalData = data as PTrabAggregatedTotals;
     return {
         total: globalData.totalHorasVoo,
-        totalND30: globalData.totalMaterialConsumoND30, 
-        totalND39: globalData.totalMaterialConsumoND39,
+        totalND30: globalData.totalHorasVooND30, 
+        totalND39: globalData.totalHorasVooND39,
         quantidadeHV: globalData.quantidadeHorasVoo,
         groupedHV: globalData.groupedHorasVoo,
     };
@@ -1904,7 +1909,7 @@ export const PTrabCostSummary = ({
         totalSuprimentoFundos: 0, totalSuprimentoFundosND30: 0, totalSuprimentoFundosND39: 0, totalEquipesSuprimento: 0, totalDiasSuprimento: 0,
         totalPassagensND33: 0, totalQuantidadePassagens: 0, totalTrechosPassagens: 0,
         totalConcessionariaND39: 0, totalConcessionariaRegistros: 0, totalConcessionariaAgua: 0, totalConcessionariaEnergia: 0,
-        totalHorasVoo: 0, quantidadeHorasVoo: 0, groupedHorasVoo: {},
+        totalHorasVoo: 0, totalHorasVooND30: 0, totalHorasVooND39: 0, quantidadeHorasVoo: 0, groupedHorasVoo: {},
         totalMaterialConsumo: 0, totalMaterialConsumoND30: 0, totalMaterialConsumoND39: 0,
         groupedByOm: {},
     },
