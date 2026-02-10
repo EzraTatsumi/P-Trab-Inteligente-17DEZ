@@ -46,7 +46,7 @@ import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; 
 import AcquisitionItemSelectorDialog from "@/components/AcquisitionItemSelectorDialog"; 
 import PageMetadata from "@/components/PageMetadata";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PublicoSelect } from "@/components/PublicoSelect";
 
 // Estado inicial para o formulário
 interface ComplementoAlimentacaoFormState {
@@ -59,7 +59,6 @@ interface ComplementoAlimentacaoFormState {
     fase_atividade: string;
     categoria_complemento: 'genero' | 'agua' | 'lanche';
     
-    // Novos campos Parte A
     publico: string;
     valor_etapa_qs: number;
     pregao_qs: string;
@@ -105,10 +104,8 @@ const ComplementoAlimentacaoForm = () => {
     
     const [formData, setFormData] = useState<ComplementoAlimentacaoFormState>(initialFormState);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     
     const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
-    const [selectedOmDestinoId, setSelectedOmDestinoId] = useState<string | undefined>(undefined);
     const [selectedOmQsId, setSelectedOmQsId] = useState<string | undefined>(undefined);
     const [selectedOmQrId, setSelectedOmQrId] = useState<string | undefined>(undefined);
     
@@ -131,7 +128,6 @@ const ComplementoAlimentacaoForm = () => {
     const handleOmFavorecidaChange = (omData: any) => {
         if (omData) {
             setSelectedOmFavorecidaId(omData.id);
-            setSelectedOmDestinoId(omData.id); 
             
             // Regra Geral: UASG (QS) = RM de Vinculação
             const rmOm = oms?.find(om => om.nome_om === omData.rm_vinculacao && om.codug_om === omData.codug_rm_vinculacao);
@@ -144,8 +140,6 @@ const ComplementoAlimentacaoForm = () => {
                 ...prev, 
                 om_favorecida: omData.nome_om, 
                 ug_favorecida: omData.codug_om, 
-                om_destino: omData.nome_om, 
-                ug_destino: omData.codug_om,
                 om_qs: omData.rm_vinculacao,
                 ug_qs: omData.codug_rm_vinculacao,
                 om_qr: omData.nome_om,
@@ -156,6 +150,13 @@ const ComplementoAlimentacaoForm = () => {
 
     const isBaseFormReady = formData.om_favorecida.length > 0 && formData.fase_atividade.length > 0;
     const isGenero = formData.categoria_complemento === 'genero';
+
+    // Helper para inputs numéricos sem setas
+    const handleNumericKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault();
+        }
+    };
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
@@ -170,7 +171,6 @@ const ComplementoAlimentacaoForm = () => {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <Utensils className="h-6 w-6 text-primary" />
                             Complemento de Alimentação
                         </CardTitle>
                         <CardDescription>
@@ -193,7 +193,7 @@ const ComplementoAlimentacaoForm = () => {
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Fase da Atividade *</Label>
-                                        <FaseAtividadeSelect value={formData.fase_atividade} onChange={(f) => setFormData({...formData, fase_atividade: f})} />
+                                        <FaseAtividadeSelect value={formData.fase_atividade} onChange={(f) => setFormData({...formData, fase_atividade: f})} disabled={false} />
                                     </div>
                                 </div>
                             </section>
@@ -222,29 +222,30 @@ const ComplementoAlimentacaoForm = () => {
                                         <Card className="bg-muted/50 p-4">
                                             {/* Parte A: Contexto da Categoria */}
                                             <div className="space-y-6 bg-background p-4 rounded-lg border">
-                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                     <div className="space-y-2">
                                                         <Label>Efetivo *</Label>
-                                                        <Input type="number" value={formData.efetivo || ""} onChange={(e) => setFormData({...formData, efetivo: parseInt(e.target.value) || 0})} />
+                                                        <Input 
+                                                            type="number" 
+                                                            value={formData.efetivo || ""} 
+                                                            onChange={(e) => setFormData({...formData, efetivo: parseInt(e.target.value) || 0})}
+                                                            onKeyDown={handleNumericKeyDown}
+                                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                        />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label>Público *</Label>
-                                                        <Select value={formData.publico} onValueChange={(v) => setFormData({...formData, publico: v})}>
-                                                            <SelectTrigger><SelectValue /></SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="Militares">Militares</SelectItem>
-                                                                <SelectItem value="OSP">OSP</SelectItem>
-                                                                <SelectItem value="Civis">Civis</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
+                                                        <PublicoSelect value={formData.publico} onChange={(v) => setFormData({...formData, publico: v})} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label>Período (Nr Dias) *</Label>
-                                                        <Input type="number" value={formData.dias_operacao || ""} onChange={(e) => setFormData({...formData, dias_operacao: parseInt(e.target.value) || 0})} />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label>OM Destino do Recurso *</Label>
-                                                        <OmSelector selectedOmId={selectedOmDestinoId} onChange={(om) => setFormData({...formData, om_destino: om?.nome_om || "", ug_destino: om?.codug_om || ""})} />
+                                                        <Input 
+                                                            type="number" 
+                                                            value={formData.dias_operacao || ""} 
+                                                            onChange={(e) => setFormData({...formData, dias_operacao: parseInt(e.target.value) || 0})}
+                                                            onKeyDown={handleNumericKeyDown}
+                                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                        />
                                                     </div>
                                                 </div>
 
@@ -256,7 +257,14 @@ const ComplementoAlimentacaoForm = () => {
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <div className="space-y-2">
                                                                 <Label>Valor Etapa (QS)</Label>
-                                                                <Input type="number" step="0.01" value={formData.valor_etapa_qs || ""} onChange={(e) => setFormData({...formData, valor_etapa_qs: parseFloat(e.target.value) || 0})} />
+                                                                <Input 
+                                                                    type="number" 
+                                                                    step="0.01" 
+                                                                    value={formData.valor_etapa_qs || ""} 
+                                                                    onChange={(e) => setFormData({...formData, valor_etapa_qs: parseFloat(e.target.value) || 0})}
+                                                                    onKeyDown={handleNumericKeyDown}
+                                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                />
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>Pregão (QS)</Label>
@@ -275,7 +283,14 @@ const ComplementoAlimentacaoForm = () => {
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <div className="space-y-2">
                                                                 <Label>Valor Etapa (QR)</Label>
-                                                                <Input type="number" step="0.01" value={formData.valor_etapa_qr || ""} onChange={(e) => setFormData({...formData, valor_etapa_qr: parseFloat(e.target.value) || 0})} />
+                                                                <Input 
+                                                                    type="number" 
+                                                                    step="0.01" 
+                                                                    value={formData.valor_etapa_qr || ""} 
+                                                                    onChange={(e) => setFormData({...formData, valor_etapa_qr: parseFloat(e.target.value) || 0})}
+                                                                    onKeyDown={handleNumericKeyDown}
+                                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                />
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>Pregão (QR)</Label>
@@ -320,6 +335,14 @@ const ComplementoAlimentacaoForm = () => {
                                                         </div>
                                                     )}
                                                 </Card>
+                                            </div>
+
+                                            {/* Botão Salvar Itens na Lista */}
+                                            <div className="mt-6 flex justify-end">
+                                                <Button className="w-full md:w-auto" disabled={!isBaseFormReady}>
+                                                    <Save className="mr-2 h-4 w-4" />
+                                                    Salvar Itens na Lista
+                                                </Button>
                                             </div>
                                         </Card>
                                     </Tabs>
