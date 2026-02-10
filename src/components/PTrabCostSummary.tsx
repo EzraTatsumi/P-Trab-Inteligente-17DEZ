@@ -16,13 +16,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-// Definição de constantes de categoria
-const CLASSE_V_CATEGORIES = ["Armt L", "Armt P", "IODCT", "DQBRN"];
-const CLASSE_VI_CATEGORIES = ["Embarcação", "Equipamento de Engenharia", "Gerador"];
-const CLASSE_VII_CATEGORIES = ["Comunicações", "Informática"];
-const CLASSE_VIII_CATEGORIES = ["Saúde", "Remonta/Veterinária"];
-const CLASSE_IX_CATEGORIES = ["Vtr Administrativa", "Vtr Operacional", "Motocicleta", "Vtr Blindada"];
-
 // Tipos para a estrutura agrupada por OM
 interface OmTotals {
     omKey: string;
@@ -185,7 +178,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     classeV: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeVI: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeVII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} }, 
-    classeVIII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeVIII: { total: 0, totalND30: number, totalND39: number, totalItens: number, groupedCategories: {} },
     classeIX: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     diarias: { total: 0, totalND15: 0, totalND30: 0, totalMilitares: 0, totalDiasViagem: 0 },
     verbaOperacional: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
@@ -194,7 +187,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     concessionaria: { total: 0, totalAgua: 0, totalEnergia: 0, totalRegistros: 0 },
     horasVoo: { total: 0, totalND30: 0, totalND39: 0, quantidadeHV: 0, groupedHV: {} },
     materialConsumo: { total: 0, totalND30: 0, totalND39: 0 },
-});
+} as any);
 
 /**
  * Busca e calcula todos os totais de um P Trab agregando dados de todas as tabelas de registros.
@@ -564,7 +557,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: any) => {
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                                 <CategoryCard label="Classe I (Alimentação)" value={om.classeI.total} icon={Utensils} colorClass="bg-orange-500/10 text-orange-600" nd30={om.classeI.total} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Complemento (Ref. Int.)</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(om.classeI.totalRefeicoesIntermediarias)}</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeI.totalComplemento)}</span></div><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Etapa Solicitada</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(om.classeI.totalDiasEtapaSolicitada)} dias</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeI.totalEtapaSolicitadaValor)}</span></div>{om.classeI.totalRacoesOperacionaisGeral > 0 && <div className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left truncate pr-3">Ração Operacional (R2/R3)</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{om.classeI.totalRacoesOperacionaisGeral} un.</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(0)}</span></div>}</div>} />
                                 <CategoryCard label="Classe II (Intendência)" value={om.classeII.total} icon={ClipboardList} colorClass="bg-orange-500/10 text-orange-600" nd30={om.classeII.totalND30} nd39={om.classeII.totalND39} details={renderClassDetails(om.classeII)} />
-                                <CategoryCard label="Classe III (Combustíveis)" value={om.classeIII.total} icon={Fuel} colorClass="bg-orange-500/10 text-orange-600" nd30={om.classeIII.total} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Óleo Diesel</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(om.classeIII.totalDieselLitros)} L</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeIII.totalDieselValor)}</span></div><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Gasolina</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(om.classeIII.totalGasolinaLitros)} L</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeIII.totalGasolinaValor)}</span></div><div className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left truncate pr-3">Lubrificante</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(om.classeIII.totalLubrificanteLitros || 0, 2)} L</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeIII.totalLubrificanteValor)}</span></div></div>} />
+                                <CategoryCard label="Classe III (Combustíveis)" value={om.classeIII.total} icon={Fuel} colorClass="bg-orange-500/10 text-orange-600" nd30={om.classeIII.total} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Óleo Diesel</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(om.classeIII.totalDieselLitros)} L</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeIII.totalDieselValor)}</span></div><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Gasolina</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(om.classeIII.totalGasolinaLitros)} L</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeIII.totalGasolinaValor)}</span></div><div className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left truncate pr-3">Lubrificante</span><span className="w-1/4 text-right font-medium">{formatNumber(om.classeIII.totalLubrificanteLitros || 0, 2)} L</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeIII.totalLubrificanteValor)}</span></div></div>} />
                                 <CategoryCard label="Classe V (Armamento)" value={om.classeV.total} icon={Swords} colorClass="bg-orange-500/10 text-orange-600" nd30={om.classeV.totalND30} nd39={om.classeV.totalND39} details={renderClassDetails(om.classeV)} />
                                 <CategoryCard label="Classe VI (Engenharia)" value={om.classeVI.total} icon={HardHat} colorClass="bg-orange-500/10 text-orange-600" nd30={om.classeVI.totalND30} nd39={om.classeVI.totalND39} details={renderClassDetails(om.classeVI)} />
                                 <CategoryCard label="Classe VII (Com/Inf)" value={om.classeVII.total} icon={Radio} colorClass="bg-orange-500/10 text-orange-600" nd30={om.classeVII.totalND30} nd39={om.classeVII.totalND39} details={renderClassDetails(om.classeVII)} />
@@ -608,6 +601,65 @@ const OmDetailsDialog = ({ om, totals, onClose }: any) => {
             </DialogContent>
         </Dialog>
     );
+};
+
+interface TabDetailsProps {
+    mode: 'logistica' | 'operacional' | 'permanente' | 'avex';
+    data: OmTotals | PTrabAggregatedTotals;
+}
+
+const getClasseIData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['classeI'] => {
+    if ((data as OmTotals).omKey) return (data as OmTotals).classeI;
+    const g = data as PTrabAggregatedTotals;
+    return { total: g.totalClasseI, totalComplemento: g.totalComplemento, totalEtapaSolicitadaValor: g.totalEtapaSolicitadaValor, totalDiasEtapaSolicitada: g.totalDiasEtapaSolicitada, totalRefeicoesIntermediarias: g.totalRefeicoesIntermediarias, totalRacoesOperacionaisGeral: g.totalRacoesOperacionaisGeral };
+};
+
+const getClasseIIIData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['classeIII'] => {
+    if ((data as OmTotals).omKey) return (data as OmTotals).classeIII;
+    const g = data as PTrabAggregatedTotals;
+    return { total: g.totalCombustivel, totalDieselValor: g.totalDieselValor, totalGasolinaValor: g.totalGasolinaValor, totalDieselLitros: g.totalDieselLitros, totalGasolinaLitros: g.totalGasolinaLitros, totalLubrificanteValor: g.totalLubrificanteValor, totalLubrificanteLitros: g.totalLubrificanteLitros };
+};
+
+const getDiariasData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['diarias'] => {
+    if ((data as OmTotals).omKey) return (data as OmTotals).diarias;
+    const g = data as PTrabAggregatedTotals;
+    return { total: g.totalDiarias, totalND15: g.totalDiariasND15, totalND30: g.totalDiariasND30, totalMilitares: g.totalMilitaresDiarias, totalDiasViagem: g.totalDiasViagem };
+};
+
+const getVerbaOperacionalData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['verbaOperacional'] => {
+    if ((data as OmTotals).omKey) return (data as OmTotals).verbaOperacional;
+    const g = data as PTrabAggregatedTotals;
+    return { total: g.totalVerbaOperacional, totalND30: g.totalVerbaOperacionalND30, totalND39: g.totalVerbaOperacionalND39, totalEquipes: g.totalEquipesVerba, totalDias: g.totalDiasVerba };
+};
+
+const getSuprimentoFundosData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['suprimentoFundos'] => {
+    if ((data as OmTotals).omKey) return (data as OmTotals).suprimentoFundos;
+    const g = data as PTrabAggregatedTotals;
+    return { total: g.totalSuprimentoFundos, totalND30: g.totalSuprimentoFundosND30, totalND39: g.totalSuprimentoFundosND39, totalEquipes: g.totalEquipesSuprimento, totalDias: g.totalDiasSuprimento };
+};
+
+const getPassagensData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['passagens'] => {
+    if ((data as OmTotals).omKey) return (data as OmTotals).passagens;
+    const g = data as PTrabAggregatedTotals;
+    return { total: g.totalPassagensND33, totalQuantidade: g.totalQuantidadePassagens, totalTrechos: g.totalTrechosPassagens };
+};
+
+const getConcessionariaData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['concessionaria'] => {
+    if ((data as OmTotals).omKey) return (data as OmTotals).concessionaria;
+    const g = data as PTrabAggregatedTotals;
+    return { total: g.totalConcessionariaND39, totalAgua: g.totalConcessionariaAgua, totalEnergia: g.totalConcessionariaEnergia, totalRegistros: g.totalConcessionariaRegistros };
+};
+
+const getMaterialConsumoData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['materialConsumo'] => {
+    if ((data as OmTotals).omKey) return (data as OmTotals).materialConsumo;
+    const g = data as PTrabAggregatedTotals;
+    return { total: g.totalMaterialConsumo, totalND30: g.totalMaterialConsumoND30, totalND39: g.totalMaterialConsumoND39 };
+};
+
+const getHorasVooData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['horasVoo'] => {
+    if ((data as OmTotals).omKey) return (data as OmTotals).horasVoo;
+    const g = data as PTrabAggregatedTotals;
+    return { total: g.totalHorasVoo, totalND30: g.totalHorasVooND30, totalND39: g.totalHorasVooND39, quantidadeHV: g.quantidadeHorasVoo, groupedHV: g.groupedHorasVoo };
 };
 
 const TabDetails = ({ mode, data }: TabDetailsProps) => {
@@ -767,6 +819,13 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     };
     return null;
 };
+
+interface PTrabCostSummaryProps {
+  ptrabId: string;
+  onOpenCreditDialog: () => void;
+  creditGND3: number;
+  creditGND4: number;
+}
 
 export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, creditGND4 }: PTrabCostSummaryProps) => {
   const { data, isLoading, error } = useQuery<PTrabAggregatedTotals>({
