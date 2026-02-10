@@ -69,7 +69,7 @@ interface CalculatedMaterialConsumo extends TablesInsert<'material_consumo_regis
     ug_favorecida: string;
     // Novo: Armazena os grupos de aquisição (para rastreamento)
     acquisitionGroups: AcquisitionGroup[];
-    // Adicionando 'efetivo' e 'dias_operacao' aqui para rastreamento, embora não sejam persistidos diretamente
+    // Adicionando 'efetivo' e 'dias_operacao' aqui para rastreamento
     efetivo: number;
     dias_operacao: number;
 }
@@ -191,10 +191,7 @@ const MaterialConsumoForm = () => {
                 registro.om_detentora,
                 registro.ug_detentora,
                 registro.dias_operacao,
-                // Nota: O campo 'efetivo' não existe na tabela material_consumo_registros,
-                // mas é usado no formulário para cálculo. No DB, ele não é persistido aqui.
-                // Para fins de consolidação, usamos o valor do registro, que pode ser 0 ou null.
-                (registro as any).efetivo, 
+                registro.efetivo, 
                 registro.fase_atividade,
             ].join('|');
 
@@ -206,8 +203,7 @@ const MaterialConsumoForm = () => {
                     om_detentora: registro.om_detentora || '',
                     ug_detentora: registro.ug_detentora || '',
                     dias_operacao: registro.dias_operacao,
-                    // Forçando para 0 se não existir no DB
-                    efetivo: (registro as any).efetivo || 0, 
+                    efetivo: registro.efetivo || 0, 
                     fase_atividade: registro.fase_atividade || '',
                     records: [],
                     totalGeral: 0,
@@ -236,7 +232,6 @@ const MaterialConsumoForm = () => {
     const mapToDbInsert = (g: CalculatedMaterialConsumo): TablesInsert<'material_consumo_registros'> => {
         const group = g.acquisitionGroups[0];
         
-        // Retorna APENAS os campos que existem na tabela 'material_consumo_registros'
         return {
             p_trab_id: g.p_trab_id,
             organizacao: g.organizacao,
@@ -244,6 +239,7 @@ const MaterialConsumoForm = () => {
             om_detentora: g.om_detentora,
             ug_detentora: g.ug_detentora,
             dias_operacao: g.dias_operacao,
+            efetivo: g.efetivo,
             fase_atividade: g.fase_atividade,
             
             // Campos específicos do Grupo de Aquisição
@@ -256,8 +252,6 @@ const MaterialConsumoForm = () => {
             valor_nd_30: g.valor_nd_30,
             valor_nd_39: g.valor_nd_39,
             detalhamento_customizado: g.detalhamento_customizado,
-            
-            // Nota: 'efetivo' não está na tabela, então não é incluído aqui.
         } as TablesInsert<'material_consumo_registros'>;
     };
 
@@ -460,8 +454,8 @@ const MaterialConsumoForm = () => {
         return (
             <div className="space-y-3">
                 {groups.map(group => (
-                    <Collapsible key={group.tempId} defaultOpen={false}> {/* Alterado para defaultOpen={false} */}
-                        <Card className=""> {/* REMOVIDO: border-l-2 border-primary/70 */}
+                    <Collapsible key={group.tempId} defaultOpen={false}>
+                        <Card className="">
                             <CollapsibleTrigger asChild>
                                 <div className="flex justify-between items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors border rounded-md">
                                     <div className="flex items-center gap-2">
@@ -627,7 +621,7 @@ const MaterialConsumoForm = () => {
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
                     om_detentora: formData.om_destino,
-                    ug_detentora: formData.ug_destino, // CORREÇÃO: Usando ug_destino
+                    ug_detentora: formData.ug_destino,
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
@@ -637,9 +631,9 @@ const MaterialConsumoForm = () => {
                         organizacao: formData.om_favorecida,
                         ug: formData.ug_favorecida,
                         om_detentora: formData.om_destino,
-                        ug_detentora: formData.ug_destino, // CORREÇÃO: Usando ug_destino
+                        ug_detentora: formData.ug_destino,
                         dias_operacao: formData.dias_operacao,
-                        efetivo: formData.efetivo, // Incluído aqui para a função de memória
+                        efetivo: formData.efetivo,
                         fase_atividade: formData.fase_atividade,
                         group_name: group.groupName,
                         group_purpose: group.groupPurpose,
@@ -664,7 +658,7 @@ const MaterialConsumoForm = () => {
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
                     om_detentora: formData.om_destino,
-                    ug_detentora: formData.ug_destino, // CORREÇÃO: Usando ug_destino
+                    ug_detentora: formData.ug_destino,
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
@@ -808,7 +802,7 @@ const MaterialConsumoForm = () => {
                 organizacao: newFormData.om_favorecida,
                 ug: newFormData.ug_favorecida,
                 om_detentora: newFormData.om_destino,
-                ug_detentora: newFormData.ug_destino, // CORREÇÃO: Usando ug_destino
+                ug_detentora: newFormData.ug_destino,
                 dias_operacao: newFormData.dias_operacao,
                 efetivo: newFormData.efetivo,
                 fase_atividade: newFormData.fase_atividade,
@@ -818,9 +812,9 @@ const MaterialConsumoForm = () => {
                     organizacao: newFormData.om_favorecida,
                     ug: newFormData.ug_favorecida,
                     om_detentora: newFormData.om_destino,
-                    ug_detentora: newFormData.ug_destino, // CORREÇÃO: Usando ug_destino
+                    ug_detentora: newFormData.ug_destino,
                     dias_operacao: newFormData.dias_operacao,
-                    efetivo: newFormData.efetivo, // Incluído aqui para a função de memória
+                    efetivo: newFormData.efetivo,
                     fase_atividade: newFormData.fase_atividade,
                     group_name: group.groupName,
                     group_purpose: group.groupPurpose,
@@ -845,7 +839,7 @@ const MaterialConsumoForm = () => {
                 organizacao: newFormData.om_favorecida,
                 ug: newFormData.ug_favorecida,
                 om_detentora: newFormData.om_destino,
-                ug_detentora: newFormData.ug_destino, // CORREÇÃO: Usando ug_destino
+                ug_detentora: newFormData.ug_destino,
                 dias_operacao: newFormData.dias_operacao,
                 efetivo: newFormData.efetivo,
                 fase_atividade: newFormData.fase_atividade,
@@ -911,7 +905,7 @@ const MaterialConsumoForm = () => {
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
                     om_detentora: formData.om_destino,
-                    ug_detentora: formData.ug_destino, // CORREÇÃO: Usando ug_destino
+                    ug_detentora: formData.ug_destino,
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
@@ -921,9 +915,9 @@ const MaterialConsumoForm = () => {
                         organizacao: formData.om_favorecida,
                         ug: formData.ug_favorecida,
                         om_detentora: formData.om_destino,
-                        ug_detentora: formData.ug_destino, // CORREÇÃO: Usando ug_destino
+                        ug_detentora: formData.ug_destino,
                         dias_operacao: formData.dias_operacao,
-                        efetivo: formData.efetivo, // Incluído aqui para a função de memória
+                        efetivo: formData.efetivo,
                         fase_atividade: formData.fase_atividade,
                         group_name: group.groupName,
                         group_purpose: group.groupPurpose,
@@ -948,7 +942,7 @@ const MaterialConsumoForm = () => {
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
                     om_detentora: formData.om_destino,
-                    ug_detentora: formData.ug_destino, // CORREÇÃO: Usando ug_destino
+                    ug_detentora: formData.ug_destino,
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
@@ -1432,15 +1426,12 @@ const MaterialConsumoForm = () => {
                                     <div className="space-y-4">
                                         {itemsToDisplay.map((item) => {
                                             const totalND30 = item.valor_nd_30;
-                                            const totalND39 = item.valor_nd_39;
                                             
                                             const diasText = item.dias_operacao === 1 ? "dia" : "dias";
                                             const efetivoText = item.efetivo === 1 ? 'militar' : 'militares';
                                             
                                             const isOmDestinoDifferent = item.om_favorecida !== item.om_detentora || item.ug_favorecida !== item.ug_detentora;
                                             
-                                            const groupCount = item.acquisitionGroups.length;
-                                            // Como cada itemToDisplay é um CalculatedMaterialConsumo, ele contém apenas 1 AcquisitionGroup
                                             const groupName = item.acquisitionGroups[0]?.groupName || 'Grupo de Aquisição'; 
 
                                             return (
@@ -1496,7 +1487,6 @@ const MaterialConsumoForm = () => {
                                                             <span className="text-muted-foreground">ND 33.90.30:</span>
                                                             <span className="font-medium text-green-600">{formatCurrency(totalND30)}</span>
                                                         </div>
-                                                        {/* REMOVIDO: ND 33.90.39 */}
                                                     </CardContent>
                                                 </Card>
                                             );
@@ -1730,7 +1720,7 @@ const MaterialConsumoForm = () => {
                 <AcquisitionItemSelectorDialog
                     open={isItemSelectorOpen}
                     onOpenChange={setIsItemSelectorOpen}
-                    selectedYear={new Date().getFullYear()} // Usar ano atual como fallback, ou buscar o ano padrão do PTrab
+                    selectedYear={new Date().getFullYear()} 
                     initialItems={itemsToPreselect}
                     onSelect={handleItemsSelected}
                     onAddDiretriz={handleAddDiretriz}
