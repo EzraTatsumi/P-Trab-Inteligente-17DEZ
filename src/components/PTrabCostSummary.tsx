@@ -9,7 +9,7 @@ import {
   AccordionItem,
   AccordionTrigger,
   AccordionContent,
-} from "@/accordion-custom"; // Usando o componente customizado se disponível ou o padrão
+} from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tables } from "@/integrations/supabase/types";
