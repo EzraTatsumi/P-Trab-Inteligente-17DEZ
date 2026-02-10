@@ -196,7 +196,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     classeIII: { total: 0, totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0 },
     classeV: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeVI: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
-    classeVII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeVIl: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeVIII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeIX: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     diarias: { total: 0, totalND15: 0, totalND30: 0, totalMilitares: 0, totalDiasViagem: 0 },
@@ -978,10 +978,10 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
       <div className="space-y-1.5 text-[10px]">
         {Object.entries(group.groupedCategories).sort(([a], [b]) => a.localeCompare(b)).map(([category, data]: [string, any]) => (
           <div key={category} className="flex justify-between text-muted-foreground border-b border-border/20 pb-1 last:border-0">
-            <span className="font-medium">{category}</span>
-            <div className="flex flex-col items-end">
-              <span className="font-bold text-foreground">{formatCurrency(data.totalValor)}</span>
-              <span className="text-[8px]">{formatNumber(data.totalItens)} {unitLabel}</span>
+            <span className="font-medium w-1/2 text-left">{category}</span>
+            <div className="flex w-1/2 justify-between">
+              <span className="font-medium text-right w-1/2">{formatNumber(data.totalItens)} {unitLabel}</span>
+              <span className="font-bold text-foreground text-right w-1/2">{formatCurrency(data.totalValor)}</span>
             </div>
           </div>
         ))}
@@ -1015,18 +1015,21 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     nd30={om.classeI.total}
                                     details={
                                       <div className="space-y-1.5 text-[10px]">
-                                        <div className="flex justify-between text-muted-foreground">
-                                          <span>Complemento</span>
-                                          <span className="font-medium">{formatCurrency(om.classeI.totalComplemento)}</span>
+                                        <div className="flex justify-between text-muted-foreground border-b border-border/20 pb-1">
+                                          <span className="w-1/2 text-left">Complemento (Ref. Int.)</span>
+                                          <span className="w-1/4 text-right font-medium">{formatNumber(om.classeI.totalRefeicoesIntermediarias)}</span>
+                                          <span className="w-1/4 text-right font-bold text-foreground">{formatCurrency(om.classeI.totalComplemento)}</span>
                                         </div>
-                                        <div className="flex justify-between text-muted-foreground">
-                                          <span>Etapa Solicitada</span>
-                                          <span className="font-medium">{formatCurrency(om.classeI.totalEtapaSolicitadaValor)}</span>
+                                        <div className="flex justify-between text-muted-foreground border-b border-border/20 pb-1">
+                                          <span className="w-1/2 text-left">Etapa Solicitada</span>
+                                          <span className="w-1/4 text-right font-medium">{formatNumber(om.classeI.totalDiasEtapaSolicitada)} dias</span>
+                                          <span className="w-1/4 text-right font-bold text-foreground">{formatCurrency(om.classeI.totalEtapaSolicitadaValor)}</span>
                                         </div>
                                         {om.classeI.totalRacoesOperacionaisGeral > 0 && (
                                           <div className="flex justify-between text-muted-foreground">
-                                            <span>Rações Operacionais</span>
-                                            <span className="font-medium">{om.classeI.totalRacoesOperacionaisGeral} un.</span>
+                                            <span className="w-1/2 text-left">Ração Operacional (R2/R3)</span>
+                                            <span className="w-1/4 text-right font-medium">{om.classeI.totalRacoesOperacionaisGeral} un.</span>
+                                            <span className="w-1/4 text-right font-bold text-foreground">{formatCurrency(0)}</span>
                                           </div>
                                         )}
                                       </div>
@@ -1049,17 +1052,20 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                     nd30={om.classeIII.total}
                                     details={
                                       <div className="space-y-1.5 text-[10px]">
-                                        <div className="flex justify-between text-muted-foreground">
-                                          <span>Óleo Diesel</span>
-                                          <span className="font-medium">{formatCurrency(om.classeIII.totalDieselValor)}</span>
+                                        <div className="flex justify-between text-muted-foreground border-b border-border/20 pb-1">
+                                          <span className="w-1/2 text-left">Óleo Diesel</span>
+                                          <span className="w-1/4 text-right font-medium">{formatNumber(om.classeIII.totalDieselLitros)} L</span>
+                                          <span className="w-1/4 text-right font-bold text-foreground">{formatCurrency(om.classeIII.totalDieselValor)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-muted-foreground border-b border-border/20 pb-1">
+                                          <span className="w-1/2 text-left">Gasolina</span>
+                                          <span className="w-1/4 text-right font-medium">{formatNumber(om.classeIII.totalGasolinaLitros)} L</span>
+                                          <span className="w-1/4 text-right font-bold text-foreground">{formatCurrency(om.classeIII.totalGasolinaValor)}</span>
                                         </div>
                                         <div className="flex justify-between text-muted-foreground">
-                                          <span>Gasolina</span>
-                                          <span className="font-medium">{formatCurrency(om.classeIII.totalGasolinaValor)}</span>
-                                        </div>
-                                        <div className="flex justify-between text-muted-foreground">
-                                          <span>Lubrificantes</span>
-                                          <span className="font-medium">{formatCurrency(om.classeIII.totalLubrificanteValor)}</span>
+                                          <span className="w-1/2 text-left">Lubrificante</span>
+                                          <span className="w-1/4 text-right font-medium">{formatNumber(om.classeIII.totalLubrificanteLitros, 2)} L</span>
+                                          <span className="w-1/4 text-right font-bold text-foreground">{formatCurrency(om.classeIII.totalLubrificanteValor)}</span>
                                         </div>
                                       </div>
                                     }
@@ -1251,10 +1257,10 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                                       <div className="space-y-1.5 text-[10px]">
                                         {Object.entries(om.horasVoo.groupedHV).sort(([a], [b]) => a.localeCompare(b)).map(([tipoAnv, data]) => (
                                           <div key={tipoAnv} className="flex justify-between text-muted-foreground border-b border-border/20 pb-1 last:border-0">
-                                            <span className="font-medium">{tipoAnv}</span>
-                                            <div className="flex flex-col items-end">
-                                              <span className="font-bold text-foreground">{formatCurrency(data.totalValor)}</span>
-                                              <span className="text-[8px]">{formatNumber(data.totalHV, 2)} HV</span>
+                                            <span className="font-medium w-1/2 text-left">{tipoAnv}</span>
+                                            <div className="flex w-1/2 justify-between">
+                                              <span className="font-medium text-right w-1/2">{formatNumber(data.totalHV, 2)} HV</span>
+                                              <span className="font-bold text-foreground text-right w-1/2">{formatCurrency(data.totalValor)}</span>
                                             </div>
                                           </div>
                                         ))}
