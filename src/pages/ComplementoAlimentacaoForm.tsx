@@ -176,7 +176,6 @@ const initialFormState: ComplementoAlimentacaoFormState = {
 
 /**
  * Função de Dirty Check refinada.
- * Compara o estado atual com o último estado "staged" (salvo na lista).
  */
 const compareFormData = (current: ComplementoAlimentacaoFormState, staged: ComplementoAlimentacaoFormState) => {
     if (
@@ -236,6 +235,7 @@ const ComplementoAlimentacaoForm = () => {
     const [pendingItems, setPendingItems] = useState<StagedComplemento[]>([]);
     const [lastStagedFormData, setLastStagedFormData] = useState<ComplementoAlimentacaoFormState | null>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [groupToReplace, setGroupToReplace] = useState<ConsolidatedComplementoRecord | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [groupToDelete, setGroupToDelete] = useState<ConsolidatedComplementoRecord | null>(null);
     
@@ -308,70 +308,122 @@ const ComplementoAlimentacaoForm = () => {
 
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
     
+    // --- Funções de Reset ---
+
+    const handleFullReset = () => {
+        setFormData(initialFormState);
+        setPendingItems([]);
+        setLastStagedFormData(null);
+        setEditingId(null);
+        setGroupToReplace(null);
+        setSelectedOmFavorecidaId(undefined);
+        setSelectedOmQrId(undefined);
+        setSelectedOmAguaId(undefined);
+        setSelectedOmLancheId(undefined);
+        toast.info("Formulário resetado para novo registro.");
+    };
+
+    const handleClearForm = () => {
+        setFormData(prev => ({
+            ...initialFormState,
+            om_favorecida: prev.om_favorecida,
+            ug_favorecida: prev.ug_favorecida,
+            rm_vinculacao: prev.rm_vinculacao,
+            codug_rm_vinculacao: prev.codug_rm_vinculacao,
+            fase_atividade: prev.fase_atividade,
+        }));
+        toast.info("Campos do formulário limpos.");
+    };
+
     // --- Mutations ---
+
+    const mapToDbInsert = (item: StagedComplemento): TablesInsert<'complemento_alimentacao_registros'> => {
+        const base: TablesInsert<'complemento_alimentacao_registros'> = {
+            p_trab_id: ptrabId!,
+            organizacao: item.om_favorecida,
+            ug: item.ug_favorecida,
+            om_detentora: item.om_destino,
+            ug_detentora: item.ug_destino,
+            dias_operacao: item.dias_operacao,
+            efetivo: item.efetivo,
+            fase_atividade: item.fase_atividade,
+            categoria_complemento: item.categoria,
+            publico: item.publico,
+            valor_total: item.valor_total,
+            valor_nd_30: item.valor_nd_30,
+            valor_nd_39: item.valor_nd_39,
+            group_name: item.categoria === 'genero' ? 'Gênero Alimentício' : item.categoria === 'agua' ? 'Água Mineral' : 'Lanche/Catanho',
+        };
+
+        if (item.categoria === 'genero') {
+            const snap = item.formDataSnapshot;
+            return {
+                ...base,
+                valor_etapa_qs: snap.valor_etapa_qs,
+                pregao_qs: snap.pregao_qs,
+                om_qs: snap.om_qs,
+                ug_qs: snap.ug_qs,
+                valor_etapa_qr: snap.valor_etapa_qr,
+                pregao_qr: snap.pregao_qr,
+                om_qr: snap.om_qr,
+                ug_qr: snap.ug_qr,
+            };
+        } else if (item.categoria === 'agua') {
+            const snap = item.formDataSnapshot;
+            return {
+                ...base,
+                agua_consumo_dia: snap.agua_consumo_dia,
+                agua_tipo_envase: snap.agua_tipo_envase,
+                agua_volume_envase: snap.agua_volume_envase,
+                agua_valor_unitario: snap.agua_valor_unitario,
+                agua_pregao: snap.agua_pregao,
+            };
+        } else {
+            return {
+                ...base,
+                itens_aquisicao: item.lanche_items as unknown as Json,
+            };
+        }
+    };
 
     const insertMutation = useMutation({
         mutationFn: async (items: StagedComplemento[]) => {
-            const recordsToInsert = items.map(item => {
-                const base: TablesInsert<'complemento_alimentacao_registros'> = {
-                    p_trab_id: ptrabId!,
-                    organizacao: item.om_favorecida,
-                    ug: item.ug_favorecida,
-                    om_detentora: item.om_destino,
-                    ug_detentora: item.ug_destino,
-                    dias_operacao: item.dias_operacao,
-                    efetivo: item.efetivo,
-                    fase_atividade: item.fase_atividade,
-                    categoria_complemento: item.categoria,
-                    publico: item.publico,
-                    valor_total: item.valor_total,
-                    valor_nd_30: item.valor_nd_30,
-                    valor_nd_39: item.valor_nd_39,
-                    group_name: item.categoria === 'genero' ? 'Gênero Alimentício' : item.categoria === 'agua' ? 'Água Mineral' : 'Lanche/Catanho',
-                };
-
-                if (item.categoria === 'genero') {
-                    const snap = item.formDataSnapshot;
-                    return {
-                        ...base,
-                        valor_etapa_qs: snap.valor_etapa_qs,
-                        pregao_qs: snap.pregao_qs,
-                        om_qs: snap.om_qs,
-                        ug_qs: snap.ug_qs,
-                        valor_etapa_qr: snap.valor_etapa_qr,
-                        pregao_qr: snap.pregao_qr,
-                        om_qr: snap.om_qr,
-                        ug_qr: snap.ug_qr,
-                    };
-                } else if (item.categoria === 'agua') {
-                    const snap = item.formDataSnapshot;
-                    return {
-                        ...base,
-                        agua_consumo_dia: snap.agua_consumo_dia,
-                        agua_tipo_envase: snap.agua_tipo_envase,
-                        agua_volume_envase: snap.agua_volume_envase,
-                        agua_valor_unitario: snap.agua_valor_unitario,
-                        agua_pregao: snap.agua_pregao,
-                    };
-                } else {
-                    return {
-                        ...base,
-                        itens_aquisicao: item.lanche_items as unknown as Json,
-                    };
-                }
-            });
-
+            const recordsToInsert = items.map(mapToDbInsert);
             const { error } = await supabase.from('complemento_alimentacao_registros').insert(recordsToInsert);
             if (error) throw error;
         },
         onSuccess: () => {
             toast.success("Registros salvos com sucesso!");
-            setPendingItems([]);
-            setLastStagedFormData(null);
+            handleFullReset();
             queryClient.invalidateQueries({ queryKey: ['complementoAlimentacaoRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
         },
         onError: (error) => toast.error("Falha ao salvar.", { description: sanitizeError(error) })
+    });
+
+    const replaceGroupMutation = useMutation({
+        mutationFn: async ({ oldIds, newItems }: { oldIds: string[], newItems: StagedComplemento[] }) => {
+            // 1. Delete old records
+            const { error: deleteError } = await supabase
+                .from('complemento_alimentacao_registros')
+                .delete()
+                .in('id', oldIds);
+            if (deleteError) throw deleteError;
+            
+            // 2. Insert new records
+            const recordsToInsert = newItems.map(mapToDbInsert);
+            const { error: insertError } = await supabase
+                .from('complemento_alimentacao_registros')
+                .insert(recordsToInsert);
+            if (insertError) throw insertError;
+        },
+        onSuccess: () => {
+            toast.success("Lote atualizado com sucesso!");
+            handleFullReset();
+            queryClient.invalidateQueries({ queryKey: ['complementoAlimentacaoRegistros', ptrabId] });
+            queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
+        },
+        onError: (error) => toast.error("Falha ao atualizar lote.", { description: sanitizeError(error) })
     });
 
     const deleteMutation = useMutation({
@@ -419,7 +471,7 @@ const ComplementoAlimentacaoForm = () => {
     const isBaseFormReady = formData.om_favorecida.length > 0 && formData.fase_atividade.length > 0;
     const isGenero = formData.categoria_complemento === 'genero';
 
-    // Cálculos em tempo real para exibição nos containers
+    // Cálculos em tempo real
     const currentTotalQS = useMemo(() => {
         return formData.genero_efetivo * formData.valor_etapa_qs * formData.genero_dias;
     }, [formData.genero_efetivo, formData.valor_etapa_qs, formData.genero_dias]);
@@ -529,10 +581,15 @@ const ComplementoAlimentacaoForm = () => {
             };
         }
 
-        setPendingItems(prev => [...prev, newItem]);
-        setLastStagedFormData({ ...formData }); 
+        if (editingId) {
+            // No modo edição, substituímos a lista pendente pelo novo cálculo
+            setPendingItems([newItem]);
+        } else {
+            setPendingItems(prev => [...prev, newItem]);
+        }
         
-        toast.success("Item adicionado à lista de revisão.");
+        setLastStagedFormData({ ...formData }); 
+        toast.success(editingId ? "Cálculo atualizado para revisão." : "Item adicionado à lista de revisão.");
     };
 
     const handleRemovePending = (id: string) => {
@@ -541,18 +598,6 @@ const ComplementoAlimentacaoForm = () => {
             if (newList.length === 0) setLastStagedFormData(null);
             return newList;
         });
-    };
-
-    const handleClearForm = () => {
-        setFormData(prev => ({
-            ...initialFormState,
-            om_favorecida: prev.om_favorecida,
-            ug_favorecida: prev.ug_favorecida,
-            rm_vinculacao: prev.rm_vinculacao,
-            codug_rm_vinculacao: prev.codug_rm_vinculacao,
-            fase_atividade: prev.fase_atividade,
-        }));
-        toast.info("Campos do formulário limpos.");
     };
 
     const totalGeralOM = useMemo(() => {
@@ -668,18 +713,19 @@ const ComplementoAlimentacaoForm = () => {
         setPendingItems([]);
         setLastStagedFormData(null);
         setEditingId(group.records[0].id); 
+        setGroupToReplace(group);
         
         const omFavorecidaToEdit = oms?.find(om => om.nome_om === group.organizacao && om.codug_om === group.ug);
         setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
         
         const first = group.records[0];
         
-        setFormData({
+        const newFormData: ComplementoAlimentacaoFormState = {
             ...initialFormState,
             om_favorecida: group.organizacao,
             ug_favorecida: group.ug,
             fase_atividade: group.fase_atividade,
-            categoria_complemento: first.categoria_complemento,
+            categoria_complemento: first.categoria_complemento as any,
             
             ...(first.categoria_complemento === 'genero' && {
                 genero_efetivo: first.efetivo,
@@ -713,14 +759,24 @@ const ComplementoAlimentacaoForm = () => {
                 lanche_ug_uasg: first.ug_detentora,
                 lanche_items: (first.itens_aquisicao as unknown as LancheItem[]) || [],
             })
-        });
+        };
 
+        setFormData(newFormData);
         toast.info("Modo Edição ativado. Altere os dados e clique em 'Salvar Itens na Lista'.");
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    const handleSaveOrUpdate = () => {
+        if (editingId && groupToReplace) {
+            const oldIds = groupToReplace.records.map(r => r.id);
+            replaceGroupMutation.mutate({ oldIds, newItems: pendingItems });
+        } else {
+            insertMutation.mutate(pendingItems);
+        }
+    };
+
     const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
-    const isSaving = insertMutation.isPending || deleteMutation.isPending;
+    const isSaving = insertMutation.isPending || replaceGroupMutation.isPending || deleteMutation.isPending;
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
@@ -751,7 +807,7 @@ const ComplementoAlimentacaoForm = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <Label>OM Favorecida *</Label>
-                                        <OmSelector selectedOmId={selectedOmFavorecidaId} onChange={handleOmFavorecidaChange} placeholder="Selecione a OM" disabled={!isPTrabEditable || isSaving} />
+                                        <OmSelector selectedOmId={selectedOmFavorecidaId} onChange={handleOmFavorecidaChange} placeholder="Selecione a OM" disabled={!isPTrabEditable || isSaving || !!editingId} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>UG Favorecida</Label>
@@ -759,7 +815,7 @@ const ComplementoAlimentacaoForm = () => {
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Fase da Atividade *</Label>
-                                        <FaseAtividadeSelect value={formData.fase_atividade} onChange={(f) => setFormData({...formData, fase_atividade: f})} disabled={!isPTrabEditable || isSaving} />
+                                        <FaseAtividadeSelect value={formData.fase_atividade} onChange={(f) => setFormData({...formData, fase_atividade: f})} disabled={!isPTrabEditable || isSaving || !!editingId} />
                                     </div>
                                 </div>
                             </section>
@@ -771,15 +827,15 @@ const ComplementoAlimentacaoForm = () => {
                                     
                                     <Tabs value={formData.categoria_complemento} onValueChange={(v: any) => setFormData({...formData, categoria_complemento: v})} className="w-full">
                                         <TabsList className="grid w-full grid-cols-3 mb-6">
-                                            <TabsTrigger value="genero" className="flex items-center gap-2">
+                                            <TabsTrigger value="genero" className="flex items-center gap-2" disabled={!!editingId && formData.categoria_complemento !== 'genero'}>
                                                 <Utensils className="h-4 w-4" />
                                                 Gênero Alimentício
                                             </TabsTrigger>
-                                            <TabsTrigger value="agua" className="flex items-center gap-2">
+                                            <TabsTrigger value="agua" className="flex items-center gap-2" disabled={!!editingId && formData.categoria_complemento !== 'agua'}>
                                                 <Droplets className="h-4 w-4" />
                                                 Água Mineral
                                             </TabsTrigger>
-                                            <TabsTrigger value="lanche" className="flex items-center gap-2">
+                                            <TabsTrigger value="lanche" className="flex items-center gap-2" disabled={!!editingId && formData.categoria_complemento !== 'lanche'}>
                                                 <Coffee className="h-4 w-4" />
                                                 Lanche/Catanho
                                             </TabsTrigger>
@@ -1054,7 +1110,7 @@ const ComplementoAlimentacaoForm = () => {
                                                     </Button>
                                                     <Button className="w-full md:w-auto" disabled={isSaveDisabled || !isPTrabEditable || isSaving} onClick={handleStageCalculation}>
                                                         <Save className="mr-2 h-4 w-4" />
-                                                        Salvar Itens na Lista
+                                                        {editingId ? "Recalcular/Revisar Lote" : "Salvar Itens na Lista"}
                                                     </Button>
                                                 </div>
                                             </div>
@@ -1066,13 +1122,13 @@ const ComplementoAlimentacaoForm = () => {
                             {/* SEÇÃO 3: ITENS ADICIONADOS (REVISÃO) */}
                             {pendingItems.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
-                                    <h3 className="text-lg font-semibold flex items-center gap-2">3. Itens Adicionados ({pendingItems.length})</h3>
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({pendingItems.length})</h3>
                                     
                                     {isDirty && (
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertDescription className="font-medium">
-                                                Atenção: Os dados do formulário (Seção 2) foram alterados. Clique em "Salvar Itens na Lista" na Seção 2 para atualizar o lote pendente antes de salvar os registros.
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados. Clique em "{editingId ? "Recalcular/Revisar Lote" : "Salvar Itens na Lista"}" na Seção 2 para atualizar o lote pendente antes de salvar os registros.
                                             </AlertDescription>
                                         </Alert>
                                     )}
@@ -1089,9 +1145,11 @@ const ComplementoAlimentacaoForm = () => {
                                                             <p className="font-extrabold text-lg text-foreground">
                                                                 {formatCurrency(item.valor_total)}
                                                             </p>
-                                                            <Button variant="ghost" size="icon" onClick={() => handleRemovePending(item.tempId)} disabled={isSaving} className="h-8 w-8 text-destructive">
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
+                                                            {!editingId && (
+                                                                <Button variant="ghost" size="icon" onClick={() => handleRemovePending(item.tempId)} disabled={isSaving} className="h-8 w-8 text-destructive">
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     
@@ -1136,13 +1194,13 @@ const ComplementoAlimentacaoForm = () => {
                                     </Card>
 
                                     <div className="flex justify-end gap-3 pt-4">
-                                        <Button className="bg-primary hover:bg-primary/90" disabled={isDirty || isSaving} onClick={() => insertMutation.mutate(pendingItems)}>
+                                        <Button className="bg-primary hover:bg-primary/90" disabled={isDirty || isSaving} onClick={handleSaveOrUpdate}>
                                             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                            Salvar Registros
+                                            {editingId ? "Atualizar Lote" : "Salvar Registros"}
                                         </Button>
-                                        <Button variant="outline" onClick={() => { setPendingItems([]); setLastStagedFormData(null); }} disabled={isSaving}>
+                                        <Button variant="outline" onClick={handleFullReset} disabled={isSaving}>
                                             <XCircle className="mr-2 h-4 w-4" />
-                                            Limpar Lista
+                                            {editingId ? "Cancelar Edição" : "Limpar Lista"}
                                         </Button>
                                     </div>
                                 </section>
@@ -1176,7 +1234,6 @@ const ComplementoAlimentacaoForm = () => {
                                                     </span>
                                                 </div>
                                                 
-                                                {/* CORPO CONSOLIDADO - Exibição por Grupo de Aquisição */}
                                                 <div className="space-y-3">
                                                     {group.records.map((registro) => {
                                                         const isDifferentOm = registro.om_detentora !== registro.organizacao || registro.ug_detentora !== registro.ug;
@@ -1203,7 +1260,6 @@ const ComplementoAlimentacaoForm = () => {
                                                                         <span className="font-extrabold text-xl text-foreground">
                                                                             {formatCurrency(Number(registro.valor_total))}
                                                                         </span>
-                                                                        {/* Botões de Ação */}
                                                                         <div className="flex gap-1 shrink-0">
                                                                             <Button
                                                                                 type="button" 
@@ -1229,16 +1285,13 @@ const ComplementoAlimentacaoForm = () => {
                                                                     </div>
                                                                 </div>
                                                                 
-                                                                {/* Detalhes da Alocação */}
                                                                 <div className="pt-2 border-t mt-2">
-                                                                    {/* OM Destino Recurso */}
                                                                     <div className="flex justify-between text-xs">
                                                                         <span className="text-muted-foreground">OM Destino Recurso:</span>
                                                                         <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
                                                                             {registro.om_detentora} ({formatCodug(registro.ug_detentora || '')})
                                                                         </span>
                                                                     </div>
-                                                                    {/* ND 33.90.30 */}
                                                                     <div className="flex justify-between text-xs">
                                                                         <span className="text-muted-foreground">ND 33.90.30:</span>
                                                                         <span className="text-green-600">{formatCurrency(Number(registro.valor_nd_30))}</span>
