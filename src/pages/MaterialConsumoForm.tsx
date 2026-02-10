@@ -21,7 +21,7 @@ import {
     ConsolidatedMaterialConsumoRecord,
     AcquisitionGroup,
     calculateGroupTotals,
-    generateConsolidatedMaterialConsumoMemoriaCalculo,
+    generateMaterialConsumoMemoriaCalculo,
 } from "@/lib/materialConsumoUtils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -41,9 +41,9 @@ import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import AcquisitionGroupForm from "@/components/AcquisitionGroupForm";
 import MaterialConsumoMemoria from "@/components/MaterialConsumoMemoria";
-import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo"; // Importar ItemAquisicao
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Importar Tooltip
-import AcquisitionItemSelectorDialog from "@/components/AcquisitionItemSelectorDialog"; // NOVO IMPORT
+import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo"; 
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; 
+import AcquisitionItemSelectorDialog from "@/components/AcquisitionItemSelectorDialog"; 
 
 // Tipos de dados
 type MaterialConsumoRegistroDB = Tables<'material_consumo_registros'>; 
@@ -615,9 +615,17 @@ const MaterialConsumoForm = () => {
                 
                 const { totalValue, totalND30: nd30, totalND39: nd39 } = calculateGroupTotals(group.items);
                 
-                // Cria um registro temporário para a função de memória consolidada
-                const tempGroupRecord: ConsolidatedMaterialConsumoRecord = {
-                    groupKey: group.tempId,
+                // Contexto para a função de memória individual
+                const context = {
+                    organizacao: formData.om_favorecida,
+                    efetivo: formData.efetivo,
+                    dias_operacao: formData.dias_operacao,
+                    fase_atividade: formData.fase_atividade
+                };
+                
+                const tempRecord = {
+                    id: group.tempId, 
+                    p_trab_id: ptrabId!,
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
                     om_detentora: formData.om_destino,
@@ -625,32 +633,18 @@ const MaterialConsumoForm = () => {
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
-                    records: [{
-                        id: group.tempId, 
-                        p_trab_id: ptrabId!,
-                        organizacao: formData.om_favorecida,
-                        ug: formData.ug_favorecida,
-                        om_detentora: formData.om_destino,
-                        ug_detentora: formData.ug_destino,
-                        dias_operacao: formData.dias_operacao,
-                        efetivo: formData.efetivo,
-                        fase_atividade: formData.fase_atividade,
-                        group_name: group.groupName,
-                        group_purpose: group.groupPurpose,
-                        itens_aquisicao: group.items as unknown as Json,
-                        valor_total: totalValue,
-                        valor_nd_30: nd30,
-                        valor_nd_39: nd39,
-                        detalhamento_customizado: null,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString(),
-                    } as MaterialConsumoRegistro],
-                    totalGeral: totalValue,
-                    totalND30: nd30,
-                    totalND39: nd39,
-                };
+                    group_name: group.groupName,
+                    group_purpose: group.groupPurpose,
+                    itens_aquisicao: group.items as unknown as Json,
+                    valor_total: totalValue,
+                    valor_nd_30: nd30,
+                    valor_nd_39: nd39,
+                    detalhamento_customizado: null,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                } as MaterialConsumoRegistro;
                 
-                const memoria = generateConsolidatedMaterialConsumoMemoriaCalculo(tempGroupRecord);
+                const memoria = generateMaterialConsumoMemoriaCalculo(tempRecord, context);
                 
                 return {
                     tempId: group.tempId, 
@@ -792,13 +786,19 @@ const MaterialConsumoForm = () => {
         setFormData(newFormData);
         
         // 4. Gerar os itens pendentes (staging) imediatamente com os dados originais
-        // Em MaterialConsumo, cada registro do DB é um item pendente.
         const newPendingItems: CalculatedMaterialConsumo[] = groupsFromRecords.map(group => {
             const { totalValue, totalND30: nd30, totalND39: nd39 } = calculateGroupTotals(group.items);
             
-            // Cria um registro temporário para a função de memória consolidada
-            const tempGroupRecord: ConsolidatedMaterialConsumoRecord = {
-                groupKey: group.tempId,
+            const context = {
+                organizacao: newFormData.om_favorecida,
+                efetivo: newFormData.efetivo,
+                dias_operacao: newFormData.dias_operacao,
+                fase_atividade: newFormData.fase_atividade
+            };
+            
+            const tempRecord = {
+                id: group.tempId, 
+                p_trab_id: ptrabId!,
                 organizacao: newFormData.om_favorecida,
                 ug: newFormData.ug_favorecida,
                 om_detentora: newFormData.om_destino,
@@ -806,32 +806,18 @@ const MaterialConsumoForm = () => {
                 dias_operacao: newFormData.dias_operacao,
                 efetivo: newFormData.efetivo,
                 fase_atividade: newFormData.fase_atividade,
-                records: [{
-                    id: group.tempId, 
-                    p_trab_id: ptrabId!,
-                    organizacao: newFormData.om_favorecida,
-                    ug: newFormData.ug_favorecida,
-                    om_detentora: newFormData.om_destino,
-                    ug_detentora: newFormData.ug_destino,
-                    dias_operacao: newFormData.dias_operacao,
-                    efetivo: newFormData.efetivo,
-                    fase_atividade: newFormData.fase_atividade,
-                    group_name: group.groupName,
-                    group_purpose: group.groupPurpose,
-                    itens_aquisicao: group.items as unknown as Json,
-                    valor_total: totalValue,
-                    valor_nd_30: nd30,
-                    valor_nd_39: nd39,
-                    detalhamento_customizado: groupToReplace?.records.find(r => r.id === group.tempId)?.detalhamento_customizado || null,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                } as MaterialConsumoRegistro],
-                totalGeral: totalValue,
-                totalND30: nd30,
-                totalND39: nd39,
-            };
+                group_name: group.groupName,
+                group_purpose: group.groupPurpose,
+                itens_aquisicao: group.items as unknown as Json,
+                valor_total: totalValue,
+                valor_nd_30: nd30,
+                valor_nd_39: nd39,
+                detalhamento_customizado: groupToReplace?.records.find(r => r.id === group.tempId)?.detalhamento_customizado || null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            } as MaterialConsumoRegistro;
             
-            const memoria = generateConsolidatedMaterialConsumoMemoriaCalculo(tempGroupRecord);
+            const memoria = generateMaterialConsumoMemoriaCalculo(tempRecord, context);
             
             return {
                 tempId: group.tempId, 
@@ -852,7 +838,7 @@ const MaterialConsumoForm = () => {
                 memoria_calculo_display: memoria, 
                 om_favorecida: newFormData.om_favorecida,
                 ug_favorecida: newFormData.ug_favorecida,
-                detalhamento_customizado: tempGroupRecord.records[0].detalhamento_customizado,
+                detalhamento_customizado: tempRecord.detalhamento_customizado,
                 acquisitionGroups: [group],
             } as CalculatedMaterialConsumo;
         });
@@ -873,8 +859,6 @@ const MaterialConsumoForm = () => {
     // Adiciona o item calculado à lista pendente OU prepara a atualização (staging)
     const handleStageCalculation = (e: React.FormEvent) => {
         e.preventDefault();
-        
-        console.log("[MaterialConsumoForm] Submissão do formulário principal (handleStageCalculation) iniciada.");
         
         try {
             // 1. Validação básica
@@ -899,9 +883,16 @@ const MaterialConsumoForm = () => {
                 
                 const { totalValue, totalND30: nd30, totalND39: nd39 } = calculateGroupTotals(group.items);
                 
-                // Cria um registro temporário para a função de memória consolidada
-                const tempGroupRecord: ConsolidatedMaterialConsumoRecord = {
-                    groupKey: group.tempId,
+                const context = {
+                    organizacao: formData.om_favorecida,
+                    efetivo: formData.efetivo,
+                    dias_operacao: formData.dias_operacao,
+                    fase_atividade: formData.fase_atividade
+                };
+                
+                const tempRecord = {
+                    id: group.tempId, 
+                    p_trab_id: ptrabId!,
                     organizacao: formData.om_favorecida,
                     ug: formData.ug_favorecida,
                     om_detentora: formData.om_destino,
@@ -909,32 +900,18 @@ const MaterialConsumoForm = () => {
                     dias_operacao: formData.dias_operacao,
                     efetivo: formData.efetivo,
                     fase_atividade: formData.fase_atividade,
-                    records: [{
-                        id: group.tempId, 
-                        p_trab_id: ptrabId!,
-                        organizacao: formData.om_favorecida,
-                        ug: formData.ug_favorecida,
-                        om_detentora: formData.om_destino,
-                        ug_detentora: formData.ug_destino,
-                        dias_operacao: formData.dias_operacao,
-                        efetivo: formData.efetivo,
-                        fase_atividade: formData.fase_atividade,
-                        group_name: group.groupName,
-                        group_purpose: group.groupPurpose,
-                        itens_aquisicao: group.items as unknown as Json,
-                        valor_total: totalValue,
-                        valor_nd_30: nd30,
-                        valor_nd_39: nd39,
-                        detalhamento_customizado: null,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString(),
-                    } as MaterialConsumoRegistro],
-                    totalGeral: totalValue,
-                    totalND30: nd30,
-                    totalND39: nd39,
-                };
+                    group_name: group.groupName,
+                    group_purpose: group.groupPurpose,
+                    itens_aquisicao: group.items as unknown as Json,
+                    valor_total: totalValue,
+                    valor_nd_30: nd30,
+                    valor_nd_39: nd39,
+                    detalhamento_customizado: null,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                } as MaterialConsumoRegistro;
                 
-                const memoria = generateConsolidatedMaterialConsumoMemoriaCalculo(tempGroupRecord);
+                const memoria = generateMaterialConsumoMemoriaCalculo(tempRecord, context);
                 
                 return {
                     tempId: group.tempId, 
@@ -966,38 +943,30 @@ const MaterialConsumoForm = () => {
                 // Preserva a memória customizada do primeiro registro do grupo original, se existir
                 let memoriaCustomizadaTexto: string | null = null;
                 if (groupToReplace) {
-                    // Busca o primeiro registro do grupo original para verificar a memória customizada
                     const originalRecord = groupToReplace.records.find(r => r.id === editingId);
                     if (originalRecord) {
                         memoriaCustomizadaTexto = originalRecord.detalhamento_customizado;
                     }
                 }
                 
-                // Aplicamos a memória customizada ao primeiro item da nova lista (apenas para fins de staging display)
                 if (memoriaCustomizadaTexto && newPendingItems.length > 0) {
-                    // O tempId do primeiro item deve ser o ID do registro original para rastreamento
                     newPendingItems[0].tempId = editingId; 
                     newPendingItems[0].detalhamento_customizado = memoriaCustomizadaTexto;
                 }
                 
-                setPendingGroups(newPendingItems); // Armazena o novo lote completo
-                setLastStagedFormData(formData); // Marca o formulário como staged
+                setPendingGroups(newPendingItems); 
+                setLastStagedFormData(formData); 
                 
                 toast.info("Cálculo atualizado. Revise e confirme a atualização na Seção 3.");
                 window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); 
                 return;
             }
             
-            // MODO ADIÇÃO: Adicionar todos os itens gerados à lista pendente
             setPendingGroups(newPendingItems);
-            
-            // Atualiza o lastStagedFormData para o estado atual do formulário
             setLastStagedFormData(formData);
-            
             toast.info(`${newPendingItems.length} Grupo(s) de Aquisição adicionado(s) à lista pendente.`);
             
         } catch (err: any) {
-            console.error("[MaterialConsumoForm] Erro na validação/cálculo:", err);
             toast.error(err.message || "Erro desconhecido ao calcular.");
         }
     };
@@ -1019,10 +988,7 @@ const MaterialConsumoForm = () => {
             return;
         }
         
-        // 1. IDs dos registros antigos para deletar
         const oldIds = groupToReplace.records.map(r => r.id);
-        
-        // 2. Novos registros (pendingGroups) para inserir
         replaceGroupMutation.mutate({ oldIds, newRecords: pendingGroups });
     };
     
@@ -1042,23 +1008,23 @@ const MaterialConsumoForm = () => {
     const handleOmFavorecidaChange = (omData: OMData | undefined) => {
         if (omData) {
             setSelectedOmFavorecidaId(omData.id);
-            setSelectedOmDestinoId(omData.id); // Sincroniza OM Destino
+            setSelectedOmDestinoId(omData.id); 
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: omData.nome_om,
                 ug_favorecida: omData.codug_om,
-                om_destino: omData.nome_om, // Preenchimento automático
-                ug_destino: omData.codug_om, // Preenchimento automático
+                om_destino: omData.nome_om, 
+                ug_destino: omData.codug_om, 
             }));
         } else {
             setSelectedOmFavorecidaId(undefined);
-            setSelectedOmDestinoId(undefined); // Limpa OM Destino
+            setSelectedOmDestinoId(undefined); 
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: "",
                 ug_favorecida: "",
-                om_destino: "", // Limpa OM Destino
-                ug_destino: "", // Limpa UG Destino
+                om_destino: "", 
+                ug_destino: "", 
             }));
         }
     };
@@ -1091,9 +1057,8 @@ const MaterialConsumoForm = () => {
     
     // --- Lógica de Edição de Memória ---
     
-    const handleIniciarEdicaoMemoria = (group: ConsolidatedMaterialConsumoRecord, memoriaCompleta: string) => {
-        const firstRecordId = group.records[0].id;
-        setEditingMemoriaId(firstRecordId);
+    const handleIniciarEdicaoMemoria = (registroId: string, memoriaCompleta: string) => {
+        setEditingMemoriaId(registroId);
         setMemoriaEdit(memoriaCompleta || "");
         toast.info("Editando memória de cálculo.");
     };
@@ -1159,8 +1124,7 @@ const MaterialConsumoForm = () => {
     
     const handleItemsSelected = (items: ItemAquisicao[]) => {
         setSelectedItemsFromSelector(items);
-        setIsItemSelectorOpen(false); // Fechar o seletor após a seleção
-        // O AcquisitionGroupForm irá processar esta lista no seu useEffect
+        setIsItemSelectorOpen(false); 
     };
     
     const handleClearSelectedItems = () => {
@@ -1661,21 +1625,32 @@ const MaterialConsumoForm = () => {
                                         📋 Memórias de Cálculos Detalhadas
                                     </h3>
                                     
-                                    {consolidatedRegistros.map(group => (
-                                        <MaterialConsumoMemoria
-                                            key={`memoria-view-${group.groupKey}`}
-                                            group={group}
-                                            isPTrabEditable={isPTrabEditable}
-                                            isSaving={isSaving}
-                                            editingMemoriaId={editingMemoriaId}
-                                            memoriaEdit={memoriaEdit}
-                                            setMemoriaEdit={setMemoriaEdit}
-                                            handleIniciarEdicaoMemoria={handleIniciarEdicaoMemoria}
-                                            handleCancelarEdicaoMemoria={handleCancelarEdicaoMemoria}
-                                            handleSalvarMemoriaCustomizada={handleSalvarMemoriaCustomizada}
-                                            handleRestaurarMemoriaAutomatica={handleRestaurarMemoriaAutomatica}
-                                        />
-                                    ))}
+                                    {consolidatedRegistros.map(group => {
+                                        const context = {
+                                            organizacao: group.organizacao,
+                                            ug: group.ug,
+                                            efetivo: group.efetivo,
+                                            dias_operacao: group.dias_operacao,
+                                            fase_atividade: group.fase_atividade
+                                        };
+                                        
+                                        return group.records.map(registro => (
+                                            <MaterialConsumoMemoria
+                                                key={`memoria-view-${registro.id}`}
+                                                registro={registro}
+                                                context={context}
+                                                isPTrabEditable={isPTrabEditable}
+                                                isSaving={isSaving}
+                                                editingMemoriaId={editingMemoriaId}
+                                                memoriaEdit={memoriaEdit}
+                                                setMemoriaEdit={setMemoriaEdit}
+                                                handleIniciarEdicaoMemoria={handleIniciarEdicaoMemoria}
+                                                handleCancelarEdicaoMemoria={handleCancelarEdicaoMemoria}
+                                                handleSalvarMemoriaCustomizada={handleSalvarMemoriaCustomizada}
+                                                handleRestaurarMemoriaAutomatica={handleRestaurarMemoriaAutomatica}
+                                            />
+                                        ));
+                                    })}
                                 </div>
                             )}
                         </form>
