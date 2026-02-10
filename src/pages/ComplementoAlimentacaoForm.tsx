@@ -309,6 +309,19 @@ const ComplementoAlimentacaoForm = () => {
     const isBaseFormReady = formData.om_favorecida.length > 0 && formData.fase_atividade.length > 0;
     const isGenero = formData.categoria_complemento === 'genero';
 
+    const getCategoryBadgeClasses = (categoria: string) => {
+        switch (categoria) {
+            case 'genero':
+                return "bg-green-100 text-green-800 hover:bg-green-100 border-green-200";
+            case 'agua':
+                return "bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200";
+            case 'lanche':
+                return "bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200";
+            default:
+                return "bg-gray-100 text-gray-800 hover:bg-gray-100 border-gray-200";
+        }
+    };
+
     // --- Lógica de Sugestões ---
 
     const loadSuggestions = async (category: string) => {
@@ -1333,6 +1346,12 @@ const ComplementoAlimentacaoForm = () => {
                                                                             <h4 className="font-semibold text-base text-foreground">
                                                                                 Complemento de Alimentação ({registro.group_name})
                                                                             </h4>
+                                                                            <Badge 
+                                                                                variant="secondary" 
+                                                                                className={cn("text-[10px] font-bold uppercase", getCategoryBadgeClasses(registro.categoria_complemento))}
+                                                                            >
+                                                                                {registro.categoria_complemento}
+                                                                            </Badge>
                                                                         </div>
                                                                         <p className="text-xs text-muted-foreground">
                                                                             Período: {registro.dias_operacao} {diasText} | Efetivo: {registro.efetivo} {efetivoText}

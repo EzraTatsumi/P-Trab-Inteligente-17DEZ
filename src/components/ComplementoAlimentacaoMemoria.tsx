@@ -8,6 +8,7 @@ import { Loader2, Pencil, RefreshCw, XCircle, Check } from "lucide-react";
 import { formatCodug } from "@/lib/formatUtils";
 import { ComplementoAlimentacaoRegistro, generateComplementoMemoriaCalculo } from "@/lib/complementoAlimentacaoUtils";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface ComplementoAlimentacaoMemoriaProps {
     registro: ComplementoAlimentacaoRegistro;
@@ -51,6 +52,19 @@ const ComplementoAlimentacaoMemoria: React.FC<ComplementoAlimentacaoMemoriaProps
     const currentMemoriaText = isEditing ? memoriaEdit : memoriaDisplay;
     const hasCustomMemoria = !!memoriaCustomizada;
 
+    const getCategoryBadgeClasses = (categoria: string) => {
+        switch (categoria) {
+            case 'genero':
+                return "bg-green-100 text-green-800 hover:bg-green-100 border-green-200";
+            case 'agua':
+                return "bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200";
+            case 'lanche':
+                return "bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200";
+            default:
+                return "bg-gray-100 text-gray-800 hover:bg-gray-100 border-gray-200";
+        }
+    };
+
     return (
         <div className="space-y-4 border p-4 rounded-lg bg-muted/30">
             
@@ -60,7 +74,10 @@ const ComplementoAlimentacaoMemoria: React.FC<ComplementoAlimentacaoMemoriaProps
                         <h4 className="text-base font-semibold text-foreground">
                             {context.organizacao} (UG: {formatCodug(context.ug)})
                         </h4>
-                        <Badge variant="secondary" className="text-[10px] bg-green-100 text-green-800 hover:bg-green-100 border-green-200">
+                        <Badge 
+                            variant="secondary" 
+                            className={cn("text-[10px] font-bold uppercase", getCategoryBadgeClasses(registro.categoria_complemento))}
+                        >
                             {registro.group_name}
                         </Badge>
                         {hasCustomMemoria && !isEditing && (
