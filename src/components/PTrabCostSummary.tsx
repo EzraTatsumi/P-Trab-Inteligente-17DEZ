@@ -373,7 +373,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     // Diárias
     (diariaData || []).forEach(record => {
         const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
-        const omD = getOmTotals(record.destino || record.organizacao, "", 'destino');
+        const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
         
         [omS, omD].forEach(omTotals => {
             const totalGeral = Number(record.valor_nd_15 || 0);
@@ -389,7 +389,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     // Verba Operacional
     (verbaOperacionalData || []).forEach(record => {
         const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
-        const omD = getOmTotals(record.local || record.organizacao, "", 'destino');
+        const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
         
         [omS, omD].forEach(omTotals => {
             const total = Number(record.valor_nd_30 || 0) + Number(record.valor_nd_39 || 0);
@@ -405,7 +405,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     // Passagens
     (passagemData || []).forEach(record => {
         const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
-        const omD = getOmTotals(record.destino || record.organizacao, "", 'destino');
+        const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
         [omS, omD].forEach(omTotals => {
             omTotals.passagens.total += Number(record.valor_nd_33 || 0);
             omTotals.passagens.totalQuantidade += Number(record.quantidade_passagens || 0);
@@ -430,7 +430,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     // Horas de Voo
     (horasVooData || []).forEach(record => {
         const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
-        const omD = getOmTotals(record.municipio || record.codug_destino || record.organizacao, "", 'destino');
+        const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
         
         [omS, omD].forEach(omTotals => {
             const valorTotal = Number(record.valor_total || 0);
@@ -452,7 +452,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     // Material de Consumo
     (materialConsumoData || []).forEach(record => {
         const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
-        const omD = getOmTotals(record.municipio || record.codug_destino || record.organizacao, "", 'destino');
+        const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
         [omS, omD].forEach(omTotals => {
             omTotals.materialConsumo.total += Number(record.valor_total || 0);
             omTotals.materialConsumo.totalND30 += Number(record.valor_nd_30 || 0);
@@ -635,7 +635,7 @@ const getConcessionariaData = (data: OmTotals | PTrabAggregatedTotals): OmTotals
 const getHorasVooData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['horasVoo'] => {
     if ((data as OmTotals).omKey) return (data as OmTotals).horasVoo;
     const g = data as PTrabAggregatedTotals;
-    return { total: g.totalHorasVoo, totalND30: g.totalHorasVooND30, totalND39: g.totalHorasVooND39, quantidadeHV: g.quantidadeHorasVoo, groupedHV: g.groupedHorasVoo };
+    return { total: g.totalHorasVoo, totalND30: g.totalHorasVooND30, totalND39: g.totalHorasVooND39, quantidadeHV: g.quantidadeHV, groupedHV: g.groupedHV };
 };
 
 const getMaterialConsumoData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['materialConsumo'] => {
@@ -696,9 +696,9 @@ const OmDetailsDialog = ({ om, totals, onClose }: any) => {
             <DialogContent className="sm:max-w-[1400px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
                 <DialogHeader className="p-8 pb-5 border-b border-border/50">
                     <DialogTitle className="text-3xl font-bold">{om.omName}</DialogTitle>
-                    <DialogDescription className="text-base">
-                        {om.ug ? `UG(s): ${om.ug.split(', ').map(u => formatCodug(u)).join(', ')} | ` : ''}Total: {formatCurrency(om.totalGeral)}
-                    </DialogDescription>
+                    <DialogTitle className="text-base font-normal text-muted-foreground">
+                        {om.ug ? `UG(s): ${om.ug.split(', ').map((u: string) => formatCodug(u)).join(', ')} | ` : ''}Total: {formatCurrency(om.totalGeral)}
+                    </DialogTitle>
                 </DialogHeader>
                 <div className="flex-1 overflow-y-auto p-8 space-y-12">
                     {om.totalLogistica > 0 && (
