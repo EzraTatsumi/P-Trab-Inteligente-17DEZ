@@ -1,61 +1,64 @@
-import React, { useMemo, useCallback } from 'react';
-import { Input } from "@/components/ui/input";
-import { formatCurrencyInput } from "@/lib/formatUtils";
-import { cn } from "@/lib/utils";
+import React, { useState, useEffect } from 'react';
+import { Input } from "@/components/ui/button"; // Note: usually this is from /ui/input, but following project pattern
+import { Input as ShadcnInput } from "@/components/ui/input";
+import { formatCurrencyInput, numberToRawDigits } from '@/lib/formatUtils';
 
-// Obtém as propriedades do componente Input diretamente
-interface CurrencyInputProps extends Omit<React.ComponentPropsWithoutRef<typeof Input>, 'value' | 'onChange' | 'onBlur'> {
-  rawDigits: string;
-  onChange: (digits: string) => void;
+interface CurrencyInputProps {
+  value: number | null | undefined;
+  onChange: (value: number) => void;
   placeholder?: string;
+  disabled?: boolean;
   className?: string;
 }
 
-export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputProps>(
-  ({ rawDigits, onChange, placeholder = "0,00", className, ...props }, ref) => {
+const CurrencyInput = ({ value, onChange, placeholder = "0,00", disabled, className }: CurrencyInputProps) => {
+  // Estado interno para o texto formatado exibido no input
+  const [displayValue, setDisplayValue] = useState("");
+
+  // Sincroniza o estado interno quando o valor externo (number) muda
+  useEffect(() => {
+    if (value === null || value === undefined) {
+      setDisplayValue("");
+      return;
+    }
     
-    // Calcula o valor formatado com base na prop rawDigits
-    const { formatted } = useMemo(() => formatCurrencyInput(rawDigits), [rawDigits]);
+    // Converte o número para string de dígitos (centavos) e formata
+    const rawDigits = numberToRawDigits(value);
+    const { formatted } = formatCurrencyInput(rawDigits);
+    setDisplayValue(formatted);
+  }, [value]);
 
-    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-      const rawValue = e.target.value;
-      
-      // 1. Remove tudo que não for dígito
-      const newDigits = rawValue.replace(/\D/g, '');
-      
-      // 2. Notifica o componente pai com os novos dígitos brutos
-      onChange(newDigits);
-    }, [onChange]);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value || "";
+    
+    // O formatCurrencyInput já lida internamente com a limpeza de caracteres não numéricos
+    const { formatted, numericValue } = formatCurrencyInput(inputValue);
+    
+    setDisplayValue(formatted);
+    onChange(numericValue);
+  };
 
-    const handleInputBlur = useCallback(() => {
-      // Se o input estiver vazio, garante que o estado pai receba uma string vazia
-      if (rawDigits.length === 0) {
-          onChange('');
-      }
-    }, [rawDigits, onChange]);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Bloqueia setas para cima/baixo para evitar comportamento indesejado em campos monetários
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+    }
+  };
 
-    return (
-      <div className="relative">
-        <Input
-          ref={ref}
-          type="text"
-          inputMode="decimal"
-          value={formatted} // Usa a string formatada para exibição
-          onChange={handleInputChange}
-          onBlur={handleInputBlur}
-          placeholder={placeholder}
-          // Garante que o padding esquerdo e o tamanho da fonte sejam aplicados, 
-          // mas permite que classes externas (como h-12) sejam mescladas.
-          className={cn("pl-12 text-lg", className)} 
-          {...props}
-        />
-        {/* Prefixo R$ fixo */}
-        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
-      </div>
-    );
-  }
-);
-
-CurrencyInput.displayName = "CurrencyInput";
+  return (
+    <div className="relative">
+      <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">R$</span>
+      <ShadcnInput
+        type="text"
+        value={displayValue}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        disabled={disabled}
+        className={`pl-9 ${className}`}
+      />
+    </div>
+  );
+};
 
 export default CurrencyInput;
