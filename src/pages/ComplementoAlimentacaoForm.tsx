@@ -504,7 +504,9 @@ const ComplementoAlimentacaoForm = () => {
                                                                         step="0.1" 
                                                                         value={formData.agua_consumo_dia || ""} 
                                                                         onChange={(e) => setFormData({...formData, agua_consumo_dia: parseFloat(e.target.value) || 0})} 
+                                                                        onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
                                                                         placeholder="Ex: 2.5"
+                                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                     />
                                                                 </div>
                                                                 <div className="space-y-2">
@@ -522,7 +524,9 @@ const ComplementoAlimentacaoForm = () => {
                                                                         step="0.01" 
                                                                         value={formData.agua_volume_envase || ""} 
                                                                         onChange={(e) => setFormData({...formData, agua_volume_envase: parseFloat(e.target.value) || 0})} 
+                                                                        onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
                                                                         placeholder="Ex: 0.5"
+                                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                     />
                                                                 </div>
                                                             </div>
