@@ -158,6 +158,26 @@ const ComplementoAlimentacaoForm = () => {
         }
     };
 
+    // Lógica de validação para o botão Salvar
+    const isSaveDisabled = useMemo(() => {
+        if (!isBaseFormReady) return true;
+        if (formData.efetivo <= 0 || formData.dias_operacao <= 0) return true;
+        
+        if (isGenero) {
+            return (
+                formData.valor_etapa_qs <= 0 || 
+                !formData.pregao_qs || 
+                !formData.om_qs ||
+                formData.valor_etapa_qr <= 0 || 
+                !formData.pregao_qr || 
+                !formData.om_qr
+            );
+        } else {
+            // Para Água e Lanche, precisa de pelo menos um grupo de aquisição
+            return formData.acquisitionGroups.length === 0;
+        }
+    }, [formData, isBaseFormReady, isGenero]);
+
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
             <PageMetadata title="Complemento de Alimentação" description="Gerenciamento de Complemento de Alimentação" canonicalPath={`/ptrab/complemento-alimentacao?ptrabId=${ptrabId}`} />
@@ -230,6 +250,7 @@ const ComplementoAlimentacaoForm = () => {
                                                             value={formData.efetivo || ""} 
                                                             onChange={(e) => setFormData({...formData, efetivo: parseInt(e.target.value) || 0})}
                                                             onKeyDown={handleNumericKeyDown}
+                                                            placeholder="Ex: 150"
                                                             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                         />
                                                     </div>
@@ -244,6 +265,7 @@ const ComplementoAlimentacaoForm = () => {
                                                             value={formData.dias_operacao || ""} 
                                                             onChange={(e) => setFormData({...formData, dias_operacao: parseInt(e.target.value) || 0})}
                                                             onKeyDown={handleNumericKeyDown}
+                                                            placeholder="Ex: 15"
                                                             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                         />
                                                     </div>
@@ -257,18 +279,21 @@ const ComplementoAlimentacaoForm = () => {
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <div className="space-y-2">
                                                                 <Label>Valor Etapa (QS)</Label>
-                                                                <Input 
-                                                                    type="number" 
-                                                                    step="0.01" 
-                                                                    value={formData.valor_etapa_qs || ""} 
-                                                                    onChange={(e) => setFormData({...formData, valor_etapa_qs: parseFloat(e.target.value) || 0})}
-                                                                    onKeyDown={handleNumericKeyDown}
-                                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                />
+                                                                <div className="relative">
+                                                                    <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">R$</span>
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        step="0.01" 
+                                                                        value={formData.valor_etapa_qs || ""} 
+                                                                        onChange={(e) => setFormData({...formData, valor_etapa_qs: parseFloat(e.target.value) || 0})}
+                                                                        onKeyDown={handleNumericKeyDown}
+                                                                        className="pl-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                    />
+                                                                </div>
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>Pregão (QS)</Label>
-                                                                <Input value={formData.pregao_qs} onChange={(e) => setFormData({...formData, pregao_qs: e.target.value})} placeholder="Ex: 01/2024" />
+                                                                <Input value={formData.pregao_qs} onChange={(e) => setFormData({...formData, pregao_qs: e.target.value})} placeholder="Ex: 90.001/24" />
                                                             </div>
                                                         </div>
                                                         <div className="space-y-2">
@@ -283,18 +308,21 @@ const ComplementoAlimentacaoForm = () => {
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <div className="space-y-2">
                                                                 <Label>Valor Etapa (QR)</Label>
-                                                                <Input 
-                                                                    type="number" 
-                                                                    step="0.01" 
-                                                                    value={formData.valor_etapa_qr || ""} 
-                                                                    onChange={(e) => setFormData({...formData, valor_etapa_qr: parseFloat(e.target.value) || 0})}
-                                                                    onKeyDown={handleNumericKeyDown}
-                                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                />
+                                                                <div className="relative">
+                                                                    <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">R$</span>
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        step="0.01" 
+                                                                        value={formData.valor_etapa_qr || ""} 
+                                                                        onChange={(e) => setFormData({...formData, valor_etapa_qr: parseFloat(e.target.value) || 0})}
+                                                                        onKeyDown={handleNumericKeyDown}
+                                                                        className="pl-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                    />
+                                                                </div>
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>Pregão (QR)</Label>
-                                                                <Input value={formData.pregao_qr} onChange={(e) => setFormData({...formData, pregao_qr: e.target.value})} placeholder="Ex: 05/2024" />
+                                                                <Input value={formData.pregao_qr} onChange={(e) => setFormData({...formData, pregao_qr: e.target.value})} placeholder="Ex: 90.001/24" />
                                                             </div>
                                                         </div>
                                                         <div className="space-y-2">
@@ -339,7 +367,7 @@ const ComplementoAlimentacaoForm = () => {
 
                                             {/* Botão Salvar Itens na Lista */}
                                             <div className="mt-6 flex justify-end">
-                                                <Button className="w-full md:w-auto" disabled={!isBaseFormReady}>
+                                                <Button className="w-full md:w-auto" disabled={isSaveDisabled}>
                                                     <Save className="mr-2 h-4 w-4" />
                                                     Salvar Itens na Lista
                                                 </Button>
