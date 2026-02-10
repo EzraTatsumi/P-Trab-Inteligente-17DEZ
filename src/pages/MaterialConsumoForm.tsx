@@ -184,7 +184,7 @@ const MaterialConsumoForm = () => {
         if (!registros) return [];
 
         const groups = registros.reduce((acc, registro) => {
-            // Chave de consolidação: OM Favorecida, UG Favorecida, OM Detentora, UG Detentora, Dias, Efetivo, Fase
+            // Chave de consolidação: OM Favorecida, UG Favorecida, OM Destino, UG Destino, Dias, Efetivo, Fase
             const key = [
                 registro.organizacao,
                 registro.ug,
@@ -1553,25 +1553,9 @@ const MaterialConsumoForm = () => {
                                     
                                     {consolidatedRegistros.map((group) => {
                                         const totalOM = group.totalGeral;
-                                        const totalND30Consolidado = group.totalND30;
-                                        const totalND39Consolidado = group.totalND39;
-                                        
-                                        const diasOperacaoConsolidado = group.dias_operacao;
-                                        const efetivoConsolidado = group.efetivo;
-                                        
                                         const omName = group.organizacao;
                                         const ug = group.ug;
                                         const faseAtividade = group.fase_atividade || 'Não Definida';
-                                        
-                                        const diasText = diasOperacaoConsolidado === 1 ? 'dia' : 'dias';
-                                        const efetivoText = efetivoConsolidado === 1 ? 'militar' : 'militares';
-                                        
-                                        const isDifferentOm = group.om_detentora !== group.organizacao || group.ug_detentora !== group.ug;
-                                        const omDestino = group.om_detentora;
-                                        const ugDestino = group.ug_detentora;
-                                        
-                                        const totalGroups = group.records.length;
-                                        const groupText = totalGroups === 1 ? 'Grupo' : 'Grupos';
 
                                         return (
                                             <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
@@ -1587,74 +1571,82 @@ const MaterialConsumoForm = () => {
                                                     </span>
                                                 </div>
                                                 
-                                                {/* CORPO CONSOLIDADO */}
+                                                {/* CORPO CONSOLIDADO - Exibição por Grupo de Aquisição */}
                                                 <div className="space-y-3">
-                                                    <Card 
-                                                        key={group.groupKey} 
-                                                        className="p-3 bg-background border"
-                                                    >
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex flex-col">
-                                                                <div className="flex items-center gap-2">
-                                                                    <h4 className="font-semibold text-base text-foreground">
-                                                                        Material de Consumo
-                                                                    </h4>
+                                                    {group.records.map((registro) => {
+                                                        const isDifferentOm = registro.om_detentora !== registro.organizacao || registro.ug_detentora !== registro.ug;
+                                                        const diasText = registro.dias_operacao === 1 ? 'dia' : 'dias';
+                                                        const efetivoText = registro.efetivo === 1 ? 'militar' : 'militares';
+
+                                                        return (
+                                                            <Card 
+                                                                key={registro.id} 
+                                                                className="p-3 bg-background border"
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <h4 className="font-semibold text-base text-foreground">
+                                                                                Material de Consumo ({registro.group_name})
+                                                                            </h4>
+                                                                        </div>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            Período: {registro.dias_operacao} {diasText} | Efetivo: {registro.efetivo} {efetivoText}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-extrabold text-xl text-foreground">
+                                                                            {formatCurrency(Number(registro.valor_total))}
+                                                                        </span>
+                                                                        {/* Botões de Ação */}
+                                                                        <div className="flex gap-1 shrink-0">
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8"
+                                                                                onClick={() => handleEdit(group)} 
+                                                                                disabled={!isPTrabEditable || isSaving || pendingGroups.length > 0}
+                                                                            >
+                                                                                <Pencil className="h-4 w-4" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                onClick={() => handleConfirmDelete(group)} 
+                                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    {totalGroups} {groupText} | Período: {diasOperacaoConsolidado} {diasText} | Efetivo: {efetivoConsolidado} {efetivoText}
-                                                                </p>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-extrabold text-xl text-foreground">
-                                                                    {formatCurrency(totalOM)}
-                                                                </span>
-                                                                {/* Botões de Ação */}
-                                                                <div className="flex gap-1 shrink-0">
-                                                                    <Button
-                                                                        type="button" 
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="h-8 w-8"
-                                                                        onClick={() => handleEdit(group)} 
-                                                                        disabled={!isPTrabEditable || isSaving || pendingGroups.length > 0}
-                                                                    >
-                                                                        <Pencil className="h-4 w-4" />
-                                                                    </Button>
-                                                                    <Button
-                                                                        type="button" 
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        onClick={() => handleConfirmDelete(group)} 
-                                                                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                                        disabled={!isPTrabEditable || isSaving}
-                                                                    >
-                                                                        <Trash2 className="h-4 w-4" />
-                                                                    </Button>
+                                                                
+                                                                {/* Detalhes da Alocação */}
+                                                                <div className="pt-2 border-t mt-2">
+                                                                    {/* OM Destino Recurso */}
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                        <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
+                                                                            {registro.om_detentora} ({formatCodug(registro.ug_detentora || '')})
+                                                                        </span>
+                                                                    </div>
+                                                                    {/* ND 33.90.30 */}
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">ND 33.90.30:</span>
+                                                                        <span className="text-green-600">{formatCurrency(Number(registro.valor_nd_30))}</span>
+                                                                    </div>
+                                                                    {/* ND 33.90.39 */}
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">ND 33.90.39:</span>
+                                                                        <span className="text-green-600">{formatCurrency(Number(registro.valor_nd_39))}</span>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        {/* Detalhes da Alocação */}
-                                                        <div className="pt-2 border-t mt-2">
-                                                            {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
-                                                            <div className="flex justify-between text-xs">
-                                                                <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                                                <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
-                                                                    {omDestino} ({formatCodug(ugDestino)})
-                                                                </span>
-                                                            </div>
-                                                            {/* ND 33.90.30 */}
-                                                            <div className="flex justify-between text-xs">
-                                                                <span className="text-muted-foreground">ND 33.90.30:</span>
-                                                                <span className="text-green-600">{formatCurrency(totalND30Consolidado)}</span>
-                                                            </div>
-                                                            {/* ND 33.90.39 */}
-                                                            <div className="flex justify-between text-xs">
-                                                                <span className="text-muted-foreground">ND 33.90.39:</span>
-                                                                <span className="text-green-600">{formatCurrency(totalND39Consolidado)}</span>
-                                                            </div>
-                                                        </div>
-                                                    </Card>
+                                                            </Card>
+                                                        );
+                                                    })}
                                                 </div>
                                             </Card>
                                         );
