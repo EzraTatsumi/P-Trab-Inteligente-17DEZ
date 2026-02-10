@@ -4,16 +4,17 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Command,
+  CommandEmpty,
   CommandGroup,
+  CommandInput,
   CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 const OPCOES_PADRAO = ["OSP", "Civis", "Militares"];
 
@@ -25,20 +26,6 @@ interface PublicoSelectProps {
 
 export function PublicoSelect({ value, onChange, disabled }: PublicoSelectProps) {
   const [open, setOpen] = React.useState(false);
-  const isCustom = value && !OPCOES_PADRAO.includes(value);
-  const [tempCustom, setTempCustom] = React.useState(isCustom ? value : "");
-
-  const handleSelect = (val: string) => {
-    onChange(val);
-    setTempCustom("");
-    setOpen(false);
-  };
-
-  const handleCustomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setTempCustom(val);
-    onChange(val);
-  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -53,39 +40,38 @@ export function PublicoSelect({ value, onChange, disabled }: PublicoSelectProps)
           <span className="truncate">
             {value || "Selecione o público..."}
           </span>
-          <Check className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-0" align="start">
         <Command>
-          <CommandGroup>
-            {OPCOES_PADRAO.map((opcao) => (
-              <CommandItem
-                key={opcao}
-                value={opcao}
-                onSelect={() => handleSelect(opcao)}
-                className="cursor-pointer"
-              >
-                <Check
-                  className={cn(
-                    "mr-2 h-4 w-4",
-                    value === opcao ? "opacity-100" : "opacity-0"
-                  )}
-                />
-                {opcao}
-              </CommandItem>
-            ))}
-          </CommandGroup>
-          <div className="p-2 border-t">
-            <Label className="text-xs text-muted-foreground mb-1 block">Outro Público</Label>
-            <Input
-              value={tempCustom}
-              onChange={handleCustomChange}
-              placeholder="Digite aqui..."
-              className="h-8 text-sm"
-            />
-          </div>
+          <CommandInput placeholder="Buscar público..." />
+          <CommandList>
+            <CommandEmpty>Nenhum público encontrado.</CommandEmpty>
+            <CommandGroup>
+              {OPCOES_PADRAO.map((opcao) => (
+                <CommandItem
+                  key={opcao}
+                  value={opcao}
+                  onSelect={(currentValue) => {
+                    // O currentValue do CommandItem é lowercase por padrão, 
+                    // então buscamos o valor original no array
+                    const selected = OPCOES_PADRAO.find(o => o.toLowerCase() === currentValue.toLowerCase());
+                    onChange(selected || currentValue);
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      value === opcao ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {opcao}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>
