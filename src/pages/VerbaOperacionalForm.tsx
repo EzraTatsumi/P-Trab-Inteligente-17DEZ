@@ -19,6 +19,7 @@ import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/ptrabUtils";
 import { 
     calculateVerbaOperacionalTotals, 
     generateVerbaOperacionalMemoriaCalculo,
+    VerbaOperacionalRegistro,
 } from "@/lib/verbaOperacionalUtils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -37,10 +38,10 @@ import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
 import { cn } from "@/lib/utils"; 
 import CurrencyInput from "@/components/CurrencyInput";
-import { verbaOperacionalSchema } from "@/lib/validationSchemas"; 
+import { verbaOperacionalSchema } from "@/lib/validationSchemas";
 
 // Tipos de dados
-type VerbaOperacionalRegistro = Tables<'verba_operacional_registros'>; 
+type VerbaOperacionalRegistroDB = Tables<'verba_operacional_registros'>; 
 
 // Tipo de dados para OmSelector
 interface OMData {
@@ -66,7 +67,7 @@ interface CalculatedVerbaOperacional extends TablesInsert<'verba_operacional_reg
 // Função para calcular ND 39 com base no Total Solicitado e ND 30 (ND 39 é a dependente)
 const calculateND39 = (totalSolicitado: number, nd30Value: number): number => {
     const nd39 = totalSolicitado - nd30Value;
-    return Math.max(0, nd39); // ND 39 não pode ser negativa
+    return Math.max(0, nd39); // ND 39 não pode ser negativo
 };
 
 // Constantes para a OM Detentora padrão (CIE)
@@ -83,6 +84,14 @@ const initialFormState = {
     fase_atividade: "",
     om_detentora: "", 
     ug_detentora: "", 
+    // NOVOS CAMPOS
+    objeto_aquisicao: "",
+    objeto_contratacao: "",
+    proposito: "",
+    finalidade: "",
+    local: "",
+    tarefa: "",
+    // NDs
     valor_nd_30: 0,
     valor_nd_39: 0,
 };
@@ -104,7 +113,13 @@ const compareFormData = (data1: typeof initialFormState, data2: typeof initialFo
         data1.ug_detentora !== data2.ug_detentora ||
         data1.om_favorecida !== data2.om_favorecida ||
         data1.ug_favorecida !== data2.ug_favorecida ||
-        data1.fase_atividade !== data2.fase_atividade
+        data1.fase_atividade !== data2.fase_atividade ||
+        data1.objeto_aquisicao !== data2.objeto_aquisicao ||
+        data1.objeto_contratacao !== data2.objeto_contratacao ||
+        data1.proposito !== data2.proposito ||
+        data1.finalidade !== data2.finalidade ||
+        data1.local !== data2.local ||
+        data1.tarefa !== data2.tarefa
     ) {
         return true;
     }
@@ -122,7 +137,7 @@ const VerbaOperacionalForm = () => {
     const [formData, setFormData] = useState<typeof initialFormState>(initialFormState);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-    const [registroToDelete, setRegistroToDelete] = useState<VerbaOperacionalRegistro | null>(null);
+    const [registroToDelete, setRegistroToDelete] = useState<VerbaOperacionalRegistroDB | null>(null);
     
     // ESTADOS DE EDIÇÃO DE MEMÓRIA
     const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
@@ -145,10 +160,8 @@ const VerbaOperacionalForm = () => {
     
     // Estado para inputs monetários
     const [rawTotalInput, setRawTotalInput] = useState<string>(numberToRawDigits(initialFormState.valor_total_solicitado));
-    // ND 30 e ND 39 são inputs manuais (ND 39 é calculada por diferença)
+    // ND 39 é calculada, ND 30 é input manual
     const [rawND30Input, setRawND30Input] = useState<string>(numberToRawDigits(initialFormState.valor_nd_30));
-    // const [rawND39Input, setRawND39Input] = useState<string>(numberToRawDigits(initialFormState.valor_nd_39));
-
 
     // Dados mestres
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
@@ -157,14 +170,13 @@ const VerbaOperacionalForm = () => {
         enabled: !!ptrabId,
     });
 
-    const { data: registros, isLoading: isLoadingRegistros } = useQuery<VerbaOperacionalRegistro[]>({
+    // VerbaOperacional usa a tabela 'verba_operacional_registros'
+    const { data: registros, isLoading: isLoadingRegistros } = useQuery<VerbaOperacionalRegistroDB[]>({
         queryKey: ['verbaOperacionalRegistros', ptrabId],
-        queryFn: () => fetchPTrabRecords('verba_operacional_registros', ptrabId!), 
+        queryFn: () => fetchPTrabRecords('verba_operacional_registros', ptrabId!),
         enabled: !!ptrabId,
-        // FILTRO CORRIGIDO: Se não for explicitamente 'Suprimento de Fundos', é Verba Operacional (ou registro antigo).
-        select: (data) => data
-            .filter(r => r.detalhamento !== 'Suprimento de Fundos')
-            .sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
+        // Filtro client-side para Verba Operacional (detalhamento deve ser 'Verba Operacional')
+        select: (data) => data.filter(r => r.detalhamento === 'Verba Operacional').sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
     });
     
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
@@ -181,7 +193,7 @@ const VerbaOperacionalForm = () => {
             setSelectedOmFavorecidaId(undefined); 
             
             // 2. OM Detentora (Padrão CIE)
-            const cieOm = oms?.find((om: OMData) => om.nome_om === DEFAULT_OM_DETENTORA && om.codug_om === DEFAULT_UG_DETENTORA);
+            const cieOm = oms?.find(om => om.nome_om === DEFAULT_OM_DETENTORA && om.codug_om === DEFAULT_UG_DETENTORA);
             if (cieOm) {
                 setSelectedOmDetentoraId(cieOm.id);
                 setFormData(prev => ({
@@ -199,9 +211,9 @@ const VerbaOperacionalForm = () => {
             }
             
         } else if (ptrabData && editingId) {
-            // FIX: Explicitamente tipando 'om' no find
-            const omFavorecida = oms?.find((om: OMData) => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
-            const omDetentora = oms?.find((om: OMData) => om.nome_om === formData.om_detentora && om.codug_om === formData.ug_detentora);
+            // Se estiver editando, tentamos encontrar os IDs das OMs para o seletor
+            const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
+            const omDetentora = oms?.find(om => om.nome_om === formData.om_detentora && om.codug_om === formData.ug_detentora);
             
             setSelectedOmFavorecidaId(omFavorecida?.id);
             setSelectedOmDetentoraId(omDetentora?.id);
@@ -228,7 +240,7 @@ const VerbaOperacionalForm = () => {
             const nd30Value = formData.valor_nd_30; 
             const nd39Value = calculateND39(totalSolicitado, nd30Value); 
             
-            const calculatedFormData = {
+            const calculatedFormData: VerbaOperacionalRegistro = {
                 ...formData,
                 organizacao: formData.om_favorecida, 
                 ug: formData.ug_favorecida, 
@@ -261,7 +273,6 @@ const VerbaOperacionalForm = () => {
     const isVerbaDirty = useMemo(() => {
         // MODO EDIÇÃO: Compara com stagedUpdate
         if (editingId && stagedUpdate) {
-            // We need to convert stagedUpdate back to the form data structure for comparison
             const stagedFormData: typeof initialFormState = {
                 om_favorecida: stagedUpdate.organizacao,
                 ug_favorecida: stagedUpdate.ug,
@@ -273,6 +284,12 @@ const VerbaOperacionalForm = () => {
                 valor_nd_30: stagedUpdate.valor_nd_30,
                 valor_nd_39: stagedUpdate.valor_nd_39,
                 fase_atividade: stagedUpdate.fase_atividade || '',
+                objeto_aquisicao: stagedUpdate.objeto_aquisicao || '',
+                objeto_contratacao: stagedUpdate.objeto_contratacao || '',
+                proposito: stagedUpdate.proposito || '',
+                finalidade: stagedUpdate.finalidade || '',
+                local: stagedUpdate.local || '',
+                tarefa: stagedUpdate.tarefa || '',
             };
             
             return compareFormData(formData, stagedFormData);
@@ -294,7 +311,6 @@ const VerbaOperacionalForm = () => {
     // NOVO MEMO: Agrupa os registros por OM Favorecida (organizacao/ug)
     const registrosAgrupadosPorOM = useMemo(() => {
         return registros?.reduce((acc, registro) => {
-            // Agrupamos pela OM Favorecida (organizacao/ug na DB)
             const omFavorecida = registro.organizacao; 
             const ugFavorecida = registro.ug; 
             const key = `${omFavorecida} (${ugFavorecida})`;
@@ -304,16 +320,14 @@ const VerbaOperacionalForm = () => {
             }
             acc[key].push(registro);
             return acc;
-        }, {} as Record<string, VerbaOperacionalRegistro[]>) || {};
+        }, {} as Record<string, VerbaOperacionalRegistroDB[]>) || {};
     }, [registros]);
 
     // =================================================================
     // HANDLERS DE INPUT
     // =================================================================
     
-    const handleCurrencyChange = (field: 'valor_total_solicitado' | 'valor_nd_30', rawValue: string) => {
-        const { numericValue, digits } = formatCurrencyInput(rawValue);
-        
+    const handleCurrencyChange = (field: 'valor_total_solicitado' | 'valor_nd_30', numericValue: number, digits: string) => {
         setFormData(prev => {
             let newFormData = { ...prev };
             let newND30Value = prev.valor_nd_30;
@@ -323,22 +337,18 @@ const VerbaOperacionalForm = () => {
             if (field === 'valor_total_solicitado') {
                 setRawTotalInput(digits); 
                 newTotalValue = numericValue;
-                
-                // ND 30 é mantida como está, mas recalculamos ND 39 com base nela
                 newND39Value = calculateND39(newTotalValue, newND30Value);
                 
             } else if (field === 'valor_nd_30') {
                 setRawND30Input(digits); 
                 newND30Value = numericValue;
                 
-                // ND 30 cannot exceed Total Solicitado
                 if (newTotalValue > 0 && newND30Value > newTotalValue) {
                     newND30Value = newTotalValue;
                     setRawND30Input(numberToRawDigits(newND30Value)); 
                     toast.warning("O valor da ND 30 foi limitado ao Valor Total Solicitado.");
                 }
                 
-                // Calculate ND 39 (difference)
                 newND39Value = calculateND39(newTotalValue, newND30Value);
                 
             } else {
@@ -362,17 +372,15 @@ const VerbaOperacionalForm = () => {
         mutationFn: async (recordsToSave: CalculatedVerbaOperacional[]) => {
             if (recordsToSave.length === 0) return;
             
-            // Mapeia os campos do formData para os campos da DB
             const dbRecords = recordsToSave.map(r => {
                 const { tempId, memoria_calculo_display, totalGeral, om_favorecida, ug_favorecida, ...rest } = r;
                 
-                // Campos de detalhamento são mapeados diretamente
                 const dbRecord: TablesInsert<'verba_operacional_registros'> = {
                     ...rest,
-                    organizacao: om_favorecida, // OM Favorecida (do PTrab)
-                    ug: ug_favorecida, // UG Favorecida (do PTrab)
-                    detalhamento: "Verba Operacional", // Marcador para filtro
-                    detalhamento_customizado: rest.detalhamento_customizado, // Preserva o texto customizado da memória
+                    organizacao: om_favorecida, 
+                    ug: ug_favorecida, 
+                    detalhamento: "Verba Operacional", 
+                    detalhamento_customizado: rest.detalhamento_customizado, 
                 } as TablesInsert<'verba_operacional_registros'>;
                 
                 return dbRecord;
@@ -387,14 +395,12 @@ const VerbaOperacionalForm = () => {
             if (error) throw error;
             return data;
         },
-        onSuccess: (newRecords) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["verbaOperacionalRegistros", ptrabId] });
             queryClient.invalidateQueries({ queryKey: ["ptrabTotals", ptrabId] });
             toast.success(`Sucesso! ${pendingVerbas.length} registro(s) de Verba Operacional adicionado(s).`);
             setPendingVerbas([]); 
             setLastStagedFormData(null); 
-            
-            // Após salvar o lote, resetamos o formulário para uma nova entrada.
             resetForm();
         },
         onError: (err) => {
@@ -406,15 +412,14 @@ const VerbaOperacionalForm = () => {
         mutationFn: async (data: CalculatedVerbaOperacional) => {
             if (!editingId) throw new Error("ID de edição ausente.");
             
-            // Mapeia os campos do stagedUpdate para os campos da DB
             const { tempId, memoria_calculo_display, totalGeral, om_favorecida, ug_favorecida, ...rest } = data;
             
             const dbUpdateData: TablesUpdate<'verba_operacional_registros'> = {
                 ...rest,
                 organizacao: om_favorecida, 
                 ug: ug_favorecida, 
-                detalhamento: "Verba Operacional", // Mantém o marcador
-                detalhamento_customizado: rest.detalhamento_customizado, // Preserva o texto customizado da memória
+                detalhamento: "Verba Operacional", 
+                detalhamento_customizado: rest.detalhamento_customizado, 
             } as TablesUpdate<'verba_operacional_registros'>;
             
             const { error } = await supabase
@@ -464,19 +469,21 @@ const VerbaOperacionalForm = () => {
         setEditingId(null);
         setFormData(prev => ({
             ...initialFormState,
-            // Manter a OM Favorecida (do PTrab) se já estiver definida
             om_favorecida: prev.om_favorecida,
             ug_favorecida: prev.ug_favorecida,
-            // OM Detentora (Padrão CIE)
             om_detentora: DEFAULT_OM_DETENTORA,
             ug_detentora: DEFAULT_UG_DETENTORA,
-            // Dias e equipes são resetados para 0 (vazio)
             dias_operacao: 0,
             quantidade_equipes: 0,
-            // NDs e Total são resetados para 0
             valor_total_solicitado: 0,
             valor_nd_30: 0,
             valor_nd_39: 0,
+            objeto_aquisicao: "",
+            objeto_contratacao: "",
+            proposito: "",
+            finalidade: "",
+            local: "",
+            tarefa: "",
         }));
         setEditingMemoriaId(null); 
         setMemoriaEdit("");
@@ -487,7 +494,6 @@ const VerbaOperacionalForm = () => {
         
         setRawTotalInput(numberToRawDigits(0));
         setRawND30Input(numberToRawDigits(0));
-        // setRawND39Input(numberToRawDigits(0)); // ND 39 is calculated
     };
     
     const handleClearPending = () => {
@@ -497,7 +503,7 @@ const VerbaOperacionalForm = () => {
         resetForm();
     };
 
-    const handleEdit = (registro: VerbaOperacionalRegistro) => {
+    const handleEdit = (registro: VerbaOperacionalRegistroDB) => {
         if (pendingVerbas.length > 0) {
             toast.warning("Salve ou limpe os itens pendentes antes de editar um registro existente.");
             return;
@@ -505,36 +511,35 @@ const VerbaOperacionalForm = () => {
         
         setEditingId(registro.id);
         
-        // 1. Configurar OM Favorecida (OM do PTrab)
-        // FIX: Explicitamente tipando 'om' no find
-        const omFavorecidaToEdit = oms?.find((om: OMData) => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
+        const omFavorecidaToEdit = oms?.find(om => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
         setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
         
-        // 2. Configurar OM Detentora (OM Destino do Recurso)
-        // FIX: Explicitamente tipando 'om' no find
-        const omDetentoraToEdit = oms?.find((om: OMData) => om.nome_om === registro.om_detentora && om.codug_om === registro.ug_detentora);
+        const omDetentoraToEdit = oms?.find(om => om.nome_om === registro.om_detentora && om.codug_om === registro.ug_detentora);
         setSelectedOmDetentoraId(omDetentoraToEdit?.id);
 
-        // 3. Populate formData
         const newFormData = {
             om_favorecida: registro.organizacao, 
             ug_favorecida: registro.ug, 
             dias_operacao: registro.dias_operacao,
-            quantidade_equipes: registro.quantidade_equipes, 
+            quantidade_equipes: registro.quantidade_equipes || 0, 
             valor_total_solicitado: Number(registro.valor_total_solicitado || 0),
             fase_atividade: registro.fase_atividade || "",
             om_detentora: registro.om_detentora || DEFAULT_OM_DETENTORA,
             ug_detentora: registro.ug_detentora || DEFAULT_UG_DETENTORA,
             valor_nd_30: Number(registro.valor_nd_30 || 0),
             valor_nd_39: Number(registro.valor_nd_39 || 0),
+            objeto_aquisicao: registro.objeto_aquisicao || "",
+            objeto_contratacao: registro.objeto_contratacao || "",
+            proposito: registro.proposito || "",
+            finalidade: registro.finalidade || "",
+            local: registro.local || "",
+            tarefa: registro.tarefa || "",
         };
         setFormData(newFormData);
         
-        // Atualizar inputs brutos
         setRawTotalInput(numberToRawDigits(newFormData.valor_total_solicitado));
         setRawND30Input(numberToRawDigits(newFormData.valor_nd_30)); 
 
-        // 4. Calculate totals and generate memory
         const totals = calculateVerbaOperacionalTotals({
             ...newFormData,
             organizacao: newFormData.om_favorecida,
@@ -546,7 +551,6 @@ const VerbaOperacionalForm = () => {
             ug: newFormData.ug_favorecida,
         } as any);
         
-        // 5. Stage the current record data immediately for display in Section 3
         const stagedData: CalculatedVerbaOperacional = {
             tempId: registro.id,
             p_trab_id: ptrabId!,
@@ -563,21 +567,20 @@ const VerbaOperacionalForm = () => {
             valor_nd_39: totals.totalND39,
             
             detalhamento: "Verba Operacional",
-            detalhamento_customizado: registro.detalhamento_customizado, // Preserva o texto customizado da memória
+            detalhamento_customizado: registro.detalhamento_customizado, 
             
             totalGeral: totals.totalGeral,
             memoria_calculo_display: memoria, 
             om_favorecida: newFormData.om_favorecida,
             ug_favorecida: newFormData.ug_favorecida,
             
-            // Campos de detalhamento (Verba Operacional não usa estes, mas o tipo da DB exige)
-            objeto_aquisicao: null,
-            objeto_contratacao: null,
-            proposito: null,
-            finalidade: null,
-            local: null,
-            tarefa: null,
-        };
+            objeto_aquisicao: newFormData.objeto_aquisicao,
+            objeto_contratacao: newFormData.objeto_contratacao,
+            proposito: newFormData.proposito,
+            finalidade: newFormData.finalidade,
+            local: newFormData.local,
+            tarefa: newFormData.tarefa,
+        } as CalculatedVerbaOperacional;
         
         setStagedUpdate(stagedData); 
 
@@ -587,31 +590,27 @@ const VerbaOperacionalForm = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const handleConfirmDelete = (registro: VerbaOperacionalRegistro) => {
+    const handleConfirmDelete = (registro: VerbaOperacionalRegistroDB) => {
         setRegistroToDelete(registro);
         setShowDeleteDialog(true);
     };
 
-    // Adiciona o item calculado à lista pendente OU prepara a atualização (staging)
     const handleStageCalculation = (e: React.FormEvent) => {
         e.preventDefault();
         
         try {
-            // 1. Recalcular ND 39 (dependente)
             const totalSolicitado = formData.valor_total_solicitado;
             const nd30Value = formData.valor_nd_30;
             const nd39Value = calculateND39(totalSolicitado, nd30Value);
             
             const dataToValidate = {
                 ...formData,
-                valor_nd_39: nd39Value,
+                valor_nd_39: nd39Value, 
             };
             
-            // CORREÇÃO CRÍTICA: Usar o schema correto para Verba Operacional
             verbaOperacionalSchema.parse(dataToValidate);
             
-            // 2. Preparar o objeto final (calculatedData)
-            const calculatedDataForUtils = {
+            const calculatedDataForUtils: VerbaOperacionalRegistro = {
                 ...dataToValidate,
                 organizacao: dataToValidate.om_favorecida,
                 ug: dataToValidate.ug_favorecida,
@@ -632,32 +631,36 @@ const VerbaOperacionalForm = () => {
                 quantidade_equipes: formData.quantidade_equipes, 
                 valor_total_solicitado: formData.valor_total_solicitado,
                 
-                // Campos calculados
                 valor_nd_30: totals.totalND30,
                 valor_nd_39: totals.totalND39,
                 
                 detalhamento: "Verba Operacional",
                 detalhamento_customizado: null, 
                 
-                // Campos de display
                 totalGeral: totals.totalGeral,
                 memoria_calculo_display: memoria, 
                 om_favorecida: formData.om_favorecida,
                 ug_favorecida: formData.ug_favorecida,
                 
-                // Campos de detalhamento (Verba Operacional não usa estes, mas o tipo da DB exige)
-                objeto_aquisicao: null,
-                objeto_contratacao: null,
-                proposito: null,
-                finalidade: null,
-                local: null,
-                tarefa: null,
-            };
+                objeto_aquisicao: formData.objeto_aquisicao,
+                objeto_contratacao: formData.objeto_contratacao,
+                proposito: formData.proposito,
+                finalidade: formData.finalidade,
+                local: formData.local,
+                tarefa: formData.tarefa,
+            } as CalculatedVerbaOperacional;
             
             if (editingId) {
-                // MODO EDIÇÃO: Estagia a atualização para revisão
                 const originalRecord = registros?.find(r => r.id === editingId);
-                calculatedData.detalhamento_customizado = originalRecord?.detalhamento_customizado || null;
+                
+                let memoriaCustomizadaTexto: string | null = null;
+                try {
+                    JSON.parse(originalRecord?.detalhamento_customizado || "");
+                } catch (e) {
+                    memoriaCustomizadaTexto = originalRecord?.detalhamento_customizado || null;
+                }
+                
+                calculatedData.detalhamento_customizado = memoriaCustomizadaTexto;
                 
                 setStagedUpdate(calculatedData);
                 toast.info("Cálculo atualizado. Revise e confirme a atualização na Seção 3.");
@@ -665,28 +668,43 @@ const VerbaOperacionalForm = () => {
                 return;
             }
             
-            // MODO ADIÇÃO: Adicionar à lista pendente
-            
-            // Se o formulário está sujo (diferente do último estagiado) OU se a lista está vazia, adicionamos/substituímos.
             const shouldStageNewItem = pendingVerbas.length === 0 || isVerbaDirty;
 
             if (shouldStageNewItem) {
                 setPendingVerbas(prev => {
                     if (prev.length > 0) {
-                        // Se a lista não está vazia, substitui o último item (pois o formulário está dirty)
                         return [...prev.slice(0, -1), calculatedData];
                     }
-                    // Se a lista está vazia, adiciona
                     return [...prev, calculatedData];
                 });
                 
-                // Salva o estado atual do formulário como o último estagiado
                 setLastStagedFormData(formData);
                 
                 toast.info("Item de Verba Operacional adicionado à lista pendente.");
             } else {
                 toast.info("Nenhuma alteração detectada no item pendente.");
             }
+            
+            setFormData(prev => ({
+                ...prev,
+                om_favorecida: prev.om_favorecida,
+                ug_favorecida: prev.ug_favorecida,
+                om_detentora: prev.om_detentora,
+                ug_detentora: prev.ug_detentora,
+                dias_operacao: prev.dias_operacao,
+                quantidade_equipes: prev.quantidade_equipes,
+                fase_atividade: prev.fase_atividade,
+                objeto_aquisicao: prev.objeto_aquisicao,
+                objeto_contratacao: prev.objeto_contratacao,
+                proposito: prev.proposito,
+                finalidade: prev.finalidade,
+                local: prev.local,
+                tarefa: prev.tarefa,
+                
+                valor_total_solicitado: prev.valor_total_solicitado,
+                valor_nd_30: prev.valor_nd_30,
+                valor_nd_39: prev.valor_nd_39,
+            }));
             
         } catch (err) {
             if (err instanceof z.ZodError) {
@@ -697,7 +715,6 @@ const VerbaOperacionalForm = () => {
         }
     };
     
-    // Salva todos os itens pendentes no DB
     const handleSavePendingVerbas = () => {
         if (pendingVerbas.length === 0) {
             toast.warning("Nenhum item pendente para salvar.");
@@ -707,14 +724,12 @@ const VerbaOperacionalForm = () => {
         saveMutation.mutate(pendingVerbas);
     };
     
-    // NOVO: Confirma a atualização do item estagiado no DB
     const handleCommitStagedUpdate = () => {
         if (!editingId || !stagedUpdate) return;
         
         updateMutation.mutate(stagedUpdate);
     };
     
-    // Remove item da lista pendente
     const handleRemovePending = (tempId: string) => {
         setPendingVerbas(prev => {
             const newPending = prev.filter(p => p.tempId !== tempId);
@@ -726,33 +741,30 @@ const VerbaOperacionalForm = () => {
         toast.info("Item removido da lista pendente.");
     };
     
-    // Handler para a OM Favorecida (OM do PTrab)
     const handleOmFavorecidaChange = (omData: OMData | undefined) => {
         if (omData) {
             setSelectedOmFavorecidaId(omData.id);
-            // Define a OM Detentora igual à OM Favorecida
             setSelectedOmDetentoraId(omData.id); 
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: omData.nome_om,
                 ug_favorecida: omData.codug_om,
-                om_detentora: omData.nome_om, // OM Detentora = OM Favorecida
-                ug_detentora: omData.codug_om, // UG Detentora = UG Favorecida
+                om_detentora: omData.nome_om, 
+                ug_detentora: omData.codug_om, 
             }));
         } else {
             setSelectedOmFavorecidaId(undefined);
-            setSelectedOmDetentoraId(undefined); // Reset Detentora
+            setSelectedOmDetentoraId(undefined); 
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: "",
                 ug_favorecida: "",
-                om_detentora: "", // Reset Detentora
-                ug_detentora: "", // Reset Detentora
+                om_detentora: "", 
+                ug_detentora: "", 
             }));
         }
     };
     
-    // Handler para a OM Detentora (OM Destino do Recurso)
     const handleOmDetentoraChange = (omData: OMData | undefined) => {
         if (omData) {
             setSelectedOmDetentoraId(omData.id);
@@ -778,28 +790,29 @@ const VerbaOperacionalForm = () => {
         }));
     };
     
-    // --- Lógica de Edição de Memória ---
-    
-    const handleIniciarEdicaoMemoria = (registro: VerbaOperacionalRegistro) => {
+    const handleIniciarEdicaoMemoria = (registro: VerbaOperacionalRegistroDB) => {
         setEditingMemoriaId(registro.id);
         
-        // 1. Gerar a memória automática
-        const calculatedData = {
+        const calculatedData: VerbaOperacionalRegistro = {
             organizacao: registro.organizacao,
             ug: registro.ug,
             om_detentora: registro.om_detentora || "",
             ug_detentora: registro.ug_detentora || "",
             dias_operacao: registro.dias_operacao,
-            quantidade_equipes: registro.quantidade_equipes,
+            quantidade_equipes: registro.quantidade_equipes || 0,
             valor_total_solicitado: registro.valor_total_solicitado,
             fase_atividade: registro.fase_atividade || "",
             valor_nd_30: registro.valor_nd_30,
             valor_nd_39: registro.valor_nd_39,
+            objeto_aquisicao: registro.objeto_aquisicao || "",
+            objeto_contratacao: registro.objeto_contratacao || "",
+            proposito: registro.proposito || "",
+            finalidade: registro.finalidade || "",
+            local: registro.local || "",
+            tarefa: registro.tarefa || "",
         };
         
         const memoriaAutomatica = generateVerbaOperacionalMemoriaCalculo(calculatedData as any);
-        
-        // 2. Usar a customizada se existir, senão usar a automática
         setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
     };
 
@@ -810,13 +823,11 @@ const VerbaOperacionalForm = () => {
 
     const handleSalvarMemoriaCustomizada = async (registroId: string) => {
         try {
-            // Se o usuário editar a memória, o campo 'detalhamento_customizado' será sobrescrito com o texto da memória.
-            
             const { error } = await supabase
                 .from("verba_operacional_registros")
                 .update({
-                    detalhamento: "Verba Operacional", // Mantém o marcador
-                    detalhamento_customizado: memoriaEdit.trim() || null, // Salva o texto da memória
+                    detalhamento: "Verba Operacional", 
+                    detalhamento_customizado: memoriaEdit.trim() || null, 
                 })
                 .eq("id", registroId);
 
@@ -837,7 +848,6 @@ const VerbaOperacionalForm = () => {
         }
         
         try {
-            // Restaurar para NULL, pois os detalhes estruturados estão em colunas dedicadas
             const { error } = await supabase
                 .from("verba_operacional_registros")
                 .update({
@@ -855,10 +865,6 @@ const VerbaOperacionalForm = () => {
         }
     };
     
-    // =================================================================
-    // RENDERIZAÇÃO
-    // =================================================================
-
     const isGlobalLoading = isLoadingPTrab || isLoadingRegistros || isLoadingOms;
 
     if (isGlobalLoading) {
@@ -879,19 +885,22 @@ const VerbaOperacionalForm = () => {
                             formData.ug_detentora.length > 0 &&
                             formData.fase_atividade.length > 0;
 
-    // Verifica se os campos numéricos da Solicitação estão preenchidos
     const isSolicitationDataReady = formData.dias_operacao > 0 &&
                                     formData.quantidade_equipes > 0 && 
                                     formData.valor_total_solicitado > 0;
 
-    // Verifica se o total alocado (ND 30 + ND 39) é igual ao total solicitado
     const isAllocationCorrect = areNumbersEqual(formData.valor_total_solicitado, calculos.totalGeral);
 
     const isCalculationReady = isBaseFormReady &&
                               isSolicitationDataReady &&
-                              isAllocationCorrect;
+                              isAllocationCorrect &&
+                              formData.objeto_aquisicao.length > 0 &&
+                              formData.objeto_contratacao.length > 0 &&
+                              formData.proposito.length > 0 &&
+                              formData.finalidade.length > 0 &&
+                              formData.local.length > 0 &&
+                              formData.tarefa.length > 0;
     
-    // Lógica para a Seção 3
     const itemsToDisplay = stagedUpdate ? [stagedUpdate] : pendingVerbas;
     const isStagingUpdate = !!stagedUpdate;
 
@@ -915,14 +924,12 @@ const VerbaOperacionalForm = () => {
                     <CardContent>
                         <form onSubmit={handleStageCalculation} className="space-y-8">
                             
-                            {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
                                     1. Dados da Organização
                                 </h3>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {/* OM FAVORECIDA (OM do PTrab) */}
                                     <div className="space-y-2 col-span-1">
                                         <Label htmlFor="om_favorecida">OM Favorecida *</Label>
                                         <OmSelector
@@ -930,7 +937,6 @@ const VerbaOperacionalForm = () => {
                                             onChange={handleOmFavorecidaChange}
                                             placeholder="Selecione a OM Favorecida"
                                             disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingVerbas.length > 0}
-                                            // CORREÇÃO: Apenas passa initialOmName/Ug se estiver em modo de edição
                                             initialOmName={editingId ? formData.om_favorecida : undefined}
                                             initialOmUg={editingId ? formData.ug_favorecida : undefined}
                                         />
@@ -956,7 +962,6 @@ const VerbaOperacionalForm = () => {
                                 </div>
                             </section>
 
-                            {/* SEÇÃO 2: CONFIGURAR O ITEM (DIAS, EQUIPES E ALOCAÇÃO) */}
                             {isBaseFormReady && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -965,10 +970,9 @@ const VerbaOperacionalForm = () => {
                                     
                                     <Card className="mt-6 bg-muted/50 rounded-lg p-4">
                                         
-                                        {/* Dados da Solicitação (Dias e Equipes) */}
                                         <Card className="rounded-lg mb-4">
                                             <CardHeader className="py-3">
-                                                <CardTitle className="text-base font-semibold">Período e Efetivo</CardTitle>
+                                                <CardTitle className="text-base font-semibold">Período e Valor</CardTitle>
                                             </CardHeader>
                                             <CardContent className="pt-2">
                                                 <div className="p-4 bg-background rounded-lg border">
@@ -990,12 +994,12 @@ const VerbaOperacionalForm = () => {
                                                             />
                                                         </div>
                                                         <div className="space-y-2 col-span-1">
-                                                            <Label htmlFor="quantidade_equipes">Quantidade de Equipes *</Label>
+                                                            <Label htmlFor="quantidade_equipes">Efetivo *</Label>
                                                             <Input
                                                                 id="quantidade_equipes"
                                                                 type="number"
                                                                 min={1}
-                                                                placeholder="Ex: 1"
+                                                                placeholder="Ex: 10"
                                                                 value={formData.quantidade_equipes === 0 ? "" : formData.quantidade_equipes}
                                                                 onChange={(e) => setFormData({ ...formData, quantidade_equipes: parseInt(e.target.value) || 0 })}
                                                                 required
@@ -1010,7 +1014,7 @@ const VerbaOperacionalForm = () => {
                                                             <CurrencyInput
                                                                 id="valor_total_solicitado"
                                                                 rawDigits={rawTotalInput}
-                                                                onChange={(digits) => handleCurrencyChange('valor_total_solicitado', digits)}
+                                                                onChange={(val, dig) => handleCurrencyChange('valor_total_solicitado', val, dig)}
                                                                 placeholder="Ex: 1.500,00"
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 required
@@ -1021,14 +1025,102 @@ const VerbaOperacionalForm = () => {
                                             </CardContent>
                                         </Card>
                                         
-                                        {/* Alocação de NDs */}
+                                        <Card className="mt-4 rounded-lg mb-4">
+                                            <CardHeader className="py-3">
+                                                <CardTitle className="text-base font-semibold">Detalhes da Aplicação</CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="pt-2">
+                                                <div className="p-4 bg-background rounded-lg border space-y-4">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="objeto_aquisicao">Objeto de Aquisição (Material) *</Label>
+                                                            <Input
+                                                                id="objeto_aquisicao"
+                                                                value={formData.objeto_aquisicao}
+                                                                onChange={(e) => setFormData({ ...formData, objeto_aquisicao: e.target.value })}
+                                                                placeholder="Ex: Materiais , alimentação de pessoal"
+                                                                required
+                                                                disabled={!isPTrabEditable || isSaving}
+                                                                onKeyDown={handleEnterToNextField}
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="objeto_contratacao">Objeto de Contratação (Serviço) *</Label>
+                                                            <Input
+                                                                id="objeto_contratacao"
+                                                                value={formData.objeto_contratacao}
+                                                                onChange={(e) => setFormData({ ...formData, objeto_contratacao: e.target.value })}
+                                                                placeholder="Ex: Serviços para atender eventuais imprevistos (Pequenos reparos e manutenção)"
+                                                                required
+                                                                disabled={!isPTrabEditable || isSaving}
+                                                                onKeyDown={handleEnterToNextField}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="proposito">Propósito *</Label>
+                                                            <Input
+                                                                id="proposito"
+                                                                value={formData.proposito}
+                                                                onChange={(e) => setFormData({ ...formData, proposito: e.target.value })}
+                                                                placeholder="Ex: Garantir a continuidade das atividades"
+                                                                required
+                                                                disabled={!isPTrabEditable || isSaving}
+                                                                onKeyDown={handleEnterToNextField}
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="finalidade">Finalidade *</Label>
+                                                            <Input
+                                                                id="finalidade"
+                                                                value={formData.finalidade}
+                                                                onChange={(e) => setFormData({ ...formData, finalidade: e.target.value })}
+                                                                placeholder="Ex: ao manter o fornecimento de suprimentos"
+                                                                required
+                                                                disabled={!isPTrabEditable || isSaving}
+                                                                onKeyDown={handleEnterToNextField}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="local">Local *</Label>
+                                                            <Input
+                                                                id="local"
+                                                                value={formData.local}
+                                                                onChange={(e) => setFormData({ ...formData, local: e.target.value })}
+                                                                placeholder="Ex: Base Operacional"
+                                                                required
+                                                                disabled={!isPTrabEditable || isSaving}
+                                                                onKeyDown={handleEnterToNextField}
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="tarefa">Tarefa *</Label>
+                                                            <Input
+                                                                id="tarefa"
+                                                                value={formData.tarefa}
+                                                                onChange={(e) => setFormData({ ...formData, tarefa: e.target.value })}
+                                                                placeholder="Ex: Montagem das Estruturas Logísticas"
+                                                                required
+                                                                disabled={!isPTrabEditable || isSaving}
+                                                                onKeyDown={handleEnterToNextField}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                        
                                         {isSolicitationDataReady && (
                                             <Card className="mt-4 rounded-lg p-4 bg-background">
                                                 <h4 className="font-semibold text-base mb-4">
                                                     Alocação de Recursos (Valor Total: {formatCurrency(formData.valor_total_solicitado)})
                                                 </h4>
                                                 
-                                                {/* OM Destino do Recurso (Detentora) */}
                                                 <div className="space-y-2 mb-4">
                                                     <Label htmlFor="om_detentora">OM de Destino do Recurso *</Label>
                                                     <OmSelector
@@ -1045,26 +1137,21 @@ const VerbaOperacionalForm = () => {
                                                 </div>
                                                 
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    {/* ND 30 (Material) - EDITÁVEL */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="valor_nd_30">ND 33.90.30 (Material) *</Label>
-                                                        <div className="relative">
-                                                            <CurrencyInput
-                                                                id="valor_nd_30"
-                                                                rawDigits={rawND30Input}
-                                                                onChange={(digits) => handleCurrencyChange('valor_nd_30', digits)}
-                                                                placeholder="0,00"
-                                                                disabled={!isPTrabEditable || isSaving}
-                                                                className="pl-12 text-lg h-12"
-                                                            />
-                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
-                                                        </div>
+                                                        <CurrencyInput
+                                                            id="valor_nd_30"
+                                                            rawDigits={rawND30Input}
+                                                            onChange={(val, dig) => handleCurrencyChange('valor_nd_30', val, dig)}
+                                                            placeholder="0,00"
+                                                            disabled={!isPTrabEditable || isSaving}
+                                                            className="text-lg h-12"
+                                                        />
                                                         <p className="text-xs text-muted-foreground">
                                                             Valor alocado para aquisição de material.
                                                         </p>
                                                     </div>
                                                     
-                                                    {/* ND 39 (Serviço) - CALCULADO */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="valor_nd_39">ND 33.90.39 (Serviço)</Label>
                                                         <div className="relative">
@@ -1073,7 +1160,7 @@ const VerbaOperacionalForm = () => {
                                                                 value={formatCurrency(calculos.totalND39)}
                                                                 readOnly
                                                                 disabled
-                                                                className="pl-12 text-lg font-bold bg-blue-500/10 text-blue-600 disabled:opacity-100 h-12"
+                                                                className="pl-12 text-lg font-bold bg-green-500/10 text-green-600 disabled:opacity-100 h-12"
                                                             />
                                                             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-lg text-foreground">R$</span>
                                                         </div>
@@ -1098,7 +1185,6 @@ const VerbaOperacionalForm = () => {
                                             </Card>
                                         )}
                                         
-                                        {/* BOTÕES DE AÇÃO */}
                                         <div className="flex justify-end gap-3 pt-4">
                                             <Button 
                                                 type="submit" 
@@ -1115,14 +1201,12 @@ const VerbaOperacionalForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES / REVISÃO DE ATUALIZAÇÃO) */}
                             {itemsToDisplay.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
                                         3. Itens Adicionados ({itemsToDisplay.length})
                                     </h3>
                                     
-                                    {/* NOVO: Alerta de Validação Final (Modo Novo Registro) */}
                                     {!editingId && isVerbaDirty && (
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
@@ -1132,7 +1216,6 @@ const VerbaOperacionalForm = () => {
                                         </Alert>
                                     )}
                                     
-                                    {/* Alerta de Validação Final (Apenas em modo de edição) */}
                                     {editingId && isVerbaDirty && (
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
@@ -1146,13 +1229,9 @@ const VerbaOperacionalForm = () => {
                                         {itemsToDisplay.map((item) => {
                                             const totalND30 = item.valor_nd_30;
                                             const totalND39 = item.valor_nd_39;
-                                            
-                                            // Verifica se a OM Detentora é diferente da OM Favorecida
                                             const isDifferentOmInView = item.om_detentora !== item.om_favorecida;
-                                            
-                                            // Lógica de concordância de número
                                             const diasText = item.dias_operacao === 1 ? "dia" : "dias";
-                                            const equipeText = item.quantidade_equipes === 1 ? "equipe" : "equipes"; 
+                                            const efetivoText = item.quantidade_equipes === 1 ? 'militar' : 'militares'; 
 
                                             return (
                                                 <Card 
@@ -1185,17 +1264,16 @@ const VerbaOperacionalForm = () => {
                                                             </div>
                                                         </div>
                                                         
-                                                        {/* Detalhes da Solicitação */}
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
                                                                 <p className="font-medium">OM Destino Recurso:</p>
-                                                                <p className="font-medium">Período / Equipes:</p>
+                                                                <p className="font-medium">Período / Efetivo:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
                                                                 <p className={cn("font-medium", isDifferentOmInView && "text-red-600")}>{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
-                                                                <p className="font-medium">{item.dias_operacao} {diasText} / {item.quantidade_equipes} {equipeText}</p>
+                                                                <p className="font-medium">{item.dias_operacao} {diasText} / {item.quantidade_equipes} {efetivoText}</p>
                                                             </div>
                                                         </div>
                                                         
@@ -1217,7 +1295,6 @@ const VerbaOperacionalForm = () => {
                                         })}
                                     </div>
                                     
-                                    {/* VALOR TOTAL DA OM (PENDENTE / STAGING) */}
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
                                             <span className="font-bold text-base uppercase">
@@ -1267,7 +1344,6 @@ const VerbaOperacionalForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
                             {registros && registros.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1276,7 +1352,6 @@ const VerbaOperacionalForm = () => {
                                     </h3>
                                     
                                     {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
-                                        // O total da OM é a soma do valor_total_solicitado
                                         const totalOM = omRegistros.reduce((sum, r) => Number(r.valor_total_solicitado) + sum, 0);
                                         const omName = omKey.split(' (')[0];
                                         const ug = omKey.split(' (')[1].replace(')', '');
@@ -1286,7 +1361,6 @@ const VerbaOperacionalForm = () => {
                                                 <div className="flex items-center justify-between mb-3 border-b pb-2">
                                                     <h3 className="font-bold text-lg text-primary flex items-center gap-2">
                                                         {omName} (UG: {formatCodug(ug)})
-                                                        {/* Não há Badge de Destino/Categoria fixa aqui, mas podemos adicionar a Fase da Atividade do primeiro registro */}
                                                         <Badge variant="outline" className="text-xs">
                                                             {omRegistros[0].fase_atividade}
                                                         </Badge>
@@ -1301,11 +1375,9 @@ const VerbaOperacionalForm = () => {
                                                         const totalSolicitado = Number(registro.valor_total_solicitado || 0);
                                                         const totalND30 = Number(registro.valor_nd_30 || 0);
                                                         const totalND39 = Number(registro.valor_nd_39 || 0);
-                                                        
                                                         const isDifferentOm = registro.om_detentora !== registro.organizacao;
-                                                        
                                                         const diasText = registro.dias_operacao === 1 ? 'dia' : 'dias';
-                                                        const equipeText = registro.quantidade_equipes === 1 ? 'equipe' : 'equipes';
+                                                        const efetivoText = registro.quantidade_equipes === 1 ? 'militar' : 'militares';
                                                         
                                                         return (
                                                             <Card 
@@ -1320,7 +1392,6 @@ const VerbaOperacionalForm = () => {
                                                                             <h4 className="font-semibold text-base text-foreground">
                                                                                 Verba Operacional
                                                                             </h4>
-                                                                            {/* Badge de Fase da Atividade (se for diferente do agrupamento) */}
                                                                             {registro.fase_atividade !== omRegistros[0].fase_atividade && (
                                                                                 <Badge variant="outline" className="text-xs">
                                                                                     {registro.fase_atividade}
@@ -1328,7 +1399,7 @@ const VerbaOperacionalForm = () => {
                                                                             )}
                                                                         </div>
                                                                         <p className="text-xs text-muted-foreground">
-                                                                            Período: {registro.dias_operacao} {diasText} | Equipes: {registro.quantidade_equipes} {equipeText}
+                                                                            Período: {registro.dias_operacao} {diasText} | Efetivo: {registro.quantidade_equipes} {efetivoText}
                                                                         </p>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
@@ -1360,9 +1431,7 @@ const VerbaOperacionalForm = () => {
                                                                     </div>
                                                                 </div>
                                                                 
-                                                                {/* Detalhes da Alocação */}
                                                                 <div className="pt-2 border-t mt-2">
-                                                                    {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
                                                                     <div className="flex justify-between text-xs mb-1">
                                                                         <span className="text-muted-foreground">OM Destino Recurso:</span>
                                                                         <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
@@ -1392,7 +1461,6 @@ const VerbaOperacionalForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
                             {registros && registros.length > 0 && (
                                 <div className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1402,7 +1470,6 @@ const VerbaOperacionalForm = () => {
                                     {registros.map(registro => {
                                         const isEditing = editingMemoriaId === registro.id;
                                         
-                                        // Verifica se o detalhamento_customizado é um texto customizado (não o JSON de detalhes)
                                         let hasCustomMemoria = false;
                                         try {
                                             JSON.parse(registro.detalhamento_customizado || "");
@@ -1410,18 +1477,23 @@ const VerbaOperacionalForm = () => {
                                             hasCustomMemoria = !!registro.detalhamento_customizado;
                                         }
                                         
-                                        // 1. Gerar a memória automática (precisa dos detalhes)
-                                        const calculatedDataForMemoria = {
+                                        const calculatedDataForMemoria: VerbaOperacionalRegistro = {
                                             organizacao: registro.organizacao,
                                             ug: registro.ug,
                                             om_detentora: registro.om_detentora || "",
                                             ug_detentora: registro.ug_detentora || "",
                                             dias_operacao: registro.dias_operacao,
-                                            quantidade_equipes: registro.quantidade_equipes,
+                                            quantidade_equipes: registro.quantidade_equipes || 0,
                                             valor_total_solicitado: registro.valor_total_solicitado,
                                             fase_atividade: registro.fase_atividade || "",
                                             valor_nd_30: registro.valor_nd_30,
                                             valor_nd_39: registro.valor_nd_39,
+                                            objeto_aquisicao: registro.objeto_aquisicao || "",
+                                            objeto_contratacao: registro.objeto_contratacao || "",
+                                            proposito: registro.proposito || "",
+                                            finalidade: registro.finalidade || "",
+                                            local: registro.local || "",
+                                            tarefa: registro.tarefa || "",
                                         };
                                         
                                         const memoriaAutomatica = generateVerbaOperacionalMemoriaCalculo(calculatedDataForMemoria as any);
@@ -1433,7 +1505,6 @@ const VerbaOperacionalForm = () => {
                                             memoriaExibida = registro.detalhamento_customizado!;
                                         }
                                         
-                                        // Verifica se a OM Detentora é diferente da OM Favorecida
                                         const isDifferentOmInMemoria = registro.om_detentora !== registro.organizacao;
 
                                         return (
@@ -1451,14 +1522,14 @@ const VerbaOperacionalForm = () => {
                                                                 </Badge>
                                                             )}
                                                         </div>
-                                                        {isDifferentOmInMemoria ? (
+                                                        {isDifferentOmInMemoria && (
                                                             <div className="flex items-center gap-1 mt-1">
                                                                 <AlertCircle className="h-4 w-4 text-red-600" />
                                                                 <span className="text-sm font-medium text-red-600">
                                                                     Destino Recurso: {registro.om_detentora} ({formatCodug(registro.ug_detentora)})
                                                                 </span>
                                                             </div>
-                                                        ) : null}
+                                                        )}
                                                     </div>
                                                     
                                                     <div className="flex items-center justify-end gap-2 shrink-0">
@@ -1542,7 +1613,6 @@ const VerbaOperacionalForm = () => {
                     </CardContent>
                 </Card>
                 
-                {/* Diálogo de Confirmação de Exclusão */}
                 <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
