@@ -399,28 +399,63 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
 
     (complementoAlimentacao || []).forEach(record => {
         const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
-        const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
-        [omS, omD].forEach(omTotals => {
+        
+        if (record.categoria_complemento === 'genero') {
+            const totalQS = Number(record.efetivo || 0) * Number(record.valor_etapa_qs || 0) * Number(record.dias_operacao || 0);
+            const totalQR = Number(record.efetivo || 0) * Number(record.valor_etapa_qr || 0) * Number(record.dias_operacao || 0);
+            const totalGeral = totalQS + totalQR;
+
+            // Solicitante recebe o valor total (QS + QR)
+            omS.complementoAlimentacao.total += totalGeral;
+            omS.complementoAlimentacao.totalND30 += totalGeral;
+            if (!omS.complementoAlimentacao.groupedCategories['Gênero Alimentício']) {
+                omS.complementoAlimentacao.groupedCategories['Gênero Alimentício'] = { totalValor: 0, totalND30: 0, totalND39: 0 };
+            }
+            omS.complementoAlimentacao.groupedCategories['Gênero Alimentício'].totalValor += totalGeral;
+            omS.complementoAlimentacao.groupedCategories['Gênero Alimentício'].totalND30 += totalGeral;
+
+            // Destino QS (RM)
+            const omD_QS = getOmTotals(record.om_qs || record.organizacao, record.ug_qs || record.ug, 'destino');
+            omD_QS.complementoAlimentacao.total += totalQS;
+            omD_QS.complementoAlimentacao.totalND30 += totalQS;
+            if (!omD_QS.complementoAlimentacao.groupedCategories['Gênero Alimentício (QS)']) {
+                omD_QS.complementoAlimentacao.groupedCategories['Gênero Alimentício (QS)'] = { totalValor: 0, totalND30: 0, totalND39: 0 };
+            }
+            omD_QS.complementoAlimentacao.groupedCategories['Gênero Alimentício (QS)'].totalValor += totalQS;
+            omD_QS.complementoAlimentacao.groupedCategories['Gênero Alimentício (QS)'].totalND30 += totalQS;
+
+            // Destino QR (OM)
+            const omD_QR = getOmTotals(record.om_qr || record.organizacao, record.ug_qr || record.ug, 'destino');
+            omD_QR.complementoAlimentacao.total += totalQR;
+            omD_QR.complementoAlimentacao.totalND30 += totalQR;
+            if (!omD_QR.complementoAlimentacao.groupedCategories['Gênero Alimentício (QR)']) {
+                omD_QR.complementoAlimentacao.groupedCategories['Gênero Alimentício (QR)'] = { totalValor: 0, totalND30: 0, totalND39: 0 };
+            }
+            omD_QR.complementoAlimentacao.groupedCategories['Gênero Alimentício (QR)'].totalValor += totalQR;
+            omD_QR.complementoAlimentacao.groupedCategories['Gênero Alimentício (QR)'].totalND30 += totalQR;
+
+        } else {
+            // Água ou Lanche
+            const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
             const val = Number(record.valor_total || 0);
             const nd30 = Number(record.valor_nd_30 || 0);
             const nd39 = Number(record.valor_nd_39 || 0);
-            omTotals.complementoAlimentacao.total += val;
-            omTotals.complementoAlimentacao.totalND30 += nd30;
-            omTotals.complementoAlimentacao.totalND39 += nd39;
             
-            let cat = record.categoria_complemento === 'genero' ? 'Gênero Alimentício' : 
-                      record.categoria_complemento === 'agua' ? 'Água Mineral' : 'Lanche/Catanho';
-            
-            if (!omTotals.complementoAlimentacao.groupedCategories) {
-                omTotals.complementoAlimentacao.groupedCategories = {};
-            }
-            if (!omTotals.complementoAlimentacao.groupedCategories[cat]) {
-                omTotals.complementoAlimentacao.groupedCategories[cat] = { totalValor: 0, totalND30: 0, totalND39: 0 };
-            }
-            omTotals.complementoAlimentacao.groupedCategories[cat].totalValor += val;
-            omTotals.complementoAlimentacao.groupedCategories[cat].totalND30 += nd30;
-            omTotals.complementoAlimentacao.groupedCategories[cat].totalND39 += nd39;
-        });
+            [omS, omD].forEach(omTotals => {
+                omTotals.complementoAlimentacao.total += val;
+                omTotals.complementoAlimentacao.totalND30 += nd30;
+                omTotals.complementoAlimentacao.totalND39 += nd39;
+                
+                let cat = record.categoria_complemento === 'agua' ? 'Água Mineral' : 'Lanche/Catanho';
+                
+                if (!omTotals.complementoAlimentacao.groupedCategories[cat]) {
+                    omTotals.complementoAlimentacao.groupedCategories[cat] = { totalValor: 0, totalND30: 0, totalND39: 0 };
+                }
+                omTotals.complementoAlimentacao.groupedCategories[cat].totalValor += val;
+                omTotals.complementoAlimentacao.groupedCategories[cat].totalND30 += nd30;
+                omTotals.complementoAlimentacao.groupedCategories[cat].totalND39 += nd39;
+            });
+        }
     });
     
     let globalTotals: PTrabAggregatedTotals = {
