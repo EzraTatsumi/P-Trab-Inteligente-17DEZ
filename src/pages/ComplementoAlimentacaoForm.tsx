@@ -99,6 +99,15 @@ interface ComplementoAlimentacaoFormState {
     om_qr: string;
     ug_qr: string;
 
+    // Campos específicos para Água
+    agua_consumo_dia: number;
+    agua_tipo_envase: string;
+    agua_volume_envase: number;
+    agua_valor_unitario: number;
+    agua_pregao: string;
+    agua_om_uasg: string;
+    agua_ug_uasg: string;
+
     acquisitionGroups: AcquisitionGroup[];
 }
 
@@ -124,6 +133,14 @@ const initialFormState: ComplementoAlimentacaoFormState = {
     om_qr: "",
     ug_qr: "",
 
+    agua_consumo_dia: 0,
+    agua_tipo_envase: "Garrafa",
+    agua_volume_envase: 0.5,
+    agua_valor_unitario: 0,
+    agua_pregao: "",
+    agua_om_uasg: "",
+    agua_ug_uasg: "",
+
     acquisitionGroups: [],
 };
 
@@ -140,6 +157,7 @@ const ComplementoAlimentacaoForm = () => {
     
     const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
     const [selectedOmQrId, setSelectedOmQrId] = useState<string | undefined>(undefined);
+    const [selectedOmAguaId, setSelectedOmAguaId] = useState<string | undefined>(undefined);
     
     const [isGroupFormOpen, setIsGroupFormOpen] = useState(false);
     const [groupToEdit, setGroupToEdit] = useState<AcquisitionGroup | undefined>(undefined);
@@ -161,6 +179,7 @@ const ComplementoAlimentacaoForm = () => {
         if (omData) {
             setSelectedOmFavorecidaId(omData.id);
             setSelectedOmQrId(omData.id);
+            setSelectedOmAguaId(omData.id);
 
             setFormData(prev => ({ 
                 ...prev, 
@@ -173,7 +192,9 @@ const ComplementoAlimentacaoForm = () => {
                 om_qr: omData.nome_om,
                 ug_qr: omData.codug_om,
                 om_destino: omData.nome_om,
-                ug_destino: omData.codug_om
+                ug_destino: omData.codug_om,
+                agua_om_uasg: omData.nome_om,
+                agua_ug_uasg: omData.codug_om
             }));
         }
     };
@@ -190,13 +211,22 @@ const ComplementoAlimentacaoForm = () => {
         return formData.efetivo * formData.valor_etapa_qr * formData.dias_operacao;
     }, [formData.efetivo, formData.valor_etapa_qr, formData.dias_operacao]);
 
+    const currentTotalAgua = useMemo(() => {
+        const totalLitros = formData.efetivo * formData.agua_consumo_dia * formData.dias_operacao;
+        if (formData.agua_volume_envase <= 0) return 0;
+        const totalGarrafas = Math.ceil(totalLitros / formData.agua_volume_envase);
+        return totalGarrafas * formData.agua_valor_unitario;
+    }, [formData.efetivo, formData.agua_consumo_dia, formData.dias_operacao, formData.agua_volume_envase, formData.agua_valor_unitario]);
+
     const currentCategoryTotal = useMemo(() => {
         if (formData.categoria_complemento === 'genero') {
             return currentTotalQS + currentTotalQR;
+        } else if (formData.categoria_complemento === 'agua') {
+            return currentTotalAgua;
         } else {
             return formData.acquisitionGroups.reduce((sum, g) => sum + g.totalValue, 0);
         }
-    }, [formData.categoria_complemento, currentTotalQS, currentTotalQR, formData.acquisitionGroups]);
+    }, [formData.categoria_complemento, currentTotalQS, currentTotalQR, currentTotalAgua, formData.acquisitionGroups]);
 
     // Lógica de cálculo e adição à lista pendente
     const handleStageCalculation = () => {
@@ -226,15 +256,32 @@ const ComplementoAlimentacaoForm = () => {
                 total_qs: totalQS,
                 total_qr: totalQR
             };
+        } else if (categoria_complemento === 'agua') {
+            const totalValue = currentTotalAgua;
+            newItem = {
+                tempId: crypto.randomUUID(),
+                categoria: 'agua',
+                om_favorecida: formData.om_favorecida,
+                ug_favorecida: formData.ug_favorecida,
+                om_destino: formData.agua_om_uasg,
+                ug_destino: formData.agua_ug_uasg,
+                dias_operacao,
+                efetivo,
+                fase_atividade: formData.fase_atividade,
+                publico: formData.publico,
+                valor_total: totalValue,
+                valor_nd_30: totalValue,
+                valor_nd_39: 0
+            };
         } else {
-            // Para Água e Lanche, usamos os grupos de aquisição
+            // Para Lanche, usamos os grupos de aquisição
             const totalValue = formData.acquisitionGroups.reduce((sum, g) => sum + g.totalValue, 0);
             const totalND30 = formData.acquisitionGroups.reduce((sum, g) => sum + g.totalND30, 0);
             const totalND39 = formData.acquisitionGroups.reduce((sum, g) => sum + g.totalND39, 0);
 
             newItem = {
                 tempId: crypto.randomUUID(),
-                categoria: categoria_complemento,
+                categoria: 'lanche',
                 om_favorecida: formData.om_favorecida,
                 ug_favorecida: formData.ug_favorecida,
                 om_destino: formData.om_destino,
@@ -253,14 +300,10 @@ const ComplementoAlimentacaoForm = () => {
         setPendingItems(prev => [...prev, newItem]);
         
         // Reset parcial do form para permitir nova adição
-        // Mantendo Pregão e Valores de Etapa conforme solicitado
         setFormData(prev => ({
             ...prev,
             acquisitionGroups: [],
-            // valor_etapa_qs: 0, // Mantido
-            // valor_etapa_qr: 0, // Mantido
-            // pregao_qs: "", // Mantido
-            // pregao_qr: "" // Mantido
+            // Mantendo dados conforme solicitado
         }));
         
         toast.success("Item adicionado à lista de revisão.");
@@ -286,6 +329,15 @@ const ComplementoAlimentacaoForm = () => {
                 formData.valor_etapa_qr <= 0 || 
                 !formData.pregao_qr || 
                 !formData.om_qr
+            );
+        } else if (formData.categoria_complemento === 'agua') {
+            return (
+                formData.agua_consumo_dia <= 0 ||
+                !formData.agua_tipo_envase ||
+                formData.agua_volume_envase <= 0 ||
+                formData.agua_valor_unitario <= 0 ||
+                !formData.agua_pregao ||
+                !formData.agua_om_uasg
             );
         } else {
             return formData.acquisitionGroups.length === 0;
@@ -433,9 +485,75 @@ const ComplementoAlimentacaoForm = () => {
                                                         </div>
                                                     </div>
                                                 )}
+
+                                                {formData.categoria_complemento === 'agua' && (
+                                                    <div className="grid grid-cols-1 gap-6 pt-4 border-t">
+                                                        <div className="space-y-4 p-4 bg-blue-500/5 rounded-md border border-blue-500/10 relative overflow-hidden">
+                                                            <div className="flex justify-between items-start">
+                                                                <h4 className="font-bold text-sm text-blue-600 uppercase">Detalhamento de Água Mineral</h4>
+                                                                <div className="text-right">
+                                                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Subtotal Estimado</p>
+                                                                    <p className="text-sm font-extrabold text-blue-600">{formatCurrency(currentTotalAgua)}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label>Consumo (litro) / dia *</Label>
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        step="0.1" 
+                                                                        value={formData.agua_consumo_dia || ""} 
+                                                                        onChange={(e) => setFormData({...formData, agua_consumo_dia: parseFloat(e.target.value) || 0})} 
+                                                                        placeholder="Ex: 2.5"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Tipo Envase *</Label>
+                                                                    <Input 
+                                                                        value={formData.agua_tipo_envase} 
+                                                                        onChange={(e) => setFormData({...formData, agua_tipo_envase: e.target.value})} 
+                                                                        placeholder="Ex: Garrafa" 
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Volume do Envase (L) *</Label>
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        step="0.01" 
+                                                                        value={formData.agua_volume_envase || ""} 
+                                                                        onChange={(e) => setFormData({...formData, agua_volume_envase: parseFloat(e.target.value) || 0})} 
+                                                                        placeholder="Ex: 0.5"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label>Valor da Garrafa *</Label>
+                                                                    <CurrencyInput value={formData.agua_valor_unitario} onChange={(val) => setFormData({...formData, agua_valor_unitario: val})} />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Pregão *</Label>
+                                                                    <Input 
+                                                                        value={formData.agua_pregao} 
+                                                                        onChange={(e) => setFormData({...formData, agua_pregao: e.target.value})} 
+                                                                        placeholder="Ex: 90.001/24" 
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>UASG *</Label>
+                                                                <OmSelector 
+                                                                    selectedOmId={selectedOmAguaId} 
+                                                                    onChange={(om) => setFormData({...formData, agua_om_uasg: om?.nome_om || "", agua_ug_uasg: om?.codug_om || ""})} 
+                                                                    placeholder="Selecione a UASG" 
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
 
-                                            {!isGenero && (
+                                            {formData.categoria_complemento === 'lanche' && (
                                                 <div className="mt-6">
                                                     <Card className="p-4 bg-background">
                                                         <div className="flex items-center justify-between mb-4">
