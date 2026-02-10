@@ -15,7 +15,7 @@ export interface ComplementoAlimentacaoRegistro {
     group_purpose: string | null;
     categoria_complemento: 'genero' | 'agua' | 'lanche';
     
-    // Novos campos para Gênero Alimentício (estilo Classe I)
+    // Metadados para Gênero Alimentício (armazenados no JSONB ou campos auxiliares)
     publico: string;
     valor_etapa_qs: number;
     pregao_qs: string | null;
@@ -44,7 +44,7 @@ export interface ConsolidatedComplementoRecord {
     dias_operacao: number;
     efetivo: number;
     fase_atividade: string;
-    records: ComplementoAlimentacaoRegistro[];
+    records: any[]; // Registros do banco
     totalGeral: number;
     totalND30: number;
     totalND39: number;
@@ -58,6 +58,19 @@ export interface AcquisitionGroup {
     totalValue: number;
     totalND30: number;
     totalND39: number;
+    // Campos específicos de Gênero
+    isGenero?: boolean;
+    generoData?: {
+        publico: string;
+        valor_etapa_qs: number;
+        pregao_qs: string;
+        om_qs: string;
+        ug_qs: string;
+        valor_etapa_qr: number;
+        pregao_qr: string;
+        om_qr: string;
+        ug_qr: string;
+    };
 }
 
 export const calculateGroupTotals = (items: ItemAquisicao[]) => {
@@ -70,22 +83,45 @@ export const calculateGroupTotals = (items: ItemAquisicao[]) => {
     }, { totalValue: 0, totalND30: 0, totalND39: 0 });
 };
 
+// Função para gerar a memória de Gênero (QS ou QR)
+export const generateGeneroText = (
+    tipo: 'QS' | 'QR',
+    data: any,
+    context: any
+): string => {
+    const valorEtapa = tipo === 'QS' ? data.valor_etapa_qs : data.valor_etapa_qr;
+    const pregao = tipo === 'QS' ? data.pregao_qs : data.pregao_qr;
+    const uasg = tipo === 'QS' ? data.ug_qs : data.ug_qr;
+    const total = (context.efetivo || 0) * (context.dias_operacao || 0) * (valorEtapa || 0);
+    
+    const formattedTotal = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const formattedEtapa = valorEtapa.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    return `33.90.30 - Aquisição de Gêneros Alimentícios (${tipo}) para atender ${context.efetivo} ${data.publico}, durante ${context.dias_operacao} ${context.dias_operacao === 1 ? 'dia' : 'dias'} de ${context.fase_atividade}.
+
+Cálculo: 
+- Valor do Complemento: ${formattedEtapa}/dia.
+
+Fórmula: (Efetivo a ser alimentado x valor da etapa) x Nr de dias.
+- ${context.efetivo} ${data.publico} x ${formattedEtapa}/dia) x ${context.dias_operacao} ${context.dias_operacao === 1 ? 'dia' : 'dias'} = ${formattedTotal}.
+
+Total: ${formattedTotal}.
+(Pregão ${pregao || 'N/A'} - UASG ${uasg || 'N/A'}).`;
+};
+
 export const generateComplementoMemoriaCalculo = (
-    registro: Partial<ComplementoAlimentacaoRegistro>,
+    registro: any,
     context: { organizacao: string; efetivo: number; dias_operacao: number; fase_atividade: string }
 ): string => {
-    if (registro.categoria_complemento === 'genero') {
-        const totalQS = (registro.efetivo || 0) * (registro.dias_operacao || 0) * (registro.valor_etapa_qs || 0);
-        const totalQR = (registro.efetivo || 0) * (registro.dias_operacao || 0) * (registro.valor_etapa_qr || 0);
-        
-        return `Solicitação de Gênero Alimentício para a OM ${context.organizacao}.\n` +
-               `Público: ${registro.publico || 'Não informado'}\n` +
-               `Contexto: ${registro.efetivo} militares por ${registro.dias_operacao} dias na fase ${context.fase_atividade}.\n` +
-               `Cálculo QS: ${registro.efetivo} x ${registro.dias_operacao} x R$ ${registro.valor_etapa_qs?.toFixed(2)} = R$ ${totalQS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n` +
-               `Cálculo QR: ${registro.efetivo} x ${registro.dias_operacao} x R$ ${registro.valor_etapa_qr?.toFixed(2)} = R$ ${totalQR.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n` +
-               `Valor Total: R$ ${Number(registro.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    // Se for Gênero, a memória é composta por QS e QR (será tratada no componente visual para separar em dois blocos)
+    if (registro.categoria_complemento === 'genero' || registro.isGenero) {
+        const data = registro.generoData || registro;
+        const qs = generateGeneroText('QS', data, context);
+        const qr = generateGeneroText('QR', data, context);
+        return `${qs}\n\n---\n\n${qr}`;
     }
 
+    // Lógica para Água e Lanche (baseada em itens)
     const itens = (registro.itens_aquisicao || []) as ItemAquisicao[];
     const listaItens = itens.map(item => 
         `- ${item.quantidade} un. de ${item.descricao_reduzida || item.descricao_item} (Cód: ${item.codigo_catmat})`
@@ -98,8 +134,10 @@ export const generateComplementoMemoriaCalculo = (
 
     const categoriaLabel = categoriaMap[registro.categoria_complemento as keyof typeof categoriaMap] || 'Complemento';
 
-    return `Solicitação de ${categoriaLabel} para a OM ${context.organizacao}.\n` +
-           `Contexto: Efetivo de ${context.efetivo} militares por ${context.dias_operacao} dias na fase ${context.fase_atividade}.\n` +
-           `Itens selecionados:\n${listaItens}\n` +
-           `Valor Total: R$ ${Number(registro.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    return `33.90.30 - Aquisição de ${categoriaLabel} para atender ${context.efetivo} militares, durante ${context.dias_operacao} ${context.dias_operacao === 1 ? 'dia' : 'dias'} de ${context.fase_atividade}.
+
+Itens selecionados:
+${listaItens}
+
+Valor Total: ${Number(registro.valor_total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
 };
