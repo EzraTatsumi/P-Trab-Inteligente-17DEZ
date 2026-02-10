@@ -1,106 +1,55 @@
-import { formatCurrency, formatCodug, formatNumber } from "./formatUtils";
-import { formatFasesParaTexto } from "./diariaUtils"; 
+import { formatCurrency } from "./formatUtils";
 
-// Tolerância para comparação de valores monetários
-const ND_TOLERANCE = 0.01;
-
-// Type for Verba Operacional data
-interface VerbaOperacionalData {
-  dias_operacao: number;
-  quantidade_equipes: number;
-  valor_total_solicitado: number;
-  organizacao: string; // OM Favorecida (do PTrab)
-  ug: string; // UG Favorecida (do PTrab)
-  om_detentora: string | null; // OM Destino do Recurso
-  ug_detentora: string | null; // UG Destino do Recurso
-  fase_atividade: string;
-  valor_nd_30: number;
-  valor_nd_39: number;
+export interface VerbaOperacionalRegistro {
+    organizacao: string;
+    ug: string;
+    om_detentora: string;
+    ug_detentora: string;
+    dias_operacao: number;
+    quantidade_equipes: number;
+    valor_total_solicitado: number;
+    fase_atividade: string;
+    valor_nd_30: number;
+    valor_nd_39: number;
+    objeto_aquisicao: string;
+    objeto_contratacao: string;
+    proposito: string;
+    finalidade: string;
+    local: string;
+    tarefa: string;
 }
 
-/**
- * Determina a preposição correta ('do' ou 'da') para o nome da OM.
- */
-const getOmPreposition = (omName: string): 'do' | 'da' => {
-    if (!omName) return 'do';
-    if (omName.includes('ª') || omName.toUpperCase().includes('RM')) {
-        return 'da';
-    }
-    return 'do';
-};
-
-/**
- * Calcula o custo total da verba operacional.
- * O total geral é a soma das NDs alocadas.
- */
-export const calculateVerbaOperacionalTotals = (
-    data: VerbaOperacionalData
-): { 
-    totalGeral: number,
-    totalND30: number,
-    totalND39: number,
-} => {
-    const totalGeral = data.valor_nd_30 + data.valor_nd_39;
-    
+export function calculateVerbaOperacionalTotals(data: VerbaOperacionalRegistro) {
     return {
-        totalGeral,
+        totalGeral: data.valor_total_solicitado,
         totalND30: data.valor_nd_30,
         totalND39: data.valor_nd_39,
     };
-};
+}
 
-/**
- * Gera a memória de cálculo detalhada para o registro de Verba Operacional.
- */
-export const generateVerbaOperacionalMemoriaCalculo = (
-    data: VerbaOperacionalData
-): string => {
-    const { 
-        dias_operacao, 
-        quantidade_equipes, 
-        organizacao, // OM Favorecida (para o cabeçalho)
-        fase_atividade,
-        valor_nd_30,
-        valor_nd_39,
-    } = data;
+export function generateVerbaOperacionalMemoriaCalculo(data: VerbaOperacionalRegistro): string {
+    const total = data.valor_total_solicitado;
     
-    const omPreposition = getOmPreposition(organizacao);
-    const faseFormatada = formatFasesParaTexto(fase_atividade);
-    
-    const equipeText = quantidade_equipes === 1 ? 'equipe' : 'equipes';
-    const diaText = dias_operacao === 1 ? 'dia' : 'dias';
-    
-    const valorTotal = valor_nd_30 + valor_nd_39;
-    
-    // --- Lógica para determinar o prefixo ND dinâmico ---
-    const isND30Active = valor_nd_30 > ND_TOLERANCE;
-    const isND39Active = valor_nd_39 > ND_TOLERANCE;
-    
-    let ndPrefix = "";
-    if (isND30Active && isND39Active) {
-        ndPrefix = "33.90.30 / 33.90.39";
-    } else if (isND30Active) {
-        ndPrefix = "33.90.30";
-    } else if (isND39Active) {
-        ndPrefix = "33.90.39";
-    } else {
-        ndPrefix = "(Não Alocado)";
-    }
-    // --- Fim Lógica ND ---
-    
-    const despesasDescricao = "operando fora da sede (hospedagem, alimentação, combustível, aluguel de viatura, manutenção de viatura e serviços diversos).";
-    
-    // CABEÇALHO: Usa OM Favorecida (organizacao)
-    const header = `${ndPrefix} - Solicitação de Verba Operacional para ${quantidade_equipes} ${equipeText} ${omPreposition} ${organizacao}, durante ${dias_operacao} ${diaText} de ${faseFormatada}, ${despesasDescricao}`;
+    return `MEMÓRIA DE CÁLCULO - VERBA OPERACIONAL
 
-    const sigilosoLine = "O recurso precisa ser solicitado na Gestão Tesouro 0001, na ação 2866 (ação de caráter sigiloso).";
-    
-    // Detalhamento simplificado, contendo apenas a linha sigilosa e o total.
-    const detalhamento = `
+1. DADOS DA SOLICITAÇÃO:
+   - OM Favorecida: ${data.organizacao} (UG: ${data.ug})
+   - OM Detentora: ${data.om_detentora} (UG: ${data.ug_detentora})
+   - Período: ${data.dias_operacao} dias
+   - Efetivo: ${data.quantidade_equipes} militares
+   - Fase: ${data.fase_atividade}
 
-${sigilosoLine}
+2. DETALHAMENTO DA APLICAÇÃO:
+   - Objeto (Material): ${data.objeto_aquisicao}
+   - Objeto (Serviço): ${data.objeto_contratacao}
+   - Propósito: ${data.proposito}
+   - Finalidade: ${data.finalidade}
+   - Local: ${data.local}
+   - Tarefa: ${data.tarefa}
 
-Total: ${formatCurrency(valorTotal)}.`; // ALTERADO AQUI
+3. DISTRIBUIÇÃO POR NATUREZA DE DESPESA:
+   - ND 33.90.30 (Material): ${formatCurrency(data.valor_nd_30)}
+   - ND 33.90.39 (Serviço): ${formatCurrency(data.valor_nd_39)}
 
-    return header + detalhamento;
-};
+VALOR TOTAL SOLICITADO: ${formatCurrency(total)}`;
+}
