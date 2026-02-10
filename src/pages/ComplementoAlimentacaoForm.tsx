@@ -257,18 +257,20 @@ const ComplementoAlimentacaoForm = () => {
 
     const { data: registros, isLoading: isLoadingRegistros } = useQuery<ComplementoAlimentacaoRegistro[]>({
         queryKey: ['complementoAlimentacaoRegistros', ptrabId],
-        queryFn: () => fetchPTrabRecords('complemento_alimentacao_registros', ptrabId!),
+        queryFn: async () => {
+            const data = await fetchPTrabRecords('complemento_alimentacao_registros', ptrabId!);
+            return (data as any[]).map(r => ({
+                ...r,
+                itens_aquisicao: (r.itens_aquisicao as unknown as ItemAquisicao[]) || []
+            })) as unknown as ComplementoAlimentacaoRegistro[];
+        },
         enabled: !!ptrabId,
-        select: (data) => (data as any[]).map(r => ({
-            ...r,
-            itens_aquisicao: (r.itens_aquisicao as unknown as ItemAquisicao[]) || []
-        })).sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
     });
 
     const consolidatedRegistros = useMemo<ConsolidatedComplementoRecord[]>(() => {
         if (!registros) return [];
 
-        const groups = registros.reduce((acc, registro) => {
+        const groups = (registros as ComplementoAlimentacaoRegistro[]).reduce((acc, registro) => {
             const key = [
                 registro.organizacao,
                 registro.ug,
@@ -1473,6 +1475,7 @@ const ComplementoAlimentacaoForm = () => {
                 selectedYear={new Date().getFullYear()} 
                 initialItems={itemsToPreselect} 
                 onSelect={(items) => { setSelectedItemsFromSelector(items); setIsItemSelectorOpen(false); }} 
+                onAddDiretriz={() => navigate('/config/diretrizes')}
             />
         </div>
     );
