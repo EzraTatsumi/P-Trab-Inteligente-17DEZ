@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,8 +21,8 @@ import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/ptrabUtils";
 import { 
     calculateSuprimentoFundosTotals, 
     generateSuprimentoFundosMemoriaCalculo,
-    SuprimentoFundosRegistro, // Importar o tipo de registro da DB
-} from "@/lib/suprimentoFundosUtils"; // NOVO UTILITÁRIO
+    SuprimentoFundosRegistro, 
+} from "@/lib/suprimentoFundosUtils"; 
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -38,10 +40,9 @@ import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
 import { cn } from "@/lib/utils"; 
 import CurrencyInput from "@/components/CurrencyInput";
-import { suprimentoFundosSchema } from "@/lib/validationSchemas"; // IMPORTAR NOVO SCHEMA
+import { suprimentoFundosSchema } from "@/lib/validationSchemas"; 
 
 // Tipos de dados
-// Usamos o tipo de Verba Operacional como base, pois a estrutura da DB é a mesma
 type SuprimentoFundosRegistroDB = Tables<'verba_operacional_registros'>; 
 
 // Tipo de dados para OmSelector
@@ -56,7 +57,6 @@ interface OMData {
 }
 
 // Tipo para o registro calculado antes de salvar (inclui campos de display)
-// AGORA ESTENDE DIRETAMENTE TablesInsert, pois os campos de detalhe foram adicionados ao DB
 interface CalculatedSuprimentoFundos extends TablesInsert<'verba_operacional_registros'> {
     tempId: string; // ID temporário para gerenciamento local
     memoria_calculo_display: string; // A memória gerada
@@ -175,9 +175,8 @@ const SuprimentoFundosForm = () => {
     // SuprimentoFundos usa a tabela 'verba_operacional_registros'
     const { data: registros, isLoading: isLoadingRegistros } = useQuery<SuprimentoFundosRegistroDB[]>({
         queryKey: ['suprimentoFundosRegistros', ptrabId],
-        queryFn: () => fetchPTrabRecords('verba_operacional_registros', ptrabId!), // Filtro removido da queryFn
+        queryFn: () => fetchPTrabRecords('verba_operacional_registros', ptrabId!), 
         enabled: !!ptrabId,
-        // Filtro client-side para Suprimento de Fundos (detalhamento deve ser 'Suprimento de Fundos')
         select: (data) => data.filter(r => r.detalhamento === 'Suprimento de Fundos').sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
     });
     
@@ -186,7 +185,6 @@ const SuprimentoFundosForm = () => {
     // Efeito de inicialização da OM Favorecida (OM do PTrab)
     useEffect(() => {
         if (ptrabData && !editingId) {
-            // 1. OM Favorecida (OM do PTrab) - NÃO PRÉ-SELECIONAR para forçar a seleção manual.
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: "", 
@@ -194,7 +192,6 @@ const SuprimentoFundosForm = () => {
             }));
             setSelectedOmFavorecidaId(undefined); 
             
-            // 2. OM Detentora (Padrão CIE)
             const cieOm = oms?.find(om => om.nome_om === DEFAULT_OM_DETENTORA && om.codug_om === DEFAULT_UG_DETENTORA);
             if (cieOm) {
                 setSelectedOmDetentoraId(cieOm.id);
@@ -213,7 +210,6 @@ const SuprimentoFundosForm = () => {
             }
             
         } else if (ptrabData && editingId) {
-            // Se estiver editando, tentamos encontrar os IDs das OMs para o seletor
             const omFavorecida = oms?.find(om => om.nome_om === formData.om_favorecida && om.codug_om === formData.ug_favorecida);
             const omDetentora = oms?.find(om => om.nome_om === formData.om_detentora && om.codug_om === formData.ug_detentora);
             
@@ -237,7 +233,6 @@ const SuprimentoFundosForm = () => {
         }
         
         try {
-            // 1. Recalcular ND 30 (dependente)
             const totalSolicitado = formData.valor_total_solicitado;
             const nd39Value = formData.valor_nd_39; 
             const nd30Value = calculateND30(totalSolicitado, nd39Value); 
@@ -250,10 +245,7 @@ const SuprimentoFundosForm = () => {
                 valor_nd_39: nd39Value,
             };
 
-            // 2. Calcular totais
             const totals = calculateSuprimentoFundosTotals(calculatedFormData as any);
-            
-            // 3. Gerar memória
             const memoria = generateSuprimentoFundosMemoriaCalculo(calculatedFormData as any);
             
             return {
@@ -273,9 +265,7 @@ const SuprimentoFundosForm = () => {
     
     // NOVO MEMO: Verifica se o formulário está "sujo" (diferente do stagedUpdate ou lastStagedFormData)
     const isSuprimentoDirty = useMemo(() => {
-        // MODO EDIÇÃO: Compara com stagedUpdate
         if (editingId && stagedUpdate) {
-            // We need to convert stagedUpdate back to the form data structure for comparison
             const stagedFormData: typeof initialFormState = {
                 om_favorecida: stagedUpdate.organizacao,
                 ug_favorecida: stagedUpdate.ug,
@@ -298,7 +288,6 @@ const SuprimentoFundosForm = () => {
             return compareFormData(formData, stagedFormData);
         }
         
-        // MODO NOVO REGISTRO: Compara com lastStagedFormData
         if (!editingId && pendingSuprimentos.length > 0 && lastStagedFormData) {
             return compareFormData(formData, lastStagedFormData);
         }
@@ -314,7 +303,6 @@ const SuprimentoFundosForm = () => {
     // NOVO MEMO: Agrupa os registros por OM Favorecida (organizacao/ug)
     const registrosAgrupadosPorOM = useMemo(() => {
         return registros?.reduce((acc, registro) => {
-            // Agrupamos pela OM Favorecida (organizacao/ug na DB)
             const omFavorecida = registro.organizacao; 
             const ugFavorecida = registro.ug; 
             const key = `${omFavorecida} (${ugFavorecida})`;
@@ -343,22 +331,18 @@ const SuprimentoFundosForm = () => {
             if (field === 'valor_total_solicitado') {
                 setRawTotalInput(digits); 
                 newTotalValue = numericValue;
-                
-                // ND 39 é mantida como está, mas recalculamos ND 30 com base nela
                 newND30Value = calculateND30(newTotalValue, newND39Value);
                 
             } else if (field === 'valor_nd_39') {
                 setRawND39Input(digits); 
                 newND39Value = numericValue;
                 
-                // ND 39 cannot exceed Total Solicitado
                 if (newTotalValue > 0 && newND39Value > newTotalValue) {
                     newND39Value = newTotalValue;
                     setRawND39Input(numberToRawDigits(newND39Value)); 
                     toast.warning("O valor da ND 39 foi limitado ao Valor Total Solicitado.");
                 }
                 
-                // Calculate ND 30 (difference)
                 newND30Value = calculateND30(newTotalValue, newND39Value);
                 
             } else {
@@ -382,17 +366,15 @@ const SuprimentoFundosForm = () => {
         mutationFn: async (recordsToSave: CalculatedSuprimentoFundos[]) => {
             if (recordsToSave.length === 0) return;
             
-            // Mapeia os campos do formData para os campos da DB
             const dbRecords = recordsToSave.map(r => {
                 const { tempId, memoria_calculo_display, totalGeral, om_favorecida, ug_favorecida, ...rest } = r;
                 
-                // Campos de detalhamento são mapeados diretamente
                 const dbRecord: TablesInsert<'verba_operacional_registros'> = {
                     ...rest,
-                    organizacao: om_favorecida, // OM Favorecida (do PTrab)
-                    ug: ug_favorecida, // UG Favorecida (do PTrab)
-                    detalhamento: "Suprimento de Fundos", // Marcador para filtro
-                    detalhamento_customizado: rest.detalhamento_customizado, // Preserva o texto customizado da memória
+                    organizacao: om_favorecida, 
+                    ug: ug_favorecida, 
+                    detalhamento: "Suprimento de Fundos", 
+                    detalhamento_customizado: rest.detalhamento_customizado, 
                 } as TablesInsert<'verba_operacional_registros'>;
                 
                 return dbRecord;
@@ -413,8 +395,6 @@ const SuprimentoFundosForm = () => {
             toast.success(`Sucesso! ${pendingSuprimentos.length} registro(s) de Suprimento de Fundos adicionado(s).`);
             setPendingSuprimentos([]); 
             setLastStagedFormData(null); 
-            
-            // Resetar o formulário para um novo item, mantendo apenas o contexto de OM Favorecida/Detentora
             resetForm();
         },
         onError: (err) => {
@@ -426,15 +406,14 @@ const SuprimentoFundosForm = () => {
         mutationFn: async (data: CalculatedSuprimentoFundos) => {
             if (!editingId) throw new Error("ID de edição ausente.");
             
-            // Mapeia os campos do stagedUpdate para os campos da DB
             const { tempId, memoria_calculo_display, totalGeral, om_favorecida, ug_favorecida, ...rest } = data;
             
             const dbUpdateData: TablesUpdate<'verba_operacional_registros'> = {
                 ...rest,
                 organizacao: om_favorecida, 
                 ug: ug_favorecida, 
-                detalhamento: "Suprimento de Fundos", // Mantém o marcador
-                detalhamento_customizado: rest.detalhamento_customizado, // Preserva o texto customizado da memória
+                detalhamento: "Suprimento de Fundos", 
+                detalhamento_customizado: rest.detalhamento_customizado, 
             } as TablesUpdate<'verba_operacional_registros'>;
             
             const { error } = await supabase
@@ -484,20 +463,15 @@ const SuprimentoFundosForm = () => {
         setEditingId(null);
         setFormData(prev => ({
             ...initialFormState,
-            // Manter a OM Favorecida (do PTrab) se já estiver definida
             om_favorecida: prev.om_favorecida,
             ug_favorecida: prev.ug_favorecida,
-            // OM Detentora (Padrão CIE)
             om_detentora: DEFAULT_OM_DETENTORA,
             ug_detentora: DEFAULT_UG_DETENTORA,
-            // Dias e equipes são resetados para 0 (vazio)
             dias_operacao: 0,
             quantidade_equipes: 0,
-            // NDs e Total são resetados para 0
             valor_total_solicitado: 0,
             valor_nd_30: 0,
             valor_nd_39: 0,
-            // Detalhes são resetados
             objeto_aquisicao: "",
             objeto_contratacao: "",
             proposito: "",
@@ -531,15 +505,12 @@ const SuprimentoFundosForm = () => {
         
         setEditingId(registro.id);
         
-        // 1. Configurar OM Favorecida (OM do PTrab)
         const omFavorecidaToEdit = oms?.find(om => om.nome_om === registro.organizacao && om.codug_om === registro.ug);
         setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
         
-        // 2. Configurar OM Detentora (OM Destino do Recurso)
         const omDetentoraToEdit = oms?.find(om => om.nome_om === registro.om_detentora && om.codug_om === registro.ug_detentora);
         setSelectedOmDetentoraId(omDetentoraToEdit?.id);
 
-        // 3. Populate formData
         const newFormData = {
             om_favorecida: registro.organizacao, 
             ug_favorecida: registro.ug, 
@@ -551,7 +522,6 @@ const SuprimentoFundosForm = () => {
             ug_detentora: registro.ug_detentora || DEFAULT_UG_DETENTORA,
             valor_nd_30: Number(registro.valor_nd_30 || 0),
             valor_nd_39: Number(registro.valor_nd_39 || 0),
-            // NOVOS CAMPOS (diretamente das colunas da DB)
             objeto_aquisicao: registro.objeto_aquisicao || "",
             objeto_contratacao: registro.objeto_contratacao || "",
             proposito: registro.proposito || "",
@@ -561,11 +531,9 @@ const SuprimentoFundosForm = () => {
         };
         setFormData(newFormData);
         
-        // Atualizar inputs brutos
         setRawTotalInput(numberToRawDigits(newFormData.valor_total_solicitado));
         setRawND39Input(numberToRawDigits(newFormData.valor_nd_39)); 
 
-        // 4. Calculate totals and generate memory
         const totals = calculateSuprimentoFundosTotals({
             ...newFormData,
             organizacao: newFormData.om_favorecida,
@@ -577,7 +545,6 @@ const SuprimentoFundosForm = () => {
             ug: newFormData.ug_favorecida,
         } as any);
         
-        // 5. Stage the current record data immediately for display in Section 3
         const stagedData: CalculatedSuprimentoFundos = {
             tempId: registro.id,
             p_trab_id: ptrabId!,
@@ -594,14 +561,13 @@ const SuprimentoFundosForm = () => {
             valor_nd_39: totals.totalND39,
             
             detalhamento: "Suprimento de Fundos",
-            detalhamento_customizado: registro.detalhamento_customizado, // Preserva o texto customizado da memória
+            detalhamento_customizado: registro.detalhamento_customizado, 
             
             totalGeral: totals.totalGeral,
             memoria_calculo_display: memoria, 
             om_favorecida: newFormData.om_favorecida,
             ug_favorecida: newFormData.ug_favorecida,
             
-            // Incluir campos de detalhamento no stagedUpdate
             objeto_aquisicao: newFormData.objeto_aquisicao,
             objeto_contratacao: newFormData.objeto_contratacao,
             proposito: newFormData.proposito,
@@ -623,12 +589,10 @@ const SuprimentoFundosForm = () => {
         setShowDeleteDialog(true);
     };
 
-    // Adiciona o item calculado à lista pendente OU prepara a atualização (staging)
     const handleStageCalculation = (e: React.FormEvent) => {
         e.preventDefault();
         
         try {
-            // 1. Recalcular ND 30 (dependente)
             const totalSolicitado = formData.valor_total_solicitado;
             const nd39Value = formData.valor_nd_39;
             const nd30Value = calculateND30(totalSolicitado, nd39Value);
@@ -638,10 +602,8 @@ const SuprimentoFundosForm = () => {
                 valor_nd_30: nd30Value, 
             };
             
-            // 2. Validação Zod
             suprimentoFundosSchema.parse(dataToValidate);
             
-            // 3. Preparar o objeto final (calculatedData)
             const calculatedDataForUtils: SuprimentoFundosRegistro = {
                 ...dataToValidate,
                 organizacao: dataToValidate.om_favorecida,
@@ -674,7 +636,6 @@ const SuprimentoFundosForm = () => {
                 om_favorecida: formData.om_favorecida,
                 ug_favorecida: formData.ug_favorecida,
                 
-                // Incluir campos de detalhamento no objeto a ser salvo/estagiado
                 objeto_aquisicao: formData.objeto_aquisicao,
                 objeto_contratacao: formData.objeto_contratacao,
                 proposito: formData.proposito,
@@ -686,7 +647,6 @@ const SuprimentoFundosForm = () => {
             if (editingId) {
                 const originalRecord = registros?.find(r => r.id === editingId);
                 
-                // Se o detalhamento_customizado for um texto (memória customizada), preservamos.
                 let memoriaCustomizadaTexto: string | null = null;
                 try {
                     JSON.parse(originalRecord?.detalhamento_customizado || "");
@@ -701,8 +661,6 @@ const SuprimentoFundosForm = () => {
                 window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); 
                 return;
             }
-            
-            // MODO ADIÇÃO: Adicionar à lista pendente
             
             const shouldStageNewItem = pendingSuprimentos.length === 0 || isSuprimentoDirty;
 
@@ -721,7 +679,6 @@ const SuprimentoFundosForm = () => {
                 toast.info("Nenhuma alteração detectada no item pendente.");
             }
             
-            // Manter campos de contexto, detalhes E valores
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: prev.om_favorecida,
@@ -752,7 +709,6 @@ const SuprimentoFundosForm = () => {
         }
     };
     
-    // Salva todos os itens pendentes no DB
     const handleSavePendingSuprimentos = () => {
         if (pendingSuprimentos.length === 0) {
             toast.warning("Nenhum item pendente para salvar.");
@@ -762,14 +718,12 @@ const SuprimentoFundosForm = () => {
         saveMutation.mutate(pendingSuprimentos);
     };
     
-    // NOVO: Confirma a atualização do item estagiado no DB
     const handleCommitStagedUpdate = () => {
         if (!editingId || !stagedUpdate) return;
         
         updateMutation.mutate(stagedUpdate);
     };
     
-    // Remove item da lista pendente
     const handleRemovePending = (tempId: string) => {
         setPendingSuprimentos(prev => {
             const newPending = prev.filter(p => p.tempId !== tempId);
@@ -781,33 +735,30 @@ const SuprimentoFundosForm = () => {
         toast.info("Item removido da lista pendente.");
     };
     
-    // Handler para a OM Favorecida (OM do PTrab)
     const handleOmFavorecidaChange = (omData: OMData | undefined) => {
         if (omData) {
             setSelectedOmFavorecidaId(omData.id);
-            // Define a OM Detentora igual à OM Favorecida
             setSelectedOmDetentoraId(omData.id); 
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: omData.nome_om,
                 ug_favorecida: omData.codug_om,
-                om_detentora: omData.nome_om, // OM Detentora = OM Favorecida
-                ug_detentora: omData.codug_om, // UG Detentora = UG Favorecida
+                om_detentora: omData.nome_om, 
+                ug_detentora: omData.codug_om, 
             }));
         } else {
             setSelectedOmFavorecidaId(undefined);
-            setSelectedOmDetentoraId(undefined); // Reset Detentora
+            setSelectedOmDetentoraId(undefined); 
             setFormData(prev => ({
                 ...prev,
                 om_favorecida: "",
                 ug_favorecida: "",
-                om_detentora: "", // Reset Detentora
-                ug_detentora: "", // Reset Detentora
+                om_detentora: "", 
+                ug_detentora: "", 
             }));
         }
     };
     
-    // Handler para a OM Detentora (OM Destino do Recurso)
     const handleOmDetentoraChange = (omData: OMData | undefined) => {
         if (omData) {
             setSelectedOmDetentoraId(omData.id);
@@ -833,12 +784,9 @@ const SuprimentoFundosForm = () => {
         }));
     };
     
-    // --- Lógica de Edição de Memória ---
-    
     const handleIniciarEdicaoMemoria = (registro: SuprimentoFundosRegistroDB) => {
         setEditingMemoriaId(registro.id);
         
-        // 1. Gerar a memória automática
         const calculatedData: SuprimentoFundosRegistro = {
             organizacao: registro.organizacao,
             ug: registro.ug,
@@ -850,7 +798,6 @@ const SuprimentoFundosForm = () => {
             fase_atividade: registro.fase_atividade || "",
             valor_nd_30: registro.valor_nd_30,
             valor_nd_39: registro.valor_nd_39,
-            // Detalhes (diretamente das colunas da DB)
             objeto_aquisicao: registro.objeto_aquisicao || "",
             objeto_contratacao: registro.objeto_contratacao || "",
             proposito: registro.proposito || "",
@@ -860,8 +807,6 @@ const SuprimentoFundosForm = () => {
         };
         
         const memoriaAutomatica = generateSuprimentoFundosMemoriaCalculo(calculatedData as any);
-        
-        // 2. Usar a customizada se existir, senão usar a automática
         setMemoriaEdit(registro.detalhamento_customizado || memoriaAutomatica || "");
     };
 
@@ -872,13 +817,11 @@ const SuprimentoFundosForm = () => {
 
     const handleSalvarMemoriaCustomizada = async (registroId: string) => {
         try {
-            // Se o usuário editar a memória, o campo 'detalhamento_customizado' será sobrescrito com o texto da memória.
-            
             const { error } = await supabase
                 .from("verba_operacional_registros")
                 .update({
-                    detalhamento: "Suprimento de Fundos", // Mantém o marcador
-                    detalhamento_customizado: memoriaEdit.trim() || null, // Salva o texto da memória
+                    detalhamento: "Suprimento de Fundos", 
+                    detalhamento_customizado: memoriaEdit.trim() || null, 
                 })
                 .eq("id", registroId);
 
@@ -899,7 +842,6 @@ const SuprimentoFundosForm = () => {
         }
         
         try {
-            // Restaurar para NULL, pois os detalhes estruturados estão em colunas dedicadas
             const { error } = await supabase
                 .from("verba_operacional_registros")
                 .update({
@@ -917,10 +859,6 @@ const SuprimentoFundosForm = () => {
         }
     };
     
-    // =================================================================
-    // RENDERIZAÇÃO
-    // =================================================================
-
     const isGlobalLoading = isLoadingPTrab || isLoadingRegistros || isLoadingOms;
 
     if (isGlobalLoading) {
@@ -941,12 +879,10 @@ const SuprimentoFundosForm = () => {
                             formData.ug_detentora.length > 0 &&
                             formData.fase_atividade.length > 0;
 
-    // Verifica se os campos numéricos da Solicitação estão preenchidos
     const isSolicitationDataReady = formData.dias_operacao > 0 &&
                                     formData.quantidade_equipes > 0 && 
                                     formData.valor_total_solicitado > 0;
 
-    // Verifica se o total alocado (ND 30 + ND 39) é igual ao total solicitado
     const isAllocationCorrect = areNumbersEqual(formData.valor_total_solicitado, calculos.totalGeral);
 
     const isCalculationReady = isBaseFormReady &&
@@ -959,7 +895,6 @@ const SuprimentoFundosForm = () => {
                               formData.local.length > 0 &&
                               formData.tarefa.length > 0;
     
-    // Lógica para a Seção 3
     const itemsToDisplay = stagedUpdate ? [stagedUpdate] : pendingSuprimentos;
     const isStagingUpdate = !!stagedUpdate;
 
@@ -990,7 +925,6 @@ const SuprimentoFundosForm = () => {
                                 </h3>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {/* OM FAVORECIDA (OM do PTrab) */}
                                     <div className="space-y-2 col-span-1">
                                         <Label htmlFor="om_favorecida">OM Favorecida *</Label>
                                         <OmSelector
@@ -998,7 +932,6 @@ const SuprimentoFundosForm = () => {
                                             onChange={handleOmFavorecidaChange}
                                             placeholder="Selecione a OM Favorecida"
                                             disabled={!isPTrabEditable || isSaving || isLoadingOms || pendingSuprimentos.length > 0}
-                                            // CORREÇÃO: Apenas passa initialOmName/Ug se estiver em modo de edição
                                             initialOmName={editingId ? formData.om_favorecida : undefined}
                                             initialOmUg={editingId ? formData.ug_favorecida : undefined}
                                         />
@@ -1033,7 +966,6 @@ const SuprimentoFundosForm = () => {
                                     
                                     <Card className="mt-6 bg-muted/50 rounded-lg p-4">
                                         
-                                        {/* Dados da Solicitação (Dias e Efetivo) */}
                                         <Card className="rounded-lg mb-4">
                                             <CardHeader className="py-3">
                                                 <CardTitle className="text-base font-semibold">Período e Valor</CardTitle>
@@ -1078,7 +1010,7 @@ const SuprimentoFundosForm = () => {
                                                             <CurrencyInput
                                                                 id="valor_total_solicitado"
                                                                 rawDigits={rawTotalInput}
-                                                                onChange={(digits) => handleCurrencyChange('valor_total_solicitado', digits)}
+                                                                onChange={(_, digits) => handleCurrencyChange('valor_total_solicitado', digits)}
                                                                 placeholder="Ex: 1.500,00"
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 required
@@ -1089,7 +1021,6 @@ const SuprimentoFundosForm = () => {
                                             </CardContent>
                                         </Card>
                                         
-                                        {/* Detalhamento da Aquisição/Contratação */}
                                         <Card className="mt-4 rounded-lg mb-4">
                                             <CardHeader className="py-3">
                                                 <CardTitle className="text-base font-semibold">Detalhes da Aplicação</CardTitle>
@@ -1180,14 +1111,12 @@ const SuprimentoFundosForm = () => {
                                             </CardContent>
                                         </Card>
                                         
-                                        {/* Alocação de NDs */}
                                         {isSolicitationDataReady && (
                                             <Card className="mt-4 rounded-lg p-4 bg-background">
                                                 <h4 className="font-semibold text-base mb-4">
                                                     Alocação de Recursos (Valor Total: {formatCurrency(formData.valor_total_solicitado)})
                                                 </h4>
                                                 
-                                                {/* OM Destino do Recurso (Detentora) */}
                                                 <div className="space-y-2 mb-4">
                                                     <Label htmlFor="om_detentora">OM de Destino do Recurso *</Label>
                                                     <OmSelector
@@ -1204,7 +1133,6 @@ const SuprimentoFundosForm = () => {
                                                 </div>
                                                 
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    {/* ND 30 (Material) - CALCULADO */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="valor_nd_30">ND 33.90.30 (Material)</Label>
                                                         <div className="relative">
@@ -1222,16 +1150,15 @@ const SuprimentoFundosForm = () => {
                                                         </p>
                                                     </div>
                                                     
-                                                    {/* ND 39 (Serviço) - EDITÁVEL */}
                                                     <div className="space-y-2">
                                                         <Label htmlFor="valor_nd_39">ND 33.90.39 (Serviço) *</Label>
                                                         <CurrencyInput
                                                             id="valor_nd_39"
                                                             rawDigits={rawND39Input}
-                                                            onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
+                                                            onChange={(_, digits) => handleCurrencyChange('valor_nd_39', digits)}
                                                             placeholder="0,00"
                                                             disabled={!isPTrabEditable || isSaving}
-                                                            className="text-lg h-12" // CORRIGIDO: Removido pl-12 e div.relative/span R$ duplicados
+                                                            className="text-lg h-12" 
                                                         />
                                                         <p className="text-xs text-muted-foreground">
                                                             Valor alocado para contratação de serviço.
@@ -1254,7 +1181,6 @@ const SuprimentoFundosForm = () => {
                                             </Card>
                                         )}
                                         
-                                        {/* BOTÕES DE AÇÃO */}
                                         <div className="flex justify-end gap-3 pt-4">
                                             <Button 
                                                 type="submit" 
@@ -1278,7 +1204,6 @@ const SuprimentoFundosForm = () => {
                                         3. Itens Adicionados ({itemsToDisplay.length})
                                     </h3>
                                     
-                                    {/* NOVO: Alerta de Validação Final (Modo Novo Registro) */}
                                     {!editingId && isSuprimentoDirty && (
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
@@ -1288,7 +1213,6 @@ const SuprimentoFundosForm = () => {
                                         </Alert>
                                     )}
                                     
-                                    {/* Alerta de Validação Final (Apenas em modo de edição) */}
                                     {editingId && isSuprimentoDirty && (
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
@@ -1302,11 +1226,7 @@ const SuprimentoFundosForm = () => {
                                         {itemsToDisplay.map((item) => {
                                             const totalND30 = item.valor_nd_30;
                                             const totalND39 = item.valor_nd_39;
-                                            
-                                            // Verifica se a OM Detentora é diferente da OM Favorecida
                                             const isDifferentOmInView = item.om_detentora !== item.om_favorecida;
-                                            
-                                            // Lógica de concordância de número
                                             const diasText = item.dias_operacao === 1 ? "dia" : "dias";
                                             const efetivoText = item.quantidade_equipes === 1 ? 'militar' : 'militares'; 
 
@@ -1341,7 +1261,6 @@ const SuprimentoFundosForm = () => {
                                                             </div>
                                                         </div>
                                                         
-                                                        {/* Detalhes da Solicitação */}
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
@@ -1373,7 +1292,6 @@ const SuprimentoFundosForm = () => {
                                         })}
                                     </div>
                                     
-                                    {/* VALOR TOTAL DA OM (PENDENTE / STAGING) */}
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
                                             <span className="font-bold text-base uppercase">
@@ -1432,7 +1350,6 @@ const SuprimentoFundosForm = () => {
                                     </h3>
                                     
                                     {Object.entries(registrosAgrupadosPorOM).map(([omKey, omRegistros]) => {
-                                        // O total da OM é a soma do valor_total_solicitado
                                         const totalOM = omRegistros.reduce((sum, r) => Number(r.valor_total_solicitado) + sum, 0);
                                         const omName = omKey.split(' (')[0];
                                         const ug = omKey.split(' (')[1].replace(')', '');
@@ -1456,9 +1373,7 @@ const SuprimentoFundosForm = () => {
                                                         const totalSolicitado = Number(registro.valor_total_solicitado || 0);
                                                         const totalND30 = Number(registro.valor_nd_30 || 0);
                                                         const totalND39 = Number(registro.valor_nd_39 || 0);
-                                                        
                                                         const isDifferentOm = registro.om_detentora !== registro.organizacao;
-                                                        
                                                         const diasText = registro.dias_operacao === 1 ? 'dia' : 'dias';
                                                         const efetivoText = registro.quantidade_equipes === 1 ? 'militar' : 'militares';
                                                         
@@ -1514,9 +1429,7 @@ const SuprimentoFundosForm = () => {
                                                                     </div>
                                                                 </div>
                                                                 
-                                                                {/* Detalhes da Alocação */}
                                                                 <div className="pt-2 border-t mt-2">
-                                                                    {/* OM Destino Recurso (Sempre visível, vermelha se diferente) */}
                                                                     <div className="flex justify-between text-xs mb-1">
                                                                         <span className="text-muted-foreground">OM Destino Recurso:</span>
                                                                         <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
@@ -1556,7 +1469,6 @@ const SuprimentoFundosForm = () => {
                                     {registros.map(registro => {
                                         const isEditing = editingMemoriaId === registro.id;
                                         
-                                        // Verifica se o detalhamento_customizado é um texto customizado (não o JSON de detalhes)
                                         let hasCustomMemoria = false;
                                         try {
                                             JSON.parse(registro.detalhamento_customizado || "");
@@ -1564,7 +1476,6 @@ const SuprimentoFundosForm = () => {
                                             hasCustomMemoria = !!registro.detalhamento_customizado;
                                         }
                                         
-                                        // 1. Gerar a memória automática (precisa dos detalhes)
                                         const calculatedDataForMemoria: SuprimentoFundosRegistro = {
                                             organizacao: registro.organizacao,
                                             ug: registro.ug,
@@ -1576,7 +1487,6 @@ const SuprimentoFundosForm = () => {
                                             fase_atividade: registro.fase_atividade || "",
                                             valor_nd_30: registro.valor_nd_30,
                                             valor_nd_39: registro.valor_nd_39,
-                                            // Detalhes (diretamente das colunas da DB)
                                             objeto_aquisicao: registro.objeto_aquisicao || "",
                                             objeto_contratacao: registro.objeto_contratacao || "",
                                             proposito: registro.proposito || "",
@@ -1594,7 +1504,6 @@ const SuprimentoFundosForm = () => {
                                             memoriaExibida = registro.detalhamento_customizado!;
                                         }
                                         
-                                        // Verifica se a OM Detentora é diferente da OM Favorecida
                                         const isDifferentOmInMemoria = registro.om_detentora !== registro.organizacao;
 
                                         return (
