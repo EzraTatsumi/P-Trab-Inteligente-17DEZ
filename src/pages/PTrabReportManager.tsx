@@ -21,8 +21,8 @@ import { formatCurrency, formatNumber } from "@/lib/formatUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PTrabLogisticoReport from "@/components/reports/PTrabLogisticoReport";
 import PTrabRacaoOperacionalReport from "@/components/reports/PTrabRacaoOperacionalReport";
-import PTrabOperacionalReport from "@/components/reports/PTrabOperacionalReport"; // NOVO: Importar o relatório operacional
-import PTrabHorasVooReport from "@/components/reports/PTrabHorasVooReport"; // NOVO: Importar o relatório de Horas de Voo
+import PTrabOperacionalReport from "@/components/reports/PTrabOperacionalReport"; 
+import PTrabHorasVooReport from "@/components/reports/PTrabHorasVooReport"; 
 import {
   generateRacaoQuenteMemoriaCalculo,
   generateRacaoOperacionalMemoriaCalculo,
@@ -41,25 +41,29 @@ import {
   calculateDiariaTotals,
   DestinoDiaria,
   QuantidadesPorPosto,
-} from "@/lib/diariaUtils"; // NOVO: Importar utilitários de Diária
+} from "@/lib/diariaUtils"; 
 import { 
   generateVerbaOperacionalMemoriaCalculo as generateVerbaOperacionalMemoriaCalculoUtility,
-} from "@/lib/verbaOperacionalUtils"; // NOVO: Importar utilitários de Verba Operacional
+} from "@/lib/verbaOperacionalUtils"; 
 import { 
   generateSuprimentoFundosMemoriaCalculo as generateSuprimentoFundosMemoriaCalculoUtility,
-} from "@/lib/suprimentoFundosUtils"; // NOVO: Importar utilitários de Suprimento de Fundos
+} from "@/lib/suprimentoFundosUtils"; 
 import { 
   generatePassagemMemoriaCalculo,
-  PassagemRegistro as PassagemRegistroType, // Importando o tipo PassagemRegistro do utilitário
-} from "@/lib/passagemUtils"; // Importando utilitários de Passagem
+  PassagemRegistro as PassagemRegistroType, 
+} from "@/lib/passagemUtils"; 
 import { 
   ConcessionariaRegistroComDiretriz, 
   generateConcessionariaMemoriaCalculo as generateConcessionariaMemoriaCalculoUtility,
-} from "@/lib/concessionariaUtils"; // NOVO: Importando utilitários de Concessionária
+} from "@/lib/concessionariaUtils"; 
+import { 
+  MaterialConsumoRegistro as MaterialConsumoRegistroType,
+  generateMaterialConsumoMemoriaCalculo as generateMaterialConsumoMemoriaCalculoUtility,
+} from "@/lib/materialConsumoUtils"; // NOVO IMPORT
 import { RefLPC } from "@/types/refLPC";
-import { fetchDiretrizesOperacionais, fetchDiretrizesPassagens } from "@/lib/ptrabUtils"; // IMPORTANDO fetchDiretrizesPassagens
+import { fetchDiretrizesOperacionais, fetchDiretrizesPassagens } from "@/lib/ptrabUtils"; 
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
-import { Tables, Json } from "@/integrations/supabase/types"; // Importar Tables e Json
+import { Tables, Json } from "@/integrations/supabase/types"; 
 
 // =================================================================
 // TIPOS E FUNÇÕES AUXILIARES (Exportados para uso nos relatórios)
@@ -83,9 +87,7 @@ export interface PTrabData {
   rm_vinculacao: string;
 }
 
-// Usando o tipo importado do Supabase e adicionando as propriedades em camelCase
 export interface ClasseIRegistro extends Tables<'classe_i_registros'> {
-    // Propriedades em camelCase para uso nos componentes e utilitários
     diasOperacao: number;
     faseAtividade: string | null;
     omQS: string;
@@ -104,13 +106,9 @@ export interface ClasseIRegistro extends Tables<'classe_i_registros'> {
     etapaQR: number;
     memoriaQSCustomizada: string | null;
     memoriaQRCustomizada: string | null;
-    // O campo memoria_calculo_op_customizada já está em snake_case no Supabase e na interface
-    
-    // Propriedades calculadas
     calculos: ReturnType<typeof calculateClasseICalculations>;
 }
 
-// NOVO TIPO: DiariaRegistro (Mantido como estava, pois já usa snake_case do DB)
 export interface DiariaRegistro extends Tables<'diaria_registros'> {
   destino: DestinoDiaria;
   quantidades_por_posto: QuantidadesPorPosto;
@@ -121,7 +119,6 @@ export interface DiariaRegistro extends Tables<'diaria_registros'> {
   is_aereo: boolean;
 }
 
-// NOVO TIPO: VerbaOperacionalRegistro (Mantido como estava)
 export interface VerbaOperacionalRegistro extends Tables<'verba_operacional_registros'> {
   valor_total_solicitado: number;
   valor_nd_30: number;
@@ -130,13 +127,12 @@ export interface VerbaOperacionalRegistro extends Tables<'verba_operacional_regi
   quantidade_equipes: number;
 }
 
-// NOVO TIPO: PassagemRegistro (Exportado do utilitário)
 export type PassagemRegistro = PassagemRegistroType;
 
-// NOVO TIPO: ConcessionariaRegistro (Exportado do utilitário)
 export type ConcessionariaRegistro = ConcessionariaRegistroComDiretriz;
 
-// NOVO TIPO: HorasVooRegistro
+export type MaterialConsumoRegistro = MaterialConsumoRegistroType; // NOVO TIPO
+
 export interface HorasVooRegistro extends Tables<'horas_voo_registros'> {
   quantidade_hv: number;
   valor_nd_30: number;
@@ -145,25 +141,22 @@ export interface HorasVooRegistro extends Tables<'horas_voo_registros'> {
   dias_operacao: number;
 }
 
-// CORREÇÃO: Tipagem de ItemClasseIII para garantir que campos numéricos sejam number
 export interface ItemClasseIII {
-  item: string; // nome_equipamento
+  item: string; 
   categoria: 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO';
-  consumo_fixo: number; // L/h or km/L
-  tipo_combustivel_fixo: 'GASOLINA' | 'DIESEL'; // GASOLINA or DIESEL
+  consumo_fixo: number; 
+  tipo_combustivel_fixo: 'GASOLINA' | 'DIESEL'; 
   unidade_fixa: 'L/h' | 'km/L';
   quantidade: number;
   horas_dia: number;
   distancia_percorrida: number;
   quantidade_deslocamentos: number;
   dias_utilizados: number;
-  // Lubricant fields (only for GERADOR, EMBARCACAO)
-  consumo_lubrificante_litro: number; // L/100h or L/h
-  preco_lubrificante: number; // R$/L
-  memoria_customizada?: string | null; // NOVO CAMPO
-  // Campos adicionados para cálculo de totais (necessários para a função calculateItemTotals)
-  preco_lubrificante_input: string; // CORRIGIDO: Alterado para string para compatibilidade com calculateItemTotals
-  consumo_lubrificante_input: string; // CORRIGIDO: Alterado para string para compatibilidade com calculateItemTotals
+  consumo_lubrificante_litro: number; 
+  preco_lubrificante: number; 
+  memoria_customizada?: string | null; 
+  preco_lubrificante_input: string; 
+  consumo_lubrificante_input: string; 
 }
 
 export interface ItemClasseII {
@@ -183,20 +176,16 @@ export interface ItemClasseIX {
   memoria_customizada?: string | null;
 }
 
-// Classe IIRegistro é usada para Classes II, V, VI, VII, VIII, IX
 export interface ClasseIIRegistro extends Tables<'classe_ii_registros'> {
-  // Campos adicionais de outras tabelas que são mapeados para esta interface
   animal_tipo?: 'Equino' | 'Canino' | null;
   quantidade_animais?: number;
-  itens_remonta?: Json; // Usado para Classe VIII Remonta
-  itens_saude?: Json; // Usado para Classe VIII Saúde
+  itens_remonta?: Json; 
+  itens_saude?: Json; 
   itens_motomecanizacao?: Json;
-  efetivo: number; // Garantido como number
+  efetivo: number; 
 }
 
-// CORREÇÃO: ClasseIIIRegistro agora estende Tables<'classe_iii_registros'> e tipa itens_equipamentos como ItemClasseIII[]
 export interface ClasseIIIRegistro extends Omit<Tables<'classe_iii_registros'>, 'itens_equipamentos'> {
-  // Campos numéricos garantidos
   potencia_hp: number | null;
   horas_dia: number | null;
   consumo_hora: number | null;
@@ -209,12 +198,9 @@ export interface ClasseIIIRegistro extends Omit<Tables<'classe_iii_registros'>, 
   preco_lubrificante: number | null;
   valor_nd_30: number;
   valor_nd_39: number;
-  
-  // Itens de equipamento tipados corretamente (Substituindo o tipo Json do Supabase)
   itens_equipamentos: ItemClasseIII[] | null;
 }
 
-// EXPORTADO: Linha de Classe I para o relatório logístico
 export interface LinhaTabela {
   registro: ClasseIRegistro;
   valor_nd_30: number; 
@@ -222,14 +208,12 @@ export interface LinhaTabela {
   tipo: 'QS' | 'QR';
 }
 
-// EXPORTADO: Linha de Classes II, V, VI, VII, VIII, IX para o relatório logístico
 export interface LinhaClasseII {
   registro: ClasseIIRegistro;
   valor_nd_30: number; 
   valor_nd_39: number; 
 }
 
-// NOVO TIPO: Linha desagregada de Classe III para o relatório logístico
 export interface LinhaClasseIII {
   registro: ClasseIIIRegistro;
   categoria_equipamento: 'GERADOR' | 'EMBARCACAO' | 'EQUIPAMENTO_ENGENHARIA' | 'MOTOMECANIZACAO' | 'LUBRIFICANTE';
@@ -237,16 +221,14 @@ export interface LinhaClasseIII {
   valor_total_linha: number;
   total_litros_linha: number;
   preco_litro_linha: number;
-  memoria_calculo: string; // Armazena a memória de cálculo granular
+  memoria_calculo: string; 
 }
 
-// NOVO TIPO: Linha de Concessionária para o relatório logístico
 export interface LinhaConcessionaria {
   registro: ConcessionariaRegistro;
   valor_nd_39: number;
 }
 
-// NOVO TIPO: Estrutura granular para geração de memória da Classe III
 interface GranularDisplayItem {
   id: string; 
   om_destino: string; 
@@ -264,13 +246,13 @@ interface GranularDisplayItem {
   detailed_items: ItemClasseIII[];
 }
 
-// NOVO TIPO: Estrutura de agrupamento para o Relatório Operacional
 export interface GrupoOMOperacional {
   diarias: DiariaRegistro[];
   verbaOperacional: VerbaOperacionalRegistro[];
   suprimentoFundos: VerbaOperacionalRegistro[];
   passagens: PassagemRegistro[];
   concessionarias: ConcessionariaRegistro[];
+  materialConsumo: MaterialConsumoRegistro[]; // NOVO CAMPO
 }
 
 export interface GrupoOM {
@@ -283,10 +265,9 @@ export interface GrupoOM {
   linhasClasseVIII: LinhaClasseII[];
   linhasClasseIX: LinhaClasseII[];
   linhasClasseIII: LinhaClasseIII[];
-  linhasConcessionaria: LinhaConcessionaria[]; // NOVO: Inicializa Concessionária
+  linhasConcessionaria: LinhaConcessionaria[]; 
 }
 
-// CORREÇÃO DO ERRO 3: Definindo a interface PTrabOperacionalReportProps corretamente
 export interface PTrabOperacionalReportProps {
     ptrabData: PTrabData;
     omsOrdenadas: string[];
@@ -296,14 +277,16 @@ export interface PTrabOperacionalReportProps {
     registrosSuprimentoFundos: VerbaOperacionalRegistro[];
     registrosPassagem: PassagemRegistro[];
     registrosConcessionaria: ConcessionariaRegistro[];
+    registrosMaterialConsumo: MaterialConsumoRegistro[]; // NOVO CAMPO
     diretrizesOperacionais: Tables<'diretrizes_operacionais'> | null;
-    diretrizesPassagens: Tables<'diretrizes_passagens'>[]; // PROPRIEDADE FALTANTE (CORRIGIDA)
+    diretrizesPassagens: Tables<'diretrizes_passagens'>[]; 
     fileSuffix: string;
     generateDiariaMemoriaCalculo: (registro: DiariaRegistro, diretrizesOp: Tables<'diretrizes_operacionais'> | null) => string;
     generateVerbaOperacionalMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string;
     generateSuprimentoFundosMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string;
     generatePassagemMemoriaCalculo: (registro: PassagemRegistro) => string;
     generateConcessionariaMemoriaCalculo: (registro: ConcessionariaRegistro) => string;
+    generateMaterialConsumoMemoriaCalculo: (registro: MaterialConsumoRegistro) => string; // NOVO CAMPO
 }
 
 
@@ -338,7 +321,6 @@ export const formatFasesParaTexto = (faseCSV: string | null | undefined): string
   return `${demaisFases} e ${ultimaFase}`;
 };
 
-// Helper function to get the label for Classe II/V/VI/VII/VIII/IX categories
 export const getClasseIILabel = (category: string): string => {
     switch (category) {
         case 'Vtr Administrativa': return 'Viatura Administrativa';
@@ -363,22 +345,15 @@ export const getClasseIILabel = (category: string): string => {
     }
 };
 
-// Exportando a função de cálculo de item da utilidade
 export const calculateItemTotalClasseIX = calculateItemTotalClasseIXUtility;
 
-// Função para gerar a memória de cálculo da Classe IX (agora usando o utilitário)
 export const generateClasseIXMemoriaCalculo = (registro: ClasseIIRegistro): string => {
     if (registro.detalhamento_customizado) {
       return registro.detalhamento_customizado;
     }
-    
-    // Usa o utilitário importado
     return generateClasseIXUtility(registro as any);
 };
 
-/**
- * Função unificada para gerar a memória de cálculo da Classe I, priorizando o customizado.
- */
 export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro, tipo: 'QS' | 'QR' | 'OP'): string => {
     if (registro.categoria === 'RACAO_OPERACIONAL') {
         if (tipo === 'OP') {
@@ -406,7 +381,6 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
         return "Memória não aplicável para Ração Operacional.";
     }
 
-    // Lógica para Ração Quente (QS/QR)
     if (tipo === 'QS') {
         if (registro.memoriaQSCustomizada && registro.memoriaQSCustomizada.trim().length > 0) {
             return registro.memoriaQSCustomizada;
@@ -426,7 +400,7 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
             calculos: {
                 totalQS: registro.totalQS,
                 totalQR: registro.totalQR,
-                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).nrCiclos,
+                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).nrCiclos,
                 diasEtapaPaga: 0,
                 diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).diasEtapaSolicitada,
                 totalEtapas: 0,
@@ -461,7 +435,7 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
             calculos: {
                 totalQS: registro.totalQS,
                 totalQR: registro.totalQR,
-                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.diasOperacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).nrCiclos,
+                nrCiclos: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).nrCiclos,
                 diasEtapaPaga: 0,
                 diasEtapaSolicitada: calculateClasseICalculations(registro.efetivo, registro.dias_operacao, registro.nrRefInt || 0, registro.valorQS || 0, registro.valorQR || 0).diasEtapaSolicitada,
                 totalEtapas: 0,
@@ -480,10 +454,6 @@ export const generateClasseIMemoriaCalculoUnificada = (registro: ClasseIRegistro
     return "Memória de cálculo não encontrada.";
 };
 
-/**
- * Função unificada para gerar a memória de cálculo da Classe II, V, VI, VII, VIII e IX,
- * priorizando o customizado e usando os utilitários corretos.
- */
 export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isClasseII: boolean): string => {
     if (!registro || !registro.categoria) {
         return "Registro inválido ou categoria ausente.";
@@ -500,7 +470,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     if (isClasseII) {
         return generateClasseIIUtility(
             registro.categoria as 'Equipamento Individual' | 'Proteção Balística' | 'Material de Estacionamento',
-            registro.itens_equipamentos as any as ItemClasseII[], // CORREÇÃO: Usar 'as any as' para forçar o cast
+            registro.itens_equipamentos as any as ItemClasseII[], 
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -514,7 +484,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     if (CLASSE_V_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVUtility(
             registro.categoria as 'Armt L' | 'Armt P' | 'IODCT' | 'DQBRN',
-            registro.itens_equipamentos as any as ItemClasseII[], // CORREÇÃO: Usar 'as any as' para forçar o cast
+            registro.itens_equipamentos as any as ItemClasseII[], 
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -528,7 +498,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     if (CLASSE_VI_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVIUtility(
             registro.categoria as 'Gerador' | 'Embarcação' | 'Equipamento de Engenharia',
-            registro.itens_equipamentos as any as ItemClasseII[], // CORREÇÃO: Usar 'as any as' para forçar o cast
+            registro.itens_equipamentos as any as ItemClasseII[], 
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -542,7 +512,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     if (CLASSE_VII_CATEGORIES.includes(registro.categoria)) {
         return generateClasseVIIUtility(
             registro.categoria as 'Comunicações' | 'Informática',
-            registro.itens_equipamentos as any as ItemClasseII[], // CORREÇÃO: Usar 'as any as' para forçar o cast
+            registro.itens_equipamentos as any as ItemClasseII[], 
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -558,7 +528,7 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
         
         return generateClasseVIIIUtility(
             registro.categoria as 'Saúde' | 'Remonta/Veterinária',
-            itens as any, // CORREÇÃO: Cast para any para resolver o conflito Json
+            itens as any, 
             registro.dias_operacao,
             registro.om_detentora || registro.organizacao,
             registro.ug_detentora || registro.ug,
@@ -573,9 +543,6 @@ export const generateClasseIIMemoriaCalculo = (registro: ClasseIIRegistro, isCla
     return registro.detalhamento || "Memória de cálculo não disponível.";
 };
 
-/**
- * Função unificada para gerar a memória de cálculo da Diária, priorizando o customizado.
- */
 export const generateDiariaMemoriaCalculoUnificada = (
     registro: DiariaRegistro, 
     diretrizesOp: Tables<'diretrizes_operacionais'> | null
@@ -588,68 +555,65 @@ export const generateDiariaMemoriaCalculoUnificada = (
         return registro.detalhamento || "Diretrizes Operacionais ausentes. Memória de cálculo não gerada.";
     }
 
-    // Recalcula os totais para garantir que a memória automática esteja atualizada com as diretrizes atuais
     const totals = calculateDiariaTotals(registro, diretrizesOp);
     
     return generateDiariaMemoriaCalculoUtility(registro, diretrizesOp, totals);
 };
 
-/**
- * Função unificada para gerar a memória de cálculo da Verba Operacional, priorizando o customizado.
- */
 export const generateVerbaOperacionalMemoriaCalculada = (
     registro: VerbaOperacionalRegistro
 ): string => {
     if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
         return registro.detalhamento_customizado;
     }
-    
-    // O cálculo da Verba Operacional é simples e não depende de diretrizes externas, apenas dos dados do registro.
     return generateVerbaOperacionalMemoriaCalculoUtility(registro as any);
 };
 
-/**
- * Função unificada para gerar a memória de cálculo do Suprimento de Fundos, priorizando o customizado.
- */
 export const generateSuprimentoFundosMemoriaCalculada = (
     registro: VerbaOperacionalRegistro
 ): string => {
     if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
         return registro.detalhamento_customizado;
     }
-    
-    // Usa o utilitário específico para Suprimento de Fundos
     return generateSuprimentoFundosMemoriaCalculoUtility(registro as any);
 };
 
-/**
- * Função unificada para gerar a memória de cálculo da Passagem, priorizando o customizado.
- * CORREÇÃO 1: Removendo o argumento diretrizesPassagens e a lógica de busca interna,
- * assumindo que generatePassagemMemoriaCalculo foi simplificado para aceitar apenas o registro.
- */
 export const generatePassagemMemoriaCalculada = (
     registro: PassagemRegistro
 ): string => {
     if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
         return registro.detalhamento_customizado;
     }
-    
-    // Usa o utilitário importado, passando apenas o registro
     return generatePassagemMemoriaCalculo(registro);
 };
 
-/**
- * Função unificada para gerar a memória de cálculo da Concessionária, priorizando o customizado.
- */
 export const generateConcessionariaMemoriaCalculada = (
     registro: ConcessionariaRegistro
 ): string => {
     if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
         return registro.detalhamento_customizado;
     }
-    
-    // Usa o utilitário importado
     return generateConcessionariaMemoriaCalculoUtility(registro);
+};
+
+/**
+ * Função unificada para gerar a memória de cálculo de Material de Consumo, priorizando o customizado.
+ */
+export const generateMaterialConsumoMemoriaCalculada = (
+    registro: MaterialConsumoRegistro
+): string => {
+    if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
+        return registro.detalhamento_customizado;
+    }
+    
+    const context = {
+        organizacao: registro.organizacao,
+        efetivo: registro.efetivo,
+        dias_operacao: registro.dias_operacao,
+        fase_atividade: registro.fase_atividade
+    };
+    
+    return generateMaterialConsumoMemoriaCalculoUtility(registro, context);
 };
 
 
@@ -678,28 +642,18 @@ const normalizarNome = (valor?: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-/**
- * Retorna a prioridade de ordenação da OM:
- * 1: Região Militar (RM)
- * 2: Brigada (Bda)
- * 3: Demais OMs
- */
 const getOMPriority = (nomeOM: string, nomeRM: string): 1 | 2 | 3 => {
   const om = normalizarNome(nomeOM);
   const rm = normalizarNome(nomeRM);
 
-  // Prioridade 1: Região Militar (RM)
-  // Usa a lógica existente de isRegiaoMilitar para ser abrangente
   if (om === rm || /^\d+ª?\s*RM$/.test(om) || om.includes('REGIAO MILITAR') || rm.includes(om) || om.includes('RM')) {
     return 1;
   }
   
-  // Prioridade 2: Brigada (Bda)
   if (om.includes('BDA') || om.includes('BRIGADA')) {
     return 2;
   }
 
-  // Prioridade 3: Demais OMs
   return 3;
 };
 
@@ -744,7 +698,7 @@ interface ReportOption {
 const REPORT_OPTIONS: ReportOption[] = [
   { value: 'logistico', label: 'P Trab Logístico', icon: Package, iconClass: 'text-orange-500', fileSuffix: 'Aba Log' },
   { value: 'racao_operacional', label: 'P Trab Cl I - Ração Operacional', icon: Utensils, iconClass: 'text-orange-500', fileSuffix: 'Aba Rç Op' },
-  { value: 'operacional', label: 'P Trab Operacional', icon: Briefcase, iconClass: 'text-blue-500', fileSuffix: 'Aba Op' }, // NOVO
+  { value: 'operacional', label: 'P Trab Operacional', icon: Briefcase, iconClass: 'text-blue-500', fileSuffix: 'Aba Op' }, 
   { value: 'material_permanente', label: 'P Trab Material Permanente', icon: HardHat, iconClass: 'text-green-500', fileSuffix: 'Aba Mat Perm' },
   { value: 'hora_voo', label: 'P Trab Hora de Voo', icon: Plane, iconClass: 'text-purple-500', fileSuffix: 'Aba HV' },
   { value: 'dor', label: 'DOR', icon: ClipboardList, iconClass: 'text-gray-500', fileSuffix: 'Aba DOR' },
@@ -793,7 +747,8 @@ const PTrabReportManager = () => {
   const [registrosSuprimentoFundos, setRegistrosSuprimentoFundos] = useState<VerbaOperacionalRegistro[]>([]);
   const [registrosPassagem, setRegistrosPassagem] = useState<PassagemRegistro[]>([]);
   const [registrosConcessionaria, setRegistrosConcessionaria] = useState<ConcessionariaRegistro[]>([]);
-  const [registrosHorasVoo, setRegistrosHorasVoo] = useState<HorasVooRegistro[]>([]); // NOVO: Registros de Horas de Voo
+  const [registrosMaterialConsumo, setRegistrosMaterialConsumo] = useState<MaterialConsumoRegistro[]>([]); // NOVO ESTADO
+  const [registrosHorasVoo, setRegistrosHorasVoo] = useState<HorasVooRegistro[]>([]); 
   const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null);
   const [diretrizesPassagens, setDiretrizesPassagens] = useState<Tables<'diretrizes_passagens'>[]>([]);
   const [refLPC, setRefLPC] = useState<RefLPC | null>(null);
@@ -825,7 +780,6 @@ const PTrabReportManager = () => {
 
       const year = new Date(ptrab.periodo_inicio).getFullYear();
       
-      // Otimização: Todas as buscas de dados e diretrizes são feitas em paralelo.
       const [
         { data: classeIData },
         { data: classeIIData },
@@ -841,7 +795,8 @@ const PTrabReportManager = () => {
         { data: verbaOperacionalData }, 
         { data: passagemData },
         { data: concessionariaData },
-        { data: horasVooData }, // NOVO: Dados de Horas de Voo
+        { data: materialConsumoData }, // NOVO FETCH
+        { data: horasVooData }, 
         diretrizesOpData,
         diretrizesPassagensData,
       ] = await Promise.all([
@@ -859,7 +814,8 @@ const PTrabReportManager = () => {
         supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId), 
         supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId),
         supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId),
-        supabase.from('horas_voo_registros').select('*').eq('p_trab_id', ptrabId), // NOVO: Fetch Horas de Voo
+        supabase.from('material_consumo_registros').select('*').eq('p_trab_id', ptrabId), // NOVO FETCH
+        supabase.from('horas_voo_registros').select('*').eq('p_trab_id', ptrabId), 
         fetchDiretrizesOperacionais(year),
         fetchDiretrizesPassagens(year),
       ]);
@@ -867,15 +823,14 @@ const PTrabReportManager = () => {
       setDiretrizesOperacionais(diretrizesOpData as Tables<'diretrizes_operacionais'> || null);
       setDiretrizesPassagens(diretrizesPassagensData as Tables<'diretrizes_passagens'>[] || []); 
 
-      // CORREÇÃO: Usar 'as any' para contornar o erro de tipo do Supabase na desestruturação do spread
       const allClasseItems = [
         ...(classeIIData as any[] || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
         ...(classeVData as any[] || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })),
-        ...(classeVIData as any[] || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), // efetivo será 0 ou undefined, mas não causará erro de fetch
-        ...(classeVIIData as any[] || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), // efetivo será 0 ou undefined
-        ...(classeVIIISaudeData as any[] || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), // efetivo será 0 ou undefined
-        ...(classeVIIIRemontaData as any[] || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), // efetivo será 0 ou undefined
-        ...(classeIXData as any[] || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), // efetivo será 0 ou undefined
+        ...(classeVIData as any[] || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
+        ...(classeVIIData as any[] || []).map((r: any) => ({ ...r, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
+        ...(classeVIIISaudeData as any[] || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
+        ...(classeVIIIRemontaData as any[] || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_remonta, categoria: 'Remonta/Veterinária', animal_tipo: r.animal_tipo, quantidade_animais: r.quantidade_animais, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
+        ...(classeIXData as any[] || []).map((r: any) => ({ ...r, itens_equipamentos: r.itens_motomecanizacao, categoria: r.categoria, om_detentora: r.om_detentora, ug_detentora: r.ug_detentora, efetivo: r.efetivo || 0 })), 
       ];
 
       setPtrabData(ptrab as PTrabData);
@@ -884,7 +839,6 @@ const PTrabReportManager = () => {
           
           return {
               ...r,
-              // Mapeamento de snake_case para camelCase
               diasOperacao: r.dias_operacao,
               faseAtividade: r.fase_atividade,
               omQS: r.om_qs,
@@ -903,22 +857,18 @@ const PTrabReportManager = () => {
               etapaQR: Number(r.etapa_qr),
               memoriaQSCustomizada: r.memoria_calculo_qs_customizada,
               memoriaQRCustomizada: r.memoria_calculo_qr_customizada,
-              
-              // Propriedades calculadas
               calculos: calculations,
           } as ClasseIRegistro;
       }));
       setRegistrosClasseII(allClasseItems as ClasseIIRegistro[]);
       
-      // CORREÇÃO: Mapear itens_equipamentos de Json para ItemClasseIII[] durante o carregamento da Classe III
       setRegistrosClasseIII((classeIIIData || []).map(r => ({
           ...r,
-          itens_equipamentos: (r.itens_equipamentos as any as ItemClasseIII[] | null) || null, // Usando as any as
+          itens_equipamentos: (r.itens_equipamentos as any as ItemClasseIII[] | null) || null, 
       })) as ClasseIIIRegistro[]);
       
       setRefLPC(refLPCData as RefLPC || null);
       
-      // NOVO: Processar Diárias
       setRegistrosDiaria((diariaData || []).map(r => ({
           ...r,
           destino: r.destino as DestinoDiaria,
@@ -930,7 +880,6 @@ const PTrabReportManager = () => {
           is_aereo: r.is_aereo || false,
       })) as DiariaRegistro[]);
       
-      // NOVO: Processar Verba Operacional e Suprimento de Fundos
       const allVerbaRecords = (verbaOperacionalData || []).map(r => ({
           ...r,
           valor_total_solicitado: Number(r.valor_total_solicitado || 0),
@@ -939,18 +888,16 @@ const PTrabReportManager = () => {
           dias_operacao: r.dias_operacao || 0,
           quantidade_equipes: r.quantidade_equipes || 0,
           objeto_aquisicao: r.objeto_aquisicao || null,
-                    objeto_contratacao: r.objeto_contratacao || null,
+          objeto_contratacao: r.objeto_contratacao || null,
           proposito: r.proposito || null,
           finalidade: r.finalidade || null,
           local: r.local || null,
           tarefa: r.tarefa || null,
       })) as VerbaOperacionalRegistro[];
       
-      // Separar Verba Operacional de Suprimento de Fundos
       setRegistrosVerbaOperacional(allVerbaRecords.filter(r => r.detalhamento !== 'Suprimento de Fundos'));
       setRegistrosSuprimentoFundos(allVerbaRecords.filter(r => r.detalhamento === 'Suprimento de Fundos'));
       
-      // NOVO: Processar Passagens
       setRegistrosPassagem((passagemData || []).map(r => ({
           ...r,
           valor_unitario: Number(r.valor_unitario || 0),
@@ -961,7 +908,6 @@ const PTrabReportManager = () => {
           efetivo: r.efetivo || 0,
       })) as PassagemRegistro[]);
       
-      // NOVO: Processar Concessionárias
       setRegistrosConcessionaria((concessionariaData || []).map(r => ({
           ...r,
           valor_unitario: Number(r.valor_unitario || 0),
@@ -970,14 +916,22 @@ const PTrabReportManager = () => {
           valor_nd_39: Number(r.valor_nd_39 || 0),
           dias_operacao: r.dias_operacao || 0,
           efetivo: r.efetivo || 0,
-          // Adicionando campos da diretriz (que serão preenchidos no PTrabOperacionalReport)
           nome_concessionaria: '',
           unidade_custo: '',
           fonte_consumo: null,
           fonte_custo: null,
       })) as ConcessionariaRegistro[]);
+
+      // NOVO: Processar Material de Consumo
+      setRegistrosMaterialConsumo((materialConsumoData || []).map(r => ({
+          ...r,
+          valor_total: Number(r.valor_total || 0),
+          valor_nd_30: Number(r.valor_nd_30 || 0),
+          valor_nd_39: Number(r.valor_nd_39 || 0),
+          dias_operacao: r.dias_operacao || 0,
+          efetivo: r.efetivo || 0,
+      })) as MaterialConsumoRegistro[]);
       
-      // NOVO: Processar Horas de Voo
       setRegistrosHorasVoo((horasVooData || []).map(r => ({
           ...r,
           quantidade_hv: Number(r.quantidade_hv || 0),
@@ -1000,7 +954,6 @@ const PTrabReportManager = () => {
     loadData();
   }, [loadData]);
 
-  // --- LÓGICA DE AGRUPAMENTO E CÁLCULO (Mantida no Manager para ser passada aos relatórios) ---
   const gruposPorOM = useMemo(() => {
     const grupos: Record<string, GrupoOM> = {};
     const initializeGroup = (name: string) => {
@@ -1013,7 +966,6 @@ const PTrabReportManager = () => {
         }
     };
 
-    // 1. Processar Classe I (Apenas Ração Quente para a tabela principal)
     registrosClasseI.filter(r => r.categoria === 'RACAO_QUENTE').forEach((registro) => {
         initializeGroup(registro.omQS || registro.organizacao);
         grupos[registro.omQS || registro.organizacao].linhasQS.push({ 
@@ -1032,7 +984,6 @@ const PTrabReportManager = () => {
         });
     });
     
-    // 2. Processar Classes II, V, VI, VII, VIII, IX
     registrosClasseII.forEach((registro) => {
         initializeGroup(registro.organizacao);
         const omGroup = grupos[registro.organizacao];
@@ -1058,7 +1009,6 @@ const PTrabReportManager = () => {
         }
     });
 
-    // 3. Processar Classe III (Combustível e Lubrificante) - DESAGREGAÇÃO
     registrosClasseIII.forEach((registro) => {
         const isCombustivel = registro.tipo_equipamento === 'COMBUSTIVEL_CONSOLIDADO';
         const isLubrificante = registro.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO';
@@ -1067,10 +1017,8 @@ const PTrabReportManager = () => {
             
             let omDestinoRecurso: string;
             if (isCombustivel) {
-                // Para Combustível, o recurso vai para a OM Fornecedora (om_detentora) se for diferente da OM que usa (organizacao)
                 omDestinoRecurso = registro.om_detentora || registro.organizacao;
             } else {
-                // Para Lubrificante, o recurso vai para a OM que usa (organizacao)
                 omDestinoRecurso = registro.organizacao;
             }
             
@@ -1078,7 +1026,6 @@ const PTrabReportManager = () => {
             
             const itens = registro.itens_equipamentos || [];
             
-            // Agrupa os itens granulares por Categoria (GERADOR, EMBARCACAO, etc.)
             const gruposGranulares: Record<string, ItemClasseIII[]> = {};
             
             itens.forEach(item => {
@@ -1097,24 +1044,21 @@ const PTrabReportManager = () => {
                 let precoLitroLinha = 0;
                 
                 itensGrupo.forEach(item => {
-                    // Adicionando campos de input para satisfazer a interface ItemClasseIII
                     const itemWithInputs: ItemClasseIII = {
                         ...item,
-                        // CORREÇÃO: Convertendo para string para satisfazer a tipagem externa
                         preco_lubrificante_input: String(registro.preco_lubrificante || 0), 
                         consumo_lubrificante_input: String(registro.consumo_lubrificante_litro || 0),
                     };
-                    // CORREÇÃO: Passando itemWithInputs tipado corretamente
                     const totals = calculateItemTotals(itemWithInputs, refLPC, registro.dias_operacao);
                     if (isCombustivel) {
                         totalLitrosLinha += totals.totalLitros;
                         valorTotalLinha += totals.valorCombustivel;
-                        precoLitroLinha = totals.precoLitro; // Deve ser o mesmo para todos os itens do mesmo tipo de combustível/OM
+                        precoLitroLinha = totals.precoLitro; 
                         
                     } else if (isLubrificante) {
                         totalLitrosLinha += totals.litrosLubrificante;
                         valorTotalLinha += totals.valorLubrificante;
-                        precoLitroLinha = totalLitrosLinha > 0 ? valorTotalLinha / totalLitrosLinha : 0;
+                        precoLitroLinha = totalLitrosLinha > 0 ? valorTotalLinha / totalLitrosLitha : 0;
                     }
                 });
                 
@@ -1129,7 +1073,7 @@ const PTrabReportManager = () => {
                 const omFornecedora = registro.om_detentora || '';
                 const ugFornecedora = registro.ug_detentora || '';
                 
-                const omDestinoLubrificante = registro.organizacao; // Lubrificante é consumido na OM que usa
+                const omDestinoLubrificante = registro.organizacao; 
                 const ugDestinoLubrificante = registro.ug;
                 
                 const granularItem: GranularDisplayItem = {
@@ -1157,7 +1101,6 @@ const PTrabReportManager = () => {
                 if (itemComMemoria && itemComMemoria.memoria_customizada && itemComMemoria.memoria_customizada.trim().length > 0) {
                     memoriaCalculo = itemComMemoria.memoria_customizada;
                 } else {
-                    // CORREÇÃO: Casting granularItem para any para evitar erro de ItemClasseIII[] vs ItemClasseIII[] (diferentes contextos)
                     memoriaCalculo = generateClasseIIIGranularUtility(
                         granularItem as any, 
                         refLPC, 
@@ -1179,7 +1122,6 @@ const PTrabReportManager = () => {
         }
     });
     
-    // 4. Processar Concessionária (ND 33.90.39)
     registrosConcessionaria.forEach((registro) => {
         const omDestinoRecurso = registro.om_detentora || registro.organizacao;
         initializeGroup(omDestinoRecurso);
@@ -1204,13 +1146,9 @@ const PTrabReportManager = () => {
     return oms.sort((a, b) => {
         const aPriority = getOMPriority(a, rmName);
         const bPriority = getOMPriority(b, rmName);
-        
-        // 1. Ordenar por prioridade (1 < 2 < 3)
         if (aPriority !== bPriority) {
             return aPriority - bPriority;
         }
-        
-        // 2. Desempate alfabético
         return a.localeCompare(b);
     });
   }, [gruposPorOM, nomeRM]);
@@ -1274,9 +1212,6 @@ const PTrabReportManager = () => {
         .filter(l => l.tipo_suprimento === 'LUBRIFICANTE')
         .reduce((acc, linha) => acc + linha.valor_total_linha, 0);
         
-    const totalConcessionaria_ND39 = grupo.linhasConcessionaria.reduce((acc, linha) => acc + linha.valor_nd_39, 0); 
-
-    
     const total_33_90_30 = totalQS + totalQR + 
                            totalClasseII_ND30 + totalClasseV_ND30 + totalClasseVI_ND30 + totalClasseVII_ND30 + totalClasseVIII_ND30 + totalClasseIX_ND30 +
                            totalLubrificante; 
@@ -1306,7 +1241,6 @@ const PTrabReportManager = () => {
     };
   }, [nomeRM]);
   
-  // --- LÓGICA DE AGRUPAMENTO E ORDENAÇÃO OPERACIONAL (NOVO) ---
   const gruposOperacionaisPorOM = useMemo(() => {
     const grupos: Record<string, GrupoOMOperacional> = {};
     const initializeGroup = (name: string) => {
@@ -1316,60 +1250,59 @@ const PTrabReportManager = () => {
                 verbaOperacional: [],
                 suprimentoFundos: [],
                 passagens: [],
-                concessionarias: []
+                concessionarias: [],
+                materialConsumo: [] // NOVO CAMPO
             };
         }
     };
 
-    // Função auxiliar para determinar a OM que recebe o crédito/recurso
     const getCreditRecipientOM = (record: any, isDetentoraBased: boolean) => {
         if (isDetentoraBased) {
-            // Para Verba Operacional, Passagens, Concessionária: usa om_detentora como prioridade
             return record.om_detentora || record.organizacao;
         }
-        // Para Diárias, Suprimento de Fundos: usa organizacao (OM Favorecida)
         return record.organizacao;
     };
 
-    // 1. Processar Diárias (Agrupamento por OM Favorecida)
     registrosDiaria.forEach(r => {
         const om = getCreditRecipientOM(r, false);
         initializeGroup(om);
         grupos[om].diarias.push(r);
     });
 
-    // 2. Processar Verba Operacional (Agrupamento por OM Detentora)
     registrosVerbaOperacional.forEach(r => {
         const om = getCreditRecipientOM(r, true);
         initializeGroup(om);
         grupos[om].verbaOperacional.push(r);
     });
 
-    // 3. Processar Suprimento de Fundos (Agrupamento por OM Favorecida)
     registrosSuprimentoFundos.forEach(r => {
         const om = getCreditRecipientOM(r, false);
         initializeGroup(om);
         grupos[om].suprimentoFundos.push(r);
     });
 
-    // 4. Processar Passagens (Agrupamento por OM Detentora)
     registrosPassagem.forEach(r => {
         const om = getCreditRecipientOM(r, true);
         initializeGroup(om);
         grupos[om].passagens.push(r);
     });
 
-    // 5. Processar Concessionárias (Agrupamento por OM Detentora)
     registrosConcessionaria.forEach(r => {
         const om = getCreditRecipientOM(r, true);
         initializeGroup(om);
         grupos[om].concessionarias.push(r);
     });
 
-    return grupos;
-  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria]);
+    // NOVO: Processar Material de Consumo (Agrupamento por OM Detentora)
+    registrosMaterialConsumo.forEach(r => {
+        const om = getCreditRecipientOM(r, true);
+        initializeGroup(om);
+        grupos[om].materialConsumo.push(r);
+    });
 
-  // --- LÓGICA DE AGRUPAMENTO E ORDENAÇÃO HORAS DE VOO (NOVO) ---
+    return grupos;
+  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosMaterialConsumo]);
+
   const gruposHorasVooPorOM = useMemo(() => {
     const grupos: Record<string, HorasVooRegistro[]> = {};
     const initializeGroup = (name: string) => {
@@ -1378,7 +1311,6 @@ const PTrabReportManager = () => {
         }
     };
 
-    // Agrupamento por OM Detentora
     registrosHorasVoo.forEach(r => {
         const om = r.om_detentora || r.organizacao;
         initializeGroup(om);
@@ -1395,13 +1327,9 @@ const PTrabReportManager = () => {
     return oms.sort((a, b) => {
         const aPriority = getOMPriority(a, rmName);
         const bPriority = getOMPriority(b, rmName);
-        
-        // 1. Ordenar por prioridade (1 < 2 < 3)
         if (aPriority !== bPriority) {
             return aPriority - bPriority;
         }
-        
-        // 2. Desempate alfabético
         return a.localeCompare(b);
     });
   }, [gruposHorasVooPorOM, nomeRM]);
@@ -1413,49 +1341,42 @@ const PTrabReportManager = () => {
     return oms.sort((a, b) => {
         const aPriority = getOMPriority(a, rmName);
         const bPriority = getOMPriority(b, rmName);
-        
-        // 1. Ordenar por prioridade (1 < 2 < 3)
         if (aPriority !== bPriority) {
             return aPriority - bPriority;
         }
-        
-        // 2. Desempate alfabético
         return a.localeCompare(b);
     });
   }, [gruposOperacionaisPorOM, nomeRM]);
   
-  // --- LÓGICA DE VERIFICAÇÃO DE DADOS ---
   const hasDataForReport = useMemo(() => {
     switch (selectedReport) {
       case 'logistico':
-        // Logístico inclui Classe I (QS/QR), II, III (Combustível/Lubrificante), V, VI, VII, VIII, IX
         const hasClasseI_QSQR = registrosClasseI.some(r => r.categoria === 'RACAO_QUENTE');
         const hasOutrasClasses = registrosClasseII.length > 0 || 
                                  registrosClasseIII.length > 0;
         return hasClasseI_QSQR || hasOutrasClasses;
 
       case 'racao_operacional':
-        // Ração Operacional inclui Classe I (Ração Operacional)
         return registrosClasseI.some(r => r.categoria === 'RACAO_OPERACIONAL');
 
       case 'operacional':
-        // Operacional inclui Diárias, Verba Operacional, Suprimento de Fundos, Passagens, Concessionária
         return registrosDiaria.length > 0 || 
                registrosVerbaOperacional.length > 0 || 
                registrosSuprimentoFundos.length > 0 || 
                registrosPassagem.length > 0 ||
-               registrosConcessionaria.length > 0;
+               registrosConcessionaria.length > 0 ||
+               registrosMaterialConsumo.length > 0; // NOVO
 
       case 'material_permanente':
-        return false; // Ainda não implementados
+        return false; 
       case 'hora_voo':
         return registrosHorasVoo.length > 0;
       case 'dor':
-        return false; // Ainda não implementados
+        return false; 
       default:
         return false;
     }
-  }, [selectedReport, registrosClasseI, registrosClasseII, registrosClasseIII, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosHorasVoo]);
+  }, [selectedReport, registrosClasseI, registrosClasseII, registrosClasseIII, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosMaterialConsumo, registrosHorasVoo]);
 
 
   const renderReport = () => {
@@ -1514,6 +1435,7 @@ const PTrabReportManager = () => {
                 registrosSuprimentoFundos={registrosSuprimentoFundos}
                 registrosPassagem={registrosPassagem}
                 registrosConcessionaria={registrosConcessionaria}
+                registrosMaterialConsumo={registrosMaterialConsumo} // NOVO
                 diretrizesOperacionais={diretrizesOperacionais}
                 diretrizesPassagens={diretrizesPassagens} 
                 fileSuffix={fileSuffix}
@@ -1522,6 +1444,7 @@ const PTrabReportManager = () => {
                 generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada}
                 generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada} 
                 generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada}
+                generateMaterialConsumoMemoriaCalculo={generateMaterialConsumoMemoriaCalculada} // NOVO
             />
         );
       case 'material_permanente':
