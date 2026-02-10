@@ -196,6 +196,7 @@ const VerbaOperacionalForm = () => {
       <PageMetadata 
         title="Verba Operacional" 
         description="Detalhamento de custos de Verba Operacional para o Plano de Trabalho."
+        canonicalPath={`/ptrab/verba-operacional?ptrabId=${ptrabId}`}
       />
       
       <div className="container max-w-4xl mx-auto">
