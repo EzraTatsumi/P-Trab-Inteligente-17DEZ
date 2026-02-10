@@ -207,7 +207,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     totalMaterialPermanente: 0,
     totalAviacaoExercito: 0,
     classeI: { total: 0, totalComplemento: 0, totalEtapaSolicitadaValor: 0, totalDiasEtapaSolicitada: 0, totalRefeicoesIntermediarias: 0, totalRacoesOperacionaisGeral: 0 },
-    classeII: { total: 0, totalND30: number, totalND39: number, totalItens: 0, groupedCategories: {} },
+    classeII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeIII: { total: 0, totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0 },
     classeV: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeVI: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
@@ -2110,7 +2110,7 @@ export const PTrabCostSummary = ({
               }}
             >
               <div className="flex justify-between items-center w-full py-2">
-                <div className="flex flex-col items-start gap-1">
+                <div className="flex items-center gap-2">
                     <span className="text-base font-bold text-foreground">Total Geral</span>
                     <Button
                         variant={viewMode === 'byOm' ? 'default' : 'outline'}
