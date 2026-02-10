@@ -1,11 +1,9 @@
 import * as React from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Command,
-  CommandEmpty,
   CommandGroup,
   CommandItem,
 } from "@/components/ui/command";
@@ -15,58 +13,31 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { FASES_PADRAO } from "@/lib/constants";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface FaseAtividadeSelectProps {
-  value: string; // String formatada: "Fase1; Fase2; Customizada"
+  value: string;
   onChange: (value: string) => void;
-  disabled: boolean;
+  disabled?: boolean;
 }
-
-// Função auxiliar para parsear a string de fases
-const parseFases = (value: string) => {
-    const allFases = value.split(';').map(f => f.trim()).filter(f => f);
-    const standardFases = allFases.filter(f => FASES_PADRAO.includes(f));
-    const customFase = allFases.find(f => !FASES_PADRAO.includes(f)) || "";
-    return { standardFases, customFase };
-};
 
 export function FaseAtividadeSelect({ value, onChange, disabled }: FaseAtividadeSelectProps) {
   const [open, setOpen] = React.useState(false);
-  const { standardFases, customFase } = parseFases(value);
-  const [tempCustomFase, setTempCustomFase] = React.useState(customFase);
-  const [tempStandardFases, setTempStandardFases] = React.useState(standardFases);
+  const isCustom = value && !FASES_PADRAO.includes(value);
+  const [tempCustom, setTempCustom] = React.useState(isCustom ? value : "");
 
-  React.useEffect(() => {
-      setTempCustomFase(customFase);
-      setTempStandardFases(standardFases);
-  }, [value]);
-
-  const handleStandardFaseChange = (fase: string, checked: boolean) => {
-    setTempStandardFases(prev => {
-        const newFases = checked 
-            ? Array.from(new Set([...prev, fase]))
-            : prev.filter(f => f !== fase);
-        
-        // Atualiza o valor final imediatamente
-        const finalValue = [...newFases, tempCustomFase.trim()].filter(f => f).join('; ');
-        onChange(finalValue);
-        return newFases;
-    });
-  };
-  
-  const handleCustomFaseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newCustomFase = e.target.value;
-      setTempCustomFase(newCustomFase);
-      
-      // Atualiza o valor final imediatamente
-      const finalValue = [...tempStandardFases, newCustomFase.trim()].filter(f => f).join('; ');
-      onChange(finalValue);
+  const handleSelect = (val: string) => {
+    onChange(val);
+    setTempCustom("");
+    setOpen(false);
   };
 
-  const displayValue = [...standardFases, customFase].filter(f => f).join(', ');
+  const handleCustomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setTempCustom(val);
+    onChange(val);
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -79,43 +50,41 @@ export function FaseAtividadeSelect({ value, onChange, disabled }: FaseAtividade
           disabled={disabled}
         >
           <span className="truncate">
-            {displayValue || "Selecione a(s) fase(s)..."}
+            {value || "Selecione a fase..."}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <div className="flex items-center">
+            <Check className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
-        className="w-[300px] p-0" 
-        align="start"
-        onMouseLeave={() => setOpen(false)} // Fecha ao sair
-        onMouseEnter={() => setOpen(true)}  // Mantém aberto ao entrar
-      >
+      <PopoverContent className="w-[250px] p-0" align="start">
         <Command>
           <CommandGroup>
             {FASES_PADRAO.map((fase) => (
               <CommandItem
                 key={fase}
                 value={fase}
-                onSelect={() => handleStandardFaseChange(fase, !tempStandardFases.includes(fase))}
-                className="flex items-center justify-between cursor-pointer"
+                onSelect={() => handleSelect(fase)}
+                className="cursor-pointer"
               >
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={tempStandardFases.includes(fase)}
-                    onCheckedChange={(checked) => handleStandardFaseChange(fase, !!checked)}
-                  />
-                  <Label>{fase}</Label>
-                </div>
-                {tempStandardFases.includes(fase) && <Check className="ml-auto h-4 w-4" />}
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4",
+                    value === fase ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                {fase}
               </CommandItem>
             ))}
           </CommandGroup>
           <div className="p-2 border-t">
-            <Label className="text-xs text-muted-foreground mb-1 block">Outra Atividade (Opcional)</Label>
+            <Label className="text-xs text-muted-foreground mb-1 block">Outra Atividade</Label>
             <Input
-              value={tempCustomFase}
-              onChange={handleCustomFaseChange}
-              placeholder="Ex: Patrulhamento"
+              value={tempCustom}
+              onChange={handleCustomChange}
+              placeholder="Digite aqui..."
+              className="h-8 text-sm"
             />
           </div>
         </Command>
