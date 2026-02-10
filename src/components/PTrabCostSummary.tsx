@@ -196,7 +196,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     classeIII: { total: 0, totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0 },
     classeV: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeVI: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
-    classeVIl: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeVII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} }, // CORRIGIDO: classeVIl -> classeVII
     classeVIII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeIX: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     diarias: { total: 0, totalND15: 0, totalND30: 0, totalMilitares: 0, totalDiasViagem: 0 },
@@ -209,497 +209,500 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
 });
 
 const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals> => {
-  
-  // Inicializa o objeto de agregação por OM
-  const groupedByOm: Record<string, OmTotals> = {};
-  
-  const getOmTotals = (omName: string, ug: string): OmTotals => {
-      const key = `${omName}|${ug}`;
-      if (!groupedByOm[key]) {
-          groupedByOm[key] = initializeOmTotals(omName, ug);
-      }
-      return groupedByOm[key];
-  };
-  
-  // 1. Fetch Classe I totals (33.90.30)
-  const { data: classeIData, error: classeIError } = await supabase
-    .from('classe_i_registros')
-    .select('total_qs, total_qr, complemento_qs, etapa_qs, complemento_qr, etapa_qr, efetivo, dias_operacao, nr_ref_int, quantidade_r2, quantidade_r3, categoria, organizacao, ug')
-    .eq('p_trab_id', ptrabId);
-
-  if (classeIError) {
-    console.error("Erro ao carregar Classe I:", classeIError);
-  }
-
-  (classeIData || []).forEach(record => {
-    const omTotals = getOmTotals(record.organizacao, record.ug);
+  try {
+    // Inicializa o objeto de agregação por OM
+    const groupedByOm: Record<string, OmTotals> = {};
     
-    if (record.categoria === 'RACAO_QUENTE') {
-        const totalQs = Number(record.total_qs || 0);
-        const totalQr = Number(record.total_qr || 0);
-        const complementoQs = Number(record.complemento_qs || 0);
-        const etapaQs = Number(record.etapa_qs || 0);
-        const complementoQr = Number(record.complemento_qr || 0);
-        const etapaQr = Number(record.etapa_qr || 0);
-        const efetivo = Number(record.efetivo || 0);
-        const nrRefInt = Number(record.nr_ref_int || 0);
-        const diasOperacao = Number(record.dias_operacao || 0);
-
-        const totalClasseI = totalQs + totalQr;
-        const totalComplemento = complementoQs + complementoQr;
-        const totalEtapaSolicitadaValor = etapaQs + etapaQr;
-        const diasEtapaSolicitada = calculateDiasEtapaSolicitada(diasOperacao);
-        const totalRefeicoesIntermediarias = efetivo * nrRefInt * diasOperacao;
-        
-        omTotals.classeI.total += totalClasseI;
-        omTotals.classeI.totalComplemento += totalComplemento;
-        omTotals.classeI.totalEtapaSolicitadaValor += totalEtapaSolicitadaValor;
-        omTotals.classeI.totalDiasEtapaSolicitada += diasEtapaSolicitada;
-        omTotals.classeI.totalRefeicoesIntermediarias += totalRefeicoesIntermediarias;
-        omTotals.totalLogistica += totalClasseI;
-
-    } else if (record.categoria === 'RACAO_OPERACIONAL') {
-        const totalRacoesOperacionais = Number(record.quantidade_r2 || 0) + Number(record.quantidade_r3 || 0);
-        omTotals.classeI.totalRacoesOperacionaisGeral += totalRacoesOperacionais;
-    }
-  });
-  
-  // 2. Fetch Classes II, V, VI, VII, VIII, IX records from their respective tables
-  const [
-    { data: classeIIData, error: classeIIError },
-    { data: classeVData, error: classeVError },
-    { data: classeVIData, error: classeVIError },
-    { data: classeVIIData, error: classeVIIError },
-    { data: classeVIIISaudeData, error: classeVIIISaudeError },
-    { data: classeVIIIRemontaData, error: classeVIIIRemontaError },
-    { data: classeIXData, error: classeIXError },
-    { data: classeIIIData, error: classeIIIError },
-    { data: diariaData, error: diariaError },
-    { data: verbaOperacionalData, error: verbaOperacionalError },
-    { data: passagemData, error: passagemError },
-    { data: concessionariaData, error: concessionariaError },
-    { data: horasVooData, error: horasVooError },
-    { data: materialConsumoData, error: materialConsumoError },
-  ] = await Promise.all([
-    supabase
-      .from('classe_ii_registros')
-      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
-    supabase
-      .from('classe_v_registros')
-      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
-    supabase
-      .from('classe_vi_registros')
-      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
-    supabase
-      .from('classe_vii_registros')
-      .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
-    supabase
-      .from('classe_viii_saude_registros')
-      .select('valor_total, itens_saude, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
-    supabase
-      .from('classe_viii_remonta_registros')
-      .select('valor_total, itens_remonta, dias_operacao, organizacao, ug, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais'),
-    supabase
-      .from('classe_ix_registros')
-      .select('valor_total, itens_motomecanizacao, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
-    supabase
-      .from('classe_iii_registros')
-      .select('valor_total, tipo_combustivel, total_litros, tipo_equipamento, organizacao, ug, consumo_lubrificante_litro, preco_lubrificante'),
-    supabase
-      .from('diaria_registros')
-      .select('valor_total, valor_nd_15, valor_taxa_embarque, quantidade, dias_operacao, valor_nd_30, organizacao, ug'), 
-    supabase
-      .from('verba_operacional_registros')
-      .select('valor_nd_30, valor_nd_39, valor_total_solicitado, dias_operacao, quantidade_equipes, detalhamento, organizacao, ug'),
-    supabase
-      .from('passagem_registros')
-      .select('valor_total, valor_nd_33, quantidade_passagens, is_ida_volta, origem, destino, organizacao, ug'),
-    supabase
-      .from('concessionaria_registros')
-      .select('valor_total, valor_nd_39, dias_operacao, efetivo, categoria, organizacao, ug'),
-    supabase
-      .from('horas_voo_registros')
-      .select('valor_total, valor_nd_30, valor_nd_39, quantidade_hv, tipo_anv, organizacao, ug'),
-    supabase
-      .from('material_consumo_registros')
-      .select('valor_total, valor_nd_30, valor_nd_39, organizacao, ug'),
-  ]);
-
-  // Logar erros, mas não lançar exceção
-  if (classeIIError) console.error("Erro ao carregar Classe II:", classeIIError);
-  if (classeVError) console.error("Erro ao carregar Classe V:", classeVError);
-  if (classeVIError) console.error("Erro ao carregar Classe VI:", classeVIError);
-  if (classeVIIError) console.error("Erro ao carregar Classe VII:", classeVIIError);
-  if (classeVIIISaudeError) console.error("Erro ao carregar Classe VIII Saúde:", classeVIIISaudeError);
-  if (classeVIIIRemontaError) console.error("Erro ao carregar Classe VIII Remonta:", classeVIIIRemontaError);
-  if (classeIXError) console.error("Erro ao carregar Classe IX:", classeIXError);
-  if (classeIIIError) console.error("Erro ao carregar Classe III:", classeIIIError);
-  if (diariaError) console.error("Erro ao carregar Diárias:", diariaError);
-  if (verbaOperacionalError) console.error("Erro ao carregar Verba Operacional/Suprimento:", verbaOperacionalError);
-  if (passagemError) console.error("Erro ao carregar Passagens:", passagemError); 
-  if (concessionariaError) console.error("Erro ao carregar Concessionária:", concessionariaError);
-  if (horasVooError) console.error("Erro ao carregar Horas de Voo:", horasVooError);
-  if (materialConsumoError) console.error("Erro ao carregar Material de Consumo:", materialConsumoError);
-
-  // Usar arrays vazios se o fetch falhou
-  const safeClasseIIData = classeIIData || [];
-  const safeClasseVData = classeVData || [];
-  const safeClasseVIData = classeVIData || [];
-  const safeClasseVIIData = classeVIIData || [];
-  const safeClasseVIIISaudeData = classeVIIISaudeData || [];
-  const safeClasseVIIIRemontaData = classeVIIIRemontaData || [];
-  const safeClasseIXData = classeIXData || [];
-  const safeClasseIIIData = classeIIIData || [];
-  const safeDiariaData = diariaData || [];
-  const safeVerbaOperacionalData = verbaOperacionalData || [];
-  const safePassagemData = passagemData || []; 
-  const safeConcessionariaData = concessionariaData || [];
-  const safeHorasVooData = horasVooData || [];
-  const safeMaterialConsumoData = materialConsumoData || [];
-  
-  // Processamento de Classes Diversas (II, V, VI, VII, VIII, IX)
-  const allClasseItemsData = [
-    ...safeClasseIIData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos, classe: 'II' })),
-    ...safeClasseVData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos, classe: 'V' })),
-    ...safeClasseVIData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos, classe: 'VI' })),
-    ...safeClasseVIIData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos, classe: 'VII' })),
-    ...safeClasseVIIISaudeData.map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', classe: 'VIII' })),
-    ...safeClasseVIIIRemontaData.map(r => ({ 
-        ...r, 
-        itens_equipamentos: r.itens_remonta, 
-        categoria: 'Remonta/Veterinária',
-        animal_tipo: r.animal_tipo,
-        quantidade_animais: r.quantidade_animais,
-        classe: 'VIII'
-    })),
-    ...safeClasseIXData.map(r => ({ 
-        ...r, 
-        itens_equipamentos: r.itens_motomecanizacao, 
-        categoria: r.categoria,
-        classe: 'IX'
-    })),
-  ];
-  
-  allClasseItemsData.forEach(record => {
-    const omTotals = getOmTotals(record.organizacao, record.ug);
-    const category = record.categoria;
-    const items = (record.itens_equipamentos || []) as unknown as ItemClasse[]; 
-    const totalItemsCategory = items.reduce((sum, item) => sum + (Number(item.quantidade) || 0), 0); 
-    
-    const valorTotal = Number(record.valor_total || 0);
-    const valorND30 = Number(record.valor_nd_30 || 0);
-    const valorND39 = Number(record.valor_nd_39 || 0);
-    
-    omTotals.totalLogistica += valorTotal;
-
-    const updateCategoryTotals = (group: OmTotals[keyof OmTotals] & { groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> }) => {
-        group.total += valorTotal;
-        group.totalND30 += valorND30;
-        group.totalND39 += valorND39;
-        group.totalItens += totalItemsCategory;
-
-        let groupKey = category;
-        let currentTotalItems = totalItemsCategory;
-        
-        if (record.classe === 'VIII' && category === 'Remonta/Veterinária') {
-            const animalType = (record as any).animal_tipo;
-            const quantidadeAnimais = Number((record as any).quantidade_animais || 0);
-            if (animalType) {
-                groupKey = `Remonta - ${animalType}`;
-                currentTotalItems = quantidadeAnimais;
-            }
+    const getOmTotals = (omName: string, ug: string): OmTotals => {
+        const key = `${omName}|${ug}`;
+        if (!groupedByOm[key]) {
+            groupedByOm[key] = initializeOmTotals(omName, ug);
         }
-        
-        if (!group.groupedCategories[groupKey]) {
-            group.groupedCategories[groupKey] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
-        }
-        group.groupedCategories[groupKey].totalValor += valorTotal;
-        group.groupedCategories[groupKey].totalND30 += valorND30;
-        group.groupedCategories[groupKey].totalND39 += valorND39;
-        group.groupedCategories[groupKey].totalItens += currentTotalItems;
+        return groupedByOm[key];
     };
+    
+    // 1. Fetch Classe I totals (33.90.30)
+    const { data: classeIData, error: classeIError } = await supabase
+      .from('classe_i_registros')
+      .select('total_qs, total_qr, complemento_qs, etapa_qs, complemento_qr, etapa_qr, efetivo, dias_operacao, nr_ref_int, quantidade_r2, quantidade_r3, categoria, organizacao, ug')
+      .eq('p_trab_id', ptrabId);
 
-    if (record.classe === 'II') updateCategoryTotals(omTotals.classeII);
-    else if (record.classe === 'V') updateCategoryTotals(omTotals.classeV);
-    else if (record.classe === 'VI') updateCategoryTotals(omTotals.classeVI);
-    else if (record.classe === 'VII') updateCategoryTotals(omTotals.classeVII);
-    else if (record.classe === 'VIII') updateCategoryTotals(omTotals.classeVIII);
-    else if (record.classe === 'IX') updateCategoryTotals(omTotals.classeIX);
-  });
-  
-  // 3. Processamento de Classe III (Combustível e Lubrificante)
-  safeClasseIIIData.forEach(record => {
-    const omTotals = getOmTotals(record.organizacao, record.ug);
-    const valorTotal = Number(record.valor_total || 0);
-    const totalLitros = Number(record.total_litros || 0);
-    
-    omTotals.totalLogistica += valorTotal;
-    omTotals.classeIII.total += valorTotal;
+    if (classeIError) {
+      console.error("Erro ao carregar Classe I:", classeIError);
+    }
 
-    if (record.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO') {
-        omTotals.classeIII.totalLubrificanteValor += valorTotal;
-        omTotals.classeIII.totalLubrificanteLitros += totalLitros;
-    } else {
-        if (record.tipo_combustivel === 'DIESEL' || record.tipo_combustivel === 'OD') {
-            omTotals.classeIII.totalDieselValor += valorTotal;
-            omTotals.classeIII.totalDieselLitros += totalLitros;
-        } else if (record.tipo_combustivel === 'GASOLINA' || record.tipo_combustivel === 'GAS') {
-            omTotals.classeIII.totalGasolinaValor += valorTotal;
-            omTotals.classeIII.totalGasolinaLitros += totalLitros;
-        }
-    }
-  });
-  
-  // 4. Processamento de Diárias (ND 33.90.15)
-  safeDiariaData.forEach(record => {
-    const omTotals = getOmTotals(record.organizacao, record.ug);
-    const totalGeral = Number(record.valor_nd_15 || 0);
-    const taxaEmbarque = Number(record.valor_taxa_embarque || 0);
-    const valorND30 = Number(record.valor_nd_30 || 0);
-    const quantidade = Number(record.quantidade || 0);
-    const diasOperacao = Number(record.dias_operacao || 0);
-    
-    omTotals.diarias.total += totalGeral + valorND30; // Total Diária (ND 15 + ND 30)
-    omTotals.diarias.totalND15 += totalGeral - taxaEmbarque;
-    omTotals.diarias.totalND30 += taxaEmbarque + valorND30; // Taxa de Embarque + ND 30
-    omTotals.diarias.totalMilitares += quantidade;
-    omTotals.diarias.totalDiasViagem += diasOperacao;
-    omTotals.totalOperacional += totalGeral + valorND30;
-  });
-  
-  // 5. Processamento de Verba Operacional e Suprimento de Fundos
-  safeVerbaOperacionalData.forEach(record => {
-    const omTotals = getOmTotals(record.organizacao, record.ug);
-    const valorND30 = Number(record.valor_nd_30 || 0);
-    const valorND39 = Number(record.valor_nd_39 || 0);
-    const total = valorND30 + valorND39;
-    const quantidadeEquipes = Number(record.quantidade_equipes || 0);
-    const diasOperacao = Number(record.dias_operacao || 0);
-    
-    omTotals.totalOperacional += total;
+    (classeIData || []).forEach(record => {
+      const omTotals = getOmTotals(record.organizacao, record.ug);
+      
+      if (record.categoria === 'RACAO_QUENTE') {
+          const totalQs = Number(record.total_qs || 0);
+          const totalQr = Number(record.total_qr || 0);
+          const complementoQs = Number(record.complemento_qs || 0);
+          const etapaQs = Number(record.etapa_qs || 0);
+          const complementoQr = Number(record.complemento_qr || 0);
+          const etapaQr = Number(record.etapa_qr || 0);
+          const efetivo = Number(record.efetivo || 0);
+          const nrRefInt = Number(record.nr_ref_int || 0);
+          const diasOperacao = Number(record.dias_operacao || 0);
 
-    if (record.detalhamento === 'Suprimento de Fundos') {
-        omTotals.suprimentoFundos.total += total;
-        omTotals.suprimentoFundos.totalND30 += valorND30;
-        omTotals.suprimentoFundos.totalND39 += valorND39;
-        omTotals.suprimentoFundos.totalEquipes += quantidadeEquipes;
-        omTotals.suprimentoFundos.totalDias += diasOperacao;
-    } else {
-        omTotals.verbaOperacional.total += total;
-        omTotals.verbaOperacional.totalND30 += valorND30;
-        omTotals.verbaOperacional.totalND39 += valorND39;
-        omTotals.verbaOperacional.totalEquipes += quantidadeEquipes;
-        omTotals.verbaOperacional.totalDias += diasOperacao;
-    }
-  });
-  
-  // 6. Processamento de Passagens (ND 33.90.33)
-  safePassagemData.forEach(record => {
-    const omTotals = getOmTotals(record.organizacao, record.ug);
-    const valorND33 = Number(record.valor_nd_33 || 0);
-    const quantidade = Number(record.quantidade_passagens || 0);
-    
-    omTotals.passagens.total += valorND33;
-    omTotals.passagens.totalQuantidade += quantidade;
-    omTotals.passagens.totalTrechos += 1; 
-    omTotals.totalOperacional += valorND33;
-  });
-  
-  // 7. Processamento de Concessionária (ND 33.90.39)
-  safeConcessionariaData.forEach(record => {
-    const omTotals = getOmTotals(record.organizacao, record.ug);
-    const valorND39 = Number(record.valor_nd_39 || 0);
-    
-    omTotals.concessionaria.total += valorND39;
-    omTotals.concessionaria.totalRegistros += 1;
-    omTotals.totalOperacional += valorND39;
-    
-    if (record.categoria === 'Água/Esgoto') {
-        omTotals.concessionaria.totalAgua += valorND39;
-    } else if (record.categoria === 'Energia Elétrica') {
-        omTotals.concessionaria.totalEnergia += valorND39;
-    }
-  });
-  
-  // 8. Processamento de Horas de Voo (AvEx)
-  safeHorasVooData.forEach(record => {
-    const omTotals = getOmTotals(record.organizacao, record.ug);
-    const valorTotal = Number(record.valor_total || 0);
-    const valorND30 = Number(record.valor_nd_30 || 0);
-    const valorND39 = Number(record.valor_nd_39 || 0);
-    const quantidadeHv = Number(record.quantidade_hv || 0);
-    const tipoAnv = record.tipo_anv || 'Não Especificado';
-    
-    omTotals.horasVoo.total += valorTotal;
-    omTotals.horasVoo.totalND30 += valorND30;
-    omTotals.horasVoo.totalND39 += valorND39;
-    omTotals.horasVoo.quantidadeHV += quantidadeHv;
-    // omTotals.totalOperacional += valorTotal; // REMOVIDO: AvEx é tratada separadamente no resumo para evitar duplicidade
-    omTotals.totalAviacaoExercito += valorTotal;
-    
-    if (!omTotals.horasVoo.groupedHV[tipoAnv]) {
-        omTotals.horasVoo.groupedHV[tipoAnv] = { totalValor: 0, totalHV: 0 };
-    }
-    omTotals.horasVoo.groupedHV[tipoAnv].totalValor += valorTotal;
-    omTotals.horasVoo.groupedHV[tipoAnv].totalHV += quantidadeHv;
-  });
-  
-  // 9. Processamento de Material de Consumo (ND 33.90.30/39)
-  safeMaterialConsumoData.forEach(record => {
-    const omTotals = getOmTotals(record.organizacao, record.ug);
-    const valorTotal = Number(record.valor_total || 0);
-    const valorND30 = Number(record.valor_nd_30 || 0);
-    const valorND39 = Number(record.valor_nd_39 || 0);
-    
-    omTotals.materialConsumo.total += valorTotal;
-    omTotals.materialConsumo.totalND30 += valorND30;
-    omTotals.materialConsumo.totalND39 += valorND39;
-    omTotals.totalOperacional += valorTotal;
-  });
-  
-  // 10. Consolidação Final e Totais Globais
-  let globalTotals: PTrabAggregatedTotals = {
-      totalLogisticoGeral: 0,
-      totalOperacional: 0,
-      totalMaterialPermanente: 0,
-      totalAviacaoExercito: 0,
-      totalRacoesOperacionaisGeral: 0,
-      
-      totalClasseI: 0,
-      totalComplemento: 0,
-      totalEtapaSolicitadaValor: 0,
-      totalDiasEtapaSolicitada: 0,
-      totalRefeicoesIntermediarias: 0,
-      
-      totalClasseII: 0, totalClasseII_ND30: 0, totalClasseII_ND39: 0, totalItensClasseII: 0, groupedClasseIICategories: {},
-      totalClasseV: 0, totalClasseV_ND30: 0, totalClasseV_ND39: 0, totalItensClasseV: 0, groupedClasseVCategories: {},
-      totalClasseVI: 0, totalClasseVI_ND30: 0, totalClasseVI_ND39: 0, totalItensClasseVI: 0, groupedClasseVICategories: {},
-      totalClasseVII: 0, totalClasseVII_ND30: 0, totalClasseVII_ND39: 0, totalItensClasseVII: 0, groupedClasseVIICategories: {},
-      totalClasseVIII: 0, totalClasseVIII_ND30: 0, totalClasseVIII_ND39: 0, totalItensClasseVIII: 0, groupedClasseVIIICategories: {},
-      totalClasseIX: 0, totalClasseIX_ND30: 0, totalClasseIX_ND39: 0, totalItensClasseIX: 0, groupedClasseIXCategories: {},
-      
-      totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0, totalCombustivel: 0,
-      
-      totalDiarias: 0, totalDiariasND15: 0, totalDiariasND30: 0, totalMilitaresDiarias: 0, totalDiasViagem: 0,
-      totalVerbaOperacional: 0, totalVerbaOperacionalND30: 0, totalVerbaOperacionalND39: 0, totalEquipesVerba: 0, totalDiasVerba: 0,
-      totalSuprimentoFundos: 0, totalSuprimentoFundosND30: 0, totalSuprimentoFundosND39: 0, totalEquipesSuprimento: 0, totalDiasSuprimento: 0,
-      totalPassagensND33: 0, totalQuantidadePassagens: 0, totalTrechosPassagens: 0,
-      totalConcessionariaND39: 0, totalConcessionariaRegistros: 0, totalConcessionariaAgua: 0, totalConcessionariaEnergia: 0,
-      totalHorasVoo: 0, quantidadeHorasVoo: 0, groupedHorasVoo: {},
-      totalMaterialConsumo: 0, totalMaterialConsumoND30: 0, totalMaterialConsumoND39: 0,
-      
-      groupedByOm,
-  };
-  
-  // Itera sobre os totais por OM para calcular os totais globais
-  Object.values(groupedByOm).forEach(omTotals => {
-      // Atualiza o total geral da OM
-      omTotals.totalLogistica = omTotals.classeI.total + omTotals.classeII.total + omTotals.classeIII.total + omTotals.classeV.total + omTotals.classeVI.total + omTotals.classeVII.total + omTotals.classeVIII.total + omTotals.classeIX.total;
-      // CORREÇÃO: totalOperacional agora exclui AvEx para evitar duplicidade na soma final do componente
-      omTotals.totalOperacional = omTotals.diarias.total + omTotals.verbaOperacional.total + omTotals.suprimentoFundos.total + omTotals.passagens.total + omTotals.concessionaria.total + omTotals.materialConsumo.total;
-      omTotals.totalGeral = omTotals.totalLogistica + omTotals.totalOperacional + omTotals.totalMaterialPermanente + omTotals.totalAviacaoExercito;
-      
-      // Soma para os totais globais
-      globalTotals.totalLogisticoGeral += omTotals.totalLogistica;
-      globalTotals.totalOperacional += omTotals.totalOperacional;
-      globalTotals.totalMaterialPermanente += omTotals.totalMaterialPermanente;
-      globalTotals.totalAviacaoExercito += omTotals.totalAviacaoExercito;
-      globalTotals.totalRacoesOperacionaisGeral += omTotals.classeI.totalRacoesOperacionaisGeral;
-      
-      // Detalhes Globais (apenas para manter a compatibilidade do modo 'global')
-      globalTotals.totalClasseI += omTotals.classeI.total;
-      globalTotals.totalComplemento += omTotals.classeI.totalComplemento;
-      globalTotals.totalEtapaSolicitadaValor += omTotals.classeI.totalEtapaSolicitadaValor;
-      globalTotals.totalDiasEtapaSolicitada += omTotals.classeI.totalDiasEtapaSolicitada;
-      globalTotals.totalRefeicoesIntermediarias += omTotals.classeI.totalRefeicoesIntermediarias;
-      
-      // Classes Diversas (Global)
-      const mergeClassTotals = (globalKey: 'ClasseII' | 'ClasseV' | 'ClasseVI' | 'ClasseVII' | 'ClasseVIII' | 'ClasseIX', omGroup: any) => {
-          const totalKey = `total${globalKey}` as keyof PTrabAggregatedTotals;
-          const nd30Key = `total${globalKey}_ND30` as keyof PTrabAggregatedTotals;
-          const nd39Key = `total${globalKey}_ND39` as keyof PTrabAggregatedTotals;
-          const itensKey = `totalItens${globalKey}` as keyof PTrabAggregatedTotals;
-          const groupedKey = `grouped${globalKey}Categories` as keyof PTrabAggregatedTotals;
+          const totalClasseI = totalQs + totalQr;
+          const totalComplemento = complementoQs + complementoQr;
+          const totalEtapaSolicitadaValor = etapaQs + etapaQr;
+          const diasEtapaSolicitada = calculateDiasEtapaSolicitada(diasOperacao);
+          const totalRefeicoesIntermediarias = efetivo * nrRefInt * diasOperacao;
           
-          (globalTotals[totalKey] as number) += omGroup.total;
-          (globalTotals[nd30Key] as number) += omGroup.totalND30;
-          (globalTotals[nd39Key] as number) += omGroup.totalND39;
-          (globalTotals[itensKey] as number) += omGroup.totalItens;
+          omTotals.classeI.total += totalClasseI;
+          omTotals.classeI.totalComplemento += totalComplemento;
+          omTotals.classeI.totalEtapaSolicitadaValor += totalEtapaSolicitadaValor;
+          omTotals.classeI.totalDiasEtapaSolicitada += diasEtapaSolicitada;
+          omTotals.classeI.totalRefeicoesIntermediarias += totalRefeicoesIntermediarias;
+          omTotals.totalLogistica += totalClasseI;
+
+      } else if (record.categoria === 'RACAO_OPERACIONAL') {
+          const totalRacoesOperacionais = Number(record.quantidade_r2 || 0) + Number(record.quantidade_r3 || 0);
+          omTotals.classeI.totalRacoesOperacionaisGeral += totalRacoesOperacionais;
+      }
+    });
+    
+    // 2. Fetch Classes II, V, VI, VII, VIII, IX records from their respective tables
+    const [
+      { data: classeIIData, error: classeIIError },
+      { data: classeVData, error: classeVError },
+      { data: classeVIData, error: classeVIError },
+      { data: classeVIIData, error: classeVIIError },
+      { data: classeVIIISaudeData, error: classeVIIISaudeError },
+      { data: classeVIIIRemontaData, error: classeVIIIRemontaError },
+      { data: classeIXData, error: classeIXError },
+      { data: classeIIIData, error: classeIIIError },
+      { data: diariaData, error: diariaError },
+      { data: verbaOperacionalData, error: verbaOperacionalError },
+      { data: passagemData, error: passagemError },
+      { data: concessionariaData, error: concessionariaError },
+      { data: horasVooData, error: horasVooError },
+      { data: materialConsumoData, error: materialConsumoError },
+    ] = await Promise.all([
+      supabase
+        .from('classe_ii_registros')
+        .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+      supabase
+        .from('classe_v_registros')
+        .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+      supabase
+        .from('classe_vi_registros')
+        .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+      supabase
+        .from('classe_vii_registros')
+        .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+      supabase
+        .from('classe_viii_saude_registros')
+        .select('valor_total, itens_saude, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+      supabase
+        .from('classe_viii_remonta_registros')
+        .select('valor_total, itens_remonta, dias_operacao, organizacao, ug, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais'),
+      supabase
+        .from('classe_ix_registros')
+        .select('valor_total, itens_motomecanizacao, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+      supabase
+        .from('classe_iii_registros')
+        .select('valor_total, tipo_combustivel, total_litros, tipo_equipamento, organizacao, ug, consumo_lubrificante_litro, preco_lubrificante'),
+      supabase
+        .from('diaria_registros')
+        .select('valor_total, valor_nd_15, valor_taxa_embarque, quantidade, dias_operacao, valor_nd_30, organizacao, ug'), 
+      supabase
+        .from('verba_operacional_registros')
+        .select('valor_nd_30, valor_nd_39, valor_total_solicitado, dias_operacao, quantidade_equipes, detalhamento, organizacao, ug'),
+      supabase
+        .from('passagem_registros')
+        .select('valor_total, valor_nd_33, quantidade_passagens, is_ida_volta, origem, destino, organizacao, ug'),
+      supabase
+        .from('concessionaria_registros')
+        .select('valor_total, valor_nd_39, dias_operacao, efetivo, categoria, organizacao, ug'),
+      supabase
+        .from('horas_voo_registros')
+        .select('valor_total, valor_nd_30, valor_nd_39, quantidade_hv, tipo_anv, organizacao, ug'),
+      supabase
+        .from('material_consumo_registros')
+        .select('valor_total, valor_nd_30, valor_nd_39, organizacao, ug'),
+    ]);
+
+    // Logar erros, mas não lançar exceção
+    if (classeIIError) console.error("Erro ao carregar Classe II:", classeIIError);
+    if (classeVError) console.error("Erro ao carregar Classe V:", classeVError);
+    if (classeVIError) console.error("Erro ao carregar Classe VI:", classeVIError);
+    if (classeVIIError) console.error("Erro ao carregar Classe VII:", classeVIIError);
+    if (classeVIIISaudeError) console.error("Erro ao carregar Classe VIII Saúde:", classeVIIISaudeError);
+    if (classeVIIIRemontaError) console.error("Erro ao carregar Classe VIII Remonta:", classeVIIIRemontaError);
+    if (classeIXError) console.error("Erro ao carregar Classe IX:", classeIXError);
+    if (classeIIIError) console.error("Erro ao carregar Classe III:", classeIIIError);
+    if (diariaError) console.error("Erro ao carregar Diárias:", diariaError);
+    if (verbaOperacionalError) console.error("Erro ao carregar Verba Operacional/Suprimento:", verbaOperacionalError);
+    if (passagemError) console.error("Erro ao carregar Passagens:", passagemError); 
+    if (concessionariaError) console.error("Erro ao carregar Concessionária:", concessionariaError);
+    if (horasVooError) console.error("Erro ao carregar Horas de Voo:", horasVooError);
+    if (materialConsumoError) console.error("Erro ao carregar Material de Consumo:", materialConsumoError);
+
+    // Usar arrays vazios se o fetch falhou
+    const safeClasseIIData = classeIIData || [];
+    const safeClasseVData = classeVData || [];
+    const safeClasseVIData = classeVIData || [];
+    const safeClasseVIIData = classeVIIData || [];
+    const safeClasseVIIISaudeData = classeVIIISaudeData || [];
+    const safeClasseVIIIRemontaData = classeVIIIRemontaData || [];
+    const safeClasseIXData = classeIXData || [];
+    const safeClasseIIIData = classeIIIData || [];
+    const safeDiariaData = diariaData || [];
+    const safeVerbaOperacionalData = verbaOperacionalData || [];
+    const safePassagemData = passagemData || []; 
+    const safeConcessionariaData = concessionariaData || [];
+    const safeHorasVooData = horasVooData || [];
+    const safeMaterialConsumoData = materialConsumoData || [];
+    
+    // Processamento de Classes Diversas (II, V, VI, VII, VIII, IX)
+    const allClasseItemsData = [
+      ...safeClasseIIData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos, classe: 'II' })),
+      ...safeClasseVData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos, classe: 'V' })),
+      ...safeClasseVIData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos, classe: 'VI' })),
+      ...safeClasseVIIData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos, classe: 'VII' })),
+      ...safeClasseVIIISaudeData.map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', classe: 'VIII' })),
+      ...safeClasseVIIIRemontaData.map(r => ({ 
+          ...r, 
+          itens_equipamentos: r.itens_remonta, 
+          categoria: 'Remonta/Veterinária',
+          animal_tipo: r.animal_tipo,
+          quantidade_animais: r.quantidade_animais,
+          classe: 'VIII'
+      })),
+      ...safeClasseIXData.map(r => ({ 
+          ...r, 
+          itens_equipamentos: r.itens_motomecanizacao, 
+          categoria: r.categoria,
+          classe: 'IX'
+      })),
+    ];
+    
+    allClasseItemsData.forEach(record => {
+      const omTotals = getOmTotals(record.organizacao, record.ug);
+      const category = record.categoria;
+      const items = (record.itens_equipamentos || []) as unknown as ItemClasse[]; 
+      const totalItemsCategory = items.reduce((sum, item) => sum + (Number(item.quantidade) || 0), 0); 
+      
+      const valorTotal = Number(record.valor_total || 0);
+      const valorND30 = Number(record.valor_nd_30 || 0);
+      const valorND39 = Number(record.valor_nd_39 || 0);
+      
+      omTotals.totalLogistica += valorTotal;
+
+      const updateCategoryTotals = (group: OmTotals[keyof OmTotals] & { groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> }) => {
+          if (!group) return; // Safety check
+          group.total += valorTotal;
+          group.totalND30 += valorND30;
+          group.totalND39 += valorND39;
+          group.totalItens += totalItemsCategory;
+
+          let groupKey = category;
+          let currentTotalItems = totalItemsCategory;
           
-          const globalGrouped = globalTotals[groupedKey] as Record<string, any>;
-          
-          Object.entries(omGroup.groupedCategories).forEach(([category, data]: [string, any]) => {
-              if (!globalGrouped[category]) {
-                  globalGrouped[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
+          if (record.classe === 'VIII' && category === 'Remonta/Veterinária') {
+              const animalType = (record as any).animal_tipo;
+              const quantidadeAnimais = Number((record as any).quantidade_animais || 0);
+              if (animalType) {
+                  groupKey = `Remonta - ${animalType}`;
+                  currentTotalItems = quantidadeAnimais;
               }
-              globalGrouped[category].totalValor += data.totalValor;
-              globalGrouped[category].totalND30 += data.totalND30;
-              globalGrouped[category].totalND39 += data.totalND39;
-              globalGrouped[category].totalItens += data.totalItens;
-          });
-      };
-      
-      mergeClassTotals('ClasseII', omTotals.classeII);
-      mergeClassTotals('ClasseV', omTotals.classeV);
-      mergeClassTotals('ClasseVI', omTotals.classeVI);
-      mergeClassTotals('ClasseVII', omTotals.classeVII);
-      mergeClassTotals('ClasseVIII', omTotals.classeVIII);
-      mergeClassTotals('ClasseIX', omTotals.classeIX);
-      
-      // Classe III (Global)
-      globalTotals.totalCombustivel += omTotals.classeIII.total;
-      globalTotals.totalDieselValor += omTotals.classeIII.totalDieselValor;
-      globalTotals.totalGasolinaValor += omTotals.classeIII.totalGasolinaValor;
-      globalTotals.totalDieselLitros += omTotals.classeIII.totalDieselLitros;
-      globalTotals.totalGasolinaLitros += omTotals.classeIII.totalGasolinaLitros;
-      globalTotals.totalLubrificanteValor += omTotals.classeIII.totalLubrificanteValor;
-      globalTotals.totalLubrificanteLitros += omTotals.classeIII.totalLubrificanteLitros;
-      
-      // Operacional (Global)
-      globalTotals.totalDiarias += omTotals.diarias.total;
-      globalTotals.totalDiariasND15 += omTotals.diarias.totalND15;
-      globalTotals.totalDiariasND30 += omTotals.diarias.totalND30;
-      globalTotals.totalMilitaresDiarias += omTotals.diarias.totalMilitares;
-      globalTotals.totalDiasViagem += omTotals.diarias.totalDiasViagem;
-      
-      globalTotals.totalVerbaOperacional += omTotals.verbaOperacional.total;
-      globalTotals.totalVerbaOperacionalND30 += omTotals.verbaOperacional.totalND30;
-      globalTotals.totalVerbaOperacionalND39 += omTotals.verbaOperacional.totalND39;
-      globalTotals.totalEquipesVerba += omTotals.verbaOperacional.totalEquipes;
-      globalTotals.totalDiasVerba += omTotals.verbaOperacional.totalDias;
-      
-      globalTotals.totalSuprimentoFundos += omTotals.suprimentoFundos.total;
-      globalTotals.totalSuprimentoFundosND30 += omTotals.suprimentoFundos.totalND30;
-      globalTotals.totalSuprimentoFundosND39 += omTotals.suprimentoFundos.totalND39;
-      globalTotals.totalEquipesSuprimento += omTotals.suprimentoFundos.totalEquipes;
-      globalTotals.totalDiasSuprimento += omTotals.suprimentoFundos.totalDias;
-      
-      globalTotals.totalPassagensND33 += omTotals.passagens.total;
-      globalTotals.totalQuantidadePassagens += omTotals.passagens.totalQuantidade;
-      globalTotals.totalTrechosPassagens += omTotals.passagens.totalTrechos;
-      
-      globalTotals.totalConcessionariaND39 += omTotals.concessionaria.total;
-      globalTotals.totalConcessionariaRegistros += omTotals.concessionaria.totalRegistros;
-      globalTotals.totalConcessionariaAgua += omTotals.concessionaria.totalAgua;
-      globalTotals.totalConcessionariaEnergia += omTotals.concessionaria.totalEnergia;
-      
-      globalTotals.totalHorasVoo += omTotals.horasVoo.total;
-      globalTotals.quantidadeHorasVoo += omTotals.horasVoo.quantidadeHV;
-      
-      Object.entries(omTotals.horasVoo.groupedHV).forEach(([tipoAnv, data]) => {
-          if (!globalTotals.groupedHorasVoo[tipoAnv]) {
-              globalTotals.groupedHorasVoo[tipoAnv] = { totalValor: 0, totalHV: 0 };
           }
-          globalTotals.groupedHorasVoo[tipoAnv].totalValor += data.totalValor;
-          globalTotals.groupedHorasVoo[tipoAnv].totalHV += data.totalHV;
-      });
+          
+          if (!group.groupedCategories[groupKey]) {
+              group.groupedCategories[groupKey] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
+          }
+          group.groupedCategories[groupKey].totalValor += valorTotal;
+          group.groupedCategories[groupKey].totalND30 += valorND30;
+          group.groupedCategories[groupKey].totalND39 += valorND39;
+          group.groupedCategories[groupKey].totalItens += currentTotalItems;
+      };
+
+      if (record.classe === 'II') updateCategoryTotals(omTotals.classeII);
+      else if (record.classe === 'V') updateCategoryTotals(omTotals.classeV);
+      else if (record.classe === 'VI') updateCategoryTotals(omTotals.classeVI);
+      else if (record.classe === 'VII') updateCategoryTotals(omTotals.classeVII);
+      else if (record.classe === 'VIII') updateCategoryTotals(omTotals.classeVIII);
+      else if (record.classe === 'IX') updateCategoryTotals(omTotals.classeIX);
+    });
+    
+    // 3. Processamento de Classe III (Combustível e Lubrificante)
+    safeClasseIIIData.forEach(record => {
+      const omTotals = getOmTotals(record.organizacao, record.ug);
+      const valorTotal = Number(record.valor_total || 0);
+      const totalLitros = Number(record.total_litros || 0);
       
-      globalTotals.totalMaterialConsumo += omTotals.materialConsumo.total;
-      globalTotals.totalMaterialConsumoND30 += omTotals.materialConsumo.totalND30;
-      globalTotals.totalMaterialConsumoND39 += omTotals.materialConsumo.totalND39;
-  });
-  
-  return globalTotals as PTrabAggregatedTotals;
+      omTotals.totalLogistica += valorTotal;
+      omTotals.classeIII.total += valorTotal;
+
+      if (record.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO') {
+          omTotals.classeIII.totalLubrificanteValor += valorTotal;
+          omTotals.classeIII.totalLubrificanteLitros += totalLitros;
+      } else {
+          if (record.tipo_combustivel === 'DIESEL' || record.tipo_combustivel === 'OD') {
+              omTotals.classeIII.totalDieselValor += valorTotal;
+              omTotals.classeIII.totalDieselLitros += totalLitros;
+          } else if (record.tipo_combustivel === 'GASOLINA' || record.tipo_combustivel === 'GAS') {
+              omTotals.classeIII.totalGasolinaValor += valorTotal;
+              omTotals.classeIII.totalGasolinaLitros += totalLitros;
+          }
+      }
+    });
+    
+    // 4. Processamento de Diárias (ND 33.90.15)
+    safeDiariaData.forEach(record => {
+      const omTotals = getOmTotals(record.organizacao, record.ug);
+      const totalGeral = Number(record.valor_nd_15 || 0);
+      const taxaEmbarque = Number(record.valor_taxa_embarque || 0);
+      const valorND30 = Number(record.valor_nd_30 || 0);
+      const quantidade = Number(record.quantidade || 0);
+      const diasOperacao = Number(record.dias_operacao || 0);
+      
+      omTotals.diarias.total += totalGeral + valorND30; // Total Diária (ND 15 + ND 30)
+      omTotals.diarias.totalND15 += totalGeral - taxaEmbarque;
+      omTotals.diarias.totalND30 += taxaEmbarque + valorND30; // Taxa de Embarque + ND 30
+      omTotals.diarias.totalMilitares += quantidade;
+      omTotals.diarias.totalDiasViagem += diasOperacao;
+      omTotals.totalOperacional += totalGeral + valorND30;
+    });
+    
+    // 5. Processamento de Verba Operacional e Suprimento de Fundos
+    safeVerbaOperacionalData.forEach(record => {
+      const omTotals = getOmTotals(record.organizacao, record.ug);
+      const valorND30 = Number(record.valor_nd_30 || 0);
+      const valorND39 = Number(record.valor_nd_39 || 0);
+      const total = valorND30 + valorND39;
+      const quantidadeEquipes = Number(record.quantidade_equipes || 0);
+      const diasOperacao = Number(record.dias_operacao || 0);
+      
+      omTotals.totalOperacional += total;
+
+      if (record.detalhamento === 'Suprimento de Fundos') {
+          omTotals.suprimentoFundos.total += total;
+          omTotals.suprimentoFundos.totalND30 += valorND30;
+          omTotals.suprimentoFundos.totalND39 += valorND39;
+          omTotals.suprimentoFundos.totalEquipes += quantidadeEquipes;
+          omTotals.suprimentoFundos.totalDias += diasOperacao;
+      } else {
+          omTotals.verbaOperacional.total += total;
+          omTotals.verbaOperacional.totalND30 += valorND30;
+          omTotals.verbaOperacional.totalND39 += valorND39;
+          omTotals.verbaOperacional.totalEquipes += quantidadeEquipes;
+          omTotals.verbaOperacional.totalDias += diasOperacao;
+      }
+    });
+    
+    // 6. Processamento de Passagens (ND 33.90.33)
+    safePassagemData.forEach(record => {
+      const omTotals = getOmTotals(record.organizacao, record.ug);
+      const valorND33 = Number(record.valor_nd_33 || 0);
+      const quantidade = Number(record.quantidade_passagens || 0);
+      
+      omTotals.passagens.total += valorND33;
+      omTotals.passagens.totalQuantidade += quantidade;
+      omTotals.passagens.totalTrechos += 1; 
+      omTotals.totalOperacional += valorND33;
+    });
+    
+    // 7. Processamento de Concessionária (ND 33.90.39)
+    safeConcessionariaData.forEach(record => {
+      const omTotals = getOmTotals(record.organizacao, record.ug);
+      const valorND39 = Number(record.valor_nd_39 || 0);
+      
+      omTotals.concessionaria.total += valorND39;
+      omTotals.concessionaria.totalRegistros += 1;
+      omTotals.totalOperacional += valorND39;
+      
+      if (record.categoria === 'Água/Esgoto') {
+          omTotals.concessionaria.totalAgua += valorND39;
+      } else if (record.categoria === 'Energia Elétrica') {
+          omTotals.concessionaria.totalEnergia += valorND39;
+      }
+    });
+    
+    // 8. Processamento de Horas de Voo (AvEx)
+    safeHorasVooData.forEach(record => {
+      const omTotals = getOmTotals(record.organizacao, record.ug);
+      const valorTotal = Number(record.valor_total || 0);
+      const valorND30 = Number(record.valor_nd_30 || 0);
+      const valorND39 = Number(record.valor_nd_39 || 0);
+      const quantidadeHv = Number(record.quantidade_hv || 0);
+      const tipoAnv = record.tipo_anv || 'Não Especificado';
+      
+      omTotals.horasVoo.total += valorTotal;
+      omTotals.horasVoo.totalND30 += valorND30;
+      omTotals.horasVoo.totalND39 += valorND39;
+      omTotals.horasVoo.quantidadeHV += quantidadeHv;
+      omTotals.totalAviacaoExercito += valorTotal;
+      
+      if (!omTotals.horasVoo.groupedHV[tipoAnv]) {
+          omTotals.horasVoo.groupedHV[tipoAnv] = { totalValor: 0, totalHV: 0 };
+      }
+      omTotals.horasVoo.groupedHV[tipoAnv].totalValor += valorTotal;
+      omTotals.horasVoo.groupedHV[tipoAnv].totalHV += quantidadeHv;
+    });
+    
+    // 9. Processamento de Material de Consumo (ND 33.90.30/39)
+    safeMaterialConsumoData.forEach(record => {
+      const omTotals = getOmTotals(record.organizacao, record.ug);
+      const valorTotal = Number(record.valor_total || 0);
+      const valorND30 = Number(record.valor_nd_30 || 0);
+      const valorND39 = Number(record.valor_nd_39 || 0);
+      
+      omTotals.materialConsumo.total += valorTotal;
+      omTotals.materialConsumo.totalND30 += valorND30;
+      omTotals.materialConsumo.totalND39 += valorND39;
+      omTotals.totalOperacional += valorTotal;
+    });
+    
+    // 10. Consolidação Final e Totais Globais
+    let globalTotals: PTrabAggregatedTotals = {
+        totalLogisticoGeral: 0,
+        totalOperacional: 0,
+        totalMaterialPermanente: 0,
+        totalAviacaoExercito: 0,
+        totalRacoesOperacionaisGeral: 0,
+        
+        totalClasseI: 0,
+        totalComplemento: 0,
+        totalEtapaSolicitadaValor: 0,
+        totalDiasEtapaSolicitada: 0,
+        totalRefeicoesIntermediarias: 0,
+        
+        totalClasseII: 0, totalClasseII_ND30: 0, totalClasseII_ND39: 0, totalItensClasseII: 0, groupedClasseIICategories: {},
+        totalClasseV: 0, totalClasseV_ND30: 0, totalClasseV_ND39: 0, totalItensClasseV: 0, groupedClasseVCategories: {},
+        totalClasseVI: 0, totalClasseVI_ND30: 0, totalClasseVI_ND39: 0, totalItensClasseVI: 0, groupedClasseVICategories: {},
+        totalClasseVII: 0, totalClasseVII_ND30: 0, totalClasseVII_ND39: 0, totalItensClasseVII: 0, groupedClasseVIICategories: {},
+        totalClasseVIII: 0, totalClasseVIII_ND30: 0, totalClasseVIII_ND39: 0, totalItensClasseVIII: 0, groupedClasseVIIICategories: {},
+        totalClasseIX: 0, totalClasseIX_ND30: 0, totalClasseIX_ND39: 0, totalItensClasseIX: 0, groupedClasseIXCategories: {},
+        
+        totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0, totalCombustivel: 0,
+        
+        totalDiarias: 0, totalDiariasND15: 0, totalDiariasND30: 0, totalMilitaresDiarias: 0, totalDiasViagem: 0,
+        totalVerbaOperacional: 0, totalVeracionalND30: 0, totalVerbaOperacionalND39: 0, totalEquipesVerba: 0, totalDiasVerba: 0,
+        totalSuprimentoFundos: 0, totalSuprimentoFundosND30: 0, totalSuprimentoFundosND39: 0, totalEquipesSuprimento: 0, totalDiasSuprimento: 0,
+        totalPassagensND33: 0, totalQuantidadePassagens: 0, totalTrechosPassagens: 0,
+        totalConcessionariaND39: 0, totalConcessionariaRegistros: 0, totalConcessionariaAgua: 0, totalConcessionariaEnergia: 0,
+        totalHorasVoo: 0, quantidadeHorasVoo: 0, groupedHorasVoo: {},
+        totalMaterialConsumo: 0, totalMaterialConsumoND30: 0, totalMaterialConsumoND39: 0,
+        
+        groupedByOm,
+    };
+    
+    // Itera sobre os totais por OM para calcular os totais globais
+    Object.values(groupedByOm).forEach(omTotals => {
+        // Atualiza o total geral da OM
+        omTotals.totalLogistica = omTotals.classeI.total + omTotals.classeII.total + omTotals.classeIII.total + omTotals.classeV.total + omTotals.classeVI.total + omTotals.classeVII.total + omTotals.classeVIII.total + omTotals.classeIX.total;
+        omTotals.totalOperacional = omTotals.diarias.total + omTotals.verbaOperacional.total + omTotals.suprimentoFundos.total + omTotals.passagens.total + omTotals.concessionaria.total + omTotals.materialConsumo.total;
+        omTotals.totalGeral = omTotals.totalLogistica + omTotals.totalOperacional + omTotals.totalMaterialPermanente + omTotals.totalAviacaoExercito;
+        
+        // Soma para os totais globais
+        globalTotals.totalLogisticoGeral += omTotals.totalLogistica;
+        globalTotals.totalOperacional += omTotals.totalOperacional;
+        globalTotals.totalMaterialPermanente += omTotals.totalMaterialPermanente;
+        globalTotals.totalAviacaoExercito += omTotals.totalAviacaoExercito;
+        globalTotals.totalRacoesOperacionaisGeral += omTotals.classeI.totalRacoesOperacionaisGeral;
+        
+        // Detalhes Globais
+        globalTotals.totalClasseI += omTotals.classeI.total;
+        globalTotals.totalComplemento += omTotals.classeI.totalComplemento;
+        globalTotals.totalEtapaSolicitadaValor += omTotals.classeI.totalEtapaSolicitadaValor;
+        globalTotals.totalDiasEtapaSolicitada += omTotals.classeI.totalDiasEtapaSolicitada;
+        globalTotals.totalRefeicoesIntermediarias += omTotals.classeI.totalRefeicoesIntermediarias;
+        
+        // Classes Diversas (Global)
+        const mergeClassTotals = (globalKey: 'ClasseII' | 'ClasseV' | 'ClasseVI' | 'ClasseVII' | 'ClasseVIII' | 'ClasseIX', omGroup: any) => {
+            const totalKey = `total${globalKey}` as keyof PTrabAggregatedTotals;
+            const nd30Key = `total${globalKey}_ND30` as keyof PTrabAggregatedTotals;
+            const nd39Key = `total${globalKey}_ND39` as keyof PTrabAggregatedTotals;
+            const itensKey = `totalItens${globalKey}` as keyof PTrabAggregatedTotals;
+            const groupedKey = `grouped${globalKey}Categories` as keyof PTrabAggregatedTotals;
+            
+            (globalTotals[totalKey] as number) += omGroup.total;
+            (globalTotals[nd30Key] as number) += omGroup.totalND30;
+            (globalTotals[nd39Key] as number) += omGroup.totalND39;
+            (globalTotals[itensKey] as number) += omGroup.totalItens;
+            
+            const globalGrouped = globalTotals[groupedKey] as Record<string, any>;
+            
+            Object.entries(omGroup.groupedCategories).forEach(([category, data]: [string, any]) => {
+                if (!globalGrouped[category]) {
+                    globalGrouped[category] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
+                }
+                globalGrouped[category].totalValor += data.totalValor;
+                globalGrouped[category].totalND30 += data.totalND30;
+                globalGrouped[category].totalND39 += data.totalND39;
+                globalGrouped[category].totalItens += data.totalItens;
+            });
+        };
+        
+        mergeClassTotals('ClasseII', omTotals.classeII);
+        mergeClassTotals('ClasseV', omTotals.classeV);
+        mergeClassTotals('ClasseVI', omTotals.classeVI);
+        mergeClassTotals('ClasseVII', omTotals.classeVII);
+        mergeClassTotals('ClasseVIII', omTotals.classeVIII);
+        mergeClassTotals('ClasseIX', omTotals.classeIX);
+        
+        // Classe III (Global)
+        globalTotals.totalCombustivel += omTotals.classeIII.total;
+        globalTotals.totalDieselValor += omTotals.classeIII.totalDieselValor;
+        globalTotals.totalGasolinaValor += omTotals.classeIII.totalGasolinaValor;
+        globalTotals.totalDieselLitros += omTotals.classeIII.totalDieselLitros;
+        globalTotals.totalGasolinaLitros += omTotals.classeIII.totalGasolinaLitros;
+        globalTotals.totalLubrificanteValor += omTotals.classeIII.totalLubrificanteValor;
+        globalTotals.totalLubrificanteLitros += omTotals.classeIII.totalLubrificanteLitros;
+        
+        // Operacional (Global)
+        globalTotals.totalDiarias += omTotals.diarias.total;
+        globalTotals.totalDiariasND15 += omTotals.diarias.totalND15;
+        globalTotals.totalDiariasND30 += omTotals.diarias.totalND30;
+        globalTotals.totalMilitaresDiarias += omTotals.diarias.totalMilitares;
+        globalTotals.totalDiasViagem += omTotals.diarias.totalDiasViagem;
+        
+        globalTotals.totalVerbaOperacional += omTotals.verbaOperacional.total;
+        globalTotals.totalVerbaOperacionalND30 += omTotals.verbaOperacional.totalND30;
+        globalTotals.totalVerbaOperacionalND39 += omTotals.verbaOperacional.totalND39;
+        globalTotals.totalEquipesVerba += omTotals.verbaOperacional.totalEquipes;
+        globalTotals.totalDiasVerba += omTotals.verbaOperacional.totalDias;
+        
+        globalTotals.totalSuprimentoFundos += omTotals.suprimentoFundos.total;
+        globalTotals.totalSuprimentoFundosND30 += omTotals.suprimentoFundos.totalND30;
+        globalTotals.totalSuprimentoFundosND39 += omTotals.suprimentoFundos.totalND39;
+        globalTotals.totalEquipesSuprimento += omTotals.suprimentoFundos.totalEquipes;
+        globalTotals.totalDiasSuprimento += omTotals.suprimentoFundos.totalDias;
+        
+        globalTotals.totalPassagensND33 += omTotals.passagens.total;
+        globalTotals.totalQuantidadePassagens += omTotals.passagens.totalQuantidade;
+        globalTotals.totalTrechosPassagens += omTotals.passagens.totalTrechos;
+        
+        globalTotals.totalConcessionariaND39 += omTotals.concessionaria.total;
+        globalTotals.totalConcessionariaRegistros += omTotals.concessionaria.totalRegistros;
+        globalTotals.totalConcessionariaAgua += omTotals.concessionaria.totalAgua;
+        globalTotals.totalConcessionariaEnergia += omTotals.concessionaria.totalEnergia;
+        
+        globalTotals.totalHorasVoo += omTotals.horasVoo.total;
+        globalTotals.quantidadeHorasVoo += omTotals.horasVoo.quantidadeHV;
+        
+        Object.entries(omTotals.horasVoo.groupedHV).forEach(([tipoAnv, data]) => {
+            if (!globalTotals.groupedHorasVoo[tipoAnv]) {
+                globalTotals.groupedHorasVoo[tipoAnv] = { totalValor: 0, totalHV: 0 };
+            }
+            globalTotals.groupedHorasVoo[tipoAnv].totalValor += data.totalValor;
+            globalTotals.groupedHorasVoo[tipoAnv].totalHV += data.totalHV;
+        });
+        
+        globalTotals.totalMaterialConsumo += omTotals.materialConsumo.total;
+        globalTotals.totalMaterialConsumoND30 += omTotals.materialConsumo.totalND30;
+        globalTotals.totalMaterialConsumoND39 += omTotals.materialConsumo.totalND39;
+    });
+    
+    return globalTotals as PTrabAggregatedTotals;
+  } catch (err) {
+    console.error("Erro crítico no processamento de totais:", err);
+    throw err;
+  }
 };
 
 interface PTrabCostSummaryProps {
@@ -836,7 +839,7 @@ const getHorasVooData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['hora
     const globalData = data as PTrabAggregatedTotals;
     return {
         total: globalData.totalHorasVoo,
-        totalND30: globalData.totalMaterialConsumoND30, // Fallback para global se necessário
+        totalND30: globalData.totalMaterialConsumoND30, 
         totalND39: globalData.totalMaterialConsumoND39,
         quantidadeHV: globalData.quantidadeHorasVoo,
         groupedHV: globalData.groupedHorasVoo,
@@ -1437,7 +1440,6 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                                         {formatNumber(classeI.totalRacoesOperacionaisGeral)} un.
                                     </span>
                                     <span className="w-1/4 text-right font-medium text-foreground">
-                                        {/* Mantido como 0 pois o custo não é orçamentário direto */}
                                         {formatCurrency(0)} 
                                     </span>
                                 </div>
