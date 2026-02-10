@@ -281,7 +281,7 @@ const ComplementoAlimentacaoForm = () => {
                                                         <h4 className="font-bold text-sm text-primary uppercase">Quantitativo de Subsistência (QS)</h4>
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <div className="space-y-2">
-                                                                <Label>Valor Etapa (QS) *</Label>
+                                                                <Label>Valor Complemento (QS) *</Label>
                                                                 <CurrencyInput 
                                                                     value={formData.valor_etapa_qs} 
                                                                     onChange={(val) => setFormData({...formData, valor_etapa_qs: val})}
@@ -307,7 +307,7 @@ const ComplementoAlimentacaoForm = () => {
                                                         <h4 className="font-bold text-sm text-orange-600 uppercase">Quantitativo de Rancho (QR)</h4>
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <div className="space-y-2">
-                                                                <Label>Valor Etapa (QR) *</Label>
+                                                                <Label>Valor Complemento (QR) *</Label>
                                                                 <CurrencyInput 
                                                                     value={formData.valor_etapa_qr} 
                                                                     onChange={(val) => setFormData({...formData, valor_etapa_qr: val})}
