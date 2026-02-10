@@ -88,7 +88,7 @@ const initialFormState: ComplementoAlimentacaoFormState = {
     fase_atividade: "",
     categoria_complemento: 'genero',
     
-    publico: "Militares",
+    publico: "OSP",
     valor_etapa_qs: 0,
     pregao_qs: "",
     om_qs: "",
@@ -341,6 +341,7 @@ const ComplementoAlimentacaoForm = () => {
                                                             onCancel={() => setIsGroupFormOpen(false)}
                                                             onOpenItemSelector={(items) => { setItemsToPreselect(items); setIsItemSelectorOpen(true); }}
                                                             selectedItemsFromSelector={selectedItemsFromSelector}
+                                                            onOpenChange={setIsItemSelectorOpen}
                                                             onClearSelectedItems={() => setSelectedItemsFromSelector(null)}
                                                         />
                                                     ) : (
