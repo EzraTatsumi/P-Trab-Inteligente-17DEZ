@@ -207,7 +207,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     totalMaterialPermanente: 0,
     totalAviacaoExercito: 0,
     classeI: { total: 0, totalComplemento: 0, totalEtapaSolicitadaValor: 0, totalDiasEtapaSolicitada: 0, totalRefeicoesIntermediarias: 0, totalRacoesOperacionaisGeral: 0 },
-    classeII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeII: { total: 0, totalND30: number, totalND39: number, totalItens: 0, groupedCategories: {} },
     classeIII: { total: 0, totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0 },
     classeV: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeVI: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
@@ -288,6 +288,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     });
     
     // 2. Fetch Classes II, V, VI, VII, VIII, IX records from their respective tables
+    // CORREÇÃO: Adicionado .eq('p_trab_id', ptrabId) em todas as consultas para filtrar pelo P Trab atual
     const [
       { data: classeIIData, error: classeIIError },
       { data: classeVData, error: classeVError },
@@ -306,46 +307,60 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     ] = await Promise.all([
       supabase
         .from('classe_ii_registros')
-        .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+        .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39')
+        .eq('p_trab_id', ptrabId),
       supabase
         .from('classe_v_registros')
-        .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+        .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39')
+        .eq('p_trab_id', ptrabId),
       supabase
         .from('classe_vi_registros')
-        .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+        .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39')
+        .eq('p_trab_id', ptrabId),
       supabase
         .from('classe_vii_registros')
-        .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+        .select('valor_total, itens_equipamentos, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39')
+        .eq('p_trab_id', ptrabId),
       supabase
         .from('classe_viii_saude_registros')
-        .select('valor_total, itens_saude, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+        .select('valor_total, itens_saude, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39')
+        .eq('p_trab_id', ptrabId),
       supabase
         .from('classe_viii_remonta_registros')
-        .select('valor_total, itens_remonta, dias_operacao, organizacao, ug, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais'),
+        .select('valor_total, itens_remonta, dias_operacao, organizacao, ug, valor_nd_30, valor_nd_39, animal_tipo, quantidade_animais')
+        .eq('p_trab_id', ptrabId),
       supabase
         .from('classe_ix_registros')
-        .select('valor_total, itens_motomecanizacao, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39'),
+        .select('valor_total, itens_motomecanizacao, dias_operacao, organizacao, ug, categoria, valor_nd_30, valor_nd_39')
+        .eq('p_trab_id', ptrabId),
       supabase
         .from('classe_iii_registros')
-        .select('valor_total, tipo_combustivel, total_litros, tipo_equipamento, organizacao, ug, consumo_lubrificante_litro, preco_lubrificante'),
+        .select('valor_total, tipo_combustivel, total_litros, tipo_equipamento, organizacao, ug, consumo_lubrificante_litro, preco_lubrificante')
+        .eq('p_trab_id', ptrabId),
       supabase
         .from('diaria_registros')
-        .select('valor_total, valor_nd_15, valor_taxa_embarque, quantidade, dias_operacao, valor_nd_30, organizacao, ug'), 
+        .select('valor_total, valor_nd_15, valor_taxa_embarque, quantidade, dias_operacao, valor_nd_30, organizacao, ug')
+        .eq('p_trab_id', ptrabId),
       supabase
         .from('verba_operacional_registros')
-        .select('valor_nd_30, valor_nd_39, valor_total_solicitado, dias_operacao, quantidade_equipes, detalhamento, organizacao, ug'),
+        .select('valor_nd_30, valor_nd_39, valor_total_solicitado, dias_operacao, quantidade_equipes, detalhamento, organizacao, ug')
+        .eq('p_trab_id', ptrabId),
       supabase
         .from('passagem_registros')
-        .select('valor_total, valor_nd_33, quantidade_passagens, is_ida_volta, origem, destino, organizacao, ug'),
+        .select('valor_total, valor_nd_33, quantidade_passagens, is_ida_volta, origem, destino, organizacao, ug')
+        .eq('p_trab_id', ptrabId),
       supabase
         .from('concessionaria_registros')
-        .select('valor_total, valor_nd_39, dias_operacao, efetivo, categoria, organizacao, ug'),
+        .select('valor_total, valor_nd_39, dias_operacao, efetivo, categoria, organizacao, ug')
+        .eq('p_trab_id', ptrabId),
       supabase
         .from('horas_voo_registros')
-        .select('valor_total, valor_nd_30, valor_nd_39, quantidade_hv, tipo_anv, organizacao, ug'),
+        .select('valor_total, valor_nd_30, valor_nd_39, quantidade_hv, tipo_anv, organizacao, ug')
+        .eq('p_trab_id', ptrabId),
       supabase
         .from('material_consumo_registros')
-        .select('valor_total, valor_nd_30, valor_nd_39, organizacao, ug'),
+        .select('valor_total, valor_nd_30, valor_nd_39, organizacao, ug')
+        .eq('p_trab_id', ptrabId),
     ]);
 
     // Usar arrays vazios se o fetch falhou
