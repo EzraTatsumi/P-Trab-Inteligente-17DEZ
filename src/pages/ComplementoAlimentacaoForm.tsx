@@ -489,12 +489,6 @@ const ComplementoAlimentacaoForm = () => {
                             <div className="flex items-center gap-2">
                                 Complemento de Alimentação
                             </div>
-                            {isBaseFormReady && (
-                                <Button variant="outline" size="sm" onClick={handleClearForm} className="text-xs">
-                                    <Eraser className="mr-2 h-3 w-3" />
-                                    Limpar Formulário
-                                </Button>
-                            )}
                         </CardTitle>
                         <CardDescription>
                             Levantamento de necessidades de Gêneros, Água e Lanches.
@@ -771,7 +765,6 @@ const ComplementoAlimentacaoForm = () => {
                                                                         <OmSelector 
                                                                             selectedOmId={selectedOmLancheId} 
                                                                             onChange={(om) => setFormData({...formData, lanche_om_uasg: om?.nome_om || "", lanche_ug_uasg: om?.codug_om || ""})} 
-                                                                            placeholder="Selecione a UASG" 
                                                                         />
                                                                     </div>
                                                                 </div>
@@ -847,10 +840,16 @@ const ComplementoAlimentacaoForm = () => {
                                                     <span className="text-lg font-extrabold text-foreground uppercase">Total da Solicitação:</span>
                                                     <span className="text-lg font-extrabold text-foreground">{formatCurrency(currentCategoryTotal)}</span>
                                                 </div>
-                                                <Button className="w-full md:w-auto" disabled={isSaveDisabled} onClick={handleStageCalculation}>
-                                                    <Save className="mr-2 h-4 w-4" />
-                                                    Salvar Itens na Lista
-                                                </Button>
+                                                <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                                                    <Button variant="outline" onClick={handleClearForm} className="w-full md:w-auto">
+                                                        <XCircle className="mr-2 h-4 w-4" />
+                                                        Limpar
+                                                    </Button>
+                                                    <Button className="w-full md:w-auto" disabled={isSaveDisabled} onClick={handleStageCalculation}>
+                                                        <Save className="mr-2 h-4 w-4" />
+                                                        Salvar Itens na Lista
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </Card>
                                     </Tabs>
