@@ -33,9 +33,9 @@ interface ItemClasse {
 
 // Tipos para a nova estrutura agrupada por OM
 interface OmTotals {
-    omKey: string; // organizacao|ug
+    omKey: string; // organizacao normalizada
     omName: string;
-    ug: string;
+    ug: string; // Pode conter múltiplas UGs separadas por vírgula
     totalGeral: number;
     totalLogistica: number;
     totalOperacional: number;
@@ -196,7 +196,7 @@ const normalizeOmName = (name: string): string => {
 };
 
 const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
-    omKey: `${normalizeOmName(omName)}|${ug.trim()}`,
+    omKey: normalizeOmName(omName), // Chave agora é apenas o nome normalizado
     omName: omName.trim(),
     ug: ug.trim(),
     totalGeral: 0,
@@ -205,7 +205,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     totalMaterialPermanente: 0,
     totalAviacaoExercito: 0,
     classeI: { total: 0, totalComplemento: 0, totalEtapaSolicitadaValor: 0, totalDiasEtapaSolicitada: 0, totalRefeicoesIntermediarias: 0, totalRacoesOperacionaisGeral: 0 },
-    classeII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
+    classeII: { total: 0, totalND30: number = 0, totalND39: number = 0, totalItens: 0, groupedCategories: {} },
     classeIII: { total: 0, totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0 },
     classeV: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeVI: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
@@ -229,10 +229,16 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     const getOmTotals = (omName: string, ug: string): OmTotals => {
         const cleanName = (omName || "").trim();
         const cleanUg = (ug || "").trim();
-        const key = `${normalizeOmName(cleanName)}|${cleanUg}`;
+        const key = normalizeOmName(cleanName); // Agrupa apenas pelo nome normalizado
         
         if (!groupedByOm[key]) {
             groupedByOm[key] = initializeOmTotals(cleanName, cleanUg);
+        } else {
+            // Se a OM já existe mas a UG é diferente, adiciona à lista de UGs exibidas
+            const currentUgs = groupedByOm[key].ug.split(', ');
+            if (cleanUg && !currentUgs.includes(cleanUg)) {
+                groupedByOm[key].ug = [...currentUgs, cleanUg].join(', ');
+            }
         }
         return groupedByOm[key];
     };
@@ -988,7 +994,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: OmDetailsDialogProps) => {
                 <DialogHeader className="p-6 pb-4 border-b border-border/50">
                     <DialogTitle className="text-2xl font-bold">{om.omName}</DialogTitle>
                     <DialogDescription className="text-sm">
-                        UG: {formatCodug(om.ug)} | Total: {formatCurrency(om.totalGeral)}
+                        UG(s): {om.ug.split(', ').map(u => formatCodug(u)).join(', ')} | Total: {formatCurrency(om.totalGeral)}
                     </DialogDescription>
                 </DialogHeader>
                 
