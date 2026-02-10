@@ -16,7 +16,6 @@ export interface ComplementoAlimentacaoRegistro {
     group_purpose: string | null;
     categoria_complemento: 'genero' | 'agua' | 'lanche';
     
-    // Novos campos para Gênero Alimentício (estilo Classe I)
     publico: string;
     valor_etapa_qs: number;
     pregao_qs: string | null;
@@ -27,7 +26,6 @@ export interface ComplementoAlimentacaoRegistro {
     om_qr: string | null;
     ug_qr: string | null;
 
-    // Novos campos para Água Mineral
     agua_consumo_dia: number | null;
     agua_tipo_envase: string | null;
     agua_volume_envase: number | null;
@@ -67,6 +65,8 @@ export interface AcquisitionGroup {
     totalND30: number;
     totalND39: number;
 }
+
+export const MEMORIA_SEPARATOR = "\n\n--- DIVISOR_MEMORIA ---\n\n";
 
 export const calculateGroupTotals = (items: ItemAquisicao[]) => {
     return items.reduce((acc, item) => {
@@ -110,7 +110,7 @@ export const generateComplementoMemoriaCalculo = (
                         `Total: ${tQR}.\n` +
                         `(Pregão ${formatPregao(registro.pregao_qr || '')} - UASG ${formatCodug(registro.ug_qr || '')})`;
 
-        return `${blockQS}\n\n--------------------------------------------------\n\n${blockQR}`;
+        return `${blockQS}${MEMORIA_SEPARATOR}${blockQR}`;
     }
 
     if (registro.categoria_complemento === 'agua') {

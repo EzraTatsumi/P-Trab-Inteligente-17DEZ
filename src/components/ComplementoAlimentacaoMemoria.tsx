@@ -1,12 +1,12 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2, Pencil, RefreshCw, XCircle, Check } from "lucide-react";
 import { formatCodug } from "@/lib/formatUtils";
-import { ComplementoAlimentacaoRegistro, generateComplementoMemoriaCalculo } from "@/lib/complementoAlimentacaoUtils";
+import { ComplementoAlimentacaoRegistro, generateComplementoMemoriaCalculo, MEMORIA_SEPARATOR } from "@/lib/complementoAlimentacaoUtils";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -39,9 +39,13 @@ const ComplementoAlimentacaoMemoria: React.FC<ComplementoAlimentacaoMemoriaProps
 }) => {
     
     const isEditing = editingMemoriaId === registro.id;
+    const isGenero = registro.categoria_complemento === 'genero';
     
     // A memória automática é gerada para este registro específico
-    const memoriaAutomatica = generateComplementoMemoriaCalculo(registro, context);
+    const memoriaAutomatica = generateComplementoMemoriaCalculo(registro, {
+        ...context,
+        fase_atividade: context.fase_atividade || ""
+    });
     
     // A memória customizada
     const memoriaCustomizada = registro.detalhamento_customizado;
@@ -51,6 +55,24 @@ const ComplementoAlimentacaoMemoria: React.FC<ComplementoAlimentacaoMemoriaProps
     
     const currentMemoriaText = isEditing ? memoriaEdit : memoriaDisplay;
     const hasCustomMemoria = !!memoriaCustomizada;
+
+    // Lógica para separar QS e QR se for Gênero
+    const { qsText, qrText } = useMemo(() => {
+        if (!isGenero) return { qsText: currentMemoriaText, qrText: "" };
+        const parts = currentMemoriaText.split(MEMORIA_SEPARATOR);
+        return {
+            qsText: parts[0] || "",
+            qrText: parts[1] || ""
+        };
+    }, [isGenero, currentMemoriaText]);
+
+    const handleUpdatePart = (part: 'qs' | 'qr', value: string) => {
+        if (part === 'qs') {
+            setMemoriaEdit(`${value}${MEMORIA_SEPARATOR}${qrText}`);
+        } else {
+            setMemoriaEdit(`${qsText}${MEMORIA_SEPARATOR}${value}`);
+        }
+    };
 
     const getCategoryBadgeClasses = (categoria: string) => {
         switch (categoria) {
@@ -146,20 +168,62 @@ const ComplementoAlimentacaoMemoria: React.FC<ComplementoAlimentacaoMemoriaProps
                 </div>
             </div>
             
-            <Card className="p-4 bg-background rounded-lg border">
-                {isEditing ? (
-                    <Textarea
-                        value={memoriaEdit}
-                        onChange={(e) => setMemoriaEdit(e.target.value)}
-                        className="min-h-[250px] font-mono text-sm"
-                        placeholder="Digite a memória de cálculo..."
-                    />
-                ) : (
-                    <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
-                        {currentMemoriaText}
-                    </pre>
-                )}
-            </Card>
+            <div className="h-px bg-border my-2" />
+
+            {isGenero ? (
+                <div className="space-y-6">
+                    {/* Bloco QS */}
+                    <div className="space-y-2">
+                        <h5 className="font-bold text-sm text-blue-600 uppercase">QS - Quantitativo de Subsistência (RM: {registro.om_qs})</h5>
+                        <Card className="p-4 bg-background rounded-lg border">
+                            {isEditing ? (
+                                <Textarea
+                                    value={qsText}
+                                    onChange={(e) => handleUpdatePart('qs', e.target.value)}
+                                    className="min-h-[200px] font-mono text-xs border-blue-500 focus:ring-2 focus:ring-blue-500"
+                                />
+                            ) : (
+                                <pre className="text-xs font-mono whitespace-pre-wrap text-foreground">
+                                    {qsText}
+                                </pre>
+                            )}
+                        </Card>
+                    </div>
+
+                    {/* Bloco QR */}
+                    <div className="space-y-2">
+                        <h5 className="font-bold text-sm text-green-600 uppercase">QR - Quantitativo de Reforço (OM: {registro.organizacao})</h5>
+                        <Card className="p-4 bg-background rounded-lg border">
+                            {isEditing ? (
+                                <Textarea
+                                    value={qrText}
+                                    onChange={(e) => handleUpdatePart('qr', e.target.value)}
+                                    className="min-h-[200px] font-mono text-xs border-green-500 focus:ring-2 focus:ring-green-500"
+                                />
+                            ) : (
+                                <pre className="text-xs font-mono whitespace-pre-wrap text-foreground">
+                                    {qrText}
+                                </pre>
+                            )}
+                        </Card>
+                    </div>
+                </div>
+            ) : (
+                <Card className="p-4 bg-background rounded-lg border">
+                    {isEditing ? (
+                        <Textarea
+                            value={memoriaEdit}
+                            onChange={(e) => setMemoriaEdit(e.target.value)}
+                            className="min-h-[250px] font-mono text-sm"
+                            placeholder="Digite a memória de cálculo..."
+                        />
+                    ) : (
+                        <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
+                            {currentMemoriaText}
+                        </pre>
+                    )}
+                </Card>
+            )}
             
         </div>
     );
