@@ -82,10 +82,10 @@ export const generateComplementoMemoriaCalculo = (
     registro: Partial<ComplementoAlimentacaoRegistro>,
     context: { organizacao: string; efetivo: number; dias_operacao: number; fase_atividade: string }
 ): string => {
+    const diasText = registro.dias_operacao === 1 ? "dia" : "dias";
+    const publicoText = registro.publico || "militares";
+
     if (registro.categoria_complemento === 'genero') {
-        const diasText = registro.dias_operacao === 1 ? "dia" : "dias";
-        const publicoText = registro.publico || "militares";
-        
         const totalQS = (registro.efetivo || 0) * (registro.dias_operacao || 0) * (registro.valor_etapa_qs || 0);
         const totalQR = (registro.efetivo || 0) * (registro.dias_operacao || 0) * (registro.valor_etapa_qr || 0);
         
@@ -114,15 +114,24 @@ export const generateComplementoMemoriaCalculo = (
     }
 
     if (registro.categoria_complemento === 'agua') {
-        const totalLitros = (registro.efetivo || 0) * (registro.agua_consumo_dia || 0) * (registro.dias_operacao || 0);
-        const totalGarrafas = Math.ceil(totalLitros / (registro.agua_volume_envase || 1));
+        const consumo = registro.agua_consumo_dia || 0;
+        const volEnvase = registro.agua_volume_envase || 1;
+        const valUnid = registro.agua_valor_unitario || 0;
+        const totalVal = Number(registro.valor_total || 0);
         
-        return `Solicitação de Água Mineral para a OM ${context.organizacao}.\n` +
-               `Contexto: ${registro.efetivo} militares por ${registro.dias_operacao} dias na fase ${context.fase_atividade}.\n` +
-               `Consumo estimado: ${registro.agua_consumo_dia}L/dia por pessoa.\n` +
-               `Total de Litros: ${totalLitros.toLocaleString('pt-BR')}L.\n` +
-               `Envase: ${registro.agua_tipo_envase} de ${registro.agua_volume_envase}L.\n` +
-               `Cálculo: ${totalGarrafas} garrafas x R$ ${registro.agua_valor_unitario?.toFixed(2)} = R$ ${Number(registro.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+        const valUnidFmt = formatCurrency(valUnid);
+        const totalValFmt = formatCurrency(totalVal);
+
+        return `33.90.30 - Aquisição de Água Mineral para atender ${registro.efetivo} ${publicoText}, durante ${registro.dias_operacao} ${diasText} de ${context.fase_atividade}.\n\n` +
+               `Cálculo:\n` +
+               `- Consumo considerado: ${consumo.toLocaleString('pt-BR')}L/dia/pessoa.\n` +
+               `- Tipo de Envase: ${registro.agua_tipo_envase}.\n` +
+               `- Volume do Envase: ${volEnvase.toLocaleString('pt-BR')} L.\n` +
+               `- Valor da unidade: ${valUnidFmt}.\n\n` +
+               `Fórmula: [(Efetivo x Consumo) / Volume Envase] x Nr de dias x valor da unidade.\n` +
+               `- [(${registro.efetivo} ${publicoText} x ${consumo.toLocaleString('pt-BR')} L água/dia) / ${volEnvase.toLocaleString('pt-BR')} L/unid] x ${registro.dias_operacao} ${diasText} x ${valUnidFmt}/unid = ${totalValFmt}.\n\n` +
+               `Total: ${totalValFmt}.\n` +
+               `(Pregão ${formatPregao(registro.agua_pregao || '')} - UASG ${formatCodug(registro.ug_detentora || '')})`;
     }
 
     const itens = (registro.itens_aquisicao || []) as ItemAquisicao[];
