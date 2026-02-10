@@ -181,6 +181,15 @@ const ComplementoAlimentacaoForm = () => {
     const isBaseFormReady = formData.om_favorecida.length > 0 && formData.fase_atividade.length > 0;
     const isGenero = formData.categoria_complemento === 'genero';
 
+    // Cálculos em tempo real para exibição nos containers
+    const currentTotalQS = useMemo(() => {
+        return formData.efetivo * formData.valor_etapa_qs * formData.dias_operacao;
+    }, [formData.efetivo, formData.valor_etapa_qs, formData.dias_operacao]);
+
+    const currentTotalQR = useMemo(() => {
+        return formData.efetivo * formData.valor_etapa_qr * formData.dias_operacao;
+    }, [formData.efetivo, formData.valor_etapa_qr, formData.dias_operacao]);
+
     // Lógica de cálculo e adição à lista pendente
     const handleStageCalculation = () => {
         const { categoria_complemento, efetivo, dias_operacao } = formData;
@@ -188,8 +197,8 @@ const ComplementoAlimentacaoForm = () => {
         let newItem: StagedComplemento;
 
         if (categoria_complemento === 'genero') {
-            const totalQS = efetivo * formData.valor_etapa_qs * dias_operacao;
-            const totalQR = efetivo * formData.valor_etapa_qr * dias_operacao;
+            const totalQS = currentTotalQS;
+            const totalQR = currentTotalQR;
             const totalGeral = totalQS + totalQR;
 
             newItem = {
@@ -366,8 +375,14 @@ const ComplementoAlimentacaoForm = () => {
 
                                                 {isGenero && (
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
-                                                        <div className="space-y-4 p-4 bg-primary/5 rounded-md border border-primary/10">
-                                                            <h4 className="font-bold text-sm text-primary uppercase">Quantitativo de Subsistência (QS)</h4>
+                                                        <div className="space-y-4 p-4 bg-primary/5 rounded-md border border-primary/10 relative overflow-hidden">
+                                                            <div className="flex justify-between items-start">
+                                                                <h4 className="font-bold text-sm text-primary uppercase">Quantitativo de Subsistência (QS)</h4>
+                                                                <div className="text-right">
+                                                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Subtotal Estimado</p>
+                                                                    <p className="text-sm font-extrabold text-primary">{formatCurrency(currentTotalQS)}</p>
+                                                                </div>
+                                                            </div>
                                                             <div className="grid grid-cols-2 gap-4">
                                                                 <div className="space-y-2">
                                                                     <Label>Valor Complemento *</Label>
@@ -384,8 +399,14 @@ const ComplementoAlimentacaoForm = () => {
                                                             </div>
                                                         </div>
 
-                                                        <div className="space-y-4 p-4 bg-orange-500/5 rounded-md border border-orange-500/10">
-                                                            <h4 className="font-bold text-sm text-orange-600 uppercase">Quantitativo de Rancho (QR)</h4>
+                                                        <div className="space-y-4 p-4 bg-orange-500/5 rounded-md border border-orange-500/10 relative overflow-hidden">
+                                                            <div className="flex justify-between items-start">
+                                                                <h4 className="font-bold text-sm text-orange-600 uppercase">Quantitativo de Rancho (QR)</h4>
+                                                                <div className="text-right">
+                                                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Subtotal Estimado</p>
+                                                                    <p className="text-sm font-extrabold text-orange-600">{formatCurrency(currentTotalQR)}</p>
+                                                                </div>
+                                                            </div>
                                                             <div className="grid grid-cols-2 gap-4">
                                                                 <div className="space-y-2">
                                                                     <Label>Valor Complemento *</Label>
