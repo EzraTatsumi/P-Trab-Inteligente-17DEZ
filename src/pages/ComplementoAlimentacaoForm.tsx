@@ -656,15 +656,6 @@ const ComplementoAlimentacaoForm = () => {
                                                                                 </div>
                                                                                 <CollapsibleContent className="p-3">
                                                                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                                                                                        <div className="md:col-span-2 space-y-2">
-                                                                                            <Label className="text-[10px] uppercase">Descrição do Item *</Label>
-                                                                                            <Input 
-                                                                                                value={item.descricao} 
-                                                                                                onChange={(e) => updateLancheItem(item.id, "descricao", e.target.value)} 
-                                                                                                placeholder="Ex: Pão de forma, presunto, queijo..." 
-                                                                                                className="h-8 text-xs"
-                                                                                            />
-                                                                                        </div>
                                                                                         <div className="space-y-2">
                                                                                             <Label className="text-[10px] uppercase">Quantidade *</Label>
                                                                                             <Input 
@@ -673,6 +664,15 @@ const ComplementoAlimentacaoForm = () => {
                                                                                                 onChange={(e) => updateLancheItem(item.id, "quantidade", parseInt(e.target.value) || 0)} 
                                                                                                 className="h-8 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                                                 onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                                            />
+                                                                                        </div>
+                                                                                        <div className="md:col-span-2 space-y-2">
+                                                                                            <Label className="text-[10px] uppercase">Descrição do Item *</Label>
+                                                                                            <Input 
+                                                                                                value={item.descricao} 
+                                                                                                onChange={(e) => updateLancheItem(item.id, "descricao", e.target.value)} 
+                                                                                                placeholder="Ex: Pão de forma, presunto, queijo..." 
+                                                                                                className="h-8 text-xs"
                                                                                             />
                                                                                         </div>
                                                                                         <div className="space-y-2">
