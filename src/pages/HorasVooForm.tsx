@@ -393,9 +393,7 @@ const HorasVooForm = () => {
     // =================================================================
     
     // Handler unificado para CurrencyInput
-    const handleCurrencyChange = (field: 'valor_nd_30' | 'valor_nd_39', rawDigits: string) => {
-        const { numericValue } = formatCurrencyInput(rawDigits);
-        
+    const handleCurrencyChange = (field: 'valor_nd_30' | 'valor_nd_39', numericValue: number, rawDigits: string) => {
         if (field === 'valor_nd_30') {
             setRawND30Input(rawDigits);
             setFormData(prev => ({ ...prev, valor_nd_30: numericValue }));
@@ -507,8 +505,8 @@ const HorasVooForm = () => {
         setLastStagedFormData(null); 
         
         // Resetar inputs de moeda
-        setRawND30Input(numberToRawDigits(initialFormState.valor_nd_30));
-        setRawND39Input(numberToRawDigits(initialFormState.valor_nd_39));
+        setRawND30Input(numberToRawDigits(0));
+        setRawND39Input(numberToRawDigits(0));
     };
     
     const handleClearPending = () => {
@@ -1129,7 +1127,7 @@ const HorasVooForm = () => {
                                                             <CurrencyInput
                                                                 id="valor_nd_30"
                                                                 rawDigits={rawND30Input}
-                                                                onChange={(digits) => handleCurrencyChange('valor_nd_30', digits)}
+                                                                onChange={(val, dig) => handleCurrencyChange('valor_nd_30', val, dig)}
                                                                 placeholder="Ex: R$ 10.000,00"
                                                                 required={!formData.isCoterResponsibility}
                                                                 disabled={!isPTrabEditable || isSaving || formData.isCoterResponsibility}
@@ -1150,7 +1148,7 @@ const HorasVooForm = () => {
                                                             <CurrencyInput
                                                                 id="valor_nd_39"
                                                                 rawDigits={rawND39Input}
-                                                                onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
+                                                                onChange={(val, dig) => handleCurrencyChange('valor_nd_39', val, dig)}
                                                                 placeholder="Ex: R$ 5.000,00"
                                                                 required={!formData.isCoterResponsibility}
                                                                 disabled={!isPTrabEditable || isSaving || formData.isCoterResponsibility}
