@@ -87,8 +87,9 @@ export const CreditInputDialog = ({
             <Label htmlFor="credit-gnd3" className="font-semibold text-sm">GND 3 - Custeio</Label>
             <CurrencyInput
               id="credit-gnd3"
+              value={creditGND3}
               rawDigits={rawCreditGND3}
-              onChange={setRawCreditGND3}
+              onChange={(val) => setRawCreditGND3(numberToRawDigits(val))}
               onKeyDown={handleEnterToNextField}
             />
             
@@ -109,8 +110,9 @@ export const CreditInputDialog = ({
             <Label htmlFor="credit-gnd4" className="font-semibold text-sm">GND 4 - Investimento (Material Permanente)</Label>
             <CurrencyInput
               id="credit-gnd4"
+              value={creditGND4}
               rawDigits={rawCreditGND4}
-              onChange={setRawCreditGND4}
+              onChange={(val) => setRawCreditGND4(numberToRawDigits(val))}
               onKeyDown={handleEnterToNextField}
             />
             
