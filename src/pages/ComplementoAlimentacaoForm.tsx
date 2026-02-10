@@ -253,13 +253,14 @@ const ComplementoAlimentacaoForm = () => {
         setPendingItems(prev => [...prev, newItem]);
         
         // Reset parcial do form para permitir nova adição
+        // Mantendo Pregão e Valores de Etapa conforme solicitado
         setFormData(prev => ({
             ...prev,
             acquisitionGroups: [],
-            valor_etapa_qs: 0,
-            valor_etapa_qr: 0,
-            pregao_qs: "",
-            pregao_qr: ""
+            // valor_etapa_qs: 0, // Mantido
+            // valor_etapa_qr: 0, // Mantido
+            // pregao_qs: "", // Mantido
+            // pregao_qr: "" // Mantido
         }));
         
         toast.success("Item adicionado à lista de revisão.");
@@ -476,7 +477,7 @@ const ComplementoAlimentacaoForm = () => {
 
                                             <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-medium text-muted-foreground uppercase">Total da Solicitação:</span>
+                                                    <span className="text-lg font-extrabold text-foreground uppercase">Total da Solicitação:</span>
                                                     <span className="text-lg font-extrabold text-foreground">{formatCurrency(currentCategoryTotal)}</span>
                                                 </div>
                                                 <Button className="w-full md:w-auto" disabled={isSaveDisabled} onClick={handleStageCalculation}>
