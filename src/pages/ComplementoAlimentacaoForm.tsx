@@ -238,6 +238,7 @@ const ComplementoAlimentacaoForm = () => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [groupToDelete, setGroupToDelete] = useState<ConsolidatedComplementoRecord | null>(null);
+    const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
     
     const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
     const [selectedOmQrId, setSelectedOmQrId] = useState<string | undefined>(undefined);
@@ -380,10 +381,11 @@ const ComplementoAlimentacaoForm = () => {
             if (error) throw error;
         },
         onSuccess: () => {
-            toast.success("Lote excluído.");
+            toast.success("Registro excluído.");
             queryClient.invalidateQueries({ queryKey: ['complementoAlimentacaoRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
             setShowDeleteDialog(false);
+            setRecordToDelete(null);
         },
         onError: (error) => toast.error("Falha ao excluir.", { description: sanitizeError(error) })
     });
@@ -1097,32 +1099,65 @@ const ComplementoAlimentacaoForm = () => {
                                     </h3>
                                     
                                     {consolidatedRegistros.map((group) => (
-                                        <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
-                                            <div className="flex items-center justify-between mb-3 border-b pb-2">
-                                                <h3 className="font-bold text-lg text-primary flex items-center gap-2">
-                                                    {group.organizacao} (UG: {formatCodug(group.ug)})
-                                                    <Badge variant="outline" className="text-xs">{group.fase_atividade}</Badge>
-                                                </h3>
-                                                <span className="font-extrabold text-xl text-primary">{formatCurrency(group.totalGeral)}</span>
+                                        <Card key={group.groupKey} className="bg-muted/30 border-muted-foreground/20 overflow-hidden">
+                                            <div className="p-4 flex items-center justify-between bg-muted/10 border-b border-muted-foreground/10">
+                                                <div className="flex items-center gap-3">
+                                                    <h3 className="font-bold text-lg text-foreground">
+                                                        {group.organizacao} (UG: {formatCodug(group.ug)})
+                                                    </h3>
+                                                    <Badge variant="secondary" className="text-[10px] font-medium uppercase tracking-wider">
+                                                        {group.fase_atividade}
+                                                    </Badge>
+                                                </div>
+                                                <span className="font-extrabold text-xl text-foreground">{formatCurrency(group.totalGeral)}</span>
                                             </div>
                                             
-                                            <div className="space-y-3">
+                                            <div className="p-4 space-y-4">
                                                 {group.records.map((registro) => (
-                                                    <Card key={registro.id} className="p-3 bg-background border">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex flex-col">
-                                                                <h4 className="font-semibold text-base text-foreground">
-                                                                    {registro.group_name} ({registro.categoria_complemento === 'genero' ? 'Gênero' : registro.categoria_complemento === 'agua' ? 'Água' : 'Lanche'})
+                                                    <Card key={registro.id} className="bg-background border-muted-foreground/20 rounded-xl shadow-sm overflow-hidden">
+                                                        <div className="p-4">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <h4 className="font-bold text-base text-foreground">
+                                                                    Complemento de Alimentação ({registro.categoria_complemento === 'genero' ? 'Gênero Alimentício' : registro.categoria_complemento === 'agua' ? 'Água Mineral' : 'Lanche/Catanho'})
                                                                 </h4>
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    Período: {registro.dias_operacao} dias | Efetivo: {registro.efetivo} militares
-                                                                </p>
+                                                                <div className="flex items-center gap-3">
+                                                                    <span className="font-extrabold text-xl text-foreground">{formatCurrency(Number(registro.valor_total))}</span>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
+                                                                            <Pencil className="h-4 w-4" />
+                                                                        </Button>
+                                                                        <Button 
+                                                                            variant="ghost" 
+                                                                            size="icon" 
+                                                                            onClick={() => { setRecordToDelete(registro.id); setShowDeleteDialog(true); }} 
+                                                                            disabled={!isPTrabEditable || isSaving} 
+                                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-extrabold text-xl text-foreground">{formatCurrency(Number(registro.valor_total))}</span>
-                                                                <Button variant="ghost" size="icon" onClick={() => { setGroupToDelete(group); setShowDeleteDialog(true); }} disabled={!isPTrabEditable || isSaving} className="h-8 w-8 text-destructive hover:bg-destructive/10">
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
+                                                            
+                                                            <p className="text-xs text-muted-foreground mb-3">
+                                                                Período: {registro.dias_operacao} {registro.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: {registro.efetivo} {registro.efetivo === 1 ? 'militar' : 'militares'}
+                                                            </p>
+                                                            
+                                                            <div className="w-full h-[1px] bg-muted-foreground/10 my-3" />
+                                                            
+                                                            <div className="space-y-1.5">
+                                                                <div className="flex justify-between items-center text-[11px]">
+                                                                    <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                    <span className="font-medium text-foreground">{registro.om_detentora} ({formatCodug(registro.ug_detentora)})</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center text-[11px]">
+                                                                    <span className="text-muted-foreground">ND 33.90.30:</span>
+                                                                    <span className="font-bold text-green-600">{formatCurrency(Number(registro.valor_nd_30))}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center text-[11px]">
+                                                                    <span className="text-muted-foreground">ND 33.90.39:</span>
+                                                                    <span className="font-bold text-green-600">{formatCurrency(Number(registro.valor_nd_39))}</span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </Card>
@@ -1164,11 +1199,26 @@ const ComplementoAlimentacaoForm = () => {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-destructive">Confirmar Exclusão</AlertDialogTitle>
-                        <AlertDialogDescription>Deseja excluir o lote de Complemento para a OM {groupToDelete?.organizacao}?</AlertDialogDescription>
+                        <AlertDialogDescription>
+                            {recordToDelete 
+                                ? "Deseja excluir este registro de Complemento?" 
+                                : `Deseja excluir o lote de Complemento para a OM ${groupToDelete?.organizacao}?`}
+                        </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogAction onClick={() => groupToDelete && deleteMutation.mutate(groupToDelete.records.map(r => r.id))} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={() => {
+                                if (recordToDelete) {
+                                    deleteMutation.mutate([recordToDelete]);
+                                } else if (groupToDelete) {
+                                    deleteMutation.mutate(groupToDelete.records.map(r => r.id));
+                                }
+                            }} 
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
+                            Excluir
+                        </AlertDialogAction>
+                        <AlertDialogCancel onClick={() => { setRecordToDelete(null); setGroupToDelete(null); }}>Cancelar</AlertDialogCancel>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
