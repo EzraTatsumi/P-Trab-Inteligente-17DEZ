@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber, formatCodug } from "@/lib/formatUtils";
-import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase, Droplet, Zap, MapPin, Building2 } from "lucide-react";
+import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase, Droplet, Zap, MapPin, Building2, Coffee, Droplets } from "lucide-react";
 import {
   Accordion,
   AccordionItem,
@@ -50,6 +50,7 @@ interface OmTotals {
     concessionaria: { total: number, totalAgua: number, totalEnergia: number, totalRegistros: number };
     horasVoo: { total: number, totalND30: number, totalND39: number, quantidadeHV: number, groupedHV: Record<string, { totalValor: number, totalHV: number }> };
     materialConsumo: { total: number, totalND30: number, totalND39: number };
+    complementoAlimentacao: { total: number, totalND30: number, totalND39: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number }> };
 }
 
 export interface PTrabAggregatedTotals {
@@ -146,6 +147,11 @@ export interface PTrabAggregatedTotals {
     totalMaterialConsumoND30: number;
     totalMaterialConsumoND39: number;
 
+    totalComplementoAlimentacao: number;
+    totalComplementoAlimentacaoND30: number;
+    totalComplementoAlimentacaoND39: number;
+    groupedComplementoCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number }>;
+
     groupedByOmSolicitante: Record<string, OmTotals>;
     groupedByOmDestino: Record<string, OmTotals>;
 }
@@ -184,9 +190,10 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     verbaOperacional: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
     suprimentoFundos: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
     passagens: { total: 0, totalQuantidade: 0, totalTrechos: 0 },
-    concessionaria: { total: 0, totalAgua: 0, totalEnergia: 0, totalRegistros: 0 },
+    concessionaria: { total: 0, totalAgua: number, totalEnergia: number, totalRegistros: 0 },
     horasVoo: { total: 0, totalND30: 0, totalND39: 0, quantidadeHV: 0, groupedHV: {} },
     materialConsumo: { total: 0, totalND30: 0, totalND39: 0 },
+    complementoAlimentacao: { total: 0, totalND30: 0, totalND39: 0, groupedCategories: {} },
 } as any);
 
 /**
@@ -246,7 +253,7 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
     
     const [
       { data: cl2 }, { data: cl5 }, { data: cl6 }, { data: cl7 }, { data: cl8s }, { data: cl8r }, { data: cl9 }, { data: cl3 },
-      { data: diarias }, { data: verbaOp }, { data: passagens }, { data: concessionaria }, { data: horasVoo }, { data: materialConsumo },
+      { data: diarias }, { data: verbaOp }, { data: passagens }, { data: concessionaria }, { data: horasVoo }, { data: materialConsumo }, { data: complementoAlimentacao },
     ] = await Promise.all([
       supabase.from('classe_ii_registros').select('*').eq('p_trab_id', ptrabId),
       supabase.from('classe_v_registros').select('*').eq('p_trab_id', ptrabId),
@@ -262,6 +269,7 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
       supabase.from('concessionaria_registros').select('*').eq('p_trab_id', ptrabId),
       supabase.from('horas_voo_registros').select('*').eq('p_trab_id', ptrabId),
       supabase.from('material_consumo_registros').select('*').eq('p_trab_id', ptrabId),
+      supabase.from('complemento_alimentacao_registros').select('*').eq('p_trab_id', ptrabId),
     ]);
 
     const processGenericClass = (data: any[], classe: string) => {
@@ -388,6 +396,29 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
             omTotals.materialConsumo.totalND39 += Number(record.valor_nd_39 || 0);
         });
     });
+
+    (complementoAlimentacao || []).forEach(record => {
+        const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
+        const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
+        [omS, omD].forEach(omTotals => {
+            const val = Number(record.valor_total || 0);
+            const nd30 = Number(record.valor_nd_30 || 0);
+            const nd39 = Number(record.valor_nd_39 || 0);
+            omTotals.complementoAlimentacao.total += val;
+            omTotals.complementoAlimentacao.totalND30 += nd30;
+            omTotals.complementoAlimentacao.totalND39 += nd39;
+            
+            let cat = record.categoria_complemento === 'genero' ? 'Gênero Alimentício' : 
+                      record.categoria_complemento === 'agua' ? 'Água Mineral' : 'Lanche/Catanho';
+            
+            if (!omTotals.complementoAlimentacao.groupedCategories[cat]) {
+                omTotals.complementoAlimentacao.groupedCategories[cat] = { totalValor: 0, totalND30: 0, totalND39: 0 };
+            }
+            omTotals.complementoAlimentacao.groupedCategories[cat].totalValor += val;
+            omTotals.complementoAlimentacao.groupedCategories[cat].totalND30 += nd30;
+            omTotals.complementoAlimentacao.groupedCategories[cat].totalND39 += nd39;
+        });
+    });
     
     let globalTotals: PTrabAggregatedTotals = {
         totalLogisticoGeral: 0, totalOperacional: 0, totalMaterialPermanente: 0, totalAviacaoExercito: 0, totalRacoesOperacionaisGeral: 0,
@@ -406,12 +437,13 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
         totalConcessionariaND39: 0, totalConcessionariaRegistros: 0, totalConcessionariaAgua: 0, totalConcessionariaEnergia: 0,
         totalHorasVoo: 0, totalHorasVooND30: 0, totalHorasVooND39: 0, quantidadeHorasVoo: 0, groupedHorasVoo: {},
         totalMaterialConsumo: 0, totalMaterialConsumoND30: 0, totalMaterialConsumoND39: 0,
+        totalComplementoAlimentacao: 0, totalComplementoAlimentacaoND30: 0, totalComplementoAlimentacaoND39: 0, groupedComplementoCategories: {},
         groupedByOmSolicitante, groupedByOmDestino,
     };
     
     Object.values(groupedByOmSolicitante).forEach(omTotals => {
         omTotals.totalLogistica = omTotals.classeI.total + omTotals.classeII.total + omTotals.classeIII.total + omTotals.classeV.total + omTotals.classeVI.total + omTotals.classeVII.total + omTotals.classeVIII.total + omTotals.classeIX.total;
-        omTotals.totalOperacional = omTotals.diarias.total + omTotals.verbaOperacional.total + omTotals.suprimentoFundos.total + omTotals.passagens.total + omTotals.concessionaria.total + omTotals.materialConsumo.total;
+        omTotals.totalOperacional = omTotals.diarias.total + omTotals.verbaOperacional.total + omTotals.suprimentoFundos.total + omTotals.passagens.total + omTotals.concessionaria.total + omTotals.materialConsumo.total + omTotals.complementoAlimentacao.total;
         omTotals.totalGeral = omTotals.totalLogistica + omTotals.totalOperacional + omTotals.totalMaterialPermanente + omTotals.totalAviacaoExercito;
         globalTotals.totalLogisticoGeral += omTotals.totalLogistica;
         globalTotals.totalOperacional += omTotals.totalOperacional;
@@ -480,11 +512,23 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
         globalTotals.totalMaterialConsumo += omTotals.materialConsumo.total;
         globalTotals.totalMaterialConsumoND30 += omTotals.materialConsumo.totalND30;
         globalTotals.totalMaterialConsumoND39 += omTotals.materialConsumo.totalND39;
+        
+        globalTotals.totalComplementoAlimentacao += omTotals.complementoAlimentacao.total;
+        globalTotals.totalComplementoAlimentacaoND30 += omTotals.complementoAlimentacao.totalND30;
+        globalTotals.totalComplementoAlimentacaoND39 += omTotals.complementoAlimentacao.totalND39;
+        Object.entries(omTotals.complementoAlimentacao.groupedCategories).forEach(([cat, data]) => {
+            if (!globalTotals.groupedComplementoCategories[cat]) {
+                globalTotals.groupedComplementoCategories[cat] = { totalValor: 0, totalND30: 0, totalND39: 0 };
+            }
+            globalTotals.groupedComplementoCategories[cat].totalValor += data.totalValor;
+            globalTotals.groupedComplementoCategories[cat].totalND30 += data.totalND30;
+            globalTotals.groupedComplementoCategories[cat].totalND39 += data.totalND39;
+        });
     });
 
     Object.values(groupedByOmDestino).forEach(omTotals => {
         omTotals.totalLogistica = omTotals.classeI.total + omTotals.classeII.total + omTotals.classeIII.total + omTotals.classeV.total + omTotals.classeVI.total + omTotals.classeVII.total + omTotals.classeVIII.total + omTotals.classeIX.total;
-        omTotals.totalOperacional = omTotals.diarias.total + omTotals.verbaOperacional.total + omTotals.suprimentoFundos.total + omTotals.passagens.total + omTotals.concessionaria.total + omTotals.materialConsumo.total;
+        omTotals.totalOperacional = omTotals.diarias.total + omTotals.verbaOperacional.total + omTotals.suprimentoFundos.total + omTotals.passagens.total + omTotals.concessionaria.total + omTotals.materialConsumo.total + omTotals.complementoAlimentacao.total;
         omTotals.totalGeral = omTotals.totalLogistica + omTotals.totalOperacional + omTotals.totalMaterialPermanente + omTotals.totalAviacaoExercito;
     });
     return globalTotals;
@@ -531,8 +575,8 @@ const OmDetailsDialog = ({ om, totals, onClose }: any) => {
           <div key={category} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0">
             <span className="font-medium w-1/2 text-left truncate pr-3">{category}</span>
             <div className="flex w-1/2 justify-between gap-3">
-              <span className="font-medium text-right w-1/2 whitespace-nowrap">{formatNumber(data.totalItens)} {unitLabel}</span>
-              <span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span>
+              <span className="font-medium text-right w-1/2 whitespace-nowrap">{formatNumber((data as any).totalItens || 0)} {unitLabel}</span>
+              <span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency((data as any).totalValor)}</span>
             </div>
           </div>
         ))}
@@ -573,6 +617,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: any) => {
                                 <span className="text-xl font-extrabold">{formatCurrency(om.totalOperacional)}</span>
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                                <CategoryCard label="Complemento de Alimentação" value={om.complementoAlimentacao.total} icon={Utensils} colorClass="bg-blue-500/10 text-blue-600" nd30={om.complementoAlimentacao.totalND30} nd39={om.complementoAlimentacao.totalND39} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.complementoAlimentacao.groupedCategories).sort(([a], [b]) => a.localeCompare(b)).map(([cat, data]: any) => (<div key={cat} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{cat}</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div>))}</div>} />
                                 <CategoryCard label="Concessionária" value={om.concessionaria.total} icon={Droplet} colorClass="bg-blue-500/10 text-blue-600" nd39={om.concessionaria.total} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Água/Esgoto</span><span className="font-bold text-foreground whitespace-nowrap">{formatCurrency(om.concessionaria.totalAgua)}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Energia Elétrica</span><span className="font-bold text-foreground whitespace-nowrap">{formatCurrency(om.concessionaria.totalEnergia)}</span></div></div>} />
                                 <CategoryCard label="Diárias" value={om.diarias.total} icon={Briefcase} colorClass="bg-blue-500/10 text-blue-600" nd15={om.diarias.totalND15} nd30={om.diarias.totalND30} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Militares</span><span className="font-bold text-foreground whitespace-nowrap">{om.diarias.totalMilitares}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Dias de Viagem</span><span className="font-bold text-foreground whitespace-nowrap">{om.diarias.totalDiasViagem}</span></div></div>} />
                                 <CategoryCard label="Material de Consumo" value={om.materialConsumo.total} icon={Package} colorClass="bg-blue-500/10 text-blue-600" nd30={om.materialConsumo.totalND30} nd39={om.materialConsumo.totalND39} />
@@ -654,6 +699,12 @@ const getMaterialConsumoData = (data: OmTotals | PTrabAggregatedTotals): OmTotal
     if ((data as OmTotals).omKey) return (data as OmTotals).materialConsumo;
     const g = data as PTrabAggregatedTotals;
     return { total: g.totalMaterialConsumo, totalND30: g.totalMaterialConsumoND30, totalND39: g.totalMaterialConsumoND39 };
+};
+
+const getComplementoAlimentacaoData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['complementoAlimentacao'] => {
+    if ((data as OmTotals).omKey) return (data as OmTotals).complementoAlimentacao;
+    const g = data as PTrabAggregatedTotals;
+    return { total: g.totalComplementoAlimentacao, totalND30: g.totalComplementoAlimentacaoND30, totalND39: g.totalComplementoAlimentacaoND39, groupedCategories: g.groupedComplementoCategories };
 };
 
 const getHorasVooData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['horasVoo'] => {
@@ -766,6 +817,18 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
             </Accordion>
         );
     };
+    const renderComplementoAlimentacao = () => {
+        const c = getComplementoAlimentacaoData(data);
+        if (c.total === 0) return null;
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value="item-complemento-alimentacao" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline"><div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50"><div className="flex items-center gap-1 text-foreground"><Utensils className="h-3 w-3 text-blue-500" />Complemento de Alimentação</div><span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(c.total)}</span></div></AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0"><div className="space-y-1 pl-4 text-[10px]">{Object.entries(c.groupedCategories).sort(([a], [b]) => a.localeCompare(b)).map(([cat, d]: any) => (<div key={cat} className="space-y-1"><div className="flex justify-between text-muted-foreground font-semibold pt-1"><span className="w-1/2 text-left">{cat}</span><span className="w-1/2 text-right font-medium">{formatCurrency(d.totalValor)}</span></div><div className="flex justify-between text-muted-foreground text-[9px] pl-2"><span className="w-1/2 text-left">ND 30 / ND 39</span><span className="w-1/4 text-right text-green-600 font-medium">{formatCurrency(d.totalND30)}</span><span className="w-1/4 text-right text-blue-600 font-medium">{formatCurrency(d.totalND39)}</span></div></div>))}</div></AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
 
     if (mode === 'logistica') {
         const total = (data as OmTotals).omKey ? (data as OmTotals).totalLogistica : (data as PTrabAggregatedTotals).totalLogisticoGeral;
@@ -788,6 +851,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
         return (
             <div className="space-y-3 border-l-4 border-blue-500 pl-3">
                 <div className="flex items-center justify-between text-xs font-semibold text-blue-600 mb-2"><div className="flex items-center gap-2"><Activity className="h-3 w-3" />Operacional</div><span className="font-bold text-sm">{formatCurrency(total)}</span></div>
+                {renderComplementoAlimentacao()}
                 {renderDiarias()}
                 {renderPassagens()}
                 {renderVerbaSuprimento('verbaOperacional', 'Verba Operacional')}
