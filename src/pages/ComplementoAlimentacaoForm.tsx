@@ -47,6 +47,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import AcquisitionItemSelectorDialog from "@/components/AcquisitionItemSelectorDialog"; 
 import PageMetadata from "@/components/PageMetadata";
 import { PublicoSelect } from "@/components/PublicoSelect";
+import CurrencyInput from "@/components/CurrencyInput";
 
 // Estado inicial para o formulário
 interface ComplementoAlimentacaoFormState {
@@ -279,17 +280,10 @@ const ComplementoAlimentacaoForm = () => {
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <div className="space-y-2">
                                                                 <Label>Valor Etapa (QS)</Label>
-                                                                <div className="relative">
-                                                                    <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">R$</span>
-                                                                    <Input 
-                                                                        type="number" 
-                                                                        step="0.01" 
-                                                                        value={formData.valor_etapa_qs || ""} 
-                                                                        onChange={(e) => setFormData({...formData, valor_etapa_qs: parseFloat(e.target.value) || 0})}
-                                                                        onKeyDown={handleNumericKeyDown}
-                                                                        className="pl-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                    />
-                                                                </div>
+                                                                <CurrencyInput 
+                                                                    value={formData.valor_etapa_qs} 
+                                                                    onChange={(val) => setFormData({...formData, valor_etapa_qs: val})}
+                                                                />
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>Pregão (QS)</Label>
@@ -308,17 +302,10 @@ const ComplementoAlimentacaoForm = () => {
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <div className="space-y-2">
                                                                 <Label>Valor Etapa (QR)</Label>
-                                                                <div className="relative">
-                                                                    <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">R$</span>
-                                                                    <Input 
-                                                                        type="number" 
-                                                                        step="0.01" 
-                                                                        value={formData.valor_etapa_qr || ""} 
-                                                                        onChange={(e) => setFormData({...formData, valor_etapa_qr: parseFloat(e.target.value) || 0})}
-                                                                        onKeyDown={handleNumericKeyDown}
-                                                                        className="pl-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                    />
-                                                                </div>
+                                                                <CurrencyInput 
+                                                                    value={formData.valor_etapa_qr} 
+                                                                    onChange={(val) => setFormData({...formData, valor_etapa_qr: val})}
+                                                                />
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>Pregão (QR)</Label>
