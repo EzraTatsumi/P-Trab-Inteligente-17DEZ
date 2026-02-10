@@ -16,7 +16,7 @@ import {
   calculateDays,
   PassagemRegistro,
   GrupoOMOperacional, 
-  MaterialConsumoRegistro, // NOVO
+  MaterialConsumoRegistro,
 } from "@/pages/PTrabReportManager"; 
 import { DIARIA_RANKS_CONFIG } from "@/lib/diariaUtils";
 import { generateConsolidatedPassagemMemoriaCalculo, ConsolidatedPassagemRecord } from "@/lib/passagemUtils"; 
@@ -35,7 +35,7 @@ interface PTrabOperacionalReportProps {
   registrosSuprimentoFundos: VerbaOperacionalRegistro[]; 
   registrosPassagem: PassagemRegistro[];
   registrosConcessionaria: ConcessionariaRegistroComDiretriz[]; 
-  registrosMaterialConsumo: MaterialConsumoRegistro[]; // NOVO
+  registrosMaterialConsumo: MaterialConsumoRegistro[];
   diretrizesOperacionais: Tables<'diretrizes_operacionais'> | null;
   diretrizesPassagens: Tables<'diretrizes_passagens'>[]; 
   fileSuffix: string;
@@ -44,7 +44,7 @@ interface PTrabOperacionalReportProps {
   generateSuprimentoFundosMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string; 
   generatePassagemMemoriaCalculo: (registro: PassagemRegistro) => string; 
   generateConcessionariaMemoriaCalculo: (registro: ConcessionariaRegistroComDiretriz) => string; 
-  generateMaterialConsumoMemoriaCalculo: (registro: MaterialConsumoRegistro) => string; // NOVO
+  generateMaterialConsumoMemoriaCalculo: (registro: MaterialConsumoRegistro) => string;
 }
 
 const fetchDiretrizDetails = async (diretrizId: string): Promise<{ numero_pregao: string | null, ug_referencia: string | null } | null> => {
@@ -118,7 +118,7 @@ interface ConsolidatedConcessionariaReport extends ConsolidatedConcessionariaRec
 const EXPENSE_ORDER_MAP: Record<string, number> = {
     'CONCESSIONÁRIA': 1,
     'DIÁRIAS': 2,
-    'MATERIAL DE CONSUMO': 3, // NOVO
+    'MATERIAL DE CONSUMO': 3,
     'PASSAGENS': 4,
     'SUPRIMENTO DE FUNDOS': 5,
     'VERBA OPERACIONAL': 6,
@@ -330,7 +330,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         allRows.push({ type: 'CONCESSIONÁRIA', data: consolidated });
     });
 
-    // NOVO: Material de Consumo (Cada registro é uma linha)
+    // Material de Consumo (Cada registro é uma linha)
     group.materialConsumo.forEach(registro => {
         allRows.push({ type: 'MATERIAL DE CONSUMO', data: registro });
     });
@@ -384,7 +384,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         totals.nd39 += r.valor_nd_39;
     });
 
-    // NOVO: Totais de Material de Consumo
+    // Totais de Material de Consumo
     registrosMaterialConsumo.forEach(r => {
         totals.nd30 += r.valor_nd_30;
         totals.nd39 += r.valor_nd_39;
@@ -600,6 +600,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                     break;
                 case 'MATERIAL DE CONSUMO':
                     const matConsumo = data as MaterialConsumoRegistro;
+                    if (matConsumo.group_name) despesasLabel = `${type} (${matConsumo.group_name})`;
                     totalLinha = matConsumo.valor_nd_30 + matConsumo.valor_nd_39;
                     nd30 = matConsumo.valor_nd_30; nd39 = matConsumo.valor_nd_39;
                     memoria = generateMaterialConsumoMemoriaCalculo(matConsumo);
@@ -876,6 +877,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                   break;
                               case 'MATERIAL DE CONSUMO':
                                   const matConsumo = data as MaterialConsumoRegistro;
+                                  if (matConsumo.group_name) despesasLabel = `${type} (${matConsumo.group_name})`;
                                   totalLinha = matConsumo.valor_nd_30 + matConsumo.valor_nd_39;
                                   nd30 = matConsumo.valor_nd_30; nd39 = matConsumo.valor_nd_39;
                                   memoria = generateMaterialConsumoMemoriaCalculo(matConsumo);
