@@ -77,10 +77,10 @@ export function generateMaterialConsumoMemoriaCalculo(
     const groupPurpose = registro.group_purpose;
     const itens = (registro.itens_aquisicao as unknown as ItemAquisicao[]) || [];
     
-    // Cabeçalho do Grupo: Prioriza a Finalidade se existir
+    // Cabeçalho do Grupo: Prioriza a Finalidade se existir com o novo padrão de texto
     let texto = "";
     if (groupPurpose && groupPurpose.trim().length > 0) {
-        texto = `33.90.30 - ${groupPurpose.trim()}\n\n`;
+        texto = `33.90.30 - Aquisição de Material de Consumo para atender ${groupPurpose.trim()}.\n\n`;
     } else {
         texto = `33.90.30 - Aquisição de ${groupName} para atender ${efetivo} ${militarText} ${artigo} ${organizacao}, durante ${dias_operacao} ${diaText} de ${fase}.\n\n`;
     }
