@@ -311,7 +311,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     const processGenericClass = (data: any[], classe: string) => {
         data.forEach(record => {
             const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
-            const omD = getOmTotals(record.organizacao, record.ug, 'destino');
+            const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
             
             [omS, omD].forEach(omTotals => {
                 const group = (omTotals as any)[`classe${classe}`];
@@ -350,8 +350,10 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
 
     // Classe III
     (classeIIIData || []).forEach(record => {
-        const oms = [getOmTotals(record.organizacao, record.ug, 'solicitante'), getOmTotals(record.organizacao, record.ug, 'destino')];
-        oms.forEach(omTotals => {
+        const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
+        const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
+        
+        [omS, omD].forEach(omTotals => {
             const valorTotal = Number(record.valor_total || 0);
             const totalLitros = Number(record.total_litros || 0);
             omTotals.classeIII.total += valorTotal;
@@ -413,8 +415,10 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
 
     // Concessionária
     (concessionariaData || []).forEach(record => {
-        const oms = [getOmTotals(record.organizacao, record.ug, 'solicitante'), getOmTotals(record.organizacao, record.ug, 'destino')];
-        oms.forEach(omTotals => {
+        const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
+        const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
+        
+        [omS, omD].forEach(omTotals => {
             const valorND39 = Number(record.valor_nd_39 || 0);
             omTotals.concessionaria.total += valorND39;
             omTotals.concessionaria.totalRegistros += 1;
@@ -508,7 +512,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
                 globalGrouped[cat].totalItens += data.totalItens;
             });
         };
-        ['II', 'V', 'VI', 'VII', 'VIII', 'IX'].forEach(k => mergeClass(k, (omTotals as any)[`classe${k.toLowerCase()}`]));
+        ['II', 'V', 'VI', 'VII', 'VIII', 'IX'].forEach(k => mergeClass(k, (omTotals as any)[`classe${k}`]));
         
         globalTotals.totalCombustivel += omTotals.classeIII.total;
         globalTotals.totalDieselValor += omTotals.classeIII.totalDieselValor;
