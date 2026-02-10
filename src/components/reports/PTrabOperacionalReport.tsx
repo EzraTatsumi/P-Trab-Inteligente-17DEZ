@@ -654,7 +654,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                     const matConsumo = data as MaterialConsumoRegistro;
                     const isContinuation = rowItem.isContinuation;
                     if (matConsumo.group_name) {
-                        despesasLabel = `${type} (${matConsumo.group_name})`;
+                        despesasLabel = `${type}\n(${matConsumo.group_name})`;
                         if (isContinuation) {
                             despesasLabel += `\n\nContinuação`;
                         }
@@ -681,7 +681,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 case 'COMPLEMENTO DE ALIMENTAÇÃO':
                     const compItem = data as { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' };
                     const r = compItem.registro;
-                    despesasLabel = `${type} (${r.group_name})`;
+                    despesasLabel = `${type}\n(${r.group_name})`;
                     
                     if (r.categoria_complemento === 'genero' && compItem.subType) {
                         totalLinha = compItem.subType === 'QS' ? (r.efetivo * r.dias_operacao * r.valor_etapa_qs) : (r.efetivo * r.dias_operacao * r.valor_etapa_qr);
@@ -804,7 +804,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     totalGeralFinalRow.getCell('H').fill = totalGeralFill;
     totalGeralFinalRow.getCell('H').border = cellBorder;
     totalGeralFinalRow.getCell('H').numFmt = 'R$ #,##0.00';
-    totalGeralFinalRow.getCell('I').fill = totalGeralFill; totalGeralFinalRow.getCell('I').border = cellBorder;
+    totalGeralFinalRow.getCell('I').fill = totalGeralFill; totalGeralSomaRow.getCell('I').border = cellBorder;
     currentRow += 2;
     const localRow = worksheet.getRow(currentRow);
     localRow.getCell('A').value = `${ptrabData.local_om || 'Local'}, ${new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
@@ -965,7 +965,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                   const passagemConsolidada = data as ConsolidatedPassagemReport;
                                   totalLinha = passagemConsolidada.totalND33; nd33 = passagemConsolidada.totalND33;
                                   omDetentora = passagemConsolidada.om_detentora; ugDetentora = passagemConsolidada.ug_detentora;
-                                  if (passagemConsolidada.organizacao !== omDetentora || passagemConsolidada.ug !== ugDetentora) despesasLabel += `<br/>${passagemConsolidada.organizacao}`;
+                                  if (passagemConsolidada.organizacao !== omDetentora || passagemConsolidada.ug !== ugDetentora) despesasLabel += `\n${passagemConsolidada.organizacao}`;
                                   const firstRecordPassagem = passagemConsolidada.records[0];
                                   memoria = firstRecordPassagem.detalhamento_customizado || generateConsolidatedPassagemMemoriaCalculo(passagemConsolidada);
                                   if (!firstRecordPassagem.detalhamento_customizado && passagemConsolidada.diretrizDetails?.numero_pregao) memoria += `(Pregão ${passagemConsolidada.diretrizDetails.numero_pregao} - UASG ${formatCodug(passagemConsolidada.diretrizDetails.ug_referencia)})\n`;
@@ -974,16 +974,16 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                   const concessionariaConsolidada = data as ConsolidatedConcessionariaReport;
                                   totalLinha = concessionariaConsolidada.totalND39; nd39 = concessionariaConsolidada.totalND39;
                                   omDetentora = concessionariaConsolidada.om_detentora; ugDetentora = concessionariaConsolidada.ug_detentora;
-                                  if (concessionariaConsolidada.organizacao !== omDetentora || concessionariaConsolidada.ug !== ugDetentora) despesasLabel += `<br/>${concessionariaConsolidada.organizacao}`;
+                                  if (concessionariaConsolidada.organizacao !== omDetentora || concessionariaConsolidada.ug !== ugDetentora) despesasLabel += `\n${concessionariaConsolidada.organizacao}`;
                                   memoria = concessionariaConsolidada.records[0].detalhamento_customizado || generateConsolidatedConcessionariaMemoriaCalculo(concessionariaConsolidada);
                                   break;
                               case 'MATERIAL DE CONSUMO':
                                   const matConsumo = data as MaterialConsumoRegistro;
                                   const isContinuation = rowItem.isContinuation;
                                   if (matConsumo.group_name) {
-                                      despesasLabel = `${type} (${matConsumo.group_name})`;
+                                      despesasLabel = `${type}\n(${matConsumo.group_name})`;
                                       if (isContinuation) {
-                                          despesasLabel += `<br/><br/>Continuação`;
+                                          despesasLabel += `\n\nContinuação`;
                                       }
                                   }
                                   totalLinha = rowItem.partialTotal ?? (matConsumo.valor_total);
@@ -1008,7 +1008,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                               case 'COMPLEMENTO DE ALIMENTAÇÃO':
                                   const compItem = data as { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' };
                                   const r = compItem.registro;
-                                  despesasLabel = `${type} (${r.group_name})`;
+                                  despesasLabel = `${type}\n(${r.group_name})`;
                                   
                                   if (r.categoria_complemento === 'genero' && compItem.subType) {
                                       totalLinha = compItem.subType === 'QS' ? (r.efetivo * r.dias_operacao * r.valor_etapa_qs) : (r.efetivo * r.dias_operacao * r.valor_etapa_qr);
@@ -1045,7 +1045,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                           return (
                               <tr key={`${type}-${omName}-${(data as any).id || (data as any).groupKey || (data as any).registro?.id}-${rowItem.isContinuation ? 'cont' : 'orig'}-${rowItem.subType || ''}`} className="expense-row">
                                 <td className="col-despesas-op"> 
-                                  <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: despesasLabel }} />
+                                  <div style={{ whiteSpace: 'pre-wrap' }}>{despesasLabel}</div>
                                 </td>
                                 <td className="col-om-op">
                                   <div>{omDetentora}</div>
