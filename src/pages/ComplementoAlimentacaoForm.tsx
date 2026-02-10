@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check, Package, Minus, ChevronDown, ChevronUp, FileSpreadsheet, FileText, Utensils, Droplets, Coffee, Eraser } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check, Package, Minus, ChevronDown, ChevronUp, FileSpreadsheet, FileText, Utensils, Droplets, Coffee, Eraser, History } from "lucide-react";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
@@ -49,6 +49,7 @@ import AcquisitionItemSelectorDialog from "@/components/AcquisitionItemSelectorD
 import PageMetadata from "@/components/PageMetadata";
 import { PublicoSelect } from "@/components/PublicoSelect";
 import CurrencyInput from "@/components/CurrencyInput";
+import { useSession } from "@/components/SessionContextProvider";
 
 interface LancheItem {
     id: string;
@@ -221,6 +222,7 @@ const ComplementoAlimentacaoForm = () => {
     const [searchParams] = useSearchParams();
     const ptrabId = searchParams.get('ptrabId');
     const queryClient = useQueryClient();
+    const { user } = useSession();
     const { handleEnterToNextField } = useFormNavigation();
     
     const [formData, setFormData] = useState<ComplementoAlimentacaoFormState>(initialFormState);
@@ -243,6 +245,9 @@ const ComplementoAlimentacaoForm = () => {
     // ESTADOS DE EDIÇÃO DE MEMÓRIA
     const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
     const [memoriaEdit, setMemoriaEdit] = useState<string>("");
+
+    // ESTADO DE SUGESTÃO
+    const [hasSuggestion, setHasSuggestion] = useState(false);
 
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
         queryKey: ['ptrabData', ptrabId],
@@ -300,6 +305,73 @@ const ComplementoAlimentacaoForm = () => {
 
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
     
+    // --- Lógica de Sugestões ---
+
+    const loadSuggestions = async (category: string) => {
+        if (!user?.id || editingId) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('complemento_alimentacao_registros')
+                .select('*')
+                .eq('categoria_complemento', category)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (error) throw error;
+
+            if (data) {
+                setFormData(prev => {
+                    const updates: any = {};
+                    if (category === 'genero') {
+                        updates.valor_etapa_qs = data.valor_etapa_qs || 0;
+                        updates.pregao_qs = data.pregao_qs || "";
+                        updates.om_qs = data.om_qs || "";
+                        updates.ug_qs = data.ug_qs || "";
+                        updates.valor_etapa_qr = data.valor_etapa_qr || 0;
+                        updates.pregao_qr = data.pregao_qr || "";
+                        updates.om_qr = data.om_qr || "";
+                        updates.ug_qr = data.ug_qr || "";
+                        
+                        // Atualiza IDs dos seletores
+                        const omQr = oms?.find(o => o.nome_om === data.om_qr && o.codug_om === data.ug_qr);
+                        setSelectedOmQrId(omQr?.id);
+                    } else if (category === 'agua') {
+                        updates.agua_valor_unitario = data.agua_valor_unitario || 0;
+                        updates.agua_pregao = data.agua_pregao || "";
+                        updates.agua_om_uasg = data.om_detentora || "";
+                        updates.agua_ug_uasg = data.ug_detentora || "";
+                        
+                        const omAgua = oms?.find(o => o.nome_om === data.om_detentora && o.codug_om === data.ug_detentora);
+                        setSelectedOmAguaId(omAgua?.id);
+                    } else if (category === 'lanche') {
+                        updates.lanche_pregao = data.pregao_qs || ""; // Usando pregao_qs como padrão para lanche
+                        updates.lanche_om_uasg = data.om_detentora || "";
+                        updates.lanche_ug_uasg = data.ug_detentora || "";
+                        updates.lanche_items = (data.itens_aquisicao as unknown as LancheItem[]) || [];
+                        
+                        const omLanche = oms?.find(o => o.nome_om === data.om_detentora && o.codug_om === data.ug_detentora);
+                        setSelectedOmLancheId(omLanche?.id);
+                    }
+                    return { ...prev, ...updates };
+                });
+                setHasSuggestion(true);
+            } else {
+                setHasSuggestion(false);
+            }
+        } catch (err) {
+            console.error("Erro ao carregar sugestões:", err);
+        }
+    };
+
+    // Carrega sugestões ao trocar de categoria
+    useEffect(() => {
+        if (isBaseFormReady && !editingId) {
+            loadSuggestions(formData.categoria_complemento);
+        }
+    }, [formData.categoria_complemento, isBaseFormReady, editingId, oms]);
+
     // --- Funções de Reset ---
 
     const handleFullReset = () => {
@@ -312,6 +384,7 @@ const ComplementoAlimentacaoForm = () => {
         setSelectedOmQrId(undefined);
         setSelectedOmAguaId(undefined);
         setSelectedOmLancheId(undefined);
+        setHasSuggestion(false);
         toast.info("Formulário resetado para novo registro.");
     };
 
@@ -323,7 +396,9 @@ const ComplementoAlimentacaoForm = () => {
             rm_vinculacao: prev.rm_vinculacao,
             codug_rm_vinculacao: prev.codug_rm_vinculacao,
             fase_atividade: prev.fase_atividade,
+            categoria_complemento: prev.categoria_complemento,
         }));
+        setHasSuggestion(false);
         toast.info("Campos do formulário limpos.");
     };
 
@@ -371,8 +446,10 @@ const ComplementoAlimentacaoForm = () => {
                 agua_pregao: snap.agua_pregao,
             };
         } else {
+            const snap = item.formDataSnapshot;
             return {
                 ...base,
+                pregao_qs: snap.lanche_pregao, // Salvando pregão do lanche em pregao_qs
                 itens_aquisicao: item.lanche_items as unknown as Json,
             };
         }
@@ -816,7 +893,18 @@ const ComplementoAlimentacaoForm = () => {
                             {/* SEÇÃO 2: CONFIGURAR COMPLEMENTO */}
                             {isBaseFormReady && (
                                 <section className="space-y-4 border-b pb-6">
-                                    <h3 className="text-lg font-semibold flex items-center gap-2">2. Configurar Complemento</h3>
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-lg font-semibold flex items-center gap-2">2. Configurar Complemento</h3>
+                                        {hasSuggestion && !editingId && (
+                                            <Badge variant="secondary" className="flex items-center gap-1 bg-blue-50 text-blue-700 border-blue-200">
+                                                <History className="h-3 w-3" />
+                                                Sugestões carregadas do último registro
+                                                <Button variant="ghost" size="icon" className="h-4 w-4 ml-1 hover:bg-blue-200" onClick={handleClearForm}>
+                                                    <XCircle className="h-3 w-3" />
+                                                </Button>
+                                            </Badge>
+                                        )}
+                                    </div>
                                     
                                     <Tabs value={formData.categoria_complemento} onValueChange={(v: any) => setFormData({...formData, categoria_complemento: v})} className="w-full">
                                         <TabsList className="grid w-full grid-cols-3 mb-6">
