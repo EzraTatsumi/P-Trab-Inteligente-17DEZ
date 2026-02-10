@@ -1,34 +1,29 @@
 "use client";
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Pencil, XCircle, Save, RefreshCw, FileText } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Loader2, Pencil, RefreshCw, XCircle, Check } from "lucide-react";
+import { formatCodug } from "@/lib/formatUtils";
 import { ComplementoAlimentacaoRegistro, generateComplementoMemoriaCalculo } from "@/lib/complementoAlimentacaoUtils";
+import { Badge } from "@/components/ui/badge";
 
-interface Props {
+interface ComplementoAlimentacaoMemoriaProps {
     registro: ComplementoAlimentacaoRegistro;
-    context: {
-        organizacao: string;
-        ug: string;
-        efetivo: number;
-        dias_operacao: number;
-        fase_atividade: string;
-    };
+    context: { organizacao: string, ug: string, efetivo: number, dias_operacao: number, fase_atividade: string | null };
     isPTrabEditable: boolean;
     isSaving: boolean;
     editingMemoriaId: string | null;
     memoriaEdit: string;
-    setMemoriaEdit: (val: string) => void;
-    handleIniciarEdicaoMemoria: (id: string, text: string) => void;
+    setMemoriaEdit: (value: string) => void;
+    handleIniciarEdicaoMemoria: (registroId: string, memoriaCompleta: string) => void;
     handleCancelarEdicaoMemoria: () => void;
-    handleSalvarMemoriaCustomizada: (id: string) => void;
-    handleRestaurarMemoriaAutomatica: (id: string) => void;
+    handleSalvarMemoriaCustomizada: (registroId: string) => Promise<void>;
+    handleRestaurarMemoriaAutomatica: (registroId: string) => Promise<void>;
 }
 
-const ComplementoAlimentacaoMemoria = ({
+const ComplementoAlimentacaoMemoria: React.FC<ComplementoAlimentacaoMemoriaProps> = ({
     registro,
     context,
     isPTrabEditable,
@@ -39,50 +34,69 @@ const ComplementoAlimentacaoMemoria = ({
     handleIniciarEdicaoMemoria,
     handleCancelarEdicaoMemoria,
     handleSalvarMemoriaCustomizada,
-    handleRestaurarMemoriaAutomatica
-}: Props) => {
+    handleRestaurarMemoriaAutomatica,
+}) => {
+    
     const isEditing = editingMemoriaId === registro.id;
+    
+    // A memória automática é gerada para este registro específico
     const memoriaAutomatica = generateComplementoMemoriaCalculo(registro, context);
-    const memoriaExibicao = registro.detalhamento_customizado || memoriaAutomatica;
+    
+    // A memória customizada
+    const memoriaCustomizada = registro.detalhamento_customizado;
+    
+    // A memória a ser exibida
+    const memoriaDisplay = memoriaCustomizada || memoriaAutomatica;
+    
+    const currentMemoriaText = isEditing ? memoriaEdit : memoriaDisplay;
+    const hasCustomMemoria = !!memoriaCustomizada;
 
     return (
-        <Card key={registro.id} className="border-l-4 border-l-primary shadow-sm">
-            <CardHeader className="py-3 flex flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-primary" />
-                    Memória de Cálculo
-                    <Badge variant="outline" className="ml-2 text-[10px] uppercase font-bold border-primary/30 text-primary">
-                        {registro.group_name}
-                    </Badge>
-                    <Badge variant="secondary" className="text-[10px] uppercase font-bold">
-                        {registro.categoria_complemento}
-                    </Badge>
-                </CardTitle>
-                <div className="flex gap-2">
+        <div className="space-y-4 border p-4 rounded-lg bg-muted/30">
+            
+            <div className="flex items-start justify-between gap-4 mb-2">
+                <div className="flex flex-col flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-base font-semibold text-foreground">
+                            {context.organizacao} (UG: {formatCodug(context.ug)})
+                        </h4>
+                        <Badge variant="secondary" className="text-[10px] bg-green-100 text-green-800 hover:bg-green-100 border-green-200">
+                            {registro.group_name}
+                        </Badge>
+                        {hasCustomMemoria && !isEditing && (
+                            <Badge variant="outline" className="text-xs">
+                                Editada manualmente
+                            </Badge>
+                        )}
+                    </div>
+                </div>
+                
+                <div className="flex items-center justify-end gap-2 shrink-0">
                     {!isEditing ? (
                         <>
                             <Button
                                 type="button"
-                                variant="ghost"
                                 size="sm"
-                                onClick={() => handleIniciarEdicaoMemoria(registro.id, memoriaExibicao)}
-                                disabled={!isPTrabEditable || isSaving}
-                                className="h-8 px-2 text-xs"
+                                variant="outline"
+                                onClick={() => handleIniciarEdicaoMemoria(registro.id, memoriaDisplay)}
+                                disabled={isSaving || !isPTrabEditable}
+                                className="gap-2"
                             >
-                                <Pencil className="h-3.5 w-3.5 mr-1" />
-                                Editar
+                                <Pencil className="h-4 w-4" />
+                                Editar Memória
                             </Button>
-                            {registro.detalhamento_customizado && (
+                            
+                            {hasCustomMemoria && (
                                 <Button
                                     type="button"
-                                    variant="ghost"
                                     size="sm"
+                                    variant="ghost"
                                     onClick={() => handleRestaurarMemoriaAutomatica(registro.id)}
-                                    disabled={!isPTrabEditable || isSaving}
-                                    className="h-8 px-2 text-xs text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                    disabled={isSaving || !isPTrabEditable}
+                                    className="gap-2 text-muted-foreground"
                                 >
-                                    <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                                    Restaurar
+                                    <RefreshCw className="h-4 w-4" />
+                                    Restaurar Automática
                                 </Button>
                             )}
                         </>
@@ -90,52 +104,47 @@ const ComplementoAlimentacaoMemoria = ({
                         <>
                             <Button
                                 type="button"
-                                variant="ghost"
                                 size="sm"
+                                variant="default"
                                 onClick={() => handleSalvarMemoriaCustomizada(registro.id)}
                                 disabled={isSaving}
-                                className="h-8 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
+                                className="gap-2"
                             >
-                                <Save className="h-3.5 w-3.5 mr-1" />
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                                 Salvar
                             </Button>
                             <Button
                                 type="button"
-                                variant="ghost"
                                 size="sm"
+                                variant="outline"
                                 onClick={handleCancelarEdicaoMemoria}
                                 disabled={isSaving}
-                                className="h-8 px-2 text-xs"
+                                className="gap-2"
                             >
-                                <XCircle className="h-3.5 w-3.5 mr-1" />
+                                <XCircle className="h-4 w-4" />
                                 Cancelar
                             </Button>
                         </>
                     )}
                 </div>
-            </CardHeader>
-            <CardContent className="py-2">
+            </div>
+            
+            <Card className="p-4 bg-background rounded-lg border">
                 {isEditing ? (
                     <Textarea
                         value={memoriaEdit}
                         onChange={(e) => setMemoriaEdit(e.target.value)}
-                        className="min-h-[120px] text-xs font-mono bg-white"
-                        placeholder="Edite a memória de cálculo aqui..."
+                        className="min-h-[250px] font-mono text-sm"
+                        placeholder="Digite a memória de cálculo..."
                     />
                 ) : (
-                    <div className="relative group">
-                        <pre className="text-xs whitespace-pre-wrap font-sans bg-muted/30 p-3 rounded border border-muted-foreground/10 leading-relaxed">
-                            {memoriaExibicao}
-                        </pre>
-                        {registro.detalhamento_customizado && (
-                            <div className="absolute top-2 right-2">
-                                <Badge variant="secondary" className="text-[9px] opacity-70">Editado</Badge>
-                            </div>
-                        )}
-                    </div>
+                    <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">
+                        {currentMemoriaText}
+                    </pre>
                 )}
-            </CardContent>
-        </Card>
+            </Card>
+            
+        </div>
     );
 };
 

@@ -1432,12 +1432,24 @@ const ComplementoAlimentacaoForm = () => {
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-destructive">Confirmar Exclusão</AlertDialogTitle>
-                        <AlertDialogDescription>Deseja excluir o lote de Complemento para a OM {groupToDelete?.organizacao}?</AlertDialogDescription>
+                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                            <Trash2 className="h-5 w-5" />
+                            Confirmar Exclusão de Lote
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Tem certeza que deseja excluir o lote de Complemento para a OM <span className="font-bold">{groupToDelete?.organizacao}</span>? Esta ação é irreversível.
+                        </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogAction onClick={() => groupToDelete && deleteMutation.mutate(groupToDelete.records.map(r => r.id))} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={() => groupToDelete && deleteMutation.mutate(groupToDelete.records.map(r => r.id))}
+                            disabled={deleteMutation.isPending}
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
+                            {deleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Excluir Lote
+                        </AlertDialogAction>
+                        <AlertDialogCancel disabled={deleteMutation.isPending}>Cancelar</AlertDialogCancel>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
