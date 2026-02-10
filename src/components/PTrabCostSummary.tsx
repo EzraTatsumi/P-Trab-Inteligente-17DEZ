@@ -3,6 +3,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button"; // ADICIONADO: Importação faltante
 import { formatCurrency } from "@/lib/formatUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Calculator, TrendingUp, AlertCircle, Info } from "lucide-react";
@@ -24,7 +25,7 @@ export interface PTrabAggregatedTotals {
   totalHorasVooND30: number;
   totalHorasVooND39: number;
   quantidadeHorasVoo: number;
-  groupedHV: any; // ADICIONADO: Propriedade faltante na interface
+  groupedHV: any;
 }
 
 /**
@@ -95,7 +96,7 @@ export async function fetchPTrabTotals(ptrabId: string): Promise<PTrabAggregated
     return {
       totalLogisticoGeral: totalClasseI + totalClasseII + totalClasseV + totalOutrasClasses + totalCombustivel + totalLubrificante,
       totalOperacional,
-      totalMaterialPermanente: 0, // A ser implementado
+      totalMaterialPermanente: 0,
       totalAviacaoExercito: totalHorasVoo,
       totalClasseI,
       totalClasseII,
@@ -106,7 +107,7 @@ export async function fetchPTrabTotals(ptrabId: string): Promise<PTrabAggregated
       totalHorasVooND30,
       totalHorasVooND39,
       quantidadeHorasVoo,
-      groupedHV: horasVoo || [], // Fallback simples
+      groupedHV: horasVoo || [],
     };
   } catch (error) {
     console.error("Erro ao buscar totais do P Trab:", error);
