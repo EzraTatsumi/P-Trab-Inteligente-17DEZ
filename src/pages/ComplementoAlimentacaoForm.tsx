@@ -82,7 +82,7 @@ const initialFormState: ComplementoAlimentacaoFormState = {
     efetivo: 0, 
     fase_atividade: "",
     categoria_complemento: 'genero',
-    publico: "Militares",
+    publico: "OSP",
     valor_etapa_qs: 0,
     pregao_qs: "",
     om_qs: "",
