@@ -198,6 +198,7 @@ export interface ClasseIIIRegistro extends Omit<Tables<'classe_iii_registros'>, 
   preco_lubrificante: number | null;
   valor_nd_30: number;
   valor_nd_39: number;
+  valor_total: number;
   itens_equipamentos: ItemClasseIII[] | null;
 }
 
@@ -980,6 +981,7 @@ const PTrabReportManager = () => {
             registro, 
             tipo: 'QR',
             valor_nd_30: registro.totalQR,
+            valor_nd_30: registro.totalQR,
             valor_nd_39: 0,
         });
     });
@@ -1058,7 +1060,7 @@ const PTrabReportManager = () => {
                     } else if (isLubrificante) {
                         totalLitrosLinha += totals.litrosLubrificante;
                         valorTotalLinha += totals.valorLubrificante;
-                        precoLitroLinha = totalLitrosLinha > 0 ? valorTotalLinha / totalLitrosLitha : 0;
+                        precoLitroLinha = totalLitrosLinha > 0 ? valorTotalLinha / totalLitrosLinha : 0;
                     }
                 });
                 
