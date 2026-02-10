@@ -331,9 +331,7 @@ const SuprimentoFundosForm = () => {
     // HANDLERS DE INPUT
     // =================================================================
     
-    const handleCurrencyChange = (field: 'valor_total_solicitado' | 'valor_nd_39', rawValue: string) => {
-        const { numericValue, digits } = formatCurrencyInput(rawValue);
-        
+    const handleCurrencyChange = (field: 'valor_total_solicitado' | 'valor_nd_39', numericValue: number, digits: string) => {
         setFormData(prev => {
             let newFormData = { ...prev };
             let newND30Value = prev.valor_nd_30;
@@ -1078,7 +1076,7 @@ const SuprimentoFundosForm = () => {
                                                             <CurrencyInput
                                                                 id="valor_total_solicitado"
                                                                 rawDigits={rawTotalInput}
-                                                                onChange={(digits) => handleCurrencyChange('valor_total_solicitado', digits)}
+                                                                onChange={(val, dig) => handleCurrencyChange('valor_total_solicitado', val, dig)}
                                                                 placeholder="Ex: 1.500,00"
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 required
@@ -1228,7 +1226,7 @@ const SuprimentoFundosForm = () => {
                                                         <CurrencyInput
                                                             id="valor_nd_39"
                                                             rawDigits={rawND39Input}
-                                                            onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
+                                                            onChange={(val, dig) => handleCurrencyChange('valor_nd_39', val, dig)}
                                                             placeholder="0,00"
                                                             disabled={!isPTrabEditable || isSaving}
                                                             className="text-lg h-12" // CORRIGIDO: Removido pl-12 e div.relative/span R$ duplicados
