@@ -167,7 +167,6 @@ interface PTrabAggregatedTotals {
     groupedByOm: Record<string, OmTotals>;
 }
 
-
 // Helper function to calculate days of requested stage (diasEtapaSolicitada)
 const calculateDiasEtapaSolicitada = (diasOperacao: number): number => {
   const diasRestantesNoCiclo = diasOperacao % 30;
@@ -182,10 +181,24 @@ const calculateDiasEtapaSolicitada = (diasOperacao: number): number => {
   }
 };
 
+// NOVO: Função de normalização profunda para chaves de OM
+const normalizeOmName = (name: string): string => {
+    if (!name) return "";
+    return name
+        .trim()
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+        .replace(/ª/g, "A") // Converte ordinal feminino
+        .replace(/º/g, "O") // Converte ordinal masculino
+        .replace(/[^A-Z0-9\s]/g, "") // Remove caracteres especiais restantes
+        .replace(/\s+/g, " "); // Unifica espaços múltiplos
+};
+
 const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
-    omKey: `${omName}|${ug}`,
-    omName,
-    ug,
+    omKey: `${normalizeOmName(omName)}|${ug.trim()}`,
+    omName: omName.trim(),
+    ug: ug.trim(),
     totalGeral: 0,
     totalLogistica: 0,
     totalOperacional: 0,
@@ -214,10 +227,9 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     const groupedByOm: Record<string, OmTotals> = {};
     
     const getOmTotals = (omName: string, ug: string): OmTotals => {
-        // NORMALIZAÇÃO: Remove espaços extras e ignora caixa alta/baixa para a chave de agrupamento
         const cleanName = (omName || "").trim();
         const cleanUg = (ug || "").trim();
-        const key = `${cleanName.toUpperCase()}|${cleanUg}`;
+        const key = `${normalizeOmName(cleanName)}|${cleanUg}`;
         
         if (!groupedByOm[key]) {
             groupedByOm[key] = initializeOmTotals(cleanName, cleanUg);
@@ -260,7 +272,6 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
           omTotals.classeI.totalEtapaSolicitadaValor += totalEtapaSolicitadaValor;
           omTotals.classeI.totalDiasEtapaSolicitada += diasEtapaSolicitada;
           omTotals.classeI.totalRefeicoesIntermediarias += totalRefeicoesIntermediarias;
-          omTotals.totalLogistica += totalClasseI;
 
       } else if (record.categoria === 'RACAO_OPERACIONAL') {
           const totalRacoesOperacionais = Number(record.quantidade_r2 || 0) + Number(record.quantidade_r3 || 0);
@@ -329,22 +340,6 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
         .select('valor_total, valor_nd_30, valor_nd_39, organizacao, ug'),
     ]);
 
-    // Logar erros, mas não lançar exceção
-    if (classeIIError) console.error("Erro ao carregar Classe II:", classeIIError);
-    if (classeVError) console.error("Erro ao carregar Classe V:", classeVError);
-    if (classeVIError) console.error("Erro ao carregar Classe VI:", classeVIError);
-    if (classeVIIError) console.error("Erro ao carregar Classe VII:", classeVIIError);
-    if (classeVIIISaudeError) console.error("Erro ao carregar Classe VIII Saúde:", classeVIIISaudeError);
-    if (classeVIIIRemontaError) console.error("Erro ao carregar Classe VIII Remonta:", classeVIIIRemontaError);
-    if (classeIXError) console.error("Erro ao carregar Classe IX:", classeIXError);
-    if (classeIIIError) console.error("Erro ao carregar Classe III:", classeIIIError);
-    if (diariaError) console.error("Erro ao carregar Diárias:", diariaError);
-    if (verbaOperacionalError) console.error("Erro ao carregar Verba Operacional/Suprimento:", verbaOperacionalError);
-    if (passagemError) console.error("Erro ao carregar Passagens:", passagemError); 
-    if (concessionariaError) console.error("Erro ao carregar Concessionária:", concessionariaError);
-    if (horasVooError) console.error("Erro ao carregar Horas de Voo:", horasVooError);
-    if (materialConsumoError) console.error("Erro ao carregar Material de Consumo:", materialConsumoError);
-
     // Usar arrays vazios se o fetch falhou
     const safeClasseIIData = classeIIData || [];
     const safeClasseVData = classeVData || [];
@@ -363,10 +358,10 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     
     // Processamento de Classes Diversas (II, V, VI, VII, VIII, IX)
     const allClasseItemsData = [
-      ...safeClasseIIData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos, classe: 'II' })),
-      ...safeClasseVData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos, classe: 'V' })),
-      ...safeClasseVIData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos, classe: 'VI' })),
-      ...safeClasseVIIData.map(r => ({ ...r, itens_equipamentos: r.itens_equipamentos, classe: 'VII' })),
+      ...safeClasseIIData.map(r => ({ ...r, classe: 'II' })),
+      ...safeClasseVData.map(r => ({ ...r, classe: 'V' })),
+      ...safeClasseVIData.map(r => ({ ...r, classe: 'VI' })),
+      ...safeClasseVIIData.map(r => ({ ...r, classe: 'VII' })),
       ...safeClasseVIIISaudeData.map(r => ({ ...r, itens_equipamentos: r.itens_saude, categoria: 'Saúde', classe: 'VIII' })),
       ...safeClasseVIIIRemontaData.map(r => ({ 
           ...r, 
@@ -394,10 +389,8 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       const valorND30 = Number(record.valor_nd_30 || 0);
       const valorND39 = Number(record.valor_nd_39 || 0);
       
-      omTotals.totalLogistica += valorTotal;
-
       const updateCategoryTotals = (group: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> }) => {
-          if (!group) return; // Safety check
+          if (!group) return;
           group.total += valorTotal;
           group.totalND30 += valorND30;
           group.totalND39 += valorND39;
@@ -438,7 +431,6 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       const valorTotal = Number(record.valor_total || 0);
       const totalLitros = Number(record.total_litros || 0);
       
-      omTotals.totalLogistica += valorTotal;
       omTotals.classeIII.total += valorTotal;
 
       if (record.tipo_equipamento === 'LUBRIFICANTE_CONSOLIDADO') {
@@ -464,12 +456,11 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       const quantidade = Number(record.quantidade || 0);
       const diasOperacao = Number(record.dias_operacao || 0);
       
-      omTotals.diarias.total += totalGeral + valorND30; // Total Diária (ND 15 + ND 30)
+      omTotals.diarias.total += totalGeral + valorND30;
       omTotals.diarias.totalND15 += totalGeral - taxaEmbarque;
-      omTotals.diarias.totalND30 += taxaEmbarque + valorND30; // Taxa de Embarque + ND 30
+      omTotals.diarias.totalND30 += taxaEmbarque + valorND30;
       omTotals.diarias.totalMilitares += quantidade;
       omTotals.diarias.totalDiasViagem += diasOperacao;
-      omTotals.totalOperacional += totalGeral + valorND30;
     });
     
     // 5. Processamento de Verba Operacional e Suprimento de Fundos
@@ -481,8 +472,6 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       const quantidadeEquipes = Number(record.quantidade_equipes || 0);
       const diasOperacao = Number(record.dias_operacao || 0);
       
-      omTotals.totalOperacional += total;
-
       if (record.detalhamento === 'Suprimento de Fundos') {
           omTotals.suprimentoFundos.total += total;
           omTotals.suprimentoFundos.totalND30 += valorND30;
@@ -507,7 +496,6 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       omTotals.passagens.total += valorND33;
       omTotals.passagens.totalQuantidade += quantidade;
       omTotals.passagens.totalTrechos += 1; 
-      omTotals.totalOperacional += valorND33;
     });
     
     // 7. Processamento de Concessionária (ND 33.90.39)
@@ -517,7 +505,6 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       
       omTotals.concessionaria.total += valorND39;
       omTotals.concessionaria.totalRegistros += 1;
-      omTotals.totalOperacional += valorND39;
       
       if (record.categoria === 'Água/Esgoto') {
           omTotals.concessionaria.totalAgua += valorND39;
@@ -558,10 +545,10 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       omTotals.materialConsumo.total += valorTotal;
       omTotals.materialConsumo.totalND30 += valorND30;
       omTotals.materialConsumo.totalND39 += valorND39;
-      omTotals.totalOperacional += valorTotal;
     });
     
     // 10. Consolidação Final e Totais Globais
+    // IMPORTANTE: O total global agora é calculado SOMANDO os totais das OMs já consolidadas
     let globalTotals: PTrabAggregatedTotals = {
         totalLogisticoGeral: 0,
         totalOperacional: 0,
