@@ -74,16 +74,22 @@ export function generateMaterialConsumoMemoriaCalculo(
     const artigo = organizacao.includes('ª') ? 'da' : organizacao.includes('º') ? 'do' : 'do/da';
     
     const groupName = registro.group_name;
+    const groupPurpose = registro.group_purpose;
     const itens = (registro.itens_aquisicao as unknown as ItemAquisicao[]) || [];
     
-    // Cabeçalho do Grupo
-    let texto = `33.90.30 - Aquisição de ${groupName} para atender ${efetivo} ${militarText} ${artigo} ${organizacao}, durante ${dias_operacao} ${diaText} de ${fase}.\n\n`;
+    // Cabeçalho do Grupo: Prioriza a Finalidade se existir
+    let texto = "";
+    if (groupPurpose && groupPurpose.trim().length > 0) {
+        texto = `33.90.30 - ${groupPurpose.trim()}\n\n`;
+    } else {
+        texto = `33.90.30 - Aquisição de ${groupName} para atender ${efetivo} ${militarText} ${artigo} ${organizacao}, durante ${dias_operacao} ${diaText} de ${fase}.\n\n`;
+    }
     
     texto += `Cálculo:\n`;
     texto += `Fórmula: Qtd do item x Valor do item.\n`;
     
     // Listagem de Itens e Coleta de Pregões/UASGs
-    const pregaoUasgPairs = new Map<string, string>(); // Map para evitar duplicatas de pares exatos
+    const pregaoUasgPairs = new Map<string, string>();
 
     itens.forEach(item => {
         const nomeItem = item.descricao_reduzida || item.descricao_item;
@@ -91,7 +97,6 @@ export function generateMaterialConsumoMemoriaCalculo(
         
         if (item.numero_pregao && item.uasg) {
             const pairKey = `${formatPregao(item.numero_pregao)}|${formatCodug(item.uasg)}`;
-            // NOVO PADRÃO: (Pregão <nr Pregão> - UASG <Nr UASG>) sem ponto final
             pregaoUasgPairs.set(pairKey, `(Pregão ${formatPregao(item.numero_pregao)} - UASG ${formatCodug(item.uasg)})`);
         }
     });
@@ -100,7 +105,7 @@ export function generateMaterialConsumoMemoriaCalculo(
     texto += `\n`;
     texto += `Total: ${formatCurrency(registro.valor_total)}.\n`;
     
-    // Rodapé de Pregão/UASG (Um por linha se houver múltiplos)
+    // Rodapé de Pregão/UASG
     if (pregaoUasgPairs.size > 0) {
         pregaoUasgPairs.forEach(line => {
             texto += `${line}\n`;
@@ -111,7 +116,7 @@ export function generateMaterialConsumoMemoriaCalculo(
 }
 
 /**
- * Gera a memória de cálculo consolidada (mantida para compatibilidade, mas agora usa a função individual).
+ * Gera a memória de cálculo consolidada (mantida para compatibilidade).
  */
 export function generateConsolidatedMaterialConsumoMemoriaCalculo(group: ConsolidatedMaterialConsumoRecord): string {
     const context = {
