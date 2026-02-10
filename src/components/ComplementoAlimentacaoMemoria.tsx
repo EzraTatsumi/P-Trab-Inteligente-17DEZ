@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,10 +39,10 @@ const ComplementoAlimentacaoMemoria = ({
     const memoriaExibicao = registro.detalhamento_customizado || memoriaAutomatica;
 
     return (
-        <Card key={registro.id} className="border-l-4 border-l-primary">
+        <Card key={registro.id} className="border-l-4 border-l-accent shadow-sm">
             <CardHeader className="py-3 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-primary" />
+                    <FileText className="h-4 w-4 text-accent" />
                     Memória: {registro.group_name} ({registro.categoria_complemento})
                 </CardTitle>
                 <div className="flex gap-2">

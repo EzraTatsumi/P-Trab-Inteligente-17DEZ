@@ -1109,335 +1109,360 @@ const ComplementoAlimentacaoForm = () => {
                                                                         onChange={(om) => setFormData({...formData, lanche_om_uasg: om?.nome_om || "", lanche_ug_uasg: om?.codug_om || ""})} 
                                                                         placeholder="Selecione a UASG" 
                                                                         disabled={!isPTrabEditable || isSaving}
-                                                                />
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="space-y-4 pt-4 border-t border-amber-500/10">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex flex-col">
+                                                                        <h5 className="text-xs font-bold uppercase text-muted-foreground">Itens do Lanche ({formData.lanche_items.length})</h5>
+                                                                        <p className="text-[10px] font-bold text-amber-700 uppercase">Valor do Kit: {formatCurrency(currentKitValue)}</p>
+                                                                    </div>
+                                                                    <Button variant="outline" size="sm" onClick={addLancheItem} disabled={!isPTrabEditable || isSaving} className="h-7 text-[10px] uppercase font-bold border-amber-500/30 text-amber-600 hover:bg-amber-500/10">
+                                                                        <Plus className="mr-1 h-3 w-3" /> Adicionar Item
+                                                                    </Button>
+                                                                </div>
+
+                                                                {formData.lanche_items.length === 0 ? (
+                                                                    <div className="text-center py-6 border-2 border-dashed border-amber-500/10 rounded-lg">
+                                                                        <p className="text-xs text-muted-foreground">Nenhum item adicionado ao lanche.</p>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="space-y-3">
+                                                                        {formData.lanche_items.map((item, index) => (
+                                                                            <Collapsible key={item.id} defaultOpen={true} className="border border-amber-500/10 rounded-md bg-background/50">
+                                                                                <div className="flex items-center justify-between p-2 bg-amber-500/5">
+                                                                                    <CollapsibleTrigger className="flex items-center gap-2 text-[10px] font-bold uppercase text-amber-700">
+                                                                                        <ChevronDown className="h-3 w-3" />
+                                                                                        Item #{index + 1}: {item.descricao || "Sem descrição"}
+                                                                                    </CollapsibleTrigger>
+                                                                                    <Button variant="ghost" size="icon" onClick={() => removeLancheItem(item.id)} disabled={!isPTrabEditable || isSaving} className="h-6 w-6 text-destructive hover:bg-destructive/10">
+                                                                                        <Trash2 className="h-3 w-3" />
+                                                                                    </Button>
+                                                                                </div>
+                                                                                <CollapsibleContent className="p-3">
+                                                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                                                                                        <div className="space-y-2">
+                                                                                            <Label className="text-[10px] uppercase">Quantidade *</Label>
+                                                                                            <Input 
+                                                                                                type="number" 
+                                                                                                value={item.quantidade || ""} 
+                                                                                                onChange={(e) => updateLancheItem(item.id, "quantidade", parseInt(e.target.value) || 0)} 
+                                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                                                className="h-8 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                                            />
+                                                                                        </div>
+                                                                                        <div className="md:col-span-2 space-y-2">
+                                                                                            <Label className="text-[10px] uppercase">Descrição do Item *</Label>
+                                                                                            <Input 
+                                                                                                value={item.descricao} 
+                                                                                                onChange={(e) => updateLancheItem(item.id, "descricao", e.target.value)} 
+                                                                                                placeholder="Ex: Pão de forma, presunto, queijo..." 
+                                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                                                className="h-8 text-xs"
+                                                                                            />
+                                                                                        </div>
+                                                                                        <div className="space-y-2">
+                                                                                            <Label className="text-[10px] uppercase">Valor Unitário *</Label>
+                                                                                            <CurrencyInput value={item.valor_unitario} onChange={(val) => updateLancheItem(item.id, "valor_unitario", val)} disabled={!isPTrabEditable || isSaving} className="h-8 text-xs" />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </CollapsibleContent>
+                                                                            </Collapsible>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
+                                                    </div>
+                                                )}
+                                            </div>
 
-                                                        <div className="space-y-4 pt-4 border-t border-amber-500/10">
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex flex-col">
-                                                                    <h5 className="text-xs font-bold uppercase text-muted-foreground">Itens do Lanche ({formData.lanche_items.length})</h5>
-                                                                    <p className="text-[10px] font-bold text-amber-700 uppercase">Valor do Kit: {formatCurrency(currentKitValue)}</p>
-                                                                </div>
-                                                                <Button variant="outline" size="sm" onClick={addLancheItem} disabled={!isPTrabEditable || isSaving} className="h-7 text-[10px] uppercase font-bold border-amber-500/30 text-amber-600 hover:bg-amber-500/10">
-                                                                    <Plus className="mr-1 h-3 w-3" /> Adicionar Item
+                                            <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-lg font-extrabold text-foreground uppercase">Total da Solicitação:</span>
+                                                    <span className="text-lg font-extrabold text-foreground">{formatCurrency(currentCategoryTotal)}</span>
+                                                </div>
+                                                <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                                                    <Button variant="outline" onClick={handleClearForm} disabled={!isPTrabEditable || isSaving} className="w-full md:w-auto">
+                                                        <XCircle className="mr-2 h-4 w-4" />
+                                                        Limpar
+                                                    </Button>
+                                                    <Button className="w-full md:w-auto" disabled={isSaveDisabled || !isPTrabEditable || isSaving} onClick={handleStageCalculation}>
+                                                        <Save className="mr-2 h-4 w-4" />
+                                                        {editingId ? "Recalcular/Revisar Lote" : "Salvar Itens na Lista"}
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    </Tabs>
+                                </section>
+                            )}
+
+                            {/* SEÇÃO 3: ITENS ADICIONADOS (REVISÃO) */}
+                            {pendingItems.length > 0 && (
+                                <section className="space-y-4 border-b pb-6">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({pendingItems.length})</h3>
+                                    
+                                    {isDirty && (
+                                        <Alert variant="destructive">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertDescription className="font-medium">
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados. Clique em "{editingId ? "Recalcular/Revisar Lote" : "Salvar Itens na Lista"}" na Seção 2 para atualizar o lote pendente antes de salvar os registros.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+
+                                    <div className="space-y-4">
+                                        {pendingItems.map((item) => (
+                                            <Card key={item.tempId} className="border-2 border-secondary bg-secondary/5 shadow-sm">
+                                                <CardContent className="p-4">
+                                                    <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/20">
+                                                        <h4 className="font-bold text-base text-foreground">
+                                                            Complemento de Alimentação ({item.categoria === 'genero' ? 'Gênero Alimentício' : item.categoria === 'agua' ? 'Água' : 'Lanche'})
+                                                        </h4>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-extrabold text-lg text-foreground">
+                                                                {formatCurrency(item.valor_total)}
+                                                            </p>
+                                                            {!editingId && (
+                                                                <Button variant="ghost" size="icon" onClick={() => handleRemovePending(item.tempId)} disabled={isSaving} className="h-8 w-8 text-destructive">
+                                                                    <Trash2 className="h-4 w-4" />
                                                                 </Button>
-                                                            </div>
-
-                                                            {formData.lanche_items.length === 0 ? (
-                                                                <div className="text-center py-6 border-2 border-dashed border-amber-500/10 rounded-lg">
-                                                                    <p className="text-xs text-muted-foreground">Nenhum item adicionado ao lanche.</p>
-                                                                </div>
-                                                            ) : (
-                                                                <div className="space-y-3">
-                                                                    {formData.lanche_items.map((item, index) => (
-                                                                        <Collapsible key={item.id} defaultOpen={true} className="border border-amber-500/10 rounded-md bg-background/50">
-                                                                            <div className="flex items-center justify-between p-2 bg-amber-500/5">
-                                                                                <CollapsibleTrigger className="flex items-center gap-2 text-[10px] font-bold uppercase text-amber-700">
-                                                                                    <ChevronDown className="h-3 w-3" />
-                                                                                    Item #{index + 1}: {item.descricao || "Sem descrição"}
-                                                                                </CollapsibleTrigger>
-                                                                                <Button variant="ghost" size="icon" onClick={() => removeLancheItem(item.id)} disabled={!isPTrabEditable || isSaving} className="h-6 w-6 text-destructive hover:bg-destructive/10">
-                                                                                    <Trash2 className="h-3 w-3" />
-                                                                                </Button>
-                                                                            </div>
-                                                                            <CollapsibleContent className="p-3">
-                                                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                                                                                    <div className="space-y-2">
-                                                                                        <Label className="text-[10px] uppercase">Quantidade *</Label>
-                                                                                        <Input 
-                                                                                            type="number" 
-                                                                                            value={item.quantidade || ""} 
-                                                                                            onChange={(e) => updateLancheItem(item.id, "quantidade", parseInt(e.target.value) || 0)} 
-                                                                                            disabled={!isPTrabEditable || isSaving}
-                                                                                            className="h-8 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                                            onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                                        />
-                                                                                    </div>
-                                                                                    <div className="md:col-span-2 space-y-2">
-                                                                                        <Label className="text-[10px] uppercase">Descrição do Item *</Label>
-                                                                                        <Input 
-                                                                                            value={item.descricao} 
-                                                                                            onChange={(e) => updateLancheItem(item.id, "descricao", e.target.value)} 
-                                                                                            placeholder="Ex: Pão de forma, presunto, queijo..." 
-                                                                                            disabled={!isPTrabEditable || isSaving}
-                                                                                            className="h-8 text-xs"
-                                                                                        />
-                                                                                    </div>
-                                                                                    <div className="space-y-2">
-                                                                                        <Label className="text-[10px] uppercase">Valor Unitário *</Label>
-                                                                                        <CurrencyInput value={item.valor_unitario} onChange={(val) => updateLancheItem(item.id, "valor_unitario", val)} disabled={!isPTrabEditable || isSaving} className="h-8 text-xs" />
-                                                                                    </div>
-                                                                                </div>
-                                                                            </CollapsibleContent>
-                                                                        </Collapsible>
-                                                                    ))}
-                                                                </div>
                                                             )}
                                                         </div>
                                                     </div>
-                                                </div>
-                                            )}
-                                        </div>
+                                                    
+                                                    <div className="grid grid-cols-2 gap-4 text-xs pt-1">
+                                                        <div className="space-y-1">
+                                                            <p className="font-medium text-muted-foreground">OM Favorecida:</p>
+                                                            <p className="font-medium text-muted-foreground">OM Destino do Recurso:</p>
+                                                            <p className="font-medium text-muted-foreground">Período/Efetivo:</p>
+                                                        </div>
+                                                        <div className="text-right space-y-1">
+                                                            <p className="font-bold">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
+                                                            <p className="font-bold">{item.om_destino} ({formatCodug(item.ug_destino)})</p>
+                                                            <p className="font-bold">{item.dias_operacao} {item.dias_operacao === 1 ? 'dia' : 'dias'} / {item.efetivo} {item.efetivo === 1 ? 'militar' : 'militares'}</p>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="w-full h-[1px] bg-secondary/20 my-3" />
 
-                                        <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-lg font-extrabold text-foreground uppercase">Total da Solicitação:</span>
-                                                <span className="text-lg font-extrabold text-foreground">{formatCurrency(currentCategoryTotal)}</span>
-                                            </div>
-                                            <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-                                                <Button variant="outline" onClick={handleClearForm} disabled={!isPTrabEditable || isSaving} className="w-full md:w-auto">
-                                                    <XCircle className="mr-2 h-4 w-4" />
-                                                    Limpar
-                                                </Button>
-                                                <Button className="w-full md:w-auto" disabled={isSaveDisabled || !isPTrabEditable || isSaving} onClick={handleStageCalculation}>
-                                                    <Save className="mr-2 h-4 w-4" />
-                                                    {editingId ? "Recalcular/Revisar Lote" : "Salvar Itens na Lista"}
-                                                </Button>
-                                            </div>
-                                        </div>
+                                                    <div className="flex justify-between items-center text-xs">
+                                                        <span className="text-muted-foreground">ND 33.90.30:</span>
+                                                        <div className="flex gap-3">
+                                                            {item.categoria === 'genero' ? (
+                                                                <>
+                                                                    <span className="font-bold text-blue-600">{formatCurrency(item.total_qs || 0)} (QS)</span>
+                                                                    <span className="font-bold text-green-600">{formatCurrency(item.total_qr || 0)} (QR)</span>
+                                                                </>
+                                                            ) : (
+                                                                <span className="font-bold text-green-600">{formatCurrency(item.valor_nd_30)}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
+
+                                    <Card className="bg-muted shadow-inner">
+                                        <CardContent className="p-4 flex justify-between items-center">
+                                            <span className="font-bold text-base uppercase">VALOR TOTAL DA OM</span>
+                                            <span className="font-extrabold text-xl text-foreground">{formatCurrency(totalGeralOM)}</span>
+                                        </CardContent>
                                     </Card>
-                                </Tabs>
-                            </section>
-                        )}
 
-                        {/* SEÇÃO 3: ITENS ADICIONADOS (REVISÃO) */}
-                        {pendingItems.length > 0 && (
-                            <section className="space-y-4 border-b pb-6">
-                                <h3 className="text-lg font-semibold flex items-center gap-2">3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({pendingItems.length})</h3>
-                                
-                                {isDirty && (
-                                    <Alert variant="destructive">
-                                        <AlertCircle className="h-4 w-4" />
-                                        <AlertDescription className="font-medium">
-                                            Atenção: Os dados do formulário (Seção 2) foram alterados. Clique em "{editingId ? "Recalcular/Revisar Lote" : "Salvar Itens na Lista"}" na Seção 2 para atualizar o lote pendente antes de salvar os registros.
-                                        </AlertDescription>
-                                    </Alert>
-                                )}
+                                    <div className="flex justify-end gap-3 pt-4">
+                                        <Button className="bg-primary hover:bg-primary/90" disabled={isDirty || isSaving} onClick={handleSaveOrUpdate}>
+                                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                            {editingId ? "Atualizar Lote" : "Salvar Registros"}
+                                        </Button>
+                                        <Button variant="outline" onClick={handleFullReset} disabled={isSaving}>
+                                            <XCircle className="mr-2 h-4 w-4" />
+                                            {editingId ? "Cancelar Edição" : "Limpar Lista"}
+                                        </Button>
+                                    </div>
+                                </section>
+                            )}
 
-                                <div className="space-y-4">
-                                    {pendingItems.map((item) => (
-                                        <Card key={item.tempId} className="border-2 border-secondary bg-secondary/5 shadow-sm">
-                                            <CardContent className="p-4">
-                                                <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/20">
-                                                    <h4 className="font-bold text-base text-foreground">
-                                                        Complemento de Alimentação ({item.categoria === 'genero' ? 'Gênero Alimentício' : item.categoria === 'agua' ? 'Água' : 'Lanche'})
-                                                    </h4>
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="font-extrabold text-lg text-foreground">
-                                                            {formatCurrency(item.valor_total)}
-                                                        </p>
-                                                        {!editingId && (
-                                                            <Button variant="ghost" size="icon" onClick={() => handleRemovePending(item.tempId)} disabled={isSaving} className="h-8 w-8 text-destructive">
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        )}
-                                                    </div>
+                            {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
+                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
+                                <section className="space-y-4 border-b pb-6">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        <Sparkles className="h-5 w-5 text-accent" />
+                                        OMs Cadastradas ({consolidatedRegistros.length})
+                                    </h3>
+                                    
+                                    {consolidatedRegistros.map((group) => {
+                                        const totalOM = group.totalGeral;
+                                        const omName = group.organizacao;
+                                        const ug = group.ug;
+                                        const faseAtividade = group.fase_atividade || 'Não Definida';
+
+                                        return (
+                                            <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
+                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                        {omName} (UG: {formatCodug(ug)})
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {faseAtividade}
+                                                        </Badge>
+                                                    </h3>
+                                                    <span className="font-extrabold text-xl text-primary">
+                                                        {formatCurrency(totalOM)}
+                                                    </span>
                                                 </div>
                                                 
-                                                <div className="grid grid-cols-2 gap-4 text-xs pt-1">
-                                                    <div className="space-y-1">
-                                                        <p className="font-medium text-muted-foreground">OM Favorecida:</p>
-                                                        <p className="font-medium text-muted-foreground">OM Destino do Recurso:</p>
-                                                        <p className="font-medium text-muted-foreground">Período/Efetivo:</p>
-                                                    </div>
-                                                    <div className="text-right space-y-1">
-                                                        <p className="font-bold">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
-                                                        <p className="font-bold">{item.om_destino} ({formatCodug(item.ug_destino)})</p>
-                                                        <p className="font-bold">{item.dias_operacao} {item.dias_operacao === 1 ? 'dia' : 'dias'} / {item.efetivo} {item.efetivo === 1 ? 'militar' : 'militares'}</p>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div className="w-full h-[1px] bg-secondary/20 my-3" />
+                                                <div className="space-y-3">
+                                                    {group.records.map((registro) => {
+                                                        const isDifferentOm = registro.om_detentora !== registro.organizacao || registro.ug_detentora !== registro.ug;
+                                                        const diasText = registro.dias_operacao === 1 ? 'dia' : 'dias';
+                                                        const efetivoText = registro.efetivo === 1 ? 'militar' : 'militares';
 
-                                                <div className="flex justify-between items-center text-xs">
-                                                    <span className="text-muted-foreground">ND 33.90.30:</span>
-                                                    <div className="flex gap-3">
-                                                        {item.categoria === 'genero' ? (
-                                                            <>
-                                                                <span className="font-bold text-blue-600">{formatCurrency(item.total_qs || 0)} (QS)</span>
-                                                                <span className="font-bold text-green-600">{formatCurrency(item.total_qr || 0)} (QR)</span>
-                                                            </>
-                                                        ) : (
-                                                            <span className="font-bold text-green-600">{formatCurrency(item.valor_nd_30)}</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
-                                </div>
-
-                                <Card className="bg-muted shadow-inner">
-                                    <CardContent className="p-4 flex justify-between items-center">
-                                        <span className="font-bold text-base uppercase">VALOR TOTAL DA OM</span>
-                                        <span className="font-extrabold text-xl text-foreground">{formatCurrency(totalGeralOM)}</span>
-                                    </CardContent>
-                                </Card>
-
-                                <div className="flex justify-end gap-3 pt-4">
-                                    <Button className="bg-primary hover:bg-primary/90" disabled={isDirty || isSaving} onClick={handleSaveOrUpdate}>
-                                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                        {editingId ? "Atualizar Lote" : "Salvar Registros"}
-                                    </Button>
-                                    <Button variant="outline" onClick={handleFullReset} disabled={isSaving}>
-                                        <XCircle className="mr-2 h-4 w-4" />
-                                        {editingId ? "Cancelar Edição" : "Limpar Lista"}
-                                    </Button>
-                                </div>
-                            </section>
-                        )}
-
-                        {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
-                        {consolidatedRegistros && consolidatedRegistros.length > 0 && (
-                            <section className="space-y-4 border-b pb-6">
-                                <h3 className="text-xl font-bold flex items-center gap-2">
-                                    <Sparkles className="h-5 w-5 text-accent" />
-                                    OMs Cadastradas ({consolidatedRegistros.length})
-                                </h3>
-                                
-                                {consolidatedRegistros.map((group) => {
-                                    const totalOM = group.totalGeral;
-                                    const omName = group.organizacao;
-                                    const ug = group.ug;
-                                    const faseAtividade = group.fase_atividade || 'Não Definida';
-
-                                    return (
-                                        <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
-                                            <div className="flex items-center justify-between mb-3 border-b pb-2">
-                                                <h3 className="font-bold text-lg text-primary flex items-center gap-2">
-                                                    {omName} (UG: {formatCodug(ug)})
-                                                    <Badge variant="outline" className="text-xs">
-                                                        {faseAtividade}
-                                                    </Badge>
-                                                </h3>
-                                                <span className="font-extrabold text-xl text-primary">
-                                                    {formatCurrency(totalOM)}
-                                                </span>
-                                            </div>
-                                            
-                                            <div className="space-y-3">
-                                                {group.records.map((registro) => {
-                                                    const isDifferentOm = registro.om_detentora !== registro.organizacao || registro.ug_detentora !== registro.ug;
-                                                    const diasText = registro.dias_operacao === 1 ? 'dia' : 'dias';
-                                                    const efetivoText = registro.efetivo === 1 ? 'militar' : 'militares';
-
-                                                    return (
-                                                        <Card 
-                                                            key={registro.id} 
-                                                            className="p-3 bg-background border"
-                                                        >
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex flex-col">
+                                                        return (
+                                                            <Card 
+                                                                key={registro.id} 
+                                                                className="p-3 bg-background border"
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <h4 className="font-semibold text-base text-foreground">
+                                                                                Complemento de Alimentação ({registro.group_name})
+                                                                            </h4>
+                                                                        </div>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            Período: {registro.dias_operacao} {diasText} | Efetivo: {registro.efetivo} {efetivoText}
+                                                                        </p>
+                                                                    </div>
                                                                     <div className="flex items-center gap-2">
-                                                                        <h4 className="font-semibold text-base text-foreground">
-                                                                            Complemento de Alimentação ({registro.group_name})
-                                                                        </h4>
-                                                                    </div>
-                                                                    <p className="text-xs text-muted-foreground">
-                                                                        Período: {registro.dias_operacao} {diasText} | Efetivo: {registro.efetivo} {efetivoText}
-                                                                    </p>
-                                                                </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="font-extrabold text-xl text-foreground">
-                                                                        {formatCurrency(Number(registro.valor_total))}
-                                                                    </span>
-                                                                    <div className="flex gap-1 shrink-0">
-                                                                        <Button
-                                                                            type="button" 
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-8 w-8"
-                                                                            onClick={() => handleEdit(group)} 
-                                                                            disabled={!isPTrabEditable || isSaving || pendingItems.length > 0}
-                                                                        >
-                                                                            <Pencil className="h-4 w-4" />
-                                                                        </Button>
-                                                                        <Button
-                                                                            type="button" 
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            onClick={() => { setGroupToDelete(group); setShowDeleteDialog(true); }} 
-                                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                                            disabled={!isPTrabEditable || isSaving}
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </Button>
+                                                                        <span className="font-extrabold text-xl text-foreground">
+                                                                            {formatCurrency(Number(registro.valor_total))}
+                                                                        </span>
+                                                                        <div className="flex gap-1 shrink-0">
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8"
+                                                                                onClick={() => handleEdit(group)} 
+                                                                                disabled={!isPTrabEditable || isSaving || pendingItems.length > 0}
+                                                                            >
+                                                                                <Pencil className="h-4 w-4" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                onClick={() => { setGroupToDelete(group); setShowDeleteDialog(true); }} 
+                                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                            
-                                                            <div className="pt-2 border-t mt-2">
-                                                                <div className="flex justify-between text-xs">
-                                                                    <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                                                    <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
-                                                                        {registro.om_detentora} ({formatCodug(registro.ug_detentora || '')})
-                                                                    </span>
+                                                                
+                                                                <div className="pt-2 border-t mt-2">
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                        <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
+                                                                            {registro.om_detentora} ({formatCodug(registro.ug_detentora || '')})
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">ND 33.90.30:</span>
+                                                                        <span className="text-green-600">{formatCurrency(Number(registro.valor_nd_30))}</span>
+                                                                    </div>
                                                                 </div>
-                                                                <div className="flex justify-between text-xs">
-                                                                    <span className="text-muted-foreground">ND 33.90.30:</span>
-                                                                    <span className="text-green-600">{formatCurrency(Number(registro.valor_nd_30))}</span>
-                                                                </div>
-                                                            </div>
-                                                        </Card>
-                                                    );
-                                                })}
-                                            </div>
-                                        </Card>
-                                    );
-                                })}
-                            </section>
-                        )}
+                                                            </Card>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
+                                </section>
+                            )}
 
-                        {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULO */}
-                        {consolidatedRegistros && consolidatedRegistros.length > 0 && (
-                            <div className="space-y-4 mt-8">
-                                <h3 className="text-xl font-bold flex items-center gap-2">📋 Memórias de Cálculos Detalhadas</h3>
-                                {consolidatedRegistros.map(group => group.records.map(registro => (
-                                    <ComplementoAlimentacaoMemoria
-                                        key={`memoria-${registro.id}`}
-                                        registro={registro}
-                                        context={{ organizacao: group.organizacao, efetivo: group.efetivo, dias_operacao: group.dias_operacao, fase_atividade: group.fase_atividade }}
-                                        isPTrabEditable={isPTrabEditable}
-                                        isSaving={isSaving}
-                                        editingMemoriaId={editingMemoriaId}
-                                        memoriaEdit={memoriaEdit}
-                                        setMemoriaEdit={setMemoriaEdit}
-                                        handleIniciarEdicaoMemoria={handleIniciarEdicaoMemoria}
-                                        handleCancelarEdicaoMemoria={handleCancelarEdicaoMemoria}
-                                        handleSalvarMemoriaCustomizada={handleSalvarMemoriaCustomizada}
-                                        handleRestaurarMemoriaAutomatica={handleRestaurarMemoriaAutomatica}
-                                    />
-                                )))}
-                            </div>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
+                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
+                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
+                                <div className="space-y-4 mt-8">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        📋 Memórias de Cálculos Detalhadas
+                                    </h3>
+                                    
+                                    {consolidatedRegistros.map(group => {
+                                        const context = {
+                                            organizacao: group.organizacao,
+                                            ug: group.ug,
+                                            efetivo: group.efetivo,
+                                            dias_operacao: group.dias_operacao,
+                                            fase_atividade: group.fase_atividade
+                                        };
+                                        
+                                        return group.records.map(registro => (
+                                            <ComplementoAlimentacaoMemoria
+                                                key={`memoria-view-${registro.id}`}
+                                                registro={registro}
+                                                context={context}
+                                                isPTrabEditable={isPTrabEditable}
+                                                isSaving={isSaving}
+                                                editingMemoriaId={editingMemoriaId}
+                                                memoriaEdit={memoriaEdit}
+                                                setMemoriaEdit={setMemoriaEdit}
+                                                handleIniciarEdicaoMemoria={handleIniciarEdicaoMemoria}
+                                                handleCancelarEdicaoMemoria={handleCancelarEdicaoMemoria}
+                                                handleSalvarMemoriaCustomizada={handleSalvarMemoriaCustomizada}
+                                                handleRestaurarMemoriaAutomatica={handleRestaurarMemoriaAutomatica}
+                                            />
+                                        ));
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                            <Trash2 className="h-5 w-5" />
+                            Confirmar Exclusão de Lote
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Tem certeza que deseja excluir o lote de Complemento para a OM <span className="font-bold">{groupToDelete?.organizacao}</span>? Esta ação é irreversível.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction 
+                            onClick={() => groupToDelete && deleteMutation.mutate(groupToDelete.records.map(r => r.id))}
+                            disabled={deleteMutation.isPending}
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
+                            {deleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Excluir Lote
+                        </AlertDialogAction>
+                        <AlertDialogCancel disabled={deleteMutation.isPending}>Cancelar</AlertDialogCancel>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AcquisitionItemSelectorDialog 
+                open={isItemSelectorOpen} 
+                onOpenChange={setIsItemSelectorOpen} 
+                selectedYear={new Date().getFullYear()} 
+                initialItems={itemsToPreselect} 
+                onSelect={(items) => { setSelectedItemsFromSelector(items); setIsItemSelectorOpen(false); }} 
+            />
         </div>
-
-        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle className="text-destructive">Confirmar Exclusão</AlertDialogTitle>
-                    <AlertDialogDescription>Deseja excluir o lote de Complemento para a OM {groupToDelete?.organizacao}?</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogAction onClick={() => groupToDelete && deleteMutation.mutate(groupToDelete.records.map(r => r.id))} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-
-        <AcquisitionItemSelectorDialog 
-            open={isItemSelectorOpen} 
-            onOpenChange={setIsItemSelectorOpen} 
-            selectedYear={new Date().getFullYear()} 
-            initialItems={itemsToPreselect} 
-            onSelect={(items) => { setSelectedItemsFromSelector(items); setIsItemSelectorOpen(false); }} 
-        />
-    </div>
-);
+    );
 };
 
 export default ComplementoAlimentacaoForm;
