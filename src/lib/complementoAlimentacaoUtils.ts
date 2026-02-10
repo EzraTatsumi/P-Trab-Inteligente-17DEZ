@@ -13,7 +13,19 @@ export interface ComplementoAlimentacaoRegistro {
     fase_atividade: string;
     group_name: string;
     group_purpose: string | null;
-    categoria_complemento: 'genero' | 'agua' | 'lanche'; // Nova variável
+    categoria_complemento: 'genero' | 'agua' | 'lanche';
+    
+    // Novos campos para Gênero Alimentício (estilo Classe I)
+    publico: string;
+    valor_etapa_qs: number;
+    pregao_qs: string | null;
+    om_qs: string | null;
+    ug_qs: string | null;
+    valor_etapa_qr: number;
+    pregao_qr: string | null;
+    om_qr: string | null;
+    ug_qr: string | null;
+    
     itens_aquisicao: ItemAquisicao[];
     valor_total: number;
     valor_nd_30: number;
@@ -62,13 +74,24 @@ export const generateComplementoMemoriaCalculo = (
     registro: Partial<ComplementoAlimentacaoRegistro>,
     context: { organizacao: string; efetivo: number; dias_operacao: number; fase_atividade: string }
 ): string => {
+    if (registro.categoria_complemento === 'genero') {
+        const totalQS = (registro.efetivo || 0) * (registro.dias_operacao || 0) * (registro.valor_etapa_qs || 0);
+        const totalQR = (registro.efetivo || 0) * (registro.dias_operacao || 0) * (registro.valor_etapa_qr || 0);
+        
+        return `Solicitação de Gênero Alimentício para a OM ${context.organizacao}.\n` +
+               `Público: ${registro.publico || 'Não informado'}\n` +
+               `Contexto: ${registro.efetivo} militares por ${registro.dias_operacao} dias na fase ${context.fase_atividade}.\n` +
+               `Cálculo QS: ${registro.efetivo} x ${registro.dias_operacao} x R$ ${registro.valor_etapa_qs?.toFixed(2)} = R$ ${totalQS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n` +
+               `Cálculo QR: ${registro.efetivo} x ${registro.dias_operacao} x R$ ${registro.valor_etapa_qr?.toFixed(2)} = R$ ${totalQR.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n` +
+               `Valor Total: R$ ${Number(registro.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    }
+
     const itens = (registro.itens_aquisicao || []) as ItemAquisicao[];
     const listaItens = itens.map(item => 
         `- ${item.quantidade} un. de ${item.descricao_reduzida || item.descricao_item} (Cód: ${item.codigo_catmat})`
     ).join('\n');
 
     const categoriaMap = {
-        genero: 'Gênero Alimentício',
         agua: 'Água Mineral',
         lanche: 'Lanche/Catanho'
     };

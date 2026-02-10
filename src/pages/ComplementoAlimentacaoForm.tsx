@@ -46,6 +46,7 @@ import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; 
 import AcquisitionItemSelectorDialog from "@/components/AcquisitionItemSelectorDialog"; 
 import PageMetadata from "@/components/PageMetadata";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Estado inicial para o formulário
 interface ComplementoAlimentacaoFormState {
@@ -57,6 +58,18 @@ interface ComplementoAlimentacaoFormState {
     efetivo: number; 
     fase_atividade: string;
     categoria_complemento: 'genero' | 'agua' | 'lanche';
+    
+    // Novos campos Parte A
+    publico: string;
+    valor_etapa_qs: number;
+    pregao_qs: string;
+    om_qs: string;
+    ug_qs: string;
+    valor_etapa_qr: number;
+    pregao_qr: string;
+    om_qr: string;
+    ug_qr: string;
+
     acquisitionGroups: AcquisitionGroup[];
 }
 
@@ -69,6 +82,17 @@ const initialFormState: ComplementoAlimentacaoFormState = {
     efetivo: 0, 
     fase_atividade: "",
     categoria_complemento: 'genero',
+    
+    publico: "Militares",
+    valor_etapa_qs: 0,
+    pregao_qs: "",
+    om_qs: "",
+    ug_qs: "",
+    valor_etapa_qr: 0,
+    pregao_qr: "",
+    om_qr: "",
+    ug_qr: "",
+
     acquisitionGroups: [],
 };
 
@@ -82,16 +106,11 @@ const ComplementoAlimentacaoForm = () => {
     const [formData, setFormData] = useState<ComplementoAlimentacaoFormState>(initialFormState);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-    const [groupToDelete, setGroupToDelete] = useState<ConsolidatedComplementoRecord | null>(null); 
-    const [groupToReplace, setGroupToReplace] = useState<ConsolidatedComplementoRecord | null>(null); 
-    
-    const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
-    const [memoriaEdit, setMemoriaEdit] = useState<string>("");
-    const [pendingGroups, setPendingGroups] = useState<any[]>([]);
-    const [lastStagedFormData, setLastStagedFormData] = useState<ComplementoAlimentacaoFormState | null>(null);
     
     const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
     const [selectedOmDestinoId, setSelectedOmDestinoId] = useState<string | undefined>(undefined);
+    const [selectedOmQsId, setSelectedOmQsId] = useState<string | undefined>(undefined);
+    const [selectedOmQrId, setSelectedOmQrId] = useState<string | undefined>(undefined);
     
     const [isGroupFormOpen, setIsGroupFormOpen] = useState(false);
     const [groupToEdit, setGroupToEdit] = useState<AcquisitionGroup | undefined>(undefined);
@@ -100,59 +119,43 @@ const ComplementoAlimentacaoForm = () => {
     const [itemsToPreselect, setItemsToPreselect] = useState<ItemAquisicao[]>([]);
     const [selectedItemsFromSelector, setSelectedItemsFromSelector] = useState<ItemAquisicao[] | null>(null);
     
-    // Dados mestres
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
         queryKey: ['ptrabData', ptrabId],
         queryFn: () => fetchPTrabData(ptrabId!),
         enabled: !!ptrabId,
     });
 
-    // Registros (Usando any por enquanto até criar a tabela)
-    const { data: registros, isLoading: isLoadingRegistros } = useQuery<any[]>({
-        queryKey: ['complementoAlimentacaoRegistros', ptrabId],
-        queryFn: () => fetchPTrabRecords('material_consumo_registros' as any, ptrabId!), // Placeholder
-        enabled: !!ptrabId,
-        select: (data) => data.sort((a: any, b: any) => a.organizacao.localeCompare(b.organizacao)),
-    });
-    
-    const consolidatedRegistros = useMemo<ConsolidatedComplementoRecord[]>(() => {
-        if (!registros) return [];
-        // Lógica de consolidação similar ao Material de Consumo
-        return []; 
-    }, [registros]);
-    
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
     
-    // Mutations (Placeholders)
-    const insertMutation = useMutation({
-        mutationFn: async (newGroups: any[]) => { toast.info("Funcionalidade de salvar será ativada após criação do banco."); return []; },
-        onSuccess: () => { setPendingGroups([]); queryClient.invalidateQueries({ queryKey: ['complementoAlimentacaoRegistros', ptrabId] }); }
-    });
-
-    const handleSaveAcquisitionGroup = (group: AcquisitionGroup) => {
-        const { totalValue, totalND30, totalND39 } = calculateGroupTotals(group.items);
-        const finalGroup = { ...group, totalValue, totalND30, totalND39 };
-        
-        setFormData(prev => {
-            const existingIndex = prev.acquisitionGroups.findIndex(g => g.tempId === finalGroup.tempId);
-            let newGroups = existingIndex !== -1 ? [...prev.acquisitionGroups] : [...prev.acquisitionGroups, finalGroup];
-            if (existingIndex !== -1) newGroups[existingIndex] = finalGroup;
-            return { ...prev, acquisitionGroups: newGroups };
-        });
-        
-        setIsGroupFormOpen(false);
-        setGroupToEdit(undefined);
-    };
-
+    // Lógica de pré-seleção das UASGs baseada na OM Favorecida
     const handleOmFavorecidaChange = (omData: any) => {
         if (omData) {
             setSelectedOmFavorecidaId(omData.id);
             setSelectedOmDestinoId(omData.id); 
-            setFormData(prev => ({ ...prev, om_favorecida: omData.nome_om, ug_favorecida: omData.codug_om, om_destino: omData.nome_om, ug_destino: omData.codug_om }));
+            
+            // Regra Geral: UASG (QS) = RM de Vinculação
+            const rmOm = oms?.find(om => om.nome_om === omData.rm_vinculacao && om.codug_om === omData.codug_rm_vinculacao);
+            setSelectedOmQsId(rmOm?.id || undefined);
+
+            // Regra Geral: UASG (QR) = OM Favorecida
+            setSelectedOmQrId(omData.id);
+
+            setFormData(prev => ({ 
+                ...prev, 
+                om_favorecida: omData.nome_om, 
+                ug_favorecida: omData.codug_om, 
+                om_destino: omData.nome_om, 
+                ug_destino: omData.codug_om,
+                om_qs: omData.rm_vinculacao,
+                ug_qs: omData.codug_rm_vinculacao,
+                om_qr: omData.nome_om,
+                ug_qr: omData.codug_om
+            }));
         }
     };
 
     const isBaseFormReady = formData.om_favorecida.length > 0 && formData.fase_atividade.length > 0;
+    const isGenero = formData.categoria_complemento === 'genero';
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
@@ -218,53 +221,112 @@ const ComplementoAlimentacaoForm = () => {
 
                                         <Card className="bg-muted/50 p-4">
                                             {/* Parte A: Contexto da Categoria */}
-                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-background p-4 rounded-lg border">
-                                                <div className="space-y-2">
-                                                    <Label>Período (Nr Dias) *</Label>
-                                                    <Input type="number" value={formData.dias_operacao || ""} onChange={(e) => setFormData({...formData, dias_operacao: parseInt(e.target.value) || 0})} />
+                                            <div className="space-y-6 bg-background p-4 rounded-lg border">
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                    <div className="space-y-2">
+                                                        <Label>Efetivo *</Label>
+                                                        <Input type="number" value={formData.efetivo || ""} onChange={(e) => setFormData({...formData, efetivo: parseInt(e.target.value) || 0})} />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Público *</Label>
+                                                        <Select value={formData.publico} onValueChange={(v) => setFormData({...formData, publico: v})}>
+                                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Militares">Militares</SelectItem>
+                                                                <SelectItem value="OSP">OSP</SelectItem>
+                                                                <SelectItem value="Civis">Civis</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Período (Nr Dias) *</Label>
+                                                        <Input type="number" value={formData.dias_operacao || ""} onChange={(e) => setFormData({...formData, dias_operacao: parseInt(e.target.value) || 0})} />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>OM Destino do Recurso *</Label>
+                                                        <OmSelector selectedOmId={selectedOmDestinoId} onChange={(om) => setFormData({...formData, om_destino: om?.nome_om || "", ug_destino: om?.codug_om || ""})} />
+                                                    </div>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <Label>Efetivo *</Label>
-                                                    <Input type="number" value={formData.efetivo || ""} onChange={(e) => setFormData({...formData, efetivo: parseInt(e.target.value) || 0})} />
-                                                </div>
-                                                <div className="space-y-2 col-span-2">
-                                                    <Label>OM Destino do Recurso *</Label>
-                                                    <OmSelector selectedOmId={selectedOmDestinoId} onChange={(om) => setFormData({...formData, om_destino: om?.nome_om || "", ug_destino: om?.codug_om || ""})} />
+
+                                                {/* Campos Específicos de Gênero (QS e QR) */}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+                                                    {/* Grupo QS */}
+                                                    <div className="space-y-4 p-4 bg-primary/5 rounded-md border border-primary/10">
+                                                        <h4 className="font-bold text-sm text-primary uppercase">Quota Suplementar (QS)</h4>
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="space-y-2">
+                                                                <Label>Valor Etapa (QS)</Label>
+                                                                <Input type="number" step="0.01" value={formData.valor_etapa_qs || ""} onChange={(e) => setFormData({...formData, valor_etapa_qs: parseFloat(e.target.value) || 0})} />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Pregão (QS)</Label>
+                                                                <Input value={formData.pregao_qs} onChange={(e) => setFormData({...formData, pregao_qs: e.target.value})} placeholder="Ex: 01/2024" />
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label>UASG (QS)</Label>
+                                                            <OmSelector selectedOmId={selectedOmQsId} onChange={(om) => setFormData({...formData, om_qs: om?.nome_om || "", ug_qs: om?.codug_om || ""})} placeholder="Selecione a UASG do QS" />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Grupo QR */}
+                                                    <div className="space-y-4 p-4 bg-orange-500/5 rounded-md border border-orange-500/10">
+                                                        <h4 className="font-bold text-sm text-orange-600 uppercase">Quota de Ração (QR)</h4>
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="space-y-2">
+                                                                <Label>Valor Etapa (QR)</Label>
+                                                                <Input type="number" step="0.01" value={formData.valor_etapa_qr || ""} onChange={(e) => setFormData({...formData, valor_etapa_qr: parseFloat(e.target.value) || 0})} />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Pregão (QR)</Label>
+                                                                <Input value={formData.pregao_qr} onChange={(e) => setFormData({...formData, pregao_qr: e.target.value})} placeholder="Ex: 05/2024" />
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label>UASG (QR)</Label>
+                                                            <OmSelector selectedOmId={selectedOmQrId} onChange={(om) => setFormData({...formData, om_qr: om?.nome_om || "", ug_qr: om?.codug_om || ""})} placeholder="Selecione a UASG do QR" />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
 
                                             {/* Parte B: Grupos de Aquisição (Importação) */}
-                                            <Card className="p-4 bg-background">
-                                                <h4 className="text-base font-semibold mb-4">Itens de Aquisição ({formData.acquisitionGroups.length})</h4>
-                                                
-                                                {isGroupFormOpen ? (
-                                                    <AcquisitionGroupForm 
-                                                        initialGroup={groupToEdit} 
-                                                        onSave={handleSaveAcquisitionGroup} 
-                                                        onCancel={() => setIsGroupFormOpen(false)}
-                                                        onOpenItemSelector={(items) => { setItemsToPreselect(items); setIsItemSelectorOpen(true); }}
-                                                        selectedItemsFromSelector={selectedItemsFromSelector}
-                                                        onClearSelectedItems={() => setSelectedItemsFromSelector(null)}
-                                                    />
-                                                ) : (
-                                                    <div className="space-y-4">
-                                                        {formData.acquisitionGroups.length === 0 ? (
-                                                            <Alert><AlertCircle className="h-4 w-4" /><AlertTitle>Nenhum item</AlertTitle><AlertDescription>Adicione itens para esta categoria.</AlertDescription></Alert>
-                                                        ) : (
-                                                            <div className="border rounded-md p-2">Lista de grupos aqui...</div>
-                                                        )}
-                                                        <Button variant="outline" className="w-full" onClick={() => { setGroupToEdit(undefined); setIsGroupFormOpen(true); }}>
-                                                            <Plus className="mr-2 h-4 w-4" /> Adicionar Itens de Aquisição
-                                                        </Button>
+                                            <div className={cn("mt-6", isGenero && "opacity-50 pointer-events-none grayscale")}>
+                                                <Card className="p-4 bg-background">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <h4 className="text-base font-semibold">Itens de Aquisição ({formData.acquisitionGroups.length})</h4>
+                                                        {isGenero && <Badge variant="outline" className="text-orange-600 border-orange-600">Desabilitado para Gênero</Badge>}
                                                     </div>
-                                                )}
-                                            </Card>
+                                                    
+                                                    {isGroupFormOpen ? (
+                                                        <AcquisitionGroupForm 
+                                                            initialGroup={groupToEdit} 
+                                                            onSave={(g) => setFormData(prev => ({...prev, acquisitionGroups: [...prev.acquisitionGroups, g]}))} 
+                                                            onCancel={() => setIsGroupFormOpen(false)}
+                                                            onOpenItemSelector={(items) => { setItemsToPreselect(items); setIsItemSelectorOpen(true); }}
+                                                            selectedItemsFromSelector={selectedItemsFromSelector}
+                                                            onClearSelectedItems={() => setSelectedItemsFromSelector(null)}
+                                                        />
+                                                    ) : (
+                                                        <div className="space-y-4">
+                                                            {formData.acquisitionGroups.length === 0 ? (
+                                                                <Alert><AlertCircle className="h-4 w-4" /><AlertTitle>Nenhum item</AlertTitle><AlertDescription>Adicione itens para esta categoria.</AlertDescription></Alert>
+                                                            ) : (
+                                                                <div className="border rounded-md p-2">Lista de grupos aqui...</div>
+                                                            )}
+                                                            <Button variant="outline" className="w-full" onClick={() => setIsGroupFormOpen(true)} disabled={isGenero}>
+                                                                <Plus className="mr-2 h-4 w-4" /> Adicionar Itens de Aquisição
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </Card>
+                                            </div>
                                         </Card>
                                     </Tabs>
                                 </section>
                             )}
 
-                            {/* SEÇÕES 3, 4 e 5 (Placeholders para manter o layout) */}
+                            {/* SEÇÕES 3, 4 e 5 (Placeholders) */}
                             <section className="opacity-50 pointer-events-none">
                                 <h3 className="text-lg font-semibold mb-4">3. Itens Adicionados (Em breve)</h3>
                                 <h3 className="text-lg font-semibold mb-4">4. OMs Cadastradas (Em breve)</h3>
