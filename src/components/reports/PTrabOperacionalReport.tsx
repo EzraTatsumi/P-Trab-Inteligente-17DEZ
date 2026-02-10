@@ -1043,7 +1043,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                           }
 
                           return (
-                              <tr key={`${type}-${omName}-${(data as any).id || (data as any).groupKey || (data as any).registro?.id}-${rowItem.isContinuation ? 'cont' : 'orig'}-${rowItem.subType || ''}`} className="expense-row">
+                              <tr key={`${type}-${omName}-${(data as any).id || (data as any).groupKey || (data as any).registro?.id}-${rowItem.isContinuation ? 'cont' : 'orig'}-${(data as any).subType || ''}`} className="expense-row">
                                 <td className="col-despesas-op"> 
                                   <div style={{ whiteSpace: 'pre-wrap' }}>{despesasLabel}</div>
                                 </td>
