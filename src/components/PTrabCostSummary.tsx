@@ -219,7 +219,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     passagens: { total: 0, totalQuantidade: 0, totalTrechos: 0 },
     concessionaria: { total: 0, totalAgua: 0, totalEnergia: 0, totalRegistros: 0 },
     horasVoo: { total: 0, totalND30: 0, totalND39: 0, quantidadeHV: 0, groupedHV: {} },
-    materialConsumo: { total: 0, totalND30: 0, totalND39: 0 },
+    materialConsumo: { total: number, totalND30: number, totalND39: number },
 });
 
 const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals> => {
@@ -247,32 +247,51 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     // 1. Fetch Classe I totals
     const { data: classeIData } = await supabase
       .from('classe_i_registros')
-      .select('total_qs, total_qr, complemento_qs, etapa_qs, complemento_qr, etapa_qr, efetivo, dias_operacao, nr_ref_int, quantidade_r2, quantidade_r3, categoria, organizacao, ug')
+      .select('total_qs, total_qr, complemento_qs, etapa_qs, complemento_qr, etapa_qr, efetivo, dias_operacao, nr_ref_int, quantidade_r2, quantidade_r3, categoria, organizacao, ug, om_qs, ug_qs')
       .eq('p_trab_id', ptrabId);
 
     (classeIData || []).forEach(record => {
-      const oms = [
-          getOmTotals(record.organizacao, record.ug, 'solicitante'),
-          getOmTotals(record.organizacao, record.ug, 'destino') // Classe I não tem destino específico, usa solicitante
-      ];
+      // MODO SOLICITANTE: Tudo na OM que solicitou
+      const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
       
-      oms.forEach(omTotals => {
-          if (record.categoria === 'RACAO_QUENTE') {
-              const totalClasseI = Number(record.total_qs || 0) + Number(record.total_qr || 0);
-              const totalComplemento = Number(record.complemento_qs || 0) + Number(record.complemento_qr || 0);
-              const totalEtapaSolicitadaValor = Number(record.etapa_qs || 0) + Number(record.etapa_qr || 0);
-              const diasEtapaSolicitada = calculateDiasEtapaSolicitada(Number(record.dias_operacao || 0));
-              const totalRefeicoesIntermediarias = Number(record.efetivo || 0) * Number(record.nr_ref_int || 0) * Number(record.dias_operacao || 0);
-              
-              omTotals.classeI.total += totalClasseI;
-              omTotals.classeI.totalComplemento += totalComplemento;
-              omTotals.classeI.totalEtapaSolicitadaValor += totalEtapaSolicitadaValor;
-              omTotals.classeI.totalDiasEtapaSolicitada += diasEtapaSolicitada;
-              omTotals.classeI.totalRefeicoesIntermediarias += totalRefeicoesIntermediarias;
-          } else if (record.categoria === 'RACAO_OPERACIONAL') {
-              omTotals.classeI.totalRacoesOperacionaisGeral += Number(record.quantidade_r2 || 0) + Number(record.quantidade_r3 || 0);
-          }
-      });
+      // MODO DESTINO: QR na Solicitante, QS na Fornecedora (RM)
+      const omD_Solicitante = getOmTotals(record.organizacao, record.ug, 'destino');
+      const omD_Fornecedora = getOmTotals(record.om_qs || record.organizacao, record.ug_qs || record.ug, 'destino');
+
+      if (record.categoria === 'RACAO_QUENTE') {
+          const totalQR = Number(record.total_qr || 0);
+          const totalQS = Number(record.total_qs || 0);
+          const complementoQR = Number(record.complemento_qr || 0);
+          const complementoQS = Number(record.complemento_qs || 0);
+          const etapaQR = Number(record.etapa_qr || 0);
+          const etapaQS = Number(record.etapa_qs || 0);
+          const diasEtapaSolicitada = calculateDiasEtapaSolicitada(Number(record.dias_operacao || 0));
+          const totalRefeicoesIntermediarias = Number(record.efetivo || 0) * Number(record.nr_ref_int || 0) * Number(record.dias_operacao || 0);
+
+          // Atualiza Solicitante (Global)
+          omS.classeI.total += totalQR + totalQS;
+          omS.classeI.totalComplemento += complementoQR + complementoQS;
+          omS.classeI.totalEtapaSolicitadaValor += etapaQR + etapaQS;
+          omS.classeI.totalDiasEtapaSolicitada += diasEtapaSolicitada;
+          omS.classeI.totalRefeicoesIntermediarias += totalRefeicoesIntermediarias;
+
+          // Atualiza Destino - Solicitante (QR)
+          omD_Solicitante.classeI.total += totalQR;
+          omD_Solicitante.classeI.totalComplemento += complementoQR;
+          omD_Solicitante.classeI.totalEtapaSolicitadaValor += etapaQR;
+          
+          // Atualiza Destino - Fornecedora (QS)
+          omD_Fornecedora.classeI.total += totalQS;
+          omD_Fornecedora.classeI.totalComplemento += complementoQS;
+          omD_Fornecedora.classeI.totalEtapaSolicitadaValor += etapaQS;
+          omD_Fornecedora.classeI.totalDiasEtapaSolicitada += diasEtapaSolicitada;
+          omD_Fornecedora.classeI.totalRefeicoesIntermediarias += totalRefeicoesIntermediarias;
+
+      } else if (record.categoria === 'RACAO_OPERACIONAL') {
+          const qtd = Number(record.quantidade_r2 || 0) + Number(record.quantidade_r3 || 0);
+          omS.classeI.totalRacoesOperacionaisGeral += qtd;
+          omD_Fornecedora.classeI.totalRacoesOperacionaisGeral += qtd; // RM processa a ração op
+      }
     });
     
     // 2. Fetch Classes Diversas
@@ -313,13 +332,15 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
             const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
             const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
             
-            [omS, omD].forEach(omTotals => {
-                const group = (omTotals as any)[`classe${classe}`];
-                const valorTotal = Number(record.valor_total || 0);
+            [
+                { target: omS, val: Number(record.valor_total || 0) },
+                { target: omD, val: Number(record.valor_total || 0) }
+            ].forEach(({ target, val }) => {
+                const group = (target as any)[`classe${classe}`];
                 const valorND30 = Number(record.valor_nd_30 || 0);
                 const valorND39 = Number(record.valor_nd_39 || 0);
                 
-                group.total += valorTotal;
+                group.total += val;
                 group.totalND30 += valorND30;
                 group.totalND39 += valorND39;
                 
@@ -333,7 +354,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
                 if (!group.groupedCategories[catKey]) {
                     group.groupedCategories[catKey] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
                 }
-                group.groupedCategories[catKey].totalValor += valorTotal;
+                group.groupedCategories[catKey].totalValor += val;
                 group.groupedCategories[catKey].totalND30 += valorND30;
                 group.groupedCategories[catKey].totalND39 += valorND39;
                 group.groupedCategories[catKey].totalItens += (classe === 'VIII' && record.animal_tipo) ? Number(record.quantidade_animais || 0) : totalItens;
@@ -512,7 +533,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
                 globalGrouped[cat].totalItens += data.totalItens;
             });
         };
-        ['II', 'V', 'VI', 'VII', 'VIII', 'IX'].forEach(k => mergeClass(k, (omTotals as any)[`classe${k}`]));
+        ['II', 'V', 'VI', 'VII', 'VIII', 'IX'].forEach(k => mergeClass(k, (omTotals as any)[`classe${k.toLowerCase()}`]));
         
         globalTotals.totalCombustivel += omTotals.classeIII.total;
         globalTotals.totalDieselValor += omTotals.classeIII.totalDieselValor;
@@ -635,7 +656,7 @@ const getConcessionariaData = (data: OmTotals | PTrabAggregatedTotals): OmTotals
 const getHorasVooData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['horasVoo'] => {
     if ((data as OmTotals).omKey) return (data as OmTotals).horasVoo;
     const g = data as PTrabAggregatedTotals;
-    return { total: g.totalHorasVoo, totalND30: g.totalHorasVooND30, totalND39: g.totalHorasVooND39, quantidadeHV: g.quantidadeHV, groupedHV: g.groupedHV };
+    return { total: g.totalHorasVoo, totalND30: g.totalHorasVooND30, totalND39: g.totalHorasVooND39, quantidadeHV: g.quantidadeHorasVoo, groupedHV: g.groupedHorasVoo };
 };
 
 const getMaterialConsumoData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['materialConsumo'] => {
