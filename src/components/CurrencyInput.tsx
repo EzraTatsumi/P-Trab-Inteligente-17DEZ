@@ -1,56 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { Input as ShadcnInput } from "@/components/ui/input";
-import { formatCurrencyInput, numberToRawDigits } from '@/lib/formatUtils';
-import { cn } from "@/lib/utils";
+"use client";
+
+import React from 'react';
+import { Input } from "@/components/ui/input";
+import { formatCurrencyInput } from "@/lib/formatUtils";
 
 interface CurrencyInputProps {
-  value: number | null | undefined;
+  value: number;
+  rawDigits: string;
   onChange: (value: number) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   placeholder?: string;
-  disabled?: boolean;
   className?: string;
+  id?: string; // Adicionado para suporte a labels e acessibilidade
 }
 
-const CurrencyInput = ({ value, onChange, placeholder = "0,00", disabled, className }: CurrencyInputProps) => {
-  const [displayValue, setDisplayValue] = useState("");
-
-  useEffect(() => {
-    if (value === null || value === undefined) {
-      setDisplayValue("");
-      return;
-    }
-    
-    const rawDigits = numberToRawDigits(value);
-    const { formatted } = formatCurrencyInput(rawDigits);
-    setDisplayValue(formatted);
-  }, [value]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value || "";
-    const { formatted, numericValue } = formatCurrencyInput(inputValue);
-    setDisplayValue(formatted);
-    onChange(numericValue);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-      e.preventDefault();
-    }
-  };
+const CurrencyInput = ({ value, rawDigits, onChange, onKeyDown, placeholder, className, id }: CurrencyInputProps) => {
+  const { formatted } = formatCurrencyInput(rawDigits);
 
   return (
-    <div className="relative flex items-center">
-      <span className="absolute left-3 text-muted-foreground text-sm pointer-events-none select-none">
-        R$
-      </span>
-      <ShadcnInput
+    <div className="relative">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+      <Input
+        id={id}
         type="text"
-        value={displayValue}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
+        inputMode="numeric"
+        className={`pl-8 ${className}`}
+        value={value === 0 && rawDigits.length === 0 ? "" : formatted}
+        onChange={(e) => {
+          const { numericValue } = formatCurrencyInput(e.target.value);
+          onChange(numericValue);
+        }}
+        onKeyDown={onKeyDown}
         placeholder={placeholder}
-        disabled={disabled}
-        className={cn("pl-9", className)}
       />
     </div>
   );
