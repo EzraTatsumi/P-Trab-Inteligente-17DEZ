@@ -654,17 +654,17 @@ const ComplementoAlimentacaoForm = () => {
                                                                                         <Trash2 className="h-3 w-3" />
                                                                                     </Button>
                                                                                 </div>
-                                                                                <CollapsibleContent className="p-3 space-y-3">
-                                                                                    <div className="space-y-2">
-                                                                                        <Label className="text-[10px] uppercase">Descrição do Item *</Label>
-                                                                                        <Input 
-                                                                                            value={item.descricao} 
-                                                                                            onChange={(e) => updateLancheItem(item.id, "descricao", e.target.value)} 
-                                                                                            placeholder="Ex: Pão de forma, presunto, queijo..." 
-                                                                                            className="h-8 text-xs"
-                                                                                        />
-                                                                                    </div>
-                                                                                    <div className="grid grid-cols-2 gap-3">
+                                                                                <CollapsibleContent className="p-3">
+                                                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                                                                                        <div className="md:col-span-2 space-y-2">
+                                                                                            <Label className="text-[10px] uppercase">Descrição do Item *</Label>
+                                                                                            <Input 
+                                                                                                value={item.descricao} 
+                                                                                                onChange={(e) => updateLancheItem(item.id, "descricao", e.target.value)} 
+                                                                                                placeholder="Ex: Pão de forma, presunto, queijo..." 
+                                                                                                className="h-8 text-xs"
+                                                                                            />
+                                                                                        </div>
                                                                                         <div className="space-y-2">
                                                                                             <Label className="text-[10px] uppercase">Quantidade *</Label>
                                                                                             <Input 
