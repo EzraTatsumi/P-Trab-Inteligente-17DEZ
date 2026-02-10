@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Pencil, XCircle, Save, RefreshCw, FileText } from "lucide-react";
-import { generateComplementoMemoriaCalculo } from "@/lib/complementoAlimentacaoUtils";
+import { ComplementoAlimentacaoRegistro, generateComplementoMemoriaCalculo } from "@/lib/complementoAlimentacaoUtils";
 
 interface Props {
     registro: any;
@@ -36,38 +36,12 @@ const ComplementoAlimentacaoMemoria = ({
     const memoriaAutomatica = generateComplementoMemoriaCalculo(registro, context);
     const memoriaExibicao = registro.detalhamento_customizado || memoriaAutomatica;
 
-    // Se for gênero, tentamos separar as memórias para exibição (mas salvamos juntas se editadas)
-    const isGenero = registro.categoria_complemento === 'genero' || registro.group_name?.includes('Gênero');
-    
-    const renderMemoriaContent = (text: string) => {
-        if (isGenero && !isEditing) {
-            const parts = text.split('\n\n---\n\n');
-            return (
-                <div className="space-y-4">
-                    {parts.map((part, idx) => (
-                        <div key={idx} className="bg-muted/30 p-3 rounded border">
-                            <h4 className="font-bold text-xs mb-2 text-primary uppercase">
-                                {idx === 0 ? "QS - Quantitativo de Subsistência" : "QR - Quantitativo de Rancho"}
-                            </h4>
-                            <pre className="text-xs whitespace-pre-wrap font-sans">{part}</pre>
-                        </div>
-                    ))}
-                </div>
-            );
-        }
-        return (
-            <pre className="text-xs whitespace-pre-wrap font-sans bg-muted/30 p-3 rounded border">
-                {text}
-            </pre>
-        );
-    };
-
     return (
         <Card key={registro.id} className="border-l-4 border-l-primary">
             <CardHeader className="py-3 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-bold flex items-center gap-2">
                     <FileText className="h-4 w-4 text-primary" />
-                    Memória: {registro.group_name}
+                    Memória: {registro.group_name} ({registro.categoria_complemento})
                 </CardTitle>
                 <div className="flex gap-2">
                     {!isEditing ? (
@@ -128,11 +102,12 @@ const ComplementoAlimentacaoMemoria = ({
                     <Textarea
                         value={memoriaEdit}
                         onChange={(e) => setMemoriaEdit(e.target.value)}
-                        className="min-h-[200px] text-xs font-mono"
-                        placeholder="Edite a memória de cálculo..."
+                        className="min-h-[120px] text-xs font-mono"
                     />
                 ) : (
-                    renderMemoriaContent(memoriaExibicao)
+                    <pre className="text-xs whitespace-pre-wrap font-sans bg-muted/30 p-3 rounded border">
+                        {memoriaExibicao}
+                    </pre>
                 )}
             </CardContent>
         </Card>
