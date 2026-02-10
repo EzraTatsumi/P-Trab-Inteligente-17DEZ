@@ -205,7 +205,7 @@ const ComplementoAlimentacaoForm = () => {
                             {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">1. Dados da Organização</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <Label>OM Favorecida *</Label>
                                         <OmSelector selectedOmId={selectedOmFavorecidaId} onChange={handleOmFavorecidaChange} placeholder="Selecione a OM" />
@@ -213,13 +213,6 @@ const ComplementoAlimentacaoForm = () => {
                                     <div className="space-y-2">
                                         <Label>UG Favorecida</Label>
                                         <Input value={formatCodug(formData.ug_favorecida)} disabled className="bg-muted/50" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>RM de Vinculação *</Label>
-                                        <RmSelector 
-                                            value={formData.rm_vinculacao} 
-                                            onChange={(name, codug) => setFormData({...formData, rm_vinculacao: name, codug_rm_vinculacao: codug})} 
-                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Fase da Atividade *</Label>
@@ -285,22 +278,22 @@ const ComplementoAlimentacaoForm = () => {
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
                                                     {/* Grupo QS */}
                                                     <div className="space-y-4 p-4 bg-primary/5 rounded-md border border-primary/10">
-                                                        <h4 className="font-bold text-sm text-primary uppercase">Quota Suplementar (QS)</h4>
+                                                        <h4 className="font-bold text-sm text-primary uppercase">Quantitativo de Subsistência (QS)</h4>
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <div className="space-y-2">
-                                                                <Label>Valor Etapa (QS)</Label>
+                                                                <Label>Valor Etapa (QS) *</Label>
                                                                 <CurrencyInput 
                                                                     value={formData.valor_etapa_qs} 
                                                                     onChange={(val) => setFormData({...formData, valor_etapa_qs: val})}
                                                                 />
                                                             </div>
                                                             <div className="space-y-2">
-                                                                <Label>Pregão (QS)</Label>
+                                                                <Label>Pregão (QS) *</Label>
                                                                 <Input value={formData.pregao_qs} onChange={(e) => setFormData({...formData, pregao_qs: e.target.value})} placeholder="Ex: 90.001/24" />
                                                             </div>
                                                         </div>
                                                         <div className="space-y-2">
-                                                            <Label>UASG (QS)</Label>
+                                                            <Label>UASG (QS) *</Label>
                                                             <RmSelector 
                                                                 value={formData.om_qs} 
                                                                 onChange={(name, codug) => setFormData({...formData, om_qs: name, ug_qs: codug})} 
@@ -311,22 +304,22 @@ const ComplementoAlimentacaoForm = () => {
 
                                                     {/* Grupo QR */}
                                                     <div className="space-y-4 p-4 bg-orange-500/5 rounded-md border border-orange-500/10">
-                                                        <h4 className="font-bold text-sm text-orange-600 uppercase">Quota de Ração (QR)</h4>
+                                                        <h4 className="font-bold text-sm text-orange-600 uppercase">Quantitativo de Rancho (QR)</h4>
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <div className="space-y-2">
-                                                                <Label>Valor Etapa (QR)</Label>
+                                                                <Label>Valor Etapa (QR) *</Label>
                                                                 <CurrencyInput 
                                                                     value={formData.valor_etapa_qr} 
                                                                     onChange={(val) => setFormData({...formData, valor_etapa_qr: val})}
                                                                 />
                                                             </div>
                                                             <div className="space-y-2">
-                                                                <Label>Pregão (QR)</Label>
+                                                                <Label>Pregão (QR) *</Label>
                                                                 <Input value={formData.pregao_qr} onChange={(e) => setFormData({...formData, pregao_qr: e.target.value})} placeholder="Ex: 90.001/24" />
                                                             </div>
                                                         </div>
                                                         <div className="space-y-2">
-                                                            <Label>UASG (QR)</Label>
+                                                            <Label>UASG (QR) *</Label>
                                                             <OmSelector selectedOmId={selectedOmQrId} onChange={(om) => setFormData({...formData, om_qr: om?.nome_om || "", ug_qr: om?.codug_om || ""})} placeholder="Selecione a UASG do QR" />
                                                         </div>
                                                     </div>
