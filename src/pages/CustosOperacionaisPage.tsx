@@ -46,7 +46,7 @@ import MaterialConsumoDiretrizRow from "@/components/MaterialConsumoDiretrizRow"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMaterialConsumoDiretrizes } from "@/hooks/useMaterialConsumoDiretrizes";
 import PageMetadata from "@/components/PageMetadata";
-import MaterialConsumoExportImportDialog from "@/components/MaterialConsumoExportImportDialog";
+import MaterialConsumoExportImportDialog from "@/components/MaterialConsumoExportImportDialog"; // NOVO IMPORT
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -61,12 +61,14 @@ const DIARIA_RANKS_CONFIG = [
 
 // Mapeamento de campos para rótulos e tipo de input (R$ ou Fator)
 const OPERATIONAL_FIELDS = [
+  // { key: 'fator_passagens_aereas', label: 'Passagens Aéreas (Fator)', type: 'factor' as const, placeholder: 'Ex: 1.5 (para 150%)' }, // REMOVIDO
   { key: 'fator_servicos_terceiros', label: 'Serviços de Terceiros (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.10 (para 10%)' },
   { key: 'valor_complemento_alimentacao', label: 'Complemento de Alimentação (R$)', type: 'currency' as const, placeholder: 'Ex: 15,00' },
   { key: 'valor_fretamento_aereo_hora', label: 'Fretamento Aéreo (R$/hora)', type: 'currency' as const, placeholder: 'Ex: 1.200,00' },
   { key: 'valor_locacao_estrutura_dia', label: 'Locação de Estrutura (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 300,00' },
   { key: 'valor_locacao_viaturas_dia', label: 'Locação de Viaturas (R$/dia)', type: 'currency' as const, placeholder: 'Ex: 150,00' },
   { key: 'fator_material_consumo', label: 'Material de Consumo (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.02 (para 2%)' },
+  // O fator_concessionaria foi removido daqui, pois a configuração agora é detalhada por contrato/consumo
 ];
 
 // Valores padrão para inicialização (incluindo os novos campos de diária)
@@ -79,7 +81,7 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   valor_locacao_estrutura_dia: 0,
   valor_locacao_viaturas_dia: 0,
   fator_material_consumo: 0,
-  fator_concessionaria: 0,
+  fator_concessionaria: 0, // Mantido no default para compatibilidade com o schema DB
   observacoes: "",
   
   diaria_referencia_legal: 'Decreto Nº 12.324 de 19DEZ24',
@@ -102,11 +104,12 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
 // =================================================================
 // LÓGICA DE AUTO-SCROLLING (FORA DO COMPONENTE)
 // =================================================================
-const SCROLL_ZONE_HEIGHT = 50;
-const SCROLL_SPEED = 10;
+const SCROLL_ZONE_HEIGHT = 50; // pixels from top/bottom edge
+const SCROLL_SPEED = 10; // pixels per frame
 let scrollAnimationFrame: number | null = null;
 let scrollDirection: 'up' | 'down' | null = null;
 
+// Função para executar o loop de rolagem
 const autoScroll = () => {
     if (scrollDirection === 'up') {
         window.scrollBy(0, -SCROLL_SPEED);
@@ -121,16 +124,19 @@ const autoScroll = () => {
     }
 };
 
+// Função para lidar com o evento global drag over
 const handleGlobalDragOver = (e: DragEvent) => {
+    // Verifica se o item arrastado é um item de aquisição (heurística)
     if (!e.dataTransfer?.types.includes("application/json")) {
         return;
     }
     
-    e.preventDefault();
+    e.preventDefault(); // Permite a operação de drop
 
     const viewportHeight = window.innerHeight;
     const cursorY = e.clientY;
 
+    // Verifica zona superior
     if (cursorY < SCROLL_ZONE_HEIGHT) {
         if (scrollDirection !== 'up') {
             scrollDirection = 'up';
@@ -139,6 +145,7 @@ const handleGlobalDragOver = (e: DragEvent) => {
             }
         }
     } 
+    // Verifica zona inferior
     else if (cursorY > viewportHeight - SCROLL_ZONE_HEIGHT) {
         if (scrollDirection !== 'down') {
             scrollDirection = 'down';
@@ -147,6 +154,7 @@ const handleGlobalDragOver = (e: DragEvent) => {
             }
         }
     } 
+    // Cursor no meio, para a rolagem
     else {
         if (scrollDirection) {
             scrollDirection = null;
@@ -158,6 +166,7 @@ const handleGlobalDragOver = (e: DragEvent) => {
     }
 };
 
+// Função para lidar com o fim do arrasto (limpeza)
 const handleGlobalDragEnd = () => {
     scrollDirection = null;
     if (scrollAnimationFrame) {
@@ -165,6 +174,9 @@ const handleGlobalDragEnd = () => {
         scrollAnimationFrame = null;
     }
 };
+// =================================================================
+// FIM LÓGICA DE AUTO-SCROLLING
+// =================================================================
 
 // NOVO: Estrutura para o item indexado
 type IndexedItemAquisicao = ItemAquisicao & {
@@ -176,7 +188,7 @@ type IndexedItemAquisicao = ItemAquisicao & {
 
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
+  const location = useLocation(); // Hook para acessar o estado de navegação
   const { user } = useSession();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
@@ -191,36 +203,44 @@ const CustosOperacionaisPage = () => {
   const { data: defaultYearData, isLoading: isLoadingDefaultYear } = useDefaultDiretrizYear();
   const defaultYear = defaultYearData?.defaultYear || null;
   
+  // Estado para armazenar os inputs brutos (apenas dígitos) para campos monetários
   const [rawInputs, setRawInputs] = useState<Record<string, string>>({});
   
+  // Estado para controlar a expansão individual de cada campo
   const [fieldCollapseState, setFieldCollapseState] = useState<Record<string, boolean>>(() => {
     const initialState: Record<string, boolean> = {};
     OPERATIONAL_FIELDS.forEach(field => {
       initialState[field.key as string] = false;
     });
     
+    // Verifica se o estado de navegação pede para abrir a seção de passagens
     const shouldOpenPassagens = location.state && (location.state as { openPassagens?: boolean }).openPassagens;
+    // NOVO: Verifica se o estado de navegação pede para abrir a seção de concessionária
     const shouldOpenConcessionaria = location.state && (location.state as { openConcessionaria?: boolean }).openConcessionaria;
+    // NOVO: Verifica se o estado de navegação pede para abrir a seção de material de consumo
     const shouldOpenMaterialConsumo = location.state && (location.state as { openMaterialConsumo?: boolean }).openMaterialConsumo;
     
     initialState['diarias_detalhe'] = false; 
     initialState['passagens_detalhe'] = shouldOpenPassagens || false; 
     initialState['concessionaria_detalhe'] = shouldOpenConcessionaria || false;
-    initialState['material_consumo_detalhe'] = shouldOpenMaterialConsumo || false;
+    initialState['material_consumo_detalhe'] = shouldOpenMaterialConsumo || false; // NOVO
     return initialState;
   });
   
   const { handleEnterToNextField } = useFormNavigation();
   
+  // --- ESTADOS DE DIRETRIZES DE PASSAGENS ---
   const [diretrizesPassagens, setDiretrizesPassagens] = useState<DiretrizPassagem[]>([]);
   const [isPassagemFormOpen, setIsPassagemFormOpen] = useState(false);
   const [diretrizToEdit, setDiretrizToEdit] = useState<DiretrizPassagem | null>(null);
   
+  // --- ESTADOS DE DIRETRIZES DE CONCESSIONÁRIA ---
   const [diretrizesConcessionaria, setDiretrizesConcessionaria] = useState<DiretrizConcessionaria[]>([]);
   const [isConcessionariaFormOpen, setIsConcessionariaFormOpen] = useState(false);
   const [diretrizConcessionariaToEdit, setDiretrizConcessionariaToEdit] = useState<DiretrizConcessionaria | null>(null);
   const [selectedConcessionariaTab, setSelectedConcessionariaTab] = useState<CategoriaConcessionaria>(CATEGORIAS_CONCESSIONARIA[0]);
   
+  // --- ESTADOS DE DIRETRIZES DE MATERIAL DE CONSUMO (NOVO) ---
   const { 
       diretrizes: diretrizesMaterialConsumo, 
       isLoading: isLoadingMaterialConsumo, 
@@ -234,40 +254,51 @@ const CustosOperacionaisPage = () => {
   
   const [subitemToOpenId, setSubitemToOpenId] = useState<string | null>(null);
   
+  // NOVO ESTADO: Diálogo de Export/Import
   const [isExportImportDialogOpen, setIsExportImportDialogOpen] = useState(false);
+  // END MATERIAL CONSUMO STATES
   
+  // Ref para os containers colapsáveis para rolagem
   const collapsibleRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+  // Função para lidar com a mudança de estado do Collapsible e rolar
   const handleCollapseChange = (key: string, open: boolean) => {
       setFieldCollapseState(prev => ({ ...prev, [key]: open }));
 
       if (open) {
+          // Scroll to the top of the collapsible section when it opens
           setTimeout(() => {
               const element = collapsibleRefs.current[key];
               if (element) {
+                  // Scroll the element into view, aligning it to the start (top)
                   element.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }
-          }, 100);
+          }, 100); // Pequeno atraso para permitir que o DOM se atualize após a expansão
       }
   };
   
+  // Efeito para rolar para o topo na montagem
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
   
+  // NOVO: Efeito para gerenciar os listeners globais de Drag and Drop para auto-scrolling
   useEffect(() => {
+    // Adiciona listeners globais ao montar
     window.addEventListener('dragover', handleGlobalDragOver);
     window.addEventListener('dragend', handleGlobalDragEnd);
-    window.addEventListener('drop', handleGlobalDragEnd);
+    window.addEventListener('drop', handleGlobalDragEnd); // Limpa o scroll se o drop ocorrer fora de um alvo válido
 
+    // Remove listeners ao desmontar
     return () => {
       window.removeEventListener('dragover', handleGlobalDragOver);
       window.removeEventListener('dragend', handleGlobalDragEnd);
       window.removeEventListener('drop', handleGlobalDragEnd);
-      handleGlobalDragEnd();
+      handleGlobalDragEnd(); // Garante que qualquer animação pendente seja cancelada
     };
   }, []);
 
+  // Efeito para carregar anos disponíveis e definir o ano selecionado
   useEffect(() => {
     if (!isLoadingDefaultYear && defaultYearData) {
         const checkAuthAndLoadYears = async () => {
@@ -290,6 +321,7 @@ const CustosOperacionaisPage = () => {
       loadDiretrizesForYear(selectedYear);
       loadDiretrizesPassagens(selectedYear); 
       loadDiretrizesConcessionaria(selectedYear);
+      // loadDiretrizesMaterialConsumo(selectedYear); // REMOVIDO: Agora gerenciado pelo hook
     }
   }, [selectedYear]);
 
@@ -298,26 +330,28 @@ const CustosOperacionaisPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Busca anos disponíveis nas quatro tabelas
       const [
           { data: opData, error: opError },
           { data: passagensData, error: passagensError },
           { data: concessionariaData, error: concessionariaError },
-          { data: materialConsumoData, error: materialConsumoError }
+          { data: materialConsumoData, error: materialConsumoError } // NOVO
       ] = await Promise.all([
           supabase.from("diretrizes_operacionais").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_passagens").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_concessionaria").select("ano_referencia").eq("user_id", user.id),
-          supabase.from("diretrizes_material_consumo").select("ano_referencia").eq("user_id", user.id),
+          supabase.from("diretrizes_material_consumo").select("ano_referencia").eq("user_id", user.id), // NOVO
       ]);
 
       if (opError || passagensError || concessionariaError || materialConsumoError) throw opError || passagensError || concessionariaError || materialConsumoError;
 
+      // CORREÇÃO: Acessar 'ano_referencia' de forma segura
       const opYears = opData ? opData.map(d => d.ano_referencia) : [];
       const passagensYears = passagensData ? passagensData.map(d => d.ano_referencia) : [];
       const concessionariaYears = concessionariaData ? concessionariaData.map(d => d.ano_referencia) : [];
-      const materialConsumoYears = materialConsumoData ? materialConsumoData.map(d => d.ano_referencia) : [];
+      const materialConsumoYears = materialConsumoData ? materialConsumoData.map(d => d.ano_referencia) : []; // NOVO
 
-      const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears, ...materialConsumoYears]);
+      const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears, ...materialConsumoYears]); // UPDATED
       
       if (defaultYearId && !yearsToInclude.has(defaultYearId)) {
           yearsToInclude.add(defaultYearId);
@@ -424,6 +458,8 @@ const CustosOperacionaisPage = () => {
             
         if (error) throw error;
         
+        // CORREÇÃO 1: Mapear os dados do Supabase para o tipo DiretrizPassagem, 
+        // garantindo que 'trechos' seja tratado como TrechoPassagem[]
         const typedData: DiretrizPassagem[] = (data || []).map(d => ({
             ...d,
             trechos: (d.trechos as unknown as TrechoPassagem[]) || [],
@@ -454,6 +490,8 @@ const CustosOperacionaisPage = () => {
             
         if (error) throw error;
         
+        // Ensure numeric types are correct
+        // CORREÇÃO: Mapear o tipo de retorno para DiretrizConcessionaria
         const typedData: DiretrizConcessionaria[] = (data || []).map((d: Tables<'diretrizes_concessionaria'>) => ({
             ...d,
             consumo_pessoa_dia: Number(d.consumo_pessoa_dia),
@@ -468,6 +506,7 @@ const CustosOperacionaisPage = () => {
     }
   };
   
+  // Função para forçar a revalidação da query de Material de Consumo após importação
   const handleMaterialConsumoImportSuccess = () => {
       if (user?.id && selectedYear > 0) {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user.id] });
@@ -608,6 +647,7 @@ const CustosOperacionaisPage = () => {
       
       setLoading(true);
       
+      // 1. Copiar Diretriz Operacional
       const { data: sourceOperacional, error: operacionalError } = await supabase
         .from("diretrizes_operacionais")
         .select("*")
@@ -627,6 +667,7 @@ const CustosOperacionaisPage = () => {
           if (insertOperacionalError) throw insertOperacionalError;
       }
       
+      // 2. Copiar Diretrizes de Passagens
       const { data: sourcePassagens, error: passagensError } = await supabase
         .from("diretrizes_passagens")
         .select("om_referencia, ug_referencia, numero_pregao, trechos, ativo, data_inicio_vigencia, data_fim_vigencia")
@@ -640,6 +681,7 @@ const CustosOperacionaisPage = () => {
               ...p,
               ano_referencia: targetYear,
               user_id: user.id,
+              // O Supabase aceita Json, então passamos o JSONB diretamente
               trechos: p.trechos, 
           }));
           
@@ -649,6 +691,7 @@ const CustosOperacionaisPage = () => {
           if (insertPassagensError) throw insertPassagensError;
       }
       
+      // 3. Copiar Diretrizes de Concessionária
       const { data: sourceConcessionaria, error: concessionariaError } = await supabase
         .from("diretrizes_concessionaria")
         .select("categoria, nome_concessionaria, consumo_pessoa_dia, fonte_consumo, custo_unitario, fonte_custo, unidade_custo")
@@ -658,7 +701,9 @@ const CustosOperacionaisPage = () => {
       if (concessionariaError) throw concessionariaError;
       
       if (sourceConcessionaria && sourceConcessionaria.length > 0) {
+          // CORREÇÃO: Mapear o tipo de retorno para DiretrizConcessionaria
           const newConcessionaria = (sourceConcessionaria as Tables<'diretrizes_concessionaria'>[]).map(c => {
+              // CORREÇÃO: Desestruturação segura para remover campos de sistema
               const { id, created_at, updated_at, ...restOfConcessionaria } = c as any;
               return {
                   ...restOfConcessionaria,
@@ -673,6 +718,7 @@ const CustosOperacionaisPage = () => {
           if (insertConcessionariaError) throw insertConcessionariaError;
       }
       
+      // 4. Copiar Diretrizes de Material de Consumo (NOVO)
       const { data: sourceMaterialConsumo, error: materialConsumoError } = await supabase
         .from("diretrizes_material_consumo")
         .select("nr_subitem, nome_subitem, descricao_subitem, itens_aquisicao, ativo")
@@ -688,7 +734,7 @@ const CustosOperacionaisPage = () => {
                   ...restOfMaterialConsumo,
                   ano_referencia: targetYear,
                   user_id: user.id,
-                  itens_aquisicao: m.itens_aquisicao,
+                  itens_aquisicao: m.itens_aquisicao, // JSONB copiado
               };
           });
           
@@ -727,24 +773,28 @@ const CustosOperacionaisPage = () => {
       
       setLoading(true);
       
+      // 1. Excluir Diretriz Operacional
       await supabase
         .from("diretrizes_operacionais")
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
         
+      // 2. Excluir Diretrizes de Passagens
       await supabase
         .from("diretrizes_passagens")
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
         
+      // 3. Excluir Diretrizes de Concessionária
       await supabase
         .from("diretrizes_concessionaria")
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
         
+      // 4. Excluir Diretrizes de Material de Consumo (NOVO)
       await supabase
         .from("diretrizes_material_consumo")
         .delete()
@@ -765,6 +815,7 @@ const CustosOperacionaisPage = () => {
     }
   };
   
+  // Handler para inputs monetários (R$)
   const handleCurrencyChange = (field: keyof DiretrizOperacional, rawValue: string) => {
     const { numericValue, digits } = formatCurrencyInput(rawValue);
     
@@ -772,11 +823,13 @@ const CustosOperacionaisPage = () => {
     setDiretrizes(prev => ({ ...prev, [field]: numericValue }));
   };
   
+  // Handler para inputs de fator/percentual
   const handleFactorChange = (field: keyof DiretrizOperacional, value: string) => {
     const numericValue = parseFloat(value) || 0;
     setDiretrizes(prev => ({ ...prev, [field]: numericValue }));
   };
 
+  // Função para renderizar um campo de diretriz
   const renderDiretrizField = (field: { key: string, label: string, type: 'currency' | 'factor', placeholder: string }) => {
     const value = diretrizes[field.key as keyof DiretrizOperacional] as number;
     
@@ -802,7 +855,7 @@ const CustosOperacionaisPage = () => {
           </div>
         </div>
       );
-    } else {
+    } else { // type === 'factor'
       return (
         <div className="space-y-2">
           <Label htmlFor={field.key}>{field.label}</Label>
@@ -821,6 +874,7 @@ const CustosOperacionaisPage = () => {
     }
   };
   
+  // Função para renderizar a tabela de diárias
   const renderDiariaTable = () => {
     const handleDiariaChange = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais', rawValue: string) => {
       const fieldKey = `diaria_${rankKey}_${destination}` as keyof DiretrizOperacional;
@@ -831,9 +885,9 @@ const CustosOperacionaisPage = () => {
       const fieldKey = `${DIARIA_RANKS_CONFIG.find(r => r.key === rankKey)?.fieldPrefix}_${destination}` as keyof DiretrizOperacional;
       const value = diretrizes[fieldKey] as number;
       const rawDigits = rawInputs[fieldKey as string] || numberToRawDigits(value);
+      const { formatted: displayValue } = formatCurrencyInput(rawDigits);
       
       return {
-        value: value, // ADICIONADO PARA CORREÇÃO DO ERRO TS
         rawDigits: rawDigits,
         onChange: (digits: string) => handleDiariaChange(rankKey, destination, digits),
         onKeyDown: handleEnterToNextField,
@@ -842,6 +896,7 @@ const CustosOperacionaisPage = () => {
       };
     };
     
+    // Props para Taxa de Embarque
     const taxaEmbarqueProps = renderDiretrizField({
         key: 'taxa_embarque', 
         label: 'Taxa de Embarque (R$)', 
@@ -865,9 +920,11 @@ const CustosOperacionaisPage = () => {
           {taxaEmbarqueProps}
         </div>
         
+        {/* Aplica rounded-lg e overflow-hidden para arredondar os cantos da tabela */}
         <Table className="rounded-lg overflow-hidden border">
           <TableHeader>
             <TableRow>
+              {/* Aplica rounded-tl-lg e rounded-tr-lg aos cantos do cabeçalho */}
               <TableHead className="w-[35%] rounded-tl-lg">Posto/Graduação</TableHead>
               <TableHead className="text-center">Dslc BSB/MAO/RJ/SP</TableHead>
               <TableHead className="text-center">Dslc demais capitais</TableHead>
@@ -878,6 +935,7 @@ const CustosOperacionaisPage = () => {
             {DIARIA_RANKS_CONFIG.map((rank, index) => (
               <TableRow key={rank.key}>
                 <TableCell className="font-medium whitespace-nowrap">
+                    {/* Aplica rounded-bl-lg e rounded-br-lg aos cantos da última linha */}
                     {index === DIARIA_RANKS_CONFIG.length - 1 ? (
                         <span className="rounded-bl-lg block">{rank.label}</span>
                     ) : (
@@ -915,19 +973,23 @@ const CustosOperacionaisPage = () => {
     );
   };
   
+  // --- LÓGICA DE PASSAGENS ---
+  
   const handleSavePassagem = async (data: Partial<DiretrizPassagem> & { ano_referencia: number, om_referencia: string, ug_referencia: string }) => {
       try {
           setLoading(true);
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error("Usuário não autenticado");
           
+          // CORREÇÃO 2, 3, 4: O tipo TablesInsert<'diretrizes_passagens'> espera 'Json' para 'trechos' e 'string | null' para as datas.
+          // Usamos 'as Json' para 'trechos' e garantimos que as datas sejam strings ou null.
           const dbData: TablesInsert<'diretrizes_passagens'> = {
               user_id: user.id,
               ano_referencia: data.ano_referencia,
               om_referencia: data.om_referencia,
               ug_referencia: data.ug_referencia,
               numero_pregao: data.numero_pregao || null,
-              trechos: data.trechos as unknown as Json,
+              trechos: data.trechos as unknown as Json, // Conversão para Json
               ativo: data.ativo ?? true,
               data_inicio_vigencia: data.data_inicio_vigencia || null,
               data_fim_vigencia: data.data_fim_vigencia || null,
@@ -985,8 +1047,11 @@ const CustosOperacionaisPage = () => {
   };
   
   const renderPassagensSection = () => {
+      
       return (
           <div className="space-y-4">
+              
+              {/* Lista de Contratos Existentes (Card 846) */}
               {diretrizesPassagens.length > 0 ? (
                   <Card className="p-4">
                       <CardTitle className="text-base font-semibold mb-3">Contratos Cadastrados</CardTitle>
@@ -1004,7 +1069,7 @@ const CustosOperacionaisPage = () => {
                               {diretrizesPassagens.map(d => (
                                   <PassagemDiretrizRow
                                       key={d.id}
-                                      diretriz={d}
+                                      diretriz={d} // CORREÇÃO 5, 6: 'd' agora é do tipo DiretrizPassagem
                                       onEdit={handleStartEditPassagem}
                                       onDelete={handleDeletePassagem}
                                       loading={loading}
@@ -1036,12 +1101,15 @@ const CustosOperacionaisPage = () => {
       );
   };
   
+  // --- LÓGICA DE CONCESSIONÁRIA ---
+  
   const handleSaveConcessionaria = async (data: DiretrizConcessionariaForm & { id?: string }) => {
       try {
           setLoading(true);
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error("Usuário não autenticado");
           
+          // CORREÇÃO: Converte o consumo (que pode ser string do formulário) para number
           const consumoValue = typeof data.consumo_pessoa_dia === 'string'
             ? parseFloat(data.consumo_pessoa_dia.replace(',', '.')) || 0
             : data.consumo_pessoa_dia;
@@ -1051,7 +1119,7 @@ const CustosOperacionaisPage = () => {
               ano_referencia: selectedYear,
               categoria: data.categoria,
               nome_concessionaria: data.nome_concessionaria,
-              consumo_pessoa_dia: consumoValue,
+              consumo_pessoa_dia: consumoValue, // Usa o valor numérico
               fonte_consumo: data.fonte_consumo || null,
               custo_unitario: data.custo_unitario,
               fonte_custo: data.fonte_custo || null,
@@ -1111,6 +1179,7 @@ const CustosOperacionaisPage = () => {
   };
   
   const renderConcessionariaList = (category: CategoriaConcessionaria) => {
+      // CORREÇÃO: Filtrar por categoria
       const filteredDiretrizes = diretrizesConcessionaria.filter(d => d.categoria === category);
       
       return (
@@ -1185,6 +1254,8 @@ const CustosOperacionaisPage = () => {
       );
   };
   
+  // --- LÓGICA DE MATERIAL DE CONSUMO (NOVO) ---
+  
   const handleSaveMaterialConsumo = async (data: Partial<DiretrizMaterialConsumo> & { ano_referencia: number }) => {
       try {
           setLoading(true);
@@ -1216,6 +1287,7 @@ const CustosOperacionaisPage = () => {
               toast.success("Novo Subitem da ND cadastrado!");
           }
           
+          // Força a revalidação do hook
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user.id] });
           setDiretrizMaterialConsumoToEdit(null);
           setIsMaterialConsumoFormOpen(false);
@@ -1244,6 +1316,7 @@ const CustosOperacionaisPage = () => {
           setLoading(true);
           await supabase.from('diretrizes_material_consumo').delete().eq('id', id);
           toast.success("Subitem da ND excluído!");
+          // Força a revalidação do hook
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
       } catch (error) {
           toast.error(sanitizeError(error));
@@ -1252,10 +1325,12 @@ const CustosOperacionaisPage = () => {
       }
   };
   
+  // NOVO: 1. Indexação de todos os itens de aquisição
   const indexedItems = useMemo<IndexedItemAquisicao[]>(() => {
     if (!diretrizesMaterialConsumo) return [];
     
     return diretrizesMaterialConsumo.flatMap(diretriz => {
+        // Garantir que itens_aquisicao é um array
         const itens = (diretriz.itens_aquisicao || []) as ItemAquisicao[];
         
         return itens.map(item => ({
@@ -1267,15 +1342,16 @@ const CustosOperacionaisPage = () => {
     });
   }, [diretrizesMaterialConsumo]);
 
+  // NOVO: 2. Filtragem dos itens indexados
   const filteredItems = useMemo(() => {
     if (!searchTerm) return [];
     const lowerCaseSearch = searchTerm.toLowerCase().trim();
     
-    if (lowerCaseSearch.length < 3) return [];
+    if (lowerCaseSearch.length < 3) return []; // Evita buscas muito amplas
     
     return indexedItems.filter(item => {
         const searchString = [
-            item.descricao_item,
+            item.descricao_item, // CORREÇÃO: Usar descricao_item
             item.codigo_catmat,
             item.numero_pregao,
             item.uasg,
@@ -1287,10 +1363,15 @@ const CustosOperacionaisPage = () => {
     });
   }, [searchTerm, indexedItems]);
 
+  // NOVO: 3. Função para navegar e abrir o subitem encontrado
   const handleGoToSubitem = (diretrizId: string) => {
+      // 1. Abrir o Collapsible principal de Material de Consumo
       handleCollapseChange('material_consumo_detalhe', true);
+      
+      // 2. Define o ID do subitem que deve ser aberto
       setSubitemToOpenId(diretrizId);
       
+      // 3. Rolar até o elemento (com atraso para permitir a abertura do Collapsible principal)
       setTimeout(() => {
           const element = document.getElementById(`diretriz-material-consumo-${diretrizId}`);
           if (element) {
@@ -1300,16 +1381,19 @@ const CustosOperacionaisPage = () => {
           }
       }, 100);
       
-      setSearchTerm("");
+      setSearchTerm(""); // Limpa a busca após a navegação
   };
   
+  // Efeito para limpar o subitemToOpenId após a abertura
   useEffect(() => {
       if (subitemToOpenId) {
+          // Limpa o ID após um pequeno atraso para garantir que o MaterialConsumoDiretrizRow tenha processado a abertura
           const timer = setTimeout(() => setSubitemToOpenId(null), 500);
           return () => clearTimeout(timer);
       }
   }, [subitemToOpenId]);
 
+  // NOVO: 4. Renderização da Tabela de Resultados de Busca
   const renderSearchResults = () => {
       if (searchTerm.length < 3) {
           return (
@@ -1335,8 +1419,11 @@ const CustosOperacionaisPage = () => {
               <Table>
                   <TableHeader>
                       <TableRow>
+                          {/* Ajuste de Largura: Item de Aquisição de 45% para 40% */}
                           <TableHead className="w-[40%]">Item de Aquisição</TableHead>
+                          {/* Ajuste de Largura: Subitem ND de 35% para 40% */}
                           <TableHead className="w-[40%]">Subitem ND</TableHead>
+                          {/* Ajuste de Largura: Ações de 20% para 20% (mantido, mas o botão é ajustado) */}
                           <TableHead className="w-[20%] text-center">Ações</TableHead>
                       </TableRow>
                   </TableHeader>
@@ -1345,17 +1432,21 @@ const CustosOperacionaisPage = () => {
                           <TableRow key={`${item.diretrizId}-${index}`}>
                               <TableCell className="font-medium">
                                   {item.descricao_item}
+                                  {/* Linha 1: CATMAT */}
                                   <p className="text-xs text-muted-foreground">
                                       Cód. CATMAT: {item.codigo_catmat || 'N/A'}
                                   </p>
+                                  {/* Linha 2: Pregão e UASG */}
                                   <p className="text-xs text-muted-foreground truncate">
                                       Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}
                                   </p>
                               </TableCell>
+                              {/* Coluna Subitem ND (Largura aumentada) */}
                               <TableCell className="text-left">
                                   <span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span>
                                   <span className="text-sm text-muted-foreground">{item.subitemNome}</span>
                               </TableCell>
+                              {/* Coluna Ações (Botão ajustado para ocupar a largura total da célula) */}
                               <TableCell className="text-right">
                                   <Button 
                                       variant="outline" 
@@ -1380,11 +1471,14 @@ const CustosOperacionaisPage = () => {
       
       return (
           <div className="space-y-4">
+              
+              {/* Lista de Subitens Existentes (Card 846 equivalente) */}
               <Card className="p-4">
                   <div className="flex justify-between items-center mb-4">
                       <CardTitle className="text-base font-semibold">
                           Subitens da ND Cadastrados
                       </CardTitle>
+                      {/* NOVO BOTÃO DE EXPORT/IMPORT */}
                       <Button 
                           type="button" 
                           variant="outline" 
@@ -1397,6 +1491,7 @@ const CustosOperacionaisPage = () => {
                       </Button>
                   </div>
                   
+                  {/* NOVO: Campo de Busca */}
                   <div className="mb-4 relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -1409,8 +1504,10 @@ const CustosOperacionaisPage = () => {
                   </div>
                   
                   {searchTerm ? (
+                      // Se houver termo de busca, renderiza os resultados
                       renderSearchResults()
                   ) : (
+                      // Se não houver termo de busca, renderiza a lista normal
                       diretrizesMaterialConsumo.length > 0 ? (
                           <Table>
                               <TableHeader>
@@ -1429,7 +1526,9 @@ const CustosOperacionaisPage = () => {
                                           onDelete={handleDeleteMaterialConsumo}
                                           loading={loading || isDataLoading}
                                           onMoveItem={handleMoveItem}
+                                          // NOVO: Adiciona ID para rolagem
                                           id={`diretriz-material-consumo-${d.id}`} 
+                                          // NOVO: Propriedade para forçar a abertura
                                           forceOpen={subitemToOpenId === d.id}
                                       />
                                   ))}
@@ -1447,7 +1546,7 @@ const CustosOperacionaisPage = () => {
                   <Button 
                       type="button" 
                       onClick={handleOpenNewMaterialConsumo}
-                      disabled={loading || isDataLoading || !!searchTerm}
+                      disabled={loading || isDataLoading || !!searchTerm} // Desabilita se estiver buscando
                       variant="outline" 
                       size="sm" 
                       className="w-full"
@@ -1468,7 +1567,9 @@ const CustosOperacionaisPage = () => {
           </div>
       );
   };
+  // END LÓGICA DE MATERIAL DE CONSUMO
 
+  // Adicionando a verificação de carregamento
   if (loading || isLoadingDefaultYear) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -1480,6 +1581,7 @@ const CustosOperacionaisPage = () => {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
+      {/* NOVO: Adicionar PageMetadata */}
       <PageMetadata 
         title="Configurações de Custos Operacionais" 
         description="Defina os valores de diárias, contratos de passagens, concessionárias e fatores de custeio operacional para o cálculo do P Trab."
@@ -1504,6 +1606,7 @@ const CustosOperacionaisPage = () => {
 
         <Card>
           <CardHeader>
+            {/* CORREÇÃO H1: Título principal da página */}
             <h1 className="text-2xl font-bold">Configurações de Custos Operacionais</h1>
             <CardDescription>
               Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3).
@@ -1540,9 +1643,11 @@ const CustosOperacionaisPage = () => {
                 </p>
               </div>
 
+              {/* SEÇÃO PRINCIPAL DE CUSTOS OPERACIONAIS (ITENS INDIVIDUAIS COLAPSÁVEIS) */}
               <div className="border-t pt-4 mt-6">
                 <div className="space-y-4">
                   
+                  {/* Pagamento de Diárias */}
                   <div ref={el => collapsibleRefs.current['diarias_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
                     <Collapsible 
                       open={fieldCollapseState['diarias_detalhe']} 
@@ -1550,6 +1655,7 @@ const CustosOperacionaisPage = () => {
                     >
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
+                          {/* CORREÇÃO H2: Título da seção */}
                           <h2 className="text-base font-medium">
                             Pagamento de Diárias
                           </h2>
@@ -1564,6 +1670,7 @@ const CustosOperacionaisPage = () => {
                     </Collapsible>
                   </div>
                   
+                  {/* Diretrizes de Passagens (Contratos/Trechos) */}
                   <div ref={el => collapsibleRefs.current['passagens_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
                     <Collapsible 
                       open={fieldCollapseState['passagens_detalhe']} 
@@ -1571,6 +1678,7 @@ const CustosOperacionaisPage = () => {
                     >
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
+                          {/* CORREÇÃO H2: Título da seção */}
                           <h2 className="text-base font-medium flex items-center gap-2">
                             Passagens (Contratos/Trechos)
                           </h2>
@@ -1585,6 +1693,7 @@ const CustosOperacionaisPage = () => {
                     </Collapsible>
                   </div>
                   
+                  {/* Diretrizes de Concessionária */}
                   <div ref={el => collapsibleRefs.current['concessionaria_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
                     <Collapsible 
                       open={fieldCollapseState['concessionaria_detalhe']} 
@@ -1592,6 +1701,7 @@ const CustosOperacionaisPage = () => {
                     >
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
+                          {/* CORREÇÃO H2: Título da seção */}
                           <h2 className="text-base font-medium flex items-center gap-2">
                             Concessionária (Água/Esgoto e Energia Elétrica)
                           </h2>
@@ -1606,6 +1716,7 @@ const CustosOperacionaisPage = () => {
                     </Collapsible>
                   </div>
                   
+                  {/* Diretrizes de Material de Consumo (NOVO) */}
                   <div ref={el => collapsibleRefs.current['material_consumo_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
                     <Collapsible 
                       open={fieldCollapseState['material_consumo_detalhe']} 
@@ -1613,6 +1724,7 @@ const CustosOperacionaisPage = () => {
                     >
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
+                          {/* CORREÇÃO H2: Título da seção */}
                           <h2 className="text-base font-medium flex items-center gap-2">
                             Material de Consumo (33.90.30)
                           </h2>
@@ -1627,6 +1739,7 @@ const CustosOperacionaisPage = () => {
                     </Collapsible>
                   </div>
                   
+                  {/* OUTROS CAMPOS OPERACIONAIS (Fatores e Valores Simples) */}
                   {OPERATIONAL_FIELDS.filter(f => f.key !== 'fator_material_consumo').map(field => {
                     const fieldKey = field.key as string;
                     const isOpen = fieldCollapseState[fieldKey] ?? false;
@@ -1639,6 +1752,7 @@ const CustosOperacionaisPage = () => {
                         >
                           <CollapsibleTrigger asChild>
                             <div className="flex items-center justify-between cursor-pointer py-2">
+                              {/* CORREÇÃO H2: Título da seção */}
                               <h2 className="text-base font-medium">
                                 {field.label}
                               </h2>
@@ -1686,6 +1800,7 @@ const CustosOperacionaisPage = () => {
         </Card>
       </div>
       
+      {/* Diálogo de Gerenciamento de Anos */}
       <YearManagementDialog
         open={isYearManagementDialogOpen}
         onOpenChange={setIsYearManagementDialogOpen}
@@ -1696,6 +1811,7 @@ const CustosOperacionaisPage = () => {
         loading={loading}
       />
       
+      {/* Diálogo de Formulário de Passagens */}
       <PassagemDiretrizFormDialog
           open={isPassagemFormOpen}
           onOpenChange={setIsPassagemFormOpen}
@@ -1705,16 +1821,19 @@ const CustosOperacionaisPage = () => {
           loading={loading}
       />
       
+      {/* Diálogo de Formulário de Concessionária */}
       <ConcessionariaDiretrizFormDialog
           open={isConcessionariaFormOpen}
           onOpenChange={setIsConcessionariaFormOpen}
           selectedYear={selectedYear}
+          // CORREÇÃO: diretrizConcessionariaToEdit é a prop correta
           diretrizToEdit={diretrizConcessionariaToEdit} 
           onSave={handleSaveConcessionaria}
           loading={loading}
           initialCategory={selectedConcessionariaTab}
       />
       
+      {/* Diálogo de Formulário de Material de Consumo (NOVO) */}
       <MaterialConsumoDiretrizFormDialog
           open={isMaterialConsumoFormOpen}
           onOpenChange={setIsMaterialConsumoFormOpen}
@@ -1724,6 +1843,7 @@ const CustosOperacionaisPage = () => {
           loading={loading}
       />
       
+      {/* NOVO: Diálogo de Exportação/Importação de Material de Consumo */}
       <MaterialConsumoExportImportDialog
           open={isExportImportDialogOpen}
           onOpenChange={setIsExportImportDialogOpen}
