@@ -659,6 +659,66 @@ const ComplementoAlimentacaoForm = () => {
         }
     };
 
+    const handleEdit = (group: ConsolidatedComplementoRecord) => {
+        if (pendingItems.length > 0) {
+            toast.warning("Salve ou limpe os itens pendentes antes de editar um registro existente.");
+            return;
+        }
+        
+        setPendingItems([]);
+        setLastStagedFormData(null);
+        setEditingId(group.records[0].id); 
+        
+        const omFavorecidaToEdit = oms?.find(om => om.nome_om === group.organizacao && om.codug_om === group.ug);
+        setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
+        
+        const first = group.records[0];
+        
+        setFormData({
+            ...initialFormState,
+            om_favorecida: group.organizacao,
+            ug_favorecida: group.ug,
+            fase_atividade: group.fase_atividade,
+            categoria_complemento: first.categoria_complemento,
+            
+            ...(first.categoria_complemento === 'genero' && {
+                genero_efetivo: first.efetivo,
+                genero_dias: first.dias_operacao,
+                publico: first.publico || "OSP",
+                valor_etapa_qs: first.valor_etapa_qs,
+                pregao_qs: first.pregao_qs || "",
+                om_qs: first.om_qs || "",
+                ug_qs: first.ug_qs || "",
+                valor_etapa_qr: first.valor_etapa_qr,
+                pregao_qr: first.pregao_qr || "",
+                om_qr: first.om_qr || "",
+                ug_qr: first.ug_qr || "",
+            }),
+            ...(first.categoria_complemento === 'agua' && {
+                agua_efetivo: first.efetivo,
+                agua_dias: first.dias_operacao,
+                agua_consumo_dia: first.agua_consumo_dia || 0,
+                agua_tipo_envase: first.agua_tipo_envase || "Garrafa",
+                agua_volume_envase: first.agua_volume_envase || 0.5,
+                agua_valor_unitario: first.agua_valor_unitario || 0,
+                agua_pregao: first.agua_pregao || "",
+                agua_om_uasg: first.om_detentora,
+                agua_ug_uasg: first.ug_detentora,
+            }),
+            ...(first.categoria_complemento === 'lanche' && {
+                lanche_efetivo: first.efetivo,
+                lanche_dias: first.dias_operacao,
+                lanche_pregao: first.pregao_qs || "", 
+                lanche_om_uasg: first.om_detentora,
+                lanche_ug_uasg: first.ug_detentora,
+                lanche_items: (first.itens_aquisicao as unknown as LancheItem[]) || [],
+            })
+        });
+
+        toast.info("Modo Edição ativado. Altere os dados e clique em 'Salvar Itens na Lista'.");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
     const isSaving = insertMutation.isPending || deleteMutation.isPending;
 
@@ -1088,7 +1148,7 @@ const ComplementoAlimentacaoForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 4: REGISTROS SALVOS */}
+                            {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
                             {consolidatedRegistros && consolidatedRegistros.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
@@ -1096,40 +1156,101 @@ const ComplementoAlimentacaoForm = () => {
                                         OMs Cadastradas ({consolidatedRegistros.length})
                                     </h3>
                                     
-                                    {consolidatedRegistros.map((group) => (
-                                        <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
-                                            <div className="flex items-center justify-between mb-3 border-b pb-2">
-                                                <h3 className="font-bold text-lg text-primary flex items-center gap-2">
-                                                    {group.organizacao} (UG: {formatCodug(group.ug)})
-                                                    <Badge variant="outline" className="text-xs">{group.fase_atividade}</Badge>
-                                                </h3>
-                                                <span className="font-extrabold text-xl text-primary">{formatCurrency(group.totalGeral)}</span>
-                                            </div>
-                                            
-                                            <div className="space-y-3">
-                                                {group.records.map((registro) => (
-                                                    <Card key={registro.id} className="p-3 bg-background border">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex flex-col">
-                                                                <h4 className="font-semibold text-base text-foreground">
-                                                                    {registro.group_name} ({registro.categoria_complemento === 'genero' ? 'Gênero' : registro.categoria_complemento === 'agua' ? 'Água' : 'Lanche'})
-                                                                </h4>
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    Período: {registro.dias_operacao} dias | Efetivo: {registro.efetivo} militares
-                                                                </p>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-extrabold text-xl text-foreground">{formatCurrency(Number(registro.valor_total))}</span>
-                                                                <Button variant="ghost" size="icon" onClick={() => { setGroupToDelete(group); setShowDeleteDialog(true); }} disabled={!isPTrabEditable || isSaving} className="h-8 w-8 text-destructive hover:bg-destructive/10">
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                    </Card>
-                                                ))}
-                                            </div>
-                                        </Card>
-                                    ))}
+                                    {consolidatedRegistros.map((group) => {
+                                        const totalOM = group.totalGeral;
+                                        const omName = group.organizacao;
+                                        const ug = group.ug;
+                                        const faseAtividade = group.fase_atividade || 'Não Definida';
+
+                                        return (
+                                            <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
+                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                        {omName} (UG: {formatCodug(ug)})
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {faseAtividade}
+                                                        </Badge>
+                                                    </h3>
+                                                    <span className="font-extrabold text-xl text-primary">
+                                                        {formatCurrency(totalOM)}
+                                                    </span>
+                                                </div>
+                                                
+                                                {/* CORPO CONSOLIDADO - Exibição por Grupo de Aquisição */}
+                                                <div className="space-y-3">
+                                                    {group.records.map((registro) => {
+                                                        const isDifferentOm = registro.om_detentora !== registro.organizacao || registro.ug_detentora !== registro.ug;
+                                                        const diasText = registro.dias_operacao === 1 ? 'dia' : 'dias';
+                                                        const efetivoText = registro.efetivo === 1 ? 'militar' : 'militares';
+
+                                                        return (
+                                                            <Card 
+                                                                key={registro.id} 
+                                                                className="p-3 bg-background border"
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <h4 className="font-semibold text-base text-foreground">
+                                                                                Complemento de Alimentação ({registro.group_name})
+                                                                            </h4>
+                                                                        </div>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            Período: {registro.dias_operacao} {diasText} | Efetivo: {registro.efetivo} {efetivoText}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-extrabold text-xl text-foreground">
+                                                                            {formatCurrency(Number(registro.valor_total))}
+                                                                        </span>
+                                                                        {/* Botões de Ação */}
+                                                                        <div className="flex gap-1 shrink-0">
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8"
+                                                                                onClick={() => handleEdit(group)} 
+                                                                                disabled={!isPTrabEditable || isSaving || pendingItems.length > 0}
+                                                                            >
+                                                                                <Pencil className="h-4 w-4" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                onClick={() => { setGroupToDelete(group); setShowDeleteDialog(true); }} 
+                                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                {/* Detalhes da Alocação */}
+                                                                <div className="pt-2 border-t mt-2">
+                                                                    {/* OM Destino Recurso */}
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                        <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
+                                                                            {registro.om_detentora} ({formatCodug(registro.ug_detentora || '')})
+                                                                        </span>
+                                                                    </div>
+                                                                    {/* ND 33.90.30 */}
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">ND 33.90.30:</span>
+                                                                        <span className="text-green-600">{formatCurrency(Number(registro.valor_nd_30))}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </Card>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
                                 </section>
                             )}
 
