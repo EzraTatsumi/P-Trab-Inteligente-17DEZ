@@ -705,7 +705,7 @@ const HorasVooForm = () => {
     };
     
     const handleRemovePending = (tempId: string) => {
-        setPendingSuprimentos(prev => {
+        setPendingRegistros(prev => {
             const newPending = prev.filter(p => p.tempId !== tempId);
             if (newPending.length === 0) {
                 setLastStagedFormData(null);

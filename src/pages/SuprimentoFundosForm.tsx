@@ -281,8 +281,8 @@ const SuprimentoFundosForm = () => {
         }, {} as Record<string, SuprimentoFundosRegistroDB[]>) || {};
     }, [registros]);
 
-    const handleCurrencyChange = (field: 'valor_total_solicitado' | 'valor_nd_39', rawValue: string) => {
-        const { numericValue, digits } = formatCurrencyInput(rawValue);
+    const handleCurrencyChange = (field: 'valor_total_solicitado' | 'valor_nd_39', rawValue: any) => {
+        const { numericValue, digits } = formatCurrencyInput(String(rawValue));
         
         setFormData(prev => {
             let newND30Value = prev.valor_nd_30;
