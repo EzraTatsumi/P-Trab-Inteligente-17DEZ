@@ -81,6 +81,9 @@ interface StagedComplemento {
     
     // Itens para Lanche
     lanche_items?: LancheItem[];
+    
+    // Dados brutos do formulário para o dirty check
+    formDataSnapshot: any;
 }
 
 // Estado inicial para o formulário
@@ -174,18 +177,14 @@ const initialFormState: ComplementoAlimentacaoFormState = {
 /**
  * Função de Dirty Check refinada.
  * Compara o estado atual com o último estado "staged" (salvo na lista).
- * Agora considera Efetivo e Período como campos específicos de cada categoria.
  */
 const compareFormData = (current: ComplementoAlimentacaoFormState, staged: ComplementoAlimentacaoFormState) => {
-    // 1. Campos de Contexto Global (Seção 1)
     if (
         current.om_favorecida !== staged.om_favorecida ||
         current.ug_favorecida !== staged.ug_favorecida ||
         current.fase_atividade !== staged.fase_atividade
     ) return true;
 
-    // 2. Verificação por Categoria Ativa
-    // Só comparamos se a categoria atual for a mesma que foi "staged" por último.
     if (current.categoria_complemento === staged.categoria_complemento) {
         const cat = current.categoria_complemento;
 
@@ -237,6 +236,8 @@ const ComplementoAlimentacaoForm = () => {
     const [pendingItems, setPendingItems] = useState<StagedComplemento[]>([]);
     const [lastStagedFormData, setLastStagedFormData] = useState<ComplementoAlimentacaoFormState | null>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [groupToDelete, setGroupToDelete] = useState<ConsolidatedComplementoRecord | null>(null);
     
     const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
     const [selectedOmQrId, setSelectedOmQrId] = useState<string | undefined>(undefined);
@@ -247,14 +248,146 @@ const ComplementoAlimentacaoForm = () => {
     const [itemsToPreselect, setItemsToPreselect] = useState<ItemAquisicao[]>([]);
     const [selectedItemsFromSelector, setSelectedItemsFromSelector] = useState<ItemAquisicao[] | null>(null);
     
+    // ESTADOS DE EDIÇÃO DE MEMÓRIA
+    const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
+    const [memoriaEdit, setMemoriaEdit] = useState<string>("");
+
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
         queryKey: ['ptrabData', ptrabId],
         queryFn: () => fetchPTrabData(ptrabId!),
         enabled: !!ptrabId,
     });
 
+    const { data: registros, isLoading: isLoadingRegistros } = useQuery<ComplementoAlimentacaoRegistro[]>({
+        queryKey: ['complementoAlimentacaoRegistros', ptrabId],
+        queryFn: () => fetchPTrabRecords('complemento_alimentacao_registros', ptrabId!),
+        enabled: !!ptrabId,
+        select: (data) => (data as any[]).map(r => ({
+            ...r,
+            itens_aquisicao: (r.itens_aquisicao as unknown as ItemAquisicao[]) || []
+        })).sort((a, b) => a.organizacao.localeCompare(b.organizacao)),
+    });
+
+    const consolidatedRegistros = useMemo<ConsolidatedComplementoRecord[]>(() => {
+        if (!registros) return [];
+
+        const groups = registros.reduce((acc, registro) => {
+            const key = [
+                registro.organizacao,
+                registro.ug,
+                registro.fase_atividade,
+            ].join('|');
+
+            if (!acc[key]) {
+                acc[key] = {
+                    groupKey: key, 
+                    organizacao: registro.organizacao,
+                    ug: registro.ug,
+                    om_detentora: registro.om_detentora,
+                    ug_detentora: registro.ug_detentora,
+                    dias_operacao: registro.dias_operacao,
+                    efetivo: registro.efetivo, 
+                    fase_atividade: registro.fase_atividade,
+                    records: [],
+                    totalGeral: 0,
+                    totalND30: 0,
+                    totalND39: 0,
+                };
+            }
+
+            acc[key].records.push(registro);
+            acc[key].totalGeral += Number(registro.valor_total || 0);
+            acc[key].totalND30 += Number(registro.valor_nd_30 || 0);
+            acc[key].totalND39 += Number(registro.valor_nd_39 || 0);
+
+            return acc;
+        }, {} as Record<string, ConsolidatedComplementoRecord>);
+
+        return Object.values(groups).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
+    }, [registros]);
+
     const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
     
+    // --- Mutations ---
+
+    const insertMutation = useMutation({
+        mutationFn: async (items: StagedComplemento[]) => {
+            const recordsToInsert = items.map(item => {
+                const base: TablesInsert<'complemento_alimentacao_registros'> = {
+                    p_trab_id: ptrabId!,
+                    organizacao: item.om_favorecida,
+                    ug: item.ug_favorecida,
+                    om_detentora: item.om_destino,
+                    ug_detentora: item.ug_destino,
+                    dias_operacao: item.dias_operacao,
+                    efetivo: item.efetivo,
+                    fase_atividade: item.fase_atividade,
+                    categoria_complemento: item.categoria,
+                    publico: item.publico,
+                    valor_total: item.valor_total,
+                    valor_nd_30: item.valor_nd_30,
+                    valor_nd_39: item.valor_nd_39,
+                    group_name: item.categoria === 'genero' ? 'Gênero Alimentício' : item.categoria === 'agua' ? 'Água Mineral' : 'Lanche/Catanho',
+                };
+
+                if (item.categoria === 'genero') {
+                    const snap = item.formDataSnapshot;
+                    return {
+                        ...base,
+                        valor_etapa_qs: snap.valor_etapa_qs,
+                        pregao_qs: snap.pregao_qs,
+                        om_qs: snap.om_qs,
+                        ug_qs: snap.ug_qs,
+                        valor_etapa_qr: snap.valor_etapa_qr,
+                        pregao_qr: snap.pregao_qr,
+                        om_qr: snap.om_qr,
+                        ug_qr: snap.ug_qr,
+                    };
+                } else if (item.categoria === 'agua') {
+                    const snap = item.formDataSnapshot;
+                    return {
+                        ...base,
+                        agua_consumo_dia: snap.agua_consumo_dia,
+                        agua_tipo_envase: snap.agua_tipo_envase,
+                        agua_volume_envase: snap.agua_volume_envase,
+                        agua_valor_unitario: snap.agua_valor_unitario,
+                        agua_pregao: snap.agua_pregao,
+                    };
+                } else {
+                    return {
+                        ...base,
+                        itens_aquisicao: item.lanche_items as unknown as Json,
+                    };
+                }
+            });
+
+            const { error } = await supabase.from('complemento_alimentacao_registros').insert(recordsToInsert);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            toast.success("Registros salvos com sucesso!");
+            setPendingItems([]);
+            setLastStagedFormData(null);
+            queryClient.invalidateQueries({ queryKey: ['complementoAlimentacaoRegistros', ptrabId] });
+            queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
+        },
+        onError: (error) => toast.error("Falha ao salvar.", { description: sanitizeError(error) })
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: async (ids: string[]) => {
+            const { error } = await supabase.from('complemento_alimentacao_registros').delete().in('id', ids);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            toast.success("Lote excluído.");
+            queryClient.invalidateQueries({ queryKey: ['complementoAlimentacaoRegistros', ptrabId] });
+            queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
+            setShowDeleteDialog(false);
+        },
+        onError: (error) => toast.error("Falha ao excluir.", { description: sanitizeError(error) })
+    });
+
     // Lógica de pré-seleção das UASGs baseada na OM Favorecida
     const handleOmFavorecidaChange = (omData: any) => {
         if (omData) {
@@ -354,7 +487,8 @@ const ComplementoAlimentacaoForm = () => {
                 valor_nd_30: totalGeral,
                 valor_nd_39: 0,
                 total_qs: totalQS,
-                total_qr: totalQR
+                total_qr: totalQR,
+                formDataSnapshot: { ...formData }
             };
         } else if (categoria_complemento === 'agua') {
             const totalValue = currentTotalAgua;
@@ -371,7 +505,8 @@ const ComplementoAlimentacaoForm = () => {
                 publico: formData.publico,
                 valor_total: totalValue,
                 valor_nd_30: totalValue,
-                valor_nd_39: 0
+                valor_nd_39: 0,
+                formDataSnapshot: { ...formData }
             };
         } else {
             const totalValue = currentTotalLanche;
@@ -389,12 +524,13 @@ const ComplementoAlimentacaoForm = () => {
                 valor_total: totalValue,
                 valor_nd_30: totalValue,
                 valor_nd_39: 0,
-                lanche_items: [...formData.lanche_items]
+                lanche_items: [...formData.lanche_items],
+                formDataSnapshot: { ...formData }
             };
         }
 
         setPendingItems(prev => [...prev, newItem]);
-        setLastStagedFormData({ ...formData }); // Salva o estado atual para o dirty check
+        setLastStagedFormData({ ...formData }); 
         
         toast.success("Item adicionado à lista de revisão.");
     };
@@ -473,6 +609,59 @@ const ComplementoAlimentacaoForm = () => {
         }));
     };
 
+    // --- Lógica de Edição de Memória ---
+    
+    const handleIniciarEdicaoMemoria = (registroId: string, memoriaCompleta: string) => {
+        setEditingMemoriaId(registroId);
+        setMemoriaEdit(memoriaCompleta || "");
+        toast.info("Editando memória de cálculo.");
+    };
+
+    const handleCancelarEdicaoMemoria = () => {
+        setEditingMemoriaId(null);
+        setMemoriaEdit("");
+    };
+
+    const handleSalvarMemoriaCustomizada = async (registroId: string) => {
+        try {
+            const { error } = await supabase
+                .from("complemento_alimentacao_registros")
+                .update({
+                    detalhamento_customizado: memoriaEdit.trim() || null, 
+                })
+                .eq("id", registroId);
+
+            if (error) throw error;
+
+            toast.success("Memória de cálculo atualizada!");
+            handleCancelarEdicaoMemoria();
+            queryClient.invalidateQueries({ queryKey: ["complementoAlimentacaoRegistros", ptrabId] });
+        } catch (error) {
+            toast.error(sanitizeError(error));
+        }
+    };
+
+    const handleRestaurarMemoriaAutomatica = async (registroId: string) => {
+        if (!confirm("Deseja restaurar a memória automática?")) return;
+        
+        try {
+            const { error } = await supabase
+                .from("complemento_alimentacao_registros")
+                .update({ detalhamento_customizado: null })
+                .eq("id", registroId);
+
+            if (error) throw error;
+
+            toast.success("Memória restaurada!");
+            queryClient.invalidateQueries({ queryKey: ["complementoAlimentacaoRegistros", ptrabId] });
+        } catch (error) {
+            toast.error(sanitizeError(error));
+        }
+    };
+
+    const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
+    const isSaving = insertMutation.isPending || deleteMutation.isPending;
+
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
             <PageMetadata title="Complemento de Alimentação" description="Gerenciamento de Complemento de Alimentação" canonicalPath={`/ptrab/complemento-alimentacao?ptrabId=${ptrabId}`} />
@@ -502,7 +691,7 @@ const ComplementoAlimentacaoForm = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <Label>OM Favorecida *</Label>
-                                        <OmSelector selectedOmId={selectedOmFavorecidaId} onChange={handleOmFavorecidaChange} placeholder="Selecione a OM" />
+                                        <OmSelector selectedOmId={selectedOmFavorecidaId} onChange={handleOmFavorecidaChange} placeholder="Selecione a OM" disabled={!isPTrabEditable || isSaving} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>UG Favorecida</Label>
@@ -510,7 +699,7 @@ const ComplementoAlimentacaoForm = () => {
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Fase da Atividade *</Label>
-                                        <FaseAtividadeSelect value={formData.fase_atividade} onChange={(f) => setFormData({...formData, fase_atividade: f})} disabled={false} />
+                                        <FaseAtividadeSelect value={formData.fase_atividade} onChange={(f) => setFormData({...formData, fase_atividade: f})} disabled={!isPTrabEditable || isSaving} />
                                     </div>
                                 </div>
                             </section>
@@ -538,297 +727,255 @@ const ComplementoAlimentacaoForm = () => {
 
                                         <Card className="bg-muted/50 p-4">
                                             <div className="space-y-6 bg-background p-4 rounded-lg border">
-                                                
-                                                {/* CAMPOS ESPECÍFICOS POR CATEGORIA */}
-                                                {formData.categoria_complemento === 'genero' && (
-                                                    <div className="space-y-6">
-                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                            <div className="space-y-2">
-                                                                <Label>Efetivo *</Label>
-                                                                <Input 
-                                                                    type="number" 
-                                                                    value={formData.genero_efetivo || ""} 
-                                                                    onChange={(e) => setFormData({...formData, genero_efetivo: parseInt(e.target.value) || 0})}
-                                                                    placeholder="Ex: 150"
-                                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                />
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div className="space-y-2">
+                                                        <Label>Efetivo *</Label>
+                                                        <Input 
+                                                            type="number" 
+                                                            value={formData.genero_efetivo || ""} 
+                                                            onChange={(e) => setFormData({...formData, genero_efetivo: parseInt(e.target.value) || 0})}
+                                                            placeholder="Ex: 150"
+                                                            disabled={!isPTrabEditable || isSaving}
+                                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Público *</Label>
+                                                        <PublicoSelect value={formData.publico} onChange={(v) => setFormData({...formData, publico: v})} disabled={!isPTrabEditable || isSaving} />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Período (Nr Dias) *</Label>
+                                                        <Input 
+                                                            type="number" 
+                                                            value={formData.genero_dias || ""} 
+                                                            onChange={(e) => setFormData({...formData, genero_dias: parseInt(e.target.value) || 0})}
+                                                            placeholder="Ex: 15"
+                                                            disabled={!isPTrabEditable || isSaving}
+                                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {isGenero && (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+                                                        <div className="space-y-4 p-4 bg-primary/5 rounded-md border border-primary/10 relative overflow-hidden">
+                                                            <div className="flex justify-between items-start">
+                                                                <h4 className="font-bold text-sm text-primary uppercase">Quantitativo de Subsistência (QS)</h4>
+                                                                <div className="text-right">
+                                                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Subtotal Estimado</p>
+                                                                    <p className="text-sm font-extrabold text-primary">{formatCurrency(currentTotalQS)}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label>Valor Complemento *</Label>
+                                                                    <CurrencyInput value={formData.valor_etapa_qs} onChange={(val) => setFormData({...formData, valor_etapa_qs: val})} disabled={!isPTrabEditable || isSaving} />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Pregão *</Label>
+                                                                    <Input value={formData.pregao_qs} onChange={(e) => setFormData({...formData, pregao_qs: e.target.value})} placeholder="Ex: 90.001/24" disabled={!isPTrabEditable || isSaving} />
+                                                                </div>
                                                             </div>
                                                             <div className="space-y-2">
-                                                                <Label>Público *</Label>
-                                                                <PublicoSelect value={formData.publico} onChange={(v) => setFormData({...formData, publico: v})} />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Período (Nr Dias) *</Label>
-                                                                <Input 
-                                                                    type="number" 
-                                                                    value={formData.genero_dias || ""} 
-                                                                    onChange={(e) => setFormData({...formData, genero_dias: parseInt(e.target.value) || 0})}
-                                                                    placeholder="Ex: 15"
-                                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                />
+                                                                <Label>UASG *</Label>
+                                                                <RmSelector value={formData.om_qs} onChange={(name, codug) => setFormData({...formData, om_qs: name, ug_qs: codug})} placeholder="Selecione a UASG" disabled={!isPTrabEditable || isSaving} />
                                                             </div>
                                                         </div>
 
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
-                                                            <div className="space-y-4 p-4 bg-primary/5 rounded-md border border-primary/10 relative overflow-hidden">
-                                                                <div className="flex justify-between items-start">
-                                                                    <h4 className="font-bold text-sm text-primary uppercase">Quantitativo de Subsistência (QS)</h4>
-                                                                    <div className="text-right">
-                                                                        <p className="text-[10px] text-muted-foreground uppercase font-semibold">Subtotal Estimado</p>
-                                                                        <p className="text-sm font-extrabold text-primary">{formatCurrency(currentTotalQS)}</p>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="grid grid-cols-2 gap-4">
-                                                                    <div className="space-y-2">
-                                                                        <Label>Valor Complemento *</Label>
-                                                                        <CurrencyInput value={formData.valor_etapa_qs} onChange={(val) => setFormData({...formData, valor_etapa_qs: val})} />
-                                                                    </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label>Pregão *</Label>
-                                                                        <Input value={formData.pregao_qs} onChange={(e) => setFormData({...formData, pregao_qs: e.target.value})} placeholder="Ex: 90.001/24" />
-                                                                    </div>
-                                                                </div>
-                                                                <div className="space-y-2">
-                                                                    <Label>UASG *</Label>
-                                                                    <RmSelector value={formData.om_qs} onChange={(name, codug) => setFormData({...formData, om_qs: name, ug_qs: codug})} placeholder="Selecione a UASG" />
+                                                        <div className="space-y-4 p-4 bg-orange-500/5 rounded-md border border-orange-500/10 relative overflow-hidden">
+                                                            <div className="flex justify-between items-start">
+                                                                <h4 className="font-bold text-sm text-orange-600 uppercase">Quantitativo de Rancho (QR)</h4>
+                                                                <div className="text-right">
+                                                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Subtotal Estimado</p>
+                                                                    <p className="text-sm font-extrabold text-orange-600">{formatCurrency(currentTotalQR)}</p>
                                                                 </div>
                                                             </div>
-
-                                                            <div className="space-y-4 p-4 bg-orange-500/5 rounded-md border border-orange-500/10 relative overflow-hidden">
-                                                                <div className="flex justify-between items-start">
-                                                                    <h4 className="font-bold text-sm text-orange-600 uppercase">Quantitativo de Rancho (QR)</h4>
-                                                                    <div className="text-right">
-                                                                        <p className="text-[10px] text-muted-foreground uppercase font-semibold">Subtotal Estimado</p>
-                                                                        <p className="text-sm font-extrabold text-orange-600">{formatCurrency(currentTotalQR)}</p>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="grid grid-cols-2 gap-4">
-                                                                    <div className="space-y-2">
-                                                                        <Label>Valor Complemento *</Label>
-                                                                        <CurrencyInput value={formData.valor_etapa_qr} onChange={(val) => setFormData({...formData, valor_etapa_qr: val})} />
-                                                                    </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label>Pregão *</Label>
-                                                                        <Input value={formData.pregao_qr} onChange={(e) => setFormData({...formData, pregao_qr: e.target.value})} placeholder="Ex: 90.001/24" />
-                                                                    </div>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label>Valor Complemento *</Label>
+                                                                    <CurrencyInput value={formData.valor_etapa_qr} onChange={(val) => setFormData({...formData, valor_etapa_qr: val})} disabled={!isPTrabEditable || isSaving} />
                                                                 </div>
                                                                 <div className="space-y-2">
-                                                                    <Label>UASG *</Label>
-                                                                    <OmSelector selectedOmId={selectedOmQrId} onChange={(om) => setFormData({...formData, om_qr: om?.nome_om || "", ug_qr: om?.codug_om || ""})} placeholder="Selecione a UASG" />
+                                                                    <Label>Pregão *</Label>
+                                                                    <Input value={formData.pregao_qr} onChange={(e) => setFormData({...formData, pregao_qr: e.target.value})} placeholder="Ex: 90.001/24" disabled={!isPTrabEditable || isSaving} />
                                                                 </div>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>UASG *</Label>
+                                                                <OmSelector selectedOmId={selectedOmQrId} onChange={(om) => setFormData({...formData, om_qr: om?.nome_om || "", ug_qr: om?.codug_om || ""})} placeholder="Selecione a UASG" disabled={!isPTrabEditable || isSaving} />
                                                             </div>
                                                         </div>
                                                     </div>
                                                 )}
 
                                                 {formData.categoria_complemento === 'agua' && (
-                                                    <div className="space-y-6">
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                            <div className="space-y-2">
-                                                                <Label>Efetivo *</Label>
-                                                                <Input 
-                                                                    type="number" 
-                                                                    value={formData.agua_efetivo || ""} 
-                                                                    onChange={(e) => setFormData({...formData, agua_efetivo: parseInt(e.target.value) || 0})}
-                                                                    placeholder="Ex: 150"
-                                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                />
+                                                    <div className="grid grid-cols-1 gap-6 pt-4 border-t">
+                                                        <div className="space-y-4 p-4 bg-blue-500/5 rounded-md border border-blue-500/10 relative overflow-hidden">
+                                                            <div className="flex justify-between items-start">
+                                                                <h4 className="font-bold text-sm text-blue-600 uppercase">Detalhamento de Água Mineral</h4>
+                                                                <div className="text-right">
+                                                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Subtotal Estimado</p>
+                                                                    <p className="text-sm font-extrabold text-blue-600">{formatCurrency(currentTotalAgua)}</p>
+                                                                </div>
                                                             </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Período (Nr Dias) *</Label>
-                                                                <Input 
-                                                                    type="number" 
-                                                                    value={formData.agua_dias || ""} 
-                                                                    onChange={(e) => setFormData({...formData, agua_dias: parseInt(e.target.value) || 0})}
-                                                                    placeholder="Ex: 15"
-                                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="grid grid-cols-1 gap-6 pt-4 border-t">
-                                                            <div className="space-y-4 p-4 bg-blue-500/5 rounded-md border border-blue-500/10 relative overflow-hidden">
-                                                                <div className="flex justify-between items-start">
-                                                                    <h4 className="font-bold text-sm text-blue-600 uppercase">Detalhamento de Água Mineral</h4>
-                                                                    <div className="text-right">
-                                                                        <p className="text-[10px] text-muted-foreground uppercase font-semibold">Subtotal Estimado</p>
-                                                                        <p className="text-sm font-extrabold text-blue-600">{formatCurrency(currentTotalAgua)}</p>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                                    <div className="space-y-2">
-                                                                        <Label>Consumo (litro) / dia *</Label>
-                                                                        <Input 
-                                                                            type="number" 
-                                                                            step="0.1" 
-                                                                            value={formData.agua_consumo_dia || ""} 
-                                                                            onChange={(e) => setFormData({...formData, agua_consumo_dia: parseFloat(e.target.value) || 0})} 
-                                                                            onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                            placeholder="Ex: 2.5"
-                                                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                        />
-                                                                    </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label>Tipo Envase *</Label>
-                                                                        <Input 
-                                                                            value={formData.agua_tipo_envase} 
-                                                                            onChange={(e) => setFormData({...formData, agua_tipo_envase: e.target.value})} 
-                                                                            placeholder="Ex: Garrafa" 
-                                                                        />
-                                                                    </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label>Volume do Envase (L) *</Label>
-                                                                        <Input 
-                                                                            type="number" 
-                                                                            step="0.01" 
-                                                                            value={formData.agua_volume_envase || ""} 
-                                                                            onChange={(e) => setFormData({...formData, agua_volume_envase: parseFloat(e.target.value) || 0})} 
-                                                                            onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                            placeholder="Ex: 0.5"
-                                                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                                    <div className="space-y-2">
-                                                                        <Label>Valor da Garrafa *</Label>
-                                                                        <CurrencyInput value={formData.agua_valor_unitario} onChange={(val) => setFormData({...formData, agua_valor_unitario: val})} />
-                                                                    </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label>Pregão *</Label>
-                                                                        <Input 
-                                                                            value={formData.agua_pregao} 
-                                                                            onChange={(e) => setFormData({...formData, agua_pregao: e.target.value})} 
-                                                                            placeholder="Ex: 90.001/24" 
-                                                                        />
-                                                                    </div>
-                                                                </div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                                 <div className="space-y-2">
-                                                                    <Label>UASG *</Label>
-                                                                    <OmSelector 
-                                                                        selectedOmId={selectedOmAguaId} 
-                                                                        onChange={(om) => setFormData({...formData, agua_om_uasg: om?.nome_om || "", agua_ug_uasg: om?.codug_om || ""})} 
-                                                                        placeholder="Selecione a UASG" 
+                                                                    <Label>Consumo (litro) / dia *</Label>
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        step="0.1" 
+                                                                        value={formData.agua_consumo_dia || ""} 
+                                                                        onChange={(e) => setFormData({...formData, agua_consumo_dia: parseFloat(e.target.value) || 0})} 
+                                                                        onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                        placeholder="Ex: 2.5"
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                     />
                                                                 </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Tipo Envase *</Label>
+                                                                    <Input 
+                                                                        value={formData.agua_tipo_envase} 
+                                                                        onChange={(e) => setFormData({...formData, agua_tipo_envase: e.target.value})} 
+                                                                        placeholder="Ex: Garrafa" 
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Volume do Envase (L) *</Label>
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        step="0.01" 
+                                                                        value={formData.agua_volume_envase || ""} 
+                                                                        onChange={(e) => setFormData({...formData, agua_volume_envase: parseFloat(e.target.value) || 0})} 
+                                                                        onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                        placeholder="Ex: 0.5"
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label>Valor da Garrafa *</Label>
+                                                                    <CurrencyInput value={formData.agua_valor_unitario} onChange={(val) => setFormData({...formData, agua_valor_unitario: val})} disabled={!isPTrabEditable || isSaving} />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Pregão *</Label>
+                                                                    <Input 
+                                                                        value={formData.agua_pregao} 
+                                                                        onChange={(e) => setFormData({...formData, agua_pregao: e.target.value})} 
+                                                                        placeholder="Ex: 90.001/24" 
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>UASG *</Label>
+                                                                <OmSelector 
+                                                                    selectedOmId={selectedOmAguaId} 
+                                                                    onChange={(om) => setFormData({...formData, agua_om_uasg: om?.nome_om || "", agua_ug_uasg: om?.codug_om || ""})} 
+                                                                    placeholder="Selecione a UASG" 
+                                                                    disabled={!isPTrabEditable || isSaving}
+                                                                />
                                                             </div>
                                                         </div>
                                                     </div>
                                                 )}
 
                                                 {formData.categoria_complemento === 'lanche' && (
-                                                    <div className="space-y-6">
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                            <div className="space-y-2">
-                                                                <Label>Efetivo *</Label>
-                                                                <Input 
-                                                                    type="number" 
-                                                                    value={formData.lanche_efetivo || ""} 
-                                                                    onChange={(e) => setFormData({...formData, lanche_efetivo: parseInt(e.target.value) || 0})}
-                                                                    placeholder="Ex: 150"
-                                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Período (Nr Dias) *</Label>
-                                                                <Input 
-                                                                    type="number" 
-                                                                    value={formData.lanche_dias || ""} 
-                                                                    onChange={(e) => setFormData({...formData, lanche_dias: parseInt(e.target.value) || 0})}
-                                                                    placeholder="Ex: 15"
-                                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="grid grid-cols-1 gap-6 pt-4 border-t">
-                                                            <div className="space-y-4 p-4 bg-amber-500/5 rounded-md border border-amber-500/10 relative overflow-hidden">
-                                                                <div className="flex justify-between items-start">
-                                                                    <h4 className="font-bold text-sm text-amber-600 uppercase">Detalhamento de Lanche/Catanho</h4>
-                                                                    <div className="text-right">
-                                                                        <p className="text-[10px] text-muted-foreground uppercase font-semibold">Subtotal Estimado</p>
-                                                                        <p className="text-sm font-extrabold text-amber-600">{formatCurrency(currentTotalLanche)}</p>
-                                                                    </div>
+                                                    <div className="grid grid-cols-1 gap-6 pt-4 border-t">
+                                                        <div className="space-y-4 p-4 bg-amber-500/5 rounded-md border border-amber-500/10 relative overflow-hidden">
+                                                            <div className="flex justify-between items-start">
+                                                                <h4 className="font-bold text-sm text-amber-600 uppercase">Detalhamento de Lanche/Catanho</h4>
+                                                                <div className="text-right">
+                                                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Subtotal Estimado</p>
+                                                                    <p className="text-sm font-extrabold text-amber-600">{formatCurrency(currentTotalLanche)}</p>
                                                                 </div>
-                                                                
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                                    <div className="space-y-2">
-                                                                        <Label>Pregão *</Label>
-                                                                        <Input 
-                                                                            value={formData.lanche_pregao} 
-                                                                            onChange={(e) => setFormData({...formData, lanche_pregao: e.target.value})} 
-                                                                            placeholder="Ex: 90.001/24" 
-                                                                        />
+                                                            </div>
+                                                            
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label>Pregão *</Label>
+                                                                    <Input 
+                                                                        value={formData.lanche_pregao} 
+                                                                        onChange={(e) => setFormData({...formData, lanche_pregao: e.target.value})} 
+                                                                        placeholder="Ex: 90.001/24" 
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>UASG *</Label>
+                                                                    <OmSelector 
+                                                                        selectedOmId={selectedOmLancheId} 
+                                                                        onChange={(om) => setFormData({...formData, lanche_om_uasg: om?.nome_om || "", lanche_ug_uasg: om?.codug_om || ""})} 
+                                                                        placeholder="Selecione a UASG" 
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="space-y-4 pt-4 border-t border-amber-500/10">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex flex-col">
+                                                                        <h5 className="text-xs font-bold uppercase text-muted-foreground">Itens do Lanche ({formData.lanche_items.length})</h5>
+                                                                        <p className="text-[10px] font-bold text-amber-700 uppercase">Valor do Kit: {formatCurrency(currentKitValue)}</p>
                                                                     </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label>UASG *</Label>
-                                                                        <OmSelector 
-                                                                            selectedOmId={selectedOmLancheId} 
-                                                                            onChange={(om) => setFormData({...formData, lanche_om_uasg: om?.nome_om || "", lanche_ug_uasg: om?.codug_om || ""})} 
-                                                                        />
-                                                                    </div>
+                                                                    <Button variant="outline" size="sm" onClick={addLancheItem} disabled={!isPTrabEditable || isSaving} className="h-7 text-[10px] uppercase font-bold border-amber-500/30 text-amber-600 hover:bg-amber-500/10">
+                                                                        <Plus className="mr-1 h-3 w-3" /> Adicionar Item
+                                                                    </Button>
                                                                 </div>
 
-                                                                <div className="space-y-4 pt-4 border-t border-amber-500/10">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <div className="flex flex-col">
-                                                                            <h5 className="text-xs font-bold uppercase text-muted-foreground">Itens do Lanche ({formData.lanche_items.length})</h5>
-                                                                            <p className="text-[10px] font-bold text-amber-700 uppercase">Valor do Kit: {formatCurrency(currentKitValue)}</p>
-                                                                        </div>
-                                                                        <Button variant="outline" size="sm" onClick={addLancheItem} className="h-7 text-[10px] uppercase font-bold border-amber-500/30 text-amber-600 hover:bg-amber-500/10">
-                                                                            <Plus className="mr-1 h-3 w-3" /> Adicionar Item
-                                                                        </Button>
+                                                                {formData.lanche_items.length === 0 ? (
+                                                                    <div className="text-center py-6 border-2 border-dashed border-amber-500/10 rounded-lg">
+                                                                        <p className="text-xs text-muted-foreground">Nenhum item adicionado ao lanche.</p>
                                                                     </div>
-
-                                                                    {formData.lanche_items.length === 0 ? (
-                                                                        <div className="text-center py-6 border-2 border-dashed border-amber-500/10 rounded-lg">
-                                                                            <p className="text-xs text-muted-foreground">Nenhum item adicionado ao lanche.</p>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div className="space-y-3">
-                                                                            {formData.lanche_items.map((item, index) => (
-                                                                                <Collapsible key={item.id} defaultOpen={true} className="border border-amber-500/10 rounded-md bg-background/50">
-                                                                                    <div className="flex items-center justify-between p-2 bg-amber-500/5">
-                                                                                        <CollapsibleTrigger className="flex items-center gap-2 text-[10px] font-bold uppercase text-amber-700">
-                                                                                            <ChevronDown className="h-3 w-3" />
-                                                                                            Item #{index + 1}: {item.descricao || "Sem descrição"}
-                                                                                        </CollapsibleTrigger>
-                                                                                        <Button variant="ghost" size="icon" onClick={() => removeLancheItem(item.id)} className="h-6 w-6 text-destructive hover:bg-destructive/10">
-                                                                                            <Trash2 className="h-3 w-3" />
-                                                                                        </Button>
-                                                                                    </div>
-                                                                                    <CollapsibleContent className="p-3">
-                                                                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                                                                                            <div className="space-y-2">
-                                                                                                <Label className="text-[10px] uppercase">Quantidade *</Label>
-                                                                                                <Input 
-                                                                                                    type="number" 
-                                                                                                    value={item.quantidade || ""} 
-                                                                                                    onChange={(e) => updateLancheItem(item.id, "quantidade", parseInt(e.target.value) || 0)} 
-                                                                                                    className="h-8 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                                                    onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                                                />
-                                                                                            </div>
-                                                                                            <div className="md:col-span-2 space-y-2">
-                                                                                                <Label className="text-[10px] uppercase">Descrição do Item *</Label>
-                                                                                                <Input 
-                                                                                                    value={item.descricao} 
-                                                                                                    onChange={(e) => updateLancheItem(item.id, "descricao", e.target.value)} 
-                                                                                                    placeholder="Ex: Pão de forma, presunto, queijo..." 
-                                                                                                    className="h-8 text-xs"
-                                                                                                />
-                                                                                            </div>
-                                                                                            <div className="space-y-2">
-                                                                                                <Label className="text-[10px] uppercase">Valor Unitário *</Label>
-                                                                                                <CurrencyInput value={item.valor_unitario} onChange={(val) => updateLancheItem(item.id, "valor_unitario", val)} className="h-8 text-xs" />
-                                                                                            </div>
+                                                                ) : (
+                                                                    <div className="space-y-3">
+                                                                        {formData.lanche_items.map((item, index) => (
+                                                                            <Collapsible key={item.id} defaultOpen={true} className="border border-amber-500/10 rounded-md bg-background/50">
+                                                                                <div className="flex items-center justify-between p-2 bg-amber-500/5">
+                                                                                    <CollapsibleTrigger className="flex items-center gap-2 text-[10px] font-bold uppercase text-amber-700">
+                                                                                        <ChevronDown className="h-3 w-3" />
+                                                                                        Item #{index + 1}: {item.descricao || "Sem descrição"}
+                                                                                    </CollapsibleTrigger>
+                                                                                    <Button variant="ghost" size="icon" onClick={() => removeLancheItem(item.id)} disabled={!isPTrabEditable || isSaving} className="h-6 w-6 text-destructive hover:bg-destructive/10">
+                                                                                        <Trash2 className="h-3 w-3" />
+                                                                                    </Button>
+                                                                                </div>
+                                                                                <CollapsibleContent className="p-3">
+                                                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                                                                                        <div className="space-y-2">
+                                                                                            <Label className="text-[10px] uppercase">Quantidade *</Label>
+                                                                                            <Input 
+                                                                                                type="number" 
+                                                                                                value={item.quantidade || ""} 
+                                                                                                onChange={(e) => updateLancheItem(item.id, "quantidade", parseInt(e.target.value) || 0)} 
+                                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                                                className="h-8 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                                            />
                                                                                         </div>
-                                                                                    </CollapsibleContent>
-                                                                                </Collapsible>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
+                                                                                        <div className="md:col-span-2 space-y-2">
+                                                                                            <Label className="text-[10px] uppercase">Descrição do Item *</Label>
+                                                                                            <Input 
+                                                                                                value={item.descricao} 
+                                                                                                onChange={(e) => updateLancheItem(item.id, "descricao", e.target.value)} 
+                                                                                                placeholder="Ex: Pão de forma, presunto, queijo..." 
+                                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                                                className="h-8 text-xs"
+                                                                                            />
+                                                                                        </div>
+                                                                                        <div className="space-y-2">
+                                                                                            <Label className="text-[10px] uppercase">Valor Unitário *</Label>
+                                                                                            <CurrencyInput value={item.valor_unitario} onChange={(val) => updateLancheItem(item.id, "valor_unitario", val)} disabled={!isPTrabEditable || isSaving} className="h-8 text-xs" />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </CollapsibleContent>
+                                                                            </Collapsible>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -841,11 +988,11 @@ const ComplementoAlimentacaoForm = () => {
                                                     <span className="text-lg font-extrabold text-foreground">{formatCurrency(currentCategoryTotal)}</span>
                                                 </div>
                                                 <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-                                                    <Button variant="outline" onClick={handleClearForm} className="w-full md:w-auto">
+                                                    <Button variant="outline" onClick={handleClearForm} disabled={!isPTrabEditable || isSaving} className="w-full md:w-auto">
                                                         <XCircle className="mr-2 h-4 w-4" />
                                                         Limpar
                                                     </Button>
-                                                    <Button className="w-full md:w-auto" disabled={isSaveDisabled} onClick={handleStageCalculation}>
+                                                    <Button className="w-full md:w-auto" disabled={isSaveDisabled || !isPTrabEditable || isSaving} onClick={handleStageCalculation}>
                                                         <Save className="mr-2 h-4 w-4" />
                                                         Salvar Itens na Lista
                                                     </Button>
@@ -861,12 +1008,11 @@ const ComplementoAlimentacaoForm = () => {
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">3. Itens Adicionados ({pendingItems.length})</h3>
                                     
-                                    {/* Alerta de Dirty Check */}
                                     {isDirty && (
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertDescription className="font-medium">
-                                                Atenção: Os dados da categoria ativa foram alterados. Clique em "Salvar Itens na Lista" para atualizar o lote pendente antes de salvar os registros.
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados. Clique em "Salvar Itens na Lista" na Seção 2 para atualizar o lote pendente antes de salvar os registros.
                                             </AlertDescription>
                                         </Alert>
                                     )}
@@ -883,7 +1029,7 @@ const ComplementoAlimentacaoForm = () => {
                                                             <p className="font-extrabold text-lg text-foreground">
                                                                 {formatCurrency(item.valor_total)}
                                                             </p>
-                                                            <Button variant="ghost" size="icon" onClick={() => handleRemovePending(item.tempId)} className="h-8 w-8 text-destructive">
+                                                            <Button variant="ghost" size="icon" onClick={() => handleRemovePending(item.tempId)} disabled={isSaving} className="h-8 w-8 text-destructive">
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
                                                         </div>
@@ -930,11 +1076,11 @@ const ComplementoAlimentacaoForm = () => {
                                     </Card>
 
                                     <div className="flex justify-end gap-3 pt-4">
-                                        <Button className="bg-primary hover:bg-primary/90" disabled={isDirty}>
-                                            <Save className="mr-2 h-4 w-4" />
+                                        <Button className="bg-primary hover:bg-primary/90" disabled={isDirty || isSaving} onClick={() => insertMutation.mutate(pendingItems)}>
+                                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                             Salvar Registros
                                         </Button>
-                                        <Button variant="outline" onClick={() => { setPendingItems([]); setLastStagedFormData(null); }}>
+                                        <Button variant="outline" onClick={() => { setPendingItems([]); setLastStagedFormData(null); }} disabled={isSaving}>
                                             <XCircle className="mr-2 h-4 w-4" />
                                             Limpar Lista
                                         </Button>
@@ -942,15 +1088,90 @@ const ComplementoAlimentacaoForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÕES 4 e 5 (Placeholders) */}
-                            <section className="opacity-50 pointer-events-none">
-                                <h3 className="text-lg font-semibold mb-4">4. OMs Cadastradas (Em breve)</h3>
-                                <h3 className="text-lg font-semibold mb-4">5. Memórias de Cálculo (Em breve)</h3>
-                            </section>
+                            {/* SEÇÃO 4: REGISTROS SALVOS */}
+                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
+                                <section className="space-y-4 border-b pb-6">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        <Sparkles className="h-5 w-5 text-accent" />
+                                        OMs Cadastradas ({consolidatedRegistros.length})
+                                    </h3>
+                                    
+                                    {consolidatedRegistros.map((group) => (
+                                        <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
+                                            <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                    {group.organizacao} (UG: {formatCodug(group.ug)})
+                                                    <Badge variant="outline" className="text-xs">{group.fase_atividade}</Badge>
+                                                </h3>
+                                                <span className="font-extrabold text-xl text-primary">{formatCurrency(group.totalGeral)}</span>
+                                            </div>
+                                            
+                                            <div className="space-y-3">
+                                                {group.records.map((registro) => (
+                                                    <Card key={registro.id} className="p-3 bg-background border">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex flex-col">
+                                                                <h4 className="font-semibold text-base text-foreground">
+                                                                    {registro.group_name} ({registro.categoria_complemento === 'genero' ? 'Gênero' : registro.categoria_complemento === 'agua' ? 'Água' : 'Lanche'})
+                                                                </h4>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    Período: {registro.dias_operacao} dias | Efetivo: {registro.efetivo} militares
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-extrabold text-xl text-foreground">{formatCurrency(Number(registro.valor_total))}</span>
+                                                                <Button variant="ghost" size="icon" onClick={() => { setGroupToDelete(group); setShowDeleteDialog(true); }} disabled={!isPTrabEditable || isSaving} className="h-8 w-8 text-destructive hover:bg-destructive/10">
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    </Card>
+                                                ))}
+                                            </div>
+                                        </Card>
+                                    ))}
+                                </section>
+                            )}
+
+                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULO */}
+                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
+                                <div className="space-y-4 mt-8">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">📋 Memórias de Cálculos Detalhadas</h3>
+                                    {consolidatedRegistros.map(group => group.records.map(registro => (
+                                        <ComplementoAlimentacaoMemoria
+                                            key={`memoria-${registro.id}`}
+                                            registro={registro}
+                                            context={{ organizacao: group.organizacao, efetivo: group.efetivo, dias_operacao: group.dias_operacao, fase_atividade: group.fase_atividade }}
+                                            isPTrabEditable={isPTrabEditable}
+                                            isSaving={isSaving}
+                                            editingMemoriaId={editingMemoriaId}
+                                            memoriaEdit={memoriaEdit}
+                                            setMemoriaEdit={setMemoriaEdit}
+                                            handleIniciarEdicaoMemoria={handleIniciarEdicaoMemoria}
+                                            handleCancelarEdicaoMemoria={handleCancelarEdicaoMemoria}
+                                            handleSalvarMemoriaCustomizada={handleSalvarMemoriaCustomizada}
+                                            handleRestaurarMemoriaAutomatica={handleRestaurarMemoriaAutomatica}
+                                        />
+                                    )))}
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
             </div>
+
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-destructive">Confirmar Exclusão</AlertDialogTitle>
+                        <AlertDialogDescription>Deseja excluir o lote de Complemento para a OM {groupToDelete?.organizacao}?</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => groupToDelete && deleteMutation.mutate(groupToDelete.records.map(r => r.id))} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <AcquisitionItemSelectorDialog 
                 open={isItemSelectorOpen} 

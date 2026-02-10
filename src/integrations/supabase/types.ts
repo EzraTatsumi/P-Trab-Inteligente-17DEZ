@@ -197,7 +197,7 @@ export type Database = {
           fase_atividade: string | null
           horas_dia: number | null
           id: string
-          itens_equipamentos: Json | null // <-- Mantido como Json
+          itens_equipamentos: Json | null
           km_dia: number | null
           om_detentora: string | null
           organizacao: string
@@ -725,6 +725,122 @@ export type Database = {
           },
         ]
       }
+      complemento_alimentacao_registros: {
+        Row: {
+          id: string
+          p_trab_id: string
+          organizacao: string
+          ug: string
+          om_detentora: string
+          ug_detentora: string
+          dias_operacao: number
+          efetivo: number
+          fase_atividade: string
+          group_name: string
+          group_purpose: string | null
+          categoria_complemento: string
+          publico: string | null
+          valor_etapa_qs: number
+          pregao_qs: string | null
+          om_qs: string | null
+          ug_qs: string | null
+          valor_etapa_qr: number
+          pregao_qr: string | null
+          om_qr: string | null
+          ug_qr: string | null
+          agua_consumo_dia: number | null
+          agua_tipo_envase: string | null
+          agua_volume_envase: number | null
+          agua_valor_unitario: number | null
+          agua_pregao: string | null
+          itens_aquisicao: Json
+          valor_total: number
+          valor_nd_30: number
+          valor_nd_39: number
+          detalhamento_customizado: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          p_trab_id: string
+          organizacao: string
+          ug: string
+          om_detentora: string
+          ug_detentora: string
+          dias_operacao: number
+          efetivo: number
+          fase_atividade: string
+          group_name: string
+          group_purpose?: string | null
+          categoria_complemento: string
+          publico?: string | null
+          valor_etapa_qs?: number
+          pregao_qs?: string | null
+          om_qs?: string | null
+          ug_qs?: string | null
+          valor_etapa_qr?: number
+          pregao_qr?: string | null
+          om_qr?: string | null
+          ug_qr?: string | null
+          agua_consumo_dia?: number | null
+          agua_tipo_envase?: string | null
+          agua_volume_envase?: number | null
+          agua_valor_unitario?: number | null
+          agua_pregao?: string | null
+          itens_aquisicao?: Json
+          valor_total?: number
+          valor_nd_30?: number
+          valor_nd_39?: number
+          detalhamento_customizado?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          p_trab_id?: string
+          organizacao?: string
+          ug?: string
+          om_detentora?: string
+          ug_detentora?: string
+          dias_operacao?: number
+          efetivo?: number
+          fase_atividade?: string
+          group_name?: string
+          group_purpose?: string | null
+          categoria_complemento?: string
+          publico?: string | null
+          valor_etapa_qs?: number
+          pregao_qs?: string | null
+          om_qs?: string | null
+          ug_qs?: string | null
+          valor_etapa_qr?: number
+          pregao_qr?: string | null
+          om_qr?: string | null
+          ug_qr?: string | null
+          agua_consumo_dia?: number | null
+          agua_tipo_envase?: string | null
+          agua_volume_envase?: number | null
+          agua_valor_unitario?: number | null
+          agua_pregao?: string | null
+          itens_aquisicao?: Json
+          valor_total?: number
+          valor_nd_30?: number
+          valor_nd_39?: number
+          detalhamento_customizado?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "complemento_alimentacao_registros_p_trab_id_fkey"
+            columns: ["p_trab_id"]
+            isOneToOne: false
+            referencedRelation: "p_trab"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       concessionaria_registros: {
         Row: {
           categoria: string
@@ -983,8 +1099,8 @@ export type Database = {
           dias_operacao: number
           efetivo: number
           fase_atividade: string | null
-          group_name: string // ADICIONADO
-          group_purpose: string | null // ADICIONADO
+          group_name: string
+          group_purpose: string | null
           itens_aquisicao: Json
           valor_total: number
           valor_nd_30: number
@@ -1003,8 +1119,8 @@ export type Database = {
           dias_operacao?: number
           efetivo?: number
           fase_atividade?: string | null
-          group_name: string // ADICIONADO
-          group_purpose?: string | null // ADICIONADO
+          group_name: string
+          group_purpose?: string | null
           itens_aquisicao?: Json
           valor_total?: number
           valor_nd_30?: number
@@ -1023,8 +1139,8 @@ export type Database = {
           dias_operacao?: number
           efetivo?: number
           fase_atividade?: string | null
-          group_name?: string // ADICIONADO
-          group_purpose?: string | null // ADICIONADO
+          group_name?: string
+          group_purpose?: string | null
           itens_aquisicao?: Json
           valor_total?: number
           valor_nd_30?: number
@@ -1664,7 +1780,7 @@ export type Database = {
           updated_at?: string
           valor_nd_33?: number
           valor_total?: number
-          valor_unitario: number
+          valor_unitario?: number
         }
         Update: {
           created_at?: string
@@ -1822,7 +1938,7 @@ export type Database = {
           created_at?: string
           detalhamento?: string | null
           detalhamento_customizado?: string | null
-          dias_operacao?: number
+          dias_operacao: number
           efetivo?: number | null
           fase_atividade?: string | null
           finalidade?: string | null

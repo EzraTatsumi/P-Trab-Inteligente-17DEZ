@@ -25,6 +25,13 @@ export interface ComplementoAlimentacaoRegistro {
     pregao_qr: string | null;
     om_qr: string | null;
     ug_qr: string | null;
+
+    // Novos campos para Água Mineral
+    agua_consumo_dia: number | null;
+    agua_tipo_envase: string | null;
+    agua_volume_envase: number | null;
+    agua_valor_unitario: number | null;
+    agua_pregao: string | null;
     
     itens_aquisicao: ItemAquisicao[];
     valor_total: number;
@@ -86,19 +93,24 @@ export const generateComplementoMemoriaCalculo = (
                `Valor Total: R$ ${Number(registro.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
     }
 
+    if (registro.categoria_complemento === 'agua') {
+        const totalLitros = (registro.efetivo || 0) * (registro.agua_consumo_dia || 0) * (registro.dias_operacao || 0);
+        const totalGarrafas = Math.ceil(totalLitros / (registro.agua_volume_envase || 1));
+        
+        return `Solicitação de Água Mineral para a OM ${context.organizacao}.\n` +
+               `Contexto: ${registro.efetivo} militares por ${registro.dias_operacao} dias na fase ${context.fase_atividade}.\n` +
+               `Consumo estimado: ${registro.agua_consumo_dia}L/dia por pessoa.\n` +
+               `Total de Litros: ${totalLitros.toLocaleString('pt-BR')}L.\n` +
+               `Envase: ${registro.agua_tipo_envase} de ${registro.agua_volume_envase}L.\n` +
+               `Cálculo: ${totalGarrafas} garrafas x R$ ${registro.agua_valor_unitario?.toFixed(2)} = R$ ${Number(registro.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    }
+
     const itens = (registro.itens_aquisicao || []) as ItemAquisicao[];
     const listaItens = itens.map(item => 
         `- ${item.quantidade} un. de ${item.descricao_reduzida || item.descricao_item} (Cód: ${item.codigo_catmat})`
     ).join('\n');
 
-    const categoriaMap = {
-        agua: 'Água Mineral',
-        lanche: 'Lanche/Catanho'
-    };
-
-    const categoriaLabel = categoriaMap[registro.categoria_complemento as keyof typeof categoriaMap] || 'Complemento';
-
-    return `Solicitação de ${categoriaLabel} para a OM ${context.organizacao}.\n` +
+    return `Solicitação de Lanche/Catanho para a OM ${context.organizacao}.\n` +
            `Contexto: Efetivo de ${context.efetivo} militares por ${context.dias_operacao} dias na fase ${context.fase_atividade}.\n` +
            `Itens selecionados:\n${listaItens}\n` +
            `Valor Total: R$ ${Number(registro.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;

@@ -14,7 +14,7 @@ type PTrabLinkedTableName =
     'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' |
     'classe_viii_saude_registros' | 'classe_viii_remonta_registros' |
     'classe_ix_registros' | 'p_trab_ref_lpc' | 'passagem_registros' |
-    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros' | 'horas_voo_registros' | 'material_consumo_registros'; // ADICIONADO
+    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros' | 'horas_voo_registros' | 'material_consumo_registros' | 'complemento_alimentacao_registros'; // ADICIONADO
 
 /**
  * Tipo de dados para o PTrab principal.
@@ -102,7 +102,7 @@ export async function fetchDiretrizesOperacionais(year: number): Promise<Diretri
     if (!user) throw new Error("Usuário não autenticado.");
     
     // Busca a diretriz diretamente pelo ano e user_id
-    const { data, error } = await supabase
+    const { data, error = null } = await supabase
         .from('diretrizes_operacionais')
         .select('*')
         .eq('user_id', user.id)
