@@ -196,7 +196,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     classeIII: { total: 0, totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0 },
     classeV: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeVI: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
-    classeVII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} }, // CORRIGIDO: classeVIl -> classeVII
+    classeVII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} }, 
     classeVIII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeIX: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     diarias: { total: 0, totalND15: 0, totalND30: 0, totalMilitares: 0, totalDiasViagem: 0 },
@@ -214,9 +214,13 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
     const groupedByOm: Record<string, OmTotals> = {};
     
     const getOmTotals = (omName: string, ug: string): OmTotals => {
-        const key = `${omName}|${ug}`;
+        // NORMALIZAÇÃO: Remove espaços extras e ignora caixa alta/baixa para a chave de agrupamento
+        const cleanName = (omName || "").trim();
+        const cleanUg = (ug || "").trim();
+        const key = `${cleanName.toUpperCase()}|${cleanUg}`;
+        
         if (!groupedByOm[key]) {
-            groupedByOm[key] = initializeOmTotals(omName, ug);
+            groupedByOm[key] = initializeOmTotals(cleanName, cleanUg);
         }
         return groupedByOm[key];
     };
