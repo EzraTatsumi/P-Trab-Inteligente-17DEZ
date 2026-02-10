@@ -448,6 +448,9 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
                 
                 let cat = record.categoria_complemento === 'agua' ? 'Água Mineral' : 'Lanche/Catanho';
                 
+                if (!omTotals.complementoAlimentacao.groupedCategories) {
+                    omTotals.complementoAlimentacao.groupedCategories = {};
+                }
                 if (!omTotals.complementoAlimentacao.groupedCategories[cat]) {
                     omTotals.complementoAlimentacao.groupedCategories[cat] = { totalValor: 0, totalND30: 0, totalND39: 0 };
                 }
