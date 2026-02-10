@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check, Package, Minus, ChevronDown, ChevronUp, FileSpreadsheet, FileText, Utensils, Droplets, Coffee } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check, Package, Minus, ChevronDown, ChevronUp, FileSpreadsheet, FileText, Utensils, Droplets, Coffee, Eraser } from "lucide-react";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
@@ -162,6 +162,49 @@ const initialFormState: ComplementoAlimentacaoFormState = {
     acquisitionGroups: [],
 };
 
+// Função auxiliar para comparar estados do formulário (Dirty Check)
+const compareFormData = (data1: ComplementoAlimentacaoFormState, data2: ComplementoAlimentacaoFormState) => {
+    // Campos de contexto (Seção 1 e comuns da Seção 2)
+    if (
+        data1.om_favorecida !== data2.om_favorecida ||
+        data1.ug_favorecida !== data2.ug_favorecida ||
+        data1.fase_atividade !== data2.fase_atividade ||
+        data1.efetivo !== data2.efetivo ||
+        data1.dias_operacao !== data2.dias_operacao ||
+        data1.publico !== data2.publico ||
+        data1.categoria_complemento !== data2.categoria_complemento
+    ) return true;
+
+    // Campos específicos por categoria
+    if (data1.categoria_complemento === 'genero') {
+        if (
+            data1.valor_etapa_qs !== data2.valor_etapa_qs ||
+            data1.pregao_qs !== data2.pregao_qs ||
+            data1.om_qs !== data2.om_qs ||
+            data1.valor_etapa_qr !== data2.valor_etapa_qr ||
+            data1.pregao_qr !== data2.pregao_qr ||
+            data1.om_qr !== data2.om_qr
+        ) return true;
+    } else if (data1.categoria_complemento === 'agua') {
+        if (
+            data1.agua_consumo_dia !== data2.agua_consumo_dia ||
+            data1.agua_tipo_envase !== data2.agua_tipo_envase ||
+            data1.agua_volume_envase !== data2.agua_volume_envase ||
+            data1.agua_valor_unitario !== data2.agua_valor_unitario ||
+            data1.agua_pregao !== data2.agua_pregao ||
+            data1.agua_om_uasg !== data2.agua_om_uasg
+        ) return true;
+    } else if (data1.categoria_complemento === 'lanche') {
+        if (
+            data1.lanche_pregao !== data2.lanche_pregao ||
+            data1.lanche_om_uasg !== data2.lanche_om_uasg ||
+            JSON.stringify(data1.lanche_items) !== JSON.stringify(data2.lanche_items)
+        ) return true;
+    }
+
+    return false;
+};
+
 const ComplementoAlimentacaoForm = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -171,6 +214,7 @@ const ComplementoAlimentacaoForm = () => {
     
     const [formData, setFormData] = useState<ComplementoAlimentacaoFormState>(initialFormState);
     const [pendingItems, setPendingItems] = useState<StagedComplemento[]>([]);
+    const [lastStagedFormData, setLastStagedFormData] = useState<ComplementoAlimentacaoFormState | null>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
     
     const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
@@ -258,6 +302,14 @@ const ComplementoAlimentacaoForm = () => {
         }
     }, [formData.categoria_complemento, currentTotalQS, currentTotalQR, currentTotalAgua, currentTotalLanche]);
 
+    // Memo para Dirty Check
+    const isDirty = useMemo(() => {
+        if (pendingItems.length > 0 && lastStagedFormData) {
+            return compareFormData(formData, lastStagedFormData);
+        }
+        return false;
+    }, [formData, pendingItems.length, lastStagedFormData]);
+
     // Lógica de cálculo e adição à lista pendente
     const handleStageCalculation = () => {
         const { categoria_complemento, efetivo, dias_operacao } = formData;
@@ -324,19 +376,29 @@ const ComplementoAlimentacaoForm = () => {
         }
 
         setPendingItems(prev => [...prev, newItem]);
-        
-        // Reset parcial do form para permitir nova adição
-        setFormData(prev => ({
-            ...prev,
-            lanche_items: [],
-            acquisitionGroups: [],
-        }));
+        setLastStagedFormData({ ...formData }); // Salva o estado atual para o dirty check
         
         toast.success("Item adicionado à lista de revisão.");
     };
 
     const handleRemovePending = (id: string) => {
-        setPendingItems(prev => prev.filter(item => item.tempId !== id));
+        setPendingItems(prev => {
+            const newList = prev.filter(item => item.tempId !== id);
+            if (newList.length === 0) setLastStagedFormData(null);
+            return newList;
+        });
+    };
+
+    const handleClearForm = () => {
+        setFormData(prev => ({
+            ...initialFormState,
+            om_favorecida: prev.om_favorecida,
+            ug_favorecida: prev.ug_favorecida,
+            rm_vinculacao: prev.rm_vinculacao,
+            codug_rm_vinculacao: prev.codug_rm_vinculacao,
+            fase_atividade: prev.fase_atividade,
+        }));
+        toast.info("Campos do formulário limpos.");
     };
 
     const totalGeralOM = useMemo(() => {
@@ -403,8 +465,16 @@ const ComplementoAlimentacaoForm = () => {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            Complemento de Alimentação
+                        <CardTitle className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                Complemento de Alimentação
+                            </div>
+                            {isBaseFormReady && (
+                                <Button variant="outline" size="sm" onClick={handleClearForm} className="text-xs">
+                                    <Eraser className="mr-2 h-3 w-3" />
+                                    Limpar Formulário
+                                </Button>
+                            )}
                         </CardTitle>
                         <CardDescription>
                             Levantamento de necessidades de Gêneros, Água e Lanches.
@@ -718,6 +788,16 @@ const ComplementoAlimentacaoForm = () => {
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">3. Itens Adicionados ({pendingItems.length})</h3>
                                     
+                                    {/* Alerta de Dirty Check */}
+                                    {isDirty && (
+                                        <Alert variant="destructive">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertDescription className="font-medium">
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados. Clique em "Salvar Itens na Lista" na Seção 2 para atualizar o lote pendente antes de salvar os registros.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+
                                     <div className="space-y-4">
                                         {pendingItems.map((item) => (
                                             <Card key={item.tempId} className="border-2 border-secondary bg-secondary/5 shadow-sm">
@@ -777,11 +857,11 @@ const ComplementoAlimentacaoForm = () => {
                                     </Card>
 
                                     <div className="flex justify-end gap-3 pt-4">
-                                        <Button className="bg-primary hover:bg-primary/90">
+                                        <Button className="bg-primary hover:bg-primary/90" disabled={isDirty}>
                                             <Save className="mr-2 h-4 w-4" />
                                             Salvar Registros
                                         </Button>
-                                        <Button variant="outline" onClick={() => setPendingItems([])}>
+                                        <Button variant="outline" onClick={() => { setPendingItems([]); setLastStagedFormData(null); }}>
                                             <XCircle className="mr-2 h-4 w-4" />
                                             Limpar Lista
                                         </Button>
