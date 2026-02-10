@@ -281,19 +281,19 @@ const ComplementoAlimentacaoForm = () => {
                                                         <h4 className="font-bold text-sm text-primary uppercase">Quantitativo de Subsistência (QS)</h4>
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <div className="space-y-2">
-                                                                <Label>Valor Complemento (QS) *</Label>
+                                                                <Label>Valor Complemento *</Label>
                                                                 <CurrencyInput 
                                                                     value={formData.valor_etapa_qs} 
                                                                     onChange={(val) => setFormData({...formData, valor_etapa_qs: val})}
                                                                 />
                                                             </div>
                                                             <div className="space-y-2">
-                                                                <Label>Pregão (QS) *</Label>
+                                                                <Label>Pregão *</Label>
                                                                 <Input value={formData.pregao_qs} onChange={(e) => setFormData({...formData, pregao_qs: e.target.value})} placeholder="Ex: 90.001/24" />
                                                             </div>
                                                         </div>
                                                         <div className="space-y-2">
-                                                            <Label>UASG (QS) *</Label>
+                                                            <Label>UASG *</Label>
                                                             <RmSelector 
                                                                 value={formData.om_qs} 
                                                                 onChange={(name, codug) => setFormData({...formData, om_qs: name, ug_qs: codug})} 
@@ -307,19 +307,19 @@ const ComplementoAlimentacaoForm = () => {
                                                         <h4 className="font-bold text-sm text-orange-600 uppercase">Quantitativo de Rancho (QR)</h4>
                                                         <div className="grid grid-cols-2 gap-4">
                                                             <div className="space-y-2">
-                                                                <Label>Valor Complemento (QR) *</Label>
+                                                                <Label>Valor Complemento *</Label>
                                                                 <CurrencyInput 
                                                                     value={formData.valor_etapa_qr} 
                                                                     onChange={(val) => setFormData({...formData, valor_etapa_qr: val})}
                                                                 />
                                                             </div>
                                                             <div className="space-y-2">
-                                                                <Label>Pregão (QR) *</Label>
+                                                                <Label>Pregão *</Label>
                                                                 <Input value={formData.pregao_qr} onChange={(e) => setFormData({...formData, pregao_qr: e.target.value})} placeholder="Ex: 90.001/24" />
                                                             </div>
                                                         </div>
                                                         <div className="space-y-2">
-                                                            <Label>UASG (QR) *</Label>
+                                                            <Label>UASG *</Label>
                                                             <OmSelector selectedOmId={selectedOmQrId} onChange={(om) => setFormData({...formData, om_qr: om?.nome_om || "", ug_qr: om?.codug_om || ""})} placeholder="Selecione a UASG do QR" />
                                                         </div>
                                                     </div>
