@@ -1,6 +1,6 @@
 import { Tables, TablesInsert } from "@/integrations/supabase/types";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { formatCurrency, formatCodug } from "./formatUtils";
+import { formatCurrency, formatCodug, formatPregao } from "./formatUtils";
 
 // Tipo de registro salvo no banco de dados
 export type MaterialConsumoRegistro = Tables<'material_consumo_registros'>;
@@ -62,44 +62,52 @@ export function calculateGroupTotals(items: ItemAquisicao[]): { totalValue: numb
  * Gera a memória de cálculo consolidada para um grupo de Material de Consumo.
  */
 export function generateConsolidatedMaterialConsumoMemoriaCalculo(group: ConsolidatedMaterialConsumoRecord): string {
-    const omFavorecida = `${group.organizacao} (UG: ${formatCodug(group.ug)})`;
-    const omDetentora = `${group.om_detentora} (UG: ${formatCodug(group.ug_detentora)})`;
+    const omNome = group.organizacao;
     const fase = group.fase_atividade || 'Não Definida';
+    const efetivo = group.efetivo;
+    const dias = group.dias_operacao;
     
-    let memoria = `MEMÓRIA DE CÁLCULO - MATERIAL DE CONSUMO (ND 33.90.30/39)\n`;
-    memoria += `----------------------------------------------------------------\n`;
-    memoria += `OM Favorecida: ${omFavorecida}\n`;
-    memoria += `OM Destino Recurso: ${omDetentora}\n`;
-    memoria += `Fase da Atividade: ${fase}\n`;
-    memoria += `Período: ${group.dias_operacao} dias | Efetivo: ${group.efetivo} militares\n`;
-    memoria += `\n`;
+    // Concordância
+    const militarText = efetivo === 1 ? "militar" : "militares";
+    const diaText = dias === 1 ? "dia" : "dias";
     
-    group.records.forEach((registro, index) => {
+    let memorias: string[] = [];
+    
+    group.records.forEach((registro) => {
         const groupName = registro.group_name;
-        const groupPurpose = registro.group_purpose || 'N/A';
         const itens = (registro.itens_aquisicao as unknown as ItemAquisicao[]) || [];
         
-        memoria += `GRUPO ${index + 1}: ${groupName}\n`;
-        memoria += `Finalidade: ${groupPurpose}\n`;
-        memoria += `Valor Total do Grupo: ${formatCurrency(registro.valor_total)}\n`;
-        memoria += `\n`;
+        // Cabeçalho do Grupo
+        let texto = `33.90.30 - Aquisição de ${groupName} para atender ${efetivo} ${militarText} do/da ${omNome}, durante ${dias} ${diaText} de ${fase}.\n\n`;
         
-        if (itens.length > 0) {
-            memoria += `  ITENS DE AQUISIÇÃO (${itens.length}):\n`;
-            itens.forEach(item => {
-                memoria += `  - ${item.descricao_item} (CATMAT: ${item.codigo_catmat || 'N/A'})\n`;
-                memoria += `    Qtd: ${item.quantidade} | Vl Unit: ${formatCurrency(item.valor_unitario)} | Vl Total: ${formatCurrency(item.valor_total)} (ND ${item.nd})\n`;
-            });
-            memoria += `\n`;
-        } else {
-            memoria += `  (Nenhum item de aquisição detalhado)\n\n`;
+        texto += `Cálculo:\n`;
+        texto += `Fórmula: Qtd do item x Valor do item.\n`;
+        
+        // Listagem de Itens
+        const pregoesSet = new Set<string>();
+        const uasgsSet = new Set<string>();
+
+        itens.forEach(item => {
+            const nomeItem = item.descricao_reduzida || item.descricao_item;
+            texto += `- ${item.quantidade} ${nomeItem} x ${formatCurrency(item.valor_unitario)}/unid. = ${formatCurrency(item.valor_total)}.\n`;
+            
+            if (item.numero_pregao) pregoesSet.add(formatPregao(item.numero_pregao));
+            if (item.uasg) uasgsSet.add(formatCodug(item.uasg));
+        });
+        
+        texto += `Total: ${formatCurrency(registro.valor_total)}.\n`;
+        
+        // Rodapé de Pregão/UASG
+        const pregoes = Array.from(pregoesSet).join(', ');
+        const uasgs = Array.from(uasgsSet).join(', ');
+        
+        if (pregoes || uasgs) {
+            texto += `(Pregão: ${pregoes || 'N/A'} - ${uasgs || 'N/A'}).`;
         }
+        
+        memorias.push(texto);
     });
     
-    memoria += `----------------------------------------------------------------\n`;
-    memoria += `TOTAL GERAL (ND 30): ${formatCurrency(group.totalND30)}\n`;
-    memoria += `TOTAL GERAL (ND 39): ${formatCurrency(group.totalND39)}\n`;
-    memoria += `TOTAL GERAL (GND 3): ${formatCurrency(group.totalGeral)}\n`;
-    
-    return memoria;
+    // Une as memórias de cada grupo com uma quebra de linha dupla
+    return memorias.join('\n\n----------------------------------------------------------------\n\n');
 }
