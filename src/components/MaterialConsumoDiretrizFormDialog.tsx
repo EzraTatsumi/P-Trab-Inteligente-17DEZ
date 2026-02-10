@@ -12,7 +12,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DiretrizMaterialConsumo, ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import CurrencyInput from "@/components/CurrencyInput";
 import { 
-    formatCurrencyInput, 
     numberToRawDigits, 
     formatCurrency, 
     formatCodug, 
@@ -133,8 +132,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         }
     }, [itemToReview]);
 
-    const handleItemCurrencyChange = (rawValue: string) => {
-        const { numericValue, digits } = formatCurrencyInput(rawValue);
+    const handleItemCurrencyChange = (numericValue: number, digits: string) => {
         setItemForm(prev => ({
             ...prev,
             valor_unitario: numericValue,

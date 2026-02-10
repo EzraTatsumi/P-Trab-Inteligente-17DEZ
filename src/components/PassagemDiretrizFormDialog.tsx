@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { OmSelector } from "@/components/OmSelector";
 import { OMData } from "@/lib/omUtils";
-import { formatCurrencyInput, numberToRawDigits, formatCurrency, formatCodug } from "@/lib/formatUtils";
+import { numberToRawDigits, formatCurrency, formatCodug } from "@/lib/formatUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 // Importações de tipos assumidas do arquivo src/types/diretrizesPassagens
@@ -165,8 +165,7 @@ const PassagemDiretrizFormDialog: React.FC<PassagemDiretrizFormDialogProps> = ({
         }
     };
 
-    const handleTrechoCurrencyChange = (rawValue: string) => {
-        const { numericValue, digits } = formatCurrencyInput(rawValue);
+    const handleTrechoCurrencyChange = (numericValue: number, digits: string) => {
         setTrechoForm(prev => ({
             ...prev,
             valor: numericValue,

@@ -16,7 +16,7 @@ import {
 } from "@/types/diretrizesConcessionaria";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import CurrencyInput from "@/components/CurrencyInput";
-import { formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
+import { numberToRawDigits } from "@/lib/formatUtils";
 
 interface ConcessionariaDiretrizFormDialogProps {
     open: boolean;
@@ -128,8 +128,7 @@ const ConcessionariaDiretrizFormDialog: React.FC<ConcessionariaDiretrizFormDialo
         }
     };
     
-    const handleCurrencyChange = (value: string) => {
-        const { numericValue } = formatCurrencyInput(value);
+    const handleCurrencyChange = (numericValue: number) => {
         setValue('custo_unitario', numericValue, { shouldValidate: true });
     };
     
