@@ -19,7 +19,6 @@ import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/ptrabUtils";
 import { 
     calculateVerbaOperacionalTotals, 
     generateVerbaOperacionalMemoriaCalculo,
-    VerbaOperacionalRegistro,
 } from "@/lib/verbaOperacionalUtils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -39,6 +38,26 @@ import { OmSelector } from "@/components/OmSelector";
 import { cn } from "@/lib/utils"; 
 import CurrencyInput from "@/components/CurrencyInput";
 import { verbaOperacionalSchema } from "@/lib/validationSchemas";
+
+// Define o tipo localmente para os cálculos
+interface VerbaOperacionalRegistro {
+    organizacao: string;
+    ug: string;
+    om_detentora: string;
+    ug_detentora: string;
+    dias_operacao: number;
+    quantidade_equipes: number;
+    valor_total_solicitado: number;
+    fase_atividade: string;
+    valor_nd_30: number;
+    valor_nd_39: number;
+    objeto_aquisicao: string;
+    objeto_contratacao: string;
+    proposito: string;
+    finalidade: string;
+    local: string;
+    tarefa: string;
+}
 
 // Tipos de dados
 type VerbaOperacionalRegistroDB = Tables<'verba_operacional_registros'>; 
