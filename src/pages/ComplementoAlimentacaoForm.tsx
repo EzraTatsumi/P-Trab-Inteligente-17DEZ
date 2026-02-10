@@ -240,10 +240,13 @@ const ComplementoAlimentacaoForm = () => {
         return totalGarrafas * formData.agua_valor_unitario;
     }, [formData.efetivo, formData.agua_consumo_dia, formData.dias_operacao, formData.agua_volume_envase, formData.agua_valor_unitario]);
 
+    const currentKitValue = useMemo(() => {
+        return formData.lanche_items.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
+    }, [formData.lanche_items]);
+
     const currentTotalLanche = useMemo(() => {
-        const costPerLanche = formData.lanche_items.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
-        return costPerLanche * formData.efetivo * formData.dias_operacao;
-    }, [formData.lanche_items, formData.efetivo, formData.dias_operacao]);
+        return currentKitValue * formData.efetivo * formData.dias_operacao;
+    }, [currentKitValue, formData.efetivo, formData.dias_operacao]);
 
     const currentCategoryTotal = useMemo(() => {
         if (formData.categoria_complemento === 'genero') {
@@ -632,7 +635,10 @@ const ComplementoAlimentacaoForm = () => {
 
                                                             <div className="space-y-4 pt-4 border-t border-amber-500/10">
                                                                 <div className="flex items-center justify-between">
-                                                                    <h5 className="text-xs font-bold uppercase text-muted-foreground">Itens do Lanche ({formData.lanche_items.length})</h5>
+                                                                    <div className="flex flex-col">
+                                                                        <h5 className="text-xs font-bold uppercase text-muted-foreground">Itens do Lanche ({formData.lanche_items.length})</h5>
+                                                                        <p className="text-[10px] font-bold text-amber-700 uppercase">Valor do Kit: {formatCurrency(currentKitValue)}</p>
+                                                                    </div>
                                                                     <Button variant="outline" size="sm" onClick={addLancheItem} className="h-7 text-[10px] uppercase font-bold border-amber-500/30 text-amber-600 hover:bg-amber-500/10">
                                                                         <Plus className="mr-1 h-3 w-3" /> Adicionar Item
                                                                     </Button>
