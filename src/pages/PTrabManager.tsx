@@ -72,6 +72,7 @@ interface PTrab extends PTrabDB {
   totalLogistica?: number;
   totalOperacional?: number;
   totalMaterialPermanente?: number;
+  totalComplementoAlimentacao?: number; // ADICIONADO
   quantidadeRacaoOp?: number;
   quantidadeHorasVoo?: number;
   // NOVO: Propriedades de compartilhamento
@@ -96,7 +97,7 @@ type PTrabLinkedTableName =
     'classe_v_registros' | 'classe_vi_registros' | 'classe_vii_registros' | 
     'classe_viii_saude_registros' | 'classe_viii_remonta_registros' | 
     'classe_ix_registros' | 'p_trab_ref_lpc' | 'passagem_registros' | 
-    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros' | 'horas_voo_registros' | 'material_consumo_registros'; // ADICIONADO
+    'diaria_registros' | 'verba_operacional_registros' | 'concessionaria_registros' | 'horas_voo_registros' | 'material_consumo_registros' | 'complemento_alimentacao_registros'; // ADICIONADO
 
 // Lista de Comandos Militares de Área (CMA)
 const COMANDOS_MILITARES_AREA = [
@@ -441,6 +442,7 @@ const PTrabManager = () => {
           let totalOperacionalCalculado = 0;
           let totalLogisticaCalculado = 0;
           let totalMaterialPermanenteCalculado = 0;
+          let totalComplementoAlimentacaoCalculado = 0; // NOVO
           let quantidadeRacaoOpCalculada = 0;
           let quantidadeHorasVooCalculada = 0;
 
@@ -609,14 +611,24 @@ const PTrabManager = () => {
           
           const totalMaterialConsumo = totalMaterialConsumoND30 + totalMaterialConsumoND39;
 
+          // 10. Fetch Complemento Alimentação totals (33.90.30 and 33.90.39) - NOVO
+          const { data: complementoAlimentacaoData, error: complementoAlimentacaoError } = await supabase
+            .from('complemento_alimentacao_registros')
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
+            
+          if (complementoAlimentacaoError) console.error("Erro ao carregar Complemento de Alimentação para PTrab", ptrab.numero_ptrab, complementoAlimentacaoError);
+          else {
+              totalComplementoAlimentacaoCalculado = (complementoAlimentacaoData || []).reduce((sum, record) => sum + (record.valor_total || 0), 0);
+          }
 
           // SOMA TOTAL DA ABA LOGÍSTICA
           // Logística = Classe I + Classes Diversas + Classe III
           totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII;
           
           // SOMA TOTAL DA ABA OPERACIONAL
-          // Operacional = Diárias (ND 15) + Diárias (ND 30) + Verba Operacional (ND 30 + ND 39) + Passagens (ND 33) + Concessionárias (ND 39) + Horas Voo (ND 30 + ND 39) + Material Consumo (ND 30 + ND 39)
-          totalOperacionalCalculado = totalDiariaND15 + totalDiariaND30 + totalVerbaOperacionalND30 + totalVerbaOperacionalND39 + totalPassagemND33 + totalConcessionariaND39 + totalHorasVoo + totalMaterialConsumo;
+          // Operacional = Diárias (ND 15) + Diárias (ND 30) + Verba Operacional (ND 30 + ND 39) + Passagens (ND 33) + Concessionárias (ND 39) + Horas Voo (ND 30 + ND 39) + Material Consumo (ND 30 + ND 39) + Complemento Alimentação
+          totalOperacionalCalculado = totalDiariaND15 + totalDiariaND30 + totalVerbaOperacionalND30 + totalVerbaOperacionalND39 + totalPassagemND33 + totalConcessionariaND39 + totalHorasVoo + totalMaterialConsumo + totalComplementoAlimentacaoCalculado;
           
           const isOwner = ptrab.user_id === user.id;
           const isShared = !isOwner && (ptrab.shared_with || []).includes(user.id);
@@ -626,6 +638,7 @@ const PTrabManager = () => {
             totalLogistica: totalLogisticaCalculado,
             totalOperacional: totalOperacionalCalculado,
             totalMaterialPermanente: totalMaterialPermanenteCalculado,
+            totalComplementoAlimentacao: totalComplementoAlimentacaoCalculado,
             quantidadeRacaoOp: quantidadeRacaoOpCalculada,
             quantidadeHorasVoo: quantidadeHorasVooCalculada,
             isOwner: isOwner,
@@ -1055,7 +1068,7 @@ const PTrabManager = () => {
       // CORREÇÃO: Excluir explicitamente todos os campos calculados e de sistema
       const { 
         id, created_at, updated_at, user_id, share_token, shared_with,
-        totalLogistica, totalOperacional, totalMaterialPermanente, 
+        totalLogistica, totalOperacional, totalMaterialPermanente, totalComplementoAlimentacao,
         quantidadeRacaoOp, quantidadeHorasVoo, isOwner, isShared, hasPendingRequests,
         ...restOfPTrab 
       } = ptrabToClone;
@@ -1100,7 +1113,7 @@ const PTrabManager = () => {
         // CORREÇÃO: Excluir explicitamente todos os campos calculados e de sistema
         const { 
             id, created_at, updated_at, user_id, share_token, shared_with,
-            totalLogistica, totalOperacional, totalMaterialPermanente, 
+            totalLogistica, totalOperacional, totalMaterialPermanente, totalComplementoAlimentacao,
             quantidadeRacaoOp, quantidadeHorasVoo, isOwner, isShared, hasPendingRequests,
             ...restOfPTrab 
         } = ptrabToClone;
@@ -1344,6 +1357,9 @@ const PTrabManager = () => {
     
     // CLONAGEM DE MATERIAL DE CONSUMO (NOVO)
     await cloneClassRecords('material_consumo_registros', 'itens_aquisicao', ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_30', 'valor_nd_39']);
+
+    // CLONAGEM DE COMPLEMENTO DE ALIMENTAÇÃO (NOVO)
+    await cloneClassRecords('complemento_alimentacao_registros', 'itens_aquisicao', ['dias_operacao', 'efetivo', 'valor_total', 'valor_nd_30', 'valor_nd_39']);
   };
 
   const needsNumbering = (ptrab: PTrab) => {
@@ -1420,7 +1436,8 @@ const PTrabManager = () => {
             'passagem_registros', 
             'concessionaria_registros', 
             'horas_voo_registros',
-            'material_consumo_registros', // ADICIONADO
+            'material_consumo_registros',
+            'complemento_alimentacao_registros', // ADICIONADO
         ];
         
         for (const tableName of tablesToConsolidate) {
@@ -1453,7 +1470,7 @@ const PTrabManager = () => {
                         ...(record.hasOwnProperty('itens_remonta') && { itens_remonta: JSON.parse(JSON.stringify((record as any).itens_remonta)) }),
                         ...(record.hasOwnProperty('itens_motomecanizacao') && { itens_motomecanizacao: JSON.parse(JSON.stringify((record as any).itens_motomecanizacao)) }),
                         ...(record.hasOwnProperty('quantidades_por_posto') && { quantidades_por_posto: JSON.parse(JSON.stringify((record as any).quantidades_por_posto)) }),
-                        // NOVO: Clonar itens_aquisicao para material_consumo_registros
+                        // NOVO: Clonar itens_aquisicao para material_consumo_registros e complemento_alimentacao_registros
                         ...(record.hasOwnProperty('itens_aquisicao') && { itens_aquisicao: JSON.parse(JSON.stringify((record as any).itens_aquisicao)) }),
                     } as TablesInsert<typeof tableName>;
                     
@@ -2176,6 +2193,13 @@ const PTrabManager = () => {
                             <span className="text-muted-foreground">Op:</span>
                             <span className="text-blue-600 font-medium">
                               {formatCurrency(ptrab.totalOperacional || 0)}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Comp Alim:</span>
+                            <span className="text-blue-400 font-medium">
+                              {formatCurrency(ptrab.totalComplementoAlimentacao || 0)}
                             </span>
                           </div>
                           
