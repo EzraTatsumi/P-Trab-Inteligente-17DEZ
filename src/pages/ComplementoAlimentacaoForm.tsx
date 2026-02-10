@@ -190,6 +190,14 @@ const ComplementoAlimentacaoForm = () => {
         return formData.efetivo * formData.valor_etapa_qr * formData.dias_operacao;
     }, [formData.efetivo, formData.valor_etapa_qr, formData.dias_operacao]);
 
+    const currentCategoryTotal = useMemo(() => {
+        if (formData.categoria_complemento === 'genero') {
+            return currentTotalQS + currentTotalQR;
+        } else {
+            return formData.acquisitionGroups.reduce((sum, g) => sum + g.totalValue, 0);
+        }
+    }, [formData.categoria_complemento, currentTotalQS, currentTotalQR, formData.acquisitionGroups]);
+
     // Lógica de cálculo e adição à lista pendente
     const handleStageCalculation = () => {
         const { categoria_complemento, efetivo, dias_operacao } = formData;
@@ -466,7 +474,11 @@ const ComplementoAlimentacaoForm = () => {
                                                 </div>
                                             )}
 
-                                            <div className="mt-6 flex justify-end">
+                                            <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-medium text-muted-foreground uppercase">Total da Solicitação:</span>
+                                                    <span className="text-lg font-extrabold text-foreground">{formatCurrency(currentCategoryTotal)}</span>
+                                                </div>
                                                 <Button className="w-full md:w-auto" disabled={isSaveDisabled} onClick={handleStageCalculation}>
                                                     <Save className="mr-2 h-4 w-4" />
                                                     Salvar Itens na Lista
