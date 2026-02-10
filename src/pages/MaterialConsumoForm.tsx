@@ -1602,11 +1602,6 @@ const MaterialConsumoForm = () => {
                                                                         <span className="text-muted-foreground">ND 33.90.30:</span>
                                                                         <span className="text-green-600">{formatCurrency(Number(registro.valor_nd_30))}</span>
                                                                     </div>
-                                                                    {/* ND 33.90.39 */}
-                                                                    <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">ND 33.90.39:</span>
-                                                                        <span className="text-green-600">{formatCurrency(Number(registro.valor_nd_39))}</span>
-                                                                    </div>
                                                                 </div>
                                                             </Card>
                                                         );
