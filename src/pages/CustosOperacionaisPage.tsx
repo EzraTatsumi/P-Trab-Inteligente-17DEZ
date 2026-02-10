@@ -834,7 +834,7 @@ const CustosOperacionaisPage = () => {
       return {
         value: value,
         rawDigits: rawDigits,
-        onChange: (digits: string) => handleDiariaChange(rankKey, destination, digits),
+        onChange: (val: number) => handleDiariaChange(rankKey, destination, numberToRawDigits(val)),
         onKeyDown: handleEnterToNextField,
         placeholder: "0,00",
         className: "text-center",
