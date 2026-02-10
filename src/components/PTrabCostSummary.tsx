@@ -392,7 +392,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
       
       omTotals.totalLogistica += valorTotal;
 
-      const updateCategoryTotals = (group: OmTotals[keyof OmTotals] & { groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> }) => {
+      const updateCategoryTotals = (group: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> }) => {
           if (!group) return; // Safety check
           group.total += valorTotal;
           group.totalND30 += valorND30;
@@ -581,7 +581,7 @@ const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregatedTotals>
         totalDieselValor: 0, totalGasolinaValor: 0, totalDieselLitros: 0, totalGasolinaLitros: 0, totalLubrificanteValor: 0, totalLubrificanteLitros: 0, totalCombustivel: 0,
         
         totalDiarias: 0, totalDiariasND15: 0, totalDiariasND30: 0, totalMilitaresDiarias: 0, totalDiasViagem: 0,
-        totalVerbaOperacional: 0, totalVeracionalND30: 0, totalVerbaOperacionalND39: 0, totalEquipesVerba: 0, totalDiasVerba: 0,
+        totalVerbaOperacional: 0, totalVerbaOperacionalND30: 0, totalVerbaOperacionalND39: 0, totalEquipesVerba: 0, totalDiasVerba: 0,
         totalSuprimentoFundos: 0, totalSuprimentoFundosND30: 0, totalSuprimentoFundosND39: 0, totalEquipesSuprimento: 0, totalDiasSuprimento: 0,
         totalPassagensND33: 0, totalQuantidadePassagens: 0, totalTrechosPassagens: 0,
         totalConcessionariaND39: 0, totalConcessionariaRegistros: 0, totalConcessionariaAgua: 0, totalConcessionariaEnergia: 0,
