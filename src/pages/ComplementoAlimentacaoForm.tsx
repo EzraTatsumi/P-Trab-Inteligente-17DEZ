@@ -50,6 +50,13 @@ import PageMetadata from "@/components/PageMetadata";
 import { PublicoSelect } from "@/components/PublicoSelect";
 import CurrencyInput from "@/components/CurrencyInput";
 
+interface LancheItem {
+    id: string;
+    descricao: string;
+    quantidade: number;
+    valor_unitario: number;
+}
+
 // Tipo para o item calculado na lista pendente
 interface StagedComplemento {
     tempId: string;
@@ -72,8 +79,8 @@ interface StagedComplemento {
     total_qs?: number;
     total_qr?: number;
     
-    // Grupos para Água/Lanche
-    acquisitionGroups?: AcquisitionGroup[];
+    // Itens para Lanche
+    lanche_items?: LancheItem[];
 }
 
 // Estado inicial para o formulário
@@ -108,6 +115,12 @@ interface ComplementoAlimentacaoFormState {
     agua_om_uasg: string;
     agua_ug_uasg: string;
 
+    // Campos específicos para Lanche
+    lanche_pregao: string;
+    lanche_om_uasg: string;
+    lanche_ug_uasg: string;
+    lanche_items: LancheItem[];
+
     acquisitionGroups: AcquisitionGroup[];
 }
 
@@ -141,6 +154,11 @@ const initialFormState: ComplementoAlimentacaoFormState = {
     agua_om_uasg: "",
     agua_ug_uasg: "",
 
+    lanche_pregao: "",
+    lanche_om_uasg: "",
+    lanche_ug_uasg: "",
+    lanche_items: [],
+
     acquisitionGroups: [],
 };
 
@@ -158,6 +176,7 @@ const ComplementoAlimentacaoForm = () => {
     const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
     const [selectedOmQrId, setSelectedOmQrId] = useState<string | undefined>(undefined);
     const [selectedOmAguaId, setSelectedOmAguaId] = useState<string | undefined>(undefined);
+    const [selectedOmLancheId, setSelectedOmLancheId] = useState<string | undefined>(undefined);
     
     const [isGroupFormOpen, setIsGroupFormOpen] = useState(false);
     const [groupToEdit, setGroupToEdit] = useState<AcquisitionGroup | undefined>(undefined);
@@ -180,6 +199,7 @@ const ComplementoAlimentacaoForm = () => {
             setSelectedOmFavorecidaId(omData.id);
             setSelectedOmQrId(omData.id);
             setSelectedOmAguaId(omData.id);
+            setSelectedOmLancheId(omData.id);
 
             setFormData(prev => ({ 
                 ...prev, 
@@ -194,7 +214,9 @@ const ComplementoAlimentacaoForm = () => {
                 om_destino: omData.nome_om,
                 ug_destino: omData.codug_om,
                 agua_om_uasg: omData.nome_om,
-                agua_ug_uasg: omData.codug_om
+                agua_ug_uasg: omData.codug_om,
+                lanche_om_uasg: omData.nome_om,
+                lanche_ug_uasg: omData.codug_om
             }));
         }
     };
@@ -218,15 +240,19 @@ const ComplementoAlimentacaoForm = () => {
         return totalGarrafas * formData.agua_valor_unitario;
     }, [formData.efetivo, formData.agua_consumo_dia, formData.dias_operacao, formData.agua_volume_envase, formData.agua_valor_unitario]);
 
+    const currentTotalLanche = useMemo(() => {
+        return formData.lanche_items.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
+    }, [formData.lanche_items]);
+
     const currentCategoryTotal = useMemo(() => {
         if (formData.categoria_complemento === 'genero') {
             return currentTotalQS + currentTotalQR;
         } else if (formData.categoria_complemento === 'agua') {
             return currentTotalAgua;
         } else {
-            return formData.acquisitionGroups.reduce((sum, g) => sum + g.totalValue, 0);
+            return currentTotalLanche;
         }
-    }, [formData.categoria_complemento, currentTotalQS, currentTotalQR, currentTotalAgua, formData.acquisitionGroups]);
+    }, [formData.categoria_complemento, currentTotalQS, currentTotalQR, currentTotalAgua, currentTotalLanche]);
 
     // Lógica de cálculo e adição à lista pendente
     const handleStageCalculation = () => {
@@ -274,26 +300,22 @@ const ComplementoAlimentacaoForm = () => {
                 valor_nd_39: 0
             };
         } else {
-            // Para Lanche, usamos os grupos de aquisição
-            const totalValue = formData.acquisitionGroups.reduce((sum, g) => sum + g.totalValue, 0);
-            const totalND30 = formData.acquisitionGroups.reduce((sum, g) => sum + g.totalND30, 0);
-            const totalND39 = formData.acquisitionGroups.reduce((sum, g) => sum + g.totalND39, 0);
-
+            const totalValue = currentTotalLanche;
             newItem = {
                 tempId: crypto.randomUUID(),
                 categoria: 'lanche',
                 om_favorecida: formData.om_favorecida,
                 ug_favorecida: formData.ug_favorecida,
-                om_destino: formData.om_destino,
-                ug_destino: formData.ug_destino,
+                om_destino: formData.lanche_om_uasg,
+                ug_destino: formData.lanche_ug_uasg,
                 dias_operacao,
                 efetivo,
                 fase_atividade: formData.fase_atividade,
                 publico: formData.publico,
                 valor_total: totalValue,
-                valor_nd_30: totalND30,
-                valor_nd_39: totalND39,
-                acquisitionGroups: [...formData.acquisitionGroups]
+                valor_nd_30: totalValue,
+                valor_nd_39: 0,
+                lanche_items: [...formData.lanche_items]
             };
         }
 
@@ -302,8 +324,8 @@ const ComplementoAlimentacaoForm = () => {
         // Reset parcial do form para permitir nova adição
         setFormData(prev => ({
             ...prev,
+            lanche_items: [],
             acquisitionGroups: [],
-            // Mantendo dados conforme solicitado
         }));
         
         toast.success("Item adicionado à lista de revisão.");
@@ -340,9 +362,30 @@ const ComplementoAlimentacaoForm = () => {
                 !formData.agua_om_uasg
             );
         } else {
-            return formData.acquisitionGroups.length === 0;
+            return formData.lanche_items.length === 0 || formData.lanche_items.some(i => !i.descricao || i.quantidade <= 0 || i.valor_unitario <= 0) || !formData.lanche_pregao || !formData.lanche_om_uasg;
         }
     }, [formData, isBaseFormReady, isGenero]);
+
+    const addLancheItem = () => {
+        setFormData(prev => ({
+            ...prev,
+            lanche_items: [...prev.lanche_items, { id: crypto.randomUUID(), descricao: "", quantidade: 0, valor_unitario: 0 }]
+        }));
+    };
+
+    const removeLancheItem = (id: string) => {
+        setFormData(prev => ({
+            ...prev,
+            lanche_items: prev.lanche_items.filter(i => i.id !== id)
+        }));
+    };
+
+    const updateLancheItem = (id: string, field: keyof LancheItem, value: any) => {
+        setFormData(prev => ({
+            ...prev,
+            lanche_items: prev.lanche_items.map(i => i.id === id ? { ...i, [field]: value } : i)
+        }));
+    };
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
@@ -555,47 +598,98 @@ const ComplementoAlimentacaoForm = () => {
                                                         </div>
                                                     </div>
                                                 )}
-                                            </div>
 
-                                            {formData.categoria_complemento === 'lanche' && (
-                                                <div className="mt-6">
-                                                    <Card className="p-4 bg-background">
-                                                        <div className="flex items-center justify-between mb-4">
-                                                            <h4 className="text-base font-semibold">Itens de Aquisição ({formData.acquisitionGroups.length})</h4>
-                                                        </div>
-                                                        
-                                                        {isGroupFormOpen ? (
-                                                            <AcquisitionGroupForm 
-                                                                initialGroup={groupToEdit} 
-                                                                onSave={(g) => { setFormData(prev => ({...prev, acquisitionGroups: [...prev.acquisitionGroups, g]})); setIsGroupFormOpen(false); }} 
-                                                                onCancel={() => setIsGroupFormOpen(false)}
-                                                                onOpenItemSelector={(items) => { setItemsToPreselect(items); setIsItemSelectorOpen(true); }}
-                                                                selectedItemsFromSelector={selectedItemsFromSelector}
-                                                                onOpenChange={setIsItemSelectorOpen}
-                                                                onClearSelectedItems={() => setSelectedItemsFromSelector(null)}
-                                                            />
-                                                        ) : (
-                                                            <div className="space-y-4">
-                                                                {formData.acquisitionGroups.length === 0 ? (
-                                                                    <Alert><AlertCircle className="h-4 w-4" /><AlertTitle>Nenhum item</AlertTitle><AlertDescription>Adicione itens para esta categoria.</AlertDescription></Alert>
+                                                {formData.categoria_complemento === 'lanche' && (
+                                                    <div className="grid grid-cols-1 gap-6 pt-4 border-t">
+                                                        <div className="space-y-4 p-4 bg-amber-500/5 rounded-md border border-amber-500/10 relative overflow-hidden">
+                                                            <div className="flex justify-between items-start">
+                                                                <h4 className="font-bold text-sm text-amber-600 uppercase">Detalhamento de Lanche/Catanho</h4>
+                                                                <div className="text-right">
+                                                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Subtotal Estimado</p>
+                                                                    <p className="text-sm font-extrabold text-amber-600">{formatCurrency(currentTotalLanche)}</p>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label>Pregão *</Label>
+                                                                    <Input 
+                                                                        value={formData.lanche_pregao} 
+                                                                        onChange={(e) => setFormData({...formData, lanche_pregao: e.target.value})} 
+                                                                        placeholder="Ex: 90.001/24" 
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>UASG *</Label>
+                                                                    <OmSelector 
+                                                                        selectedOmId={selectedOmLancheId} 
+                                                                        onChange={(om) => setFormData({...formData, lanche_om_uasg: om?.nome_om || "", lanche_ug_uasg: om?.codug_om || ""})} 
+                                                                        placeholder="Selecione a UASG" 
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="space-y-4 pt-4 border-t border-amber-500/10">
+                                                                <div className="flex items-center justify-between">
+                                                                    <h5 className="text-xs font-bold uppercase text-muted-foreground">Itens do Lanche ({formData.lanche_items.length})</h5>
+                                                                    <Button variant="outline" size="sm" onClick={addLancheItem} className="h-7 text-[10px] uppercase font-bold border-amber-500/30 text-amber-600 hover:bg-amber-500/10">
+                                                                        <Plus className="mr-1 h-3 w-3" /> Adicionar Item
+                                                                    </Button>
+                                                                </div>
+
+                                                                {formData.lanche_items.length === 0 ? (
+                                                                    <div className="text-center py-6 border-2 border-dashed border-amber-500/10 rounded-lg">
+                                                                        <p className="text-xs text-muted-foreground">Nenhum item adicionado ao lanche.</p>
+                                                                    </div>
                                                                 ) : (
-                                                                    <div className="space-y-2">
-                                                                        {formData.acquisitionGroups.map(g => (
-                                                                            <div key={g.tempId} className="flex justify-between items-center p-2 border rounded bg-muted/30">
-                                                                                <span className="text-sm font-medium">{g.groupName}</span>
-                                                                                <span className="text-sm font-bold">{formatCurrency(g.totalValue)}</span>
-                                                                            </div>
+                                                                    <div className="space-y-3">
+                                                                        {formData.lanche_items.map((item, index) => (
+                                                                            <Collapsible key={item.id} defaultOpen={true} className="border border-amber-500/10 rounded-md bg-background/50">
+                                                                                <div className="flex items-center justify-between p-2 bg-amber-500/5">
+                                                                                    <CollapsibleTrigger className="flex items-center gap-2 text-[10px] font-bold uppercase text-amber-700">
+                                                                                        <ChevronDown className="h-3 w-3" />
+                                                                                        Item #{index + 1}: {item.descricao || "Sem descrição"}
+                                                                                    </CollapsibleTrigger>
+                                                                                    <Button variant="ghost" size="icon" onClick={() => removeLancheItem(item.id)} className="h-6 w-6 text-destructive hover:bg-destructive/10">
+                                                                                        <Trash2 className="h-3 w-3" />
+                                                                                    </Button>
+                                                                                </div>
+                                                                                <CollapsibleContent className="p-3 space-y-3">
+                                                                                    <div className="space-y-2">
+                                                                                        <Label className="text-[10px] uppercase">Descrição do Item *</Label>
+                                                                                        <Input 
+                                                                                            value={item.descricao} 
+                                                                                            onChange={(e) => updateLancheItem(item.id, "descricao", e.target.value)} 
+                                                                                            placeholder="Ex: Pão de forma, presunto, queijo..." 
+                                                                                            className="h-8 text-xs"
+                                                                                        />
+                                                                                    </div>
+                                                                                    <div className="grid grid-cols-2 gap-3">
+                                                                                        <div className="space-y-2">
+                                                                                            <Label className="text-[10px] uppercase">Quantidade *</Label>
+                                                                                            <Input 
+                                                                                                type="number" 
+                                                                                                value={item.quantidade || ""} 
+                                                                                                onChange={(e) => updateLancheItem(item.id, "quantidade", parseInt(e.target.value) || 0)} 
+                                                                                                className="h-8 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                                            />
+                                                                                        </div>
+                                                                                        <div className="space-y-2">
+                                                                                            <Label className="text-[10px] uppercase">Valor Unitário *</Label>
+                                                                                            <CurrencyInput value={item.valor_unitario} onChange={(val) => updateLancheItem(item.id, "valor_unitario", val)} className="h-8 text-xs" />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </CollapsibleContent>
+                                                                            </Collapsible>
                                                                         ))}
                                                                     </div>
                                                                 )}
-                                                                <Button variant="outline" className="w-full" onClick={() => setIsGroupFormOpen(true)}>
-                                                                    <Plus className="mr-2 h-4 w-4" /> Adicionar Itens de Aquisição
-                                                                </Button>
                                                             </div>
-                                                        )}
-                                                    </Card>
-                                                </div>
-                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
 
                                             <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4">
                                                 <div className="flex items-center gap-2">
