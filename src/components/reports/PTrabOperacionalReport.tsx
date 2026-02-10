@@ -17,6 +17,7 @@ import {
   PassagemRegistro,
   GrupoOMOperacional, 
   MaterialConsumoRegistro,
+  ComplementoAlimentacaoRegistro,
 } from "@/pages/PTrabReportManager"; 
 import { DIARIA_RANKS_CONFIG } from "@/lib/diariaUtils";
 import { generateConsolidatedPassagemMemoriaCalculo, ConsolidatedPassagemRecord } from "@/lib/passagemUtils"; 
@@ -42,6 +43,7 @@ interface PTrabOperacionalReportProps {
   registrosPassagem: PassagemRegistro[];
   registrosConcessionaria: ConcessionariaRegistroComDiretriz[]; 
   registrosMaterialConsumo: MaterialConsumoRegistro[];
+  registrosComplementoAlimentacao: ComplementoAlimentacaoRegistro[];
   diretrizesOperacionais: Tables<'diretrizes_operacionais'> | null;
   diretrizesPassagens: Tables<'diretrizes_passagens'>[]; 
   fileSuffix: string;
@@ -51,6 +53,7 @@ interface PTrabOperacionalReportProps {
   generatePassagemMemoriaCalculo: (registro: PassagemRegistro) => string; 
   generateConcessionariaMemoriaCalculo: (registro: ConcessionariaRegistroComDiretriz) => string; 
   generateMaterialConsumoMemoriaCalculo: (registro: MaterialConsumoRegistro) => string;
+  generateComplementoMemoriaCalculo: (registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR') => string;
 }
 
 const fetchDiretrizDetails = async (diretrizId: string): Promise<{ numero_pregao: string | null, ug_referencia: string | null } | null> => {
@@ -124,15 +127,16 @@ interface ConsolidatedConcessionariaReport extends ConsolidatedConcessionariaRec
 const EXPENSE_ORDER_MAP: Record<string, number> = {
     'CONCESSIONÁRIA': 1,
     'DIÁRIAS': 2,
-    'MATERIAL DE CONSUMO': 3,
-    'PASSAGENS': 4,
-    'SUPRIMENTO DE FUNDOS': 5,
-    'VERBA OPERACIONAL': 6,
+    'COMPLEMENTO DE ALIMENTAÇÃO': 3,
+    'MATERIAL DE CONSUMO': 4,
+    'PASSAGENS': 5,
+    'SUPRIMENTO DE FUNDOS': 6,
+    'VERBA OPERACIONAL': 7,
 };
 
 type ExpenseRow = {
     type: keyof typeof EXPENSE_ORDER_MAP;
-    data: DiariaRegistro | ConsolidatedPassagemReport | ConsolidatedConcessionariaReport | VerbaOperacionalRegistro | MaterialConsumoRegistro;
+    data: DiariaRegistro | ConsolidatedPassagemReport | ConsolidatedConcessionariaReport | VerbaOperacionalRegistro | MaterialConsumoRegistro | { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' };
     isContinuation?: boolean;
     partialItems?: ItemAquisicao[];
     partialTotal?: number;
@@ -151,6 +155,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   registrosPassagem,
   registrosConcessionaria,
   registrosMaterialConsumo,
+  registrosComplementoAlimentacao,
   diretrizesOperacionais,
   diretrizesPassagens, 
   fileSuffix,
@@ -160,6 +165,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   generatePassagemMemoriaCalculo,
   generateConcessionariaMemoriaCalculo,
   generateMaterialConsumoMemoriaCalculo,
+  generateComplementoMemoriaCalculo,
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -341,7 +347,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         allRows.push({ type: 'CONCESSIONÁRIA', data: consolidated });
     });
 
-    // Material de Consumo (Cada registro é uma linha, mas pode ser dividido se exceder 15 linhas de detalhamento)
+    // Material de Consumo
     group.materialConsumo.forEach(registro => {
         const items = (registro.itens_aquisicao as unknown as ItemAquisicao[]) || [];
         const chunks = splitMaterialConsumoItems(items, 15);
@@ -358,6 +364,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 partialND39: totalND39
             });
         });
+    });
+
+    // Complemento de Alimentação
+    group.complementoAlimentacao.forEach(item => {
+        allRows.push({ type: 'COMPLEMENTO DE ALIMENTAÇÃO', data: item });
     });
 
     group.verbaOperacional.forEach(registro => {
@@ -409,16 +420,20 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         totals.nd39 += r.valor_nd_39;
     });
 
-    // Totais de Material de Consumo
     registrosMaterialConsumo.forEach(r => {
         totals.nd30 += r.valor_nd_30;
         totals.nd39 += r.valor_nd_39;
     });
 
+    registrosComplementoAlimentacao.forEach(r => {
+        totals.nd30 += Number(r.valor_nd_30 || 0);
+        totals.nd39 += Number(r.valor_nd_39 || 0);
+    });
+
     const totalGND3 = totals.nd15 + totals.nd30 + totals.nd33 + totals.nd39 + totals.nd00;
     
     return { ...totals, totalGND3 };
-  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosMaterialConsumo]);
+  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosMaterialConsumo, registrosComplementoAlimentacao]);
   
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
     const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
@@ -498,7 +513,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         worksheet.mergeCells(`A${currentRow}:I${currentRow}`); 
         currentRow++;
     };
-    addHeaderRow('MINISTÉESA');
+    addHeaderRow('MINISTÉRIO DA DEFESA');
     addHeaderRow('EXÉRCITO BRASILEIRO');
     addHeaderRow(ptrabData.comando_militar_area.toUpperCase());
     const omExtensoRow = worksheet.getRow(currentRow);
@@ -589,6 +604,18 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         group.passagens.forEach(r => { subtotalOM.nd33 += r.valor_nd_33; subtotalOM.totalGND3 += r.valor_nd_33; });
         group.concessionarias.forEach(r => { subtotalOM.nd39 += r.valor_nd_39; subtotalOM.totalGND3 += r.valor_nd_39; });
         group.materialConsumo.forEach(r => { subtotalOM.nd30 += r.valor_nd_30; subtotalOM.nd39 += r.valor_nd_39; subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39; });
+        group.complementoAlimentacao.forEach(item => {
+            const r = item.registro;
+            if (r.categoria_complemento === 'genero' && item.subType) {
+                const val = item.subType === 'QS' ? (r.efetivo * r.dias_operacao * r.valor_etapa_qs) : (r.efetivo * r.dias_operacao * r.valor_etapa_qr);
+                subtotalOM.nd30 += val;
+                subtotalOM.totalGND3 += val;
+            } else {
+                subtotalOM.nd30 += Number(r.valor_nd_30 || 0);
+                subtotalOM.nd39 += Number(r.valor_nd_39 || 0);
+                subtotalOM.totalGND3 += Number(r.valor_total || 0);
+            }
+        });
 
         sortedRows.forEach(rowItem => {
             const row = worksheet.getRow(currentRow);
@@ -650,6 +677,25 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                     
                     omDetentora = matConsumo.om_detentora || matConsumo.organizacao;
                     ugDetentora = matConsumo.ug_detentora || matConsumo.ug;
+                    break;
+                case 'COMPLEMENTO DE ALIMENTAÇÃO':
+                    const compItem = data as { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' };
+                    const r = compItem.registro;
+                    despesasLabel = `${type} (${r.group_name}${compItem.subType ? ` - ${compItem.subType}` : ''})`;
+                    
+                    if (r.categoria_complemento === 'genero' && compItem.subType) {
+                        totalLinha = compItem.subType === 'QS' ? (r.efetivo * r.dias_operacao * r.valor_etapa_qs) : (r.efetivo * r.dias_operacao * r.valor_etapa_qr);
+                        nd30 = totalLinha;
+                        omDetentora = compItem.subType === 'QS' ? (r.om_qs || r.organizacao) : r.organizacao;
+                        ugDetentora = compItem.subType === 'QS' ? (r.ug_qs || r.ug) : r.ug;
+                    } else {
+                        totalLinha = Number(r.valor_total || 0);
+                        nd30 = Number(r.valor_nd_30 || 0);
+                        nd39 = Number(r.valor_nd_39 || 0);
+                        omDetentora = r.om_detentora || r.organizacao;
+                        ugDetentora = r.ug_detentora || r.ug;
+                    }
+                    memoria = generateComplementoMemoriaCalculo(r, compItem.subType);
                     break;
                 case 'VERBA OPERACIONAL':
                     const verba = data as VerbaOperacionalRegistro;
@@ -784,10 +830,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     a.href = url; a.download = generateFileName('Excel'); a.click();
     window.URL.revokeObjectURL(url);
     toast({ title: "Excel Exportado!", description: "O relatório Operacional foi salvo com sucesso.", duration: 3000 });
-  }, [omsOrdenadas, gruposPorOM, consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosMaterialConsumo, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, generateMaterialConsumoMemoriaCalculo, diretrizesOperacionais, toast, getSortedRowsForOM]);
+  }, [omsOrdenadas, gruposPorOM, consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosMaterialConsumo, registrosComplementoAlimentacao, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, generateMaterialConsumoMemoriaCalculo, generateComplementoMemoriaCalculo, diretrizesOperacionais, toast, getSortedRowsForOM]);
 
 
-  if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0 && registrosSuprimentoFundos.length === 0 && registrosPassagem.length === 0 && registrosConcessionaria.length === 0 && registrosMaterialConsumo.length === 0) {
+  if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0 && registrosSuprimentoFundos.length === 0 && registrosPassagem.length === 0 && registrosConcessionaria.length === 0 && registrosMaterialConsumo.length === 0 && registrosComplementoAlimentacao.length === 0) {
     return (
       <Card className="mt-4">
         <CardHeader>
@@ -798,7 +844,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-muted-foreground">Nenhum registro de Diária, Verba Operacional, Suprimento de Fundos, Passagens, Concessionária ou Material de Consumo encontrado para este P Trab.</p>
+            <p className="text-muted-foreground">Nenhum registro operacional encontrado para este P Trab.</p>
           </div>
         </CardContent>
       </Card>
@@ -884,6 +930,18 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
               group.passagens.forEach(r => { subtotalOM.nd33 += r.valor_nd_33; subtotalOM.totalGND3 += r.valor_nd_33; });
               group.concessionarias.forEach(r => { subtotalOM.nd39 += r.valor_nd_39; subtotalOM.totalGND3 += r.valor_nd_39; });
               group.materialConsumo.forEach(r => { subtotalOM.nd30 += r.valor_nd_30; subtotalOM.nd39 += r.valor_nd_39; subtotalOM.totalGND3 += r.valor_nd_30 + r.valor_nd_39; });
+              group.complementoAlimentacao.forEach(item => {
+                  const r = item.registro;
+                  if (r.categoria_complemento === 'genero' && item.subType) {
+                      const val = item.subType === 'QS' ? (r.efetivo * r.dias_operacao * r.valor_etapa_qs) : (r.efetivo * r.dias_operacao * r.valor_etapa_qr);
+                      subtotalOM.nd30 += val;
+                      subtotalOM.totalGND3 += val;
+                  } else {
+                      subtotalOM.nd30 += Number(r.valor_nd_30 || 0);
+                      subtotalOM.nd39 += Number(r.valor_nd_39 || 0);
+                      subtotalOM.totalGND3 += Number(r.valor_total || 0);
+                  }
+              });
 
               return (
                   <React.Fragment key={omName}>
@@ -947,6 +1005,25 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                   omDetentora = matConsumo.om_detentora || matConsumo.organizacao;
                                   ugDetentora = matConsumo.ug_detentora || matConsumo.ug;
                                   break;
+                              case 'COMPLEMENTO DE ALIMENTAÇÃO':
+                                  const compItem = data as { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' };
+                                  const r = compItem.registro;
+                                  despesasLabel = `${type} (${r.group_name}${compItem.subType ? ` - ${compItem.subType}` : ''})`;
+                                  
+                                  if (r.categoria_complemento === 'genero' && compItem.subType) {
+                                      totalLinha = compItem.subType === 'QS' ? (r.efetivo * r.dias_operacao * r.valor_etapa_qs) : (r.efetivo * r.dias_operacao * r.valor_etapa_qr);
+                                      nd30 = totalLinha;
+                                      omDetentora = compItem.subType === 'QS' ? (r.om_qs || r.organizacao) : r.organizacao;
+                                      ugDetentora = compItem.subType === 'QS' ? (r.ug_qs || r.ug) : r.ug;
+                                  } else {
+                                      totalLinha = Number(r.valor_total || 0);
+                                      nd30 = Number(r.valor_nd_30 || 0);
+                                      nd39 = Number(r.valor_nd_39 || 0);
+                                      omDetentora = r.om_detentora || r.organizacao;
+                                      ugDetentora = r.ug_detentora || r.ug;
+                                  }
+                                  memoria = generateComplementoMemoriaCalculo(r, compItem.subType);
+                                  break;
                               case 'VERBA OPERACIONAL':
                                   const verba = data as VerbaOperacionalRegistro;
                                   totalLinha = verba.valor_nd_30 + verba.valor_nd_39;
@@ -966,7 +1043,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                           }
 
                           return (
-                              <tr key={`${type}-${omName}-${(data as any).id || (data as any).groupKey}-${rowItem.isContinuation ? 'cont' : 'orig'}`} className="expense-row">
+                              <tr key={`${type}-${omName}-${(data as any).id || (data as any).groupKey || (data as any).registro?.id}-${rowItem.isContinuation ? 'cont' : 'orig'}-${rowItem.subType || ''}`} className="expense-row">
                                 <td className="col-despesas-op"> 
                                   <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: despesasLabel }} />
                                 </td>
