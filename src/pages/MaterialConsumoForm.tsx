@@ -1508,10 +1508,6 @@ const MaterialConsumoForm = () => {
                                     <div className="flex justify-end gap-3 pt-4">
                                         {isStagingUpdate ? (
                                             <>
-                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
-                                                    <XCircle className="mr-2 h-4 w-4" />
-                                                    Cancelar Edição
-                                                </Button>
                                                 <Button 
                                                     type="button" 
                                                     onClick={handleCommitStagedUpdate}
@@ -1521,13 +1517,13 @@ const MaterialConsumoForm = () => {
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                                                     Atualizar Lote
                                                 </Button>
+                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
+                                                    <XCircle className="mr-2 h-4 w-4" />
+                                                    Cancelar Edição
+                                                </Button>
                                             </>
                                         ) : (
                                             <>
-                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
-                                                    <XCircle className="mr-2 h-4 w-4" />
-                                                    Limpar Lista
-                                                </Button>
                                                 <Button 
                                                     type="button" 
                                                     onClick={handleSavePendingGroups}
@@ -1536,6 +1532,10 @@ const MaterialConsumoForm = () => {
                                                 >
                                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                                     Salvar Registros
+                                                </Button>
+                                                <Button type="button" variant="outline" onClick={handleClearPending} disabled={isSaving}>
+                                                    <XCircle className="mr-2 h-4 w-4" />
+                                                    Limpar Lista
                                                 </Button>
                                             </>
                                         )}
