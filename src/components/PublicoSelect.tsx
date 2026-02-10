@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const OPCOES_PADRAO = ["Militares", "OSP", "Civis"];
+const OPCOES_PADRAO = ["OSP", "Civis", "Militares"];
 
 interface PublicoSelectProps {
   value: string;
@@ -53,6 +53,7 @@ export function PublicoSelect({ value, onChange, disabled }: PublicoSelectProps)
           <span className="truncate">
             {value || "Selecione o público..."}
           </span>
+          <Check className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
