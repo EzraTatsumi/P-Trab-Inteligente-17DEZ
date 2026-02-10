@@ -1,5 +1,6 @@
 import { Json } from "@/integrations/supabase/types";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
+import { formatCodug, formatPregao, formatCurrency } from "@/lib/formatUtils";
 
 export interface ComplementoAlimentacaoRegistro {
     id: string;
@@ -82,15 +83,34 @@ export const generateComplementoMemoriaCalculo = (
     context: { organizacao: string; efetivo: number; dias_operacao: number; fase_atividade: string }
 ): string => {
     if (registro.categoria_complemento === 'genero') {
+        const diasText = registro.dias_operacao === 1 ? "dia" : "dias";
+        const publicoText = registro.publico || "militares";
+        
         const totalQS = (registro.efetivo || 0) * (registro.dias_operacao || 0) * (registro.valor_etapa_qs || 0);
         const totalQR = (registro.efetivo || 0) * (registro.dias_operacao || 0) * (registro.valor_etapa_qr || 0);
         
-        return `Solicitação de Gênero Alimentício para a OM ${context.organizacao}.\n` +
-               `Público: ${registro.publico || 'Não informado'}\n` +
-               `Contexto: ${registro.efetivo} militares por ${registro.dias_operacao} dias na fase ${context.fase_atividade}.\n` +
-               `Cálculo QS: ${registro.efetivo} x ${registro.dias_operacao} x R$ ${registro.valor_etapa_qs?.toFixed(2)} = R$ ${totalQS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n` +
-               `Cálculo QR: ${registro.efetivo} x ${registro.dias_operacao} x R$ ${registro.valor_etapa_qr?.toFixed(2)} = R$ ${totalQR.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n` +
-               `Valor Total: R$ ${Number(registro.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+        const valQS = formatCurrency(registro.valor_etapa_qs || 0);
+        const valQR = formatCurrency(registro.valor_etapa_qr || 0);
+        const tQS = formatCurrency(totalQS);
+        const tQR = formatCurrency(totalQR);
+
+        const blockQS = `33.90.30 - Aquisição de Gêneros Alimentícios para atender ${registro.efetivo} ${publicoText}, durante ${registro.dias_operacao} ${diasText} de ${context.fase_atividade}.\n\n` +
+                        `Cálculo:\n` +
+                        `- Valor do Complemento: ${valQS}/dia.\n\n` +
+                        `Fórmula: Efetivo a ser alimentado x valor da etapa x Nr de dias.\n` +
+                        `- ${registro.efetivo} ${publicoText} x ${valQS}/dia x ${registro.dias_operacao} ${diasText} = ${tQS}.\n\n` +
+                        `Total: ${tQS}.\n` +
+                        `(Pregão ${formatPregao(registro.pregao_qs || '')} - UASG ${formatCodug(registro.ug_qs || '')})`;
+
+        const blockQR = `33.90.30 - Aquisição de Gêneros Alimentícios para atender ${registro.efetivo} ${publicoText}, durante ${registro.dias_operacao} ${diasText} de ${context.fase_atividade}.\n\n` +
+                        `Cálculo:\n` +
+                        `- Valor do Complemento: ${valQR}/dia.\n\n` +
+                        `Fórmula: Efetivo a ser alimentado x valor da etapa x Nr de dias.\n` +
+                        `- ${registro.efetivo} ${publicoText} x ${valQR}/dia x ${registro.dias_operacao} ${diasText} = ${tQR}.\n\n` +
+                        `Total: ${tQR}.\n` +
+                        `(Pregão ${formatPregao(registro.pregao_qr || '')} - UASG ${formatCodug(registro.ug_qr || '')})`;
+
+        return `${blockQS}\n\n--------------------------------------------------\n\n${blockQR}`;
     }
 
     if (registro.categoria_complemento === 'agua') {
