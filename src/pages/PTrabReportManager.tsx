@@ -59,7 +59,7 @@ import {
 import { 
   MaterialConsumoRegistro as MaterialConsumoRegistroType,
   generateMaterialConsumoMemoriaCalculo as generateMaterialConsumoMemoriaCalculoUtility,
-} from "@/lib/materialConsumoUtils"; // NOVO IMPORT
+} from "@/lib/materialConsumoUtils"; 
 import { RefLPC } from "@/types/refLPC";
 import { fetchDiretrizesOperacionais, fetchDiretrizesPassagens } from "@/lib/ptrabUtils"; 
 import { useDefaultDiretrizYear } from "@/hooks/useDefaultDiretrizYear";
@@ -131,7 +131,7 @@ export type PassagemRegistro = PassagemRegistroType;
 
 export type ConcessionariaRegistro = ConcessionariaRegistroComDiretriz;
 
-export type MaterialConsumoRegistro = MaterialConsumoRegistroType; // NOVO TIPO
+export type MaterialConsumoRegistro = MaterialConsumoRegistroType; 
 
 export interface HorasVooRegistro extends Tables<'horas_voo_registros'> {
   quantidade_hv: number;
@@ -198,7 +198,6 @@ export interface ClasseIIIRegistro extends Omit<Tables<'classe_iii_registros'>, 
   preco_lubrificante: number | null;
   valor_nd_30: number;
   valor_nd_39: number;
-  valor_total: number;
   itens_equipamentos: ItemClasseIII[] | null;
 }
 
@@ -253,7 +252,7 @@ export interface GrupoOMOperacional {
   suprimentoFundos: VerbaOperacionalRegistro[];
   passagens: PassagemRegistro[];
   concessionarias: ConcessionariaRegistro[];
-  materialConsumo: MaterialConsumoRegistro[]; // NOVO CAMPO
+  materialConsumo: MaterialConsumoRegistro[]; 
 }
 
 export interface GrupoOM {
@@ -278,7 +277,7 @@ export interface PTrabOperacionalReportProps {
     registrosSuprimentoFundos: VerbaOperacionalRegistro[];
     registrosPassagem: PassagemRegistro[];
     registrosConcessionaria: ConcessionariaRegistro[];
-    registrosMaterialConsumo: MaterialConsumoRegistro[]; // NOVO CAMPO
+    registrosMaterialConsumo: MaterialConsumoRegistro[]; 
     diretrizesOperacionais: Tables<'diretrizes_operacionais'> | null;
     diretrizesPassagens: Tables<'diretrizes_passagens'>[]; 
     fileSuffix: string;
@@ -287,7 +286,7 @@ export interface PTrabOperacionalReportProps {
     generateSuprimentoFundosMemoriaCalculo: (registro: VerbaOperacionalRegistro) => string;
     generatePassagemMemoriaCalculo: (registro: PassagemRegistro) => string;
     generateConcessionariaMemoriaCalculo: (registro: ConcessionariaRegistro) => string;
-    generateMaterialConsumoMemoriaCalculo: (registro: MaterialConsumoRegistro) => string; // NOVO CAMPO
+    generateMaterialConsumoMemoriaCalculo: (registro: MaterialConsumoRegistro) => string; 
 }
 
 
@@ -748,7 +747,7 @@ const PTrabReportManager = () => {
   const [registrosSuprimentoFundos, setRegistrosSuprimentoFundos] = useState<VerbaOperacionalRegistro[]>([]);
   const [registrosPassagem, setRegistrosPassagem] = useState<PassagemRegistro[]>([]);
   const [registrosConcessionaria, setRegistrosConcessionaria] = useState<ConcessionariaRegistro[]>([]);
-  const [registrosMaterialConsumo, setRegistrosMaterialConsumo] = useState<MaterialConsumoRegistro[]>([]); // NOVO ESTADO
+  const [registrosMaterialConsumo, setRegistrosMaterialConsumo] = useState<MaterialConsumoRegistro[]>([]); 
   const [registrosHorasVoo, setRegistrosHorasVoo] = useState<HorasVooRegistro[]>([]); 
   const [diretrizesOperacionais, setDiretrizesOperacionais] = useState<Tables<'diretrizes_operacionais'> | null>(null);
   const [diretrizesPassagens, setDiretrizesPassagens] = useState<Tables<'diretrizes_passagens'>[]>([]);
@@ -796,7 +795,7 @@ const PTrabReportManager = () => {
         { data: verbaOperacionalData }, 
         { data: passagemData },
         { data: concessionariaData },
-        { data: materialConsumoData }, // NOVO FETCH
+        { data: materialConsumoData }, 
         { data: horasVooData }, 
         diretrizesOpData,
         diretrizesPassagensData,
@@ -815,7 +814,7 @@ const PTrabReportManager = () => {
         supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId), 
         supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId),
         supabase.from('concessionaria_registros').select('*, diretriz_id').eq('p_trab_id', ptrabId),
-        supabase.from('material_consumo_registros').select('*').eq('p_trab_id', ptrabId), // NOVO FETCH
+        supabase.from('material_consumo_registros').select('*').eq('p_trab_id', ptrabId), 
         supabase.from('horas_voo_registros').select('*').eq('p_trab_id', ptrabId), 
         fetchDiretrizesOperacionais(year),
         fetchDiretrizesPassagens(year),
@@ -923,7 +922,6 @@ const PTrabReportManager = () => {
           fonte_custo: null,
       })) as ConcessionariaRegistro[]);
 
-      // NOVO: Processar Material de Consumo
       setRegistrosMaterialConsumo((materialConsumoData || []).map(r => ({
           ...r,
           valor_total: Number(r.valor_total || 0),
@@ -980,7 +978,6 @@ const PTrabReportManager = () => {
         grupos[registro.organizacao].linhasQR.push({ 
             registro, 
             tipo: 'QR',
-            valor_nd_30: registro.totalQR,
             valor_nd_30: registro.totalQR,
             valor_nd_39: 0,
         });
@@ -1253,7 +1250,7 @@ const PTrabReportManager = () => {
                 suprimentoFundos: [],
                 passagens: [],
                 concessionarias: [],
-                materialConsumo: [] // NOVO CAMPO
+                materialConsumo: [] 
             };
         }
     };
@@ -1295,7 +1292,6 @@ const PTrabReportManager = () => {
         grupos[om].concessionarias.push(r);
     });
 
-    // NOVO: Processar Material de Consumo (Agrupamento por OM Detentora)
     registrosMaterialConsumo.forEach(r => {
         const om = getCreditRecipientOM(r, true);
         initializeGroup(om);
@@ -1367,7 +1363,7 @@ const PTrabReportManager = () => {
                registrosSuprimentoFundos.length > 0 || 
                registrosPassagem.length > 0 ||
                registrosConcessionaria.length > 0 ||
-               registrosMaterialConsumo.length > 0; // NOVO
+               registrosMaterialConsumo.length > 0; 
 
       case 'material_permanente':
         return false; 
@@ -1437,7 +1433,7 @@ const PTrabReportManager = () => {
                 registrosSuprimentoFundos={registrosSuprimentoFundos}
                 registrosPassagem={registrosPassagem}
                 registrosConcessionaria={registrosConcessionaria}
-                registrosMaterialConsumo={registrosMaterialConsumo} // NOVO
+                registrosMaterialConsumo={registrosMaterialConsumo} 
                 diretrizesOperacionais={diretrizesOperacionais}
                 diretrizesPassagens={diretrizesPassagens} 
                 fileSuffix={fileSuffix}
@@ -1446,7 +1442,7 @@ const PTrabReportManager = () => {
                 generateSuprimentoFundosMemoriaCalculo={generateSuprimentoFundosMemoriaCalculada}
                 generatePassagemMemoriaCalculo={generatePassagemMemoriaCalculada} 
                 generateConcessionariaMemoriaCalculo={generateConcessionariaMemoriaCalculada}
-                generateMaterialConsumoMemoriaCalculo={generateMaterialConsumoMemoriaCalculada} // NOVO
+                generateMaterialConsumoMemoriaCalculo={generateMaterialConsumoMemoriaCalculada} 
             />
         );
       case 'material_permanente':
