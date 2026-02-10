@@ -488,7 +488,7 @@ const ComplementoAlimentacaoForm = () => {
                                                 <CardContent className="p-4">
                                                     <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/20">
                                                         <h4 className="font-bold text-base text-foreground">
-                                                            Complemento de Alimentação ({item.categoria === 'genero' ? 'Gênero' : item.categoria === 'agua' ? 'Água' : 'Lanche'})
+                                                            Complemento de Alimentação ({item.categoria === 'genero' ? 'Gênero Alimentício' : item.categoria === 'agua' ? 'Água' : 'Lanche'})
                                                         </h4>
                                                         <div className="flex items-center gap-2">
                                                             <p className="font-extrabold text-lg text-foreground">
@@ -515,9 +515,18 @@ const ComplementoAlimentacaoForm = () => {
                                                     
                                                     <div className="w-full h-[1px] bg-secondary/20 my-3" />
 
-                                                    <div className="flex justify-between text-xs">
+                                                    <div className="flex justify-between items-center text-xs">
                                                         <span className="text-muted-foreground">ND 33.90.30:</span>
-                                                        <span className="font-bold text-green-600">{formatCurrency(item.valor_nd_30)}</span>
+                                                        <div className="flex gap-3">
+                                                            {item.categoria === 'genero' ? (
+                                                                <>
+                                                                    <span className="font-bold text-blue-600">{formatCurrency(item.total_qs || 0)} (QS)</span>
+                                                                    <span className="font-bold text-green-600">{formatCurrency(item.total_qr || 0)} (QR)</span>
+                                                                </>
+                                                            ) : (
+                                                                <span className="font-bold text-green-600">{formatCurrency(item.valor_nd_30)}</span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </CardContent>
                                             </Card>
