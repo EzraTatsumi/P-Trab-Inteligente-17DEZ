@@ -13,7 +13,7 @@ import { useSession } from "@/components/SessionContextProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchUserCredits, updateUserCredits } from "@/lib/creditUtils";
 import { CreditPromptDialog } from "@/components/CreditPromptDialog";
-import PageMetadata from "@/components/PageMetadata"; // NOVO: Importar PageMetadata
+import PageMetadata from "@/components/PageMetadata";
 
 interface PTrabData {
   numero_ptrab: string;
@@ -40,9 +40,8 @@ const PTrabForm = () => {
   const [selectedTab, setSelectedTab] = useState("logistica");
   const [loadingPTrab, setLoadingPTrab] = useState(true);
   
-  // NOVOS ESTADOS PARA CRÉDITO E DIÁLOGO
   const [showCreditDialog, setShowCreditDialog] = useState(false);
-  const [hasPromptedForCredit, setHasPromptedForCredit] = useState(false); // NOVO: Flag para evitar repetição
+  const [hasPromptedForCredit, setHasPromptedForCredit] = useState(false);
 
   const classesLogistica = [
     { id: "classe-i", name: "Classe I - Subsistência" },
@@ -51,11 +50,10 @@ const PTrabForm = () => {
     { id: "classe-v", name: "Classe V - Armamento" },
     { id: "classe-vi", name: "Classe VI - Material de Engenharia" },
     { id: "classe-vii", name: "Classe VII - Comunicações e Informática" },
-    { id: "classe-viii", name: "Classe VIII - Material de Saúde e Remonta/Veterinária" }, // Rótulo atualizado
+    { id: "classe-viii", name: "Classe VIII - Material de Saúde e Remonta/Veterinária" },
     { id: "classe-ix", name: "Classe IX - Material de Manutenção" },
   ];
 
-  // Itens Operacionais ordenados alfabeticamente
   const itensOperacional = [
     { id: "complemento-alimentacao", name: "Complemento de Alimentação" },
     { id: "horas-voo-avex", name: "Horas de Voo (AvEx)" },
@@ -73,7 +71,6 @@ const PTrabForm = () => {
     { id: "verba-operacional", name: "Verba Operacional" },
   ];
 
-  // --- Lógica de Busca de Créditos (TanStack Query) ---
   const { data: credits, isLoading: isLoadingCredits } = useQuery({
     queryKey: ['userCredits', user?.id],
     queryFn: () => fetchUserCredits(user!.id),
@@ -81,7 +78,6 @@ const PTrabForm = () => {
     initialData: { credit_gnd3: 0, credit_gnd4: 0 },
   });
   
-  // --- Lógica de Busca de Totais (TanStack Query) ---
   const { data: totals, isLoading: isLoadingTotals } = useQuery({
     queryKey: ['ptrabTotals', ptrabId],
     queryFn: () => fetchPTrabTotals(ptrabId!),
@@ -100,12 +96,10 @@ const PTrabForm = () => {
     } as any,
   });
   
-  // --- Lógica de Mutação para Salvar Créditos ---
   const saveCreditsMutation = useMutation({
     mutationFn: ({ gnd3, gnd4 }: { gnd3: number, gnd4: number }) => 
       updateUserCredits(user!.id, gnd3, gnd4),
     onSuccess: () => {
-      // Invalida as queries para forçar a atualização dos totais e créditos
       queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
       queryClient.invalidateQueries({ queryKey: ['userCredits', user?.id] });
       toast.success("Créditos disponíveis atualizados e salvos!");
@@ -114,7 +108,6 @@ const PTrabForm = () => {
       toast.error(error.message || "Falha ao salvar créditos.");
     }
   });
-
 
   useEffect(() => {
     const loadPTrab = async () => {
@@ -141,30 +134,23 @@ const PTrabForm = () => {
         efetivo_empregado: String(data.efetivo_empregado),
       });
       setLoadingPTrab(false);
-      
-      // REMOVIDO: Lógica de abertura via searchParams 'openCredit=true'
     };
 
     loadPTrab();
   }, [ptrabId, navigate, searchParams]);
   
-  // NOVO: Efeito para abrir o diálogo de crédito automaticamente
   useEffect(() => {
-    // Verifica se todos os dados necessários foram carregados e se o prompt ainda não foi exibido
     if (!loadingSession && !loadingPTrab && !isLoadingCredits && ptrabData && credits && !hasPromptedForCredit) {
       const isPTrabOpen = ptrabData.status === 'aberto';
-      // Verifica se ambos os créditos são zero
       const hasZeroCredits = credits.credit_gnd3 === 0 && credits.credit_gnd4 === 0;
 
       if (isPTrabOpen && hasZeroCredits) {
         setShowCreditDialog(true);
-        setHasPromptedForCredit(true); // Marca como já solicitado
+        setHasPromptedForCredit(true);
       }
     }
   }, [loadingSession, loadingPTrab, isLoadingCredits, ptrabData, credits, hasPromptedForCredit]);
 
-
-  // Calculate costs based on query data
   const calculatedGND3 = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito;
   const calculatedGND4 = totals.totalMaterialPermanente;
 
@@ -212,8 +198,9 @@ const PTrabForm = () => {
       navigate(`/ptrab/concessionaria?ptrabId=${ptrabId}`);
     } else if (itemId === 'material-consumo') {
       navigate(`/ptrab/material-consumo?ptrabId=${ptrabId}`);
+    } else if (itemId === 'complemento-alimentacao') {
+      navigate(`/ptrab/complemento-alimentacao?ptrabId=${ptrabId}`); // ATUALIZADO
     } else {
-      // Trata itens operacionais não implementados
       toast.info(`Funcionalidade '${itemName}' (Operacional) ainda não implementada.`);
     }
   };
@@ -244,7 +231,6 @@ const PTrabForm = () => {
 
   return (
     <div className="min-h-screen bg-background py-4 px-4">
-      {/* NOVO: Adicionar PageMetadata */}
       <PageMetadata 
         title={pageTitle} 
         description={`Preenchimento e detalhamento de custos para o Plano de Trabalho ${ptrabData?.numero_ptrab} - ${ptrabData?.nome_operacao}.`}
@@ -262,15 +248,10 @@ const PTrabForm = () => {
           </Button>
         </div>
         
-        {/* CORREÇÃO H1: Título principal da página */}
-        {/* Removido o H1 conforme solicitado */}
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Coluna Esquerda: Dados do P Trab, Resumo de Custos e Crédito Disponível */}
           <div className="lg:col-span-1 space-y-4">
             <Card className="shadow-lg">
               <CardHeader className="pb-1 pt-3">
-                {/* CORREÇÃO H2: Título da seção */}
                 <h2 className="flex items-center gap-2 text-lg font-semibold">
                   <FileText className="h-5 w-5 text-primary" />
                   Dados do P Trab
@@ -308,7 +289,6 @@ const PTrabForm = () => {
               </CardContent>
             </Card>
             
-            {/* Resumo de Custos (O componente PTrabCostSummary já deve usar H3/H4 internamente) */}
             {ptrabId && (
               <PTrabCostSummary 
                 ptrabId={ptrabId} 
@@ -317,21 +297,17 @@ const PTrabForm = () => {
                 creditGND4={credits.credit_gnd4}
               />
             )}
-            
           </div>
 
-          {/* Coluna Direita: Seleção de Classes/Itens */}
           <div className="lg:col-span-2">
             <Card className="shadow-lg">
               <CardHeader>
-                {/* CORREÇÃO H2: Título da seção */}
                 <h2 className="text-xl font-bold">Selecione o Tipo de Material</h2>
                 <CardDescription>
                   Escolha entre logística ou operacional
                 </CardDescription>
               </CardHeader>
               <CardContent>
-
                 <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
                   <TabsList className="grid w-full grid-cols-2 mb-6">
                     <TabsTrigger value="logistica" className="flex items-center gap-2">
@@ -345,7 +321,6 @@ const PTrabForm = () => {
                   </TabsList>
 
                   <TabsContent value="logistica" className="space-y-4">
-                    {/* CORREÇÃO H3: Subtítulo da aba */}
                     <h3 className="text-lg font-semibold text-foreground mb-4">
                       Selecione a Classe de Material
                     </h3>
@@ -370,7 +345,6 @@ const PTrabForm = () => {
                   </TabsContent>
 
                   <TabsContent value="operacional" className="space-y-4">
-                    {/* CORREÇÃO H3: Subtítulo da aba */}
                     <h3 className="text-lg font-semibold text-foreground mb-4">
                       Selecione o Item Operacional
                     </h3>
@@ -395,7 +369,6 @@ const PTrabForm = () => {
         </div>
       </div>
       
-      {/* Diálogo de Crédito */}
       <CreditInputDialog
         open={showCreditDialog}
         onOpenChange={setShowCreditDialog}
@@ -405,9 +378,6 @@ const PTrabForm = () => {
         initialCreditGND4={credits.credit_gnd4}
         onSave={handleSaveCredit}
       />
-      
-      {/* Diálogo de Prompt de Crédito */}
-      {/* Removido CreditPromptDialog */}
     </div>
   );
 };
