@@ -241,8 +241,9 @@ const ComplementoAlimentacaoForm = () => {
     }, [formData.efetivo, formData.agua_consumo_dia, formData.dias_operacao, formData.agua_volume_envase, formData.agua_valor_unitario]);
 
     const currentTotalLanche = useMemo(() => {
-        return formData.lanche_items.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
-    }, [formData.lanche_items]);
+        const costPerLanche = formData.lanche_items.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
+        return costPerLanche * formData.efetivo * formData.dias_operacao;
+    }, [formData.lanche_items, formData.efetivo, formData.dias_operacao]);
 
     const currentCategoryTotal = useMemo(() => {
         if (formData.categoria_complemento === 'genero') {
