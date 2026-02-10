@@ -162,46 +162,56 @@ const initialFormState: ComplementoAlimentacaoFormState = {
     acquisitionGroups: [],
 };
 
-// Função auxiliar para comparar estados do formulário (Dirty Check)
-const compareFormData = (data1: ComplementoAlimentacaoFormState, data2: ComplementoAlimentacaoFormState) => {
-    // Campos de contexto (Seção 1 e comuns da Seção 2)
+/**
+ * Função de Dirty Check refinada.
+ * Compara o estado atual com o último estado "staged" (salvo na lista).
+ * Ignora mudanças de aba se os campos da aba anterior não foram alterados.
+ */
+const compareFormData = (current: ComplementoAlimentacaoFormState, staged: ComplementoAlimentacaoFormState) => {
+    // 1. Campos Comuns (Seção 1 e contexto global) - Se mudarem, SEMPRE é dirty
     if (
-        data1.om_favorecida !== data2.om_favorecida ||
-        data1.ug_favorecida !== data2.ug_favorecida ||
-        data1.fase_atividade !== data2.fase_atividade ||
-        data1.efetivo !== data2.efetivo ||
-        data1.dias_operacao !== data2.dias_operacao ||
-        data1.publico !== data2.publico ||
-        data1.categoria_complemento !== data2.categoria_complemento
+        current.om_favorecida !== staged.om_favorecida ||
+        current.ug_favorecida !== staged.ug_favorecida ||
+        current.fase_atividade !== staged.fase_atividade ||
+        current.efetivo !== staged.efetivo ||
+        current.dias_operacao !== staged.dias_operacao ||
+        current.publico !== staged.publico
     ) return true;
 
-    // Campos específicos por categoria
-    if (data1.categoria_complemento === 'genero') {
-        if (
-            data1.valor_etapa_qs !== data2.valor_etapa_qs ||
-            data1.pregao_qs !== data2.pregao_qs ||
-            data1.om_qs !== data2.om_qs ||
-            data1.valor_etapa_qr !== data2.valor_etapa_qr ||
-            data1.pregao_qr !== data2.pregao_qr ||
-            data1.om_qr !== data2.om_qr
-        ) return true;
-    } else if (data1.categoria_complemento === 'agua') {
-        if (
-            data1.agua_consumo_dia !== data2.agua_consumo_dia ||
-            data1.agua_tipo_envase !== data2.agua_tipo_envase ||
-            data1.agua_volume_envase !== data2.agua_volume_envase ||
-            data1.agua_valor_unitario !== data2.agua_valor_unitario ||
-            data1.agua_pregao !== data2.agua_pregao ||
-            data1.agua_om_uasg !== data2.agua_om_uasg
-        ) return true;
-    } else if (data1.categoria_complemento === 'lanche') {
-        if (
-            data1.lanche_pregao !== data2.lanche_pregao ||
-            data1.lanche_om_uasg !== data2.lanche_om_uasg ||
-            JSON.stringify(data1.lanche_items) !== JSON.stringify(data2.lanche_items)
-        ) return true;
+    // 2. Verificação por Categoria
+    // Só comparamos os campos específicos se a categoria atual for a mesma que foi "staged" por último.
+    // Se o usuário trocou de aba, não consideramos "dirty" os campos da aba nova que ele ainda não salvou.
+    if (current.categoria_complemento === staged.categoria_complemento) {
+        const cat = current.categoria_complemento;
+
+        if (cat === 'genero') {
+            if (
+                current.valor_etapa_qs !== staged.valor_etapa_qs ||
+                current.pregao_qs !== staged.pregao_qs ||
+                current.om_qs !== staged.om_qs ||
+                current.valor_etapa_qr !== staged.valor_etapa_qr ||
+                current.pregao_qr !== staged.pregao_qr ||
+                current.om_qr !== staged.om_qr
+            ) return true;
+        } else if (cat === 'agua') {
+            if (
+                current.agua_consumo_dia !== staged.agua_consumo_dia ||
+                current.agua_tipo_envase !== staged.agua_tipo_envase ||
+                current.agua_volume_envase !== staged.agua_volume_envase ||
+                current.agua_valor_unitario !== staged.agua_valor_unitario ||
+                current.agua_pregao !== staged.agua_pregao ||
+                current.agua_om_uasg !== staged.agua_om_uasg
+            ) return true;
+        } else if (cat === 'lanche') {
+            if (
+                current.lanche_pregao !== staged.lanche_pregao ||
+                current.lanche_om_uasg !== staged.lanche_om_uasg ||
+                JSON.stringify(current.lanche_items) !== JSON.stringify(staged.lanche_items)
+            ) return true;
+        }
     }
 
+    // Se chegou aqui, ou os campos são iguais ou o usuário apenas trocou de aba sem mexer nos campos globais.
     return false;
 };
 
