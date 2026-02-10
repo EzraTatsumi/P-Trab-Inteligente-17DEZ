@@ -50,6 +50,32 @@ import PageMetadata from "@/components/PageMetadata";
 import { PublicoSelect } from "@/components/PublicoSelect";
 import CurrencyInput from "@/components/CurrencyInput";
 
+// Tipo para o item calculado na lista pendente
+interface StagedComplemento {
+    tempId: string;
+    categoria: 'genero' | 'agua' | 'lanche';
+    om_favorecida: string;
+    ug_favorecida: string;
+    om_destino: string;
+    ug_destino: string;
+    dias_operacao: number;
+    efetivo: number;
+    fase_atividade: string;
+    publico: string;
+    
+    // Valores calculados
+    valor_total: number;
+    valor_nd_30: number;
+    valor_nd_39: number;
+    
+    // Detalhes específicos para Gênero
+    total_qs?: number;
+    total_qr?: number;
+    
+    // Grupos para Água/Lanche
+    acquisitionGroups?: AcquisitionGroup[];
+}
+
 // Estado inicial para o formulário
 interface ComplementoAlimentacaoFormState {
     om_favorecida: string; 
@@ -109,6 +135,7 @@ const ComplementoAlimentacaoForm = () => {
     const { handleEnterToNextField } = useFormNavigation();
     
     const [formData, setFormData] = useState<ComplementoAlimentacaoFormState>(initialFormState);
+    const [pendingItems, setPendingItems] = useState<StagedComplemento[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     
     const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
@@ -133,8 +160,6 @@ const ComplementoAlimentacaoForm = () => {
     const handleOmFavorecidaChange = (omData: any) => {
         if (omData) {
             setSelectedOmFavorecidaId(omData.id);
-            
-            // Regra Geral: UASG (QR) = OM Favorecida
             setSelectedOmQrId(omData.id);
 
             setFormData(prev => ({ 
@@ -146,7 +171,9 @@ const ComplementoAlimentacaoForm = () => {
                 om_qs: omData.rm_vinculacao,
                 ug_qs: omData.codug_rm_vinculacao,
                 om_qr: omData.nome_om,
-                ug_qr: omData.codug_om
+                ug_qr: omData.codug_om,
+                om_destino: omData.nome_om,
+                ug_destino: omData.codug_om
             }));
         }
     };
@@ -154,14 +181,81 @@ const ComplementoAlimentacaoForm = () => {
     const isBaseFormReady = formData.om_favorecida.length > 0 && formData.fase_atividade.length > 0;
     const isGenero = formData.categoria_complemento === 'genero';
 
-    // Helper para inputs numéricos sem setas
-    const handleNumericKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-            e.preventDefault();
+    // Lógica de cálculo e adição à lista pendente
+    const handleStageCalculation = () => {
+        const { categoria_complemento, efetivo, dias_operacao } = formData;
+        
+        let newItem: StagedComplemento;
+
+        if (categoria_complemento === 'genero') {
+            const totalQS = efetivo * formData.valor_etapa_qs * dias_operacao;
+            const totalQR = efetivo * formData.valor_etapa_qr * dias_operacao;
+            const totalGeral = totalQS + totalQR;
+
+            newItem = {
+                tempId: crypto.randomUUID(),
+                categoria: 'genero',
+                om_favorecida: formData.om_favorecida,
+                ug_favorecida: formData.ug_favorecida,
+                om_destino: formData.om_qr, // Para gênero, a OM Destino é a do QR
+                ug_destino: formData.ug_qr,
+                dias_operacao,
+                efetivo,
+                fase_atividade: formData.fase_atividade,
+                publico: formData.publico,
+                valor_total: totalGeral,
+                valor_nd_30: totalGeral,
+                valor_nd_39: 0,
+                total_qs: totalQS,
+                total_qr: totalQR
+            };
+        } else {
+            // Para Água e Lanche, usamos os grupos de aquisição
+            const totalValue = formData.acquisitionGroups.reduce((sum, g) => sum + g.totalValue, 0);
+            const totalND30 = formData.acquisitionGroups.reduce((sum, g) => sum + g.totalND30, 0);
+            const totalND39 = formData.acquisitionGroups.reduce((sum, g) => sum + g.totalND39, 0);
+
+            newItem = {
+                tempId: crypto.randomUUID(),
+                categoria: categoria_complemento,
+                om_favorecida: formData.om_favorecida,
+                ug_favorecida: formData.ug_favorecida,
+                om_destino: formData.om_destino,
+                ug_destino: formData.ug_destino,
+                dias_operacao,
+                efetivo,
+                fase_atividade: formData.fase_atividade,
+                publico: formData.publico,
+                valor_total: totalValue,
+                valor_nd_30: totalND30,
+                valor_nd_39: totalND39,
+                acquisitionGroups: [...formData.acquisitionGroups]
+            };
         }
+
+        setPendingItems(prev => [...prev, newItem]);
+        
+        // Reset parcial do form para permitir nova adição
+        setFormData(prev => ({
+            ...prev,
+            acquisitionGroups: [],
+            valor_etapa_qs: 0,
+            valor_etapa_qr: 0,
+            pregao_qs: "",
+            pregao_qr: ""
+        }));
+        
+        toast.success("Item adicionado à lista de revisão.");
     };
 
-    // Lógica de validação para o botão Salvar
+    const handleRemovePending = (id: string) => {
+        setPendingItems(prev => prev.filter(item => item.tempId !== id));
+    };
+
+    const totalGeralOM = useMemo(() => {
+        return pendingItems.reduce((sum, item) => sum + item.valor_total, 0);
+    }, [pendingItems]);
+
     const isSaveDisabled = useMemo(() => {
         if (!isBaseFormReady) return true;
         if (formData.efetivo <= 0 || formData.dias_operacao <= 0) return true;
@@ -176,7 +270,6 @@ const ComplementoAlimentacaoForm = () => {
                 !formData.om_qr
             );
         } else {
-            // Para Água e Lanche, precisa de pelo menos um grupo de aquisição
             return formData.acquisitionGroups.length === 0;
         }
     }, [formData, isBaseFormReady, isGenero]);
@@ -243,7 +336,6 @@ const ComplementoAlimentacaoForm = () => {
                                         </TabsList>
 
                                         <Card className="bg-muted/50 p-4">
-                                            {/* Parte A: Contexto da Categoria */}
                                             <div className="space-y-6 bg-background p-4 rounded-lg border">
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                     <div className="space-y-2">
@@ -252,7 +344,6 @@ const ComplementoAlimentacaoForm = () => {
                                                             type="number" 
                                                             value={formData.efetivo || ""} 
                                                             onChange={(e) => setFormData({...formData, efetivo: parseInt(e.target.value) || 0})}
-                                                            onKeyDown={handleNumericKeyDown}
                                                             placeholder="Ex: 150"
                                                             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                         />
@@ -267,101 +358,95 @@ const ComplementoAlimentacaoForm = () => {
                                                             type="number" 
                                                             value={formData.dias_operacao || ""} 
                                                             onChange={(e) => setFormData({...formData, dias_operacao: parseInt(e.target.value) || 0})}
-                                                            onKeyDown={handleNumericKeyDown}
                                                             placeholder="Ex: 15"
                                                             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                         />
                                                     </div>
                                                 </div>
 
-                                                {/* Campos Específicos de Gênero (QS e QR) */}
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
-                                                    {/* Grupo QS */}
-                                                    <div className="space-y-4 p-4 bg-primary/5 rounded-md border border-primary/10">
-                                                        <h4 className="font-bold text-sm text-primary uppercase">Quantitativo de Subsistência (QS)</h4>
-                                                        <div className="grid grid-cols-2 gap-4">
-                                                            <div className="space-y-2">
-                                                                <Label>Valor Complemento *</Label>
-                                                                <CurrencyInput 
-                                                                    value={formData.valor_etapa_qs} 
-                                                                    onChange={(val) => setFormData({...formData, valor_etapa_qs: val})}
-                                                                />
+                                                {isGenero && (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+                                                        <div className="space-y-4 p-4 bg-primary/5 rounded-md border border-primary/10">
+                                                            <h4 className="font-bold text-sm text-primary uppercase">Quantitativo de Subsistência (QS)</h4>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label>Valor Complemento *</Label>
+                                                                    <CurrencyInput value={formData.valor_etapa_qs} onChange={(val) => setFormData({...formData, valor_etapa_qs: val})} />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Pregão *</Label>
+                                                                    <Input value={formData.pregao_qs} onChange={(e) => setFormData({...formData, pregao_qs: e.target.value})} placeholder="Ex: 90.001/24" />
+                                                                </div>
                                                             </div>
                                                             <div className="space-y-2">
-                                                                <Label>Pregão *</Label>
-                                                                <Input value={formData.pregao_qs} onChange={(e) => setFormData({...formData, pregao_qs: e.target.value})} placeholder="Ex: 90.001/24" />
+                                                                <Label>UASG *</Label>
+                                                                <RmSelector value={formData.om_qs} onChange={(name, codug) => setFormData({...formData, om_qs: name, ug_qs: codug})} placeholder="Selecione a UASG" />
                                                             </div>
                                                         </div>
-                                                        <div className="space-y-2">
-                                                            <Label>UASG *</Label>
-                                                            <RmSelector 
-                                                                value={formData.om_qs} 
-                                                                onChange={(name, codug) => setFormData({...formData, om_qs: name, ug_qs: codug})} 
-                                                                placeholder="Selecione a UASG do QS" 
+
+                                                        <div className="space-y-4 p-4 bg-orange-500/5 rounded-md border border-orange-500/10">
+                                                            <h4 className="font-bold text-sm text-orange-600 uppercase">Quantitativo de Rancho (QR)</h4>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label>Valor Complemento *</Label>
+                                                                    <CurrencyInput value={formData.valor_etapa_qr} onChange={(val) => setFormData({...formData, valor_etapa_qr: val})} />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Pregão *</Label>
+                                                                    <Input value={formData.pregao_qr} onChange={(e) => setFormData({...formData, pregao_qr: e.target.value})} placeholder="Ex: 90.001/24" />
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>UASG *</Label>
+                                                                <OmSelector selectedOmId={selectedOmQrId} onChange={(om) => setFormData({...formData, om_qr: om?.nome_om || "", ug_qr: om?.codug_om || ""})} placeholder="Selecione a UASG" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {!isGenero && (
+                                                <div className="mt-6">
+                                                    <Card className="p-4 bg-background">
+                                                        <div className="flex items-center justify-between mb-4">
+                                                            <h4 className="text-base font-semibold">Itens de Aquisição ({formData.acquisitionGroups.length})</h4>
+                                                        </div>
+                                                        
+                                                        {isGroupFormOpen ? (
+                                                            <AcquisitionGroupForm 
+                                                                initialGroup={groupToEdit} 
+                                                                onSave={(g) => { setFormData(prev => ({...prev, acquisitionGroups: [...prev.acquisitionGroups, g]})); setIsGroupFormOpen(false); }} 
+                                                                onCancel={() => setIsGroupFormOpen(false)}
+                                                                onOpenItemSelector={(items) => { setItemsToPreselect(items); setIsItemSelectorOpen(true); }}
+                                                                selectedItemsFromSelector={selectedItemsFromSelector}
+                                                                onOpenChange={setIsItemSelectorOpen}
+                                                                onClearSelectedItems={() => setSelectedItemsFromSelector(null)}
                                                             />
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Grupo QR */}
-                                                    <div className="space-y-4 p-4 bg-orange-500/5 rounded-md border border-orange-500/10">
-                                                        <h4 className="font-bold text-sm text-orange-600 uppercase">Quantitativo de Rancho (QR)</h4>
-                                                        <div className="grid grid-cols-2 gap-4">
-                                                            <div className="space-y-2">
-                                                                <Label>Valor Complemento *</Label>
-                                                                <CurrencyInput 
-                                                                    value={formData.valor_etapa_qr} 
-                                                                    onChange={(val) => setFormData({...formData, valor_etapa_qr: val})}
-                                                                />
+                                                        ) : (
+                                                            <div className="space-y-4">
+                                                                {formData.acquisitionGroups.length === 0 ? (
+                                                                    <Alert><AlertCircle className="h-4 w-4" /><AlertTitle>Nenhum item</AlertTitle><AlertDescription>Adicione itens para esta categoria.</AlertDescription></Alert>
+                                                                ) : (
+                                                                    <div className="space-y-2">
+                                                                        {formData.acquisitionGroups.map(g => (
+                                                                            <div key={g.tempId} className="flex justify-between items-center p-2 border rounded bg-muted/30">
+                                                                                <span className="text-sm font-medium">{g.groupName}</span>
+                                                                                <span className="text-sm font-bold">{formatCurrency(g.totalValue)}</span>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                                <Button variant="outline" className="w-full" onClick={() => setIsGroupFormOpen(true)}>
+                                                                    <Plus className="mr-2 h-4 w-4" /> Adicionar Itens de Aquisição
+                                                                </Button>
                                                             </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Pregão *</Label>
-                                                                <Input value={formData.pregao_qr} onChange={(e) => setFormData({...formData, pregao_qr: e.target.value})} placeholder="Ex: 90.001/24" />
-                                                            </div>
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label>UASG *</Label>
-                                                            <OmSelector selectedOmId={selectedOmQrId} onChange={(om) => setFormData({...formData, om_qr: om?.nome_om || "", ug_qr: om?.codug_om || ""})} placeholder="Selecione a UASG do QR" />
-                                                        </div>
-                                                    </div>
+                                                        )}
+                                                    </Card>
                                                 </div>
-                                            </div>
+                                            )}
 
-                                            {/* Parte B: Grupos de Aquisição (Importação) */}
-                                            <div className={cn("mt-6", isGenero && "opacity-50 pointer-events-none grayscale")}>
-                                                <Card className="p-4 bg-background">
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <h4 className="text-base font-semibold">Itens de Aquisição ({formData.acquisitionGroups.length})</h4>
-                                                        {isGenero && <Badge variant="outline" className="text-orange-600 border-orange-600">Desabilitado para Gênero</Badge>}
-                                                    </div>
-                                                    
-                                                    {isGroupFormOpen ? (
-                                                        <AcquisitionGroupForm 
-                                                            initialGroup={groupToEdit} 
-                                                            onSave={(g) => setFormData(prev => ({...prev, acquisitionGroups: [...prev.acquisitionGroups, g]}))} 
-                                                            onCancel={() => setIsGroupFormOpen(false)}
-                                                            onOpenItemSelector={(items) => { setItemsToPreselect(items); setIsItemSelectorOpen(true); }}
-                                                            selectedItemsFromSelector={selectedItemsFromSelector}
-                                                            onOpenChange={setIsItemSelectorOpen}
-                                                            onClearSelectedItems={() => setSelectedItemsFromSelector(null)}
-                                                        />
-                                                    ) : (
-                                                        <div className="space-y-4">
-                                                            {formData.acquisitionGroups.length === 0 ? (
-                                                                <Alert><AlertCircle className="h-4 w-4" /><AlertTitle>Nenhum item</AlertTitle><AlertDescription>Adicione itens para esta categoria.</AlertDescription></Alert>
-                                                            ) : (
-                                                                <div className="border rounded-md p-2">Lista de grupos aqui...</div>
-                                                            )}
-                                                            <Button variant="outline" className="w-full" onClick={() => setIsGroupFormOpen(true)} disabled={isGenero}>
-                                                                <Plus className="mr-2 h-4 w-4" /> Adicionar Itens de Aquisição
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                </Card>
-                                            </div>
-
-                                            {/* Botão Salvar Itens na Lista */}
                                             <div className="mt-6 flex justify-end">
-                                                <Button className="w-full md:w-auto" disabled={isSaveDisabled}>
+                                                <Button className="w-full md:w-auto" disabled={isSaveDisabled} onClick={handleStageCalculation}>
                                                     <Save className="mr-2 h-4 w-4" />
                                                     Salvar Itens na Lista
                                                 </Button>
@@ -371,9 +456,75 @@ const ComplementoAlimentacaoForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÕES 3, 4 e 5 (Placeholders) */}
+                            {/* SEÇÃO 3: ITENS ADICIONADOS (REVISÃO) */}
+                            {pendingItems.length > 0 && (
+                                <section className="space-y-4 border-b pb-6">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">3. Itens Adicionados ({pendingItems.length})</h3>
+                                    
+                                    <div className="space-y-4">
+                                        {pendingItems.map((item) => (
+                                            <Card key={item.tempId} className="border-2 border-secondary bg-secondary/5 shadow-sm">
+                                                <CardContent className="p-4">
+                                                    <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/20">
+                                                        <h4 className="font-bold text-base text-foreground">
+                                                            Complemento de Alimentação ({item.categoria === 'genero' ? 'Gênero' : item.categoria === 'agua' ? 'Água' : 'Lanche'})
+                                                        </h4>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-extrabold text-lg text-foreground">
+                                                                {formatCurrency(item.valor_total)}
+                                                            </p>
+                                                            <Button variant="ghost" size="icon" onClick={() => handleRemovePending(item.tempId)} className="h-8 w-8 text-destructive">
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="grid grid-cols-2 gap-4 text-xs pt-1">
+                                                        <div className="space-y-1">
+                                                            <p className="font-medium text-muted-foreground">OM Favorecida:</p>
+                                                            <p className="font-medium text-muted-foreground">OM Destino do Recurso:</p>
+                                                            <p className="font-medium text-muted-foreground">Período/Efetivo:</p>
+                                                        </div>
+                                                        <div className="text-right space-y-1">
+                                                            <p className="font-bold">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
+                                                            <p className="font-bold">{item.om_destino} ({formatCodug(item.ug_destino)})</p>
+                                                            <p className="font-bold">{item.dias_operacao} {item.dias_operacao === 1 ? 'dia' : 'dias'} / {item.efetivo} {item.efetivo === 1 ? 'militar' : 'militares'}</p>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="w-full h-[1px] bg-secondary/20 my-3" />
+
+                                                    <div className="flex justify-between text-xs">
+                                                        <span className="text-muted-foreground">ND 33.90.30:</span>
+                                                        <span className="font-bold text-green-600">{formatCurrency(item.valor_nd_30)}</span>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
+
+                                    <Card className="bg-muted shadow-inner">
+                                        <CardContent className="p-4 flex justify-between items-center">
+                                            <span className="font-bold text-base uppercase">VALOR TOTAL DA OM</span>
+                                            <span className="font-extrabold text-xl text-foreground">{formatCurrency(totalGeralOM)}</span>
+                                        </CardContent>
+                                    </Card>
+
+                                    <div className="flex justify-end gap-3 pt-4">
+                                        <Button className="bg-primary hover:bg-primary/90">
+                                            <Save className="mr-2 h-4 w-4" />
+                                            Salvar Registros
+                                        </Button>
+                                        <Button variant="outline" onClick={() => setPendingItems([])}>
+                                            <XCircle className="mr-2 h-4 w-4" />
+                                            Limpar Lista
+                                        </Button>
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* SEÇÕES 4 e 5 (Placeholders) */}
                             <section className="opacity-50 pointer-events-none">
-                                <h3 className="text-lg font-semibold mb-4">3. Itens Adicionados (Em breve)</h3>
                                 <h3 className="text-lg font-semibold mb-4">4. OMs Cadastradas (Em breve)</h3>
                                 <h3 className="text-lg font-semibold mb-4">5. Memórias de Cálculo (Em breve)</h3>
                             </section>
