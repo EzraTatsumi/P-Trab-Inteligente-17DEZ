@@ -27,7 +27,6 @@ interface CreditInputDialogProps {
 // Função auxiliar para converter dígitos brutos (string) para número (float)
 const rawDigitsToNumber = (rawDigits: string): number => {
     if (!rawDigits) return 0;
-    // formatCurrencyInput retorna { numericValue, formatted, digits }
     return formatCurrencyInput(rawDigits).numericValue;
 };
 
@@ -40,12 +39,10 @@ export const CreditInputDialog = ({
   initialCreditGND4,
   onSave,
 }: CreditInputDialogProps) => {
-  // Estado agora armazena os dígitos brutos (string)
   const [rawCreditGND3, setRawCreditGND3] = useState<string>(numberToRawDigits(initialCreditGND3));
   const [rawCreditGND4, setRawCreditGND4] = useState<string>(numberToRawDigits(initialCreditGND4));
   const { handleEnterToNextField } = useFormNavigation();
 
-  // Sincroniza o estado interno com os props iniciais quando o diálogo abre
   useEffect(() => {
     if (open) {
       setRawCreditGND3(numberToRawDigits(initialCreditGND3));
@@ -53,17 +50,14 @@ export const CreditInputDialog = ({
     }
   }, [open, initialCreditGND3, initialCreditGND4]);
 
-  // Converte os dígitos brutos para valores numéricos para cálculo
   const creditGND3 = rawDigitsToNumber(rawCreditGND3);
   const creditGND4 = rawDigitsToNumber(rawCreditGND4);
 
   const handleSave = () => {
-    // Passa os valores numéricos convertidos para o onSave
     onSave(creditGND3, creditGND4);
     onOpenChange(false);
   };
 
-  // Calcula os custos e saldos usando os valores numéricos convertidos
   const saldoGND3 = creditGND3 - totalGND3Cost;
   const saldoGND4 = creditGND4 - totalGND4Cost;
 
@@ -81,15 +75,13 @@ export const CreditInputDialog = ({
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
-          
-          {/* GND 3 - Custeio (Logística, Operacional, Aviação) */}
           <div className="space-y-2 p-3 border rounded-lg bg-muted/50">
             <Label htmlFor="credit-gnd3" className="font-semibold text-sm">GND 3 - Custeio</Label>
             <CurrencyInput
               id="credit-gnd3"
               value={creditGND3}
               rawDigits={rawCreditGND3}
-              onChange={(val) => setRawCreditGND3(numberToRawDigits(val))}
+              onChange={(_, digits) => setRawCreditGND3(digits)}
               onKeyDown={handleEnterToNextField}
             />
             
@@ -105,14 +97,13 @@ export const CreditInputDialog = ({
             </div>
           </div>
 
-          {/* GND 4 - Material Permanente */}
           <div className="space-y-2 p-3 border rounded-lg bg-muted/50">
             <Label htmlFor="credit-gnd4" className="font-semibold text-sm">GND 4 - Investimento (Material Permanente)</Label>
             <CurrencyInput
               id="credit-gnd4"
               value={creditGND4}
               rawDigits={rawCreditGND4}
-              onChange={(val) => setRawCreditGND4(numberToRawDigits(val))}
+              onChange={(_, digits) => setRawCreditGND4(digits)}
               onKeyDown={handleEnterToNextField}
             />
             

@@ -5,25 +5,27 @@ import { Input } from "@/components/ui/input";
 import { formatCurrencyInput, numberToRawDigits } from "@/lib/formatUtils";
 
 interface CurrencyInputProps {
-  value: number;
-  rawDigits?: string; // Tornada opcional para facilitar o uso simples
-  onChange: (value: number) => void;
+  value?: number; // Tornada opcional para evitar erros quando apenas rawDigits é usado inicialmente
+  rawDigits?: string;
+  onChange: (value: number, digits: string) => void; // Agora passa ambos os valores
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   placeholder?: string;
   className?: string;
   id?: string;
-  disabled?: boolean; // Adicionada para suportar estados de leitura/carregamento
+  disabled?: boolean;
+  required?: boolean; // Adicionada para suporte a validação de formulário nativa
 }
 
 const CurrencyInput = ({ 
-  value, 
+  value = 0, 
   rawDigits, 
   onChange, 
   onKeyDown, 
   placeholder, 
   className, 
   id, 
-  disabled 
+  disabled,
+  required
 }: CurrencyInputProps) => {
   // Se rawDigits não for passado, gera a partir do value numérico
   const digitsToUse = rawDigits !== undefined ? rawDigits : numberToRawDigits(value);
@@ -39,12 +41,13 @@ const CurrencyInput = ({
         className={`pl-8 ${className}`}
         value={(value === 0 && digitsToUse.length === 0) ? "" : formatted}
         onChange={(e) => {
-          const { numericValue } = formatCurrencyInput(e.target.value);
-          onChange(numericValue);
+          const { numericValue, digits } = formatCurrencyInput(e.target.value);
+          onChange(numericValue, digits);
         }}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         disabled={disabled}
+        required={required}
       />
     </div>
   );
