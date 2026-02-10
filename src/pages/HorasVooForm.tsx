@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,7 +41,7 @@ import { cn } from "@/lib/utils";
 import CurrencyInput from "@/components/CurrencyInput";
 import { ConsolidatedHorasVooMemoria } from "@/components/ConsolidatedHorasVooMemoria"; 
 import { TipoAnvSelect } from "@/components/TipoAnvSelect";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/switch"; // Importando Switch
 
 // Tipos de dados
 type HorasVooRegistroDB = Tables<'horas_voo_registros'>; 
@@ -1131,7 +1129,7 @@ const HorasVooForm = () => {
                                                             <CurrencyInput
                                                                 id="valor_nd_30"
                                                                 rawDigits={rawND30Input}
-                                                                onChange={(_, digits) => handleCurrencyChange('valor_nd_30', digits)}
+                                                                onChange={(digits) => handleCurrencyChange('valor_nd_30', digits)}
                                                                 placeholder="Ex: R$ 10.000,00"
                                                                 required={!formData.isCoterResponsibility}
                                                                 disabled={!isPTrabEditable || isSaving || formData.isCoterResponsibility}
@@ -1152,7 +1150,7 @@ const HorasVooForm = () => {
                                                             <CurrencyInput
                                                                 id="valor_nd_39"
                                                                 rawDigits={rawND39Input}
-                                                                onChange={(_, digits) => handleCurrencyChange('valor_nd_39', digits)}
+                                                                onChange={(digits) => handleCurrencyChange('valor_nd_39', digits)}
                                                                 placeholder="Ex: R$ 5.000,00"
                                                                 required={!formData.isCoterResponsibility}
                                                                 disabled={!isPTrabEditable || isSaving || formData.isCoterResponsibility}
