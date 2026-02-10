@@ -134,13 +134,31 @@ export const generateComplementoMemoriaCalculo = (
                `(Pregão ${formatPregao(registro.agua_pregao || '')} - UASG ${formatCodug(registro.ug_detentora || '')})`;
     }
 
-    const itens = (registro.itens_aquisicao || []) as ItemAquisicao[];
-    const listaItens = itens.map(item => 
-        `- ${item.quantidade} un. de ${item.descricao_reduzida || item.descricao_item} (Cód: ${item.codigo_catmat})`
-    ).join('\n');
+    if (registro.categoria_complemento === 'lanche') {
+        const itens = (registro.itens_aquisicao || []) as any[];
+        
+        // Calcula o valor do kit (soma dos valores unitários dos itens)
+        const kitValue = itens.reduce((sum, item) => sum + (Number(item.valor_unitario || 0) * Number(item.quantidade || 1)), 0);
+        const kitValueFmt = formatCurrency(kitValue);
+        
+        const listaComposicao = itens.map(item => 
+            `    - ${item.descricao || item.descricao_item}: ${formatCurrency(item.valor_unitario)}.`
+        ).join('\n');
 
-    return `Solicitação de Lanche/Catanho para a OM ${context.organizacao}.\n` +
-           `Contexto: Efetivo de ${context.efetivo} militares por ${context.dias_operacao} dias na fase ${context.fase_atividade}.\n` +
-           `Itens selecionados:\n${listaItens}\n` +
-           `Valor Total: R$ ${Number(registro.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+        const totalVal = Number(registro.valor_total || 0);
+        const totalValFmt = formatCurrency(totalVal);
+        const diasText = registro.dias_operacao === 1 ? "dia" : "dias";
+        const publicoText = registro.publico || "militares";
+
+        return `33.90.30 - Aquisição de gêneros para confecção de catanho/lanche para atender ${registro.efetivo} ${publicoText}, durante ${registro.dias_operacao} ${diasText} de ${context.fase_atividade}.\n\n` +
+               `Cálculo:\n` +
+               `- Valor do catanho/lanche: ${kitValueFmt}/dia.\n` +
+               `- Composição do catanho/lanche:\n${listaComposicao}\n\n` +
+               `Fórmula: Efetivo x Valor do catanho/lanche x Nr de dias.\n` +
+               `- ${registro.efetivo} ${publicoText} x ${kitValueFmt}/unid x ${registro.dias_operacao} ${diasText} = ${totalValFmt}.\n\n` +
+               `Total: ${totalValFmt}.\n` +
+               `(Pregão ${formatPregao(registro.pregao_qs || '')} - UASG ${formatCodug(registro.ug_detentora || '')})`;
+    }
+
+    return "";
 };
