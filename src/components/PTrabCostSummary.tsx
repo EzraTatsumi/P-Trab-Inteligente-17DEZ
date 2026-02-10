@@ -190,7 +190,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     verbaOperacional: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
     suprimentoFundos: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
     passagens: { total: 0, totalQuantidade: 0, totalTrechos: 0 },
-    concessionaria: { total: 0, totalAgua: number, totalEnergia: number, totalRegistros: 0 },
+    concessionaria: { total: 0, totalAgua: 0, totalEnergia: 0, totalRegistros: 0 },
     horasVoo: { total: 0, totalND30: 0, totalND39: 0, quantidadeHV: 0, groupedHV: {} },
     materialConsumo: { total: 0, totalND30: 0, totalND39: 0 },
     complementoAlimentacao: { total: 0, totalND30: 0, totalND39: 0, groupedCategories: {} },
@@ -411,6 +411,9 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
             let cat = record.categoria_complemento === 'genero' ? 'Gênero Alimentício' : 
                       record.categoria_complemento === 'agua' ? 'Água Mineral' : 'Lanche/Catanho';
             
+            if (!omTotals.complementoAlimentacao.groupedCategories) {
+                omTotals.complementoAlimentacao.groupedCategories = {};
+            }
             if (!omTotals.complementoAlimentacao.groupedCategories[cat]) {
                 omTotals.complementoAlimentacao.groupedCategories[cat] = { totalValor: 0, totalND30: 0, totalND39: 0 };
             }
@@ -462,7 +465,7 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
             (globalTotals as any)[`totalClasse${key}_ND39`] += omGroup.totalND39;
             (globalTotals as any)[`totalItensClasse${key}`] += omGroup.totalItens;
             const globalGrouped = (globalTotals as any)[`groupedClasse${key}Categories`];
-            Object.entries(omGroup.groupedCategories).forEach(([cat, data]: [string, any]) => {
+            Object.entries(omGroup.groupedCategories || {}).forEach(([cat, data]: [string, any]) => {
                 if (!globalGrouped[cat]) globalGrouped[cat] = { totalValor: 0, totalND30: 0, totalND39: 0, totalItens: 0 };
                 globalGrouped[cat].totalValor += data.totalValor;
                 globalGrouped[cat].totalND30 += data.totalND30;
@@ -504,7 +507,7 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
         globalTotals.totalHorasVooND30 += omTotals.horasVoo.totalND30;
         globalTotals.totalHorasVooND39 += omTotals.horasVoo.totalND39;
         globalTotals.quantidadeHorasVoo += omTotals.horasVoo.quantidadeHV;
-        Object.entries(omTotals.horasVoo.groupedHV).forEach(([tipo, data]) => {
+        Object.entries(omTotals.horasVoo.groupedHV || {}).forEach(([tipo, data]) => {
             if (!globalTotals.groupedHorasVoo[tipo]) globalTotals.groupedHorasVoo[tipo] = { totalValor: 0, totalHV: 0 };
             globalTotals.groupedHorasVoo[tipo].totalValor += data.totalValor;
             globalTotals.groupedHorasVoo[tipo].totalHV += data.totalHV;
@@ -516,7 +519,7 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
         globalTotals.totalComplementoAlimentacao += omTotals.complementoAlimentacao.total;
         globalTotals.totalComplementoAlimentacaoND30 += omTotals.complementoAlimentacao.totalND30;
         globalTotals.totalComplementoAlimentacaoND39 += omTotals.complementoAlimentacao.totalND39;
-        Object.entries(omTotals.complementoAlimentacao.groupedCategories).forEach(([cat, data]) => {
+        Object.entries(omTotals.complementoAlimentacao.groupedCategories || {}).forEach(([cat, data]) => {
             if (!globalTotals.groupedComplementoCategories[cat]) {
                 globalTotals.groupedComplementoCategories[cat] = { totalValor: 0, totalND30: 0, totalND39: 0 };
             }
@@ -571,7 +574,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: any) => {
     const impactPercentage = totalGND3 > 0 ? ((omGND3Total / totalGND3) * 100).toFixed(1) : '0.0';
     const renderClassDetails = (group: any, unitLabel: string = 'un.') => (
       <div className="space-y-2.5 text-[12px]">
-        {Object.entries(group.groupedCategories).sort(([a], [b]) => a.localeCompare(b)).map(([category, data]: [string, any]) => (
+        {Object.entries(group.groupedCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([category, data]: [string, any]) => (
           <div key={category} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0">
             <span className="font-medium w-1/2 text-left truncate pr-3">{category}</span>
             <div className="flex w-1/2 justify-between gap-3">
@@ -617,7 +620,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: any) => {
                                 <span className="text-xl font-extrabold">{formatCurrency(om.totalOperacional)}</span>
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                                <CategoryCard label="Complemento de Alimentação" value={om.complementoAlimentacao.total} icon={Utensils} colorClass="bg-blue-500/10 text-blue-600" nd30={om.complementoAlimentacao.totalND30} nd39={om.complementoAlimentacao.totalND39} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.complementoAlimentacao.groupedCategories).sort(([a], [b]) => a.localeCompare(b)).map(([cat, data]: any) => (<div key={cat} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{cat}</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div>))}</div>} />
+                                <CategoryCard label="Complemento de Alimentação" value={om.complementoAlimentacao.total} icon={Utensils} colorClass="bg-blue-500/10 text-blue-600" nd30={om.complementoAlimentacao.totalND30} nd39={om.complementoAlimentacao.totalND39} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.complementoAlimentacao.groupedCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, data]: any) => (<div key={cat} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{cat}</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div>))}</div>} />
                                 <CategoryCard label="Concessionária" value={om.concessionaria.total} icon={Droplet} colorClass="bg-blue-500/10 text-blue-600" nd39={om.concessionaria.total} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Água/Esgoto</span><span className="font-bold text-foreground whitespace-nowrap">{formatCurrency(om.concessionaria.totalAgua)}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Energia Elétrica</span><span className="font-bold text-foreground whitespace-nowrap">{formatCurrency(om.concessionaria.totalEnergia)}</span></div></div>} />
                                 <CategoryCard label="Diárias" value={om.diarias.total} icon={Briefcase} colorClass="bg-blue-500/10 text-blue-600" nd15={om.diarias.totalND15} nd30={om.diarias.totalND30} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Militares</span><span className="font-bold text-foreground whitespace-nowrap">{om.diarias.totalMilitares}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Dias de Viagem</span><span className="font-bold text-foreground whitespace-nowrap">{om.diarias.totalDiasViagem}</span></div></div>} />
                                 <CategoryCard label="Material de Consumo" value={om.materialConsumo.total} icon={Package} colorClass="bg-blue-500/10 text-blue-600" nd30={om.materialConsumo.totalND30} nd39={om.materialConsumo.totalND39} />
@@ -634,7 +637,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: any) => {
                                 <span className="text-xl font-extrabold">{formatCurrency(om.totalAviacaoExercito)}</span>
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                                <CategoryCard label="Horas de Voo" value={om.horasVoo.total} icon={Zap} colorClass="bg-purple-500/10 text-purple-600" nd30={om.horasVoo.totalND30} nd39={om.horasVoo.totalND39} extraInfo={`${formatNumber(om.horasVoo.quantidadeHV, 2)} HV`} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.horasVoo.groupedHV).sort(([a], [b]) => a.localeCompare(b)).map(([tipo, data]: any) => (<div key={tipo} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{tipo}</span><div className="flex w-1/2 justify-between gap-3"><span className="font-medium text-right w-1/2 whitespace-nowrap">{formatNumber(data.totalHV, 2)} HV</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div></div>))}</div>} />
+                                <CategoryCard label="Horas de Voo" value={om.horasVoo.total} icon={Zap} colorClass="bg-purple-500/10 text-purple-600" nd30={om.horasVoo.totalND30} nd39={om.horasVoo.totalND39} extraInfo={`${formatNumber(om.horasVoo.quantidadeHV, 2)} HV`} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.horasVoo.groupedHV || {}).sort(([a], [b]) => a.localeCompare(b)).map(([tipo, data]: any) => (<div key={tipo} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{tipo}</span><div className="flex w-1/2 justify-between gap-3"><span className="font-medium text-right w-1/2 whitespace-nowrap">{formatNumber(data.totalHV, 2)} HV</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div></div>))}</div>} />
                             </div>
                         </div>
                     )}
@@ -728,7 +731,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
             <Accordion type="single" collapsible className="w-full pt-1">
                 <AccordionItem value={`item-${key}`} className="border-b-0">
                     <AccordionTrigger className="p-0 hover:no-underline"><div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50"><div className="flex items-center gap-1 text-foreground">{icon}{title}</div><span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(classData.total)}</span></div></AccordionTrigger>
-                    <AccordionContent className="pt-1 pb-0"><div className="space-y-1 pl-4 text-[10px]">{Object.entries(classData.groupedCategories).sort(([a], [b]) => a.localeCompare(b)).map(([cat, d]: any) => (<div key={cat} className="space-y-1"><div className="flex justify-between text-muted-foreground font-semibold pt-1"><span className="w-1/2 text-left">{cat}</span><span className="w-1/4 text-right font-medium">{formatNumber(d.totalItens)} {isRemonta ? 'animais' : unitLabel}</span><span className="w-1/4 text-right font-medium">{formatCurrency(d.totalValor)}</span></div><div className="flex justify-between text-muted-foreground text-[9px] pl-2"><span className="w-1/2 text-left">ND 30 / ND 39</span><span className="w-1/4 text-right text-green-600 font-medium">{formatCurrency(d.totalND30)}</span><span className="w-1/4 text-right text-blue-600 font-medium">{formatCurrency(d.totalND39)}</span></div></div>))}</div></AccordionContent>
+                    <AccordionContent className="pt-1 pb-0"><div className="space-y-1 pl-4 text-[10px]">{Object.entries(classData.groupedCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, d]: any) => (<div key={cat} className="space-y-1"><div className="flex justify-between text-muted-foreground font-semibold pt-1"><span className="w-1/2 text-left">{cat}</span><span className="w-1/4 text-right font-medium">{formatNumber(d.totalItens)} {isRemonta ? 'animais' : unitLabel}</span><span className="w-1/4 text-right font-medium">{formatCurrency(d.totalValor)}</span></div><div className="flex justify-between text-muted-foreground text-[9px] pl-2"><span className="w-1/2 text-left">ND 30 / ND 39</span><span className="w-1/4 text-right text-green-600 font-medium">{formatCurrency(d.totalND30)}</span><span className="w-1/4 text-right text-blue-600 font-medium">{formatCurrency(d.totalND39)}</span></div></div>))}</div></AccordionContent>
                 </AccordionItem>
             </Accordion>
         );
@@ -824,7 +827,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
             <Accordion type="single" collapsible className="w-full pt-1">
                 <AccordionItem value="item-complemento-alimentacao" className="border-b-0">
                     <AccordionTrigger className="p-0 hover:no-underline"><div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50"><div className="flex items-center gap-1 text-foreground"><Utensils className="h-3 w-3 text-blue-500" />Complemento de Alimentação</div><span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(c.total)}</span></div></AccordionTrigger>
-                    <AccordionContent className="pt-1 pb-0"><div className="space-y-1 pl-4 text-[10px]">{Object.entries(c.groupedCategories).sort(([a], [b]) => a.localeCompare(b)).map(([cat, d]: any) => (<div key={cat} className="space-y-1"><div className="flex justify-between text-muted-foreground font-semibold pt-1"><span className="w-1/2 text-left">{cat}</span><span className="w-1/2 text-right font-medium">{formatCurrency(d.totalValor)}</span></div><div className="flex justify-between text-muted-foreground text-[9px] pl-2"><span className="w-1/2 text-left">ND 30 / ND 39</span><span className="w-1/4 text-right text-green-600 font-medium">{formatCurrency(d.totalND30)}</span><span className="w-1/4 text-right text-blue-600 font-medium">{formatCurrency(d.totalND39)}</span></div></div>))}</div></AccordionContent>
+                    <AccordionContent className="pt-1 pb-0"><div className="space-y-1 pl-4 text-[10px]">{Object.entries(c.groupedCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, d]: any) => (<div key={cat} className="space-y-1"><div className="flex justify-between text-muted-foreground font-semibold pt-1"><span className="w-1/2 text-left">{cat}</span><span className="w-1/2 text-right font-medium">{formatCurrency(d.totalValor)}</span></div><div className="flex justify-between text-muted-foreground text-[9px] pl-2"><span className="w-1/2 text-left">ND 30 / ND 39</span><span className="w-1/4 text-right text-green-600 font-medium">{formatCurrency(d.totalND30)}</span><span className="w-1/4 text-right text-blue-600 font-medium">{formatCurrency(d.totalND39)}</span></div></div>))}</div></AccordionContent>
                 </AccordionItem>
             </Accordion>
         );
@@ -877,7 +880,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
         return (
             <div className="space-y-3 border-l-4 border-purple-500 pl-3 pt-4">
                 <div className="flex items-center justify-between text-xs font-semibold text-purple-600 mb-2"><div className="flex items-center gap-2"><Plane className="h-3 w-3" />Aviação do Exército</div><span className="font-bold text-sm">{formatNumber(h.quantidadeHV, 2)} HV</span></div>
-                <div className="space-y-1 pl-4 text-[10px]">{Object.entries(h.groupedHV).sort(([a], [b]) => a.localeCompare(b)).map(([tipo, d]: any) => (<div key={tipo} className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left">{tipo}</span><span className="w-1/4 text-right font-medium text-background"></span><span className="w-1/4 text-right font-medium">{formatNumber(d.totalHV, 2)} HV</span></div>))}</div>
+                <div className="space-y-1 pl-4 text-[10px]">{Object.entries(h.groupedHV || {}).sort(([a], [b]) => a.localeCompare(b)).map(([tipo, d]: any) => (<div key={tipo} className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left">{tipo}</span><span className="w-1/4 text-right font-medium text-background"></span><span className="w-1/4 text-right font-medium">{formatNumber(d.totalHV, 2)} HV</span></div>))}</div>
             </div>
         );
     };
