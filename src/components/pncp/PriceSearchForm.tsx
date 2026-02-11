@@ -21,7 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 // 1. Esquema de Validação
 const formSchema = z.object({
     codigoItem: z.string()
-        .min(1, { message: "O Código CATMAT é obrigatório." })
+        .min(1, { message: "O Código do Item é obrigatório." })
         .regex(/^\d{1,9}$/, { message: "O código deve conter apenas números (máx. 9 dígitos)." }),
     dataInicio: z.string().optional(),
     dataFim: z.string().optional(),
@@ -131,7 +131,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
         const catmatCode = values.codigoItem;
         
         try {
-            toast.info(`Buscando estatísticas de preço para CATMAT ${catmatCode}...`);
+            toast.info(`Buscando estatísticas de preço para o item ${catmatCode}...`);
             
             const params = {
                 codigoItem: catmatCode,
@@ -142,7 +142,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
             const result = await fetchPriceStats(params);
             
             if (!result.stats || result.totalRegistros === 0) {
-                toast.warning(`Nenhum registro de preço encontrado para o CATMAT ${catmatCode} no período.`);
+                toast.warning(`Nenhum registro de preço encontrado para o item ${catmatCode} no período.`);
             } else {
                 toast.success(`${result.totalRegistros} registros encontrados!`);
             }
@@ -422,7 +422,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                             name="codigoItem"
                             render={({ field }) => (
                                 <FormItem className="col-span-4 md:col-span-2">
-                                    <FormLabel>Cód. CATMAT *</FormLabel>
+                                    <FormLabel>Cód. Item *</FormLabel>
                                     <div className="flex gap-2">
                                         <FormControl>
                                             <Input
@@ -583,7 +583,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                             </>
                         ) : (
                             <p className="text-center text-muted-foreground">
-                                Nenhum registro de preço ativo encontrado para o CATMAT {searchResult.codigoItem}.
+                                Nenhum registro de preço ativo encontrado para o item {searchResult.codigoItem}.
                             </p>
                         )}
                     </Card>

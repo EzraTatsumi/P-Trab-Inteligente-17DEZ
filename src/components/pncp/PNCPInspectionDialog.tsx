@@ -187,7 +187,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             toast.info("Item movido para a aba 'Requer Revisão'.");
             
         } else {
-            // Se o item já está em needs_catmat_info ou duplicate, o usuário quer editar no formulário principal
+            // Se o item já está em needs_catmat_info or duplicate, o usuário quer editar no formulário principal
             
             // 1. Chama a função de callback com o item mapeado.
             onReviewItem(item.mappedItem);
@@ -292,7 +292,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
                             {/* Centralizando cabeçalhos */}
-                            <TableHead className={cn(catmatWidth, "text-center")}>Cód. CATMAT</TableHead>
+                            <TableHead className={cn(catmatWidth, "text-center")}>Cód. Item</TableHead>
                             <TableHead className={cn(arpDescWidth, "text-center")}>Descrição Completa (ARP)</TableHead>
                             
                             {/* MUDANÇA 2: Coluna Descrição Completa (PNCP) -> Nome Reduzido se for Duplicado */}
@@ -482,14 +482,14 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                         <TabsContent value="valid">
                             {/* Placeholder para estabilizar a altura */}
                             <p className="text-sm text-muted-foreground mb-3 opacity-0 select-none pointer-events-none">
-                                Estes itens possuem códigos CATMAT válidos, mas não têm um nome reduzido cadastrado no seu catálogo. Por favor, forneça um nome curto para facilitar a identificação e clique em "Validar".
+                                Estes itens possuem códigos válidos, mas não têm um nome reduzido cadastrado no seu catálogo. Por favor, forneça um nome curto para facilitar a identificação e clique em "Validar".
                             </p>
                             {renderInspectionTable('valid')}
                         </TabsContent>
                         
                         <TabsContent value="needs_catmat_info">
                             <p className="text-sm text-muted-foreground mb-3">
-                                Estes itens possuem códigos CATMAT válidos, mas não têm um nome reduzido cadastrado no seu catálogo. Por favor, forneça um nome curto para facilitar a identificação e clique em "Validar".
+                                Estes itens possuem códigos válidos, mas não têm um nome reduzido cadastrado no seu catálogo. Por favor, forneça um nome curto para facilitar a identificação e clique em "Validar".
                             </p>
                             {renderInspectionTable('needs_catmat_info')}
                         </TabsContent>
@@ -497,7 +497,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                         <TabsContent value="duplicate">
                             {/* Ajuste do texto da descrição da aba Duplicados */}
                             <p className="text-sm text-muted-foreground mb-3 text-red-600">
-                                Estes itens foram identificados como duplicados e serão descartados da importação. Eles possuem a mesma **Chave de Contrato** (Pregão, UASG e Valor Unitário) e pelo menos uma **Chave de Item** (CATMAT, Descrição Completa ou Nome Reduzido) idêntica a um item já existente.
+                                Estes itens foram identificados como duplicados e serão descartados da importação. Eles possuem a mesma **Chave de Contrato** (Pregão, UASG e Valor Unitário) e pelo menos uma **Chave de Item** (Código, Descrição Completa ou Nome Reduzido) idêntica a um item já existente.
                             </p>
                             {renderInspectionTable('duplicate')}
                         </TabsContent>
