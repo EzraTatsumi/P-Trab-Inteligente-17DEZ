@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Loader2, Settings2, Briefcase, User Cog } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Settings2, Briefcase, UserCog } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useServicosTerceirosDiretrizes } from "@/hooks/useServicosTerceirosDiretrizes";
