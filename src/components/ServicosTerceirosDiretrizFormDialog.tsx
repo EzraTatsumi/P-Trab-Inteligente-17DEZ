@@ -20,6 +20,7 @@ import {
 import ServicoCatalogDialog from './ServicoCatalogDialog';
 import LocacaoCatalogDialog from './LocacaoCatalogDialog';
 import CatmatCatalogDialog from './CatmatCatalogDialog';
+import CatserCatalogDialog from './CatserCatalogDialog';
 import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog';
 import ItemAquisicaoPNCPDialog from './ItemAquisicaoPNCPDialog';
 
@@ -94,6 +95,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
     const [isCatalogOpen, setIsCatalogOpen] = useState(false);
     const [isLocacaoCatalogOpen, setIsLocacaoCatalogOpen] = useState(false);
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
+    const [isCatserCatalogOpen, setIsCatserCatalogOpen] = useState(false);
     const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
     const [isPNCPSearchOpen, setIsPNCPSearchOpen] = useState(false);
 
@@ -236,13 +238,14 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
         setIsLocacaoCatalogOpen(false);
     };
     
-    const handleCatmatSelect = (catmatItem: any) => {
+    const handleCatserSelect = (catserItem: any) => {
         setItemForm(prev => ({
             ...prev,
-            codigo_catmat: catmatItem.code,
-            descricao_item: catmatItem.description, 
+            codigo_catmat: catserItem.code,
+            descricao_item: catserItem.description,
+            nome_reduzido: catserItem.short_description || '',
         }));
-        setIsCatmatCatalogOpen(false);
+        setIsCatserCatalogOpen(false);
     };
     
     const sortedItens = [...subitemForm.itens_aquisicao].sort((a, b) => 
@@ -341,7 +344,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                                         placeholder="Ex: 12345"
                                         onKeyDown={handleEnterToNextField}
                                     />
-                                    <Button type="button" variant="outline" size="sm" onClick={() => setIsCatmatCatalogOpen(true)} disabled={loading} className="w-full mt-2">
+                                    <Button type="button" variant="outline" size="sm" onClick={() => setIsCatserCatalogOpen(true)} disabled={loading} className="w-full mt-2">
                                         <BookOpen className="h-4 w-4 mr-2" /> CATSER
                                     </Button>
                                 </div>
@@ -489,7 +492,8 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                 onOpenChange={setIsLocacaoCatalogOpen} 
                 onSelect={handleCatalogSelect} 
             />
-            <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={handleCatmatSelect} />
+            <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={handleCatserSelect} />
+            <CatserCatalogDialog open={isCatserCatalogOpen} onOpenChange={setIsCatserCatalogOpen} onSelect={handleCatserSelect} />
             <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={handleBulkImport} existingItemsInDiretriz={subitemForm.itens_aquisicao as any} />
             <ItemAquisicaoPNCPDialog open={isPNCPSearchOpen} onOpenChange={setIsPNCPSearchOpen} onImport={handlePNCPImport} existingItemsInDiretriz={subitemForm.itens_aquisicao as any} selectedYear={selectedYear} />
         </Dialog>
