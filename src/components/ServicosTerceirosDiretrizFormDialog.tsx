@@ -336,7 +336,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                         <div className="border p-3 rounded-lg bg-muted/50 space-y-4" ref={itemFormRef}>
                             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                                 <div className="space-y-2 col-span-1">
-                                    <Label htmlFor="item-catmat">Cód. CATSER</Label>
+                                    <Label htmlFor="item-catmat">Cód. Item</Label>
                                     <Input
                                         id="item-catmat"
                                         value={itemForm.codigo_catmat}
@@ -434,7 +434,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                                         <TableHead className="w-[30%]">Descrição</TableHead>
                                         <TableHead className="w-[15%]">Nome Reduzido</TableHead>
                                         <TableHead className="w-[5%] text-center">Unid.</TableHead>
-                                        <TableHead className="w-[10%] text-center">CATSER</TableHead>
+                                        <TableHead className="w-[10%] text-center">Cód. Item</TableHead>
                                         <TableHead className="w-[10%] text-center">Pregão/Ref.</TableHead>
                                         <TableHead className="w-[10%] text-center">UASG</TableHead>
                                         <TableHead className="w-[10%] text-right">Valor Unitário</TableHead>
@@ -494,7 +494,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
             />
             <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={handleCatserSelect} />
             <CatserCatalogDialog open={isCatserCatalogOpen} onOpenChange={setIsCatserCatalogOpen} onSelect={handleCatserSelect} />
-            <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={handleBulkImport} existingItemsInDiretriz={subitemForm.itens_aquisicao as any} />
+            <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={handleBulkImport} existingItemsInDiretriz={subitemForm.itens_aquisicao as any} mode="servico" />
             <ItemAquisicaoPNCPDialog open={isPNCPSearchOpen} onOpenChange={setIsPNCPSearchOpen} onImport={handlePNCPImport} existingItemsInDiretriz={subitemForm.itens_aquisicao as any} selectedYear={selectedYear} />
         </Dialog>
     );

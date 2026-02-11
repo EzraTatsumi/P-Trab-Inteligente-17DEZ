@@ -22,3 +22,4 @@ yarn-error.log*
 
 # Explicitly include package-lock.json for dependency consistency
 !package-lock.json
+.dyad/

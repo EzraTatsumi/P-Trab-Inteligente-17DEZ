@@ -416,7 +416,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                         <div className="border p-3 rounded-lg bg-muted/50 space-y-4" ref={itemFormRef}>
                             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                                 <div className="space-y-2 col-span-1">
-                                    <Label htmlFor="item-catmat">Cód. CATMAT</Label>
+                                    <Label htmlFor="item-catmat">Cód. Item</Label>
                                     <Input
                                         id="item-catmat"
                                         value={itemForm.codigo_catmat}
@@ -529,7 +529,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     <TableRow>
                                         <TableHead className="w-[20%]">Nome Reduzido</TableHead>
                                         <TableHead className="w-[20%]">Descrição Completa</TableHead>
-                                        <TableHead className="w-[10%] text-center">Cód. CATMAT</TableHead>
+                                        <TableHead className="w-[10%] text-center">Cód. Item</TableHead>
                                         <TableHead className="w-[10%] text-center">Pregão/Ref.</TableHead>
                                         <TableHead className="w-[10%] text-center">UASG</TableHead>
                                         <TableHead className="w-[10%] text-right">Valor Unitário</TableHead>
@@ -599,6 +599,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                 onOpenChange={setIsBulkUploadOpen}
                 onImport={handleBulkImport}
                 existingItemsInDiretriz={subitemForm.itens_aquisicao} 
+                mode="material"
             />
             
             <ItemAquisicaoPNCPDialog
