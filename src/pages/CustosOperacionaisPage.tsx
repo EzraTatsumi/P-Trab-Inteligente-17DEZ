@@ -1501,7 +1501,7 @@ const CustosOperacionaisPage = () => {
           <CardHeader>
             <h1 className="text-2xl font-bold">Configurações dos Custos Operacionais</h1>
             <CardDescription>
-              Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3).
+              Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3 e GND4).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -1566,7 +1566,7 @@ const CustosOperacionaisPage = () => {
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
                           <h2 className="text-base font-medium flex items-center gap-2">
-                            Passagens (Contratos/Trechos)
+                            Passagens
                           </h2>
                           {fieldCollapseState['passagens_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </div>
@@ -1587,7 +1587,7 @@ const CustosOperacionaisPage = () => {
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
                           <h2 className="text-base font-medium flex items-center gap-2">
-                            Concessionária (Água/Esgoto e Energia Elétrica)
+                            Concessionária
                           </h2>
                           {fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </div>
