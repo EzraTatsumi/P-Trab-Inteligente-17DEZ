@@ -18,7 +18,7 @@ import {
     formatPregao 
 } from "@/lib/formatUtils";
 import ServicoCatalogDialog from './ServicoCatalogDialog';
-import LocacaoCatalogDialog from './LocacaoCatalogDialog'; // NOVO
+import LocacaoCatalogDialog from './LocacaoCatalogDialog';
 import CatmatCatalogDialog from './CatmatCatalogDialog';
 import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog';
 import ItemAquisicaoPNCPDialog from './ItemAquisicaoPNCPDialog';
@@ -34,8 +34,16 @@ interface ServicosTerceirosDiretrizFormDialogProps {
     loading: boolean;
 }
 
-const initialItemForm: Omit<ItemAquisicaoServico, 'id'> & { rawValor: string } = {
+// Estendendo o tipo localmente para incluir os novos campos se não existirem no tipo importado
+type ItemAquisicaoServicoExtended = ItemAquisicaoServico & {
+    nome_reduzido: string;
+    unidade_medida: string;
+};
+
+const initialItemForm = {
     descricao_item: '',
+    nome_reduzido: '',
+    unidade_medida: '',
     valor_unitario: 0,
     rawValor: numberToRawDigits(0),
     numero_pregao: '',
@@ -84,7 +92,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     
     const [isCatalogOpen, setIsCatalogOpen] = useState(false);
-    const [isLocacaoCatalogOpen, setIsLocacaoCatalogOpen] = useState(false); // NOVO
+    const [isLocacaoCatalogOpen, setIsLocacaoCatalogOpen] = useState(false);
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
     const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
     const [isPNCPSearchOpen, setIsPNCPSearchOpen] = useState(false);
@@ -108,14 +116,14 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
         setItemForm({ ...itemForm, uasg: rawDigits }); 
     };
 
-    const generateItemKey = (item: ItemAquisicaoServico | typeof initialItemForm): string => {
+    const generateItemKey = (item: any): string => {
         const normalize = (str: string) => (str || '').trim().toUpperCase().replace(/\s+/g, ' ');
         return `${normalize(item.descricao_item)}|${normalize(item.codigo_catmat)}|${normalize(item.numero_pregao)}|${normalize(item.uasg)}`;
     };
 
     const handleAddItem = () => {
-        if (!itemForm.descricao_item || itemForm.valor_unitario <= 0) {
-            toast.error("Preencha a Descrição do Serviço e o Valor Unitário.");
+        if (!itemForm.descricao_item || !itemForm.nome_reduzido || !itemForm.unidade_medida || itemForm.valor_unitario <= 0) {
+            toast.error("Preencha a Descrição, Nome Reduzido, Unidade e o Valor Unitário.");
             return;
         }
         
@@ -129,9 +137,11 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
             return;
         }
 
-        const newItem: ItemAquisicaoServico = {
+        const newItem: ItemAquisicaoServicoExtended = {
             id: editingItemId || Math.random().toString(36).substring(2, 9), 
             descricao_item: itemForm.descricao_item,
+            nome_reduzido: itemForm.nome_reduzido,
+            unidade_medida: itemForm.unidade_medida,
             valor_unitario: itemForm.valor_unitario,
             numero_pregao: itemForm.numero_pregao,
             uasg: itemForm.uasg,
@@ -158,10 +168,12 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
         setItemForm(initialItemForm);
     };
 
-    const handleEditItem = (item: ItemAquisicaoServico) => {
+    const handleEditItem = (item: any) => {
         setEditingItemId(item.id);
         setItemForm({
             descricao_item: item.descricao_item,
+            nome_reduzido: item.nome_reduzido || '',
+            unidade_medida: item.unidade_medida || '',
             valor_unitario: item.valor_unitario,
             rawValor: numberToRawDigits(item.valor_unitario),
             numero_pregao: item.numero_pregao,
@@ -330,7 +342,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                                         onKeyDown={handleEnterToNextField}
                                     />
                                     <Button type="button" variant="outline" size="sm" onClick={() => setIsCatmatCatalogOpen(true)} disabled={loading} className="w-full mt-2">
-                                        <BookOpen className="h-4 w-4 mr-2" /> CATMAT
+                                        <BookOpen className="h-4 w-4 mr-2" /> CATSER
                                     </Button>
                                 </div>
                                 <div className="space-y-2 col-span-4">
@@ -346,7 +358,29 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="space-y-2 col-span-2">
+                                    <Label htmlFor="item-nome-reduzido">Nome Reduzido *</Label>
+                                    <Input
+                                        id="item-nome-reduzido"
+                                        value={itemForm.nome_reduzido}
+                                        onChange={(e) => setItemForm({ ...itemForm, nome_reduzido: e.target.value })}
+                                        placeholder="Ex: Manut. Ar Condicionado"
+                                        onKeyDown={handleEnterToNextField}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="item-unidade">Unidade de Medida *</Label>
+                                    <Input
+                                        id="item-unidade"
+                                        value={itemForm.unidade_medida}
+                                        onChange={(e) => setItemForm({ ...itemForm, unidade_medida: e.target.value })}
+                                        placeholder="Ex: UN, MÊS, HORA"
+                                        onKeyDown={handleEnterToNextField}
+                                        required
+                                    />
+                                </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="item-valor">Valor Unitário (R$) *</Label>
                                     <CurrencyInput
@@ -358,6 +392,9 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                                         required
                                     />
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="item-pregao">Pregão/Ref. Preço *</Label>
                                     <Input
@@ -383,7 +420,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                                 </div>
                             </div>
                             
-                            <Button type="button" className="w-full" onClick={handleAddItem} disabled={!itemForm.descricao_item || itemForm.valor_unitario <= 0 || !itemForm.numero_pregao || itemForm.uasg.length !== 6}>
+                            <Button type="button" className="w-full" onClick={handleAddItem} disabled={!itemForm.descricao_item || !itemForm.nome_reduzido || !itemForm.unidade_medida || itemForm.valor_unitario <= 0 || !itemForm.numero_pregao || itemForm.uasg.length !== 6}>
                                 {editingItemId ? <Pencil className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
                                 {editingItemId ? "Atualizar Item" : "Adicionar Item"}
                             </Button>
@@ -393,11 +430,13 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[40%]">Descrição</TableHead>
-                                        <TableHead className="w-[10%] text-center">CATMAT</TableHead>
-                                        <TableHead className="w-[15%] text-center">Pregão/Ref.</TableHead>
+                                        <TableHead className="w-[30%]">Descrição</TableHead>
+                                        <TableHead className="w-[15%]">Nome Reduzido</TableHead>
+                                        <TableHead className="w-[5%] text-center">Unid.</TableHead>
+                                        <TableHead className="w-[10%] text-center">CATSER</TableHead>
+                                        <TableHead className="w-[10%] text-center">Pregão/Ref.</TableHead>
                                         <TableHead className="w-[10%] text-center">UASG</TableHead>
-                                        <TableHead className="w-[15%] text-right">Valor Unitário</TableHead>
+                                        <TableHead className="w-[10%] text-right">Valor Unitário</TableHead>
                                         <TableHead className="w-[10%] text-right">Ações</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -405,6 +444,8 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                                     {sortedItens.map(item => (
                                         <TableRow key={item.id}>
                                             <TableCell className="font-medium text-xs">{item.descricao_item}</TableCell>
+                                            <TableCell className="text-xs">{(item as any).nome_reduzido || 'N/A'}</TableCell>
+                                            <TableCell className="text-center text-xs">{(item as any).unidade_medida || 'N/A'}</TableCell>
                                             <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
                                             <TableCell className="text-center text-sm">{formatPregao(item.numero_pregao)}</TableCell>
                                             <TableCell className="text-center text-sm">{formatCodug(item.uasg)}</TableCell>
