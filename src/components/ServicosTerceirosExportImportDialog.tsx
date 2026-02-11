@@ -1,13 +1,17 @@
-import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import React, { useState, useCallback, useRef, useMemo } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Download, Upload, Loader2, FileSpreadsheet, AlertCircle } from "lucide-react";
-import { DiretrizServicosTerceiros } from "@/types/diretrizesServicosTerceiros";
-import { supabase } from "@/integrations/supabase/client";
+import { FileSpreadsheet, Download, Upload, Loader2, CheckCircle, XCircle, List, FileWarning } from "lucide-react";
 import { toast } from "sonner";
-import * as ExcelJS from 'exceljs';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { DiretrizServicosTerceiros } from "@/types/diretrizesServicosTerceiros";
+import { StagingRow } from "@/types/diretrizesMaterialConsumo";
+import { exportServicosTerceirosToExcel, processServicosTerceirosImport, persistServicosTerceirosImport } from '@/lib/servicosTerceirosExportImport';
+import { useSession } from '@/components/SessionContextProvider';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from '@/components/ui/badge';
+import { formatCurrency, formatCodug } from '@/lib/formatUtils';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 interface ServicosTerceirosExportImportDialogProps {
     open: boolean;
@@ -17,224 +21,284 @@ interface ServicosTerceirosExportImportDialogProps {
     onImportSuccess: () => void;
 }
 
+type ImportStep = 'select_file' | 'processing' | 'review';
+
 const ServicosTerceirosExportImportDialog: React.FC<ServicosTerceirosExportImportDialogProps> = ({
-    open, onOpenChange, selectedYear, diretrizes, onImportSuccess
+    open,
+    onOpenChange,
+    selectedYear,
+    diretrizes,
+    onImportSuccess,
 }) => {
-    const [loading, setLoading] = React.useState(false);
+    const { user } = useSession();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    const [step, setStep] = useState<ImportStep>('select_file');
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    
+    const [stagedData, setStagedData] = useState<StagingRow[]>([]);
+    const [importSummary, setImportSummary] = useState({
+        totalRows: 0,
+        totalValid: 0,
+        totalInvalid: 0,
+        totalDuplicates: 0,
+        totalExisting: 0,
+    });
 
-    const handleExport = async () => {
+    const handleOpenChangeWrapper = (newOpen: boolean) => {
+        if (!newOpen) {
+            setStep('select_file');
+            setSelectedFile(null);
+            setStagedData([]);
+        }
+        onOpenChange(newOpen);
+    };
+
+    const handleExport = useCallback(async () => {
+        if (diretrizes.length === 0) {
+            toast.warning("Não há dados para exportar no ano selecionado.");
+            return;
+        }
+        setIsProcessing(true);
         try {
-            setLoading(true);
-            const workbook = new ExcelJS.Workbook();
-            const worksheet = workbook.addWorksheet('Serviços de Terceiros');
-
-            // Configuração das colunas
-            worksheet.columns = [
-                { header: 'Nr Subitem', key: 'nr_subitem', width: 15 },
-                { header: 'Nome Subitem', key: 'nome_subitem', width: 30 },
-                { header: 'Descrição Item', key: 'descricao_item', width: 40 },
-                { header: 'CATMAT', key: 'codigo_catmat', width: 15 },
-                { header: 'Pregão', key: 'numero_pregao', width: 15 },
-                { header: 'UASG', key: 'uasg', width: 15 },
-                { header: 'Valor Unitário', key: 'valor_unitario', width: 15 },
-            ];
-
-            // Estilização do cabeçalho
-            worksheet.getRow(1).font = { bold: true };
-            worksheet.getRow(1).fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FFE0E0E0' }
-            };
-
-            // Adição dos dados
-            if (diretrizes.length > 0) {
-                diretrizes.forEach(d => {
-                    const itens = d.itens_aquisicao || [];
-                    if (itens.length > 0) {
-                        itens.forEach(item => {
-                            worksheet.addRow({
-                                nr_subitem: d.nr_subitem,
-                                nome_subitem: d.nome_subitem,
-                                descricao_item: item.descricao_item,
-                                codigo_catmat: item.codigo_catmat,
-                                numero_pregao: item.numero_pregao,
-                                uasg: item.uasg,
-                                valor_unitario: item.valor_unitario,
-                            });
-                        });
-                    } else {
-                        // Adiciona apenas o subitem se não houver itens detalhados
-                        worksheet.addRow({
-                            nr_subitem: d.nr_subitem,
-                            nome_subitem: d.nome_subitem,
-                            descricao_item: '',
-                            codigo_catmat: '',
-                            numero_pregao: '',
-                            uasg: '',
-                            valor_unitario: 0,
-                        });
-                    }
-                });
-            }
-
-            const buffer = await workbook.xlsx.writeBuffer();
-            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `diretrizes_servicos_terceiros_${selectedYear}.xlsx`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-            toast.success("Exportação concluída com sucesso!");
+            await exportServicosTerceirosToExcel(diretrizes, selectedYear);
+            toast.success("Exportação concluída!", { description: `Arquivo Diretrizes_ServicosTerceiros_${selectedYear}.xlsx baixado.` });
         } catch (error) {
             console.error("Erro na exportação:", error);
-            toast.error("Erro ao exportar dados para Excel.");
+            toast.error("Falha ao exportar dados para Excel.");
         } finally {
-            setLoading(false);
+            setIsProcessing(false);
         }
-    };
+    }, [diretrizes, selectedYear]);
 
-    const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file) return;
-
-        try {
-            setLoading(true);
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error("Usuário não autenticado");
-
-            const workbook = new ExcelJS.Workbook();
-            await workbook.xlsx.load(file);
-            const worksheet = workbook.getWorksheet(1);
-            
-            if (!worksheet) {
-                throw new Error("Não foi possível encontrar a primeira aba da planilha.");
-            }
-
-            const subitemsMap = new Map<string, any>();
-
-            worksheet.eachRow((row, rowNumber) => {
-                if (rowNumber === 1) return; // Pula o cabeçalho
-
-                const nrSubitem = row.getCell(1).text?.trim();
-                const nomeSubitem = row.getCell(2).text?.trim();
-                
-                if (!nrSubitem || !nomeSubitem) return;
-
-                const descricaoItem = row.getCell(3).text?.trim();
-                const codigoCatmat = row.getCell(4).text?.trim();
-                const numeroPregao = row.getCell(5).text?.trim();
-                const uasg = row.getCell(6).text?.trim();
-                const valorUnitario = Number(row.getCell(7).value) || 0;
-
-                if (!subitemsMap.has(nrSubitem)) {
-                    subitemsMap.set(nrSubitem, {
-                        user_id: user.id,
-                        ano_referencia: selectedYear,
-                        nr_subitem: nrSubitem,
-                        nome_subitem: nomeSubitem,
-                        descricao_subitem: '',
-                        itens_aquisicao: [],
-                        ativo: true
-                    });
-                }
-
-                if (descricaoItem) {
-                    subitemsMap.get(nrSubitem).itens_aquisicao.push({
-                        id: crypto.randomUUID(),
-                        descricao_item: descricaoItem,
-                        codigo_catmat: codigoCatmat,
-                        numero_pregao: numeroPregao,
-                        uasg: uasg,
-                        valor_unitario: valorUnitario
-                    });
-                }
-            });
-
-            const dataToInsert = Array.from(subitemsMap.values());
-
-            if (dataToInsert.length === 0) {
-                toast.warning("Nenhum dado válido encontrado para importação.");
+        if (file) {
+            if (file.type !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' && file.type !== 'application/vnd.ms-excel') {
+                toast.error("Formato de arquivo inválido. Por favor, use um arquivo .xlsx.");
+                setSelectedFile(null);
                 return;
             }
-
-            // Inserção no banco de dados
-            const { error } = await supabase
-                .from('diretrizes_servicos_terceiros')
-                .insert(dataToInsert);
-
-            if (error) throw error;
-
-            toast.success(`${dataToInsert.length} subitens de serviços importados com sucesso!`);
-            onImportSuccess();
-            onOpenChange(false);
-        } catch (error: any) {
-            console.error("Erro na importação:", error);
-            toast.error(`Erro ao importar dados: ${error.message || "Verifique o formato do arquivo."}`);
-        } finally {
-            setLoading(false);
-            // Limpa o input de arquivo
-            if (e.target) e.target.value = '';
+            setSelectedFile(file);
         }
     };
+    
+    const handleProcessFile = useCallback(async () => {
+        if (!selectedFile || !user?.id) {
+            toast.error("Selecione um arquivo e certifique-se de estar logado.");
+            return;
+        }
+        
+        setStep('processing');
+        setIsProcessing(true);
+        
+        try {
+            const result = await processServicosTerceirosImport(selectedFile, selectedYear, user.id);
+            
+            setStagedData(result.stagedData);
+            setImportSummary({
+                totalRows: result.stagedData.length,
+                totalValid: result.totalValid,
+                totalInvalid: result.totalInvalid,
+                totalDuplicates: result.totalDuplicates,
+                totalExisting: result.totalExisting,
+            });
+            
+            setStep('review');
+        } catch (error: any) {
+            console.error("Erro no processamento:", error);
+            toast.error("Falha ao processar o arquivo.", { description: error.message || "Verifique o formato do arquivo." });
+            setStep('select_file');
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [selectedFile, selectedYear, user?.id]);
+
+    const handleConfirmImport = useCallback(async () => {
+        if (importSummary.totalValid === 0) {
+            toast.error("Nenhuma linha válida para importação.");
+            return;
+        }
+        
+        if (!confirm(`Atenção: Você está prestes a mesclar ${importSummary.totalValid} itens válidos às diretrizes de Serviços de Terceiros do ano ${selectedYear}. Deseja continuar?`)) {
+            return;
+        }
+
+        setIsProcessing(true);
+        try {
+            await persistServicosTerceirosImport(stagedData, selectedYear, user!.id);
+            onImportSuccess(); 
+            toast.success("Importação concluída!", { description: `As diretrizes de Serviços de Terceiros para o ano ${selectedYear} foram atualizadas.` });
+            handleOpenChangeWrapper(false);
+        } catch (error: any) {
+            console.error("Erro na persistência:", error);
+            toast.error("Falha ao salvar as diretrizes.");
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [stagedData, selectedYear, user?.id, importSummary, onImportSuccess]);
+
+    const renderSelectFileStep = () => (
+        <div className="space-y-4">
+            <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Download className="h-5 w-5 text-primary" />
+                    1. Selecionar Arquivo
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                    Carregue um arquivo Excel (.xlsx) contendo as colunas: NR_SUBITEM, NOME_SUBITEM, DESCRICAO_SUBITEM, CODIGO_CATMAT, DESCRICAO_ITEM, DESCRICAO_REDUZIDA, VALOR_UNITARIO, NUMERO_PREGAO, UASG.
+                </p>
+                
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx" className="hidden" />
+                
+                <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="w-full" disabled={isProcessing}>
+                    {selectedFile ? <CheckCircle className="mr-2 h-4 w-4 text-green-500" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+                    {selectedFile ? selectedFile.name : "Selecionar Arquivo (.xlsx)"}
+                </Button>
+            </div>
+            
+            <div className="flex justify-end">
+                <Button onClick={handleProcessFile} disabled={isProcessing || !selectedFile}>
+                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <List className="mr-2 h-4 w-4" />}
+                    Analisar e Pré-visualizar
+                </Button>
+            </div>
+        </div>
+    );
+    
+    const renderReviewStep = () => (
+        <div className="space-y-4">
+            <div className="grid grid-cols-5 gap-4 text-center">
+                <div className="p-3 border rounded-lg bg-muted/50">
+                    <p className="text-2xl font-bold text-foreground">{importSummary.totalRows}</p>
+                    <p className="text-sm text-muted-foreground">Linhas</p>
+                </div>
+                <div className="p-3 border rounded-lg bg-green-50/50 border-green-200">
+                    <p className="text-2xl font-bold text-green-600">{importSummary.totalValid}</p>
+                    <p className="text-sm text-muted-foreground">Válidos</p>
+                </div>
+                <div className="p-3 border rounded-lg bg-red-50/50 border-red-200">
+                    <p className="text-2xl font-bold text-red-600">{importSummary.totalInvalid}</p>
+                    <p className="text-sm text-muted-foreground">Erros</p>
+                </div>
+                <div className="p-3 border rounded-lg bg-yellow-50/50 border-yellow-200">
+                    <p className="text-2xl font-bold text-yellow-600">{importSummary.totalDuplicates}</p>
+                    <p className="text-sm text-muted-foreground">Duplicados</p>
+                </div>
+                <div className="p-3 border rounded-lg bg-orange-50/50 border-orange-200">
+                    <p className="text-2xl font-bold text-orange-600">{importSummary.totalExisting}</p>
+                    <p className="text-sm text-muted-foreground">Existentes</p>
+                </div>
+            </div>
+            
+            {importSummary.totalInvalid > 0 && (
+                <div className="flex items-center p-3 bg-red-100 border border-red-300 rounded-md text-red-800">
+                    <FileWarning className="h-5 w-5 mr-2 flex-shrink-0" />
+                    <p className="text-sm font-medium">
+                        {importSummary.totalInvalid} linhas possuem erros ou duplicatas e serão ignoradas.
+                    </p>
+                </div>
+            )}
+            
+            <ScrollArea className="h-[300px] border rounded-lg">
+                <Table>
+                    <TableHeader className="sticky top-0 bg-background z-10">
+                        <TableRow>
+                            <TableHead className="w-[5%] text-center">Linha</TableHead>
+                            <TableHead className="w-[20%]">Subitem ND</TableHead>
+                            <TableHead className="w-[30%]">Item de Serviço</TableHead>
+                            <TableHead className="w-[10%] text-center">Pregão</TableHead>
+                            <TableHead className="w-[10%] text-center">UASG</TableHead>
+                            <TableHead className="w-[10%] text-right">Valor</TableHead>
+                            <TableHead className="w-[15%]">Status</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {stagedData.map((row, index) => (
+                            <TableRow key={index} className={cn(
+                                !row.isValid && "bg-red-50/50",
+                                row.isDuplicateInternal && "bg-yellow-50/50",
+                                row.isDuplicateExternal && "bg-orange-50/50"
+                            )}>
+                                <TableCell className="text-center text-xs p-2">{row.originalRowIndex}</TableCell>
+                                <TableCell className="text-xs font-medium p-2">{row.nr_subitem} - {row.nome_subitem}</TableCell>
+                                <TableCell className="text-xs p-2">
+                                    {row.descricao_item}
+                                    <p className="text-muted-foreground/70 text-[10px]">CATMAT: {row.codigo_catmat}</p>
+                                </TableCell>
+                                <TableCell className="text-center text-xs p-2">{row.numero_pregao}</TableCell>
+                                <TableCell className="text-center text-xs p-2">{formatCodug(row.uasg)}</TableCell>
+                                <TableCell className="text-right font-bold text-xs p-2">{formatCurrency(row.valor_unitario)}</TableCell>
+                                <TableCell className="p-2">
+                                    {row.isValid ? (
+                                        <Badge variant="ptrab-aprovado" className="text-xs">Válido</Badge>
+                                    ) : (
+                                        <div className="space-y-1">
+                                            <Badge variant="destructive" className="text-xs flex items-center justify-center">
+                                                <XCircle className="h-3 w-3 mr-1" /> Inválido
+                                            </Badge>
+                                            {row.errors.map((err, i) => <p key={i} className="text-[10px] text-red-600">- {err}</p>)}
+                                        </div>
+                                    )}
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </ScrollArea>
+            
+            <DialogFooter className="mt-4">
+                <Button onClick={handleConfirmImport} disabled={isProcessing || importSummary.totalValid === 0} className="bg-green-600 hover:bg-green-700">
+                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    Confirmar Importação ({importSummary.totalValid} Itens)
+                </Button>
+                <Button variant="outline" onClick={() => setStep('select_file')} disabled={isProcessing}>Voltar</Button>
+            </DialogFooter>
+        </div>
+    );
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px]">
+        <Dialog open={open} onOpenChange={handleOpenChangeWrapper}>
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <FileSpreadsheet className="h-5 w-5 text-primary" />
+                        <FileSpreadsheet className="h-5 w-5" />
                         Exportar/Importar Serviços de Terceiros
                     </DialogTitle>
                     <DialogDescription>
-                        Gerencie as diretrizes de serviços de terceiros para o ano de {selectedYear} via Excel.
+                        Gerencie as diretrizes de Serviços de Terceiros (Subitens da ND) para o ano {selectedYear}.
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid gap-6 py-4">
-                    <div className="space-y-2">
-                        <h4 className="text-sm font-medium">Exportar Dados Atuais</h4>
-                        <p className="text-xs text-muted-foreground">
-                            Baixe a lista atual de subitens e itens de serviços para edição ou backup.
-                        </p>
-                        <Button 
-                            onClick={handleExport} 
-                            disabled={loading} 
-                            variant="outline" 
-                            className="w-full"
-                        >
-                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                            Exportar para Excel (.xlsx)
-                        </Button>
+                <div className="p-4 border rounded-lg bg-muted/50 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                        <Upload className="h-5 w-5 text-primary" /> 
+                        <h3 className="text-lg font-semibold">Exportar Dados</h3>
                     </div>
-
-                    <div className="space-y-2">
-                        <h4 className="text-sm font-medium">Importar Novos Dados</h4>
-                        <p className="text-xs text-muted-foreground">
-                            Selecione um arquivo Excel seguindo o modelo de colunas para importar novos subitens.
-                        </p>
-                        <div className="grid w-full items-center gap-1.5">
-                            <Input 
-                                id="excel-import" 
-                                type="file" 
-                                accept=".xlsx" 
-                                onChange={handleImport} 
-                                disabled={loading}
-                                className="cursor-pointer"
-                            />
-                        </div>
-                    </div>
-
-                    <Alert variant="default" className="bg-muted/50 border-none">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle className="text-xs font-semibold">Importante</AlertTitle>
-                        <AlertDescription className="text-[11px] leading-relaxed">
-                            A importação adicionará novos registros. Certifique-se de que as colunas estejam na ordem correta: 
-                            Nr Subitem, Nome Subitem, Descrição Item, CATMAT, Pregão, UASG e Valor Unitário.
-                        </AlertDescription>
-                    </Alert>
+                    <Button onClick={handleExport} disabled={isProcessing || diretrizes.length === 0}>
+                        {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                        Exportar ({diretrizes.length} Subitens)
+                    </Button>
                 </div>
+                
+                <div className="border-t pt-4">
+                    <h2 className="text-xl font-bold mb-4">Importação de Diretrizes</h2>
+                    {step === 'select_file' && renderSelectFileStep()}
+                    {step === 'processing' && (
+                        <div className="text-center py-12">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                            <p className="text-muted-foreground mt-2">Analisando dados do Excel...</p>
+                        </div>
+                    )}
+                    {step === 'review' && renderReviewStep()}
+                </div>
+
+                {step === 'select_file' && (
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => handleOpenChangeWrapper(false)} disabled={isProcessing}>Fechar</Button>
+                    </DialogFooter>
+                )}
             </DialogContent>
         </Dialog>
     );
