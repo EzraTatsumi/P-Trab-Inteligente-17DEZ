@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TableRow, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,19 +12,33 @@ interface ServicosTerceirosDiretrizRowProps {
   onEdit: (diretriz: DiretrizServicoTerceiro) => void;
   onDelete: (id: string) => void;
   onToggleAtivo: (id: string, currentStatus: boolean) => void;
+  id?: string;
+  forceOpen?: boolean;
 }
 
 export function ServicosTerceirosDiretrizRow({
   diretriz,
   onEdit,
   onDelete,
-  onToggleAtivo
+  onToggleAtivo,
+  id,
+  forceOpen
 }: ServicosTerceirosDiretrizRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Sincroniza a expansão se vier do buscador
+  useEffect(() => {
+    if (forceOpen) {
+      setIsExpanded(true);
+    }
+  }, [forceOpen]);
+
   return (
     <>
-      <TableRow className={cn(!diretriz.ativo && "opacity-60 bg-muted/30")}>
+      <TableRow id={id} className={cn(
+          !diretriz.ativo && "opacity-60 bg-muted/30",
+          forceOpen && "bg-primary/5 ring-1 ring-primary/20"
+      )}>
         <TableCell>
           <Button 
             variant="ghost" 

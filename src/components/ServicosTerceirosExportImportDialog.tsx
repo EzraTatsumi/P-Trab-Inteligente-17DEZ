@@ -5,7 +5,7 @@ import { Download, Upload, FileJson, AlertCircle, Loader2, CheckCircle2 } from "
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/components/SessionContextProvider";
-import { DiretrizServicoTerceiro, ItemServico } from "@/types/diretrizesServicosTerceiros";
+import { DiretrizServicoTerceiro } from "@/types/diretrizesServicosTerceiros";
 
 interface ServicosTerceirosExportImportDialogProps {
     open: boolean;
@@ -27,6 +27,7 @@ const ServicosTerceirosExportImportDialog = ({
 
     const handleExport = () => {
         try {
+            // Remove IDs e campos de sistema para exportação limpa
             const dataToExport = diretrizes.map(({ id, created_at, updated_at, user_id, ...rest }) => rest);
             const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
@@ -90,6 +91,7 @@ const ServicosTerceirosExportImportDialog = ({
                 toast.error(`Erro ao importar: ${error.message}`);
             } finally {
                 setIsImporting(false);
+                // Limpa o input para permitir importar o mesmo arquivo novamente se necessário
                 event.target.value = "";
             }
         };
@@ -110,22 +112,27 @@ const ServicosTerceirosExportImportDialog = ({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid gap-4 py-4">
-                    <div className="flex flex-col gap-2">
-                        <h4 className="text-sm font-medium">Exportar Dados</h4>
-                        <p className="text-xs text-muted-foreground">
-                            Baixe um arquivo JSON com todos os subitens e itens de serviço cadastrados neste ano.
+                <div className="grid gap-6 py-4">
+                    <div className="flex flex-col gap-3">
+                        <h4 className="text-sm font-semibold">Exportar Dados</h4>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                            Baixe um arquivo JSON contendo todos os subitens e itens de serviço cadastrados para o ano de {selectedYear}.
                         </p>
-                        <Button variant="outline" onClick={handleExport} disabled={diretrizes.length === 0}>
+                        <Button 
+                            variant="outline" 
+                            onClick={handleExport} 
+                            disabled={diretrizes.length === 0}
+                            className="w-full"
+                        >
                             <Download className="mr-2 h-4 w-4" />
                             Baixar JSON ({diretrizes.length} subitens)
                         </Button>
                     </div>
 
-                    <div className="border-t pt-4 flex flex-col gap-2">
-                        <h4 className="text-sm font-medium">Importar Dados</h4>
-                        <p className="text-xs text-muted-foreground">
-                            Selecione um arquivo JSON para importar. <span className="text-destructive font-semibold">Atenção: Isso substituirá todos os dados de serviços do ano {selectedYear}.</span>
+                    <div className="border-t pt-6 flex flex-col gap-3">
+                        <h4 className="text-sm font-semibold">Importar Dados</h4>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                            Selecione um arquivo JSON para importar. <span className="text-destructive font-bold">Atenção: Esta ação substituirá permanentemente todos os dados de serviços do ano {selectedYear}.</span>
                         </p>
                         <div className="relative">
                             <input
@@ -147,12 +154,12 @@ const ServicosTerceirosExportImportDialog = ({
                     </div>
                 </div>
 
-                <DialogFooter>
-                    <div className="flex items-start gap-2 text-[10px] text-muted-foreground bg-muted p-2 rounded">
-                        <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
-                        <span>
-                            O arquivo deve seguir o formato padrão de exportação do sistema para garantir a integridade dos dados.
-                        </span>
+                <DialogFooter className="sm:justify-start">
+                    <div className="flex items-start gap-3 text-[11px] text-muted-foreground bg-muted/50 p-3 rounded-lg border border-border/50 w-full">
+                        <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-orange-500" />
+                        <p className="leading-normal">
+                            Certifique-se de que o arquivo segue o formato padrão. Recomenda-se fazer um backup (exportação) antes de realizar uma nova importação.
+                        </p>
                     </div>
                 </DialogFooter>
             </DialogContent>
