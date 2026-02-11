@@ -333,7 +333,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                         <div className="border p-3 rounded-lg bg-muted/50 space-y-4" ref={itemFormRef}>
                             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                                 <div className="space-y-2 col-span-1">
-                                    <Label htmlFor="item-catmat">Cód. CATMAT</Label>
+                                    <Label htmlFor="item-catmat">Cód. CATSER</Label>
                                     <Input
                                         id="item-catmat"
                                         value={itemForm.codigo_catmat}
