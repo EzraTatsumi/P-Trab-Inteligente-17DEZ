@@ -251,7 +251,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                         <div className="flex justify-between items-center mb-4">
                             <CardTitle className="text-base">Dados do Subitem de Serviço</CardTitle>
                             <Button type="button" variant="outline" size="sm" onClick={() => setIsCatalogOpen(true)} disabled={loading}>
-                                <BookOpen className="h-4 w-4 mr-2" /> Catálogo ND
+                                <BookOpen className="h-4 w-4 mr-2" /> Catálogo ND 39
                             </Button>
                         </div>
                         
