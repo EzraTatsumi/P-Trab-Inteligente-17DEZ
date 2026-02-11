@@ -48,6 +48,13 @@ import { useMaterialConsumoDiretrizes } from "@/hooks/useMaterialConsumoDiretriz
 import PageMetadata from "@/components/PageMetadata";
 import MaterialConsumoExportImportDialog from "@/components/MaterialConsumoExportImportDialog";
 
+// NOVOS IMPORTS PARA SERVIÇOS DE TERCEIROS
+import { DiretrizServicosTerceiros, ItemAquisicaoServico } from "@/types/diretrizesServicosTerceiros";
+import { useServicosTerceirosDiretrizes } from "@/hooks/useServicosTerceirosDiretrizes";
+import ServicosTerceirosDiretrizRow from "@/components/ServicosTerceirosDiretrizRow";
+import ServicosTerceirosDiretrizFormDialog from "@/components/ServicosTerceirosDiretrizFormDialog";
+import ServicosTerceirosExportImportDialog from "@/components/ServicosTerceirosExportImportDialog";
+
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
@@ -61,7 +68,7 @@ const DIARIA_RANKS_CONFIG = [
 
 // Mapeamento de campos para rótulos e tipo de input (R$ ou Fator)
 const OPERATIONAL_FIELDS = [
-  { key: 'fator_servicos_terceiros', label: 'Serviços de Terceiros', type: 'factor' as const, placeholder: 'Ex: 0.10 (para 10%)' },
+  { key: 'fator_servicos_terceiros', label: 'Serviços de Terceiros (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.10 (para 10%)' },
   { key: 'fator_material_consumo', label: 'Material de Consumo (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.02 (para 2%)' },
 ];
 
@@ -168,6 +175,13 @@ type IndexedItemAquisicao = ItemAquisicao & {
     subitemNome: string;
 };
 
+// TIPO PARA INDEXAÇÃO DE SERVIÇOS
+type IndexedItemServico = ItemAquisicaoServico & {
+    diretrizId: string;
+    subitemNr: string;
+    subitemNome: string;
+};
+
 
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
@@ -197,11 +211,13 @@ const CustosOperacionaisPage = () => {
     const shouldOpenPassagens = location.state && (location.state as { openPassagens?: boolean }).openPassagens;
     const shouldOpenConcessionaria = location.state && (location.state as { openConcessionaria?: boolean }).openConcessionaria;
     const shouldOpenMaterialConsumo = location.state && (location.state as { openMaterialConsumo?: boolean }).openMaterialConsumo;
+    const shouldOpenServicosTerceiros = location.state && (location.state as { openServicosTerceiros?: boolean }).openServicosTerceiros;
     
     initialState['diarias_detalhe'] = false; 
     initialState['passagens_detalhe'] = shouldOpenPassagens || false; 
     initialState['concessionaria_detalhe'] = shouldOpenConcessionaria || false;
     initialState['material_consumo_detalhe'] = shouldOpenMaterialConsumo || false;
+    initialState['servicos_terceiros_detalhe'] = shouldOpenServicosTerceiros || false;
     return initialState;
   });
   
@@ -222,13 +238,27 @@ const CustosOperacionaisPage = () => {
       handleMoveItem,
       isMoving: isMovingMaterialConsumo,
   } = useMaterialConsumoDiretrizes(selectedYear);
+
+  // HOOK PARA SERVIÇOS DE TERCEIROS
+  const {
+      diretrizes: diretrizesServicosTerceiros,
+      isLoading: isLoadingServicosTerceiros,
+      handleMoveItem: handleMoveItemServico,
+      isMoving: isMovingServicosTerceiros,
+  } = useServicosTerceirosDiretrizes(selectedYear);
   
   const [isMaterialConsumoFormOpen, setIsMaterialConsumoFormOpen] = useState(false);
   const [diretrizMaterialConsumoToEdit, setDiretrizMaterialConsumoToEdit] = useState<DiretrizMaterialConsumo | null>(null);
+  
+  // ESTADOS PARA SERVIÇOS DE TERCEIROS
+  const [isServicosTerceirosFormOpen, setIsServicosTerceirosFormOpen] = useState(false);
+  const [diretrizServicosTerceirosToEdit, setDiretrizServicosTerceirosToEdit] = useState<DiretrizServicosTerceiros | null>(null);
+  const [searchTermServicos, setSearchTermServicos] = useState("");
+  const [subitemServicoToOpenId, setSubitemServicoToOpenId] = useState<string | null>(null);
+  const [isExportImportServicosDialogOpen, setIsExportImportServicosDialogOpen] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState("");
-  
   const [subitemToOpenId, setSubitemToOpenId] = useState<string | null>(null);
-  
   const [isExportImportDialogOpen, setIsExportImportDialogOpen] = useState(false);
   
   const collapsibleRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -297,22 +327,25 @@ const CustosOperacionaisPage = () => {
           { data: opData, error: opError },
           { data: passagensData, error: passagensError },
           { data: concessionariaData, error: concessionariaError },
-          { data: materialConsumoData, error: materialConsumoError }
+          { data: materialConsumoData, error: materialConsumoError },
+          { data: servicosData, error: servicosError }
       ] = await Promise.all([
           supabase.from("diretrizes_operacionais").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_passagens").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_concessionaria").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_material_consumo").select("ano_referencia").eq("user_id", user.id),
+          supabase.from("diretrizes_servicos_terceiros").select("ano_referencia").eq("user_id", user.id),
       ]);
 
-      if (opError || passagensError || concessionariaError || materialConsumoError) throw opError || passagensError || concessionariaError || materialConsumoError;
+      if (opError || passagensError || concessionariaError || materialConsumoError || servicosError) throw opError || passagensError || concessionariaError || materialConsumoError || servicosError;
 
       const opYears = opData ? opData.map(d => d.ano_referencia) : [];
       const passagensYears = passagensData ? passagensData.map(d => d.ano_referencia) : [];
       const concessionariaYears = concessionariaData ? concessionariaData.map(d => d.ano_referencia) : [];
       const materialConsumoYears = materialConsumoData ? materialConsumoData.map(d => d.ano_referencia) : [];
+      const servicosYears = servicosData ? servicosData.map(d => d.ano_referencia) : [];
 
-      const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears, ...materialConsumoYears]);
+      const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears, ...materialConsumoYears, ...servicosYears]);
       
       if (defaultYearId && !yearsToInclude.has(defaultYearId)) {
           yearsToInclude.add(defaultYearId);
@@ -466,6 +499,13 @@ const CustosOperacionaisPage = () => {
   const handleMaterialConsumoImportSuccess = () => {
       if (user?.id && selectedYear > 0) {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user.id] });
+      }
+  };
+
+  // HANDLER PARA IMPORTAÇÃO DE SERVIÇOS
+  const handleServicosTerceirosImportSuccess = () => {
+      if (user?.id && selectedYear > 0) {
+          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
       }
   };
 
@@ -692,8 +732,34 @@ const CustosOperacionaisPage = () => {
             .insert(newMaterialConsumo as TablesInsert<'diretrizes_material_consumo'>[]);
           if (insertMaterialConsumoError) throw insertMaterialConsumoError;
       }
+
+      // COPIAR SERVIÇOS DE TERCEIROS
+      const { data: sourceServicos, error: servicosError } = await supabase
+        .from("diretrizes_servicos_terceiros")
+        .select("nr_subitem, nome_subitem, descricao_subitem, itens_aquisicao, ativo")
+        .eq("user_id", user.id)
+        .eq("ano_referencia", sourceYear);
+        
+      if (servicosError) throw servicosError;
       
-      toast.success(`Diretrizes operacionais, de passagens, concessionária e material de consumo do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
+      if (sourceServicos && sourceServicos.length > 0) {
+          const newServicos = (sourceServicos as Tables<'diretrizes_servicos_terceiros'>[]).map(s => {
+              const { id, created_at, updated_at, ...restOfServicos } = s as any;
+              return {
+                  ...restOfServicos,
+                  ano_referencia: targetYear,
+                  user_id: user.id,
+                  itens_aquisicao: s.itens_aquisicao,
+              };
+          });
+          
+          const { error: insertServicosError } = await supabase
+            .from("diretrizes_servicos_terceiros")
+            .insert(newServicos as TablesInsert<'diretrizes_servicos_terceiros'>[]);
+          if (insertServicosError) throw insertServicosError;
+      }
+      
+      toast.success(`Diretrizes operacionais, de passagens, concessionária, material de consumo e serviços de terceiros do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
       setIsYearManagementDialogOpen(false);
       setSelectedYear(targetYear);
       
@@ -714,7 +780,7 @@ const CustosOperacionaisPage = () => {
       return;
     }
     
-    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes operacionais, de passagens, concessionária e material de consumo para o ano ${year}? Esta ação é irreversível.`)) return;
+    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes operacionais, de passagens, concessionária, material de consumo e serviços de terceiros para o ano ${year}? Esta ação é irreversível.`)) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -746,7 +812,13 @@ const CustosOperacionaisPage = () => {
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
 
-      toast.success(`Diretrizes operacionais, de passagens, concessionária e material de consumo do ano ${year} excluídas com sucesso!`);
+      await supabase
+        .from("diretrizes_servicos_terceiros")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("ano_referencia", year);
+
+      toast.success(`Diretrizes operacionais, de passagens, concessionária, material de consumo e serviços de terceiros do ano ${year} excluídas com sucesso!`);
       setIsYearManagementDialogOpen(false);
       
       queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
@@ -1221,15 +1293,70 @@ const CustosOperacionaisPage = () => {
           setLoading(false);
       }
   };
+
+  // HANDLER PARA SALVAR SERVIÇOS DE TERCEIROS
+  const handleSaveServicosTerceiros = async (data: Partial<DiretrizServicosTerceiros> & { ano_referencia: number }) => {
+      try {
+          setLoading(true);
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error("Usuário não autenticado");
+          
+          const dbData: TablesInsert<'diretrizes_servicos_terceiros'> = {
+              user_id: user.id,
+              ano_referencia: data.ano_referencia,
+              nr_subitem: data.nr_subitem!,
+              nome_subitem: data.nome_subitem!,
+              descricao_subitem: data.descricao_subitem || null,
+              itens_aquisicao: data.itens_aquisicao as unknown as Json,
+              ativo: data.ativo ?? true,
+          };
+
+          if (data.id) {
+              const { error } = await supabase
+                  .from('diretrizes_servicos_terceiros')
+                  .update(dbData as TablesUpdate<'diretrizes_servicos_terceiros'>)
+                  .eq('id', data.id);
+              if (error) throw error;
+              toast.success("Subitem da ND (Serviços) atualizado!");
+          } else {
+              const { error } = await supabase
+                  .from('diretrizes_servicos_terceiros')
+                  .insert([dbData]);
+              if (error) throw error;
+              toast.success("Novo Subitem da ND (Serviços) cadastrado!");
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
+          setDiretrizServicosTerceirosToEdit(null);
+          setIsServicosTerceirosFormOpen(false);
+          
+      } catch (error: any) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
+      }
+  };
   
   const handleStartEditMaterialConsumo = (diretriz: DiretrizMaterialConsumo) => {
       setDiretrizMaterialConsumoToEdit(diretriz);
       setIsMaterialConsumoFormOpen(true);
   };
+
+  // HANDLER PARA EDITAR SERVIÇOS
+  const handleStartEditServicosTerceiros = (diretriz: DiretrizServicosTerceiros) => {
+      setDiretrizServicosTerceirosToEdit(diretriz);
+      setIsServicosTerceirosFormOpen(true);
+  };
   
   const handleOpenNewMaterialConsumo = () => {
       setDiretrizMaterialConsumoToEdit(null);
       setIsMaterialConsumoFormOpen(true);
+  };
+
+  // HANDLER PARA NOVO SERVIÇO
+  const handleOpenNewServicosTerceiros = () => {
+      setDiretrizServicosTerceirosToEdit(null);
+      setIsServicosTerceirosFormOpen(true);
   };
   
   const handleDeleteMaterialConsumo = async (id: string, nome: string) => {
@@ -1240,6 +1367,22 @@ const CustosOperacionaisPage = () => {
           await supabase.from('diretrizes_material_consumo').delete().eq('id', id);
           toast.success("Subitem da ND excluído!");
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user?.id] });
+      } catch (error) {
+          toast.error(sanitizeError(error));
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  // HANDLER PARA EXCLUIR SERVIÇO
+  const handleDeleteServicosTerceiros = async (id: string, nome: string) => {
+      if (!confirm(`Tem certeza que deseja excluir o Subitem da ND (Serviços) "${nome}"?`)) return;
+      
+      try {
+          setLoading(true);
+          await supabase.from('diretrizes_servicos_terceiros').delete().eq('id', id);
+          toast.success("Subitem da ND (Serviços) excluído!");
+          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
       } catch (error) {
           toast.error(sanitizeError(error));
       } finally {
@@ -1262,6 +1405,22 @@ const CustosOperacionaisPage = () => {
     });
   }, [diretrizesMaterialConsumo]);
 
+  // INDEXAÇÃO PARA SERVIÇOS
+  const indexedItemsServicos = useMemo<IndexedItemServico[]>(() => {
+    if (!diretrizesServicosTerceiros) return [];
+    
+    return diretrizesServicosTerceiros.flatMap(diretriz => {
+        const itens = (diretriz.itens_aquisicao || []) as ItemAquisicaoServico[];
+        
+        return itens.map(item => ({
+            ...item,
+            diretrizId: diretriz.id,
+            subitemNr: diretriz.nr_subitem,
+            subitemNome: diretriz.nome_subitem,
+        }));
+    });
+  }, [diretrizesServicosTerceiros]);
+
   const filteredItems = useMemo(() => {
     if (!searchTerm) return [];
     const lowerCaseSearch = searchTerm.toLowerCase().trim();
@@ -1282,6 +1441,27 @@ const CustosOperacionaisPage = () => {
     });
   }, [searchTerm, indexedItems]);
 
+  // FILTRO PARA SERVIÇOS
+  const filteredItemsServicos = useMemo(() => {
+    if (!searchTermServicos) return [];
+    const lowerCaseSearch = searchTermServicos.toLowerCase().trim();
+    
+    if (lowerCaseSearch.length < 3) return [];
+    
+    return indexedItemsServicos.filter(item => {
+        const searchString = [
+            item.descricao_item,
+            item.codigo_catmat,
+            item.numero_pregao,
+            item.uasg,
+            item.subitemNr,
+            item.subitemNome,
+        ].join(' ').toLowerCase();
+        
+        return searchString.includes(lowerCaseSearch);
+    });
+  }, [searchTermServicos, indexedItemsServicos]);
+
   const handleGoToSubitem = (diretrizId: string) => {
       handleCollapseChange('material_consumo_detalhe', true);
       setSubitemToOpenId(diretrizId);
@@ -1297,6 +1477,23 @@ const CustosOperacionaisPage = () => {
       
       setSearchTerm("");
   };
+
+  // NAVEGAÇÃO PARA SUBITEM DE SERVIÇO
+  const handleGoToSubitemServico = (diretrizId: string) => {
+      handleCollapseChange('servicos_terceiros_detalhe', true);
+      setSubitemServicoToOpenId(diretrizId);
+      
+      setTimeout(() => {
+          const element = document.getElementById(`diretriz-servicos-terceiros-${diretrizId}`);
+          if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          } else {
+              toast.warning("Subitem encontrado, mas não visível na tela.");
+          }
+      }, 100);
+      
+      setSearchTermServicos("");
+  };
   
   useEffect(() => {
       if (subitemToOpenId) {
@@ -1304,6 +1501,14 @@ const CustosOperacionaisPage = () => {
           return () => clearTimeout(timer);
       }
   }, [subitemToOpenId]);
+
+  // EFEITO PARA LIMPAR SUBITEM DE SERVIÇO
+  useEffect(() => {
+      if (subitemServicoToOpenId) {
+          const timer = setTimeout(() => setSubitemServicoToOpenId(null), 500);
+          return () => clearTimeout(timer);
+      }
+  }, [subitemServicoToOpenId]);
 
   const renderSearchResults = () => {
       if (searchTerm.length < 3) {
@@ -1356,6 +1561,72 @@ const CustosOperacionaisPage = () => {
                                       variant="outline" 
                                       size="sm" 
                                       onClick={() => handleGoToSubitem(item.diretrizId)}
+                                      className="w-full justify-start"
+                                  >
+                                      <Package className="h-4 w-4 mr-1" />
+                                      Ver Local
+                                  </Button>
+                              </TableCell>
+                          </TableRow>
+                      ))}
+                  </TableBody>
+              </Table>
+          </Card>
+      );
+  };
+
+  // RENDERIZAÇÃO DE BUSCA PARA SERVIÇOS
+  const renderSearchResultsServicos = () => {
+      if (searchTermServicos.length < 3) {
+          return (
+              <Card className="p-4 text-center text-muted-foreground">
+                  Digite pelo menos 3 caracteres para iniciar a busca.
+              </Card>
+          );
+      }
+      
+      if (filteredItemsServicos.length === 0) {
+          return (
+              <Card className="p-4 text-center text-muted-foreground">
+                  Nenhum item de serviço encontrado com este termo.
+              </Card>
+          );
+      }
+      
+      return (
+          <Card className="p-4">
+              <CardTitle className="text-base font-semibold mb-3">
+                   Resultados da Busca ({filteredItemsServicos.length})
+              </CardTitle>
+              <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead className="w-[40%]">Item de Serviço</TableHead>
+                          <TableHead className="w-[40%]">Subitem ND</TableHead>
+                          <TableHead className="w-[20%] text-center">Ações</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {filteredItemsServicos.map((item, index) => (
+                          <TableRow key={`${item.diretrizId}-${index}`}>
+                              <TableCell className="font-medium">
+                                  {item.descricao_item}
+                                  <p className="text-xs text-muted-foreground">
+                                      Cód. CATMAT: {item.codigo_catmat || 'N/A'}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                      Pregão: {item.numero_pregao} | UASG: {formatCodug(item.uasg) || 'N/A'}
+                                  </p>
+                              </TableCell>
+                              <TableCell className="text-left">
+                                  <span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span>
+                                  <span className="text-sm text-muted-foreground">{item.subitemNome}</span>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                  <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      onClick={() => handleGoToSubitemServico(item.diretrizId)}
                                       className="w-full justify-start"
                                   >
                                       <Package className="h-4 w-4 mr-1" />
@@ -1457,6 +1728,101 @@ const CustosOperacionaisPage = () => {
                       <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
                       <p className="text-xs text-muted-foreground mt-1">
                           {isMovingMaterialConsumo ? "Movendo item..." : "Carregando subitens..."}
+                      </p>
+                  </div>
+              )}
+          </div>
+      );
+  };
+
+  // RENDERIZAÇÃO DA SEÇÃO DE SERVIÇOS DE TERCEIROS
+  const renderServicosTerceirosSection = () => {
+      const isDataLoading = isLoadingServicosTerceiros || isMovingServicosTerceiros;
+      
+      return (
+          <div className="space-y-4">
+              <Card className="p-4">
+                  <div className="flex justify-between items-center mb-4">
+                      <CardTitle className="text-base font-semibold">
+                          Subitens da ND Cadastrados (Serviços)
+                      </CardTitle>
+                      <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setIsExportImportServicosDialogOpen(true)}
+                          disabled={loading || isDataLoading}
+                      >
+                          <FileSpreadsheet className="h-4 w-4 mr-2" />
+                          Exportar/Importar
+                      </Button>
+                  </div>
+                  
+                  <div className="mb-4 relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                          placeholder="Buscar item de serviço (nome, CATMAT, pregão, subitem...)"
+                          value={searchTermServicos}
+                          onChange={(e) => setSearchTermServicos(e.target.value)}
+                          disabled={isDataLoading}
+                          className="pl-10"
+                      />
+                  </div>
+                  
+                  {searchTermServicos ? (
+                      renderSearchResultsServicos()
+                  ) : (
+                      diretrizesServicosTerceiros.length > 0 ? (
+                          <Table>
+                              <TableHeader>
+                                  <TableRow>
+                                      <TableHead className="w-[150px] text-center">Nr Subitem</TableHead>
+                                      <TableHead>Nome do Subitem</TableHead>
+                                      <TableHead className="w-[100px] text-center">Ações</TableHead>
+                                  </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                  {diretrizesServicosTerceiros.map(d => (
+                                      <ServicosTerceirosDiretrizRow
+                                          key={d.id}
+                                          diretriz={d}
+                                          onEdit={handleStartEditServicosTerceiros}
+                                          onDelete={handleDeleteServicosTerceiros}
+                                          loading={loading || isDataLoading}
+                                          onMoveItem={handleMoveItemServico}
+                                          id={`diretriz-servicos-terceiros-${d.id}`} 
+                                          forceOpen={subitemServicoToOpenId === d.id}
+                                      />
+                                  ))}
+                              </TableBody>
+                          </Table>
+                      ) : (
+                          <Card className="p-4 text-center text-muted-foreground">
+                              Nenhum subitem da ND cadastrado para o ano de referência.
+                          </Card>
+                      )
+                  )}
+              </Card>
+              
+              <div className="flex justify-end">
+                  <Button 
+                      type="button" 
+                      onClick={handleOpenNewServicosTerceiros}
+                      disabled={loading || isDataLoading || !!searchTermServicos}
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full"
+                  >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Adicionar Novo Subitem da ND (Serviços)
+                  </Button>
+              </div>
+              
+              {(isLoadingServicosTerceiros || isMovingServicosTerceiros) && (
+                  <div className="text-center py-2">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
+                      <p className="text-xs text-muted-foreground mt-1">
+                          {isMovingServicosTerceiros ? "Movendo item..." : "Carregando subitens..."}
                       </p>
                   </div>
               )}
@@ -1620,8 +1986,30 @@ const CustosOperacionaisPage = () => {
                       </CollapsibleContent>
                     </Collapsible>
                   </div>
+
+                  {/* NOVA SEÇÃO: SERVIÇOS DE TERCEIROS */}
+                  <div ref={el => collapsibleRefs.current['servicos_terceiros_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
+                    <Collapsible 
+                      open={fieldCollapseState['servicos_terceiros_detalhe']} 
+                      onOpenChange={(open) => handleCollapseChange('servicos_terceiros_detalhe', open)}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <div className="flex items-center justify-between cursor-pointer py-2">
+                          <h2 className="text-base font-medium flex items-center gap-2">
+                            Serviços de Terceiros
+                          </h2>
+                          {fieldCollapseState['servicos_terceiros_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2">
+                          {renderServicosTerceirosSection()}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
                   
-                  {OPERATIONAL_FIELDS.filter(f => f.key !== 'fator_material_consumo').map(field => {
+                  {OPERATIONAL_FIELDS.filter(f => f.key !== 'fator_material_consumo' && f.key !== 'fator_servicos_terceiros').map(field => {
                     const fieldKey = field.key as string;
                     const isOpen = fieldCollapseState[fieldKey] ?? false;
                     
@@ -1724,6 +2112,24 @@ const CustosOperacionaisPage = () => {
           selectedYear={selectedYear}
           diretrizes={diretrizesMaterialConsumo}
           onImportSuccess={handleMaterialConsumoImportSuccess}
+      />
+
+      {/* NOVOS DIALOGS PARA SERVIÇOS DE TERCEIROS */}
+      <ServicosTerceirosDiretrizFormDialog
+          open={isServicosTerceirosFormOpen}
+          onOpenChange={setIsServicosTerceirosFormOpen}
+          selectedYear={selectedYear}
+          diretrizToEdit={diretrizServicosTerceirosToEdit}
+          onSave={handleSaveServicosTerceiros}
+          loading={loading}
+      />
+      
+      <ServicosTerceirosExportImportDialog
+          open={isExportImportServicosDialogOpen}
+          onOpenChange={setIsExportImportServicosDialogOpen}
+          selectedYear={selectedYear}
+          diretrizes={diretrizesServicosTerceiros}
+          onImportSuccess={handleServicosTerceirosImportSuccess}
       />
     </div>
   );
