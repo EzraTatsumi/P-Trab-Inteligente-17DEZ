@@ -358,31 +358,32 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                                 </div>
                             </div>
 
+                            <div className="space-y-2">
+                                <Label htmlFor="item-nome-reduzido">Nome Reduzido *</Label>
+                                <Input
+                                    id="item-nome-reduzido"
+                                    value={itemForm.nome_reduzido}
+                                    onChange={(e) => setItemForm({ ...itemForm, nome_reduzido: e.target.value })}
+                                    placeholder="Ex: Manut. Ar Condicionado"
+                                    onKeyDown={handleEnterToNextField}
+                                    required
+                                />
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="space-y-2 col-span-2">
-                                    <Label htmlFor="item-nome-reduzido">Nome Reduzido *</Label>
-                                    <Input
-                                        id="item-nome-reduzido"
-                                        value={itemForm.nome_reduzido}
-                                        onChange={(e) => setItemForm({ ...itemForm, nome_reduzido: e.target.value })}
-                                        placeholder="Ex: Manut. Ar Condicionado"
-                                        onKeyDown={handleEnterToNextField}
-                                        required
-                                    />
-                                </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="item-unidade">Unidade de Medida *</Label>
+                                    <Label htmlFor="item-unidade">Unidade *</Label>
                                     <Input
                                         id="item-unidade"
                                         value={itemForm.unidade_medida}
                                         onChange={(e) => setItemForm({ ...itemForm, unidade_medida: e.target.value })}
-                                        placeholder="Ex: UN, MÊS, HORA"
+                                        placeholder="Ex: UN, MÊS"
                                         onKeyDown={handleEnterToNextField}
                                         required
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="item-valor">Valor Unitário (R$) *</Label>
+                                    <Label htmlFor="item-valor">Valor Unitário *</Label>
                                     <CurrencyInput
                                         id="item-valor"
                                         rawDigits={itemForm.rawValor}
@@ -392,11 +393,8 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                                         required
                                     />
                                 </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="item-pregao">Pregão/Ref. Preço *</Label>
+                                    <Label htmlFor="item-pregao">Pregão/Ref. *</Label>
                                     <Input
                                         id="item-pregao"
                                         value={itemForm.numero_pregao}
