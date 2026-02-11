@@ -15,7 +15,7 @@ import {
     numberToRawDigits, 
     formatCurrency, 
     formatCodug, 
-    formatPregao // NOVO: Importar formatPregao
+    formatPregao 
 } from "@/lib/formatUtils";
 import SubitemCatalogDialog from './SubitemCatalogDialog';
 import CatmatCatalogDialog from './CatmatCatalogDialog';
@@ -33,7 +33,6 @@ interface MaterialConsumoDiretrizFormDialogProps {
     loading: boolean;
 }
 
-// Estado inicial para o formulário de Item de Aquisição
 const initialItemForm: Omit<ItemAquisicao, 'id'> & { rawValor: string } = {
     descricao_item: '',
     descricao_reduzida: '', 
@@ -42,7 +41,6 @@ const initialItemForm: Omit<ItemAquisicao, 'id'> & { rawValor: string } = {
     numero_pregao: '',
     uasg: '',
     codigo_catmat: '',
-    // Inicializa campos opcionais para ItemAquisicao
     quantidade: 0,
     valor_total: 0,
     nd: '',
@@ -50,7 +48,6 @@ const initialItemForm: Omit<ItemAquisicao, 'id'> & { rawValor: string } = {
     nome_subitem: '',
 };
 
-// Definindo o tipo interno do formulário
 type InternalMaterialConsumoForm = Omit<DiretrizMaterialConsumo, 'user_id' | 'created_at' | 'updated_at'> & { 
     id?: string,
     ano_referencia: number;
@@ -65,8 +62,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     loading,
 }) => {
     const { handleEnterToNextField } = useFormNavigation();
-    
-    // Referência para o formulário de edição do item
     const itemFormRef = useRef<HTMLDivElement>(null);
 
     const getInitialFormState = (editData: DiretrizMaterialConsumo | null): InternalMaterialConsumoForm => {
@@ -79,7 +74,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         }
         
         return { 
-            id: undefined, // Adiciona 'id' opcional
+            id: undefined,
             nr_subitem: '', 
             nome_subitem: '', 
             descricao_subitem: '', 
@@ -90,29 +85,16 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
     };
 
     const [subitemForm, setSubitemForm] = useState<InternalMaterialConsumoForm>(() => getInitialFormState(diretrizToEdit));
-    
     const [itemForm, setItemForm] = useState<typeof initialItemForm>(initialItemForm);
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
-    
-    // NOVO ESTADO: Item de aquisição que veio para revisão (do PNCP)
     const [itemToReview, setItemToReview] = useState<ItemAquisicao | null>(null);
-    
-    // NOVO ESTADO: Controle do diálogo do catálogo de Subitem
     const [isCatalogOpen, setIsCatalogOpen] = useState(false);
-    
-    // NOVO ESTADO: Controle do diálogo do catálogo CATMAT
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
-    
-    // NOVO ESTADO: Controle do diálogo de importação em massa
     const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
-    
-    // NOVO ESTADO: Controle do diálogo de importação PNCP
     const [isPNCPSearchOpen, setIsPNCPSearchOpen] = useState(false);
 
     useEffect(() => {
         setSubitemForm(getInitialFormState(diretrizToEdit));
-        
-        // Ao editar, precisamos garantir que o itemForm reflita a estrutura ItemAquisicao
         if (diretrizToEdit && editingItemId) {
             const item = diretrizToEdit.itens_aquisicao.find(i => i.id === editingItemId);
             if (item) {
@@ -124,11 +106,10 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         setEditingItemId(null);
     }, [diretrizToEdit, open, selectedYear]);
     
-    // Efeito para lidar com o item que veio para revisão
     useEffect(() => {
         if (itemToReview) {
             handleEditItem(itemToReview);
-            setItemToReview(null); // Limpa o estado após o uso
+            setItemToReview(null);
         }
     }, [itemToReview]);
 
@@ -140,24 +121,19 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         }));
     };
     
-    // Função para lidar com a mudança do input UASG, aplicando a formatação
     const handleUasgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const rawValue = e.target.value;
-        // Remove caracteres não numéricos e armazena apenas os dígitos
         const rawDigits = rawValue.replace(/\D/g, '');
         setItemForm({ ...itemForm, uasg: rawDigits }); 
     };
 
-    // Função auxiliar para gerar a chave de unicidade de um item
     const generateItemKey = (item: ItemAquisicao | typeof initialItemForm): string => {
-        // Normaliza e remove espaços extras
         const normalize = (str: string) => 
             (str || '')
             .trim()
             .toUpperCase()
             .replace(/\s+/g, ' ');
             
-        // Usamos a descrição completa para a chave de unicidade, mas mantemos os outros campos
         const desc = normalize(item.descricao_item); 
         const catmat = normalize(item.codigo_catmat);
         const pregao = normalize(item.numero_pregao);
@@ -183,7 +159,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         }
 
         const newItem: ItemAquisicao = {
-            // Se estiver editando, mantém o ID. Se for novo, gera um ID local.
             id: editingItemId || Math.random().toString(36).substring(2, 9), 
             descricao_item: itemForm.descricao_item,
             descricao_reduzida: itemForm.descricao_reduzida, 
@@ -191,7 +166,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             numero_pregao: itemForm.numero_pregao,
             uasg: itemForm.uasg,
             codigo_catmat: itemForm.codigo_catmat, 
-            // Inicializa campos opcionais para ItemAquisicao
             quantidade: itemForm.quantidade || 0,
             valor_total: itemForm.valor_total || 0,
             nd: itemForm.nd || '',
@@ -199,10 +173,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             nome_subitem: itemForm.nome_subitem || '',
         };
         
-        // 1. Verificar duplicidade antes de adicionar/atualizar
         const newItemKey = generateItemKey(newItem);
         const isDuplicate = subitemForm.itens_aquisicao.some(existingItem => {
-            // Se estiver editando, permite que o item atual mantenha sua chave
             if (editingItemId && existingItem.id === editingItemId) return false;
             return generateItemKey(existingItem) === newItemKey;
         });
@@ -217,8 +189,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             : [...subitemForm.itens_aquisicao, newItem];
 
         setSubitemForm(prev => ({ ...prev, itens_aquisicao: updatedItens }));
-
-        // Resetar formulário de item
         setEditingItemId(null);
         setItemForm(initialItemForm);
     };
@@ -233,15 +203,12 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             numero_pregao: item.numero_pregao,
             uasg: item.uasg,
             codigo_catmat: item.codigo_catmat, 
-            // Inicializa campos opcionais para ItemAquisicao (usando || para garantir valor)
             quantidade: item.quantidade || 0,
             valor_total: item.valor_total || 0,
             nd: item.nd || '',
             nr_subitem: item.nr_subitem || '',
             nome_subitem: item.nome_subitem || '',
         });
-        
-        // Rola a tela para o formulário de edição
         itemFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
@@ -265,7 +232,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             ...subitemForm,
             ano_referencia: selectedYear,
             id: subitemForm.id,
-            // Garantir que itens_aquisicao seja um array limpo
             itens_aquisicao: subitemForm.itens_aquisicao,
         };
 
@@ -273,7 +239,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         onOpenChange(false);
     };
 
-    // Função para receber itens importados do Excel
     const handleBulkImport = (newItems: ItemAquisicao[]) => {
         if (newItems.length === 0) {
             toast.info("Nenhum item novo para adicionar.");
@@ -281,76 +246,48 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             return;
         }
         
-        // 1. Adiciona os novos itens válidos aos existentes
         setSubitemForm(prev => ({
             ...prev,
             itens_aquisicao: [...prev.itens_aquisicao, ...newItems],
         }));
         
         toast.success(`${newItems.length} itens importados com sucesso e adicionados à lista.`);
-
-        // 2. Limpa o formulário de item individual
         setItemForm(initialItemForm);
         setEditingItemId(null);
-        
-        // 3. FECHAR O DIÁLOGO DE IMPORTAÇÃO EM MASSA
         setIsBulkUploadOpen(false); 
     };
     
-    // NOVO: Função para receber itens importados do PNCP (após inspeção)
     const handlePNCPImport = (newItems: ItemAquisicao[]) => {
         if (newItems.length === 0) {
             toast.info("Nenhum item novo para adicionar.");
             return;
         }
         
-        // Verifica se o primeiro item é um item de Preço Médio (que precisa de UASG/Pregão manual)
-        // Itens de Preço Médio têm UASG vazia e Pregão padrão 'Em processo de abertura'
         const firstItem = newItems[0];
         const isPriceReferenceItem = firstItem.uasg === '' && firstItem.numero_pregao === 'Em processo de abertura';
 
         if (isPriceReferenceItem) {
-            // 1. Adiciona o item à lista (com UASG/Pregão vazios)
             setSubitemForm(prev => ({
                 ...prev,
                 itens_aquisicao: [...prev.itens_aquisicao, firstItem],
             }));
-            
-            // 2. Coloca o item em modo de edição para que o usuário preencha os campos faltantes
             handleEditItem(firstItem);
             toast.info("Item de Preço Médio importado. Por favor, preencha a UASG e o Pregão/Ref. Preço antes de adicionar.");
-            
-            // Se houver mais itens (o que não deve acontecer no fluxo de Preço Médio), eles são descartados
-            if (newItems.length > 1) {
-                console.warn("Múltiplos itens de preço médio importados. Apenas o primeiro foi enviado para edição.");
-            }
         } else {
-            // Se for ARP (ou qualquer outro item com UASG/Pregão preenchidos), adiciona diretamente
-            
-            // 1. Adiciona os novos itens válidos aos existentes
             setSubitemForm(prev => ({
                 ...prev,
                 itens_aquisicao: [...prev.itens_aquisicao, ...newItems],
             }));
-            
             toast.success(`${newItems.length} itens importados do PNCP com sucesso e adicionados à lista.`);
-
-            // 2. Limpa o formulário de item individual
             setItemForm(initialItemForm);
             setEditingItemId(null);
         }
-        
-        // 3. NÃO FECHA O DIÁLOGO PNCP (Isso é controlado pelo ItemAquisicaoPNCPDialog)
     };
     
-    // NOVO: Função para receber um item para revisão (chamado pelo PNCPInspectionDialog)
     const handleReviewItem = (item: ItemAquisicao) => {
-        // Define o item no estado para que o useEffect o processe
         setItemToReview(item);
     };
 
-
-    // Função para receber dados do catálogo de Subitem e atualizar o formulário
     const handleCatalogSelect = (catalogItem: { nr_subitem: string, nome_subitem: string, descricao_subitem: string | null }) => {
         setSubitemForm(prev => ({
             ...prev,
@@ -361,29 +298,24 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         setIsCatalogOpen(false);
     };
     
-    // Função para receber dados do catálogo CATMAT e atualizar o formulário de item
     const handleCatmatSelect = (catmatItem: { code: string, description: string, short_description: string | null }) => {
         setItemForm(prev => ({
             ...prev,
             codigo_catmat: catmatItem.code,
-            // Descrição Completa recebe a descrição completa do CATMAT
             descricao_item: catmatItem.description, 
-            // Descrição Reduzida recebe o nome reduzido do CATMAT
             descricao_reduzida: catmatItem.short_description || '', 
         }));
         setIsCatmatCatalogOpen(false);
     };
     
     const isEditingSubitem = !!subitemForm.id;
-    
-    // 1. Ordenar os itens de aquisição por descrição completa
     const sortedItens = [...subitemForm.itens_aquisicao].sort((a, b) => 
         a.descricao_item.localeCompare(b.descricao_item)
     );
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-                    <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
                         {isEditingSubitem ? `Editar Subitem ND: ${subitemForm.nr_subitem}` : "Novo Subitem da Natureza da Despesa"}
@@ -394,7 +326,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                 </DialogHeader>
 
                 <div className="space-y-6 py-2">
-                    {/* Seção de Dados do Subitem (Card 266 equivalente) */}
                     <Card className="p-4">
                         <div className="flex justify-between items-center mb-4">
                             <CardTitle className="text-base">
@@ -408,7 +339,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 disabled={loading}
                             >
                                 <BookOpen className="h-4 w-4 mr-2" />
-                                Catálogo ND
+                                Catálogo ND 30
                             </Button>
                         </div>
                         
@@ -452,14 +383,12 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                         </div>
                     </Card>
 
-                    {/* Seção de Gerenciamento de Itens de Aquisição (Card 325 equivalente) */}
                     <Card className="p-4 space-y-4">
                         <div className="flex justify-between items-center">
                             <CardTitle className="text-base font-semibold">
                                 {editingItemId ? "Editar Item de Aquisição" : "Adicionar Novo Item de Aquisição"}
                             </CardTitle>
                             <div className="flex gap-2">
-                                {/* NOVO BOTÃO: Importar API PNCP */}
                                 <Button 
                                     type="button" 
                                     variant="secondary" 
@@ -471,7 +400,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     Importar API PNCP
                                 </Button>
                                 
-                                {/* Botão Importar Excel */}
                                 <Button 
                                     type="button" 
                                     variant="secondary" 
@@ -485,11 +413,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                             </div>
                         </div>
                         
-                        {/* Formulário de Item - Reorganizado em três linhas lógicas */}
                         <div className="border p-3 rounded-lg bg-muted/50 space-y-4" ref={itemFormRef}>
-                            {/* PRIMEIRA LINHA: CATMAT, Botão CATMAT e Descrição Completa */}
                             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                                {/* Campo Código CATMAT (1 coluna) */}
                                 <div className="space-y-2 col-span-1">
                                     <Label htmlFor="item-catmat">Cód. CATMAT</Label>
                                     <Input
@@ -499,21 +424,19 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         placeholder="Ex: 123456789"
                                         onKeyDown={handleEnterToNextField}
                                     />
-                                    {/* CORREÇÃO: Botão Catálogo CATMAT movido para baixo do input Cód. CATMAT, removendo mt-2 */}
                                     <Button 
                                         type="button" 
                                         variant="outline" 
                                         size="sm" 
                                         onClick={() => setIsCatmatCatalogOpen(true)}
                                         disabled={loading}
-                                        className="w-full" // w-full para ocupar a largura da coluna
+                                        className="w-full"
                                     >
                                         <BookOpen className="h-4 w-4 mr-2" />
                                         CATMAT
                                     </Button>
                                 </div>
                                 
-                                {/* Campo Descrição Completa (4 colunas) */}
                                 <div className="space-y-2 col-span-4">
                                     <Label htmlFor="item-descricao">Descrição Completa *</Label>
                                     <Textarea 
@@ -527,9 +450,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 </div>
                             </div>
 
-                            {/* SEGUNDA LINHA: Nome Reduzido, Valor, Pregão, UASG */}
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                {/* Campo Nome Reduzido (1 coluna) */}
                                 <div className="space-y-2 col-span-1">
                                     <Label htmlFor="item-descricao-reduzida">Nome Reduzido</Label>
                                     <Input
@@ -541,7 +462,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     />
                                 </div>
                                 
-                                {/* Campo Valor Unitário (1 coluna) */}
                                 <div className="space-y-2 col-span-1">
                                     <Label htmlFor="item-valor">Valor Unitário (R$) *</Label>
                                     <CurrencyInput
@@ -557,7 +477,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     </p>
                                 </div>
                                 
-                                {/* Campo Pregão (1 coluna) */}
                                 <div className="space-y-2 col-span-1">
                                     <Label htmlFor="item-pregao">Pregão/Ref. Preço *</Label>
                                     <Input
@@ -573,7 +492,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                     </p>
                                 </div>
                                 
-                                {/* Campo UASG (1 coluna) */}
                                 <div className="space-y-2 col-span-1">
                                     <Label htmlFor="item-uasg">UASG *</Label>
                                     <Input
@@ -588,7 +506,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 </div>
                             </div>
                             
-                            {/* TERCEIRA LINHA: Botão de Ação */}
                             <div className="grid grid-cols-1">
                                 <Button 
                                     type="button" 
@@ -606,7 +523,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                             </div>
                         </div>
                         
-                        {/* Tabela de Itens de Aquisição */}
                         {sortedItens.length > 0 ? (
                             <Table>
                                 <TableHeader>
@@ -666,38 +582,32 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                 </div>
             </DialogContent>
             
-            {/* Diálogo do Catálogo de Subitem */}
             <SubitemCatalogDialog 
                 open={isCatalogOpen}
                 onOpenChange={setIsCatalogOpen}
                 onSelect={handleCatalogSelect}
             />
             
-            {/* Diálogo do Catálogo CATMAT */}
             <CatmatCatalogDialog
                 open={isCatmatCatalogOpen}
                 onOpenChange={setIsCatmatCatalogOpen}
                 onSelect={handleCatmatSelect}
             />
             
-            {/* Diálogo de Importação em Massa */}
             <ItemAquisicaoBulkUploadDialog
                 open={isBulkUploadOpen}
                 onOpenChange={setIsBulkUploadOpen}
                 onImport={handleBulkImport}
-                // NOVO: Passa a lista de itens já existentes na diretriz atual
                 existingItemsInDiretriz={subitemForm.itens_aquisicao} 
             />
             
-            {/* NOVO: Diálogo de Importação PNCP */}
             <ItemAquisicaoPNCPDialog
                 open={isPNCPSearchOpen}
                 onOpenChange={setIsPNCPSearchOpen}
                 onImport={handlePNCPImport}
-                // NOVO: Passa a lista de itens já existentes na diretriz atual
                 existingItemsInDiretriz={subitemForm.itens_aquisicao}
-                onReviewItem={handleReviewItem} // NOVO: Passando a função de revisão
-                selectedYear={selectedYear} // Passa o ano de referência
+                onReviewItem={handleReviewItem} 
+                selectedYear={selectedYear} 
             />
         </Dialog>
     );
