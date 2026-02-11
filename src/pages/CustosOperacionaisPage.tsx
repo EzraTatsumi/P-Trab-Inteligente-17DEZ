@@ -1612,7 +1612,7 @@ const CustosOperacionaisPage = () => {
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
                           <h2 className="text-base font-medium flex items-center gap-2">
-                            Material de Consumo (33.90.30)
+                            Material de Consumo
                           </h2>
                           {fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </div>
