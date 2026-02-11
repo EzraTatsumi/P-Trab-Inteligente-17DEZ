@@ -17,9 +17,8 @@ import {
     formatCodug, 
     formatPregao 
 } from "@/lib/formatUtils";
-import SubitemCatalogDialog from './SubitemCatalogDialog';
+import ServicoCatalogDialog from './ServicoCatalogDialog'; // ATUALIZADO
 import CatmatCatalogDialog from './CatmatCatalogDialog';
-// Nota: Usaremos os mesmos diálogos de importação adaptando o contexto se necessário no futuro
 import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog';
 import ItemAquisicaoPNCPDialog from './ItemAquisicaoPNCPDialog';
 
@@ -433,7 +432,12 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                 </div>
             </DialogContent>
             
-            <SubitemCatalogDialog open={isCatalogOpen} onOpenChange={setIsCatalogOpen} onSelect={handleCatalogSelect} />
+            {/* ATUALIZADO: Usando ServicoCatalogDialog */}
+            <ServicoCatalogDialog 
+                open={isCatalogOpen} 
+                onOpenChange={setIsCatalogOpen} 
+                onSelect={handleCatalogSelect} 
+            />
             <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={handleCatmatSelect} />
             <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={handleBulkImport} existingItemsInDiretriz={subitemForm.itens_aquisicao as any} />
             <ItemAquisicaoPNCPDialog open={isPNCPSearchOpen} onOpenChange={setIsPNCPSearchOpen} onImport={handlePNCPImport} existingItemsInDiretriz={subitemForm.itens_aquisicao as any} selectedYear={selectedYear} />
