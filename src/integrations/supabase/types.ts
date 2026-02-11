@@ -227,7 +227,7 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao: number
-          efetivo?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           horas_dia?: number | null
           id?: string
@@ -261,7 +261,7 @@ export type Database = {
           detalhamento?: string | null
           detalhamento_customizado?: string | null
           dias_operacao?: number
-          efetivo?: number
+          efetivo?: number | null
           fase_atividade?: string | null
           horas_dia?: number | null
           id?: string
@@ -1561,6 +1561,53 @@ export type Database = {
           },
         ]
       }
+      diretrizes_servicos_terceiros: {
+        Row: {
+          id: string
+          user_id: string
+          ano_referencia: number
+          nr_subitem: string
+          nome_subitem: string
+          descricao_subitem: string | null
+          itens_aquisicao: Json
+          ativo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          ano_referencia: number
+          nr_subitem: string
+          nome_subitem: string
+          descricao_subitem?: string | null
+          itens_aquisicao?: Json
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          ano_referencia?: number
+          nr_subitem?: string
+          nome_subitem?: string
+          descricao_subitem?: string | null
+          itens_aquisicao?: Json
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diretrizes_servicos_terceiros_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizacoes_militares: {
         Row: {
           ativo: boolean | null
@@ -1801,7 +1848,7 @@ export type Database = {
           tipo_transporte?: string
           trecho_id?: string
           ug?: string
-          ug_detentora?: string
+          ug_detentora?: string | null
           updated_at?: string
           valor_nd_33?: number
           valor_total?: number
