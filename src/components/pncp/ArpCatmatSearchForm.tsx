@@ -12,11 +12,12 @@ import { fetchArpItemsByCatmat } from '@/integrations/supabase/api';
 import { DetailedArpItem, ArpItemResult } from '@/types/pncp';
 import ArpSearchResultsList from './ArpSearchResultsList';
 import CatmatCatalogDialog from '../CatmatCatalogDialog';
+import CatserCatalogDialog from '../CatserCatalogDialog';
 
 // 1. Esquema de Validação
 const formSchema = z.object({
     codigoItem: z.string()
-        .min(1, { message: "O Código CATMAT é obrigatório." })
+        .min(1, { message: "O Código do Item é obrigatório." })
         .regex(/^\d{1,9}$/, { message: "O código deve conter apenas números (máx. 9 dígitos)." }),
     dataInicio: z.string().min(1, { message: "Data de Início é obrigatória." }),
     dataFim: z.string().min(1, { message: "Data de Fim é obrigatória." }),
@@ -45,6 +46,7 @@ const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
+    const [isCatserCatalogOpen, setIsCatserCatalogOpen] = useState(false);
     // Armazena os itens detalhados (DetailedArpItem)
     const [detailedItems, setDetailedItems] = useState<DetailedArpItem[]>([]); 
     
@@ -66,9 +68,10 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
         form.setValue('codigoItem', limitedValue, { shouldValidate: true });
     };
     
-    const handleCatmatSelect = (catmatItem: { code: string, description: string, short_description: string | null }) => {
-        form.setValue('codigoItem', catmatItem.code, { shouldValidate: true });
+    const handleCatalogSelect = (item: { code: string, description: string, short_description: string | null }) => {
+        form.setValue('codigoItem', item.code, { shouldValidate: true });
         setIsCatmatCatalogOpen(false);
+        setIsCatserCatalogOpen(false);
     };
 
     const onSubmit = async (values: ArpCatmatFormValues) => {
@@ -77,7 +80,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
         onClearSelection(); 
         
         try {
-            toast.info(`Buscando itens de ARP para CATMAT ${values.codigoItem}...`);
+            toast.info(`Buscando itens de ARP para o item ${values.codigoItem}...`);
             
             const params = {
                 codigoItem: values.codigoItem,
@@ -106,7 +109,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
             }
 
         } catch (error: any) {
-            console.error("Erro na busca PNCP por CATMAT:", error);
+            console.error("Erro na busca PNCP por código:", error);
             toast.error(error.message || "Falha ao buscar itens de ARP. Verifique os parâmetros.");
         } finally {
             setIsSearching(false);
@@ -174,15 +177,28 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                                                 disabled={isSearching}
                                             />
                                         </FormControl>
-                                        <Button 
-                                            type="button" 
-                                            variant="outline" 
-                                            size="icon" 
-                                            onClick={() => setIsCatmatCatalogOpen(true)}
-                                            disabled={isSearching}
-                                        >
-                                            <BookOpen className="h-4 w-4" />
-                                        </Button>
+                                        <div className="flex flex-col gap-1">
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="sm" 
+                                                onClick={() => setIsCatmatCatalogOpen(true)}
+                                                disabled={isSearching}
+                                                className="h-8 px-2 text-[10px]"
+                                            >
+                                                <BookOpen className="h-3 w-3 mr-1" /> CATMAT
+                                            </Button>
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="sm" 
+                                                onClick={() => setIsCatserCatalogOpen(true)}
+                                                disabled={isSearching}
+                                                className="h-8 px-2 text-[10px]"
+                                            >
+                                                <BookOpen className="h-3 w-3 mr-1" /> CATSER
+                                            </Button>
+                                        </div>
                                     </div>
                                     <FormMessage />
                                     <p className="text-xs text-muted-foreground mt-1">
@@ -248,18 +264,11 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
             {/* Seção de Resultados */}
             {mappedResults.length > 0 && (
                 <div ref={resultsRef}>
-                    {/* O ArpSearchResultsList espera ArpItemResult[], mas internamente busca os detalhes. */}
-                    {/* Como a busca por CATMAT já retorna os detalhes, precisamos adaptar o ArpSearchResultsList */}
-                    {/* para aceitar os DetailedItems diretamente, ou mapear os resultados. */}
-                    {/* A solução mais simples é usar o ArpSearchResultsList, mas ele precisa de um array de ArpItemResult */}
-                    {/* que represente os pregões encontrados. */}
-                    
-                    {/* NOVO: Passamos os resultados mapeados (que representam os Pregões) */}
                     <ArpSearchResultsList 
                         results={mappedResults} 
                         onItemPreSelect={handleItemPreSelectWrapper} 
-                        searchedUasg={''} // Não aplicável na busca por CATMAT
-                        searchedOmName={`CATMAT ${form.getValues('codigoItem')}`}
+                        searchedUasg={''} 
+                        searchedOmName={`Item ${form.getValues('codigoItem')}`}
                         selectedItemIds={selectedItemIds}
                     />
                 </div>
@@ -268,7 +277,12 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
             <CatmatCatalogDialog
                 open={isCatmatCatalogOpen}
                 onOpenChange={setIsCatmatCatalogOpen}
-                onSelect={handleCatmatSelect}
+                onSelect={handleCatalogSelect}
+            />
+            <CatserCatalogDialog
+                open={isCatserCatalogOpen}
+                onOpenChange={setIsCatserCatalogOpen}
+                onSelect={handleCatalogSelect}
             />
         </>
     );

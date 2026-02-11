@@ -13,6 +13,7 @@ import { fetchPriceStats, fetchCatmatFullDescription } from '@/integrations/supa
 import { PriceStatsResult, PriceStats, RawPriceRecord } from '@/types/pncp';
 import { capitalizeFirstLetter, formatCurrency, formatCodug } from '@/lib/formatUtils';
 import CatmatCatalogDialog from '../CatmatCatalogDialog';
+import CatserCatalogDialog from '../CatserCatalogDialog';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -86,6 +87,7 @@ type PriceType = 'avg' | 'median' | 'min' | 'max';
 const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInspecting, onClearPriceSelection, selectedItemForInspection }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
+    const [isCatserCatalogOpen, setIsCatserCatalogOpen] = useState(false);
     const [searchResult, setSearchResult] = useState<PriceStatsResult | null>(null);
     
     // Estado para rastrear os IDs (índices) dos registros excluídos
@@ -115,9 +117,10 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
         form.setValue('codigoItem', limitedValue, { shouldValidate: true });
     };
     
-    const handleCatmatSelect = (catmatItem: { code: string, description: string, short_description: string | null }) => {
-        form.setValue('codigoItem', catmatItem.code, { shouldValidate: true });
+    const handleCatalogSelect = (item: { code: string, description: string, short_description: string | null }) => {
+        form.setValue('codigoItem', item.code, { shouldValidate: true });
         setIsCatmatCatalogOpen(false);
+        setIsCatserCatalogOpen(false);
     };
 
     const onSubmit = async (values: PriceSearchFormValues) => {
@@ -434,15 +437,28 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                                                 disabled={isSearching}
                                             />
                                         </FormControl>
-                                        <Button 
-                                            type="button" 
-                                            variant="outline" 
-                                            size="icon" 
-                                            onClick={() => setIsCatmatCatalogOpen(true)}
-                                            disabled={isSearching}
-                                        >
-                                            <BookOpen className="h-4 w-4" />
-                                        </Button>
+                                        <div className="flex flex-col gap-1">
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="sm" 
+                                                onClick={() => setIsCatmatCatalogOpen(true)}
+                                                disabled={isSearching}
+                                                className="h-8 px-2 text-[10px]"
+                                            >
+                                                <BookOpen className="h-3 w-3 mr-1" /> CATMAT
+                                            </Button>
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="sm" 
+                                                onClick={() => setIsCatserCatalogOpen(true)}
+                                                disabled={isSearching}
+                                                className="h-8 px-2 text-[10px]"
+                                            >
+                                                <BookOpen className="h-3 w-3 mr-1" /> CATSER
+                                            </Button>
+                                        </div>
                                     </div>
                                     <FormMessage />
                                     <p className="text-xs text-muted-foreground mt-1">
@@ -594,7 +610,12 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
             <CatmatCatalogDialog
                 open={isCatmatCatalogOpen}
                 onOpenChange={setIsCatmatCatalogOpen}
-                onSelect={handleCatmatSelect}
+                onSelect={handleCatalogSelect}
+            />
+            <CatserCatalogDialog
+                open={isCatserCatalogOpen}
+                onOpenChange={setIsCatserCatalogOpen}
+                onSelect={handleCatalogSelect}
             />
         </>
     );
