@@ -17,7 +17,8 @@ import {
     formatCodug, 
     formatPregao 
 } from "@/lib/formatUtils";
-import ServicoCatalogDialog from './ServicoCatalogDialog'; // ATUALIZADO
+import ServicoCatalogDialog from './ServicoCatalogDialog';
+import LocacaoCatalogDialog from './LocacaoCatalogDialog'; // NOVO
 import CatmatCatalogDialog from './CatmatCatalogDialog';
 import ItemAquisicaoBulkUploadDialog from './ItemAquisicaoBulkUploadDialog';
 import ItemAquisicaoPNCPDialog from './ItemAquisicaoPNCPDialog';
@@ -83,6 +84,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     
     const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+    const [isLocacaoCatalogOpen, setIsLocacaoCatalogOpen] = useState(false); // NOVO
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
     const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
     const [isPNCPSearchOpen, setIsPNCPSearchOpen] = useState(false);
@@ -219,6 +221,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
             descricao_subitem: catalogItem.descricao_subitem,
         }));
         setIsCatalogOpen(false);
+        setIsLocacaoCatalogOpen(false);
     };
     
     const handleCatmatSelect = (catmatItem: any) => {
@@ -239,20 +242,25 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
             <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
-                        {subitemForm.id ? `Editar Subitem Serviço: ${subitemForm.nr_subitem}` : "Novo Subitem de Serviço"}
+                        {subitemForm.id ? `Editar Subitem: ${subitemForm.nr_subitem}` : "Novo Subitem da Natureza da Despesa"}
                     </DialogTitle>
                     <DialogDescription>
-                        Cadastre o subitem da ND e os itens de serviço associados.
+                        Cadastre o subitem da ND e os itens de serviço/locação associados.
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-6 py-2">
                     <Card className="p-4">
                         <div className="flex justify-between items-center mb-4">
-                            <CardTitle className="text-base">Dados do Subitem de Serviço</CardTitle>
-                            <Button type="button" variant="outline" size="sm" onClick={() => setIsCatalogOpen(true)} disabled={loading}>
-                                <BookOpen className="h-4 w-4 mr-2" /> Catálogo ND 39
-                            </Button>
+                            <CardTitle className="text-base">Dados do Subitem</CardTitle>
+                            <div className="flex gap-2">
+                                <Button type="button" variant="outline" size="sm" onClick={() => setIsLocacaoCatalogOpen(true)} disabled={loading}>
+                                    <BookOpen className="h-4 w-4 mr-2" /> Catálogo ND 33
+                                </Button>
+                                <Button type="button" variant="outline" size="sm" onClick={() => setIsCatalogOpen(true)} disabled={loading}>
+                                    <BookOpen className="h-4 w-4 mr-2" /> Catálogo ND 39
+                                </Button>
+                            </div>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -298,7 +306,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                     <Card className="p-4 space-y-4">
                         <div className="flex justify-between items-center">
                             <CardTitle className="text-base font-semibold">
-                                {editingItemId ? "Editar Item de Serviço" : "Adicionar Novo Item de Serviço"}
+                                {editingItemId ? "Editar Item" : "Adicionar Novo Item"}
                             </CardTitle>
                             <div className="flex gap-2">
                                 <Button type="button" variant="secondary" size="sm" onClick={() => setIsPNCPSearchOpen(true)} disabled={loading}>
@@ -326,12 +334,12 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                                     </Button>
                                 </div>
                                 <div className="space-y-2 col-span-4">
-                                    <Label htmlFor="item-descricao">Descrição do Serviço *</Label>
+                                    <Label htmlFor="item-descricao">Descrição do Item *</Label>
                                     <Textarea 
                                         id="item-descricao"
                                         value={itemForm.descricao_item}
                                         onChange={(e) => setItemForm({ ...itemForm, descricao_item: e.target.value })}
-                                        placeholder="Ex: Serviço de manutenção de ar condicionado"
+                                        placeholder="Ex: Serviço de manutenção ou Locação de veículo"
                                         rows={2} 
                                         required
                                     />
@@ -385,7 +393,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[40%]">Descrição do Serviço</TableHead>
+                                        <TableHead className="w-[40%]">Descrição</TableHead>
                                         <TableHead className="w-[10%] text-center">CATMAT</TableHead>
                                         <TableHead className="w-[15%] text-center">Pregão/Ref.</TableHead>
                                         <TableHead className="w-[10%] text-center">UASG</TableHead>
@@ -418,7 +426,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                                 </TableBody>
                             </Table>
                         ) : (
-                            <p className="text-muted-foreground text-center py-4">Nenhum item de serviço cadastrado.</p>
+                            <p className="text-muted-foreground text-center py-4">Nenhum item cadastrado.</p>
                         )}
                     </Card>
                 </div>
@@ -432,10 +440,14 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                 </div>
             </DialogContent>
             
-            {/* ATUALIZADO: Usando ServicoCatalogDialog */}
             <ServicoCatalogDialog 
                 open={isCatalogOpen} 
                 onOpenChange={setIsCatalogOpen} 
+                onSelect={handleCatalogSelect} 
+            />
+            <LocacaoCatalogDialog 
+                open={isLocacaoCatalogOpen} 
+                onOpenChange={setIsLocacaoCatalogOpen} 
                 onSelect={handleCatalogSelect} 
             />
             <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={handleCatmatSelect} />
