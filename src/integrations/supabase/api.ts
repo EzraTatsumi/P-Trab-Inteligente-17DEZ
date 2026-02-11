@@ -297,6 +297,10 @@ export async function fetchArpsByUasg(params: ArpUasgSearchParams): Promise<ArpI
         });
 
         if (error) {
+            // Tratamento específico para erro de instabilidade do PNCP
+            if (error.message?.includes("JPA EntityManager") || error.message?.includes("400")) {
+                throw new Error("O servidor do PNCP (Governo) está instável no momento. Por favor, tente novamente em alguns minutos.");
+            }
             throw new Error(error.message || "Falha na execução da Edge Function de busca de ARPs.");
         }
         
@@ -306,7 +310,11 @@ export async function fetchArpsByUasg(params: ArpUasgSearchParams): Promise<ArpI
         if (!Array.isArray(responseData)) {
             // Se a API retornar um objeto de erro ou vazio, tratamos como array vazio
             if (responseData && (responseData as any).error) {
-                throw new Error((responseData as any).error);
+                const msg = (responseData as any).error;
+                if (msg.includes("JPA EntityManager")) {
+                    throw new Error("O servidor do PNCP está instável. Tente novamente mais tarde.");
+                }
+                throw new Error(msg);
             }
             return [];
         }
@@ -359,7 +367,7 @@ export async function fetchArpsByUasg(params: ArpUasgSearchParams): Promise<ArpI
 
 /**
  * Busca itens detalhados de uma Ata de Registro de Preços (ARP) por código CATMAT/CATSER e período de vigência.
- * @param params Os parâmetros de busca (codigoItem e datas).
+ * @param params Os parâmetros de busca (codigoItem e datas obsoletas).
  * @returns Uma lista de itens detalhados da ARP (DetailedArpItem[]).
  */
 export async function fetchArpItemsByCatmat(params: { codigoItem: string, dataVigenciaInicialMin: string, dataVigenciaInicialMax: string }): Promise<DetailedArpItem[]> {
@@ -369,6 +377,9 @@ export async function fetchArpItemsByCatmat(params: { codigoItem: string, dataVi
         });
 
         if (error) {
+            if (error.message?.includes("JPA EntityManager") || error.message?.includes("400")) {
+                throw new Error("O servidor do PNCP está instável. Tente novamente em instantes.");
+            }
             throw new Error(error.message || "Falha na execução da Edge Function de busca de itens por CATMAT.");
         }
         
@@ -437,6 +448,9 @@ export async function fetchArpItemsById(numeroControlePncpAta: string): Promise<
         });
 
         if (error) {
+            if (error.message?.includes("JPA EntityManager") || error.message?.includes("400")) {
+                throw new Error("O servidor do PNCP está instável. Tente novamente em instantes.");
+            }
             throw new Error(error.message || "Falha na execução da Edge Function de busca de itens detalhados.");
         }
         
@@ -541,13 +555,20 @@ export async function fetchPriceStats(params: PriceStatsSearchParams): Promise<P
         });
 
         if (error) {
+            if (error.message?.includes("JPA EntityManager") || error.message?.includes("400")) {
+                throw new Error("O servidor do PNCP está instável. Tente novamente em instantes.");
+            }
             throw new Error(error.message || "Falha na execução da Edge Function de busca de estatísticas de preço.");
         }
         
         const responseData = data as PriceStatsResult; 
         
         if ((responseData as any).error) {
-            throw new Error((responseData as any).error);
+            const msg = (responseData as any).error;
+            if (msg.includes("JPA EntityManager")) {
+                throw new Error("O servidor do PNCP está instável. Tente novamente mais tarde.");
+            }
+            throw new Error(msg);
         }
         
         return responseData;
