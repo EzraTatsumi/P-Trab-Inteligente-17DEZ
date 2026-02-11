@@ -1317,13 +1317,13 @@ const CustosOperacionaisPage = () => {
                   .update(dbData as TablesUpdate<'diretrizes_servicos_terceiros'>)
                   .eq('id', data.id);
               if (error) throw error;
-              toast.success("Subitem da ND (Serviços) atualizado!");
+              toast.success("Subitem da ND atualizado!");
           } else {
               const { error } = await supabase
                   .from('diretrizes_servicos_terceiros')
                   .insert([dbData]);
               if (error) throw error;
-              toast.success("Novo Subitem da ND (Serviços) cadastrado!");
+              toast.success("Novo Subitem da ND cadastrado!");
           }
           
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
@@ -1376,12 +1376,12 @@ const CustosOperacionaisPage = () => {
 
   // HANDLER PARA EXCLUIR SERVIÇO
   const handleDeleteServicosTerceiros = async (id: string, nome: string) => {
-      if (!confirm(`Tem certeza que deseja excluir o Subitem da ND (Serviços) "${nome}"?`)) return;
+      if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
       
       try {
           setLoading(true);
           await supabase.from('diretrizes_servicos_terceiros').delete().eq('id', id);
-          toast.success("Subitem da ND (Serviços) excluído!");
+          toast.success("Subitem da ND excluído!");
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
       } catch (error) {
           toast.error(sanitizeError(error));
@@ -1744,7 +1744,7 @@ const CustosOperacionaisPage = () => {
               <Card className="p-4">
                   <div className="flex justify-between items-center mb-4">
                       <CardTitle className="text-base font-semibold">
-                          Subitens da ND Cadastrados (Serviços)
+                          Subitens da ND Cadastrados
                       </CardTitle>
                       <Button 
                           type="button" 
@@ -1814,7 +1814,7 @@ const CustosOperacionaisPage = () => {
                       className="w-full"
                   >
                       <Plus className="mr-2 h-4 w-4" />
-                      Adicionar Novo Subitem da ND (Serviços)
+                      Adicionar Novo Subitem da ND
                   </Button>
               </div>
               
