@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp, Plus, Trash2, Pencil, Plane, Package, Search, FileSpreadsheet, Briefcase } from "lucide-react";
+import { ArrowLeft, Activity, Loader2, Save, Settings, ChevronDown, ChevronUp, Plus, Trash2, Pencil, Plane, Package, Search, FileSpreadsheet } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { sanitizeError } from "@/lib/errorUtils";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
@@ -47,13 +47,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMaterialConsumoDiretrizes } from "@/hooks/useMaterialConsumoDiretrizes";
 import PageMetadata from "@/components/PageMetadata";
 import MaterialConsumoExportImportDialog from "@/components/MaterialConsumoExportImportDialog";
-
-// NOVOS IMPORTS PARA SERVIÇOS DE TERCEIROS
-import { useServicosTerceirosDiretrizes } from "@/hooks/useServicosTerceirosDiretrizes";
-import { ServicosTerceirosDiretrizRow } from "@/components/ServicosTerceirosDiretrizRow";
-import { ServicosTerceirosDiretrizFormDialog } from "@/components/ServicosTerceirosDiretrizFormDialog";
-import { DiretrizServicoTerceiro, ItemServico } from "@/types/diretrizesServicosTerceiros";
-import ServicosTerceirosExportImportDialog from "@/components/ServicosTerceirosExportImportDialog";
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -175,12 +168,6 @@ type IndexedItemAquisicao = ItemAquisicao & {
     subitemNome: string;
 };
 
-type IndexedItemServico = ItemServico & {
-    diretrizId: string;
-    subitemNr: string;
-    subitemNome: string;
-};
-
 
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
@@ -210,13 +197,11 @@ const CustosOperacionaisPage = () => {
     const shouldOpenPassagens = location.state && (location.state as { openPassagens?: boolean }).openPassagens;
     const shouldOpenConcessionaria = location.state && (location.state as { openConcessionaria?: boolean }).openConcessionaria;
     const shouldOpenMaterialConsumo = location.state && (location.state as { openMaterialConsumo?: boolean }).openMaterialConsumo;
-    const shouldOpenServicos = location.state && (location.state as { openServicos?: boolean }).openServicos;
     
     initialState['diarias_detalhe'] = false; 
     initialState['passagens_detalhe'] = shouldOpenPassagens || false; 
     initialState['concessionaria_detalhe'] = shouldOpenConcessionaria || false;
     initialState['material_consumo_detalhe'] = shouldOpenMaterialConsumo || false;
-    initialState['servicos_terceiros_detalhe'] = shouldOpenServicos || false;
     return initialState;
   });
   
@@ -240,26 +225,9 @@ const CustosOperacionaisPage = () => {
   
   const [isMaterialConsumoFormOpen, setIsMaterialConsumoFormOpen] = useState(false);
   const [diretrizMaterialConsumoToEdit, setDiretrizMaterialConsumoToEdit] = useState<DiretrizMaterialConsumo | null>(null);
-  
-  // HOOK E ESTADOS PARA SERVIÇOS DE TERCEIROS
-  const { 
-    diretrizes: diretrizesServicos, 
-    isLoading: isLoadingServicos, 
-    saveDiretriz: saveServicosDiretriz, 
-    isSaving: isSavingServicos, 
-    deleteDiretriz: deleteServicosDiretriz, 
-    toggleAtivo: toggleAtivoServicos 
-  } = useServicosTerceirosDiretrizes(selectedYear);
-
-  const [isServicosFormOpen, setIsServicosFormOpen] = useState(false);
-  const [editingServicosDiretriz, setEditingServicosDiretriz] = useState<DiretrizServicoTerceiro | null>(null);
-  const [isServicosExportImportDialogOpen, setIsServicosExportImportDialogOpen] = useState(false);
-  const [servicosSearchTerm, setServicosSearchTerm] = useState("");
-
   const [searchTerm, setSearchTerm] = useState("");
   
   const [subitemToOpenId, setSubitemToOpenId] = useState<string | null>(null);
-  const [servicoSubitemToOpenId, setServicoSubitemToOpenId] = useState<string | null>(null);
   
   const [isExportImportDialogOpen, setIsExportImportDialogOpen] = useState(false);
   
@@ -329,25 +297,22 @@ const CustosOperacionaisPage = () => {
           { data: opData, error: opError },
           { data: passagensData, error: passagensError },
           { data: concessionariaData, error: concessionariaError },
-          { data: materialConsumoData, error: materialConsumoError },
-          { data: servicosData, error: servicosError }
+          { data: materialConsumoData, error: materialConsumoError }
       ] = await Promise.all([
           supabase.from("diretrizes_operacionais").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_passagens").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_concessionaria").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_material_consumo").select("ano_referencia").eq("user_id", user.id),
-          supabase.from("diretrizes_servicos_terceiros").select("ano_referencia").eq("user_id", user.id),
       ]);
 
-      if (opError || passagensError || concessionariaError || materialConsumoError || servicosError) throw opError || passagensError || concessionariaError || materialConsumoError || servicosError;
+      if (opError || passagensError || concessionariaError || materialConsumoError) throw opError || passagensError || concessionariaError || materialConsumoError;
 
       const opYears = opData ? opData.map(d => d.ano_referencia) : [];
       const passagensYears = passagensData ? passagensData.map(d => d.ano_referencia) : [];
       const concessionariaYears = concessionariaData ? concessionariaData.map(d => d.ano_referencia) : [];
       const materialConsumoYears = materialConsumoData ? materialConsumoData.map(d => d.ano_referencia) : [];
-      const servicosYears = servicosData ? servicosData.map(d => d.ano_referencia) : [];
 
-      const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears, ...materialConsumoYears, ...servicosYears]);
+      const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears, ...materialConsumoYears]);
       
       if (defaultYearId && !yearsToInclude.has(defaultYearId)) {
           yearsToInclude.add(defaultYearId);
@@ -501,12 +466,6 @@ const CustosOperacionaisPage = () => {
   const handleMaterialConsumoImportSuccess = () => {
       if (user?.id && selectedYear > 0) {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user.id] });
-      }
-  };
-
-  const handleServicosImportSuccess = () => {
-      if (user?.id && selectedYear > 0) {
-          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
       }
   };
 
@@ -733,34 +692,8 @@ const CustosOperacionaisPage = () => {
             .insert(newMaterialConsumo as TablesInsert<'diretrizes_material_consumo'>[]);
           if (insertMaterialConsumoError) throw insertMaterialConsumoError;
       }
-
-      // COPIAR SERVIÇOS DE TERCEIROS
-      const { data: sourceServicos, error: servicosError } = await supabase
-        .from("diretrizes_servicos_terceiros")
-        .select("nr_subitem, nome_subitem, descricao_subitem, itens_aquisicao, ativo")
-        .eq("user_id", user.id)
-        .eq("ano_referencia", sourceYear);
-        
-      if (servicosError) throw servicosError;
       
-      if (sourceServicos && sourceServicos.length > 0) {
-          const newServicos = (sourceServicos as Tables<'diretrizes_servicos_terceiros'>[]).map(s => {
-              const { id, created_at, updated_at, ...restOfServico } = s as any;
-              return {
-                  ...restOfServico,
-                  ano_referencia: targetYear,
-                  user_id: user.id,
-                  itens_aquisicao: s.itens_aquisicao,
-              };
-          });
-          
-          const { error: insertServicosError } = await supabase
-            .from("diretrizes_servicos_terceiros")
-            .insert(newServicos as TablesInsert<'diretrizes_servicos_terceiros'>[]);
-          if (insertServicosError) throw insertServicosError;
-      }
-      
-      toast.success(`Diretrizes operacionais, de passagens, concessionária, material de consumo e serviços do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
+      toast.success(`Diretrizes operacionais, de passagens, concessionária e material de consumo do ano ${sourceYear} copiadas com sucesso para o ano ${targetYear}!`);
       setIsYearManagementDialogOpen(false);
       setSelectedYear(targetYear);
       
@@ -781,7 +714,7 @@ const CustosOperacionaisPage = () => {
       return;
     }
     
-    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes operacionais, de passagens, concessionária, material de consumo e serviços para o ano ${year}? Esta ação é irreversível.`)) return;
+    if (!confirm(`Tem certeza que deseja EXCLUIR TODAS as diretrizes operacionais, de passagens, concessionária e material de consumo para o ano ${year}? Esta ação é irreversível.`)) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -813,13 +746,7 @@ const CustosOperacionaisPage = () => {
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
 
-      await supabase
-        .from("diretrizes_servicos_terceiros")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("ano_referencia", year);
-
-      toast.success(`Diretrizes operacionais, de passagens, concessionária, material de consumo e serviços do ano ${year} excluídas com sucesso!`);
+      toast.success(`Diretrizes operacionais, de passagens, concessionária e material de consumo do ano ${year} excluídas com sucesso!`);
       setIsYearManagementDialogOpen(false);
       
       queryClient.invalidateQueries({ queryKey: ["defaultOperacionalYear", user.id] });
@@ -1319,218 +1246,6 @@ const CustosOperacionaisPage = () => {
           setLoading(false);
       }
   };
-
-  // FUNÇÕES PARA SERVIÇOS DE TERCEIROS
-  const handleStartEditServicos = (diretriz: DiretrizServicoTerceiro) => {
-    setEditingServicosDiretriz(diretriz);
-    setIsServicosFormOpen(true);
-  };
-
-  const handleOpenNewServicos = () => {
-    setEditingServicosDiretriz(null);
-    setIsServicosFormOpen(true);
-  };
-
-  const indexedServicosItems = useMemo<IndexedItemServico[]>(() => {
-    if (!diretrizesServicos) return [];
-    
-    return diretrizesServicos.flatMap(diretriz => {
-        const itens = (diretriz.itens_aquisicao || []) as ItemServico[];
-        
-        return itens.map(item => ({
-            ...item,
-            diretrizId: diretriz.id,
-            subitemNr: diretriz.nr_subitem,
-            subitemNome: diretriz.nome_subitem,
-        }));
-    });
-  }, [diretrizesServicos]);
-
-  const filteredServicosItems = useMemo(() => {
-    if (!servicosSearchTerm) return [];
-    const lowerCaseSearch = servicosSearchTerm.toLowerCase().trim();
-    
-    if (lowerCaseSearch.length < 3) return [];
-    
-    return indexedServicosItems.filter(item => {
-        const searchString = [
-            item.nome_reduzido,
-            item.descricao_item,
-            item.subitemNr,
-            item.subitemNome,
-        ].join(' ').toLowerCase();
-        
-        return searchString.includes(lowerCaseSearch);
-    });
-  }, [servicosSearchTerm, indexedServicosItems]);
-
-  const handleGoToServicoSubitem = (diretrizId: string) => {
-      handleCollapseChange('servicos_terceiros_detalhe', true);
-      setServicoSubitemToOpenId(diretrizId);
-      
-      setTimeout(() => {
-          const element = document.getElementById(`diretriz-servico-${diretrizId}`);
-          if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          } else {
-              toast.warning("Subitem encontrado, mas não visível na tela.");
-          }
-      }, 100);
-      
-      setServicosSearchTerm("");
-  };
-
-  const renderServicosSearchResults = () => {
-      if (servicosSearchTerm.length < 3) {
-          return (
-              <Card className="p-4 text-center text-muted-foreground">
-                  Digite pelo menos 3 caracteres para iniciar a busca.
-              </Card>
-          );
-      }
-      
-      if (filteredServicosItems.length === 0) {
-          return (
-              <Card className="p-4 text-center text-muted-foreground">
-                  Nenhum item de serviço encontrado com este termo.
-              </Card>
-          );
-      }
-      
-      return (
-          <Card className="p-4">
-              <CardTitle className="text-base font-semibold mb-3">
-                   Resultados da Busca ({filteredServicosItems.length})
-              </CardTitle>
-              <Table>
-                  <TableHeader>
-                      <TableRow>
-                          <TableHead className="w-[40%]">Item de Serviço</TableHead>
-                          <TableHead className="w-[40%]">Subitem ND</TableHead>
-                          <TableHead className="w-[20%] text-center">Ações</TableHead>
-                      </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                      {filteredServicosItems.map((item, index) => (
-                          <TableRow key={`${item.diretrizId}-${index}`}>
-                              <TableCell className="font-medium">
-                                  {item.nome_reduzido}
-                                  <p className="text-xs text-muted-foreground">
-                                      Unidade: {item.unidade_medida}
-                                  </p>
-                              </TableCell>
-                              <TableCell className="text-left">
-                                  <span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span>
-                                  <span className="text-sm text-muted-foreground">{item.subitemNome}</span>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                  <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      onClick={() => handleGoToServicoSubitem(item.diretrizId)}
-                                      className="w-full justify-start"
-                                  >
-                                      <Briefcase className="h-4 w-4 mr-1" />
-                                      Ver Local
-                                  </Button>
-                              </TableCell>
-                          </TableRow>
-                      ))}
-                  </TableBody>
-              </Table>
-          </Card>
-      );
-  };
-
-  const renderServicosTerceirosSection = () => {
-    return (
-      <div className="space-y-4">
-        <Card className="p-4">
-          <div className="flex justify-between items-center mb-4">
-            <CardTitle className="text-base font-semibold">
-              Subitens da ND 33.90.39 Cadastrados
-            </CardTitle>
-            <Button 
-                type="button" 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setIsServicosExportImportDialogOpen(true)}
-                disabled={loading || isLoadingServicos}
-            >
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Exportar/Importar
-            </Button>
-          </div>
-
-          <div className="mb-4 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                  placeholder="Buscar item de serviço (nome, subitem...)"
-                  value={servicosSearchTerm}
-                  onChange={(e) => setServicosSearchTerm(e.target.value)}
-                  disabled={isLoadingServicos}
-                  className="pl-10"
-              />
-          </div>
-          
-          {servicosSearchTerm ? (
-            renderServicosSearchResults()
-          ) : (
-            isLoadingServicos ? (
-              <div className="text-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-                <p className="text-sm text-muted-foreground mt-2">Carregando serviços...</p>
-              </div>
-            ) : diretrizesServicos.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[50px]"></TableHead>
-                    <TableHead className="w-[100px]">Subitem</TableHead>
-                    <TableHead>Nome do Subitem</TableHead>
-                    <TableHead className="w-[120px]">Qtd. Itens</TableHead>
-                    <TableHead className="w-[100px]">Status</TableHead>
-                    <TableHead className="text-right w-[150px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {diretrizesServicos.map((diretriz) => (
-                    <ServicosTerceirosDiretrizRow 
-                      key={diretriz.id}
-                      diretriz={diretriz}
-                      onEdit={handleStartEditServicos}
-                      onDelete={deleteServicosDiretriz}
-                      onToggleAtivo={(id, status) => toggleAtivoServicos({ id, ativo: !status })}
-                      id={`diretriz-servico-${diretriz.id}`}
-                      forceOpen={servicoSubitemToOpenId === diretriz.id}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <Card className="p-4 text-center text-muted-foreground">
-                Nenhuma diretriz de serviços cadastrada para o ano de referência.
-              </Card>
-            )
-          )}
-        </Card>
-        
-        <div className="flex justify-end">
-          <Button 
-            type="button" 
-            onClick={handleOpenNewServicos}
-            disabled={loading || isLoadingServicos || !!servicosSearchTerm}
-            variant="outline" 
-            size="sm" 
-            className="w-full"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Adicionar Novo Subitem de Serviço
-          </Button>
-        </div>
-      </div>
-    );
-  };
   
   const indexedItems = useMemo<IndexedItemAquisicao[]>(() => {
     if (!diretrizesMaterialConsumo) return [];
@@ -1589,13 +1304,6 @@ const CustosOperacionaisPage = () => {
           return () => clearTimeout(timer);
       }
   }, [subitemToOpenId]);
-
-  useEffect(() => {
-      if (servicoSubitemToOpenId) {
-          const timer = setTimeout(() => setServicoSubitemToOpenId(null), 500);
-          return () => clearTimeout(timer);
-      }
-  }, [servicoSubitemToOpenId]);
 
   const renderSearchResults = () => {
       if (searchTerm.length < 3) {
@@ -1791,9 +1499,9 @@ const CustosOperacionaisPage = () => {
 
         <Card>
           <CardHeader>
-            <h1 className="text-2xl font-bold">Configurações de Custos Operacionais</h1>
+            <h1 className="text-2xl font-bold">Configurações dos Custos Operacionais</h1>
             <CardDescription>
-              Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3).
+              Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3 e GND4).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -1858,7 +1566,7 @@ const CustosOperacionaisPage = () => {
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
                           <h2 className="text-base font-medium flex items-center gap-2">
-                            Passagens (Contratos/Trechos)
+                            Passagens
                           </h2>
                           {fieldCollapseState['passagens_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </div>
@@ -1879,7 +1587,7 @@ const CustosOperacionaisPage = () => {
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
                           <h2 className="text-base font-medium flex items-center gap-2">
-                            Concessionária (Água/Esgoto e Energia Elétrica)
+                            Concessionária
                           </h2>
                           {fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </div>
@@ -1912,31 +1620,8 @@ const CustosOperacionaisPage = () => {
                       </CollapsibleContent>
                     </Collapsible>
                   </div>
-
-                  {/* NOVA SEÇÃO: SERVIÇOS DE TERCEIROS DETALHADO */}
-                  <div ref={el => collapsibleRefs.current['servicos_terceiros_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
-                    <Collapsible 
-                      open={fieldCollapseState['servicos_terceiros_detalhe']} 
-                      onOpenChange={(open) => handleCollapseChange('servicos_terceiros_detalhe', open)}
-                    >
-                      <CollapsibleTrigger asChild>
-                        <div className="flex items-center justify-between cursor-pointer py-2">
-                          <h2 className="text-base font-medium flex items-center gap-2">
-                            Serviços de Terceiros (33.90.39)
-                          </h2>
-                          {fieldCollapseState['servicos_terceiros_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </div>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="mt-2">
-                          {renderServicosTerceirosSection()}
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
                   
-                  {/* FILTRANDO FATOR_SERVICOS_TERCEIROS E FATOR_MATERIAL_CONSUMO POIS AGORA SÃO DETALHADOS */}
-                  {OPERATIONAL_FIELDS.filter(f => f.key !== 'fator_material_consumo' && f.key !== 'fator_servicos_terceiros').map(field => {
+                  {OPERATIONAL_FIELDS.filter(f => f.key !== 'fator_material_consumo').map(field => {
                     const fieldKey = field.key as string;
                     const isOpen = fieldCollapseState[fieldKey] ?? false;
                     
@@ -2039,23 +1724,6 @@ const CustosOperacionaisPage = () => {
           selectedYear={selectedYear}
           diretrizes={diretrizesMaterialConsumo}
           onImportSuccess={handleMaterialConsumoImportSuccess}
-      />
-
-      {/* DIALOG DE SERVIÇOS DE TERCEIROS */}
-      <ServicosTerceirosDiretrizFormDialog 
-        open={isServicosFormOpen}
-        onOpenChange={setIsServicosFormOpen}
-        initialData={editingServicosDiretriz}
-        onSubmit={saveServicosDiretriz}
-        isSaving={isSavingServicos}
-      />
-
-      <ServicosTerceirosExportImportDialog
-          open={isServicosExportImportDialogOpen}
-          onOpenChange={setIsServicosExportImportDialogOpen}
-          selectedYear={selectedYear}
-          diretrizes={diretrizesServicos}
-          onImportSuccess={handleServicosImportSuccess}
       />
     </div>
   );
