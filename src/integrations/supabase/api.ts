@@ -297,9 +297,9 @@ export async function fetchArpsByUasg(params: ArpUasgSearchParams): Promise<ArpI
         });
 
         if (error) {
-            // Tratamento específico para erro de instabilidade do PNCP
-            if (error.message?.includes("JPA EntityManager") || error.message?.includes("400")) {
-                throw new Error("O servidor do PNCP (Governo) está instável no momento. Por favor, tente novamente em alguns minutos.");
+            // Tratamento específico para erro de instabilidade do PNCP ou erro genérico de Edge Function
+            if (error.message?.includes("JPA EntityManager") || error.message?.includes("400") || error.message?.includes("non-2xx")) {
+                throw new Error("O servidor do PNCP (Governo) está instável ou sobrecarregado no momento. Por favor, tente novamente em alguns minutos.");
             }
             throw new Error(error.message || "Falha na execução da Edge Function de busca de ARPs.");
         }
@@ -311,8 +311,8 @@ export async function fetchArpsByUasg(params: ArpUasgSearchParams): Promise<ArpI
             // Se a API retornar um objeto de erro ou vazio, tratamos como array vazio
             if (responseData && (responseData as any).error) {
                 const msg = (responseData as any).error;
-                if (msg.includes("JPA EntityManager")) {
-                    throw new Error("O servidor do PNCP está instável. Tente novamente mais tarde.");
+                if (msg.includes("JPA EntityManager") || msg.includes("400")) {
+                    throw new Error("O servidor do PNCP (Governo) está instável no momento. Tente novamente mais tarde.");
                 }
                 throw new Error(msg);
             }
@@ -377,8 +377,8 @@ export async function fetchArpItemsByCatmat(params: { codigoItem: string, dataVi
         });
 
         if (error) {
-            if (error.message?.includes("JPA EntityManager") || error.message?.includes("400")) {
-                throw new Error("O servidor do PNCP está instável. Tente novamente em instantes.");
+            if (error.message?.includes("JPA EntityManager") || error.message?.includes("400") || error.message?.includes("non-2xx")) {
+                throw new Error("O servidor do PNCP (Governo) está instável no momento. Por favor, tente novamente em instantes.");
             }
             throw new Error(error.message || "Falha na execução da Edge Function de busca de itens por CATMAT.");
         }
@@ -388,7 +388,11 @@ export async function fetchArpItemsByCatmat(params: { codigoItem: string, dataVi
         
         if (!Array.isArray(responseData)) {
             if (responseData && (responseData as any).error) {
-                throw new Error((responseData as any).error);
+                const msg = (responseData as any).error;
+                if (msg.includes("JPA EntityManager") || msg.includes("400")) {
+                    throw new Error("O servidor do PNCP (Governo) está instável no momento. Tente novamente mais tarde.");
+                }
+                throw new Error(msg);
             }
             return [];
         }
@@ -448,8 +452,8 @@ export async function fetchArpItemsById(numeroControlePncpAta: string): Promise<
         });
 
         if (error) {
-            if (error.message?.includes("JPA EntityManager") || error.message?.includes("400")) {
-                throw new Error("O servidor do PNCP está instável. Tente novamente em instantes.");
+            if (error.message?.includes("JPA EntityManager") || error.message?.includes("400") || error.message?.includes("non-2xx")) {
+                throw new Error("O servidor do PNCP (Governo) está instável no momento. Tente novamente em instantes.");
             }
             throw new Error(error.message || "Falha na execução da Edge Function de busca de itens detalhados.");
         }
@@ -458,7 +462,11 @@ export async function fetchArpItemsById(numeroControlePncpAta: string): Promise<
         
         if (!Array.isArray(responseData)) {
             if (responseData && (responseData as any).error) {
-                throw new Error((responseData as any).error);
+                const msg = (responseData as any).error;
+                if (msg.includes("JPA EntityManager") || msg.includes("400")) {
+                    throw new Error("O servidor do PNCP (Governo) está instável no momento. Tente novamente mais tarde.");
+                }
+                throw new Error(msg);
             }
             return [];
         }
@@ -555,8 +563,8 @@ export async function fetchPriceStats(params: PriceStatsSearchParams): Promise<P
         });
 
         if (error) {
-            if (error.message?.includes("JPA EntityManager") || error.message?.includes("400")) {
-                throw new Error("O servidor do PNCP está instável. Tente novamente em instantes.");
+            if (error.message?.includes("JPA EntityManager") || error.message?.includes("400") || error.message?.includes("non-2xx")) {
+                throw new Error("O servidor do PNCP (Governo) está instável no momento. Tente novamente em instantes.");
             }
             throw new Error(error.message || "Falha na execução da Edge Function de busca de estatísticas de preço.");
         }
@@ -565,8 +573,8 @@ export async function fetchPriceStats(params: PriceStatsSearchParams): Promise<P
         
         if ((responseData as any).error) {
             const msg = (responseData as any).error;
-            if (msg.includes("JPA EntityManager")) {
-                throw new Error("O servidor do PNCP está instável. Tente novamente mais tarde.");
+            if (msg.includes("JPA EntityManager") || msg.includes("400")) {
+                throw new Error("O servidor do PNCP (Governo) está instável no momento. Tente novamente mais tarde.");
             }
             throw new Error(msg);
         }
