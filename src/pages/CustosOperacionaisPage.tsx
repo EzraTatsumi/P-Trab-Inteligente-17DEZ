@@ -1932,7 +1932,7 @@ const CustosOperacionaisPage = () => {
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
                           <h2 className="text-base font-medium flex items-center gap-2">
-                            Passagens
+                            Aquisição de Passagens
                           </h2>
                           {fieldCollapseState['passagens_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </div>
@@ -1953,7 +1953,7 @@ const CustosOperacionaisPage = () => {
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
                           <h2 className="text-base font-medium flex items-center gap-2">
-                            Concessionária
+                            Pagamento de concessionárias
                           </h2>
                           {fieldCollapseState['concessionaria_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </div>
@@ -1974,7 +1974,7 @@ const CustosOperacionaisPage = () => {
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
                           <h2 className="text-base font-medium flex items-center gap-2">
-                            Material de Consumo
+                            Aquisição de Material de Consumo
                           </h2>
                           {fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </div>
