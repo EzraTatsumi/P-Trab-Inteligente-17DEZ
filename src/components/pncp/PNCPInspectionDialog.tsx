@@ -15,6 +15,14 @@ import { cn } from '@/lib/utils';
 import { formatCodug, formatCurrency } from '@/lib/formatUtils';
 import { Textarea } from "@/components/ui/textarea";
 
+interface PNCPInspectionDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    inspectionList: InspectionItem[];
+    onFinalImport: (items: ItemAquisicao[]) => void;
+    onReviewItem: (item: ItemAquisicao) => void; // Função para revisar o item
+}
+
 // Função auxiliar para formatar a contagem de itens com concordância
 const formatItemCount = (count: number) => {
     const itemWord = count === 1 ? 'item' : 'itens';
@@ -283,8 +291,8 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                 <Table>
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
-                            {/* Centralizando cabeçalhos - MUDANÇA: Cód. CATMAT -> Cód. Item */}
-                            <TableHead className={cn(catmatWidth, "text-center")}>Cód. Item</TableHead>
+                            {/* Centralizando cabeçalhos */}
+                            <TableHead className={cn(catmatWidth, "text-center")}>Cód. CATMAT</TableHead>
                             <TableHead className={cn(arpDescWidth, "text-center")}>Descrição Completa (ARP)</TableHead>
                             
                             {/* MUDANÇA 2: Coluna Descrição Completa (PNCP) -> Nome Reduzido se for Duplicado */}
@@ -379,8 +387,8 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                                 {/* 2. Status do Catálogo com cores */}
                                                 <p className={cn("text-xs mt-1", isCataloged ? "text-green-600" : "text-red-600")}>
                                                     {isCataloged ? 
-                                                        "Item presente no Catálogo local" : 
-                                                        "Item não presente no Catálogo local"
+                                                        "Item presente no Catálogo CATMAT local" : 
+                                                        "Item não presente no Catálogo CATMAT local"
                                                     }
                                                 </p>
                                             </div>
@@ -474,14 +482,14 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                         <TabsContent value="valid">
                             {/* Placeholder para estabilizar a altura */}
                             <p className="text-sm text-muted-foreground mb-3 opacity-0 select-none pointer-events-none">
-                                Estes itens possuem códigos válidos, mas não têm um nome reduzido cadastrado no seu catálogo. Por favor, forneça um nome curto para facilitar a identificação e clique em "Validar".
+                                Estes itens possuem códigos CATMAT válidos, mas não têm um nome reduzido cadastrado no seu catálogo. Por favor, forneça um nome curto para facilitar a identificação e clique em "Validar".
                             </p>
                             {renderInspectionTable('valid')}
                         </TabsContent>
                         
                         <TabsContent value="needs_catmat_info">
                             <p className="text-sm text-muted-foreground mb-3">
-                                Estes itens possuem códigos válidos, mas não têm um nome reduzido cadastrado no seu catálogo. Por favor, forneça um nome curto para facilitar a identificação e clique em "Validar".
+                                Estes itens possuem códigos CATMAT válidos, mas não têm um nome reduzido cadastrado no seu catálogo. Por favor, forneça um nome curto para facilitar a identificação e clique em "Validar".
                             </p>
                             {renderInspectionTable('needs_catmat_info')}
                         </TabsContent>
@@ -489,7 +497,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                         <TabsContent value="duplicate">
                             {/* Ajuste do texto da descrição da aba Duplicados */}
                             <p className="text-sm text-muted-foreground mb-3 text-red-600">
-                                Estes itens foram identificados como duplicados e serão descartados da importação. Eles possuem a mesma **Chave de Contrato** (Pregão, UASG e Valor Unitário) e pelo menos uma **Chave de Item** (Código, Descrição Completa ou Nome Reduzido) idêntica a um item já existente.
+                                Estes itens foram identificados como duplicados e serão descartados da importação. Eles possuem a mesma **Chave de Contrato** (Pregão, UASG e Valor Unitário) e pelo menos uma **Chave de Item** (CATMAT, Descrição Completa ou Nome Reduzido) idêntica a um item já existente.
                             </p>
                             {renderInspectionTable('duplicate')}
                         </TabsContent>

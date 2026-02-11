@@ -122,7 +122,7 @@ const isFlexibleDuplicate = (newItem: ItemAquisicao, existingItem: ItemAquisicao
 
     // --- 2. Critérios Opcionais (Pelo menos um deve ser igual) ---
     
-    // Comparação de Código (Normalizada para dígitos)
+    // Comparação de CATMAT (Normalizada para dígitos)
     const catmatMatch =
         normalizeDigits(newItem.codigo_catmat) ===
         normalizeDigits(existingItem.codigo_catmat);
@@ -137,7 +137,7 @@ const isFlexibleDuplicate = (newItem: ItemAquisicao, existingItem: ItemAquisicao
         normalizeString(newItem.descricao_reduzida) ===
         normalizeString(existingItem.descricao_reduzida);
 
-    if (catmatMatch) result.matchingKeys.push('Código');
+    if (catmatMatch) result.matchingKeys.push('CATMAT');
     if (descCompletaMatch) result.matchingKeys.push('Descrição Completa');
     if (descReduzidaMatch && normalizeString(newItem.descricao_reduzida).length > 0) {
         // Só considera a descrição reduzida se ela não for vazia (ou seja, se foi preenchida/encontrada)
@@ -341,7 +341,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 fullPncpDescription = pncpDetails.fullDescription;
                 nomePdm = pncpDetails.nomePdm; 
                 
-                // 6. Busca da Descrição Reduzida no Catálogo (DB local)
+                // 6. Busca da Descrição Reduzida no Catálogo CATMAT (DB local)
                 const catalogStatus = await fetchCatmatShortDescription(initialMappedItem.codigo_catmat);
                 shortDescription = catalogStatus.shortDescription;
                 isCatmatCataloged = catalogStatus.isCataloged;
@@ -390,7 +390,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                             messages.push('Item catalogado localmente, mas requer descrição reduzida.');
                         } else {
                             // Item não catalogado
-                            messages.push('Requer descrição reduzida para o catálogo local.');
+                            messages.push('Requer descrição reduzida para o catálogo CATMAT.');
                         }
                     }
                 }
@@ -490,7 +490,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         </TabsTrigger>
                         <TabsTrigger value="arp-catmat" className="flex items-center gap-2">
                             <FileText className="h-4 w-4" />
-                            ARP por Cód. Item
+                            ARP por CATMAT
                         </TabsTrigger>
                         <TabsTrigger value="avg-price" className="flex items-center gap-2">
                             <DollarSign className="h-4 w-4" />
