@@ -162,7 +162,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                             name="codigoItem"
                             render={({ field }) => (
                                 <FormItem className="col-span-4 md:col-span-2">
-                                    <FormLabel>Cód. CATMAT *</FormLabel>
+                                    <FormLabel>Cód. Item *</FormLabel>
                                     <div className="flex gap-2">
                                         <FormControl>
                                             <Input
@@ -238,7 +238,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                         ) : (
                             <>
                                 <Search className="h-4 w-4 mr-2" />
-                                Buscar Itens de ARP por CATMAT
+                                Buscar Itens de ARP por Cód. Item
                             </>
                         )}
                     </Button>
