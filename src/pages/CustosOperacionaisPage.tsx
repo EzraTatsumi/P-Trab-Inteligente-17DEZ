@@ -52,7 +52,8 @@ import MaterialConsumoExportImportDialog from "@/components/MaterialConsumoExpor
 import { useServicosTerceirosDiretrizes } from "@/hooks/useServicosTerceirosDiretrizes";
 import { ServicosTerceirosDiretrizRow } from "@/components/ServicosTerceirosDiretrizRow";
 import { ServicosTerceirosDiretrizFormDialog } from "@/components/ServicosTerceirosDiretrizFormDialog";
-import { DiretrizServicoTerceiro } from "@/types/diretrizesServicosTerceiros";
+import { DiretrizServicoTerceiro, ItemServico } from "@/types/diretrizesServicosTerceiros";
+import ServicosTerceirosExportImportDialog from "@/components/ServicosTerceirosExportImportDialog";
 
 // Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
@@ -174,6 +175,12 @@ type IndexedItemAquisicao = ItemAquisicao & {
     subitemNome: string;
 };
 
+type IndexedItemServico = ItemServico & {
+    diretrizId: string;
+    subitemNr: string;
+    subitemNome: string;
+};
+
 
 const CustosOperacionaisPage = () => {
   const navigate = useNavigate();
@@ -246,10 +253,13 @@ const CustosOperacionaisPage = () => {
 
   const [isServicosFormOpen, setIsServicosFormOpen] = useState(false);
   const [editingServicosDiretriz, setEditingServicosDiretriz] = useState<DiretrizServicoTerceiro | null>(null);
+  const [isServicosExportImportDialogOpen, setIsServicosExportImportDialogOpen] = useState(false);
+  const [servicosSearchTerm, setServicosSearchTerm] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
   
   const [subitemToOpenId, setSubitemToOpenId] = useState<string | null>(null);
+  const [servicoSubitemToOpenId, setServicoSubitemToOpenId] = useState<string | null>(null);
   
   const [isExportImportDialogOpen, setIsExportImportDialogOpen] = useState(false);
   
@@ -491,6 +501,12 @@ const CustosOperacionaisPage = () => {
   const handleMaterialConsumoImportSuccess = () => {
       if (user?.id && selectedYear > 0) {
           queryClient.invalidateQueries({ queryKey: ['diretrizesMaterialConsumo', selectedYear, user.id] });
+      }
+  };
+
+  const handleServicosImportSuccess = () => {
+      if (user?.id && selectedYear > 0) {
+          queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
       }
   };
 
@@ -1315,6 +1331,117 @@ const CustosOperacionaisPage = () => {
     setIsServicosFormOpen(true);
   };
 
+  const indexedServicosItems = useMemo<IndexedItemServico[]>(() => {
+    if (!diretrizesServicos) return [];
+    
+    return diretrizesServicos.flatMap(diretriz => {
+        const itens = (diretriz.itens_aquisicao || []) as ItemServico[];
+        
+        return itens.map(item => ({
+            ...item,
+            diretrizId: diretriz.id,
+            subitemNr: diretriz.nr_subitem,
+            subitemNome: diretriz.nome_subitem,
+        }));
+    });
+  }, [diretrizesServicos]);
+
+  const filteredServicosItems = useMemo(() => {
+    if (!servicosSearchTerm) return [];
+    const lowerCaseSearch = servicosSearchTerm.toLowerCase().trim();
+    
+    if (lowerCaseSearch.length < 3) return [];
+    
+    return indexedServicosItems.filter(item => {
+        const searchString = [
+            item.nome_reduzido,
+            item.descricao_item,
+            item.subitemNr,
+            item.subitemNome,
+        ].join(' ').toLowerCase();
+        
+        return searchString.includes(lowerCaseSearch);
+    });
+  }, [servicosSearchTerm, indexedServicosItems]);
+
+  const handleGoToServicoSubitem = (diretrizId: string) => {
+      handleCollapseChange('servicos_terceiros_detalhe', true);
+      setServicoSubitemToOpenId(diretrizId);
+      
+      setTimeout(() => {
+          const element = document.getElementById(`diretriz-servico-${diretrizId}`);
+          if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          } else {
+              toast.warning("Subitem encontrado, mas não visível na tela.");
+          }
+      }, 100);
+      
+      setServicosSearchTerm("");
+  };
+
+  const renderServicosSearchResults = () => {
+      if (servicosSearchTerm.length < 3) {
+          return (
+              <Card className="p-4 text-center text-muted-foreground">
+                  Digite pelo menos 3 caracteres para iniciar a busca.
+              </Card>
+          );
+      }
+      
+      if (filteredServicosItems.length === 0) {
+          return (
+              <Card className="p-4 text-center text-muted-foreground">
+                  Nenhum item de serviço encontrado com este termo.
+              </Card>
+          );
+      }
+      
+      return (
+          <Card className="p-4">
+              <CardTitle className="text-base font-semibold mb-3">
+                   Resultados da Busca ({filteredServicosItems.length})
+              </CardTitle>
+              <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead className="w-[40%]">Item de Serviço</TableHead>
+                          <TableHead className="w-[40%]">Subitem ND</TableHead>
+                          <TableHead className="w-[20%] text-center">Ações</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {filteredServicosItems.map((item, index) => (
+                          <TableRow key={`${item.diretrizId}-${index}`}>
+                              <TableCell className="font-medium">
+                                  {item.nome_reduzido}
+                                  <p className="text-xs text-muted-foreground">
+                                      Unidade: {item.unidade_medida}
+                                  </p>
+                              </TableCell>
+                              <TableCell className="text-left">
+                                  <span className="font-semibold mr-1 whitespace-nowrap">{item.subitemNr}</span>
+                                  <span className="text-sm text-muted-foreground">{item.subitemNome}</span>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                  <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      onClick={() => handleGoToServicoSubitem(item.diretrizId)}
+                                      className="w-full justify-start"
+                                  >
+                                      <Briefcase className="h-4 w-4 mr-1" />
+                                      Ver Local
+                                  </Button>
+                              </TableCell>
+                          </TableRow>
+                      ))}
+                  </TableBody>
+              </Table>
+          </Card>
+      );
+  };
+
   const renderServicosTerceirosSection = () => {
     return (
       <div className="space-y-4">
@@ -1323,41 +1450,68 @@ const CustosOperacionaisPage = () => {
             <CardTitle className="text-base font-semibold">
               Subitens da ND 33.90.39 Cadastrados
             </CardTitle>
+            <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setIsServicosExportImportDialogOpen(true)}
+                disabled={loading || isLoadingServicos}
+            >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Exportar/Importar
+            </Button>
+          </div>
+
+          <div className="mb-4 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                  placeholder="Buscar item de serviço (nome, subitem...)"
+                  value={servicosSearchTerm}
+                  onChange={(e) => setServicosSearchTerm(e.target.value)}
+                  disabled={isLoadingServicos}
+                  className="pl-10"
+              />
           </div>
           
-          {isLoadingServicos ? (
-            <div className="text-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-              <p className="text-sm text-muted-foreground mt-2">Carregando serviços...</p>
-            </div>
-          ) : diretrizesServicos.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]"></TableHead>
-                  <TableHead className="w-[100px]">Subitem</TableHead>
-                  <TableHead>Nome do Subitem</TableHead>
-                  <TableHead className="w-[120px]">Qtd. Itens</TableHead>
-                  <TableHead className="w-[100px]">Status</TableHead>
-                  <TableHead className="text-right w-[150px]">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {diretrizesServicos.map((diretriz) => (
-                  <ServicosTerceirosDiretrizRow 
-                    key={diretriz.id}
-                    diretriz={diretriz}
-                    onEdit={handleStartEditServicos}
-                    onDelete={deleteServicosDiretriz}
-                    onToggleAtivo={(id, status) => toggleAtivoServicos({ id, ativo: !status })}
-                  />
-                ))}
-              </TableBody>
-            </Table>
+          {servicosSearchTerm ? (
+            renderServicosSearchResults()
           ) : (
-            <Card className="p-4 text-center text-muted-foreground">
-              Nenhuma diretriz de serviços cadastrada para o ano de referência.
-            </Card>
+            isLoadingServicos ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                <p className="text-sm text-muted-foreground mt-2">Carregando serviços...</p>
+              </div>
+            ) : diretrizesServicos.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead className="w-[100px]">Subitem</TableHead>
+                    <TableHead>Nome do Subitem</TableHead>
+                    <TableHead className="w-[120px]">Qtd. Itens</TableHead>
+                    <TableHead className="w-[100px]">Status</TableHead>
+                    <TableHead className="text-right w-[150px]">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {diretrizesServicos.map((diretriz) => (
+                    <ServicosTerceirosDiretrizRow 
+                      key={diretriz.id}
+                      diretriz={diretriz}
+                      onEdit={handleStartEditServicos}
+                      onDelete={deleteServicosDiretriz}
+                      onToggleAtivo={(id, status) => toggleAtivoServicos({ id, ativo: !status })}
+                      id={`diretriz-servico-${diretriz.id}`}
+                      forceOpen={servicoSubitemToOpenId === diretriz.id}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <Card className="p-4 text-center text-muted-foreground">
+                Nenhuma diretriz de serviços cadastrada para o ano de referência.
+              </Card>
+            )
           )}
         </Card>
         
@@ -1365,7 +1519,7 @@ const CustosOperacionaisPage = () => {
           <Button 
             type="button" 
             onClick={handleOpenNewServicos}
-            disabled={loading || isLoadingServicos}
+            disabled={loading || isLoadingServicos || !!servicosSearchTerm}
             variant="outline" 
             size="sm" 
             className="w-full"
@@ -1435,6 +1589,13 @@ const CustosOperacionaisPage = () => {
           return () => clearTimeout(timer);
       }
   }, [subitemToOpenId]);
+
+  useEffect(() => {
+      if (servicoSubitemToOpenId) {
+          const timer = setTimeout(() => setServicoSubitemToOpenId(null), 500);
+          return () => clearTimeout(timer);
+      }
+  }, [servicoSubitemToOpenId]);
 
   const renderSearchResults = () => {
       if (searchTerm.length < 3) {
@@ -1887,6 +2048,14 @@ const CustosOperacionaisPage = () => {
         initialData={editingServicosDiretriz}
         onSubmit={saveServicosDiretriz}
         isSaving={isSavingServicos}
+      />
+
+      <ServicosTerceirosExportImportDialog
+          open={isServicosExportImportDialogOpen}
+          onOpenChange={setIsServicosExportImportDialogOpen}
+          selectedYear={selectedYear}
+          diretrizes={diretrizesServicos}
+          onImportSuccess={handleServicosImportSuccess}
       />
     </div>
   );
