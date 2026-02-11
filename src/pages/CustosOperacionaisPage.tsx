@@ -1499,7 +1499,7 @@ const CustosOperacionaisPage = () => {
 
         <Card>
           <CardHeader>
-            <h1 className="text-2xl font-bold">Configurações de Custos Operacionais</h1>
+            <h1 className="text-2xl font-bold">Configurações dos Custos Operacionais</h1>
             <CardDescription>
               Defina os valores e fatores de referência para o cálculo de despesas operacionais (GND 3).
             </CardDescription>
