@@ -82,7 +82,7 @@ const LocacaoCatalogDialog: React.FC<LocacaoCatalogDialogProps> = ({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Catálogo de Subitens da ND 33.90.39 (Locações)</DialogTitle>
+                    <DialogTitle>Catálogo de Subitens da ND 33.90.33 (Locações)</DialogTitle>
                     <DialogDescription>
                         Selecione um subitem de referência e confirme a importação para o seu registro.
                     </DialogDescription>
