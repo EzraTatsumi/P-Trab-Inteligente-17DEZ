@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -125,6 +127,8 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         itemFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
+    const handleReviewItem = (item: ItemAquisicao) => setItemToReview(item);
+
     const handleSave = async () => {
         if (!subitemForm.nr_subitem || !subitemForm.nome_subitem || subitemForm.itens_aquisicao.length === 0) {
             toast.error("Preencha os dados do subitem e adicione itens.");
@@ -193,7 +197,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 ))}</TableBody>
                             </Table>
                         )}
-                    </div>
+                    </Card>
                 </div>
                 <div className="flex justify-end gap-2 pt-4 border-t">
                     <Button type="button" onClick={handleSave} disabled={loading || subitemForm.itens_aquisicao.length === 0}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{subitemForm.id ? "Salvar Alterações" : "Cadastrar Subitem"}</Button>
