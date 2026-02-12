@@ -184,8 +184,8 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
                             <TableHead className="w-[10%] text-center">Cód. Item</TableHead>
-                            <TableHead className="w-[35%] text-center">Descrição (Catálogo Local)</TableHead>
-                            <TableHead className="w-[35%] text-center">Descrição (PNCP Federal)</TableHead>
+                            <TableHead className="w-[40%] text-center">Descrição Item</TableHead>
+                            <TableHead className="w-[25%] text-center">Referência PNCP</TableHead>
                             <TableHead className="w-[20%] text-center">{status === 'needs_catmat_info' ? 'Nome Reduzido *' : 'Status'}</TableHead>
                             {status !== 'duplicate' && <TableHead className="w-[5%] text-center">Ações</TableHead>}
                         </TableRow>

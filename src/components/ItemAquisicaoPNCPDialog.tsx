@@ -193,10 +193,10 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     };
                 }
                 
-                // Busca detalhes no catálogo local
+                // Busca detalhes no catálogo local (Prioridade)
                 const catalogDetails = await fetchCatalogDetails(mode, initialMappedItem.codigo_catmat);
                 
-                // Busca detalhes no PNCP (API Federal)
+                // Busca detalhes no PNCP (Referência)
                 const pncpDetails = await fetchCatmatFullDescription(initialMappedItem.codigo_catmat, mode);
                 
                 // PRIORIDADE: Se existe no catálogo local, usa a descrição do catálogo
