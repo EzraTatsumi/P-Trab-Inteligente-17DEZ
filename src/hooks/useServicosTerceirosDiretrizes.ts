@@ -15,7 +15,7 @@ export const useServicosTerceirosDiretrizes = (year: number) => {
             if (!user?.id) return [];
 
             const { data, error } = await supabase
-                .from('diretrizes_servicos_terceiros')
+                .from('diretrizes_servicos_terceiros' as any)
                 .select('*')
                 .eq('user_id', user.id)
                 .eq('ano_referencia', year)
@@ -23,7 +23,7 @@ export const useServicosTerceirosDiretrizes = (year: number) => {
 
             if (error) throw error;
 
-            return (data || []).map(d => ({
+            return (data || []).map((d: any) => ({
                 ...d,
                 itens_aquisicao: (d.itens_aquisicao as unknown as ItemAquisicaoServico[]) || []
             })) as DiretrizServicosTerceiros[];
@@ -42,14 +42,14 @@ export const useServicosTerceirosDiretrizes = (year: number) => {
             const newTargetItens = [...targetDiretriz.itens_aquisicao, item];
 
             const { error: errorSource } = await supabase
-                .from('diretrizes_servicos_terceiros')
+                .from('diretrizes_servicos_terceiros' as any)
                 .update({ itens_aquisicao: newSourceItens as unknown as Json })
                 .eq('id', sourceId);
 
             if (errorSource) throw errorSource;
 
             const { error: errorTarget } = await supabase
-                .from('diretrizes_servicos_terceiros')
+                .from('diretrizes_servicos_terceiros' as any)
                 .update({ itens_aquisicao: newTargetItens as unknown as Json })
                 .eq('id', targetId);
 

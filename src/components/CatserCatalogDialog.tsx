@@ -21,7 +21,7 @@ const RESULT_LIMIT = 500;
 
 const fetchCatalogItems = async (searchTerm: string): Promise<CatalogoCatser[]> => {
     let query = supabase
-        .from('catalogo_catser')
+        .from('catalogo_catser' as any)
         .select('*')
         .order('code', { ascending: true })
         .limit(RESULT_LIMIT);
@@ -39,7 +39,7 @@ const fetchCatalogItems = async (searchTerm: string): Promise<CatalogoCatser[]> 
         throw new Error("Falha ao carregar o catálogo CATSER.");
     }
     
-    return data as CatalogoCatser[];
+    return data as unknown as CatalogoCatser[];
 };
 
 const CatserCatalogDialog: React.FC<CatserCatalogDialogProps> = ({

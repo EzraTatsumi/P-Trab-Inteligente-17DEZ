@@ -48,17 +48,14 @@ import { useMaterialConsumoDiretrizes } from "@/hooks/useMaterialConsumoDiretriz
 import PageMetadata from "@/components/PageMetadata";
 import MaterialConsumoExportImportDialog from "@/components/MaterialConsumoExportImportDialog";
 
-// NOVOS IMPORTS PARA SERVIÇOS DE TERCEIROS
 import { DiretrizServicosTerceiros, ItemAquisicaoServico } from "@/types/diretrizesServicosTerceiros";
 import { useServicosTerceirosDiretrizes } from "@/hooks/useServicosTerceirosDiretrizes";
 import ServicosTerceirosDiretrizRow from "@/components/ServicosTerceirosDiretrizRow";
 import ServicosTerceirosDiretrizFormDialog from "@/components/ServicosTerceirosDiretrizFormDialog";
 import ServicosTerceirosExportImportDialog from "@/components/ServicosTerceirosExportImportDialog";
 
-// Tipo derivado da nova tabela
 type DiretrizOperacional = Tables<'diretrizes_operacionais'>;
 
-// Estrutura de dados para a tabela de diárias
 const DIARIA_RANKS_CONFIG = [
   { key: 'of_gen', label: 'Of Gen', fieldPrefix: 'diaria_of_gen' },
   { key: 'of_sup', label: 'Of Sup', fieldPrefix: 'diaria_of_sup' },
@@ -66,13 +63,11 @@ const DIARIA_RANKS_CONFIG = [
   { key: 'demais_pracas', label: 'Demais Praças', fieldPrefix: 'diaria_demais_pracas' },
 ];
 
-// Mapeamento de campos para rótulos e tipo de input (R$ ou Fator)
 const OPERATIONAL_FIELDS = [
   { key: 'fator_servicos_terceiros', label: 'Serviços de Terceiros (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.10 (para 10%)' },
   { key: 'fator_material_consumo', label: 'Material de Consumo (Fator)', type: 'factor' as const, placeholder: 'Ex: 0.02 (para 2%)' },
 ];
 
-// Valores padrão para inicialização (incluindo os novos campos de diária)
 const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   ano_referencia: year,
   fator_passagens_aereas: 0,
@@ -102,9 +97,6 @@ const defaultDiretrizes = (year: number): Partial<DiretrizOperacional> => ({
   taxa_embarque: 95.00,
 });
 
-// =================================================================
-// LÓGICA DE AUTO-SCROLLING (FORA DO COMPONENTE)
-// =================================================================
 const SCROLL_ZONE_HEIGHT = 50;
 const SCROLL_SPEED = 10;
 let scrollAnimationFrame: number | null = null;
@@ -175,7 +167,6 @@ type IndexedItemAquisicao = ItemAquisicao & {
     subitemNome: string;
 };
 
-// TIPO PARA INDEXAÇÃO DE SERVIÇOS
 type IndexedItemServico = ItemAquisicaoServico & {
     diretrizId: string;
     subitemNr: string;
@@ -239,7 +230,6 @@ const CustosOperacionaisPage = () => {
       isMoving: isMovingMaterialConsumo,
   } = useMaterialConsumoDiretrizes(selectedYear);
 
-  // HOOK PARA SERVIÇOS DE TERCEIROS
   const {
       diretrizes: diretrizesServicosTerceiros,
       isLoading: isLoadingServicosTerceiros,
@@ -250,7 +240,6 @@ const CustosOperacionaisPage = () => {
   const [isMaterialConsumoFormOpen, setIsMaterialConsumoFormOpen] = useState(false);
   const [diretrizMaterialConsumoToEdit, setDiretrizMaterialConsumoToEdit] = useState<DiretrizMaterialConsumo | null>(null);
   
-  // ESTADOS PARA SERVIÇOS DE TERCEIROS
   const [isServicosTerceirosFormOpen, setIsServicosTerceirosFormOpen] = useState(false);
   const [diretrizServicosTerceirosToEdit, setDiretrizServicosTerceirosToEdit] = useState<DiretrizServicosTerceiros | null>(null);
   const [searchTermServicos, setSearchTermServicos] = useState("");
@@ -334,7 +323,7 @@ const CustosOperacionaisPage = () => {
           supabase.from("diretrizes_passagens").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_concessionaria").select("ano_referencia").eq("user_id", user.id),
           supabase.from("diretrizes_material_consumo").select("ano_referencia").eq("user_id", user.id),
-          supabase.from("diretrizes_servicos_terceiros").select("ano_referencia").eq("user_id", user.id),
+          supabase.from("diretrizes_servicos_terceiros" as any).select("ano_referencia").eq("user_id", user.id),
       ]);
 
       if (opError || passagensError || concessionariaError || materialConsumoError || servicosError) throw opError || passagensError || concessionariaError || materialConsumoError || servicosError;
@@ -343,7 +332,7 @@ const CustosOperacionaisPage = () => {
       const passagensYears = passagensData ? passagensData.map(d => d.ano_referencia) : [];
       const concessionariaYears = concessionariaData ? concessionariaData.map(d => d.ano_referencia) : [];
       const materialConsumoYears = materialConsumoData ? materialConsumoData.map(d => d.ano_referencia) : [];
-      const servicosYears = servicosData ? servicosData.map(d => d.ano_referencia) : [];
+      const servicosYears = servicosData ? (servicosData as any[]).map(d => d.ano_referencia) : [];
 
       const yearsToInclude = new Set([...opYears, ...passagensYears, ...concessionariaYears, ...materialConsumoYears, ...servicosYears]);
       
@@ -416,7 +405,7 @@ const CustosOperacionaisPage = () => {
       
       const initialRawInputs: Record<string, string> = {};
       
-      OPERATIONAL_FIELDS.filter(f => f.type === 'currency').forEach(f => {
+      OPERATIONAL_FIELDS.filter(f => (f.type as string) === 'currency').forEach(f => {
         initialRawInputs[f.key as string] = numberToRawDigits(numericData[f.key as keyof DiretrizOperacional] as number);
       });
       
@@ -502,7 +491,6 @@ const CustosOperacionaisPage = () => {
       }
   };
 
-  // HANDLER PARA IMPORTAÇÃO DE SERVIÇOS
   const handleServicosTerceirosImportSuccess = () => {
       if (user?.id && selectedYear > 0) {
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user.id] });
@@ -733,18 +721,17 @@ const CustosOperacionaisPage = () => {
           if (insertMaterialConsumoError) throw insertMaterialConsumoError;
       }
 
-      // COPIAR SERVIÇOS DE TERCEIROS
       const { data: sourceServicos, error: servicosError } = await supabase
-        .from("diretrizes_servicos_terceiros")
+        .from("diretrizes_servicos_terceiros" as any)
         .select("nr_subitem, nome_subitem, descricao_subitem, itens_aquisicao, ativo")
         .eq("user_id", user.id)
         .eq("ano_referencia", sourceYear);
         
       if (servicosError) throw servicosError;
       
-      if (sourceServicos && sourceServicos.length > 0) {
-          const newServicos = (sourceServicos as Tables<'diretrizes_servicos_terceiros'>[]).map(s => {
-              const { id, created_at, updated_at, ...restOfServicos } = s as any;
+      if (sourceServicos && (sourceServicos as any[]).length > 0) {
+          const newServicos = (sourceServicos as any[]).map(s => {
+              const { id, created_at, updated_at, ...restOfServicos } = s;
               return {
                   ...restOfServicos,
                   ano_referencia: targetYear,
@@ -754,8 +741,8 @@ const CustosOperacionaisPage = () => {
           });
           
           const { error: insertServicosError } = await supabase
-            .from("diretrizes_servicos_terceiros")
-            .insert(newServicos as TablesInsert<'diretrizes_servicos_terceiros'>[]);
+            .from("diretrizes_servicos_terceiros" as any)
+            .insert(newServicos);
           if (insertServicosError) throw insertServicosError;
       }
       
@@ -813,7 +800,7 @@ const CustosOperacionaisPage = () => {
         .eq("ano_referencia", year);
 
       await supabase
-        .from("diretrizes_servicos_terceiros")
+        .from("diretrizes_servicos_terceiros" as any)
         .delete()
         .eq("user_id", user.id)
         .eq("ano_referencia", year);
@@ -1294,14 +1281,13 @@ const CustosOperacionaisPage = () => {
       }
   };
 
-  // HANDLER PARA SALVAR SERVIÇOS DE TERCEIROS
   const handleSaveServicosTerceiros = async (data: Partial<DiretrizServicosTerceiros> & { ano_referencia: number }) => {
       try {
           setLoading(true);
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error("Usuário não autenticado");
           
-          const dbData: TablesInsert<'diretrizes_servicos_terceiros'> = {
+          const dbData: any = {
               user_id: user.id,
               ano_referencia: data.ano_referencia,
               nr_subitem: data.nr_subitem!,
@@ -1313,14 +1299,14 @@ const CustosOperacionaisPage = () => {
 
           if (data.id) {
               const { error } = await supabase
-                  .from('diretrizes_servicos_terceiros')
-                  .update(dbData as TablesUpdate<'diretrizes_servicos_terceiros'>)
+                  .from('diretrizes_servicos_terceiros' as any)
+                  .update(dbData)
                   .eq('id', data.id);
               if (error) throw error;
               toast.success("Subitem da ND atualizado!");
           } else {
               const { error } = await supabase
-                  .from('diretrizes_servicos_terceiros')
+                  .from('diretrizes_servicos_terceiros' as any)
                   .insert([dbData]);
               if (error) throw error;
               toast.success("Novo Subitem da ND cadastrado!");
@@ -1342,7 +1328,6 @@ const CustosOperacionaisPage = () => {
       setIsMaterialConsumoFormOpen(true);
   };
 
-  // HANDLER PARA EDITAR SERVIÇOS
   const handleStartEditServicosTerceiros = (diretriz: DiretrizServicosTerceiros) => {
       setDiretrizServicosTerceirosToEdit(diretriz);
       setIsServicosTerceirosFormOpen(true);
@@ -1353,7 +1338,6 @@ const CustosOperacionaisPage = () => {
       setIsMaterialConsumoFormOpen(true);
   };
 
-  // HANDLER PARA NOVO SERVIÇO
   const handleOpenNewServicosTerceiros = () => {
       setDiretrizServicosTerceirosToEdit(null);
       setIsServicosTerceirosFormOpen(true);
@@ -1374,13 +1358,12 @@ const CustosOperacionaisPage = () => {
       }
   };
 
-  // HANDLER PARA EXCLUIR SERVIÇO
   const handleDeleteServicosTerceiros = async (id: string, nome: string) => {
       if (!confirm(`Tem certeza que deseja excluir o Subitem da ND "${nome}"?`)) return;
       
       try {
           setLoading(true);
-          await supabase.from('diretrizes_servicos_terceiros').delete().eq('id', id);
+          await supabase.from('diretrizes_servicos_terceiros' as any).delete().eq('id', id);
           toast.success("Subitem da ND excluído!");
           queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', selectedYear, user?.id] });
       } catch (error) {
@@ -1405,7 +1388,6 @@ const CustosOperacionaisPage = () => {
     });
   }, [diretrizesMaterialConsumo]);
 
-  // INDEXAÇÃO PARA SERVIÇOS
   const indexedItemsServicos = useMemo<IndexedItemServico[]>(() => {
     if (!diretrizesServicosTerceiros) return [];
     
@@ -1441,7 +1423,6 @@ const CustosOperacionaisPage = () => {
     });
   }, [searchTerm, indexedItems]);
 
-  // FILTRO PARA SERVIÇOS
   const filteredItemsServicos = useMemo(() => {
     if (!searchTermServicos) return [];
     const lowerCaseSearch = searchTermServicos.toLowerCase().trim();
@@ -1478,7 +1459,6 @@ const CustosOperacionaisPage = () => {
       setSearchTerm("");
   };
 
-  // NAVEGAÇÃO PARA SUBITEM DE SERVIÇO
   const handleGoToSubitemServico = (diretrizId: string) => {
       handleCollapseChange('servicos_terceiros_detalhe', true);
       setSubitemServicoToOpenId(diretrizId);
@@ -1502,7 +1482,6 @@ const CustosOperacionaisPage = () => {
       }
   }, [subitemToOpenId]);
 
-  // EFEITO PARA LIMPAR SUBITEM DE SERVIÇO
   useEffect(() => {
       if (subitemServicoToOpenId) {
           const timer = setTimeout(() => setSubitemServicoToOpenId(null), 500);
@@ -1575,7 +1554,6 @@ const CustosOperacionaisPage = () => {
       );
   };
 
-  // RENDERIZAÇÃO DE BUSCA PARA SERVIÇOS
   const renderSearchResultsServicos = () => {
       if (searchTermServicos.length < 3) {
           return (
@@ -1735,7 +1713,6 @@ const CustosOperacionaisPage = () => {
       );
   };
 
-  // RENDERIZAÇÃO DA SEÇÃO DE SERVIÇOS DE TERCEIROS
   const renderServicosTerceirosSection = () => {
       const isDataLoading = isLoadingServicosTerceiros || isMovingServicosTerceiros;
       
@@ -1987,7 +1964,6 @@ const CustosOperacionaisPage = () => {
                     </Collapsible>
                   </div>
 
-                  {/* NOVA SEÇÃO: SERVIÇOS DE TERCEIROS */}
                   <div ref={el => collapsibleRefs.current['servicos_terceiros_detalhe'] = el} className="border-b pb-4 last:border-b-0 last:pb-0">
                     <Collapsible 
                       open={fieldCollapseState['servicos_terceiros_detalhe']} 
@@ -2114,7 +2090,6 @@ const CustosOperacionaisPage = () => {
           onImportSuccess={handleMaterialConsumoImportSuccess}
       />
 
-      {/* NOVOS DIALOGS PARA SERVIÇOS DE TERCEIROS */}
       <ServicosTerceirosDiretrizFormDialog
           open={isServicosTerceirosFormOpen}
           onOpenChange={setIsServicosTerceirosFormOpen}

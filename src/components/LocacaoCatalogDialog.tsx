@@ -29,7 +29,7 @@ const fetchCatalogItems = async (): Promise<CatalogoSubitem[]> => {
         throw new Error("Falha ao carregar o catálogo de locações.");
     }
     
-    return data as CatalogoSubitem[];
+    return data as unknown as CatalogoSubitem[];
 };
 
 const LocacaoCatalogDialog: React.FC<LocacaoCatalogDialogProps> = ({
@@ -82,7 +82,7 @@ const LocacaoCatalogDialog: React.FC<LocacaoCatalogDialogProps> = ({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Catálogo de Subitens da ND 33.90.33 (Locações)</DialogTitle>
+                    <DialogTitle>Catálogo de Subitens da ND 33.90.33 (Locação de Meios de Transporte)</DialogTitle>
                     <DialogDescription>
                         Selecione um subitem de referência e confirme a importação para o seu registro.
                     </DialogDescription>
@@ -143,9 +143,15 @@ const LocacaoCatalogDialog: React.FC<LocacaoCatalogDialogProps> = ({
                                                         }}
                                                     >
                                                         {isSelected ? (
-                                                            <><Check className="h-4 w-4 mr-1" />Selecionado</>
+                                                            <>
+                                                                <Check className="h-4 w-4 mr-1" />
+                                                                Selecionado
+                                                            </>
                                                         ) : (
-                                                            <><Check className="h-4 w-4 mr-1" />Selecionar</>
+                                                            <>
+                                                                <Check className="h-4 w-4 mr-1" />
+                                                                Selecionar
+                                                            </>
                                                         )}
                                                     </Button>
                                                 </TableCell>

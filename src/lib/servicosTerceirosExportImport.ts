@@ -1,7 +1,6 @@
 import * as ExcelJS from 'exceljs';
 import { supabase } from "@/integrations/supabase/client";
 import { DiretrizServicosTerceiros } from "@/types/diretrizesServicosTerceiros";
-import { StagingRow } from "@/types/diretrizesMaterialConsumo";
 
 /**
  * Exporta as diretrizes de serviços para Excel com o modelo atualizado.
@@ -60,7 +59,7 @@ export async function exportServicosTerceirosToExcel(diretrizes: DiretrizServico
  */
 export async function processServicosTerceirosImport(file: File, year: number, userId: string) {
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(file);
+    await workbook.xlsx.load(await file.arrayBuffer());
     const worksheet = workbook.getWorksheet(1);
     
     if (!worksheet) throw new Error("Planilha inválida.");
@@ -72,12 +71,12 @@ export async function processServicosTerceirosImport(file: File, year: number, u
     let totalExisting = 0;
 
     const { data: existingData } = await supabase
-        .from('diretrizes_servicos_terceiros')
+        .from('diretrizes_servicos_terceiros' as any)
         .select('itens_aquisicao')
         .eq('user_id', userId)
         .eq('ano_referencia', year);
 
-    const existingItems = (existingData || []).flatMap(d => (d.itens_aquisicao as any[]) || []);
+    const existingItems = (existingData as any[] || []).flatMap(d => (d.itens_aquisicao as any[]) || []);
     const existingKeys = new Set(existingItems.map(i => `${i.codigo_catmat}-${i.numero_pregao}-${i.uasg}`));
     const internalKeys = new Set<string>();
 
@@ -150,21 +149,23 @@ export async function persistServicosTerceirosImport(stagedData: any[], year: nu
         const key = `${row.nr_subitem}-${row.nome_subitem}`;
         if (!subitemsMap.has(key)) {
             const { data: existingSubitem } = await supabase
-                .from('diretrizes_servicos_terceiros')
+                .from('diretrizes_servicos_terceiros' as any)
                 .select('*')
                 .eq('user_id', userId)
                 .eq('ano_referencia', year)
                 .eq('nr_subitem', row.nr_subitem)
                 .maybeSingle();
 
+            const typedExisting = existingSubitem as any;
+
             subitemsMap.set(key, {
-                id: existingSubitem?.id,
+                id: typedExisting?.id,
                 user_id: userId,
                 ano_referencia: year,
                 nr_subitem: row.nr_subitem,
                 nome_subitem: row.nome_subitem,
-                descricao_subitem: row.descricao_subitem || existingSubitem?.descricao_subitem || '',
-                itens_aquisicao: existingSubitem?.itens_aquisicao || [],
+                descricao_subitem: row.descricao_subitem || typedExisting?.descricao_subitem || '',
+                itens_aquisicao: typedExisting?.itens_aquisicao || [],
                 ativo: true
             });
         }
@@ -182,11 +183,12 @@ export async function persistServicosTerceirosImport(stagedData: any[], year: nu
         });
     }
 
-    for (const subitem of subitemsMap.values()) {
+    const subitemsToPersist = Array.from(subitemsMap.values());
+    for (const subitem of subitemsToPersist) {
         if (subitem.id) {
-            await supabase.from('diretrizes_servicos_terceiros').update(subitem).eq('id', subitem.id);
+            await supabase.from('diretrizes_servicos_terceiros' as any).update(subitem).eq('id', subitem.id);
         } else {
-            await supabase.from('diretrizes_servicos_terceiros').insert([subitem]);
+            await supabase.from('diretrizes_servicos_terceiros' as any).insert([subitem]);
         }
     }
 }

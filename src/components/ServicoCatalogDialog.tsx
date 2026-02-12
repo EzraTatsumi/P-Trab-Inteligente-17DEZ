@@ -6,9 +6,9 @@ import { Loader2, Check, Search, Import } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { CatalogoSubitem } from "@/types/catalogoSubitens";
 import { Input } from "@/components/ui/input";
 
-// Definindo o tipo de item selecionável para o estado
 type SelectedItem = { nr_subitem: string, nome_subitem: string, descricao_subitem: string | null } | null;
 
 interface ServicoCatalogDialogProps {
@@ -17,9 +17,9 @@ interface ServicoCatalogDialogProps {
     onSelect: (item: { nr_subitem: string, nome_subitem: string, descricao_subitem: string | null }) => void;
 }
 
-const fetchCatalogItems = async () => {
+const fetchCatalogItems = async (): Promise<CatalogoSubitem[]> => {
     const { data, error } = await supabase
-        .from('catalogo_servicos_nd')
+        .from('catalogo_servicos_nd' as any)
         .select('*')
         .eq('ativo', true)
         .order('nr_subitem', { ascending: true });
@@ -29,7 +29,7 @@ const fetchCatalogItems = async () => {
         throw new Error("Falha ao carregar o catálogo de serviços.");
     }
     
-    return data;
+    return data as unknown as CatalogoSubitem[];
 };
 
 const ServicoCatalogDialog: React.FC<ServicoCatalogDialogProps> = ({
@@ -46,7 +46,7 @@ const ServicoCatalogDialog: React.FC<ServicoCatalogDialogProps> = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
     
-    const filteredItems = (items || []).filter(item => 
+    const filteredItems = (items || []).filter((item: any) => 
         item.nr_subitem.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.nome_subitem.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.descricao_subitem?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -82,7 +82,7 @@ const ServicoCatalogDialog: React.FC<ServicoCatalogDialogProps> = ({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Catálogo de Subitens da ND 30.33.39  (Serviço de Terceiros)</DialogTitle>
+                    <DialogTitle>Catálogo de Subitens da ND 33.90.39 (Serviços de Terceiros)</DialogTitle>
                     <DialogDescription>
                         Selecione um subitem de referência e confirme a importação para o seu registro.
                     </DialogDescription>
@@ -114,13 +114,13 @@ const ServicoCatalogDialog: React.FC<ServicoCatalogDialogProps> = ({
                                 <TableHeader className="sticky top-0 bg-background z-10">
                                     <TableRow>
                                         <TableHead className="w-[100px] text-center">Nr Subitem</TableHead>
-                                        <TableHead className="w-[250px] text-center">Nome do Subitem</TableHead>
+                                        <TableHead className="w-[200px] text-center">Nome do Subitem</TableHead>
                                         <TableHead className="text-center">Descrição</TableHead>
                                         <TableHead className="w-[120px] text-center">Ação</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredItems.map(item => {
+                                    {filteredItems.map((item: any) => {
                                         const isSelected = selectedItem?.nr_subitem === item.nr_subitem;
                                         return (
                                             <TableRow 

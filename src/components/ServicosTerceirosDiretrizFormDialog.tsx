@@ -102,6 +102,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
         const newItem: ItemAquisicaoServicoExtended = {
             id: editingItemId || Math.random().toString(36).substring(2, 9), 
             descricao_item: itemForm.descricao_item,
+            descricao_reduzida: itemForm.nome_reduzido, // Mapeando para o campo base
             nome_reduzido: itemForm.nome_reduzido,
             unidade_medida: itemForm.unidade_medida,
             valor_unitario: itemForm.valor_unitario,
@@ -222,7 +223,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                     const mappedItems = items.map(item => ({
                         ...item,
                         nome_reduzido: item.descricao_reduzida || '',
-                        unidade_medida: 'UN', // Valor padrão para serviços importados
+                        unidade_medida: 'UN', 
                     }));
                     setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...mappedItems] }));
                 }} 
