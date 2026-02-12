@@ -130,7 +130,8 @@ export async function fetchCatalogEntry(codigo: string, mode: 'material' | 'serv
         }
 
         if (data) {
-            const typedData = data as { description: string | null, short_description: string | null };
+            // Corrigido: Adicionado unknown como intermediário para evitar erro de conversão
+            const typedData = data as unknown as { description: string | null, short_description: string | null };
             return {
                 description: typedData.description || null,
                 shortDescription: typedData.short_description || null,
@@ -319,7 +320,8 @@ export async function fetchAllExistingAcquisitionItems(year: number, userId: str
         if (error) throw error;
 
         return (data || []).flatMap(diretriz => {
-            const typedDiretriz = diretriz as { itens_aquisicao: any };
+            // Corrigido: Adicionado unknown como intermediário para evitar erro de conversão
+            const typedDiretriz = diretriz as unknown as { itens_aquisicao: any };
             return (typedDiretriz.itens_aquisicao as unknown as ItemAquisicao[]) || [];
         });
     } catch (error) {
