@@ -204,13 +204,15 @@ export async function saveNewCatalogEntry(mode: 'material' | 'servico', code: st
 
 /**
  * Busca a descrição completa de um item no PNCP.
+ * @param codigoItem O código do item.
+ * @param mode 'material' para CATMAT ou 'servico' para CATSER.
  */
-export async function fetchCatmatFullDescription(codigoItem: string): Promise<{ fullDescription: string | null, nomePdm: string | null }> {
+export async function fetchCatmatFullDescription(codigoItem: string, mode: 'material' | 'servico' = 'material'): Promise<{ fullDescription: string | null, nomePdm: string | null }> {
     if (!codigoItem) return { fullDescription: null, nomePdm: null };
     
     try {
         const { data, error } = await supabase.functions.invoke('fetch-catmat-details', {
-            body: { codigoItem },
+            body: { codigoItem, mode }, // Passando o modo para a Edge Function
         });
 
         if (error) throw new Error(error.message);

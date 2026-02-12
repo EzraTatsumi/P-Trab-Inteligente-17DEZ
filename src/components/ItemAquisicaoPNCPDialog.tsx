@@ -193,7 +193,8 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     };
                 }
                 
-                const pncpDetails = await fetchCatmatFullDescription(initialMappedItem.codigo_catmat);
+                // Passando o modo para as funções de busca de catálogo e descrição
+                const pncpDetails = await fetchCatmatFullDescription(initialMappedItem.codigo_catmat, mode);
                 const catalogStatus = await fetchCatalogShortDescription(mode, initialMappedItem.codigo_catmat);
                 
                 if (catalogStatus.shortDescription) {
@@ -289,13 +290,13 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     </TabsList>
 
                     <TabsContent value="arp-uasg">
-                        <ArpUasgSearch onItemPreSelect={handleItemPreSelect} selectedItemIds={selectedItemIds} onClearSelection={handleClearSelection} scrollContainerRef={dialogContentRef} />
+                        <ArpUasgSearch onItemPreSelect={handleItemPreSelect} selectedItemIds={selectedItemIds} onClearSelection={handleClearSelection} scrollContainerRef={dialogContentRef} mode={mode} />
                     </TabsContent>
                     <TabsContent value="arp-catmat">
-                        <ArpCatmatSearch onItemPreSelect={handleItemPreSelect} selectedItemIds={selectedItemIds} onClearSelection={handleClearSelection} scrollContainerRef={dialogContentRef} />
+                        <ArpCatmatSearch onItemPreSelect={handleItemPreSelect} selectedItemIds={selectedItemIds} onClearSelection={handleClearSelection} scrollContainerRef={dialogContentRef} mode={mode} />
                     </TabsContent>
                     <TabsContent value="avg-price">
-                        <PriceSearchForm onPriceSelect={handlePriceSelect} isInspecting={isInspecting} onClearPriceSelection={handleClearPriceSelection} selectedItemForInspection={selectedItemForInspection} />
+                        <PriceSearchForm onPriceSelect={handlePriceSelect} isInspecting={isInspecting} onClearPriceSelection={handleClearPriceSelection} selectedItemForInspection={selectedItemForInspection} mode={mode} />
                     </TabsContent>
                 </Tabs>
 
@@ -315,7 +316,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     inspectionList={inspectionList}
                     onFinalImport={handleFinalImport}
                     onReviewItem={onReviewItem} 
-                    mode={mode} // Passando o modo para o diálogo de inspeção
+                    mode={mode} 
                 />
             )}
         </Dialog>
