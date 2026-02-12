@@ -9,7 +9,7 @@ import { Search, Loader2, BookOpen, DollarSign, ChevronDown, ChevronUp, Trash2 }
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { format, subDays } from 'date-fns';
-import { fetchPriceStats } from '@/integrations/supabase/api';
+import { fetchPriceStats, fetchCatmatFullDescription } from '@/integrations/supabase/api';
 import { PriceStatsResult, PriceStats, RawPriceRecord } from '@/types/pncp';
 import { capitalizeFirstLetter, formatCurrency, formatCodug } from '@/lib/formatUtils';
 import CatmatCatalogDialog from '../CatmatCatalogDialog';
@@ -19,6 +19,7 @@ import { ItemAquisicao } from '@/types/diretrizesMaterialConsumo';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
+// 1. Esquema de Validação
 const formSchema = z.object({
     codigoItem: z.string()
         .min(1, { message: "O Código do Item é obrigatório." })
@@ -27,14 +28,25 @@ const formSchema = z.object({
     dataFim: z.string().optional(),
     ignoreDates: z.boolean().default(false),
 }).refine(data => {
+    // Se não ignorar datas, ambas devem ser preenchidas e a dataFim deve ser >= dataInicio
     if (!data.ignoreDates) {
         if (!data.dataInicio || !data.dataFim) return false;
+        
         const startDate = new Date(data.dataInicio);
         const endDate = new Date(data.dataFim);
+        
+        // Verifica se a Data de Fim é posterior ou igual à Data de Início
         if (endDate < startDate) return false;
+        
+        // Verifica se o intervalo é maior que 365 dias (86400000 ms * 365)
         const maxDurationMs = 86400000 * 365;
         const durationMs = endDate.getTime() - startDate.getTime();
-        if (durationMs > maxDurationMs) return false;
+        
+        // Se a duração for estritamente maior que 365 dias, falha.
+        // Adicionamos uma pequena margem de segurança (1ms) para evitar problemas de fuso horário.
+        if (durationMs > maxDurationMs) {
+             return false;
+        }
     }
     return true;
 }, {
@@ -45,40 +57,48 @@ const formSchema = z.object({
 type PriceSearchFormValues = z.infer<typeof formSchema>;
 
 interface PriceSearchFormProps {
+    // Função de callback para enviar o item selecionado para inspeção
     onPriceSelect: (item: ItemAquisicao) => void;
+    // NOVO: Estado de inspeção do componente pai
     isInspecting: boolean; 
+    // NOVO: Função para limpar a seleção de preço no componente pai
     onClearPriceSelection: () => void;
+    // NOVO: Item de aquisição selecionado (para manter o estado visual)
     selectedItemForInspection: ItemAquisicao | null;
-    mode?: 'material' | 'servico';
 }
 
+// Calcula as datas padrão
 const today = new Date();
+// Ajuste: Usar 364 dias para garantir que o intervalo seja aceito pela API (365 dias é o limite)
 const oneYearAgo = subDays(today, 364); 
+
+// Formata as datas para o formato 'YYYY-MM-DD' exigido pelo input type="date"
 const defaultDataFim = format(today, 'yyyy-MM-dd');
 const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 
+// Tipo auxiliar para o registro bruto com um ID único (baseado no índice)
 interface IndexedRawPriceRecord extends RawPriceRecord {
     id: number;
 }
 
+// NOVO TIPO: Tipos de preço para o estado de seleção
 type PriceType = 'avg' | 'median' | 'min' | 'max';
 
-const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ 
-    onPriceSelect, 
-    isInspecting, 
-    onClearPriceSelection, 
-    selectedItemForInspection,
-    mode = 'material'
-}) => {
+const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInspecting, onClearPriceSelection, selectedItemForInspection }) => {
     const [isSearching, setIsSearching] = useState(false);
-    const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+    const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
+    const [isCatserCatalogOpen, setIsCatserCatalogOpen] = useState(false);
     const [searchResult, setSearchResult] = useState<PriceStatsResult | null>(null);
+    
+    // Estado para rastrear os IDs (índices) dos registros excluídos
     const [excludedRecordIds, setExcludedRecordIds] = useState<Set<number>>(new Set());
+    
+    // NOVO ESTADO: Rastreia o tipo de preço selecionado
     const [selectedPriceType, setSelectedPriceType] = useState<PriceType | null>(null);
+    
+    // Controla a visibilidade da base de cálculo
     const [showRawData, setShowRawData] = useState(false);
     
-    const catalogLabel = mode === 'material' ? 'CATMAT' : 'CATSER';
-
     const form = useForm<PriceSearchFormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -91,123 +111,305 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({
     
     const ignoreDates = form.watch('ignoreDates');
     
-    const handleCodigoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleCatmatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const rawValue = e.target.value.replace(/\D/g, '');
         const limitedValue = rawValue.slice(0, 9); 
         form.setValue('codigoItem', limitedValue, { shouldValidate: true });
     };
     
-    const handleCatalogSelect = (item: { code: string }) => {
+    const handleCatalogSelect = (item: { code: string, description: string, short_description: string | null }) => {
         form.setValue('codigoItem', item.code, { shouldValidate: true });
-        setIsCatalogOpen(false);
+        setIsCatmatCatalogOpen(false);
+        setIsCatserCatalogOpen(false);
     };
 
     const onSubmit = async (values: PriceSearchFormValues) => {
         setIsSearching(true);
         setSearchResult(null);
         setShowRawData(false); 
-        setExcludedRecordIds(new Set());
-        setSelectedPriceType(null);
-        onClearPriceSelection();
+        setExcludedRecordIds(new Set()); // Limpa exclusões ao iniciar nova busca
+        setSelectedPriceType(null); // Limpa a seleção de preço
+        onClearPriceSelection(); // Limpa a seleção no componente pai
+        
+        const catmatCode = values.codigoItem;
         
         try {
-            toast.info(`Buscando estatísticas de preço para o item ${values.codigoItem}...`);
+            toast.info(`Buscando estatísticas de preço para o item ${catmatCode}...`);
+            
             const params = {
-                codigoItem: values.codigoItem,
+                codigoItem: catmatCode,
                 dataInicio: values.ignoreDates ? null : values.dataInicio || null,
                 dataFim: values.ignoreDates ? null : values.dataFim || null,
             };
+            
             const result = await fetchPriceStats(params);
+            
             if (!result.stats || result.totalRegistros === 0) {
-                toast.warning(`Nenhum registro de preço encontrado.`);
+                toast.warning(`Nenhum registro de preço encontrado para o item ${catmatCode} no período.`);
             } else {
                 toast.success(`${result.totalRegistros} registros encontrados!`);
             }
+            
+            // O resultado inicial da API é armazenado
             setSearchResult(result);
+
         } catch (error: any) {
-            toast.error(error.message || "Falha ao buscar estatísticas.");
+            console.error("Erro na busca de preço médio:", error);
+            toast.error(error.message || "Falha ao buscar estatísticas de preço.");
         } finally {
             setIsSearching(false);
         }
     };
     
+    /**
+     * Lógica de Recálculo de Estatísticas
+     */
     const { currentStats, currentTotalRecords, indexedRecords } = useMemo(() => {
-        if (!searchResult || searchResult.totalRegistros === 0) return { currentStats: null, currentTotalRecords: 0, indexedRecords: [] };
-        const indexed = searchResult.rawRecords.map((record, index) => ({ ...record, id: index }));
+        if (!searchResult || searchResult.totalRegistros === 0) {
+            return { currentStats: null, currentTotalRecords: 0, indexedRecords: [] };
+        }
+
+        // 1. Indexa os registros brutos para dar a eles um ID estável (baseado no índice original)
+        const indexed = searchResult.rawRecords.map((record, index) => ({
+            ...record,
+            id: index,
+        }));
+        
+        // 2. Filtra os registros que NÃO estão excluídos
         const activeRecords = indexed.filter(record => !excludedRecordIds.has(record.id));
         const activePrices = activeRecords.map(r => r.precoUnitario);
         const total = activePrices.length;
+
         if (total === 0) {
+            // Se todos os registros foram excluídos, limpa a seleção de preço
             setSelectedPriceType(null);
             onClearPriceSelection();
             return { currentStats: null, currentTotalRecords: 0, indexedRecords: indexed };
         }
+
+        // 3. Recalcula as estatísticas
         const minPrice = Math.min(...activePrices);
         const maxPrice = Math.max(...activePrices);
         const sumPrices = activePrices.reduce((sum, price) => sum + price, 0);
         const avgPrice = sumPrices / total;
+        
+        // Cálculo da Mediana (necessita de ordenação)
         const sortedPrices = [...activePrices].sort((a, b) => a - b);
         const middle = Math.floor(sortedPrices.length / 2);
-        const medianPrice = sortedPrices.length % 2 === 0 ? (sortedPrices[middle - 1] + sortedPrices[middle]) / 2 : sortedPrices[middle];
-        const stats: PriceStats = { minPrice: parseFloat(minPrice.toFixed(2)), maxPrice: parseFloat(maxPrice.toFixed(2)), avgPrice: parseFloat(avgPrice.toFixed(2)), medianPrice: parseFloat(medianPrice.toFixed(2)) };
+        const medianPrice = sortedPrices.length % 2 === 0
+            ? (sortedPrices[middle - 1] + sortedPrices[middle]) / 2
+            : sortedPrices[middle];
+
+        const stats: PriceStats = {
+            minPrice: parseFloat(minPrice.toFixed(2)),
+            maxPrice: parseFloat(maxPrice.toFixed(2)),
+            avgPrice: parseFloat(avgPrice.toFixed(2)),
+            medianPrice: parseFloat(medianPrice.toFixed(2)),
+        };
+        
+        // 4. Ordena os registros indexados (para exibição na tabela)
         const sortedIndexedRecords = [...indexed].sort((a, b) => b.precoUnitario - a.precoUnitario);
-        return { currentStats: stats, currentTotalRecords: total, indexedRecords: sortedIndexedRecords };
+
+        return { 
+            currentStats: stats, 
+            currentTotalRecords: total, 
+            indexedRecords: sortedIndexedRecords 
+        };
     }, [searchResult, excludedRecordIds]);
     
+    /**
+     * Alterna o estado de exclusão de um registro.
+     */
     const toggleExclusion = (id: number) => {
         setExcludedRecordIds(prev => {
             const newSet = new Set(prev);
-            if (newSet.has(id)) newSet.delete(id);
-            else newSet.add(id);
+            if (newSet.has(id)) {
+                newSet.delete(id);
+                toast.info("Registro incluído no cálculo.");
+            } else {
+                newSet.add(id);
+                toast.warning("Registro excluído do cálculo.");
+            }
             return newSet;
         });
     };
     
+    /**
+     * CRUCIAL: Esta função agora APENAS seleciona o preço e cria o item temporário.
+     * A inspeção é disparada pelo botão no componente pai.
+     */
     const handlePriceSelection = (price: number, priceType: PriceType, priceLabel: string) => {
-        if (!searchResult || !searchResult.descricaoItem) return;
+        if (!searchResult || !searchResult.descricaoItem) {
+            toast.error("Erro: Dados do item não carregados.");
+            return;
+        }
+        
+        // 1. Define o tipo de preço selecionado para feedback visual
         setSelectedPriceType(priceType);
+        
+        // 2. Cria o ItemAquisicao
         const item: ItemAquisicao = {
+            // ID temporário, será substituído na inspeção
             id: Math.random().toString(36).substring(2, 9), 
+            
+            // Dados preenchidos pela busca
             codigo_catmat: searchResult.codigoItem,
             descricao_item: searchResult.descricaoItem,
+            
+            // Descrição reduzida inicial (primeiras 50 letras)
             descricao_reduzida: searchResult.descricaoItem.substring(0, 50) + (searchResult.descricaoItem.length > 50 ? '...' : ''),
+            
+            // Valor selecionado
             valor_unitario: price,
+            
+            // Campos padrão para itens de preço médio (requerem preenchimento manual posterior)
             numero_pregao: 'Em processo de abertura', 
-            uasg: '', 
+            uasg: '', // Vazio, pois não há UASG de referência
+            
+            // Inicializa campos opcionais para ItemAquisicao
             quantidade: 0,
             valor_total: 0,
             nd: '',
             nr_subitem: '',
             nome_subitem: '',
         };
+        
+        // 3. Envia o item para o componente pai para ser armazenado como item selecionado
         onPriceSelect(item);
-        toast.info(`Preço (${priceLabel}) selecionado.`);
+        
+        // 4. Feedback visual
+        toast.info(`Preço (${priceLabel}) selecionado. Clique em 'Inspecionar e Importar'.`);
     };
 
     const renderPriceButtons = (stats: PriceStats) => {
         const buttonClass = "flex flex-col items-center justify-center h-24 w-full text-center transition-all";
         const priceStyle = "text-xl font-bold mt-1";
+        
+        // Determina o tipo de preço selecionado no estado do componente pai
         const selectedPrice = selectedItemForInspection?.valor_unitario;
-        const isSelected = (price: number, type: PriceType) => selectedPrice !== undefined && Math.round(selectedPrice * 100) === Math.round(price * 100) && selectedPriceType === type;
+        
+        // Função auxiliar para verificar se o botão atual corresponde ao preço selecionado
+        const isSelected = (price: number, type: PriceType) => {
+            // Verifica se o preço do item selecionado corresponde ao preço do botão
+            if (selectedPrice !== undefined && Math.round(selectedPrice * 100) === Math.round(price * 100)) {
+                // Se o preço for igual, verifica se o tipo também é igual (para evitar ambiguidade se min=avg)
+                return selectedPriceType === type;
+            }
+            return false;
+        };
         
         return (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Button type="button" variant={isSelected(stats.avgPrice, 'avg') ? 'default' : 'outline'} className={buttonClass} onClick={() => handlePriceSelection(stats.avgPrice, 'avg', 'Médio')} disabled={isInspecting}>
+                
+                {/* Preço Médio */}
+                <Button 
+                    type="button" 
+                    variant={isSelected(stats.avgPrice, 'avg') ? 'default' : 'outline'} 
+                    className={buttonClass}
+                    onClick={() => handlePriceSelection(stats.avgPrice, 'avg', 'Médio')}
+                    disabled={isInspecting}
+                >
                     <span className="text-sm text-muted-foreground">Preço Médio</span>
                     <span className={priceStyle}>{formatCurrency(stats.avgPrice)}</span>
                 </Button>
-                <Button type="button" variant={isSelected(stats.medianPrice, 'median') ? 'default' : 'outline'} className={buttonClass} onClick={() => handlePriceSelection(stats.medianPrice, 'median', 'Mediana')} disabled={isInspecting}>
+                
+                {/* Mediana */}
+                <Button 
+                    type="button" 
+                    variant={isSelected(stats.medianPrice, 'median') ? 'default' : 'outline'} 
+                    className={buttonClass}
+                    onClick={() => handlePriceSelection(stats.medianPrice, 'median', 'Mediana')}
+                    disabled={isInspecting}
+                >
                     <span className="text-sm text-muted-foreground">Mediana</span>
                     <span className={priceStyle}>{formatCurrency(stats.medianPrice)}</span>
                 </Button>
-                <Button type="button" variant={isSelected(stats.minPrice, 'min') ? 'default' : 'outline'} className={buttonClass} onClick={() => handlePriceSelection(stats.minPrice, 'min', 'Mínimo')} disabled={isInspecting}>
+                
+                {/* Preço Mínimo */}
+                <Button 
+                    type="button" 
+                    variant={isSelected(stats.minPrice, 'min') ? 'default' : 'outline'} 
+                    className={buttonClass}
+                    onClick={() => handlePriceSelection(stats.minPrice, 'min', 'Mínimo')}
+                    disabled={isInspecting}
+                >
                     <span className="text-sm text-muted-foreground">Preço Mínimo</span>
                     <span className={priceStyle}>{formatCurrency(stats.minPrice)}</span>
                 </Button>
-                <Button type="button" variant={isSelected(stats.maxPrice, 'max') ? 'default' : 'outline'} className={buttonClass} onClick={() => handlePriceSelection(stats.maxPrice, 'max', 'Máximo')} disabled={isInspecting}>
+                
+                {/* Preço Máximo */}
+                <Button 
+                    type="button" 
+                    variant={isSelected(stats.maxPrice, 'max') ? 'default' : 'outline'} 
+                    className={buttonClass}
+                    onClick={() => handlePriceSelection(stats.maxPrice, 'max', 'Máximo')}
+                    disabled={isInspecting}
+                >
                     <span className="text-sm text-muted-foreground">Preço Máximo</span>
                     <span className={priceStyle}>{formatCurrency(stats.maxPrice)}</span>
                 </Button>
+            </div>
+        );
+    };
+    
+    // NOVO: Ordena os registros brutos do maior para o menor valor
+    const sortedRawRecords = useMemo(() => {
+        if (!searchResult?.rawRecords) return [];
+        
+        // 1. Indexa os registros brutos para dar a eles um ID estável (baseado no índice original)
+        const indexed = searchResult.rawRecords.map((record, index) => ({
+            ...record,
+            id: index,
+        }));
+        
+        // 2. Cria uma cópia e ordena pelo precoUnitario em ordem decrescente
+        return [...indexed].sort((a, b) => b.precoUnitario - a.precoUnitario);
+    }, [searchResult?.rawRecords]);
+    
+    const renderRawDataTable = (records: IndexedRawPriceRecord[]) => {
+        return (
+            <div className="max-h-60 overflow-y-auto mt-2 border rounded-md">
+                <Table>
+                    <TableHeader className="sticky top-0 bg-background z-10">
+                        <TableRow>
+                            <TableHead className="w-[5%] text-center">
+                                <Trash2 className="h-4 w-4 text-muted-foreground mx-auto" />
+                            </TableHead>
+                            <TableHead className="w-[15%]">UASG</TableHead>
+                            <TableHead className="w-[50%]">Nome da UASG</TableHead>
+                            <TableHead className="w-[30%] text-right">Preço Unitário</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {records.map((record) => {
+                            const isExcluded = excludedRecordIds.has(record.id);
+                            
+                            return (
+                                <TableRow 
+                                    key={record.id} 
+                                    className={isExcluded ? 'bg-red-50/50 opacity-50 hover:bg-red-50' : 'hover:bg-muted/50'}
+                                >
+                                    <TableCell className="text-center py-2">
+                                        <Checkbox
+                                            checked={!isExcluded}
+                                            onCheckedChange={() => toggleExclusion(record.id)}
+                                            aria-label={isExcluded ? "Incluir registro" : "Excluir registro"}
+                                        />
+                                    </TableCell>
+                                    <TableCell className="text-sm font-medium py-2">
+                                        {formatCodug(record.codigoUasg)}
+                                    </TableCell>
+                                    <TableCell className="text-sm py-2">
+                                        {record.nomeUasg}
+                                    </TableCell>
+                                    <TableCell className="text-right text-sm font-bold text-primary py-2">
+                                        {formatCurrency(record.precoUnitario)}
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
+                    </TableBody>
+                </Table>
             </div>
         );
     };
@@ -216,137 +418,205 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({
         <>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-4 gap-4">
+                        
                         <FormField
                             control={form.control}
                             name="codigoItem"
                             render={({ field }) => (
-                                <FormItem className="col-span-1 md:col-span-2">
-                                    <FormLabel className="font-bold">Cód. Item ({catalogLabel}) *</FormLabel>
+                                <FormItem className="col-span-4 md:col-span-2">
+                                    <FormLabel>Cód. Item *</FormLabel>
                                     <div className="flex gap-2">
                                         <FormControl>
                                             <Input
                                                 {...field}
-                                                onChange={handleCodigoChange}
+                                                onChange={handleCatmatChange}
                                                 value={field.value}
-                                                placeholder={`Ex: ${mode === 'material' ? '604269' : '12345'}`}
+                                                placeholder="Ex: 604269"
                                                 maxLength={9}
                                                 disabled={isSearching}
-                                                className="font-mono"
                                             />
                                         </FormControl>
-                                        <Button 
-                                            type="button" 
-                                            variant="outline" 
-                                            onClick={() => setIsCatalogOpen(true)} 
-                                            disabled={isSearching}
-                                            className="flex-shrink-0"
-                                        >
-                                            <BookOpen className="h-4 w-4 mr-2" />
-                                            Catálogo {catalogLabel}
-                                        </Button>
+                                        <div className="flex flex-col gap-1">
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="sm" 
+                                                onClick={() => setIsCatmatCatalogOpen(true)}
+                                                disabled={isSearching}
+                                                className="h-8 px-2 text-[10px]"
+                                            >
+                                                <BookOpen className="h-3 w-3 mr-1" /> CATMAT
+                                            </Button>
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="sm" 
+                                                onClick={() => setIsCatserCatalogOpen(true)}
+                                                disabled={isSearching}
+                                                className="h-8 px-2 text-[10px]"
+                                            >
+                                                <BookOpen className="h-3 w-3 mr-1" /> CATSER
+                                            </Button>
+                                        </div>
                                     </div>
-                                    <FormDescription className="text-blue-600 font-medium">
-                                        Insira o código do item de {mode === 'material' ? 'material' : 'serviço'}.
-                                    </FormDescription>
                                     <FormMessage />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Insira o código do item de material ou serviço.
+                                    </p>
                                 </FormItem>
                             )}
                         />
+                        
                         <FormField
                             control={form.control}
                             name="dataInicio"
                             render={({ field }) => (
-                                <FormItem className="col-span-1">
+                                <FormItem className="col-span-2 md:col-span-1">
                                     <FormLabel>Data de Início</FormLabel>
-                                    <FormControl><Input type="date" {...field} disabled={isSearching || ignoreDates} value={ignoreDates ? '' : field.value} /></FormControl>
+                                    <FormControl>
+                                        <Input
+                                            type="date"
+                                            {...field}
+                                            disabled={isSearching || ignoreDates}
+                                            value={ignoreDates ? '' : field.value}
+                                            onChange={field.onChange}
+                                        />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
+                        
                         <FormField
                             control={form.control}
                             name="dataFim"
                             render={({ field }) => (
-                                <FormItem className="col-span-1">
+                                <FormItem className="col-span-2 md:col-span-1">
                                     <FormLabel>Data de Fim</FormLabel>
-                                    <FormControl><Input type="date" {...field} disabled={isSearching || ignoreDates} value={ignoreDates ? '' : field.value} /></FormControl>
+                                    <FormControl>
+                                        <Input
+                                            type="date"
+                                            {...field}
+                                            disabled={isSearching || ignoreDates}
+                                            value={ignoreDates ? '' : field.value}
+                                            onChange={field.onChange}
+                                        />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
+                        
                         <FormField
                             control={form.control}
                             name="ignoreDates"
                             render={({ field }) => (
-                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 col-span-1 md:col-span-4">
-                                    <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isSearching} /></FormControl>
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 col-span-4">
+                                    <FormControl>
+                                        <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                            disabled={isSearching}
+                                        />
+                                    </FormControl>
                                     <div className="space-y-1 leading-none">
-                                        <FormLabel>Pesquisar sem restrição de data</FormLabel>
-                                        <FormDescription>Busca todos os registros de preço disponíveis para o item.</FormDescription>
+                                        <FormLabel>
+                                            Pesquisar sem restrição de data
+                                        </FormLabel>
+                                        <FormDescription>
+                                            Busca todos os registros de preço disponíveis para o item, ignorando o período acima.
+                                        </FormDescription>
                                     </div>
                                 </FormItem>
                             )}
                         />
                     </div>
+                    
                     <Button type="submit" disabled={isSearching} className="w-full">
-                        {isSearching ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Buscando Preços...</> : <><Search className="h-4 w-4 mr-2" />Buscar Estatísticas de Preço</>}
+                        {isSearching ? (
+                            <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Buscando Preços...
+                            </>
+                        ) : (
+                            <>
+                                <Search className="h-4 w-4 mr-2" />
+                                Buscar Estatísticas de Preço
+                            </>
+                        )}
                     </Button>
                 </form>
             </Form>
             
+            {/* Seção de Resultados */}
             {searchResult && (
                 <div className="p-4 space-y-4">
                     <Card className="p-4">
-                        <CardTitle className="text-lg font-semibold mb-3">Estatísticas de Preço ({currentTotalRecords} Registros Ativos)</CardTitle>
+                        <CardTitle className="text-lg font-semibold mb-3">
+                            Estatísticas de Preço ({currentTotalRecords} Registros Ativos)
+                        </CardTitle>
+                        
                         {currentStats ? (
                             <>
-                                <p className="text-sm text-muted-foreground mb-4">Item: <span className="font-medium text-foreground">{capitalizeFirstLetter(searchResult.descricaoItem || 'N/A')}</span></p>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                    Item: <span className="font-medium text-foreground">{capitalizeFirstLetter(searchResult.descricaoItem || 'N/A')}</span>
+                                </p>
                                 {renderPriceButtons(currentStats)}
+                                <p className="text-xs text-muted-foreground mt-4">
+                                    Selecione um dos valores acima e clique em 'Inspecionar e Importar' no rodapé.
+                                </p>
+                                
+                                {/* NOVO: Collapsible para a Base de Cálculo */}
                                 {indexedRecords.length > 0 && (
-                                    <Collapsible open={showRawData} onOpenChange={setShowRawData} className="mt-4 border-t pt-4">
+                                    <Collapsible 
+                                        open={showRawData} 
+                                        onOpenChange={setShowRawData} 
+                                        className="mt-4 border-t pt-4"
+                                    >
                                         <CollapsibleTrigger asChild>
                                             <Button variant="link" className="p-0 h-auto">
-                                                {showRawData ? <><ChevronUp className="h-4 w-4 mr-2" />Ocultar Base de Cálculo</> : <><ChevronDown className="h-4 w-4 mr-2" />Mostrar Base de Cálculo ({currentTotalRecords} ativos / {indexedRecords.length} total)</>}
+                                                {showRawData ? (
+                                                    <>
+                                                        <ChevronUp className="h-4 w-4 mr-2" />
+                                                        Ocultar Base de Cálculo
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <ChevronDown className="h-4 w-4 mr-2" />
+                                                        Mostrar Base de Cálculo ({currentTotalRecords} ativos / {indexedRecords.length} total)
+                                                    </>
+                                                )}
                                             </Button>
                                         </CollapsibleTrigger>
+                                        
                                         <CollapsibleContent>
-                                            <div className="max-h-60 overflow-y-auto mt-2 border rounded-md">
-                                                <Table>
-                                                    <TableHeader className="sticky top-0 bg-background z-10">
-                                                        <TableRow>
-                                                            <TableHead className="w-[5%] text-center"><Trash2 className="h-4 w-4 text-muted-foreground mx-auto" /></TableHead>
-                                                            <TableHead className="w-[15%]">UASG</TableHead>
-                                                            <TableHead className="w-[50%]">Nome da UASG</TableHead>
-                                                            <TableHead className="w-[30%] text-right">Preço Unitário</TableHead>
-                                                        </TableRow>
-                                                    </TableHeader>
-                                                    <TableBody>
-                                                        {indexedRecords.map((record) => (
-                                                            <TableRow key={record.id} className={excludedRecordIds.has(record.id) ? 'bg-red-50/50 opacity-50' : 'hover:bg-muted/50'}>
-                                                                <TableCell className="text-center py-2"><Checkbox checked={!excludedRecordIds.has(record.id)} onCheckedChange={() => toggleExclusion(record.id)} /></TableCell>
-                                                                <TableCell className="text-sm font-medium py-2">{formatCodug(record.codigoUasg)}</TableCell>
-                                                                <TableCell className="text-sm py-2">{record.nomeUasg}</TableCell>
-                                                                <TableCell className="text-right text-sm font-bold text-primary py-2">{formatCurrency(record.precoUnitario)}</TableCell>
-                                                            </TableRow>
-                                                        ))}
-                                                    </TableBody>
-                                                </Table>
-                                            </div>
+                                            {/* CORREÇÃO: Passa os registros ordenados */}
+                                            {renderRawDataTable(sortedRawRecords)}
                                         </CollapsibleContent>
                                     </Collapsible>
                                 )}
                             </>
-                        ) : <p className="text-center text-muted-foreground">Nenhum registro de preço ativo encontrado.</p>}
+                        ) : (
+                            <p className="text-center text-muted-foreground">
+                                Nenhum registro de preço ativo encontrado para o item {searchResult.codigoItem}.
+                            </p>
+                        )}
                     </Card>
                 </div>
             )}
 
-            {mode === 'material' ? (
-                <CatmatCatalogDialog open={isCatalogOpen} onOpenChange={setIsCatalogOpen} onSelect={handleCatalogSelect} />
-            ) : (
-                <CatserCatalogDialog open={isCatalogOpen} onOpenChange={setIsCatalogOpen} onSelect={handleCatalogSelect} />
-            )}
+            {/* Diálogo de Catálogo CATMAT */}
+            <CatmatCatalogDialog
+                open={isCatmatCatalogOpen}
+                onOpenChange={setIsCatmatCatalogOpen}
+                onSelect={handleCatalogSelect}
+            />
+            <CatserCatalogDialog
+                open={isCatserCatalogOpen}
+                onOpenChange={setIsCatserCatalogOpen}
+                onSelect={handleCatalogSelect}
+            />
         </>
     );
 };

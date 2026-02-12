@@ -180,7 +180,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
         });
         
         if (isDuplicate) {
-            toast.error("Este item de aquisição já existe nesta diretriz.");
+            toast.error("Este item de aquisição já existe nesta diretriz (duplicidade de Descrição Completa, CATMAT, Pregão e UASG).");
             return;
         }
 
@@ -251,21 +251,37 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
             itens_aquisicao: [...prev.itens_aquisicao, ...newItems],
         }));
         
-        toast.success(`${newItems.length} itens importados com sucesso.`);
+        toast.success(`${newItems.length} itens importados com sucesso e adicionados à lista.`);
         setItemForm(initialItemForm);
         setEditingItemId(null);
         setIsBulkUploadOpen(false); 
     };
     
     const handlePNCPImport = (newItems: ItemAquisicao[]) => {
-        if (newItems.length === 0) return;
-        setSubitemForm(prev => ({
-            ...prev,
-            itens_aquisicao: [...prev.itens_aquisicao, ...newItems],
-        }));
-        toast.success(`${newItems.length} itens importados do PNCP.`);
-        setItemForm(initialItemForm);
-        setEditingItemId(null);
+        if (newItems.length === 0) {
+            toast.info("Nenhum item novo para adicionar.");
+            return;
+        }
+        
+        const firstItem = newItems[0];
+        const isPriceReferenceItem = firstItem.uasg === '' && firstItem.numero_pregao === 'Em processo de abertura';
+
+        if (isPriceReferenceItem) {
+            setSubitemForm(prev => ({
+                ...prev,
+                itens_aquisicao: [...prev.itens_aquisicao, firstItem],
+            }));
+            handleEditItem(firstItem);
+            toast.info("Item de Preço Médio importado. Por favor, preencha a UASG e o Pregão/Ref. Preço antes de adicionar.");
+        } else {
+            setSubitemForm(prev => ({
+                ...prev,
+                itens_aquisicao: [...prev.itens_aquisicao, ...newItems],
+            }));
+            toast.success(`${newItems.length} itens importados do PNCP com sucesso e adicionados à lista.`);
+            setItemForm(initialItemForm);
+            setEditingItemId(null);
+        }
     };
     
     const handleReviewItem = (item: ItemAquisicao) => {
@@ -456,6 +472,9 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         onKeyDown={handleEnterToNextField}
                                         required
                                     />
+                                    <p className="text-xs text-muted-foreground">
+                                        * Valor estimado.
+                                    </p>
                                 </div>
                                 
                                 <div className="space-y-2 col-span-1">
@@ -468,6 +487,9 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                         onKeyDown={handleEnterToNextField}
                                         required
                                     />
+                                    <p className="text-xs text-muted-foreground">
+                                        *Em processo de abertura.
+                                    </p>
                                 </div>
                                 
                                 <div className="space-y-2 col-span-1">
@@ -540,7 +562,7 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                                 </TableBody>
                             </Table>
                         ) : (
-                            <p className="text-muted-foreground text-center py-4">Nenhum item cadastrado.</p>
+                            <p className="text-muted-foreground text-center py-4">Nenhum item de aquisição cadastrado. Adicione itens acima ou importe via Excel.</p>
                         )}
                     </Card>
                 </div>
@@ -560,9 +582,26 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                 </div>
             </DialogContent>
             
-            <SubitemCatalogDialog open={isCatalogOpen} onOpenChange={setIsCatalogOpen} onSelect={handleCatalogSelect} />
-            <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={handleCatmatSelect} />
-            <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={handleBulkImport} existingItemsInDiretriz={subitemForm.itens_aquisicao} mode="material" />
+            <SubitemCatalogDialog 
+                open={isCatalogOpen}
+                onOpenChange={setIsCatalogOpen}
+                onSelect={handleCatalogSelect}
+            />
+            
+            <CatmatCatalogDialog
+                open={isCatmatCatalogOpen}
+                onOpenChange={setIsCatmatCatalogOpen}
+                onSelect={handleCatmatSelect}
+            />
+            
+            <ItemAquisicaoBulkUploadDialog
+                open={isBulkUploadOpen}
+                onOpenChange={setIsBulkUploadOpen}
+                onImport={handleBulkImport}
+                existingItemsInDiretriz={subitemForm.itens_aquisicao} 
+                mode="material"
+            />
+            
             <ItemAquisicaoPNCPDialog
                 open={isPNCPSearchOpen}
                 onOpenChange={setIsPNCPSearchOpen}
@@ -570,7 +609,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                 existingItemsInDiretriz={subitemForm.itens_aquisicao}
                 onReviewItem={handleReviewItem} 
                 selectedYear={selectedYear} 
-                mode="material" // Passando o modo material
             />
         </Dialog>
     );

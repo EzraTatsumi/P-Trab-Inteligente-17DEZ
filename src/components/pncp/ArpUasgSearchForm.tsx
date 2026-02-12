@@ -7,14 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Search, Loader2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
+import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { formatCodug } from '@/lib/formatUtils';
 import OmSelectorDialog from '@/components/OmSelectorDialog';
 import { format, subDays } from 'date-fns';
 import { fetchArpsByUasg } from '@/integrations/supabase/api';
-import { ArpItemResult, DetailedArpItem } from '@/types/pncp';
+import { ArpItemResult, DetailedArpItem } from '@/types/pncp'; // Importando o tipo DetailedArpItem
 import ArpSearchResultsList from './ArpSearchResultsList';
 import { OMData } from '@/lib/omUtils';
 
+// 1. Esquema de Validação
 const formSchema = z.object({
     uasg: z.string()
         .min(6, { message: "A UASG deve ter 6 dígitos." })
@@ -30,29 +32,34 @@ const formSchema = z.object({
 type ArpUasgFormValues = z.infer<typeof formSchema>;
 
 interface ArpUasgSearchFormProps {
+    // Função para alternar a seleção de um item detalhado
     onItemPreSelect: (item: DetailedArpItem, pregaoFormatado: string, uasg: string) => void;
+    // NOVO: Função para limpar a seleção
     onClearSelection: () => void;
+    // Array de IDs selecionados
     selectedItemIds: string[];
+    // NOVO: Ref do container de rolagem (DialogContent) - Mantido, mas não usado diretamente para scroll
     scrollContainerRef: React.RefObject<HTMLDivElement>;
-    mode?: 'material' | 'servico'; // NOVO
 }
 
+// Calcula as datas padrão
 const today = new Date();
 const oneYearAgo = subDays(today, 365);
+
+// Formata as datas para o formato 'YYYY-MM-DD' exigido pelo input type="date"
 const defaultDataFim = format(today, 'yyyy-MM-dd');
 const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 
-const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ 
-    onItemPreSelect, 
-    selectedItemIds, 
-    onClearSelection, 
-    scrollContainerRef,
-    mode = 'material'
-}) => {
+
+const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isOmSelectorOpen, setIsOmSelectorOpen] = useState(false);
-    const [arpResults, setArpResults] = useState<ArpItemResult[]>([]);
+    const [arpResults, setArpResults] = useState<ArpItemResult[]>([]); // CORRIGIDO: Usando ArpItemResult
+    
+    // NOVO ESTADO: Armazena o nome da OM para o cabeçalho
     const [searchedOmName, setSearchedOmName] = useState<string>(""); 
+    
+    // REF para o container de resultados
     const resultsRef = useRef<HTMLDivElement>(null);
 
     const form = useForm<ArpUasgFormValues>({
@@ -68,22 +75,28 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({
         const rawValue = e.target.value.replace(/\D/g, '');
         const limitedValue = rawValue.slice(0, 6); 
         form.setValue('uasg', limitedValue, { shouldValidate: true });
+        // Limpa o nome da OM se o usuário digitar manualmente
         setSearchedOmName(""); 
     };
     
     const handleOmSelect = (omData: OMData) => {
         form.setValue('uasg', omData.codug_om, { shouldValidate: true });
-        setSearchedOmName(omData.nome_om);
+        setSearchedOmName(omData.nome_om); // Salva o nome da OM
     };
 
     const onSubmit = async (values: ArpUasgFormValues) => {
         setIsSearching(true);
         setArpResults([]);
+        // CORREÇÃO: Limpa a seleção global chamando a função dedicada
         onClearSelection(); 
         
         try {
             toast.info(`Buscando ARPs para UASG ${formatCodug(values.uasg)}...`);
-            if (!searchedOmName) setSearchedOmName(`UASG ${values.uasg}`);
+            
+            // Se o nome da OM não foi preenchido via seletor, usa a UASG como fallback
+            if (!searchedOmName) {
+                setSearchedOmName(`UASG ${values.uasg}`);
+            }
             
             const params = {
                 codigoUnidadeGerenciadora: values.uasg,
@@ -92,30 +105,43 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({
             };
             
             const results = await fetchArpsByUasg(params);
+            
             if (results.length === 0) {
-                toast.warning("Nenhuma Ata de Registro de Preços encontrada.");
+                toast.warning("Nenhuma Ata de Registro de Preços encontrada para os critérios informados.");
             } else {
                 toast.success(`${results.length} ARPs encontradas!`);
             }
+            
             setArpResults(results);
             
+            // Rola para o topo dos resultados após a busca ser concluída
             if (results.length > 0 && resultsRef.current) {
+                // Usamos setTimeout para garantir que o DOM foi renderizado após a atualização do estado
                 setTimeout(() => {
-                    resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // Usa scrollIntoView no elemento de resultados, que deve rolar o container pai (DialogContent)
+                    resultsRef.current?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start' // Posiciona o topo do elemento no topo do container
+                    });
                 }, 100); 
             }
+
         } catch (error: any) {
-            toast.error(error.message || "Falha ao buscar ARPs.");
+            console.error("Erro na busca PNCP:", error);
+            toast.error(error.message || "Falha ao buscar ARPs. Verifique os parâmetros.");
         } finally {
             setIsSearching(false);
         }
     };
+    
+    // Removido handleConfirmImport, pois a lógica de importação agora está no ArpSearchResultsList
 
     return (
         <>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4">
                     <div className="grid grid-cols-4 gap-4">
+                        
                         <FormField
                             control={form.control}
                             name="uasg"
@@ -133,43 +159,78 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({
                                                 disabled={isSearching}
                                             />
                                         </FormControl>
-                                        <Button type="button" variant="outline" size="icon" onClick={() => setIsOmSelectorOpen(true)} disabled={isSearching}>
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            size="icon" 
+                                            onClick={() => setIsOmSelectorOpen(true)}
+                                            disabled={isSearching}
+                                        >
                                             <BookOpen className="h-4 w-4" />
                                         </Button>
                                     </div>
                                     <FormMessage />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Insira o CODUG da OM ou use o botão para selecionar no catálogo.
+                                    </p>
                                 </FormItem>
                             )}
                         />
+                        
                         <FormField
                             control={form.control}
                             name="dataInicio"
                             render={({ field }) => (
                                 <FormItem className="col-span-1">
                                     <FormLabel>Data de Início *</FormLabel>
-                                    <FormControl><Input type="date" {...field} disabled={isSearching} /></FormControl>
+                                    <FormControl>
+                                        <Input
+                                            type="date"
+                                            {...field}
+                                            disabled={isSearching}
+                                        />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
+                        
                         <FormField
                             control={form.control}
                             name="dataFim"
                             render={({ field }) => (
                                 <FormItem className="col-span-1">
                                     <FormLabel>Data de Fim *</FormLabel>
-                                    <FormControl><Input type="date" {...field} disabled={isSearching} /></FormControl>
+                                    <FormControl>
+                                        <Input
+                                            type="date"
+                                            {...field}
+                                            disabled={isSearching}
+                                        />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
                     </div>
+                    
                     <Button type="submit" disabled={isSearching} className="w-full">
-                        {isSearching ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Buscando ARPs...</> : <><Search className="h-4 w-4 mr-2" />Buscar ARPs por UASG</>}
+                        {isSearching ? (
+                            <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Buscando ARPs...
+                            </>
+                        ) : (
+                            <>
+                                <Search className="h-4 w-4 mr-2" />
+                                Buscar ARPs por UASG
+                            </>
+                        )}
                     </Button>
                 </form>
             </Form>
             
+            {/* Seção de Resultados - Adicionando a ref para rolagem */}
             {arpResults.length > 0 && (
                 <div ref={resultsRef}>
                     <ArpSearchResultsList 
@@ -178,12 +239,15 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({
                         searchedUasg={form.getValues('uasg')}
                         searchedOmName={searchedOmName}
                         selectedItemIds={selectedItemIds}
-                        mode={mode} // REPASSANDO O MODO
                     />
                 </div>
             )}
 
-            <OmSelectorDialog open={isOmSelectorOpen} onOpenChange={setIsOmSelectorOpen} onSelect={handleOmSelect as any} />
+            <OmSelectorDialog
+                open={isOmSelectorOpen}
+                onOpenChange={setIsOmSelectorOpen}
+                onSelect={handleOmSelect as any}
+            />
         </>
     );
 };

@@ -35,6 +35,7 @@ interface ServicosTerceirosDiretrizFormDialogProps {
     loading: boolean;
 }
 
+// Estendendo o tipo localmente para incluir os novos campos se não existirem no tipo importado
 type ItemAquisicaoServicoExtended = ItemAquisicaoServico & {
     nome_reduzido: string;
     unidade_medida: string;
@@ -481,20 +482,20 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                 </div>
             </DialogContent>
             
-            <ServicoCatalogDialog open={isCatalogOpen} onOpenChange={setIsCatalogOpen} onSelect={handleCatalogSelect} />
-            <LocacaoCatalogDialog open={isLocacaoCatalogOpen} onOpenChange={setIsLocacaoCatalogOpen} onSelect={handleCatalogSelect} />
+            <ServicoCatalogDialog 
+                open={isCatalogOpen} 
+                onOpenChange={setIsCatalogOpen} 
+                onSelect={handleCatalogSelect} 
+            />
+            <LocacaoCatalogDialog 
+                open={isLocacaoCatalogOpen} 
+                onOpenChange={setIsLocacaoCatalogOpen} 
+                onSelect={handleCatalogSelect} 
+            />
             <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={handleCatserSelect} />
             <CatserCatalogDialog open={isCatserCatalogOpen} onOpenChange={setIsCatserCatalogOpen} onSelect={handleCatserSelect} />
             <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={handleBulkImport} existingItemsInDiretriz={subitemForm.itens_aquisicao as any} mode="servico" />
-            <ItemAquisicaoPNCPDialog
-                open={isPNCPSearchOpen}
-                onOpenChange={setIsPNCPSearchOpen}
-                onImport={handlePNCPImport}
-                existingItemsInDiretriz={subitemForm.itens_aquisicao as any}
-                onReviewItem={handleEditItem} 
-                selectedYear={selectedYear} 
-                mode="servico" // Passando o modo serviço
-            />
+            <ItemAquisicaoPNCPDialog open={isPNCPSearchOpen} onOpenChange={setIsPNCPSearchOpen} onImport={handlePNCPImport} existingItemsInDiretriz={subitemForm.itens_aquisicao as any} selectedYear={selectedYear} />
         </Dialog>
     );
 };
