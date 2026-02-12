@@ -6,20 +6,22 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Save, Sparkles, AlertCircle, Check, Package, Briefcase, Plane, Satellite, Car, HardHat, Trash2, FileText, Printer, Plus, Minus } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Sparkles, AlertCircle, Check, Package, Briefcase, Plane, Satellite, Car, HardHat, Trash2, FileText, Printer, Plus, Minus, RefreshCw, XCircle, Pencil } from "lucide-react";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatCodug, formatCurrency } from "@/lib/formatUtils";
-import { PTrabData, fetchPTrabData } from "@/lib/ptrabUtils";
+import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/ptrabUtils";
 import { Badge } from "@/components/ui/badge";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { ItemAquisicaoServico } from "@/types/diretrizesServicosTerceiros";
+import { ItemAquisicaoServico, DetalhesPlanejamentoServico } from "@/types/diretrizesServicosTerceiros";
 import ServicosTerceirosItemSelectorDialog from "@/components/ServicosTerceirosItemSelectorDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { calculateServicoTotals, ServicoTerceiroRegistro } from "@/lib/servicosTerceirosUtils";
+import ServicosTerceirosMemoria from "@/components/ServicosTerceirosMemoria";
 
 export type CategoriaServico = 
     | "fretamento-aereo" 
@@ -59,15 +61,68 @@ const ServicosTerceirosForm = () => {
     const [diasOperacao, setDiasOperacao] = useState<number>(0);
     const [omDestino, setOmDestino] = useState({ nome: "", ug: "", id: "" });
 
-    // Itens selecionados para a aba atual
     const [selectedItems, setSelectedItems] = useState<ItemAquisicaoServico[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+    
+    // Estados de Memória
+    const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
+    const [memoriaEdit, setMemoriaEdit] = useState("");
 
     // --- DATA FETCHING ---
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
         queryKey: ['ptrabData', ptrabId],
         queryFn: () => fetchPTrabData(ptrabId!),
         enabled: !!ptrabId,
+    });
+
+    const { data: registros, isLoading: isLoadingRegistros } = useQuery<ServicoTerceiroRegistro[]>({
+        queryKey: ['servicosTerceirosRegistros', ptrabId],
+        queryFn: () => fetchPTrabRecords('servicos_terceiros_registros' as any, ptrabId!),
+        enabled: !!ptrabId,
+    });
+
+    // --- MUTATIONS ---
+    const saveMutation = useMutation({
+        mutationFn: async () => {
+            const { totalND30, totalND39, totalGeral } = calculateServicoTotals(selectedItems);
+            const payload = {
+                p_trab_id: ptrabId,
+                organizacao: omFavorecida.nome,
+                ug: omFavorecida.ug,
+                om_detentora: omDestino.nome,
+                ug_detentora: omDestino.ug,
+                dias_operacao: diasOperacao,
+                efetivo: efetivo,
+                fase_atividade: faseAtividade,
+                categoria: activeTab,
+                detalhes_planejamento: { itens_selecionados: selectedItems } as any,
+                valor_total: totalGeral,
+                valor_nd_30: totalND30,
+                valor_nd_39: totalND39,
+            };
+
+            const { error } = await supabase.from('servicos_terceiros_registros').insert([payload]);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            toast.success("Planejamento salvo com sucesso!");
+            setSelectedItems([]);
+            queryClient.invalidateQueries({ queryKey: ['servicosTerceirosRegistros', ptrabId] });
+            queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
+        },
+        onError: (err) => toast.error("Erro ao salvar: " + err.message)
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase.from('servicos_terceiros_registros').delete().eq('id', id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            toast.success("Registro excluído.");
+            queryClient.invalidateQueries({ queryKey: ['servicosTerceirosRegistros', ptrabId] });
+            queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
+        }
     });
 
     // --- HANDLERS ---
@@ -94,8 +149,28 @@ const ServicosTerceirosForm = () => {
 
     const totalLote = useMemo(() => selectedItems.reduce((acc, item) => acc + (item.valor_total || 0), 0), [selectedItems]);
 
+    // Handlers de Memória
+    const handleSaveMemoria = async (id: string) => {
+        const { error } = await supabase.from('servicos_terceiros_registros').update({ detalhamento_customizado: memoriaEdit }).eq('id', id);
+        if (error) toast.error("Erro ao salvar memória.");
+        else {
+            toast.success("Memória atualizada.");
+            setEditingMemoriaId(null);
+            queryClient.invalidateQueries({ queryKey: ['servicosTerceirosRegistros', ptrabId] });
+        }
+    };
+
+    const handleRestoreMemoria = async (id: string) => {
+        const { error } = await supabase.from('servicos_terceiros_registros').update({ detalhamento_customizado: null }).eq('id', id);
+        if (error) toast.error("Erro ao restaurar.");
+        else {
+            toast.success("Memória automática restaurada.");
+            queryClient.invalidateQueries({ queryKey: ['servicosTerceirosRegistros', ptrabId] });
+        }
+    };
+
     // --- RENDERIZAÇÃO ---
-    const isGlobalLoading = isLoadingPTrab || isLoadingOms;
+    const isGlobalLoading = isLoadingPTrab || isLoadingOms || isLoadingRegistros;
     if (isGlobalLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
     const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
@@ -146,7 +221,7 @@ const ServicosTerceirosForm = () => {
                             </section>
                         )}
 
-                        {/* SEÇÃO 2B: SELEÇÃO DE ITENS (DINÂMICO) */}
+                        {/* SEÇÃO 2B: SELEÇÃO DE ITENS */}
                         {isBaseFormReady && efetivo > 0 && diasOperacao > 0 && (
                             <section className="space-y-6 animate-in fade-in zoom-in-95">
                                 <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as CategoriaServico); setSelectedItems([]); }} className="w-full">
@@ -202,12 +277,57 @@ const ServicosTerceirosForm = () => {
                                         <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Total Estimado do Lote</p>
                                         <p className="text-3xl font-black text-primary">{formatCurrency(totalLote)}</p>
                                     </div>
-                                    <Button size="lg" className="px-8" disabled={selectedItems.length === 0}><Save className="mr-2 h-5 w-5" /> Salvar Planejamento</Button>
+                                    <Button size="lg" className="px-8" disabled={selectedItems.length === 0 || saveMutation.isPending} onClick={() => saveMutation.mutate()}>
+                                        {saveMutation.isPending ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2 h-5 w-5" />}
+                                        Salvar Planejamento
+                                    </Button>
                                 </div>
                             </section>
                         )}
                     </CardContent>
                 </Card>
+
+                {/* SEÇÃO 4: REGISTROS SALVOS */}
+                {registros && registros.length > 0 && (
+                    <section className="space-y-4">
+                        <h3 className="text-xl font-bold flex items-center gap-2"><FileText className="h-5 w-5 text-accent" /> Serviços Cadastrados</h3>
+                        <div className="grid grid-cols-1 gap-4">
+                            {registros.map(reg => (
+                                <Card key={reg.id} className="p-4 border-l-4 border-l-primary">
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <h4 className="font-bold capitalize">{reg.categoria.replace('-', ' ')}</h4>
+                                            <p className="text-sm text-muted-foreground">{reg.organizacao} | {formatCurrency(reg.valor_total)}</p>
+                                        </div>
+                                        <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(reg.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULO */}
+                {registros && registros.length > 0 && (
+                    <section className="space-y-4">
+                        <h3 className="text-xl font-bold flex items-center gap-2">📋 Memórias de Cálculos Detalhadas</h3>
+                        {registros.map(reg => (
+                            <ServicosTerceirosMemoria 
+                                key={`mem-${reg.id}`}
+                                registro={reg}
+                                isPTrabEditable={isPTrabEditable}
+                                isSaving={false}
+                                editingMemoriaId={editingMemoriaId}
+                                memoriaEdit={memoriaEdit}
+                                setMemoriaEdit={setMemoriaEdit}
+                                onStartEdit={(id, text) => { setEditingMemoriaId(id); setMemoriaEdit(text); }}
+                                onCancelEdit={() => setEditingMemoriaId(null)}
+                                onSave={handleSaveMemoria}
+                                onRestore={handleRestoreMemoria}
+                            />
+                        ))}
+                    </section>
+                )}
             </div>
 
             <ServicosTerceirosItemSelectorDialog 
