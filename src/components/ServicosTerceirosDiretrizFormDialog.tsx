@@ -91,7 +91,6 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
     const [subitemForm, setSubitemForm] = useState<InternalServicosForm>(() => getInitialFormState(diretrizToEdit));
     const [itemForm, setItemForm] = useState<typeof initialItemForm>(initialItemForm);
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
-    const [itemToReview, setItemToReview] = useState<ItemAquisicaoServico | null>(null);
     
     const [isCatalogOpen, setIsCatalogOpen] = useState(false);
     const [isLocacaoCatalogOpen, setIsLocacaoCatalogOpen] = useState(false);
@@ -102,23 +101,9 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
 
     useEffect(() => {
         setSubitemForm(getInitialFormState(diretrizToEdit));
-        if (diretrizToEdit && editingItemId) {
-            const item = diretrizToEdit.itens_aquisicao.find(i => i.id === editingItemId);
-            if (item) {
-                handleEditItem(item);
-            }
-        } else {
-            setItemForm(initialItemForm);
-        }
+        setItemForm(initialItemForm);
         setEditingItemId(null);
     }, [diretrizToEdit, open, selectedYear]);
-    
-    useEffect(() => {
-        if (itemToReview) {
-            handleEditItem(itemToReview);
-            setItemToReview(null);
-        }
-    }, [itemToReview]);
 
     const handleItemCurrencyChange = (numericValue: number, digits: string) => {
         setItemForm(prev => ({
@@ -163,11 +148,6 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
             numero_pregao: itemForm.numero_pregao,
             uasg: itemForm.uasg,
             codigo_catmat: itemForm.codigo_catmat, 
-            quantidade: 0,
-            valor_total: 0,
-            nd: '',
-            nr_subitem: subitemForm.nr_subitem || '',
-            nome_subitem: subitemForm.nome_subitem || '',
         };
         
         const newItemKey = generateItemKey(newItem);
@@ -240,30 +220,11 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
     
     const handlePNCPImport = (newItems: any[]) => {
         if (newItems.length === 0) return;
-        
-        const firstItem = newItems[0];
-        const isPriceReferenceItem = firstItem.uasg === '' && firstItem.numero_pregao === 'Em processo de abertura';
-
-        if (isPriceReferenceItem) {
-            setSubitemForm(prev => ({
-                ...prev,
-                itens_aquisicao: [...prev.itens_aquisicao, firstItem],
-            }));
-            handleEditItem(firstItem);
-            toast.info("Item de Preço Médio importado. Por favor, preencha a UASG e o Pregão/Ref. Preço antes de adicionar.");
-        } else {
-            setSubitemForm(prev => ({
-                ...prev,
-                itens_aquisicao: [...prev.itens_aquisicao, ...newItems],
-            }));
-            toast.success(`${newItems.length} itens importados do PNCP.`);
-            setItemForm(initialItemForm);
-            setEditingItemId(null);
-        }
-    };
-    
-    const handleReviewItem = (item: ItemAquisicaoServico) => {
-        setItemToReview(item);
+        setSubitemForm(prev => ({
+            ...prev,
+            itens_aquisicao: [...prev.itens_aquisicao, ...newItems],
+        }));
+        toast.success(`${newItems.length} itens importados do PNCP.`);
     };
 
     const handleCatalogSelect = (catalogItem: any) => {
@@ -534,15 +495,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
             <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={handleCatserSelect} />
             <CatserCatalogDialog open={isCatserCatalogOpen} onOpenChange={setIsCatserCatalogOpen} onSelect={handleCatserSelect} />
             <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={handleBulkImport} existingItemsInDiretriz={subitemForm.itens_aquisicao as any} mode="servico" />
-            <ItemAquisicaoPNCPDialog 
-                open={isPNCPSearchOpen} 
-                onOpenChange={setIsPNCPSearchOpen} 
-                onImport={handlePNCPImport} 
-                existingItemsInDiretriz={subitemForm.itens_aquisicao as any} 
-                onReviewItem={handleReviewItem}
-                selectedYear={selectedYear} 
-                mode="servico"
-            />
+            <ItemAquisicaoPNCPDialog open={isPNCPSearchOpen} onOpenChange={setIsPNCPSearchOpen} onImport={handlePNCPImport} existingItemsInDiretriz={subitemForm.itens_aquisicao as any} selectedYear={selectedYear} />
         </Dialog>
     );
 };

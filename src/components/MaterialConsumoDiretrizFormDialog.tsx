@@ -609,7 +609,6 @@ const MaterialConsumoDiretrizFormDialog: React.FC<MaterialConsumoDiretrizFormDia
                 existingItemsInDiretriz={subitemForm.itens_aquisicao}
                 onReviewItem={handleReviewItem} 
                 selectedYear={selectedYear} 
-                mode="material"
             />
         </Dialog>
     );
