@@ -28,8 +28,8 @@ import {
     XCircle, 
     Pencil,
     DoorClosed,
-    Crane,
-    WashingMachine
+    Construction,
+    Shirt
 } from "lucide-react";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
@@ -247,8 +247,8 @@ const ServicosTerceirosForm = () => {
                                             <TabsTrigger value="locacao-veiculos" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Car className="h-4 w-4" /> Veículos</TabsTrigger>
                                             <TabsTrigger value="locacao-engenharia" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><HardHat className="h-4 w-4" /> Eqp ENGENHARIA</TabsTrigger>
                                             <TabsTrigger value="locacao-banheiro" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><DoorClosed className="h-4 w-4" /> Banheiros</TabsTrigger>
-                                            <TabsTrigger value="locacao-estruturas" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Crane className="h-4 w-4" /> Estruturas</TabsTrigger>
-                                            <TabsTrigger value="servico-lavanderia" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><WashingMachine className="h-4 w-4" /> Lavanderia</TabsTrigger>
+                                            <TabsTrigger value="locacao-estruturas" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Construction className="h-4 w-4" /> Estruturas</TabsTrigger>
+                                            <TabsTrigger value="servico-lavanderia" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Shirt className="h-4 w-4" /> Lavanderia</TabsTrigger>
                                             <TabsTrigger value="servico-grafico" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Printer className="h-4 w-4" /> Gráfico</TabsTrigger>
                                         </TabsList>
 
