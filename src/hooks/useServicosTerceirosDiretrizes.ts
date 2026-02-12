@@ -3,15 +3,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { DiretrizServicosTerceiros, ItemAquisicaoServico } from "@/types/diretrizesServicosTerceiros";
 import { toast } from "sonner";
 import { Json } from "@/integrations/supabase/types";
+import { useSession } from "@/components/SessionContextProvider";
 
 export const useServicosTerceirosDiretrizes = (year: number) => {
+    const { user } = useSession();
     const queryClient = useQueryClient();
 
     const { data: diretrizes = [], isLoading } = useQuery({
-        queryKey: ['diretrizesServicosTerceiros', year],
+        queryKey: ['diretrizesServicosTerceiros', year, user?.id],
         queryFn: async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return [];
+            if (!user?.id) return [];
 
             const { data, error } = await supabase
                 .from('diretrizes_servicos_terceiros')
@@ -27,7 +28,7 @@ export const useServicosTerceirosDiretrizes = (year: number) => {
                 itens_aquisicao: (d.itens_aquisicao as unknown as ItemAquisicaoServico[]) || []
             })) as DiretrizServicosTerceiros[];
         },
-        enabled: !!year
+        enabled: !!year && !!user?.id
     });
 
     const moveItemMutation = useMutation({
@@ -55,7 +56,7 @@ export const useServicosTerceirosDiretrizes = (year: number) => {
             if (errorTarget) throw errorTarget;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', year] });
+            queryClient.invalidateQueries({ queryKey: ['diretrizesServicosTerceiros', year, user?.id] });
             toast.success("Item movido com sucesso!");
         },
         onError: (error) => {
