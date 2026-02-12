@@ -109,20 +109,31 @@ export async function fetchCatalogEntry(codigo: string, mode: 'material' | 'serv
     if (!cleanCode) return { description: null, shortDescription: null, isCataloged: false };
     
     try {
-        let { data, error } = await supabase.from(table).select('description, short_description').eq('code', cleanCode).maybeSingle();
+        // Cast para any para evitar erro de "Type instantiation is excessively deep"
+        let { data, error } = await (supabase.from(table as any))
+            .select('description, short_description')
+            .eq('code', cleanCode)
+            .maybeSingle();
+
         if (error) throw error;
+        
         if (!data) {
             const paddedCode = cleanCode.padStart(9, '0');
             if (paddedCode !== cleanCode) {
-                const { data: paddedData, error: paddedError } = await supabase.from(table).select('description, short_description').eq('code', paddedCode).maybeSingle();
+                const { data: paddedData, error: paddedError } = await (supabase.from(table as any))
+                    .select('description, short_description')
+                    .eq('code', paddedCode)
+                    .maybeSingle();
                 if (paddedError) throw paddedError;
                 data = paddedData;
             }
         }
+
         if (data) {
+            const typedData = data as { description: string | null, short_description: string | null };
             return {
-                description: data.description || null,
-                shortDescription: data.short_description || null,
+                description: typedData.description || null,
+                shortDescription: typedData.short_description || null,
                 isCataloged: true,
             };
         }
@@ -146,7 +157,8 @@ export async function saveNewCatalogEntry(code: string, description: string, sho
         });
         if (error) throw error;
     } else {
-        const { error } = await supabase.from('catalogo_catser').upsert({
+        // Cast para any para evitar erro de sobrecarga de método
+        const { error } = await (supabase.from('catalogo_catser' as any)).upsert({
             code: cleanCode,
             description: description,
             short_description: shortDescription,
@@ -298,9 +310,18 @@ export async function fetchAllExistingAcquisitionItems(year: number, userId: str
     if (!year || typeof year !== 'number' || year <= 0) return [];
     const table = mode === 'material' ? 'diretrizes_material_consumo' : 'diretrizes_servicos_terceiros';
     try {
-        const { data, error } = await supabase.from(table).select('itens_aquisicao').eq('user_id', userId).eq('ano_referencia', year);
+        // Cast para any para evitar erro de "Type instantiation is excessively deep"
+        const { data, error } = await (supabase.from(table as any))
+            .select('itens_aquisicao')
+            .eq('user_id', userId)
+            .eq('ano_referencia', year);
+
         if (error) throw error;
-        return (data || []).flatMap(diretriz => (diretriz.itens_aquisicao as unknown as ItemAquisicao[]) || []);
+
+        return (data || []).flatMap(diretriz => {
+            const typedDiretriz = diretriz as { itens_aquisicao: any };
+            return (typedDiretriz.itens_aquisicao as unknown as ItemAquisicao[]) || [];
+        });
     } catch (error) {
         console.error("Erro ao buscar todos os itens de aquisição existentes:", error);
         throw new Error("Falha ao carregar itens de aquisição existentes para verificação de duplicidade.");
