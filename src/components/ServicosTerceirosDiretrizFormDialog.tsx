@@ -117,7 +117,12 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
 
     const handleEditItem = (item: any) => {
         setEditingItemId(item.id);
-        setItemForm({ ...item, rawValor: numberToRawDigits(item.valor_unitario) });
+        setItemForm({ 
+            ...item, 
+            nome_reduzido: item.nome_reduzido || item.descricao_reduzida || '',
+            unidade_medida: item.unidade_medida || 'UN',
+            rawValor: numberToRawDigits(item.valor_unitario) 
+        });
         itemFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
@@ -172,7 +177,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                                 </div>
                                 <div className="space-y-2 col-span-4"><Label>Descrição do Item *</Label><Textarea value={itemForm.descricao_item} onChange={(e) => setItemForm({ ...itemForm, descricao_item: e.target.value })} rows={2} /></div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                                 <div className="space-y-2"><Label>Nome Reduzido *</Label><Input value={itemForm.nome_reduzido} onChange={(e) => setItemForm({ ...itemForm, nome_reduzido: e.target.value })} /></div>
                                 <div className="space-y-2"><Label>Unidade *</Label><Input value={itemForm.unidade_medida} onChange={(e) => setItemForm({ ...itemForm, unidade_medida: e.target.value })} placeholder="Ex: UN" /></div>
                                 <div className="space-y-2"><Label>Valor Unitário *</Label><CurrencyInput rawDigits={itemForm.rawValor} onChange={handleItemCurrencyChange} /></div>
@@ -187,7 +192,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                                 <TableBody>{subitemForm.itens_aquisicao.map(item => (
                                     <TableRow key={item.id}>
                                         <TableCell className="text-xs">{item.descricao_item}</TableCell>
-                                        <TableCell className="text-xs">{(item as any).nome_reduzido || 'N/A'}</TableCell>
+                                        <TableCell className="text-xs">{(item as any).nome_reduzido || (item as any).descricao_reduzida || 'N/A'}</TableCell>
                                         <TableCell className="text-center text-xs">{(item as any).unidade_medida || 'N/A'}</TableCell>
                                         <TableCell className="text-center text-sm">{item.codigo_catmat || 'N/A'}</TableCell>
                                         <TableCell className="text-center text-sm">{formatPregao(item.numero_pregao)}</TableCell>
@@ -210,7 +215,22 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
             <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={(c) => setItemForm(p => ({ ...p, codigo_catmat: c.code, descricao_item: c.description, nome_reduzido: c.short_description || '' }))} />
             <CatserCatalogDialog open={isCatserCatalogOpen} onOpenChange={setIsCatserCatalogOpen} onSelect={(c) => setItemForm(p => ({ ...p, codigo_catmat: c.code, descricao_item: c.description, nome_reduzido: c.short_description || '' }))} />
             <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items] }))} existingItemsInDiretriz={subitemForm.itens_aquisicao as any} mode="servico" />
-            <ItemAquisicaoPNCPDialog open={isPNCPSearchOpen} onOpenChange={setIsPNCPSearchOpen} onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items] }))} existingItemsInDiretriz={subitemForm.itens_aquisicao as any} onReviewItem={handleReviewItem} selectedYear={selectedYear} mode="servico" />
+            <ItemAquisicaoPNCPDialog 
+                open={isPNCPSearchOpen} 
+                onOpenChange={setIsPNCPSearchOpen} 
+                onImport={(items) => {
+                    const mappedItems = items.map(item => ({
+                        ...item,
+                        nome_reduzido: item.descricao_reduzida || '',
+                        unidade_medida: 'UN', // Valor padrão para serviços importados
+                    }));
+                    setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...mappedItems] }));
+                }} 
+                existingItemsInDiretriz={subitemForm.itens_aquisicao as any} 
+                onReviewItem={handleReviewItem} 
+                selectedYear={selectedYear} 
+                mode="servico" 
+            />
         </Dialog>
     );
 };
