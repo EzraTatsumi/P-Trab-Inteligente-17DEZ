@@ -56,22 +56,15 @@ const PTrabForm = () => {
 
   const itensOperacional = [
     { id: "complemento-alimentacao", name: "Complemento de Alimentação" },
-    { id: "fretamento-aereo", name: "Fretamento Aéreo" }, // ATUALIZADO
     { id: "horas-voo-avex", name: "Horas de Voo (AvEx)" },
-    { id: "locacao-banheiro", name: "Locação de Banheiro Químico" }, // NOVO
-    { id: "locacao-engenharia", name: "Locação de Eqp Engenharia" }, // NOVO
-    { id: "locacao-estruturas", name: "Locação de Estruturas" },
-    { id: "locacao-viatura", name: "Locação de Viatura" },
     { id: "material-consumo", name: "Material de Consumo" },
-    { id: "outros-servicos", name: "Outros Serviços" },
+    { id: "servicos-terceiros", name: "Serviço de Terceiros/Locações" },
     { id: "concessionaria", name: "Pagamento de Concessionárias" },
     { id: "diaria", name: "Pagamento de Diárias" },
     { id: "passagem-aerea", name: "Passagens" },
-    { id: "servico-grafico", name: "Serviço Gráfico" },
-    { id: "servico-lavanderia", name: "Serviço de Lavanderia" },
-    { id: "servico-satelital", name: "Serviço Satelital" },
     { id: "suprimento-fundos", name: "Suprimento de Fundos" },
     { id: "verba-operacional", name: "Verba Operacional" },
+    { id: "outros-servicos", name: "Outros Serviços" },
   ];
 
   const { data: credits, isLoading: isLoadingCredits } = useQuery({
@@ -203,24 +196,8 @@ const PTrabForm = () => {
       navigate(`/ptrab/material-consumo?ptrabId=${ptrabId}`);
     } else if (itemId === 'complemento-alimentacao') {
       navigate(`/ptrab/complemento-alimentacao?ptrabId=${ptrabId}`);
-    } else if ([
-        'fretamento-aereo', 
-        'servico-satelital', 
-        'locacao-viatura', 
-        'locacao-engenharia', 
-        'locacao-banheiro', 
-        'locacao-estruturas', 
-        'servico-lavanderia', 
-        'servico-grafico'
-    ].includes(itemId)) {
-        // Mapeamento de IDs para as abas do novo formulário
-        const tabMap: Record<string, string> = {
-            'locacao-viatura': 'locacao-veiculos',
-            'locacao-banheiro': 'locacao-banheiro',
-            'locacao-engenharia': 'locacao-engenharia'
-        };
-        const tab = tabMap[itemId] || itemId;
-        navigate(`/ptrab/servicos-terceiros?ptrabId=${ptrabId}&tab=${tab}`);
+    } else if (itemId === 'servicos-terceiros') {
+      navigate(`/ptrab/servicos-terceiros?ptrabId=${ptrabId}`);
     } else {
       toast.info(`Funcionalidade '${itemName}' (Operacional) ainda não implementada.`);
     }
