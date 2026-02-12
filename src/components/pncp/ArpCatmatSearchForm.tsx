@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Search, Loader2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { format, subDays } from 'date-fns';
@@ -32,7 +32,7 @@ interface ArpCatmatSearchFormProps {
     onClearSelection: () => void;
     selectedItemIds: string[];
     scrollContainerRef: React.RefObject<HTMLDivElement>;
-    mode?: 'material' | 'servico'; // NOVO
+    mode?: 'material' | 'servico';
 }
 
 const today = new Date();
@@ -111,13 +111,13 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
         <>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4">
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <FormField
                             control={form.control}
                             name="codigoItem"
                             render={({ field }) => (
-                                <FormItem className="col-span-2">
-                                    <FormLabel>Código do Item ({catalogLabel}) *</FormLabel>
+                                <FormItem className="col-span-1 md:col-span-2">
+                                    <FormLabel className="font-bold">Código do Item ({catalogLabel}) *</FormLabel>
                                     <div className="flex gap-2">
                                         <FormControl>
                                             <Input
@@ -127,12 +127,23 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
                                                 placeholder={`Ex: ${mode === 'material' ? '604269' : '12345'}`}
                                                 maxLength={9}
                                                 disabled={isSearching}
+                                                className="font-mono"
                                             />
                                         </FormControl>
-                                        <Button type="button" variant="outline" size="icon" onClick={() => setIsCatalogOpen(true)} disabled={isSearching}>
-                                            <BookOpen className="h-4 w-4" />
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            onClick={() => setIsCatalogOpen(true)} 
+                                            disabled={isSearching}
+                                            className="flex-shrink-0"
+                                        >
+                                            <BookOpen className="h-4 w-4 mr-2" />
+                                            Catálogo {catalogLabel}
                                         </Button>
                                     </div>
+                                    <FormDescription className="text-blue-600 font-medium">
+                                        Insira o código do item de {mode === 'material' ? 'material' : 'serviço'}.
+                                    </FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -173,7 +184,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({
                         onItemPreSelect={onItemPreSelect} 
                         searchedCatmat={form.getValues('codigoItem')}
                         selectedItemIds={selectedItemIds}
-                        mode={mode} // REPASSANDO O MODO
+                        mode={mode}
                     />
                 </div>
             )}

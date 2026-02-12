@@ -49,7 +49,7 @@ interface PriceSearchFormProps {
     isInspecting: boolean; 
     onClearPriceSelection: () => void;
     selectedItemForInspection: ItemAquisicao | null;
-    mode?: 'material' | 'servico'; // NOVO
+    mode?: 'material' | 'servico';
 }
 
 const today = new Date();
@@ -216,13 +216,13 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({
         <>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4">
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <FormField
                             control={form.control}
                             name="codigoItem"
                             render={({ field }) => (
-                                <FormItem className="col-span-4 md:col-span-2">
-                                    <FormLabel>Cód. Item ({catalogLabel}) *</FormLabel>
+                                <FormItem className="col-span-1 md:col-span-2">
+                                    <FormLabel className="font-bold">Cód. Item ({catalogLabel}) *</FormLabel>
                                     <div className="flex gap-2">
                                         <FormControl>
                                             <Input
@@ -232,12 +232,23 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({
                                                 placeholder={`Ex: ${mode === 'material' ? '604269' : '12345'}`}
                                                 maxLength={9}
                                                 disabled={isSearching}
+                                                className="font-mono"
                                             />
                                         </FormControl>
-                                        <Button type="button" variant="outline" size="icon" onClick={() => setIsCatalogOpen(true)} disabled={isSearching}>
-                                            <BookOpen className="h-4 w-4" />
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            onClick={() => setIsCatalogOpen(true)} 
+                                            disabled={isSearching}
+                                            className="flex-shrink-0"
+                                        >
+                                            <BookOpen className="h-4 w-4 mr-2" />
+                                            Catálogo {catalogLabel}
                                         </Button>
                                     </div>
+                                    <FormDescription className="text-blue-600 font-medium">
+                                        Insira o código do item de {mode === 'material' ? 'material' : 'serviço'}.
+                                    </FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -246,7 +257,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({
                             control={form.control}
                             name="dataInicio"
                             render={({ field }) => (
-                                <FormItem className="col-span-2 md:col-span-1">
+                                <FormItem className="col-span-1">
                                     <FormLabel>Data de Início</FormLabel>
                                     <FormControl><Input type="date" {...field} disabled={isSearching || ignoreDates} value={ignoreDates ? '' : field.value} /></FormControl>
                                     <FormMessage />
@@ -257,7 +268,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({
                             control={form.control}
                             name="dataFim"
                             render={({ field }) => (
-                                <FormItem className="col-span-2 md:col-span-1">
+                                <FormItem className="col-span-1">
                                     <FormLabel>Data de Fim</FormLabel>
                                     <FormControl><Input type="date" {...field} disabled={isSearching || ignoreDates} value={ignoreDates ? '' : field.value} /></FormControl>
                                     <FormMessage />
@@ -268,7 +279,7 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({
                             control={form.control}
                             name="ignoreDates"
                             render={({ field }) => (
-                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 col-span-4">
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 col-span-1 md:col-span-4">
                                     <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isSearching} /></FormControl>
                                     <div className="space-y-1 leading-none">
                                         <FormLabel>Pesquisar sem restrição de data</FormLabel>
