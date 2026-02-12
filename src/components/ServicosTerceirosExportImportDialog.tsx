@@ -146,7 +146,7 @@ const ServicosTerceirosExportImportDialog: React.FC<ServicosTerceirosExportImpor
                     1. Selecionar Arquivo
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                    Carregue um arquivo Excel (.xlsx) contendo as colunas: NR_SUBITEM, NOME_SUBITEM, DESCRICAO_SUBITEM, CODIGO_CATMAT, DESCRICAO_ITEM, NOME_REDUZIDO, UNIDADE_MEDIDA, VALOR_UNITARIO, NUMERO_PREGAO, UASG.
+                    Carregue um arquivo Excel (.xlsx) contendo as colunas: NR_SUBITEM, NOME_SUBITEM, DESCRICAO_SUBITEM, CODIGO_CATSER, DESCRICAO_ITEM, NOME_REDUZIDO, UNIDADE_MEDIDA, VALOR_UNITARIO, NUMERO_PREGAO, UASG.
                 </p>
                 
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx" className="hidden" />
