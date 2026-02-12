@@ -246,6 +246,30 @@ export async function saveNewCatmatEntry(code: string, description: string, shor
 }
 
 /**
+ * Saves a new or updates an existing CATSER entry with a short description.
+ * @param code The CATSER code (string).
+ * @param description The full description (from PNCP).
+ * @param shortDescription The user-provided short description.
+ */
+export async function saveNewCatserEntry(code: string, description: string, shortDescription: string): Promise<void> {
+    const cleanCode = code.trim();
+
+    const { error } = await supabase
+        .from('catalogo_catser')
+        .upsert({
+            code: cleanCode,
+            description: description,
+            short_description: shortDescription,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'code' });
+
+    if (error) {
+        console.error("Erro ao salvar nova entrada CATSER:", error);
+        throw new Error("Falha ao salvar o item no catálogo CATSER.");
+    }
+}
+
+/**
  * Busca a descrição completa de um item CATMAT no PNCP (4_consultarItemMaterial).
  * @param codigoCatmat O código CATMAT (string).
  * @returns Um objeto contendo a descrição completa (fullDescription) e o nome PDM (nomePdm), ou null.
