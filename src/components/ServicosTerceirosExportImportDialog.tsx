@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { FileSpreadsheet, Download, Upload, Loader2, CheckCircle, XCircle, List, FileWarning } from "lucide-react";
 import { toast } from "sonner";
 import { DiretrizServicosTerceiros } from "@/types/diretrizesServicosTerceiros";
-import { StagingRow } from "@/types/diretrizesMaterialConsumo";
 import { exportServicosTerceirosToExcel, processServicosTerceirosImport, persistServicosTerceirosImport } from '@/lib/servicosTerceirosExportImport';
 import { useSession } from '@/components/SessionContextProvider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -37,7 +36,7 @@ const ServicosTerceirosExportImportDialog: React.FC<ServicosTerceirosExportImpor
     const [isProcessing, setIsProcessing] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     
-    const [stagedData, setStagedData] = useState<StagingRow[]>([]);
+    const [stagedData, setStagedData] = useState<any[]>([]);
     const [importSummary, setImportSummary] = useState({
         totalRows: 0,
         totalValid: 0,
@@ -147,7 +146,7 @@ const ServicosTerceirosExportImportDialog: React.FC<ServicosTerceirosExportImpor
                     1. Selecionar Arquivo
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                    Carregue um arquivo Excel (.xlsx) contendo as colunas: NR_SUBITEM, NOME_SUBITEM, DESCRICAO_SUBITEM, CODIGO_CATMAT, DESCRICAO_ITEM, DESCRICAO_REDUZIDA, VALOR_UNITARIO, NUMERO_PREGAO, UASG.
+                    Carregue um arquivo Excel (.xlsx) contendo as colunas: NR_SUBITEM, NOME_SUBITEM, DESCRICAO_SUBITEM, CODIGO_CATMAT, DESCRICAO_ITEM, NOME_REDUZIDO, UNIDADE_MEDIDA, VALOR_UNITARIO, NUMERO_PREGAO, UASG.
                 </p>
                 
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx" className="hidden" />
@@ -206,8 +205,9 @@ const ServicosTerceirosExportImportDialog: React.FC<ServicosTerceirosExportImpor
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
                             <TableHead className="w-[5%] text-center">Linha</TableHead>
-                            <TableHead className="w-[20%]">Subitem ND</TableHead>
-                            <TableHead className="w-[30%]">Item de Serviço</TableHead>
+                            <TableHead className="w-[15%]">Subitem ND</TableHead>
+                            <TableHead className="w-[25%]">Item de Serviço</TableHead>
+                            <TableHead className="w-[10%] text-center">Unid.</TableHead>
                             <TableHead className="w-[10%] text-center">Pregão</TableHead>
                             <TableHead className="w-[10%] text-center">UASG</TableHead>
                             <TableHead className="w-[10%] text-right">Valor</TableHead>
@@ -225,8 +225,9 @@ const ServicosTerceirosExportImportDialog: React.FC<ServicosTerceirosExportImpor
                                 <TableCell className="text-xs font-medium p-2">{row.nr_subitem} - {row.nome_subitem}</TableCell>
                                 <TableCell className="text-xs p-2">
                                     {row.descricao_item}
-                                    <p className="text-muted-foreground/70 text-[10px]">CATMAT: {row.codigo_catmat}</p>
+                                    <p className="text-muted-foreground/70 text-[10px]">Reduzido: {row.nome_reduzido} | CATMAT: {row.codigo_catmat}</p>
                                 </TableCell>
+                                <TableCell className="text-center text-xs p-2">{row.unidade_medida}</TableCell>
                                 <TableCell className="text-center text-xs p-2">{row.numero_pregao}</TableCell>
                                 <TableCell className="text-center text-xs p-2">{formatCodug(row.uasg)}</TableCell>
                                 <TableCell className="text-right font-bold text-xs p-2">{formatCurrency(row.valor_unitario)}</TableCell>
@@ -238,7 +239,7 @@ const ServicosTerceirosExportImportDialog: React.FC<ServicosTerceirosExportImpor
                                             <Badge variant="destructive" className="text-xs flex items-center justify-center">
                                                 <XCircle className="h-3 w-3 mr-1" /> Inválido
                                             </Badge>
-                                            {row.errors.map((err, i) => <p key={i} className="text-[10px] text-red-600">- {err}</p>)}
+                                            {row.errors.map((err: string, i: number) => <p key={i} className="text-[10px] text-red-600">- {err}</p>)}
                                         </div>
                                     )}
                                 </TableCell>
@@ -260,7 +261,7 @@ const ServicosTerceirosExportImportDialog: React.FC<ServicosTerceirosExportImpor
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChangeWrapper}>
-            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <FileSpreadsheet className="h-5 w-5" />

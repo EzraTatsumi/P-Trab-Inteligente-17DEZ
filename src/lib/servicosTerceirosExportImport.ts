@@ -1,10 +1,10 @@
 import * as ExcelJS from 'exceljs';
 import { supabase } from "@/integrations/supabase/client";
-import { DiretrizServicosTerceiros, ItemAquisicaoServico } from "@/types/diretrizesServicosTerceiros";
-import { StagingRow } from "@/types/diretrizesMaterialConsumo"; // Reutilizando o tipo de staging
+import { DiretrizServicosTerceiros } from "@/types/diretrizesServicosTerceiros";
+import { StagingRow } from "@/types/diretrizesMaterialConsumo";
 
 /**
- * Exporta as diretrizes de serviços para Excel.
+ * Exporta as diretrizes de serviços para Excel com o modelo atualizado.
  */
 export async function exportServicosTerceirosToExcel(diretrizes: DiretrizServicosTerceiros[], year: number) {
     const workbook = new ExcelJS.Workbook();
@@ -16,7 +16,8 @@ export async function exportServicosTerceirosToExcel(diretrizes: DiretrizServico
         { header: 'DESCRICAO_SUBITEM', key: 'descricao_subitem', width: 30 },
         { header: 'CODIGO_CATMAT', key: 'codigo_catmat', width: 15 },
         { header: 'DESCRICAO_ITEM', key: 'descricao_item', width: 40 },
-        { header: 'DESCRICAO_REDUZIDA', key: 'descricao_reduzida', width: 30 },
+        { header: 'NOME_REDUZIDO', key: 'nome_reduzido', width: 30 },
+        { header: 'UNIDADE_MEDIDA', key: 'unidade_medida', width: 15 },
         { header: 'VALOR_UNITARIO', key: 'valor_unitario', width: 15 },
         { header: 'NUMERO_PREGAO', key: 'numero_pregao', width: 15 },
         { header: 'UASG', key: 'uasg', width: 15 },
@@ -34,7 +35,8 @@ export async function exportServicosTerceirosToExcel(diretrizes: DiretrizServico
                     descricao_subitem: d.descricao_subitem || '',
                     codigo_catmat: item.codigo_catmat,
                     descricao_item: item.descricao_item,
-                    descricao_reduzida: item.descricao_item, // Usando a mesma para serviços
+                    nome_reduzido: (item as any).nome_reduzido || item.descricao_reduzida || '',
+                    unidade_medida: (item as any).unidade_medida || '',
                     valor_unitario: item.valor_unitario,
                     numero_pregao: item.numero_pregao,
                     uasg: item.uasg,
@@ -63,13 +65,12 @@ export async function processServicosTerceirosImport(file: File, year: number, u
     
     if (!worksheet) throw new Error("Planilha inválida.");
 
-    const stagedData: StagingRow[] = [];
+    const stagedData: any[] = [];
     let totalValid = 0;
     let totalInvalid = 0;
     let totalDuplicates = 0;
     let totalExisting = 0;
 
-    // Busca itens existentes para verificar duplicidade
     const { data: existingData } = await supabase
         .from('diretrizes_servicos_terceiros')
         .select('itens_aquisicao')
@@ -87,14 +88,18 @@ export async function processServicosTerceirosImport(file: File, year: number, u
         const nome_subitem = row.getCell(2).text?.trim();
         const codigo_catmat = row.getCell(4).text?.trim();
         const descricao_item = row.getCell(5).text?.trim();
-        const valor_unitario = Number(row.getCell(7).value) || 0;
-        const numero_pregao = row.getCell(8).text?.trim();
-        const uasg = row.getCell(9).text?.trim();
+        const nome_reduzido = row.getCell(6).text?.trim();
+        const unidade_medida = row.getCell(7).text?.trim();
+        const valor_unitario = Number(row.getCell(8).value) || 0;
+        const numero_pregao = row.getCell(9).text?.trim();
+        const uasg = row.getCell(10).text?.trim();
 
         const errors: string[] = [];
         if (!nr_subitem) errors.push("Nr Subitem ausente");
         if (!nome_subitem) errors.push("Nome Subitem ausente");
         if (!descricao_item) errors.push("Descrição do item ausente");
+        if (!nome_reduzido) errors.push("Nome reduzido ausente");
+        if (!unidade_medida) errors.push("Unidade de medida ausente");
         if (valor_unitario <= 0) errors.push("Valor unitário inválido");
 
         const itemKey = `${codigo_catmat}-${numero_pregao}-${uasg}`;
@@ -119,7 +124,8 @@ export async function processServicosTerceirosImport(file: File, year: number, u
             descricao_subitem: row.getCell(3).text?.trim() || '',
             codigo_catmat,
             descricao_item,
-            descricao_reduzida: row.getCell(6).text?.trim() || descricao_item,
+            nome_reduzido,
+            unidade_medida,
             valor_unitario,
             numero_pregao,
             uasg,
@@ -136,15 +142,13 @@ export async function processServicosTerceirosImport(file: File, year: number, u
 /**
  * Persiste os dados validados no banco de dados.
  */
-export async function persistServicosTerceirosImport(stagedData: StagingRow[], year: number, userId: string) {
+export async function persistServicosTerceirosImport(stagedData: any[], year: number, userId: string) {
     const validRows = stagedData.filter(r => r.isValid);
     const subitemsMap = new Map<string, any>();
 
-    // Agrupa por subitem
     for (const row of validRows) {
         const key = `${row.nr_subitem}-${row.nome_subitem}`;
         if (!subitemsMap.has(key)) {
-            // Busca se o subitem já existe no DB
             const { data: existingSubitem } = await supabase
                 .from('diretrizes_servicos_terceiros')
                 .select('*')
@@ -169,6 +173,8 @@ export async function persistServicosTerceirosImport(stagedData: StagingRow[], y
         subitem.itens_aquisicao.push({
             id: crypto.randomUUID(),
             descricao_item: row.descricao_item,
+            nome_reduzido: row.nome_reduzido,
+            unidade_medida: row.unidade_medida,
             codigo_catmat: row.codigo_catmat,
             numero_pregao: row.numero_pregao,
             uasg: row.uasg,
@@ -176,7 +182,6 @@ export async function persistServicosTerceirosImport(stagedData: StagingRow[], y
         });
     }
 
-    // Upsert de cada subitem
     for (const subitem of subitemsMap.values()) {
         if (subitem.id) {
             await supabase.from('diretrizes_servicos_terceiros').update(subitem).eq('id', subitem.id);
