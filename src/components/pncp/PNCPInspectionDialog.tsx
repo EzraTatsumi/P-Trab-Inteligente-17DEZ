@@ -20,7 +20,7 @@ interface PNCPInspectionDialogProps {
     inspectionList: InspectionItem[];
     onFinalImport: (items: ItemAquisicao[]) => void;
     onReviewItem: (item: ItemAquisicao) => void; 
-    mode?: 'material' | 'servico'; // NOVO
+    mode?: 'material' | 'servico'; 
 }
 
 const formatItemCount = (count: number) => {
@@ -171,7 +171,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                             <TableHead className="w-[10%] text-center">{codeLabel}</TableHead>
                             <TableHead className="w-[35%] text-center">Descrição Completa (ARP)</TableHead>
                             <TableHead className="w-[35%] text-center">Descrição Completa (PNCP)</TableHead>
-                            <TableHead className="w-[20%] text-center">{status === 'needs_catmat_info' ? 'Nome Reduzido *' : 'Status'}</TableHead>
+                            <TableHead className="w-[20%] text-center">{status === 'duplicate' ? 'Status' : 'Nome Reduzido'}</TableHead>
                             {status !== 'duplicate' && <TableHead className="w-[5%] text-center">Ações</TableHead>}
                         </TableRow>
                     </TableHeader>

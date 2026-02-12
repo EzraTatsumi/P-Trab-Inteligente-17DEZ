@@ -93,42 +93,43 @@ export async function fetchUserProfile(): Promise<Profile> {
     return { ...profileData, om_details: null } as Profile;
 }
 
-interface CatmatCatalogStatus {
+interface CatalogEntryStatus {
+    description: string | null;
     shortDescription: string | null;
     isCataloged: boolean;
 }
 
 /**
- * Busca a descrição reduzida de um item no catálogo (CATMAT ou CATSER) e verifica sua existência.
+ * Busca os dados de um item no catálogo local (CATMAT ou CATSER).
  */
-export async function fetchCatalogShortDescription(codigo: string, mode: 'material' | 'servico'): Promise<CatmatCatalogStatus> {
-    if (!codigo) return { shortDescription: null, isCataloged: false };
+export async function fetchCatalogEntry(codigo: string, mode: 'material' | 'servico'): Promise<CatalogEntryStatus> {
+    if (!codigo) return { description: null, shortDescription: null, isCataloged: false };
     const table = mode === 'material' ? 'catalogo_catmat' : 'catalogo_catser';
     const cleanCode = codigo.replace(/\D/g, '');
-    if (!cleanCode) return { shortDescription: null, isCataloged: false };
+    if (!cleanCode) return { description: null, shortDescription: null, isCataloged: false };
     
     try {
-        let { data, error } = await supabase.from(table).select('short_description').eq('code', cleanCode).maybeSingle();
+        let { data, error } = await supabase.from(table).select('description, short_description').eq('code', cleanCode).maybeSingle();
         if (error) throw error;
         if (!data) {
             const paddedCode = cleanCode.padStart(9, '0');
             if (paddedCode !== cleanCode) {
-                const { data: paddedData, error: paddedError } = await supabase.from(table).select('short_description').eq('code', paddedCode).maybeSingle();
+                const { data: paddedData, error: paddedError } = await supabase.from(table).select('description, short_description').eq('code', paddedCode).maybeSingle();
                 if (paddedError) throw paddedError;
                 data = paddedData;
             }
         }
         if (data) {
-            const normalizedShortDesc = data.short_description ? data.short_description.trim() : null;
             return {
-                shortDescription: normalizedShortDesc && normalizedShortDesc.length > 0 ? normalizedShortDesc : null,
+                description: data.description || null,
+                shortDescription: data.short_description || null,
                 isCataloged: true,
             };
         }
-        return { shortDescription: null, isCataloged: false };
+        return { description: null, shortDescription: null, isCataloged: false };
     } catch (error) {
-        console.error(`Erro ao buscar descrição reduzida do ${mode}:`, error);
-        return { shortDescription: null, isCataloged: false };
+        console.error(`Erro ao buscar entrada do catálogo ${mode}:`, error);
+        return { description: null, shortDescription: null, isCataloged: false };
     }
 }
 

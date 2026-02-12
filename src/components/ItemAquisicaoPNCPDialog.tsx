@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import ArpUasgSearch from './pncp/ArpUasgSearch'; 
 import ArpCatmatSearch from './pncp/ArpCatmatSearch'; 
 import PriceSearchForm from './pncp/PriceSearchForm'; 
-import { fetchCatalogShortDescription, fetchCatalogFullDescription, fetchAllExistingAcquisitionItems } from '@/integrations/supabase/api'; 
+import { fetchCatalogEntry, fetchCatalogFullDescription, fetchAllExistingAcquisitionItems } from '@/integrations/supabase/api'; 
 import PNCPInspectionDialog from './pncp/PNCPInspectionDialog'; 
 import { supabase } from '@/integrations/supabase/client'; 
 
@@ -21,7 +21,7 @@ interface ItemAquisicaoPNCPDialogProps {
     existingItemsInDiretriz: ItemAquisicao[]; 
     onReviewItem: (item: ItemAquisicao) => void;
     selectedYear: number; 
-    mode?: 'material' | 'servico'; // NOVO: Define o contexto da importação
+    mode?: 'material' | 'servico'; 
 }
 
 interface SelectedItemState {
@@ -84,7 +84,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     existingItemsInDiretriz,
     onReviewItem, 
     selectedYear, 
-    mode = 'material', // Padrão para material
+    mode = 'material', 
 }) => {
     const [selectedTab, setSelectedTab] = useState("arp-uasg");
     const [selectedItemsState, setSelectedItemsState] = useState<SelectedItemState[]>([]);
@@ -186,13 +186,30 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 }
                 let status: InspectionStatus = 'pending';
                 let messages: string[] = [];
-                const pncpDetails = await fetchCatalogFullDescription(initialMappedItem.codigo_catmat, mode);
-                const catalogStatus = await fetchCatalogShortDescription(initialMappedItem.codigo_catmat, mode);
-                if (catalogStatus.shortDescription) initialMappedItem.descricao_reduzida = catalogStatus.shortDescription;
-                else {
-                    const itemDescription = initialMappedItem.descricao_item || pncpDetails.fullDescription || '';
-                    initialMappedItem.descricao_reduzida = itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : '');
+                
+                // Busca no catálogo local primeiro
+                const catalogEntry = await fetchCatalogEntry(initialMappedItem.codigo_catmat, mode);
+                
+                let fullPncpDescription = 'Descrição completa não encontrada no PNCP.';
+                let nomePdm = null;
+
+                if (catalogEntry.isCataloged && catalogEntry.description) {
+                    // Se já temos no catálogo local, usamos a nossa descrição para evitar erros da API PNCP
+                    fullPncpDescription = catalogEntry.description;
+                    if (catalogEntry.shortDescription) initialMappedItem.descricao_reduzida = catalogEntry.shortDescription;
+                } else {
+                    // Se não temos localmente, buscamos na API
+                    const pncpDetails = await fetchCatalogFullDescription(initialMappedItem.codigo_catmat, mode);
+                    fullPncpDescription = pncpDetails.fullDescription || fullPncpDescription;
+                    nomePdm = pncpDetails.nomePdm;
+                    
+                    if (catalogEntry.shortDescription) initialMappedItem.descricao_reduzida = catalogEntry.shortDescription;
+                    else {
+                        const itemDescription = initialMappedItem.descricao_item || fullPncpDescription || '';
+                        initialMappedItem.descricao_reduzida = itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : '');
+                    }
                 }
+
                 let duplicateResult: DuplicateCheckResult = { isDuplicate: false, matchingKeys: [] };
                 for (const existingItem of combinedExistingItems) {
                     duplicateResult = isFlexibleDuplicate(initialMappedItem, existingItem);
@@ -202,13 +219,13 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     status = 'duplicate';
                     messages.push(`Chaves de Item idênticas: ${duplicateResult.matchingKeys.join(', ')}`);
                 } else {
-                    if (catalogStatus.isCataloged && catalogStatus.shortDescription) { 
+                    if (catalogEntry.isCataloged && catalogEntry.shortDescription) { 
                         status = 'valid';
                         messages.push('Pronto para importação.');
                     } else {
                         status = 'needs_catmat_info';
                         if (isPriceReference) messages.push('Item de referência de preço. Requer preenchimento de Pregão/UASG e descrição reduzida.');
-                        else if (catalogStatus.isCataloged && !catalogStatus.shortDescription) messages.push('Item catalogado localmente, mas requer descrição reduzida.');
+                        else if (catalogEntry.isCataloged && !catalogEntry.shortDescription) messages.push('Item catalogado localmente, mas requer descrição reduzida.');
                         else messages.push(`Requer descrição reduzida para o catálogo ${mode === 'material' ? 'CATMAT' : 'CATSER'}.`);
                     }
                 }
@@ -217,10 +234,10 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     mappedItem: initialMappedItem,
                     status: status,
                     messages: messages,
-                    userShortDescription: catalogStatus.shortDescription || '', 
-                    fullPncpDescription: pncpDetails.fullDescription || 'Descrição completa não encontrada no PNCP.', 
-                    nomePdm: pncpDetails.nomePdm, 
-                    isCatmatCataloged: catalogStatus.isCataloged, 
+                    userShortDescription: catalogEntry.shortDescription || '', 
+                    fullPncpDescription: fullPncpDescription, 
+                    nomePdm: nomePdm, 
+                    isCatmatCataloged: catalogEntry.isCataloged, 
                 } as InspectionItem;
             });
             const results = await Promise.all(inspectionPromises);
