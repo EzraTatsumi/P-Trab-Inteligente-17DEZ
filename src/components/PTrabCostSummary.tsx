@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber, formatCodug } from "@/lib/formatUtils";
-import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase, Droplet, Zap, MapPin, Building2, Coffee, Droplets, Helicopter } from "lucide-react";
+import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase, Droplet, Zap, MapPin, Building2, Coffee, Droplets } from "lucide-react";
 import {
   Accordion,
   AccordionItem,
@@ -41,7 +41,6 @@ interface OmTotals {
     classeVI: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> };
     classeVII: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> };
     classeVIII: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> };
-    classeVIII_Remonta: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> };
     classeIX: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> };
     
     diarias: { total: number, totalND15: number, totalND30: number, totalMilitares: number, totalDiasViagem: number };
@@ -186,7 +185,6 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     classeVI: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeVII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeVIII: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
-    classeVIII_Remonta: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     classeIX: { total: 0, totalND30: 0, totalND39: 0, totalItens: 0, groupedCategories: {} },
     diarias: { total: 0, totalND15: 0, totalND30: 0, totalMilitares: 0, totalDiasViagem: 0 },
     verbaOperacional: { total: 0, totalND30: 0, totalND39: 0, totalEquipes: 0, totalDias: 0 },
@@ -673,11 +671,11 @@ const OmDetailsDialog = ({ om, totals, onClose }: any) => {
                     {(om.totalAviacaoExercito > 0 || om.horasVoo.quantidadeHV > 0) && (
                         <div>
                             <h3 className="text-base font-bold text-purple-600 uppercase tracking-wider mb-5 flex items-center justify-between border-b border-purple-500/20 pb-2">
-                                <div className="flex items-center gap-2"><Helicopter className="h-5 w-5" />Aba Aviação do Exército</div>
+                                <div className="flex items-center gap-2"><Plane className="h-5 w-5" />Aba Aviação do Exército</div>
                                 <span className="text-xl font-extrabold">{formatCurrency(om.totalAviacaoExercito)}</span>
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                                <CategoryCard label="Horas de Voo" value={om.horasVoo.total} icon={Helicopter} colorClass="bg-purple-500/10 text-purple-600" nd30={om.horasVoo.totalND30} nd39={om.horasVoo.totalND39} extraInfo={`${formatNumber(om.horasVoo.quantidadeHV, 2)} HV`} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.horasVoo.groupedHV || {}).sort(([a], [b]) => a.localeCompare(b)).map(([tipo, data]: any) => (<div key={tipo} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{tipo}</span><div className="flex w-1/2 justify-between gap-3"><span className="font-medium text-right w-1/2 whitespace-nowrap">{formatNumber(data.totalHV, 2)} HV</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div></div>))}</div>} />
+                                <CategoryCard label="Horas de Voo" value={om.horasVoo.total} icon={Zap} colorClass="bg-purple-500/10 text-purple-600" nd30={om.horasVoo.totalND30} nd39={om.horasVoo.totalND39} extraInfo={`${formatNumber(om.horasVoo.quantidadeHV, 2)} HV`} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.horasVoo.groupedHV || {}).sort(([a], [b]) => a.localeCompare(b)).map(([tipo, data]: any) => (<div key={tipo} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{tipo}</span><div className="flex w-1/2 justify-between gap-3"><span className="font-medium text-right w-1/2 whitespace-nowrap">{formatNumber(data.totalHV, 2)} HV</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div></div>))}</div>} />
                             </div>
                         </div>
                     )}
@@ -919,7 +917,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
         if (h.total === 0 && h.quantidadeHV === 0) return null;
         return (
             <div className="space-y-3 border-l-4 border-purple-500 pl-3 pt-4">
-                <div className="flex items-center justify-between text-xs font-semibold text-purple-600 mb-2"><div className="flex items-center gap-2"><Helicopter className="h-3 w-3" />Aviação do Exército</div><span className="font-bold text-sm">{formatNumber(h.quantidadeHV, 2)} HV</span></div>
+                <div className="flex items-center justify-between text-xs font-semibold text-purple-600 mb-2"><div className="flex items-center gap-2"><Plane className="h-3 w-3" />Aviação do Exército</div><span className="font-bold text-sm">{formatNumber(h.quantidadeHV, 2)} HV</span></div>
                 <div className="space-y-1 pl-4 text-[10px]">{Object.entries(h.groupedHV || {}).sort(([a], [b]) => a.localeCompare(b)).map(([tipo, d]: any) => (<div key={tipo} className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left">{tipo}</span><span className="w-1/4 text-right font-medium text-background"></span><span className="w-1/4 text-right font-medium">{formatNumber(d.totalHV, 2)} HV</span></div>))}</div>
             </div>
         );
