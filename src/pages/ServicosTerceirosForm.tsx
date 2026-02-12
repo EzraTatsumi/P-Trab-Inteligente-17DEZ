@@ -22,6 +22,7 @@ import ServicosTerceirosItemSelectorDialog from "@/components/ServicosTerceirosI
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { calculateServicoTotals, ServicoTerceiroRegistro } from "@/lib/servicosTerceirosUtils";
 import ServicosTerceirosMemoria from "@/components/ServicosTerceirosMemoria";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export type CategoriaServico = 
     | "fretamento-aereo" 
@@ -215,52 +216,51 @@ const ServicosTerceirosForm = () => {
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">2. Configurar Planejamento</h3>
                                     
-                                    <Card className="mt-6 bg-muted/50 rounded-lg p-4">
-                                        
-                                        {/* Dados da Solicitação */}
-                                        <Card className="rounded-lg mb-4">
-                                            <CardHeader className="py-3">
-                                                <CardTitle className="text-base font-semibold">Período, Efetivo e Destino do Recurso</CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="pt-2">
-                                                <div className="p-4 bg-background rounded-lg border">
-                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                                        <div className="space-y-2">
-                                                            <Label>Período (Nr Dias) *</Label>
-                                                            <Input type="number" value={diasOperacao || ""} onChange={(e) => setDiasOperacao(Number(e.target.value))} placeholder="Ex: 15" disabled={!isPTrabEditable} className="max-w-[150px]" />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label>Efetivo *</Label>
-                                                            <Input type="number" value={efetivo || ""} onChange={(e) => setEfetivo(Number(e.target.value))} placeholder="Ex: 50" disabled={!isPTrabEditable} className="max-w-[150px]" />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label>OM Destino do Recurso *</Label>
-                                                            <OmSelector selectedOmId={omDestino.id || undefined} onChange={(om) => om && setOmDestino({nome: om.nome_om, ug: om.codug_om, id: om.id})} placeholder="Selecione a OM Destino" disabled={!isPTrabEditable} />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label>UG Destino</Label>
-                                                            <Input value={formatCodug(omDestino.ug)} disabled className="bg-muted/50" />
+                                    <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as CategoriaServico); setSelectedItems([]); }} className="w-full">
+                                        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-8 h-auto gap-1 bg-muted p-1 mb-6">
+                                            <TabsTrigger value="fretamento-aereo" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Plane className="h-4 w-4" /> Fretamento</TabsTrigger>
+                                            <TabsTrigger value="servico-satelital" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Satellite className="h-4 w-4" /> Satelital</TabsTrigger>
+                                            <TabsTrigger value="locacao-veiculos" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Car className="h-4 w-4" /> Veículos</TabsTrigger>
+                                            <TabsTrigger value="locacao-engenharia" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><HardHat className="h-4 w-4" /> Engenharia</TabsTrigger>
+                                            <TabsTrigger value="locacao-banheiro" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Trash2 className="h-4 w-4" /> Banheiros</TabsTrigger>
+                                            <TabsTrigger value="locacao-estruturas" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Package className="h-4 w-4" /> Estruturas</TabsTrigger>
+                                            <TabsTrigger value="servico-lavanderia" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><RefreshCw className="h-4 w-4" /> Lavanderia</TabsTrigger>
+                                            <TabsTrigger value="servico-grafico" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Printer className="h-4 w-4" /> Gráfico</TabsTrigger>
+                                        </TabsList>
+
+                                        <Card className="bg-muted/50 rounded-lg p-4">
+                                            {/* Dados da Solicitação */}
+                                            <Card className="rounded-lg mb-4">
+                                                <CardHeader className="py-3">
+                                                    <CardTitle className="text-base font-semibold">Período, Efetivo e Destino do Recurso</CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="pt-2">
+                                                    <div className="p-4 bg-background rounded-lg border">
+                                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                            <div className="space-y-2">
+                                                                <Label>Período (Nr Dias) *</Label>
+                                                                <Input type="number" value={diasOperacao || ""} onChange={(e) => setDiasOperacao(Number(e.target.value))} placeholder="Ex: 15" disabled={!isPTrabEditable} className="max-w-[150px]" />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Efetivo *</Label>
+                                                                <Input type="number" value={efetivo || ""} onChange={(e) => setEfetivo(Number(e.target.value))} placeholder="Ex: 50" disabled={!isPTrabEditable} className="max-w-[150px]" />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>OM Destino do Recurso *</Label>
+                                                                <OmSelector selectedOmId={omDestino.id || undefined} onChange={(om) => om && setOmDestino({nome: om.nome_om, ug: om.codug_om, id: om.id})} placeholder="Selecione a OM Destino" disabled={!isPTrabEditable} />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>UG Destino</Label>
+                                                                <Input value={formatCodug(omDestino.ug)} disabled className="bg-muted/50" />
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
+                                                </CardContent>
+                                            </Card>
 
-                                        {/* Seleção de Itens por Categoria */}
-                                        {efetivo > 0 && diasOperacao > 0 && (
-                                            <Card className="mt-4 rounded-lg p-4 bg-background">
-                                                <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as CategoriaServico); setSelectedItems([]); }} className="w-full">
-                                                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-8 h-auto gap-1 bg-muted p-1 mb-4">
-                                                        <TabsTrigger value="fretamento-aereo" className="flex flex-col gap-1 py-2 text-[10px] uppercase font-bold"><Plane className="h-4 w-4" /> Fretamento</TabsTrigger>
-                                                        <TabsTrigger value="servico-satelital" className="flex flex-col gap-1 py-2 text-[10px] uppercase font-bold"><Satellite className="h-4 w-4" /> Satelital</TabsTrigger>
-                                                        <TabsTrigger value="locacao-veiculos" className="flex flex-col gap-1 py-2 text-[10px] uppercase font-bold"><Car className="h-4 w-4" /> Veículos</TabsTrigger>
-                                                        <TabsTrigger value="locacao-engenharia" className="flex flex-col gap-1 py-2 text-[10px] uppercase font-bold"><HardHat className="h-4 w-4" /> Engenharia</TabsTrigger>
-                                                        <TabsTrigger value="locacao-banheiro" className="flex flex-col gap-1 py-2 text-[10px] uppercase font-bold"><Trash2 className="h-4 w-4" /> Banheiros</TabsTrigger>
-                                                        <TabsTrigger value="locacao-estruturas" className="flex flex-col gap-1 py-2 text-[10px] uppercase font-bold"><Package className="h-4 w-4" /> Estruturas</TabsTrigger>
-                                                        <TabsTrigger value="servico-lavanderia" className="flex flex-col gap-1 py-2 text-[10px] uppercase font-bold"><RefreshCw className="h-4 w-4" /> Lavanderia</TabsTrigger>
-                                                        <TabsTrigger value="servico-grafico" className="flex flex-col gap-1 py-2 text-[10px] uppercase font-bold"><Printer className="h-4 w-4" /> Gráfico</TabsTrigger>
-                                                    </TabsList>
-
+                                            {/* Seleção de Itens */}
+                                            {efetivo > 0 && diasOperacao > 0 && (
+                                                <Card className="mt-4 rounded-lg p-4 bg-background">
                                                     <div className="space-y-4">
                                                         <div className="flex justify-between items-center">
                                                             <h4 className="text-base font-semibold">Itens de {activeTab.replace('-', ' ')} ({selectedItems.length})</h4>
@@ -300,22 +300,22 @@ const ServicosTerceirosForm = () => {
                                                             </Alert>
                                                         )}
                                                     </div>
-                                                </Tabs>
 
-                                                <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
-                                                    <span className="font-bold text-sm uppercase">VALOR TOTAL DO LOTE:</span>
-                                                    <span className="font-extrabold text-lg text-primary">{formatCurrency(totalLote)}</span>
-                                                </div>
-                                            </Card>
-                                        )}
+                                                    <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
+                                                        <span className="font-bold text-sm uppercase">VALOR TOTAL DO LOTE:</span>
+                                                        <span className="font-extrabold text-lg text-primary">{formatCurrency(totalLote)}</span>
+                                                    </div>
+                                                </Card>
+                                            )}
 
-                                        <div className="flex justify-end gap-3 pt-4">
-                                            <Button size="lg" className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={selectedItems.length === 0 || saveMutation.isPending} onClick={() => saveMutation.mutate()}>
-                                                {saveMutation.isPending ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
-                                                Salvar Planejamento
-                                            </Button>
-                                        </div>
-                                    </Card>
+                                            <div className="flex justify-end gap-3 pt-4">
+                                                <Button size="lg" className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={selectedItems.length === 0 || saveMutation.isPending} onClick={() => saveMutation.mutate()}>
+                                                    {saveMutation.isPending ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
+                                                    Salvar Planejamento
+                                                </Button>
+                                            </div>
+                                        </Card>
+                                    </Tabs>
                                 </section>
                             )}
 
