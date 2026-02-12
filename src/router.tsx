@@ -28,7 +28,8 @@ import PassagemForm from "./pages/PassagemForm";
 import HorasVooForm from "./pages/HorasVooForm";
 import ConcessionariaForm from "./pages/ConcessionariaForm";
 import MaterialConsumoForm from "./pages/MaterialConsumoForm";
-import ComplementoAlimentacaoForm from "./pages/ComplementoAlimentacaoForm"; // NOVO
+import ComplementoAlimentacaoForm from "./pages/ComplementoAlimentacaoForm";
+import ServicosTerceirosForm from "./pages/ServicosTerceirosForm"; // NOVO
 import NotFound from "./pages/NotFound";
 
 // Define as rotas como um array de objetos
@@ -54,7 +55,8 @@ const routes: RouteObject[] = [
   { path: "/ptrab/horas-voo-avex", element: <HorasVooForm /> },
   { path: "/ptrab/concessionaria", element: <ConcessionariaForm /> },
   { path: "/ptrab/material-consumo", element: <MaterialConsumoForm /> },
-  { path: "/ptrab/complemento-alimentacao", element: <ComplementoAlimentacaoForm /> }, // NOVO
+  { path: "/ptrab/complemento-alimentacao", element: <ComplementoAlimentacaoForm /> },
+  { path: "/ptrab/servicos-terceiros", element: <ServicosTerceirosForm /> }, // NOVO
   { path: "/config/custos-operacionais", element: <CustosOperacionaisPage /> },
   { path: "/config/diretrizes", element: <DiretrizesCusteioPage /> },
   { path: "/config/visualizacao", element: <VisualizacaoConfigPage /> },

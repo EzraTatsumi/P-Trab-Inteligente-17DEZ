@@ -56,7 +56,10 @@ const PTrabForm = () => {
 
   const itensOperacional = [
     { id: "complemento-alimentacao", name: "Complemento de Alimentação" },
+    { id: "fretamento-aereo", name: "Fretamento Aéreo" }, // ATUALIZADO
     { id: "horas-voo-avex", name: "Horas de Voo (AvEx)" },
+    { id: "locacao-banheiro", name: "Locação de Banheiro Químico" }, // NOVO
+    { id: "locacao-engenharia", name: "Locação de Eqp Engenharia" }, // NOVO
     { id: "locacao-estruturas", name: "Locação de Estruturas" },
     { id: "locacao-viatura", name: "Locação de Viatura" },
     { id: "material-consumo", name: "Material de Consumo" },
@@ -199,7 +202,25 @@ const PTrabForm = () => {
     } else if (itemId === 'material-consumo') {
       navigate(`/ptrab/material-consumo?ptrabId=${ptrabId}`);
     } else if (itemId === 'complemento-alimentacao') {
-      navigate(`/ptrab/complemento-alimentacao?ptrabId=${ptrabId}`); // ATUALIZADO
+      navigate(`/ptrab/complemento-alimentacao?ptrabId=${ptrabId}`);
+    } else if ([
+        'fretamento-aereo', 
+        'servico-satelital', 
+        'locacao-viatura', 
+        'locacao-engenharia', 
+        'locacao-banheiro', 
+        'locacao-estruturas', 
+        'servico-lavanderia', 
+        'servico-grafico'
+    ].includes(itemId)) {
+        // Mapeamento de IDs para as abas do novo formulário
+        const tabMap: Record<string, string> = {
+            'locacao-viatura': 'locacao-veiculos',
+            'locacao-banheiro': 'locacao-banheiro',
+            'locacao-engenharia': 'locacao-engenharia'
+        };
+        const tab = tabMap[itemId] || itemId;
+        navigate(`/ptrab/servicos-terceiros?ptrabId=${ptrabId}&tab=${tab}`);
     } else {
       toast.info(`Funcionalidade '${itemName}' (Operacional) ainda não implementada.`);
     }
