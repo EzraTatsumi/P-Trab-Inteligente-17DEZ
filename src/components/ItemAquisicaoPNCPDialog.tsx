@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import ArpUasgSearch from './pncp/ArpUasgSearch';
 import ArpCatmatSearch from './pncp/ArpCatmatSearch';
 import PriceSearchForm from './pncp/PriceSearchForm';
-import { fetchCatalogShortDescription, fetchCatmatFullDescription, fetchAllExistingAcquisitionItems } from '@/integrations/supabase/api';
+import { fetchCatalogDetails, fetchCatmatFullDescription, fetchAllExistingAcquisitionItems } from '@/integrations/supabase/api';
 import PNCPInspectionDialog from './pncp/PNCPInspectionDialog';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -21,7 +21,7 @@ interface ItemAquisicaoPNCPDialogProps {
     existingItemsInDiretriz: ItemAquisicao[]; 
     onReviewItem: (item: ItemAquisicao) => void;
     selectedYear: number; 
-    mode?: 'material' | 'servico'; // NOVO: Propriedade de modo
+    mode?: 'material' | 'servico';
 }
 
 interface SelectedItemState {
@@ -82,7 +82,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     existingItemsInDiretriz,
     onReviewItem, 
     selectedYear, 
-    mode = 'material' // Padrão para material
+    mode = 'material'
 }) => {
     const [selectedTab, setSelectedTab] = useState("arp-uasg");
     const [selectedItemsState, setSelectedItemsState] = useState<SelectedItemState[]>([]);
@@ -193,14 +193,25 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     };
                 }
                 
-                // Passando o modo para as funções de busca de catálogo e descrição
-                const pncpDetails = await fetchCatmatFullDescription(initialMappedItem.codigo_catmat, mode);
-                const catalogStatus = await fetchCatalogShortDescription(mode, initialMappedItem.codigo_catmat);
+                // Busca detalhes no catálogo local
+                const catalogDetails = await fetchCatalogDetails(mode, initialMappedItem.codigo_catmat);
                 
-                if (catalogStatus.shortDescription) {
-                    initialMappedItem.descricao_reduzida = catalogStatus.shortDescription;
+                // Busca detalhes no PNCP (API Federal)
+                const pncpDetails = await fetchCatmatFullDescription(initialMappedItem.codigo_catmat, mode);
+                
+                // PRIORIDADE: Se existe no catálogo local, usa a descrição do catálogo
+                if (catalogDetails.isCataloged && catalogDetails.description) {
+                    initialMappedItem.descricao_item = catalogDetails.description;
+                } else if (pncpDetails.fullDescription) {
+                    // Se não tem no catálogo mas tem no PNCP, usa o PNCP
+                    initialMappedItem.descricao_item = pncpDetails.fullDescription;
+                }
+                
+                // Define a descrição reduzida
+                if (catalogDetails.shortDescription) {
+                    initialMappedItem.descricao_reduzida = catalogDetails.shortDescription;
                 } else {
-                    const itemDescription = initialMappedItem.descricao_item || pncpDetails.fullDescription || '';
+                    const itemDescription = initialMappedItem.descricao_item || '';
                     initialMappedItem.descricao_reduzida = itemDescription.substring(0, 50) + (itemDescription.length > 50 ? '...' : '');
                 }
                 
@@ -216,7 +227,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 if (duplicateResult.isDuplicate) {
                     status = 'duplicate';
                     messages.push(`Chaves de Item idênticas: ${duplicateResult.matchingKeys.join(', ')}`);
-                } else if (catalogStatus.isCataloged && catalogStatus.shortDescription) { 
+                } else if (catalogDetails.isCataloged && catalogDetails.shortDescription) { 
                     status = 'valid';
                     messages.push('Pronto para importação.');
                 } else {
@@ -229,10 +240,10 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     mappedItem: initialMappedItem,
                     status,
                     messages,
-                    userShortDescription: catalogStatus.shortDescription || '', 
+                    userShortDescription: catalogDetails.shortDescription || '', 
                     fullPncpDescription: pncpDetails.fullDescription || 'Descrição não encontrada.', 
                     nomePdm: pncpDetails.nomePdm, 
-                    isCatmatCataloged: catalogStatus.isCataloged, 
+                    isCatmatCataloged: catalogDetails.isCataloged, 
                 } as InspectionItem;
             });
             

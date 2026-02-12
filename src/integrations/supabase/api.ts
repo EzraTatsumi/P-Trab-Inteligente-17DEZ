@@ -1,6 +1,6 @@
 import { toast } from "sonner";
-import { supabase } from "./client"; // Importar o cliente Supabase
-import { Profile } from "@/types/profiles"; // Importar o novo tipo Profile
+import { supabase } from "./client"; 
+import { Profile } from "@/types/profiles"; 
 import { 
     ArpUasgSearchParams, 
     ArpItemResult, 
@@ -8,12 +8,12 @@ import {
     DetailedArpItem, 
     DetailedArpRawResult, 
     CatmatDetailsRawResult,
-    PriceStatsSearchParams, // NOVO
-    PriceStatsResult, // NOVO
-} from "@/types/pncp"; // Importa os novos tipos PNCP
+    PriceStatsSearchParams, 
+    PriceStatsResult, 
+} from "@/types/pncp"; 
 import { formatPregao } from "@/lib/formatUtils";
-import { TablesInsert } from "./types"; // Importar TablesInsert
-import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo"; // NOVO: Importar ItemAquisicao
+import { TablesInsert } from "./types"; 
+import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo"; 
 
 // Interface para a resposta consolidada da Edge Function
 interface EdgeFunctionResponse {
@@ -116,40 +116,40 @@ export async function fetchUserProfile(): Promise<Profile> {
     } as Profile;
 }
 
-// NOVO TIPO DE RETORNO
+// NOVO TIPO DE RETORNO MAIS COMPLETO
 interface CatalogStatus {
+    description: string | null;
     shortDescription: string | null;
     isCataloged: boolean;
 }
 
 /**
- * Busca a descrição reduzida de um item no catálogo (CATMAT ou CATSER) e verifica sua existência.
- * @param mode 'material' para CATMAT ou 'servico' para CATSER.
- * @param code O código do item (string).
+ * Busca os detalhes de um item no catálogo local (CATMAT ou CATSER).
  */
-export async function fetchCatalogShortDescription(mode: 'material' | 'servico', code: string): Promise<CatalogStatus> {
-    if (!code) return { shortDescription: null, isCataloged: false };
+export async function fetchCatalogDetails(mode: 'material' | 'servico', code: string): Promise<CatalogStatus> {
+    if (!code) return { description: null, shortDescription: null, isCataloged: false };
     
     const cleanCode = code.replace(/\D/g, '');
-    if (!cleanCode) return { shortDescription: null, isCataloged: false };
+    if (!cleanCode) return { description: null, shortDescription: null, isCataloged: false };
     
     const tableName = mode === 'material' ? 'catalogo_catmat' : 'catalogo_catser';
     
     try {
         let { data, error } = await supabase
             .from(tableName as any)
-            .select('short_description')
+            .select('description, short_description')
             .eq('code', cleanCode)
             .maybeSingle();
             
         if (error) throw error;
         
+        // Fallback para CATMAT com zeros à esquerda
         if (!data && mode === 'material') {
             const paddedCode = cleanCode.padStart(9, '0');
             if (paddedCode !== cleanCode) {
                 const { data: paddedData, error: paddedError } = await supabase
                     .from(tableName as any)
-                    .select('short_description')
+                    .select('description, short_description')
                     .eq('code', paddedCode)
                     .maybeSingle();
                     
@@ -159,18 +159,18 @@ export async function fetchCatalogShortDescription(mode: 'material' | 'servico',
         }
         
         if (data) {
-            const normalizedShortDesc = data.short_description ? data.short_description.trim() : null;
             return {
-                shortDescription: normalizedShortDesc && normalizedShortDesc.length > 0 ? normalizedShortDesc : null,
+                description: data.description || null,
+                shortDescription: data.short_description || null,
                 isCataloged: true,
             };
         }
         
-        return { shortDescription: null, isCataloged: false };
+        return { description: null, shortDescription: null, isCataloged: false };
         
     } catch (error) {
-        console.error(`Erro ao buscar descrição reduzida do ${mode}:`, error);
-        return { shortDescription: null, isCataloged: false };
+        console.error(`Erro ao buscar detalhes do catálogo ${mode}:`, error);
+        return { description: null, shortDescription: null, isCataloged: false };
     }
 }
 
@@ -181,7 +181,6 @@ export async function saveNewCatalogEntry(mode: 'material' | 'servico', code: st
     const cleanCode = code.replace(/\D/g, '');
 
     if (mode === 'material') {
-        // Usa a RPC existente para CATMAT
         const { error } = await supabase.rpc('upsert_catmat_entry', {
             p_code: cleanCode,
             p_description: description,
@@ -189,7 +188,6 @@ export async function saveNewCatalogEntry(mode: 'material' | 'servico', code: st
         });
         if (error) throw error;
     } else {
-        // Para CATSER, como não temos RPC específica no schema, usamos upsert direto
         const { error } = await supabase
             .from('catalogo_catser' as any)
             .upsert({
@@ -204,15 +202,13 @@ export async function saveNewCatalogEntry(mode: 'material' | 'servico', code: st
 
 /**
  * Busca a descrição completa de um item no PNCP.
- * @param codigoItem O código do item.
- * @param mode 'material' para CATMAT ou 'servico' para CATSER.
  */
 export async function fetchCatmatFullDescription(codigoItem: string, mode: 'material' | 'servico' = 'material'): Promise<{ fullDescription: string | null, nomePdm: string | null }> {
     if (!codigoItem) return { fullDescription: null, nomePdm: null };
     
     try {
         const { data, error } = await supabase.functions.invoke('fetch-catmat-details', {
-            body: { codigoItem, mode }, // Passando o modo para a Edge Function
+            body: { codigoItem, mode }, 
         });
 
         if (error) throw new Error(error.message);

@@ -20,7 +20,7 @@ interface PNCPInspectionDialogProps {
     inspectionList: InspectionItem[];
     onFinalImport: (items: ItemAquisicao[]) => void;
     onReviewItem: (item: ItemAquisicao) => void;
-    mode?: 'material' | 'servico'; // NOVO: Propriedade de modo
+    mode?: 'material' | 'servico';
 }
 
 const AutoResizeTextarea: React.FC<{
@@ -184,8 +184,8 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                     <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow>
                             <TableHead className="w-[10%] text-center">Cód. Item</TableHead>
-                            <TableHead className="w-[35%] text-center">Descrição (ARP)</TableHead>
-                            <TableHead className="w-[35%] text-center">Descrição (PNCP)</TableHead>
+                            <TableHead className="w-[35%] text-center">Descrição (Catálogo Local)</TableHead>
+                            <TableHead className="w-[35%] text-center">Descrição (PNCP Federal)</TableHead>
                             <TableHead className="w-[20%] text-center">{status === 'needs_catmat_info' ? 'Nome Reduzido *' : 'Status'}</TableHead>
                             {status !== 'duplicate' && <TableHead className="w-[5%] text-center">Ações</TableHead>}
                         </TableRow>
@@ -197,20 +197,24 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
                                 <TableCell className="text-sm max-w-xs whitespace-normal text-center">
                                     {status === 'needs_catmat_info' ? (
                                         <AutoResizeTextarea value={item.mappedItem.descricao_item} onChange={(e) => handleUpdateFullDescription(item.originalPncpItem.id, e.target.value)} disabled={isSaving} />
-                                    ) : item.mappedItem.descricao_item}
-                                    <p className="text-xs text-muted-foreground mt-1">Pregão: {item.mappedItem.numero_pregao} ({formatCodug(item.mappedItem.uasg)}) | {formatCurrency(item.mappedItem.valor_unitario)}</p>
+                                    ) : (
+                                        <span className={cn(item.isCatmatCataloged ? "text-blue-700 font-medium" : "")}>
+                                            {item.mappedItem.descricao_item}
+                                        </span>
+                                    )}
+                                    <p className="text-[10px] text-muted-foreground mt-1">Pregão: {item.mappedItem.numero_pregao} ({formatCodug(item.mappedItem.uasg)}) | {formatCurrency(item.mappedItem.valor_unitario)}</p>
                                 </TableCell>
-                                <TableCell className="text-sm max-w-xs whitespace-normal text-muted-foreground text-center">
+                                <TableCell className="text-xs max-w-xs whitespace-normal text-muted-foreground text-center italic">
                                     {status === 'duplicate' ? <span className="text-gray-800 font-medium">{item.nomePdm || 'N/A'}</span> : item.fullPncpDescription}
                                 </TableCell>
                                 <TableCell className="py-2 text-center">
                                     {status === 'needs_catmat_info' ? (
                                         <>
                                             <Input value={item.userShortDescription} onChange={(e) => handleUpdateShortDescription(item.originalPncpItem.id, e.target.value)} placeholder="Inserir nome reduzido" disabled={isSaving} />
-                                            {item.nomePdm && <p className="text-xs text-muted-foreground mt-1">Sugestão: {item.nomePdm}</p>}
+                                            {item.nomePdm && <p className="text-[10px] text-muted-foreground mt-1">Sugestão: {item.nomePdm}</p>}
                                         </>
                                     ) : status === 'valid' ? (
-                                        <span className="font-medium text-sm">{item.mappedItem.descricao_reduzida}</span>
+                                        <span className="font-medium text-sm text-green-700">{item.mappedItem.descricao_reduzida}</span>
                                     ) : (
                                         <div className="flex flex-col items-center gap-1">
                                             <span className="text-xs text-red-600 font-medium">Duplicado</span>
@@ -238,7 +242,7 @@ const PNCPInspectionDialog: React.FC<PNCPInspectionDialogProps> = ({
             <DialogContent className="max-w-7xl">
                 <DialogHeader>
                     <DialogTitle>Inspeção de Itens PNCP ({mode === 'material' ? 'Material' : 'Serviço'})</DialogTitle>
-                    <DialogDescription>Revise os itens selecionados. Itens que requerem descrição reduzida para o catálogo {catalogLabel} devem ser resolvidos.</DialogDescription>
+                    <DialogDescription>Revise os itens selecionados. Itens em <span className="text-blue-700 font-bold">azul</span> já existem no seu catálogo local {catalogLabel}.</DialogDescription>
                 </DialogHeader>
                 <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as InspectionStatus)} className="w-full">
                     <TabsList className="grid w-full grid-cols-3 mb-4">
