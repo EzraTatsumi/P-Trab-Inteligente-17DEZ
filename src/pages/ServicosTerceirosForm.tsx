@@ -362,7 +362,7 @@ const ServicosTerceirosForm = () => {
                                                                         placeholder="Ex: 350" 
                                                                         disabled={!isPTrabEditable}
                                                                         onWheel={(e) => e.currentTarget.blur()}
-                                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-14"
+                                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-14 text-right"
                                                                     />
                                                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground pointer-events-none">
                                                                         Km/h
@@ -379,7 +379,7 @@ const ServicosTerceirosForm = () => {
                                                                         placeholder="Ex: 1500" 
                                                                         disabled={!isPTrabEditable}
                                                                         onWheel={(e) => e.currentTarget.blur()}
-                                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-10"
+                                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-10 text-right"
                                                                     />
                                                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground pointer-events-none">
                                                                         Km
