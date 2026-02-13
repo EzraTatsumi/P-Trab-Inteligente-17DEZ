@@ -50,7 +50,7 @@ interface OmTotals {
     passagens: { total: number, totalQuantidade: number, totalTrechos: number };
     concessionaria: { total: number, totalAgua: number, totalEnergia: number, totalRegistros: number };
     horasVoo: { total: number, totalND30: number, totalND39: number, quantidadeHV: number, groupedHV: Record<string, { totalValor: number, totalHV: number }> };
-    materialConsumo: { total: number, totalND30: number, totalND39: number };
+    materialConsumo: { total: number, totalND30: number, totalND39: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number }> };
     complementoAlimentacao: { total: number, totalND30: number, totalND39: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number }> };
 }
 
@@ -147,6 +147,7 @@ export interface PTrabAggregatedTotals {
     totalMaterialConsumo: number;
     totalMaterialConsumoND30: number;
     totalMaterialConsumoND39: number;
+    groupedMaterialConsumoCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number }>;
 
     totalComplementoAlimentacao: number;
     totalComplementoAlimentacaoND30: number;
@@ -193,7 +194,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     passagens: { total: 0, totalQuantidade: 0, totalTrechos: 0 },
     concessionaria: { total: 0, totalAgua: 0, totalEnergia: 0, totalRegistros: 0 },
     horasVoo: { total: 0, totalND30: 0, totalND39: 0, quantidadeHV: 0, groupedHV: {} },
-    materialConsumo: { total: 0, totalND30: 0, totalND39: 0 },
+    materialConsumo: { total: 0, totalND30: 0, totalND39: 0, groupedCategories: {} },
     complementoAlimentacao: { total: 0, totalND30: 0, totalND39: 0, groupedCategories: {} },
 } as any);
 
@@ -391,10 +392,21 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
     (materialConsumo || []).forEach(record => {
         const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
         const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
+        const val = Number(record.valor_total || 0);
+        const nd30 = Number(record.valor_nd_30 || 0);
+        const nd39 = Number(record.valor_nd_39 || 0);
+        const cat = record.group_name || 'Geral';
+
         [omS, omD].forEach(omTotals => {
-            omTotals.materialConsumo.total += Number(record.valor_total || 0);
-            omTotals.materialConsumo.totalND30 += Number(record.valor_nd_30 || 0);
-            omTotals.materialConsumo.totalND39 += Number(record.valor_nd_39 || 0);
+            omTotals.materialConsumo.total += val;
+            omTotals.materialConsumo.totalND30 += nd30;
+            omTotals.materialConsumo.totalND39 += nd39;
+            if (!omTotals.materialConsumo.groupedCategories[cat]) {
+                omTotals.materialConsumo.groupedCategories[cat] = { totalValor: 0, totalND30: 0, totalND39: 0 };
+            }
+            omTotals.materialConsumo.groupedCategories[cat].totalValor += val;
+            omTotals.materialConsumo.groupedCategories[cat].totalND30 += nd30;
+            omTotals.materialConsumo.groupedCategories[cat].totalND39 += nd39;
         });
     });
 
@@ -478,7 +490,7 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
         totalPassagensND33: 0, totalQuantidadePassagens: 0, totalTrechosPassagens: 0,
         totalConcessionariaND39: 0, totalConcessionariaRegistros: 0, totalConcessionariaAgua: 0, totalConcessionariaEnergia: 0,
         totalHorasVoo: 0, totalHorasVooND30: 0, totalHorasVooND39: 0, quantidadeHorasVoo: 0, groupedHorasVoo: {},
-        totalMaterialConsumo: 0, totalMaterialConsumoND30: 0, totalMaterialConsumoND39: 0,
+        totalMaterialConsumo: 0, totalMaterialConsumoND30: 0, totalMaterialConsumoND39: 0, groupedMaterialConsumoCategories: {},
         totalComplementoAlimentacao: 0, totalComplementoAlimentacaoND30: 0, totalComplementoAlimentacaoND39: 0, groupedComplementoCategories: {},
         groupedByOmSolicitante, groupedByOmDestino,
     };
@@ -554,6 +566,14 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
         globalTotals.totalMaterialConsumo += omTotals.materialConsumo.total;
         globalTotals.totalMaterialConsumoND30 += omTotals.materialConsumo.totalND30;
         globalTotals.totalMaterialConsumoND39 += omTotals.materialConsumo.totalND39;
+        Object.entries(omTotals.materialConsumo.groupedCategories || {}).forEach(([cat, data]) => {
+            if (!globalTotals.groupedMaterialConsumoCategories[cat]) {
+                globalTotals.groupedMaterialConsumoCategories[cat] = { totalValor: 0, totalND30: 0, totalND39: 0 };
+            }
+            globalTotals.groupedMaterialConsumoCategories[cat].totalValor += data.totalValor;
+            globalTotals.groupedMaterialConsumoCategories[cat].totalND30 += data.totalND30;
+            globalTotals.groupedMaterialConsumoCategories[cat].totalND39 += data.totalND39;
+        });
         
         globalTotals.totalComplementoAlimentacao += omTotals.complementoAlimentacao.total;
         globalTotals.totalComplementoAlimentacaoND30 += omTotals.complementoAlimentacao.totalND30;
@@ -662,7 +682,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: any) => {
                                 <CategoryCard label="Complemento de Alimentação" value={om.complementoAlimentacao.total} icon={Utensils} colorClass="bg-blue-500/10 text-blue-600" nd30={om.complementoAlimentacao.totalND30} nd39={om.complementoAlimentacao.totalND39} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.complementoAlimentacao.groupedCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, data]: any) => (<div key={cat} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{cat}</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div>))}</div>} />
                                 <CategoryCard label="Concessionária" value={om.concessionaria.total} icon={Droplet} colorClass="bg-blue-500/10 text-blue-600" nd39={om.concessionaria.total} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Água/Esgoto</span><span className="font-bold text-foreground whitespace-nowrap">{formatCurrency(om.concessionaria.totalAgua)}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Energia Elétrica</span><span className="font-bold text-foreground whitespace-nowrap">{formatCurrency(om.concessionaria.totalEnergia)}</span></div></div>} />
                                 <CategoryCard label="Diárias" value={om.diarias.total} icon={Briefcase} colorClass="bg-blue-500/10 text-blue-600" nd15={om.diarias.totalND15} nd30={om.diarias.totalND30} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Militares</span><span className="font-bold text-foreground whitespace-nowrap">{om.diarias.totalMilitares}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Dias de Viagem</span><span className="font-bold text-foreground whitespace-nowrap">{om.diarias.totalDiasViagem}</span></div></div>} />
-                                <CategoryCard label="Material de Consumo" value={om.materialConsumo.total} icon={Package} colorClass="bg-blue-500/10 text-blue-600" nd30={om.materialConsumo.totalND30} nd39={om.materialConsumo.totalND39} />
+                                <CategoryCard label="Material de Consumo" value={om.materialConsumo.total} icon={Package} colorClass="bg-blue-500/10 text-blue-600" nd30={om.materialConsumo.totalND30} nd39={om.materialConsumo.totalND39} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.materialConsumo.groupedCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, data]: any) => (<div key={cat} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{cat}</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div>))}</div>} />
                                 <CategoryCard label="Passagens" value={om.passagens.total} icon={Plane} colorClass="bg-blue-500/10 text-blue-600" nd33={om.passagens.total} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Quantidade</span><span className="font-bold text-foreground whitespace-nowrap">{om.passagens.totalQuantidade} un.</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Trechos</span><span className="font-bold text-foreground whitespace-nowrap">{om.passagens.totalTrechos}</span></div></div>} />
                                 <CategoryCard label="Suprimento de Fundos" value={om.suprimentoFundos.total} icon={Wallet} colorClass="bg-blue-500/10 text-blue-600" nd30={om.suprimentoFundos.totalND30} nd39={om.suprimentoFundos.totalND39} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Equipes</span><span className="font-bold text-foreground whitespace-nowrap">{om.suprimentoFundos.totalEquipes}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Dias</span><span className="font-bold text-foreground whitespace-nowrap">{om.suprimentoFundos.totalDias}</span></div></div>} />
                                 <CategoryCard label="Verba Operacional" value={om.verbaOperacional.total} icon={Activity} colorClass="bg-blue-500/10 text-blue-600" nd30={om.verbaOperacional.totalND30} nd39={om.verbaOperacional.totalND39} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Equipes</span><span className="font-bold text-foreground whitespace-nowrap">{om.verbaOperacional.totalEquipes}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Dias</span><span className="font-bold text-foreground whitespace-nowrap">{om.verbaOperacional.totalDias}</span></div></div>} />
@@ -714,7 +734,7 @@ const getDiariasData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['diari
 };
 
 const getVerbaOperacionalData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['verbaOperacional'] => {
-    if ((data as OmTotals).omKey) return (data as OmTotals).verbaOperacional;
+    if ((data as OmTotals).omKey) return (data as OmTotals).diarias ? (data as OmTotals).verbaOperacional : (data as any).verbaOperacional;
     const g = data as PTrabAggregatedTotals;
     return { total: g.totalVerbaOperacional, totalND30: g.totalVerbaOperacionalND30, totalND39: g.totalVerbaOperacionalND39, totalEquipes: g.totalEquipesVerba, totalDias: g.totalDiasVerba };
 };
@@ -740,7 +760,7 @@ const getConcessionariaData = (data: OmTotals | PTrabAggregatedTotals): OmTotals
 const getMaterialConsumoData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['materialConsumo'] => {
     if ((data as OmTotals).omKey) return (data as OmTotals).materialConsumo;
     const g = data as PTrabAggregatedTotals;
-    return { total: g.totalMaterialConsumo, totalND30: g.totalMaterialConsumoND30, totalND39: g.totalMaterialConsumoND39 };
+    return { total: g.totalMaterialConsumo, totalND30: g.totalMaterialConsumoND30, totalND39: g.totalMaterialConsumoND39, groupedCategories: g.groupedMaterialConsumoCategories };
 };
 
 const getComplementoAlimentacaoData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['complementoAlimentacao'] => {
@@ -794,7 +814,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
             <Accordion type="single" collapsible className="w-full pt-1">
                 <AccordionItem value="item-classe-iii" className="border-b-0">
                     <AccordionTrigger className="p-0 hover:no-underline"><div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50"><div className="flex items-center gap-1 text-foreground"><Fuel className="h-3 w-3 text-orange-500" />Classe III</div><span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(c.total)}</span></div></AccordionTrigger>
-                    <AccordionContent className="pt-1 pb-0"><div className="space-y-1 pl-4 text-[10px]"><div className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left">Óleo Diesel</span><span className="w-1/4 text-right font-medium">{formatNumber(c.totalDieselLitros)} L</span><span className="w-1/4 text-right font-medium">{formatCurrency(c.totalDieselValor)}</span></div><div className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left">Gasolina</span><span className="w-1/4 text-right font-medium">{formatNumber(c.totalGasolinaLitros)} L</span><span className="w-1/4 text-right font-medium">{formatCurrency(c.totalGasolinaValor)}</span></div><div className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left">Lubrificante</span><span className="w-1/4 text-right font-medium">{formatNumber(c.totalLubrificanteLitros || 0, 2)} L</span><span className="w-1/4 text-right font-medium">{formatCurrency(c.totalLubrificanteValor)}</span></div></div></AccordionContent>
+                    <AccordionContent className="pt-1 pb-0"><div className="space-y-1 pl-4 text-[10px]"><div className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left">Óleo Diesel</span><span className="w-1/4 text-right font-medium">{formatNumber(om.classeIII.totalDieselLitros)} L</span><span className="w-1/4 text-right font-medium">{formatCurrency(om.classeIII.totalDieselValor)}</span></div><div className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left">Gasolina</span><span className="w-1/4 text-right font-medium">{formatNumber(om.classeIII.totalGasolinaLitros)} L</span><span className="w-1/4 text-right font-medium">{formatCurrency(om.classeIII.totalGasolinaValor)}</span></div><div className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left">Lubrificante</span><span className="w-1/4 text-right font-medium">{formatNumber(om.classeIII.totalLubrificanteLitros || 0, 2)} L</span><span className="w-1/4 text-right font-medium">{formatCurrency(om.classeIII.totalLubrificanteValor)}</span></div></div></AccordionContent>
                 </AccordionItem>
             </Accordion>
         );
@@ -854,7 +874,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
             <Accordion type="single" collapsible className="w-full pt-1">
                 <AccordionItem value="item-material-consumo" className="border-b-0">
                     <AccordionTrigger className="p-0 hover:no-underline"><div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50"><div className="flex items-center gap-1 text-foreground"><Package className="h-3 w-3 text-blue-500" />Material de Consumo</div><span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(m.total)}</span></div></AccordionTrigger>
-                    <AccordionContent className="pt-1 pb-0"><div className="space-y-1 pl-4 text-[10px]"><div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1"><span className="w-1/2 text-left font-semibold">ND 30 / ND 39</span><span className="w-1/4 text-right font-medium text-green-600">{formatCurrency(m.totalND30)}</span><span className="w-1/4 text-right font-medium text-blue-600">{formatCurrency(m.totalND39)}</span></div></div></AccordionContent>
+                    <AccordionContent className="pt-1 pb-0"><div className="space-y-1 pl-4 text-[10px]">{Object.entries(m.groupedCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, d]: any) => (<div key={cat} className="space-y-1"><div className="flex justify-between text-muted-foreground font-semibold pt-1"><span className="w-1/2 text-left">{cat}</span><span className="w-1/2 text-right font-medium">{formatCurrency(d.totalValor)}</span></div><div className="flex justify-between text-muted-foreground text-[9px] pl-2"><span className="w-1/2 text-left">ND 30 / ND 39</span><span className="w-1/4 text-right text-green-600 font-medium">{formatCurrency(d.totalND30)}</span><span className="w-1/4 text-right text-blue-600 font-medium">{formatCurrency(d.totalND39)}</span></div></div>))}</div></AccordionContent>
                 </AccordionItem>
             </Accordion>
         );
@@ -866,12 +886,12 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
             <Accordion type="single" collapsible className="w-full pt-1">
                 <AccordionItem value="item-complemento-alimentacao" className="border-b-0">
                     <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-2 text-foreground shrink-0">
-                                <Utensils className="h-3 w-3 text-blue-500" />
-                                <span className="whitespace-nowrap">Complemento de Alimentação</span>
+                        <div className="flex justify-between items-start w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-start gap-2 text-foreground pt-0.5">
+                                <Utensils className="h-3 w-3 text-blue-500 mt-0.5" />
+                                <span className="text-left leading-tight">Complemento de<br/>Alimentação</span>
                             </div>
-                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                            <span className={cn(valueClasses, "text-xs mt-0.5 mr-6")}>
                                 {formatCurrency(c.total)}
                             </span>
                         </div>
