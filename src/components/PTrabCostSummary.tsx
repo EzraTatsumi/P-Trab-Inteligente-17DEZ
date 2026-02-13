@@ -9,7 +9,7 @@ import {
   Package, 
   TrendingUp, 
   Wallet, 
-  Helicopter, // Alterado de Plane para Helicopter
+  Plane, 
   ChevronDown, 
   ChevronUp,
   Info,
@@ -188,7 +188,6 @@ const CostCard = ({ label, value, icon: Icon, colorClass, creditValue }: { label
     <Card className="overflow-hidden border-none shadow-md bg-background/50 backdrop-blur-sm">
       <CardContent className="p-5">
         <div className="flex items-center gap-4 mb-4">
-          {/* LINHA 585: Substituindo Icon por Helicopter se for AvEx (controlado pelo pai) */}
           <div className={cn("p-3 rounded-lg transition-colors", colorClass)}>
             <Icon className="h-6 w-6" />
           </div>
@@ -249,9 +248,8 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
 
       <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-white">
         <CardHeader className="pb-2">
-          {/* LINHA 674: Substituindo Plane por Helicopter */}
           <CardTitle className="text-lg font-bold flex items-center gap-2 text-purple-700">
-            <Helicopter className="h-5 w-5" />
+            <Plane className="h-5 w-5" />
             Aviação do Exército
           </CardTitle>
         </CardHeader>
@@ -269,11 +267,10 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
                   <span className="text-sm font-bold">{formatCurrency(om.totalAviacaoExercito)}</span>
                 </div>
                 
-                {/* LINHA 920: Substituindo Plane por Helicopter no detalhamento de HV */}
                 <div className="space-y-1.5 border-l-2 border-purple-200 pl-3 py-1">
                   <div className="flex items-center justify-between text-[10px] font-bold text-purple-600/70 uppercase tracking-tighter">
                     <div className="flex items-center gap-1.5">
-                      <Helicopter className="h-3 w-3" />
+                      <Plane className="h-3 w-3" />
                       Horas de Voo
                     </div>
                     <span>{formatNumber(om.quantidadeHV, 2)} HV</span>
