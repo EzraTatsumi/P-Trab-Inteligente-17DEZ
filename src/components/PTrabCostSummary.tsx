@@ -886,12 +886,12 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
             <Accordion type="single" collapsible className="w-full pt-1">
                 <AccordionItem value="item-complemento-alimentacao" className="border-b-0">
                     <AccordionTrigger className="p-0 hover:no-underline">
-                        <div className="flex justify-between items-start w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-start gap-2 text-foreground pt-0.5">
-                                <Utensils className="h-3 w-3 text-blue-500 mt-0.5" />
-                                <span className="text-left leading-tight">Complemento de<br/>Alimentação</span>
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-2 text-foreground">
+                                <Utensils className="h-3 w-3 text-blue-500" />
+                                <span className="text-left leading-tight max-w-[120px]">Complemento de Alimentação</span>
                             </div>
-                            <span className={cn(valueClasses, "text-xs mt-0.5 mr-6")}>
+                            <span className={cn(valueClasses, "text-xs mr-6")}>
                                 {formatCurrency(c.total)}
                             </span>
                         </div>
@@ -1052,7 +1052,7 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
       <CardHeader className="pb-2 pt-3">
         <div className="flex justify-between items-center"><CardTitle className="text-xl font-bold">Resumo de Custos</CardTitle></div>
         <CardDescription className="text-xs">Visão consolidada dos custos logísticos e orçamentários.</CardDescription>
-      </CardHeader>
+      </Header>
       <CardContent className="space-y-4 p-0 pb-3">
         {renderCostSummary()}
         <Accordion type="single" collapsible className="w-full px-6 pt-0" value={isDetailsOpen ? "summary-details" : undefined} onValueChange={(v) => viewMode === 'global' && setIsDetailsOpen(v === "summary-details")}>
