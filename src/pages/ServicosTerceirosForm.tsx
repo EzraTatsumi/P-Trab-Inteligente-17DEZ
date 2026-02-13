@@ -69,6 +69,22 @@ interface OMData {
     ativo: boolean;
 }
 
+interface PendingServicoItem {
+    tempId: string;
+    organizacao: string;
+    ug: string;
+    om_detentora: string;
+    ug_detentora: string;
+    dias_operacao: number;
+    efetivo: number;
+    fase_atividade: string;
+    categoria: CategoriaServico;
+    detalhes_planejamento: any;
+    valor_total: number;
+    valor_nd_30: number;
+    valor_nd_39: number;
+}
+
 const ServicosTerceirosForm = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -95,6 +111,9 @@ const ServicosTerceirosForm = () => {
 
     const [selectedItems, setSelectedItems] = useState<ItemAquisicaoServico[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+    
+    // NOVO: Estado para itens pendentes (Staging)
+    const [pendingItems, setPendingItems] = useState<PendingServicoItem[]>([]);
     
     // Estados de Memória
     const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
@@ -123,40 +142,29 @@ const ServicosTerceirosForm = () => {
 
     // --- MUTATIONS ---
     const saveMutation = useMutation({
-        mutationFn: async () => {
-            const { totalND30, totalND39, totalGeral } = calculateServicoTotals(selectedItems);
-            const payload = {
+        mutationFn: async (itemsToSave: PendingServicoItem[]) => {
+            const records = itemsToSave.map(item => ({
                 p_trab_id: ptrabId,
-                organizacao: omFavorecida.nome,
-                ug: omFavorecida.ug,
-                om_detentora: omDestino.nome,
-                ug_detentora: omDestino.ug,
-                dias_operacao: diasOperacao,
-                efetivo: efetivo,
-                fase_atividade: faseAtividade,
-                categoria: activeTab,
-                detalhes_planejamento: { 
-                    itens_selecionados: selectedItems,
-                    tipo_anv: tipoAnv,
-                    capacidade: capacidade,
-                    velocidade_cruzeiro: velocidadeCruzeiro,
-                    distancia_percorrer: distanciaPercorrer
-                } as any,
-                valor_total: totalGeral,
-                valor_nd_30: totalND30,
-                valor_nd_39: totalND39,
-            };
+                organizacao: item.organizacao,
+                ug: item.ug,
+                om_detentora: item.om_detentora,
+                ug_detentora: item.ug_detentora,
+                dias_operacao: item.dias_operacao,
+                efetivo: item.efetivo,
+                fase_atividade: item.fase_atividade,
+                categoria: item.categoria,
+                detalhes_planejamento: item.detalhes_planejamento,
+                valor_total: item.valor_total,
+                valor_nd_30: item.valor_nd_30,
+                valor_nd_39: item.valor_nd_39,
+            }));
 
-            const { error } = await supabase.from('servicos_terceiros_registros').insert([payload]);
+            const { error } = await supabase.from('servicos_terceiros_registros').insert(records);
             if (error) throw error;
         },
         onSuccess: () => {
-            toast.success("Planejamento salvo com sucesso!");
-            setSelectedItems([]);
-            setTipoAnv("");
-            setCapacidade("");
-            setVelocidadeCruzeiro("");
-            setDistanciaPercorrer("");
+            toast.success("Todos os registros foram salvos com sucesso!");
+            setPendingItems([]);
             queryClient.invalidateQueries({ queryKey: ['servicosTerceirosRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
         },
@@ -186,7 +194,6 @@ const ServicosTerceirosForm = () => {
     const handleItemsSelected = (items: ItemAquisicaoServico[]) => {
         const newItems = items.map(item => {
             const existing = selectedItems.find(i => i.id === item.id);
-            // Se for fretamento aéreo e tivermos sugestão, aplicamos a sugestão ao novo item
             const initialQty = (activeTab === "fretamento-aereo" && suggestedHV) ? suggestedHV : 1;
             return existing ? existing : { ...item, quantidade: initialQty, valor_total: initialQty * item.valor_unitario };
         });
@@ -201,6 +208,57 @@ const ServicosTerceirosForm = () => {
     };
 
     const totalLote = useMemo(() => selectedItems.reduce((acc, item) => acc + (item.valor_total || 0), 0), [selectedItems]);
+
+    // NOVO: Handler para adicionar ao staging (Seção 3)
+    const handleAddToPending = () => {
+        if (selectedItems.length === 0) {
+            toast.warning("Selecione pelo menos um item.");
+            return;
+        }
+
+        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(selectedItems);
+        
+        const newItem: PendingServicoItem = {
+            tempId: crypto.randomUUID(),
+            organizacao: omFavorecida.nome,
+            ug: omFavorecida.ug,
+            om_detentora: omDestino.nome,
+            ug_detentora: omDestino.ug,
+            dias_operacao: diasOperacao,
+            efetivo: efetivo,
+            fase_atividade: faseAtividade,
+            categoria: activeTab,
+            detalhes_planejamento: { 
+                itens_selecionados: selectedItems,
+                tipo_anv: tipoAnv,
+                capacidade: capacidade,
+                velocidade_cruzeiro: velocidadeCruzeiro,
+                distancia_percorrer: distanciaPercorrer
+            },
+            valor_total: totalGeral,
+            valor_nd_30: totalND30,
+            valor_nd_39: totalND39,
+        };
+
+        setPendingItems(prev => [...prev, newItem]);
+        
+        // Limpar campos específicos da aba, mas manter contexto de OM/Fase se desejar
+        setSelectedItems([]);
+        setTipoAnv("");
+        setCapacidade("");
+        setVelocidadeCruzeiro("");
+        setDistanciaPercorrer("");
+        
+        toast.info("Item adicionado à lista de pendentes.");
+    };
+
+    const handleRemovePending = (tempId: string) => {
+        setPendingItems(prev => prev.filter(item => item.tempId !== tempId));
+    };
+
+    const handleClearPending = () => {
+        setPendingItems([]);
+    };
 
     // Handlers de Memória
     const handleSaveMemoria = async (id: string) => {
@@ -228,6 +286,8 @@ const ServicosTerceirosForm = () => {
 
     const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
     const isBaseFormReady = omFavorecida.nome !== "" && faseAtividade !== "";
+
+    const totalPendingValue = pendingItems.reduce((acc, item) => acc + item.valor_total, 0);
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
@@ -338,7 +398,7 @@ const ServicosTerceirosForm = () => {
                                             <Card className="mt-4 rounded-lg p-4 bg-background">
                                                 <div className="space-y-4">
                                                     <div className="flex justify-between items-center">
-                                                        <h4 className="text-base font-semibold">Itens de Fretamento Aéreo</h4>
+                                                        <h4 className="text-base font-semibold">Itens de {activeTab.replace('-', ' ')}</h4>
                                                         <Button type="button" variant="outline" size="sm" onClick={() => setIsSelectorOpen(true)} disabled={!isPTrabEditable}><Plus className="mr-2 h-4 w-4" /> Importar da Diretriz</Button>
                                                     </div>
 
@@ -495,9 +555,13 @@ const ServicosTerceirosForm = () => {
                                             </Card>
 
                                             <div className="flex justify-end gap-3 pt-4">
-                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={selectedItems.length === 0 || saveMutation.isPending || efetivo <= 0 || diasOperacao <= 0} onClick={() => saveMutation.mutate()}>
-                                                    {saveMutation.isPending ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
-                                                    Salvar Item na Lista
+                                                <Button 
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90" 
+                                                    disabled={selectedItems.length === 0 || saveMutation.isPending || efetivo <= 0 || diasOperacao <= 0} 
+                                                    onClick={handleAddToPending}
+                                                >
+                                                    <Plus className="mr-2 h-4 w-4" />
+                                                    Adicionar à Lista de Pendentes
                                                 </Button>
                                             </div>
                                         </Card>
@@ -505,7 +569,97 @@ const ServicosTerceirosForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 3: REGISTROS SALVOS */}
+                            {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES) */}
+                            {pendingItems.length > 0 && (
+                                <section className="space-y-4 border-b pb-6">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                                        3. Itens Adicionados ({pendingItems.length} {pendingItems.length === 1 ? 'Planejamento' : 'Planejamentos'})
+                                    </h3>
+                                    
+                                    <div className="space-y-4">
+                                        {pendingItems.map((item) => {
+                                            const isOmDestinoDifferent = item.organizacao !== item.om_detentora || item.ug !== item.ug_detentora;
+                                            
+                                            return (
+                                                <Card 
+                                                    key={item.tempId} 
+                                                    className="border-2 shadow-md border-secondary bg-secondary/10"
+                                                >
+                                                    <CardContent className="p-4">
+                                                        <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/30">
+                                                            <h4 className="font-bold text-base text-foreground capitalize">
+                                                                {item.categoria.replace('-', ' ')}
+                                                            </h4>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="font-extrabold text-lg text-foreground text-right">
+                                                                    {formatCurrency(item.valor_total)}
+                                                                </p>
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    onClick={() => handleRemovePending(item.tempId)}
+                                                                    disabled={saveMutation.isPending}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="grid grid-cols-2 gap-4 text-xs pt-1">
+                                                            <div className="space-y-1">
+                                                                <p className="font-medium">OM Favorecida:</p>
+                                                                <p className="font-medium">OM Destino do Recurso:</p>
+                                                                <p className="font-medium">Período/Efetivo:</p>
+                                                                <p className="font-medium">Fase:</p>
+                                                            </div>
+                                                            <div className="text-right space-y-1">
+                                                                <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
+                                                                <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>
+                                                                    {item.om_detentora} ({formatCodug(item.ug_detentora)})
+                                                                </p>
+                                                                <p className="font-medium">{item.dias_operacao} dias / {item.efetivo} militares</p>
+                                                                <p className="font-medium">{item.fase_atividade}</p>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="w-full h-[1px] bg-secondary/30 my-3" />
+
+                                                        <div className="flex justify-between text-xs">
+                                                            <span className="text-muted-foreground">Total ND 30/39:</span>
+                                                            <span className="font-medium text-green-600">{formatCurrency(item.valor_nd_30 + item.valor_nd_39)}</span>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
+                                    </div>
+                                    
+                                    <Card className="bg-gray-100 shadow-inner">
+                                        <CardContent className="p-4 flex justify-between items-center">
+                                            <span className="font-bold text-base uppercase">VALOR TOTAL DA LISTA</span>
+                                            <span className="font-extrabold text-xl text-foreground">{formatCurrency(totalPendingValue)}</span>
+                                        </CardContent>
+                                    </Card>
+                                    
+                                    <div className="flex justify-end gap-3 pt-4">
+                                        <Button 
+                                            type="button" 
+                                            onClick={() => saveMutation.mutate(pendingItems)}
+                                            disabled={saveMutation.isPending || pendingItems.length === 0}
+                                            className="w-full md:w-auto bg-primary hover:bg-primary/90"
+                                        >
+                                            {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                            Salvar Todos os Registros no Banco
+                                        </Button>
+                                        <Button type="button" variant="outline" onClick={handleClearPending} disabled={saveMutation.isPending}>
+                                            <XCircle className="mr-2 h-4 w-4" />
+                                            Limpar Lista
+                                        </Button>
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* SEÇÃO 4: REGISTROS SALVOS */}
                             {registros && registros.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
@@ -534,7 +688,7 @@ const ServicosTerceirosForm = () => {
                                 </section>
                             )}
 
-                            {/* SEÇÃO 4: MEMÓRIAS DE CÁLCULO */}
+                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULO */}
                             {registros && registros.length > 0 && (
                                 <section className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">📋 Memórias de Cálculos Detalhadas</h3>
