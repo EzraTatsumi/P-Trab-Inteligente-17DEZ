@@ -566,8 +566,8 @@ const ServicosTerceirosForm = () => {
                                                     disabled={selectedItems.length === 0 || saveMutation.isPending || efetivo <= 0 || diasOperacao <= 0} 
                                                     onClick={handleAddToPending}
                                                 >
-                                                    <Plus className="mr-2 h-4 w-4" />
-                                                    Salvar Item na Lista
+                                                    {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                                    Salvar Itens na Lista
                                                 </Button>
                                             </div>
                                         </Card>
