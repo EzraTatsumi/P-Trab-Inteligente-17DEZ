@@ -289,6 +289,12 @@ const ServicosTerceirosForm = () => {
 
     const totalPendingValue = pendingItems.reduce((acc, item) => acc + item.valor_total, 0);
 
+    // Helper para formatar o nome da categoria
+    const formatCategoryName = (cat: string) => {
+        if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
+        return cat.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    };
+
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
             <div className="max-w-6xl mx-auto space-y-6">
@@ -398,7 +404,7 @@ const ServicosTerceirosForm = () => {
                                             <Card className="mt-4 rounded-lg p-4 bg-background">
                                                 <div className="space-y-4">
                                                     <div className="flex justify-between items-center">
-                                                        <h4 className="text-base font-semibold">Itens de {activeTab.replace('-', ' ')}</h4>
+                                                        <h4 className="text-base font-semibold">Itens de {formatCategoryName(activeTab)}</h4>
                                                         <Button type="button" variant="outline" size="sm" onClick={() => setIsSelectorOpen(true)} disabled={!isPTrabEditable}><Plus className="mr-2 h-4 w-4" /> Importar da Diretriz</Button>
                                                     </div>
 
@@ -573,7 +579,7 @@ const ServicosTerceirosForm = () => {
                             {pendingItems.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        3. Itens Adicionados ({pendingItems.length} {pendingItems.length === 1 ? 'Planejamento' : 'Planejamentos'})
+                                        3. Itens Adicionados - {faseAtividade} ({pendingItems.length} {pendingItems.length === 1 ? 'Planejamento' : 'Planejamentos'})
                                     </h3>
                                     
                                     <div className="space-y-4">
@@ -587,8 +593,8 @@ const ServicosTerceirosForm = () => {
                                                 >
                                                     <CardContent className="p-4">
                                                         <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/30">
-                                                            <h4 className="font-bold text-base text-foreground capitalize">
-                                                                {item.categoria.replace('-', ' ')}
+                                                            <h4 className="font-bold text-base text-foreground">
+                                                                {formatCategoryName(item.categoria)}
                                                             </h4>
                                                             <div className="flex items-center gap-2">
                                                                 <p className="font-extrabold text-lg text-foreground text-right">
