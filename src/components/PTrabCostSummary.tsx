@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber, formatCodug } from "@/lib/formatUtils";
-import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Plane, TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase, Droplet, Zap, MapPin, Building2, Coffee, Droplets } from "lucide-react";
+import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Helicopter, TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase, Droplet, Zap, MapPin, Building2, Coffee, Droplets, Plane } from "lucide-react";
 import {
   Accordion,
   AccordionItem,
@@ -41,6 +41,7 @@ interface OmTotals {
     classeVI: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> };
     classeVII: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> };
     classeVIII: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> };
+    classeVIII_remonta: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> };
     classeIX: { total: number, totalND30: number, totalND39: number, totalItens: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number, totalItens: number }> };
     
     diarias: { total: number, totalND15: number, totalND30: number, totalMilitares: number, totalDiasViagem: number };
@@ -582,7 +583,7 @@ const CategoryCard = ({ label, value, icon: Icon, colorClass, nd15, nd30, nd33, 
   return (
     <div className={cn("flex flex-col p-5 rounded-xl border border-border/50 bg-card/40 hover:bg-accent/5 transition-all group cursor-pointer min-h-[110px]", isExpanded && "ring-1 ring-primary/30 bg-accent/5 shadow-sm")} onClick={() => details && setIsExpanded(!isExpanded)}>
       <div className="flex items-center gap-4 mb-4">
-        <div className={cn("p-3 rounded-lg transition-colors", colorClass)}><Icon className="h-6 w-6" /></div>
+        <div className={cn("p-3 rounded-lg transition-colors", colorClass)}><Helicopter className="h-6 w-6" /></div>
         <div className="flex flex-col flex-1 min-w-0">
           <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-bold leading-none mb-2 truncate">{label}</span>
           <div className="flex flex-col">
@@ -671,11 +672,11 @@ const OmDetailsDialog = ({ om, totals, onClose }: any) => {
                     {(om.totalAviacaoExercito > 0 || om.horasVoo.quantidadeHV > 0) && (
                         <div>
                             <h3 className="text-base font-bold text-purple-600 uppercase tracking-wider mb-5 flex items-center justify-between border-b border-purple-500/20 pb-2">
-                                <div className="flex items-center gap-2"><Plane className="h-5 w-5" />Aba Aviação do Exército</div>
+                                <div className="flex items-center gap-2"><Helicopter className="h-5 w-5" />Aba Aviação do Exército</div>
                                 <span className="text-xl font-extrabold">{formatCurrency(om.totalAviacaoExercito)}</span>
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                                <CategoryCard label="Horas de Voo" value={om.horasVoo.total} icon={Zap} colorClass="bg-purple-500/10 text-purple-600" nd30={om.horasVoo.totalND30} nd39={om.horasVoo.totalND39} extraInfo={`${formatNumber(om.horasVoo.quantidadeHV, 2)} HV`} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.horasVoo.groupedHV || {}).sort(([a], [b]) => a.localeCompare(b)).map(([tipo, data]: any) => (<div key={tipo} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{tipo}</span><div className="flex w-1/2 justify-between gap-3"><span className="font-medium text-right w-1/2 whitespace-nowrap">{formatNumber(data.totalHV, 2)} HV</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div></div>))}</div>} />
+                                <CategoryCard label="Horas de Voo" value={om.horasVoo.total} icon={Helicopter} colorClass="bg-purple-500/10 text-purple-600" nd30={om.horasVoo.totalND30} nd39={om.horasVoo.totalND39} extraInfo={`${formatNumber(om.horasVoo.quantidadeHV, 2)} HV`} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.horasVoo.groupedHV || {}).sort(([a], [b]) => a.localeCompare(b)).map(([tipo, data]: any) => (<div key={tipo} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{tipo}</span><div className="flex w-1/2 justify-between gap-3"><span className="font-medium text-right w-1/2 whitespace-nowrap">{formatNumber(data.totalHV, 2)} HV</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div></div>))}</div>} />
                             </div>
                         </div>
                     )}
@@ -917,7 +918,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
         if (h.total === 0 && h.quantidadeHV === 0) return null;
         return (
             <div className="space-y-3 border-l-4 border-purple-500 pl-3 pt-4">
-                <div className="flex items-center justify-between text-xs font-semibold text-purple-600 mb-2"><div className="flex items-center gap-2"><Plane className="h-3 w-3" />Aviação do Exército</div><span className="font-bold text-sm">{formatNumber(h.quantidadeHV, 2)} HV</span></div>
+                <div className="flex items-center justify-between text-xs font-semibold text-purple-600 mb-2"><div className="flex items-center gap-2"><Helicopter className="h-3 w-3" />Aviação do Exército</div><span className="font-bold text-sm">{formatNumber(h.quantidadeHV, 2)} HV</span></div>
                 <div className="space-y-1 pl-4 text-[10px]">{Object.entries(h.groupedHV || {}).sort(([a], [b]) => a.localeCompare(b)).map(([tipo, d]: any) => (<div key={tipo} className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left">{tipo}</span><span className="w-1/4 text-right font-medium text-background"></span><span className="w-1/4 text-right font-medium">{formatNumber(d.totalHV, 2)} HV</span></div>))}</div>
             </div>
         );
@@ -1028,7 +1029,10 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
           <AccordionItem value="summary-details" className="border-b-0">
             <AccordionTrigger className="py-0 px-0 hover:no-underline flex items-center justify-between w-full text-xs text-muted-foreground border-t border-border/50" onClick={(e) => { e.preventDefault(); if (viewMode === 'global') handleSummaryClick(); }}>
               <div className="flex justify-between items-center w-full py-2">
-                <div className="flex items-center gap-2"><span className="text-base font-bold text-foreground">Total Geral</span><Button variant={viewMode === 'byOm' ? 'default' : 'outline'} size="sm" className="h-6 text-[10px] px-2" onClick={(e) => { e.stopPropagation(); setViewMode(viewMode === 'byOm' ? 'global' : 'byOm'); setIsDetailsOpen(false); setSelectedOm(null); }}>{viewMode === 'byOm' ? 'Voltar ao Global' : 'Ver por OM'}</Button></div>
+                <div className="flex flex-col items-start gap-1">
+                  <span className="text-base font-bold text-foreground">Total Geral</span>
+                  <Button variant={viewMode === 'byOm' ? 'default' : 'outline'} size="sm" className="h-6 text-[10px] px-2" onClick={(e) => { e.stopPropagation(); setViewMode(viewMode === 'byOm' ? 'global' : 'byOm'); setIsDetailsOpen(false); setSelectedOm(null); }}>{viewMode === 'byOm' ? 'Voltar ao Global' : 'Ver por OM'}</Button>
+                </div>
                 <div className="flex flex-col items-end gap-0"><span className="text-lg font-bold text-foreground">{formatCurrency(totalGeralFinal)}</span>{viewMode === 'global' && <span className="font-semibold text-primary flex items-center gap-1 text-xs lowercase">{isDetailsOpen ? "menos detalhes" : "mais detalhes"}<ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform duration-200", isDetailsOpen ? "rotate-180" : "rotate-0")} /></span>}</div>
               </div>
             </AccordionTrigger>
