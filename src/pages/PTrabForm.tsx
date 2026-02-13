@@ -89,7 +89,6 @@ const PTrabForm = () => {
       totalClasseV: 0,
       totalCombustivel: 0,
       totalLubrificanteValor: 0,
-      omBreakdown: {}, // ADICIONADO: Evita erro de conversão no componente filho
     } as any,
   });
   
@@ -148,8 +147,8 @@ const PTrabForm = () => {
     }
   }, [loadingSession, loadingPTrab, isLoadingCredits, ptrabData, credits, hasPromptedForCredit]);
 
-  const calculatedGND3 = (totals?.totalLogisticoGeral || 0) + (totals?.totalOperacional || 0) + (totals?.totalAviacaoExercito || 0);
-  const calculatedGND4 = totals?.totalMaterialPermanente || 0;
+  const calculatedGND3 = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito;
+  const calculatedGND4 = totals.totalMaterialPermanente;
 
   const handleSaveCredit = (gnd3: number, gnd4: number) => {
     if (!user?.id) {
