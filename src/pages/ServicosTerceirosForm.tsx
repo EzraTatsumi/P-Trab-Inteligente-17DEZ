@@ -13,8 +13,6 @@ import {
     Sparkles, 
     AlertCircle, 
     Check, 
-    Package, 
-    Briefcase, 
     Plane, 
     Satellite, 
     Car, 
@@ -26,8 +24,6 @@ import {
     FileText, 
     Printer, 
     Plus, 
-    Minus, 
-    RefreshCw, 
     XCircle, 
     Pencil,
     Info
@@ -42,7 +38,7 @@ import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
 import { OmSelector } from "@/components/OmSelector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { ItemAquisicaoServico, DetalhesPlanejamentoServico } from "@/types/diretrizesServicosTerceiros";
+import { ItemAquisicaoServico } from "@/types/diretrizesServicosTerceiros";
 import ServicosTerceirosItemSelectorDialog from "@/components/ServicosTerceirosItemSelectorDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { calculateServicoTotals, ServicoTerceiroRegistro } from "@/lib/servicosTerceirosUtils";
@@ -85,6 +81,20 @@ interface PendingServicoItem {
     valor_nd_39: number;
 }
 
+// Interface para consolidação (Seção 4)
+interface ConsolidatedServicoRecord {
+    groupKey: string;
+    organizacao: string;
+    ug: string;
+    om_detentora: string;
+    ug_detentora: string;
+    dias_operacao: number;
+    efetivo: number;
+    fase_atividade: string;
+    records: ServicoTerceiroRegistro[];
+    totalGeral: number;
+}
+
 const ServicosTerceirosForm = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -103,7 +113,7 @@ const ServicosTerceirosForm = () => {
     const [diasOperacao, setDiasOperacao] = useState<number>(0);
     const [omDestino, setOmDestino] = useState({ nome: "", ug: "", id: "" });
 
-    // Novos campos para Fretamento Aéreo
+    // Campos específicos
     const [tipoAnv, setTipoAnv] = useState("");
     const [capacidade, setCapacidade] = useState("");
     const [velocidadeCruzeiro, setVelocidadeCruzeiro] = useState<number | "">("");
@@ -112,10 +122,11 @@ const ServicosTerceirosForm = () => {
     const [selectedItems, setSelectedItems] = useState<ItemAquisicaoServico[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     
-    // NOVO: Estado para itens pendentes (Staging)
+    // Staging
     const [pendingItems, setPendingItems] = useState<PendingServicoItem[]>([]);
+    const [lastStagedState, setLastStagedState] = useState<any>(null);
     
-    // Estados de Memória
+    // Memória
     const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
     const [memoriaEdit, setMemoriaEdit] = useState("");
 
@@ -126,6 +137,20 @@ const ServicosTerceirosForm = () => {
         }
         return null;
     }, [activeTab, velocidadeCruzeiro, distanciaPercorrer]);
+
+    // --- DIRTY CHECK ---
+    const isServicosTerceirosDirty = useMemo(() => {
+        if (!lastStagedState || pendingItems.length === 0) return false;
+        
+        return (
+            omFavorecida.id !== lastStagedState.omFavorecidaId ||
+            faseAtividade !== lastStagedState.faseAtividade ||
+            efetivo !== lastStagedState.efetivo ||
+            diasOperacao !== lastStagedState.diasOperacao ||
+            omDestino.id !== lastStagedState.omDestinoId ||
+            selectedItems.length > 0 // Se houver itens novos selecionados, está "sujo" em relação ao que foi estagiado
+        );
+    }, [omFavorecida, faseAtividade, efetivo, diasOperacao, omDestino, selectedItems, lastStagedState, pendingItems]);
 
     // --- DATA FETCHING ---
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
@@ -139,6 +164,32 @@ const ServicosTerceirosForm = () => {
         queryFn: () => fetchPTrabRecords('servicos_terceiros_registros' as any, ptrabId!),
         enabled: !!ptrabId,
     });
+
+    // Consolidação para Seção 4
+    const consolidatedRegistros = useMemo<ConsolidatedServicoRecord[]>(() => {
+        if (!registros) return [];
+        const groups = registros.reduce((acc, reg) => {
+            const key = `${reg.organizacao}|${reg.ug}|${reg.om_detentora}|${reg.ug_detentora}|${reg.dias_operacao}|${reg.efetivo}|${reg.fase_atividade}`;
+            if (!acc[key]) {
+                acc[key] = {
+                    groupKey: key,
+                    organizacao: reg.organizacao,
+                    ug: reg.ug,
+                    om_detentora: reg.om_detentora || '',
+                    ug_detentora: reg.ug_detentora || '',
+                    dias_operacao: reg.dias_operacao,
+                    efetivo: reg.efetivo || 0,
+                    fase_atividade: reg.fase_atividade || '',
+                    records: [],
+                    totalGeral: 0
+                };
+            }
+            acc[key].records.push(reg);
+            acc[key].totalGeral += Number(reg.valor_total || 0);
+            return acc;
+        }, {} as Record<string, ConsolidatedServicoRecord>);
+        return Object.values(groups).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
+    }, [registros]);
 
     // --- MUTATIONS ---
     const saveMutation = useMutation({
@@ -158,13 +209,12 @@ const ServicosTerceirosForm = () => {
                 valor_nd_30: item.valor_nd_30,
                 valor_nd_39: item.valor_nd_39,
             }));
-
             const { error } = await supabase.from('servicos_terceiros_registros').insert(records);
             if (error) throw error;
         },
         onSuccess: () => {
-            toast.success("Todos os registros foram salvos com sucesso!");
-            setPendingItems([]);
+            toast.success("Registros salvos com sucesso!");
+            resetForm();
             queryClient.invalidateQueries({ queryKey: ['servicosTerceirosRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
         },
@@ -172,18 +222,31 @@ const ServicosTerceirosForm = () => {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: async (id: string) => {
-            const { error } = await supabase.from('servicos_terceiros_registros').delete().eq('id', id);
+        mutationFn: async (ids: string[]) => {
+            const { error } = await supabase.from('servicos_terceiros_registros').delete().in('id', ids);
             if (error) throw error;
         },
         onSuccess: () => {
-            toast.success("Registro excluído.");
+            toast.success("Lote excluído.");
             queryClient.invalidateQueries({ queryKey: ['servicosTerceirosRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
         }
     });
 
     // --- HANDLERS ---
+    const resetForm = () => {
+        setPendingItems([]);
+        setLastStagedState(null);
+        setSelectedItems([]);
+        setEfetivo(0);
+        setDiasOperacao(0);
+        setFaseAtividade("");
+        setTipoAnv("");
+        setCapacidade("");
+        setVelocidadeCruzeiro("");
+        setDistanciaPercorrer("");
+    };
+
     const handleOmFavorecidaChange = (omData: OMData | undefined) => {
         if (omData) {
             setOmFavorecida({ nome: omData.nome_om, ug: omData.codug_om, id: omData.id });
@@ -207,12 +270,13 @@ const ServicosTerceirosForm = () => {
         ));
     };
 
-    const totalLote = useMemo(() => selectedItems.reduce((acc, item) => acc + (item.valor_total || 0), 0), [selectedItems]);
-
-    // NOVO: Handler para adicionar ao staging (Seção 3)
     const handleAddToPending = () => {
         if (selectedItems.length === 0) {
             toast.warning("Selecione pelo menos um item.");
+            return;
+        }
+        if (efetivo <= 0 || diasOperacao <= 0) {
+            toast.warning("Informe o efetivo e o período.");
             return;
         }
 
@@ -241,23 +305,18 @@ const ServicosTerceirosForm = () => {
         };
 
         setPendingItems(prev => [...prev, newItem]);
+        setLastStagedState({
+            omFavorecidaId: omFavorecida.id,
+            faseAtividade,
+            efetivo,
+            diasOperacao,
+            omDestinoId: omDestino.id
+        });
         
-        // IMPORTANTE: Não resetamos o formulário para permitir dirtycheck e manter contexto
-        // Apenas limpamos a seleção de itens para evitar duplicidade acidental
         setSelectedItems([]);
-        
         toast.info("Item adicionado à lista de pendentes.");
     };
 
-    const handleRemovePending = (tempId: string) => {
-        setPendingItems(prev => prev.filter(item => item.tempId !== tempId));
-    };
-
-    const handleClearPending = () => {
-        setPendingItems([]);
-    };
-
-    // Handlers de Memória
     const handleSaveMemoria = async (id: string) => {
         const { error } = await supabase.from('servicos_terceiros_registros').update({ detalhamento_customizado: memoriaEdit }).eq('id', id);
         if (error) toast.error("Erro ao salvar memória.");
@@ -283,10 +342,8 @@ const ServicosTerceirosForm = () => {
 
     const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
     const isBaseFormReady = omFavorecida.nome !== "" && faseAtividade !== "";
-
     const totalPendingValue = pendingItems.reduce((acc, item) => acc + item.valor_total, 0);
 
-    // Helper para formatar o nome da categoria
     const formatCategoryName = (cat: string) => {
         if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
         return cat.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
@@ -313,7 +370,7 @@ const ServicosTerceirosForm = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <Label>OM Favorecida *</Label>
-                                        <OmSelector selectedOmId={omFavorecida.id || undefined} onChange={handleOmFavorecidaChange} placeholder="Selecione a OM Favorecida" disabled={!isPTrabEditable} />
+                                        <OmSelector selectedOmId={omFavorecida.id || undefined} onChange={handleOmFavorecidaChange} placeholder="Selecione a OM Favorecida" disabled={!isPTrabEditable || pendingItems.length > 0} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>UG Favorecida</Label>
@@ -321,7 +378,7 @@ const ServicosTerceirosForm = () => {
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Fase da Atividade *</Label>
-                                        <FaseAtividadeSelect value={faseAtividade} onChange={setFaseAtividade} disabled={!isPTrabEditable} />
+                                        <FaseAtividadeSelect value={faseAtividade} onChange={setFaseAtividade} disabled={!isPTrabEditable || pendingItems.length > 0} />
                                     </div>
                                 </div>
                             </section>
@@ -344,7 +401,6 @@ const ServicosTerceirosForm = () => {
                                         </TabsList>
 
                                         <Card className="bg-muted/50 rounded-lg p-4">
-                                            {/* Dados da Solicitação */}
                                             <Card className="rounded-lg mb-4">
                                                 <CardHeader className="py-3">
                                                     <CardTitle className="text-base font-semibold">Período, Efetivo e Destino do Recurso</CardTitle>
@@ -360,10 +416,6 @@ const ServicosTerceirosForm = () => {
                                                                     onChange={(e) => setDiasOperacao(Number(e.target.value))} 
                                                                     placeholder="Ex: 15" 
                                                                     disabled={!isPTrabEditable} 
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
-                                                                        handleEnterToNextField(e);
-                                                                    }}
                                                                     onWheel={(e) => e.currentTarget.blur()}
                                                                     className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                                                 />
@@ -376,10 +428,6 @@ const ServicosTerceirosForm = () => {
                                                                     onChange={(e) => setEfetivo(Number(e.target.value))} 
                                                                     placeholder="Ex: 50" 
                                                                     disabled={!isPTrabEditable} 
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
-                                                                        handleEnterToNextField(e);
-                                                                    }}
                                                                     onWheel={(e) => e.currentTarget.blur()}
                                                                     className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                                                 />
@@ -397,7 +445,6 @@ const ServicosTerceirosForm = () => {
                                                 </CardContent>
                                             </Card>
 
-                                            {/* Seleção de Itens */}
                                             <Card className="mt-4 rounded-lg p-4 bg-background">
                                                 <div className="space-y-4">
                                                     <div className="flex justify-between items-center">
@@ -405,59 +452,28 @@ const ServicosTerceirosForm = () => {
                                                         <Button type="button" variant="outline" size="sm" onClick={() => setIsSelectorOpen(true)} disabled={!isPTrabEditable}><Plus className="mr-2 h-4 w-4" /> Importar da Diretriz</Button>
                                                     </div>
 
-                                                    {/* Novos campos para Fretamento Aéreo */}
                                                     {activeTab === "fretamento-aereo" && (
                                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
                                                             <div className="space-y-2">
                                                                 <Label>Tipo Anv</Label>
-                                                                <Input 
-                                                                    value={tipoAnv} 
-                                                                    onChange={(e) => setTipoAnv(e.target.value)} 
-                                                                    placeholder="Ex: Caravan" 
-                                                                    disabled={!isPTrabEditable}
-                                                                />
+                                                                <Input value={tipoAnv} onChange={(e) => setTipoAnv(e.target.value)} placeholder="Ex: Caravan" disabled={!isPTrabEditable} />
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>Capacidade</Label>
-                                                                <Input 
-                                                                    value={capacidade} 
-                                                                    onChange={(e) => setCapacidade(e.target.value)} 
-                                                                    placeholder="Ex: 9 Pax ou 450kg" 
-                                                                    disabled={!isPTrabEditable}
-                                                                />
+                                                                <Input value={capacidade} onChange={(e) => setCapacidade(e.target.value)} placeholder="Ex: 9 Pax ou 450kg" disabled={!isPTrabEditable} />
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>Velocidade de Cruzeiro</Label>
                                                                 <div className="relative">
-                                                                    <Input 
-                                                                        type="number" 
-                                                                        value={velocidadeCruzeiro} 
-                                                                        onChange={(e) => setVelocidadeCruzeiro(e.target.value === "" ? "" : Number(e.target.value))} 
-                                                                        placeholder="Ex: 350" 
-                                                                        disabled={!isPTrabEditable}
-                                                                        onWheel={(e) => e.currentTarget.blur()}
-                                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-14 text-right"
-                                                                    />
-                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground pointer-events-none">
-                                                                        Km/h
-                                                                    </span>
+                                                                    <Input type="number" value={velocidadeCruzeiro} onChange={(e) => setVelocidadeCruzeiro(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Ex: 350" disabled={!isPTrabEditable} onWheel={(e) => e.currentTarget.blur()} className="pr-14 text-right" />
+                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km/h</span>
                                                                 </div>
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>Distância a percorrer</Label>
                                                                 <div className="relative">
-                                                                    <Input 
-                                                                        type="number" 
-                                                                        value={distanciaPercorrer} 
-                                                                        onChange={(e) => setDistanciaPercorrer(e.target.value === "" ? "" : Number(e.target.value))} 
-                                                                        placeholder="Ex: 1500" 
-                                                                        disabled={!isPTrabEditable}
-                                                                        onWheel={(e) => e.currentTarget.blur()}
-                                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-10 text-right"
-                                                                    />
-                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground pointer-events-none">
-                                                                        Km
-                                                                    </span>
+                                                                    <Input type="number" value={distanciaPercorrer} onChange={(e) => setDistanciaPercorrer(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Ex: 1500" disabled={!isPTrabEditable} onWheel={(e) => e.currentTarget.blur()} className="pr-10 text-right" />
+                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km</span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -476,69 +492,21 @@ const ServicosTerceirosForm = () => {
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
-                                                                    {selectedItems.map(item => {
-                                                                        const isCharter = activeTab === "fretamento-aereo";
-                                                                        const showHvWarning = isCharter && suggestedHV !== null && item.quantidade !== suggestedHV;
-
-                                                                        return (
-                                                                            <TableRow key={item.id}>
-                                                                                <TableCell className="align-top pt-4">
-                                                                                    <div className="space-y-1">
-                                                                                        <Input 
-                                                                                            type="number" 
-                                                                                            min={0}
-                                                                                            value={item.quantidade === 0 ? "" : item.quantidade} 
-                                                                                            onChange={(e) => handleQuantityChange(item.id, e.target.value)} 
-                                                                                            onWheel={(e) => e.currentTarget.blur()}
-                                                                                            className={cn(
-                                                                                                "h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                                                                                                showHvWarning && "border-orange-500 focus-visible:ring-orange-500"
-                                                                                            )} 
-                                                                                        />
-                                                                                        {showHvWarning && (
-                                                                                            <div className="flex flex-col items-center gap-1 px-1">
-                                                                                                <span className="text-[9px] text-orange-600 font-bold leading-tight text-center">
-                                                                                                    Sugerido: {suggestedHV} HV
-                                                                                                </span>
-                                                                                                <Button 
-                                                                                                    variant="ghost" 
-                                                                                                    size="sm" 
-                                                                                                    className="h-5 text-[8px] px-1 text-orange-700 hover:text-orange-800 hover:bg-orange-50"
-                                                                                                    onClick={() => handleQuantityChange(item.id, suggestedHV.toString())}
-                                                                                                >
-                                                                                                    Aplicar Sugestão
-                                                                                                </Button>
-                                                                                            </div>
-                                                                                        )}
-                                                                                    </div>
-                                                                                </TableCell>
-                                                                                <TableCell className="text-xs">
-                                                                                    <p className="font-medium">
-                                                                                        {item.descricao_reduzida || item.descricao_item}
-                                                                                    </p>
-                                                                                    <p className="text-muted-foreground text-[10px]">
-                                                                                        Cód. CATSER: {item.codigo_catser || item.codigo_catmat || 'N/A'}
-                                                                                    </p>
-                                                                                    <p className="text-muted-foreground text-[10px]">
-                                                                                        Pregão: {formatPregao(item.numero_pregao)} | UASG: {formatCodug(item.uasg) || 'N/A'}
-                                                                                    </p>
-                                                                                    {isCharter && suggestedHV !== null && (
-                                                                                        <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded flex items-start gap-2">
-                                                                                            <Info className="h-3 w-3 text-blue-600 mt-0.5" />
-                                                                                            <p className="text-[10px] text-blue-700 leading-tight">
-                                                                                                Cálculo: {distanciaPercorrer}km / {velocidadeCruzeiro}km/h = {(Number(distanciaPercorrer) / Number(velocidadeCruzeiro)).toFixed(2)}h. 
-                                                                                                <br />
-                                                                                                <strong>Valor arredondado para cima: {suggestedHV} HV.</strong>
-                                                                                            </p>
-                                                                                        </div>
-                                                                                    )}
-                                                                                </TableCell>
-                                                                                <TableCell className="text-right text-xs text-muted-foreground align-top pt-4">{formatCurrency(item.valor_unitario)}</TableCell>
-                                                                                <TableCell className="text-right text-sm font-bold align-top pt-4">{formatCurrency(item.valor_total)}</TableCell>
-                                                                                <TableCell className="align-top pt-3"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
-                                                                            </TableRow>
-                                                                        );
-                                                                    })}
+                                                                    {selectedItems.map(item => (
+                                                                        <TableRow key={item.id}>
+                                                                            <TableCell className="align-top pt-4">
+                                                                                <Input type="number" min={0} value={item.quantidade === 0 ? "" : item.quantidade} onChange={(e) => handleQuantityChange(item.id, e.target.value)} onWheel={(e) => e.currentTarget.blur()} className="h-8 text-center" />
+                                                                            </TableCell>
+                                                                            <TableCell className="text-xs">
+                                                                                <p className="font-medium">{item.descricao_reduzida || item.descricao_item}</p>
+                                                                                <p className="text-muted-foreground text-[10px]">Cód. CATSER: {item.codigo_catser || 'N/A'}</p>
+                                                                                <p className="text-muted-foreground text-[10px]">Pregão: {formatPregao(item.numero_pregao)}</p>
+                                                                            </TableCell>
+                                                                            <TableCell className="text-right text-xs text-muted-foreground align-top pt-4">{formatCurrency(item.valor_unitario)}</TableCell>
+                                                                            <TableCell className="text-right text-sm font-bold align-top pt-4">{formatCurrency(item.valor_total)}</TableCell>
+                                                                            <TableCell className="align-top pt-3"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                                                                        </TableRow>
+                                                                    ))}
                                                                 </TableBody>
                                                             </Table>
                                                         </div>
@@ -546,7 +514,7 @@ const ServicosTerceirosForm = () => {
                                                         <Alert variant="default" className="border border-gray-300">
                                                             <AlertCircle className="h-4 w-4 text-muted-foreground" />
                                                             <AlertTitle>Nenhum Item Selecionado</AlertTitle>
-                                                            <AlertDescription>Importe itens da diretriz para iniciar o planejamento desta categoria.</AlertDescription>
+                                                            <AlertDescription>Importe itens da diretriz para iniciar o planejamento.</AlertDescription>
                                                         </Alert>
                                                     )}
                                                 </div>
@@ -558,11 +526,7 @@ const ServicosTerceirosForm = () => {
                                             </Card>
 
                                             <div className="flex justify-end gap-3 pt-4">
-                                                <Button 
-                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90" 
-                                                    disabled={selectedItems.length === 0 || saveMutation.isPending || efetivo <= 0 || diasOperacao <= 0} 
-                                                    onClick={handleAddToPending}
-                                                >
+                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={selectedItems.length === 0 || saveMutation.isPending || efetivo <= 0 || diasOperacao <= 0} onClick={handleAddToPending}>
                                                     {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                                     Salvar Itens na Lista
                                                 </Button>
@@ -575,54 +539,45 @@ const ServicosTerceirosForm = () => {
                             {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES) */}
                             {pendingItems.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
-                                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        3. Itens Adicionados ({pendingItems.length})
-                                    </h3>
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">3. Itens Adicionados ({pendingItems.length})</h3>
+                                    
+                                    {isServicosTerceirosDirty && (
+                                        <Alert variant="destructive">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertDescription className="font-medium">
+                                                Atenção: Os dados do formulário foram alterados. Clique em "Salvar Itens na Lista" na Seção 2 para atualizar o lote pendente.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
                                     
                                     <div className="space-y-4">
                                         {pendingItems.map((item) => {
                                             const isOmDestinoDifferent = item.organizacao !== item.om_detentora || item.ug !== item.ug_detentora;
-                                            
                                             return (
-                                                <Card 
-                                                    key={item.tempId} 
-                                                    className="border-2 shadow-md border-secondary bg-secondary/10"
-                                                >
+                                                <Card key={item.tempId} className="border-2 shadow-md border-secondary bg-secondary/10">
                                                     <CardContent className="p-4">
                                                         <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/30">
-                                                            <h4 className="font-bold text-base text-foreground">
-                                                                {formatCategoryName(item.categoria)}
-                                                            </h4>
+                                                            <h4 className="font-bold text-base text-foreground">{formatCategoryName(item.categoria)}</h4>
                                                             <div className="flex items-center gap-2">
-                                                                <p className="font-extrabold text-lg text-foreground text-right">
-                                                                    {formatCurrency(item.valor_total)}
-                                                                </p>
-                                                                <Button 
-                                                                    variant="ghost" 
-                                                                    size="icon" 
-                                                                    onClick={() => handleRemovePending(item.tempId)}
-                                                                    disabled={saveMutation.isPending}
-                                                                >
-                                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                                </Button>
+                                                                <p className="font-extrabold text-lg text-foreground text-right">{formatCurrency(item.valor_total)}</p>
+                                                                <Button variant="ghost" size="icon" onClick={() => setPendingItems(prev => prev.filter(i => i.tempId !== item.tempId))} disabled={saveMutation.isPending}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                                             </div>
                                                         </div>
-                                                        
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
                                                                 <p className="font-medium">OM Destino do Recurso:</p>
+                                                                <p className="font-medium">Período/Efetivo:</p>
+                                                                <p className="font-medium">Fase:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
-                                                                <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>
-                                                                    {item.om_detentora} ({formatCodug(item.ug_detentora)})
-                                                                </p>
+                                                                <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
+                                                                <p className="font-medium">{item.dias_operacao} dias / {item.efetivo} militares</p>
+                                                                <p className="font-medium">{item.fase_atividade}</p>
                                                             </div>
                                                         </div>
-                                                        
                                                         <div className="w-full h-[1px] bg-secondary/30 my-3" />
-
                                                         <div className="flex justify-between text-xs">
                                                             <span className="text-muted-foreground">Total ND 33:</span>
                                                             <span className="font-medium text-green-600">{formatCurrency(item.valor_nd_30 + item.valor_nd_39)}</span>
@@ -641,49 +596,51 @@ const ServicosTerceirosForm = () => {
                                     </Card>
                                     
                                     <div className="flex justify-end gap-3 pt-4">
-                                        <Button 
-                                            type="button" 
-                                            onClick={() => saveMutation.mutate(pendingItems)}
-                                            disabled={saveMutation.isPending || pendingItems.length === 0}
-                                            className="w-full md:w-auto bg-primary hover:bg-primary/90"
-                                        >
+                                        <Button type="button" onClick={() => saveMutation.mutate(pendingItems)} disabled={saveMutation.isPending || pendingItems.length === 0 || isServicosTerceirosDirty} className="w-full md:w-auto bg-primary hover:bg-primary/90">
                                             {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                             Salvar Registros
                                         </Button>
-                                        <Button type="button" variant="outline" onClick={handleClearPending} disabled={saveMutation.isPending}>
-                                            <XCircle className="mr-2 h-4 w-4" />
-                                            Limpar Lista
+                                        <Button type="button" variant="outline" onClick={resetForm} disabled={saveMutation.isPending}>
+                                            <XCircle className="mr-2 h-4 w-4" /> Limpar Lista
                                         </Button>
                                     </div>
                                 </section>
                             )}
 
-                            {/* SEÇÃO 4: REGISTROS SALVOS */}
-                            {registros && registros.length > 0 && (
+                            {/* SEÇÃO 4: REGISTROS SALVOS (CONSOLIDADO) */}
+                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
                                         <Sparkles className="h-5 w-5 text-accent" />
-                                        Serviços Cadastrados ({registros.length})
+                                        OMs Cadastradas ({consolidatedRegistros.length})
                                     </h3>
-                                    <div className="grid grid-cols-1 gap-4">
-                                        {registros.map(reg => (
-                                            <Card key={reg.id} className="p-4 bg-primary/5 border-primary/20">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex flex-col">
-                                                        <div className="flex items-center gap-2">
-                                                            <h4 className="font-bold text-lg text-primary capitalize">{reg.categoria.replace('-', ' ')}</h4>
-                                                            <Badge variant="outline" className="text-xs">{reg.fase_atividade}</Badge>
+                                    {consolidatedRegistros.map((group) => (
+                                        <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
+                                            <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                    {group.organizacao} (UG: {formatCodug(group.ug)})
+                                                    <Badge variant="outline" className="text-xs">{group.fase_atividade}</Badge>
+                                                </h3>
+                                                <span className="font-extrabold text-xl text-primary">{formatCurrency(group.totalGeral)}</span>
+                                            </div>
+                                            <div className="space-y-3">
+                                                {group.records.map((reg) => (
+                                                    <Card key={reg.id} className="p-3 bg-background border">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex flex-col">
+                                                                <h4 className="font-semibold text-base text-foreground capitalize">{reg.categoria.replace('-', ' ')}</h4>
+                                                                <p className="text-xs text-muted-foreground">Período: {reg.dias_operacao} dias | Efetivo: {reg.efetivo} militares</p>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-extrabold text-xl text-foreground">{formatCurrency(Number(reg.valor_total))}</span>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => deleteMutation.mutate([reg.id])} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button>
+                                                            </div>
                                                         </div>
-                                                        <p className="text-sm text-muted-foreground">{reg.organizacao} | {reg.efetivo} militares | {reg.dias_operacao} dias</p>
-                                                    </div>
-                                                    <div className="flex items-center gap-4">
-                                                        <span className="font-extrabold text-xl text-primary">{formatCurrency(Number(reg.valor_total))}</span>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => deleteMutation.mutate(reg.id)} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button>
-                                                    </div>
-                                                </div>
-                                            </Card>
-                                        ))}
-                                    </div>
+                                                    </Card>
+                                                ))}
+                                            </div>
+                                        </Card>
+                                    ))}
                                 </section>
                             )}
 
