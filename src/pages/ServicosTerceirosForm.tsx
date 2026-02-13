@@ -354,27 +354,37 @@ const ServicosTerceirosForm = () => {
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>Velocidade de Cruzeiro</Label>
-                                                                <Input 
-                                                                    type="number" 
-                                                                    value={velocidadeCruzeiro} 
-                                                                    onChange={(e) => setVelocidadeCruzeiro(e.target.value === "" ? "" : Number(e.target.value))} 
-                                                                    placeholder="Ex: 350 Km/h" 
-                                                                    disabled={!isPTrabEditable}
-                                                                    onWheel={(e) => e.currentTarget.blur()}
-                                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                />
+                                                                <div className="relative">
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        value={velocidadeCruzeiro} 
+                                                                        onChange={(e) => setVelocidadeCruzeiro(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                        placeholder="Ex: 350" 
+                                                                        disabled={!isPTrabEditable}
+                                                                        onWheel={(e) => e.currentTarget.blur()}
+                                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-14"
+                                                                    />
+                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground pointer-events-none">
+                                                                        Km/h
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>Distância a percorrer</Label>
-                                                                <Input 
-                                                                    type="number" 
-                                                                    value={distanciaPercorrer} 
-                                                                    onChange={(e) => setDistanciaPercorrer(e.target.value === "" ? "" : Number(e.target.value))} 
-                                                                    placeholder="Ex: 1500 Km" 
-                                                                    disabled={!isPTrabEditable}
-                                                                    onWheel={(e) => e.currentTarget.blur()}
-                                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                />
+                                                                <div className="relative">
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        value={distanciaPercorrer} 
+                                                                        onChange={(e) => setDistanciaPercorrer(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                        placeholder="Ex: 1500" 
+                                                                        disabled={!isPTrabEditable}
+                                                                        onWheel={(e) => e.currentTarget.blur()}
+                                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pr-10"
+                                                                    />
+                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground pointer-events-none">
+                                                                        Km
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     )}
