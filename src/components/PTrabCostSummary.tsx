@@ -9,19 +9,21 @@ import {
   Package, 
   TrendingUp, 
   Wallet, 
-  Plane, 
+  Helicopter,
   ChevronDown, 
   ChevronUp,
   Info,
   AlertCircle,
   FileText,
-  Sparkles
+  Sparkles,
+  Settings
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 
 // --- Tipos e Interfaces ---
 
@@ -51,12 +53,11 @@ interface OMTotal {
   groupedHV: Record<string, { totalHV: number }>;
 }
 
-// --- Função de Busca de Totais (Exportada para uso no PTrabForm) ---
+// --- Função de Busca de Totais ---
 
 export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabTotals> => {
   if (!ptrabId) throw new Error("ID do PTrab não fornecido.");
 
-  // 1. Buscar todos os registros relacionados
   const [
     { data: cl1 }, { data: cl2 }, { data: cl3 }, { data: cl5 }, 
     { data: cl6 }, { data: cl7 }, { data: cl8s }, { data: cl8r }, 
@@ -249,7 +250,7 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
       <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-white">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg font-bold flex items-center gap-2 text-purple-700">
-            <Plane className="h-5 w-5" />
+            <Helicopter className="h-5 w-5" />
             Aviação do Exército
           </CardTitle>
         </CardHeader>
@@ -270,7 +271,7 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
                 <div className="space-y-1.5 border-l-2 border-purple-200 pl-3 py-1">
                   <div className="flex items-center justify-between text-[10px] font-bold text-purple-600/70 uppercase tracking-tighter">
                     <div className="flex items-center gap-1.5">
-                      <Plane className="h-3 w-3" />
+                      <Helicopter className="h-3 w-3" />
                       Horas de Voo
                     </div>
                     <span>{formatNumber(om.quantidadeHV, 2)} HV</span>
