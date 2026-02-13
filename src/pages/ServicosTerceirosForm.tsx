@@ -86,6 +86,12 @@ const ServicosTerceirosForm = () => {
     const [diasOperacao, setDiasOperacao] = useState<number>(0);
     const [omDestino, setOmDestino] = useState({ nome: "", ug: "", id: "" });
 
+    // Novos campos para Fretamento Aéreo
+    const [tipoAnv, setTipoAnv] = useState("");
+    const [capacidade, setCapacidade] = useState("");
+    const [velocidadeCruzeiro, setVelocidadeCruzeiro] = useState<number | "">("");
+    const [distanciaPercorrer, setDistanciaPercorrer] = useState<number | "">("");
+
     const [selectedItems, setSelectedItems] = useState<ItemAquisicaoServico[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     
@@ -120,7 +126,13 @@ const ServicosTerceirosForm = () => {
                 efetivo: efetivo,
                 fase_atividade: faseAtividade,
                 categoria: activeTab,
-                detalhes_planejamento: { itens_selecionados: selectedItems } as any,
+                detalhes_planejamento: { 
+                    itens_selecionados: selectedItems,
+                    tipo_anv: tipoAnv,
+                    capacidade: capacidade,
+                    velocidade_cruzeiro: velocidadeCruzeiro,
+                    distancia_percorrer: distanciaPercorrer
+                } as any,
                 valor_total: totalGeral,
                 valor_nd_30: totalND30,
                 valor_nd_39: totalND39,
@@ -132,6 +144,10 @@ const ServicosTerceirosForm = () => {
         onSuccess: () => {
             toast.success("Planejamento salvo com sucesso!");
             setSelectedItems([]);
+            setTipoAnv("");
+            setCapacidade("");
+            setVelocidadeCruzeiro("");
+            setDistanciaPercorrer("");
             queryClient.invalidateQueries({ queryKey: ['servicosTerceirosRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
         },
@@ -166,7 +182,8 @@ const ServicosTerceirosForm = () => {
         setSelectedItems(newItems);
     };
 
-    const handleQuantityChange = (id: string, qty: number) => {
+    const handleQuantityChange = (id: string, rawValue: string) => {
+        const qty = parseInt(rawValue) || 0;
         setSelectedItems(prev => prev.map(item => 
             item.id === id ? { ...item, quantidade: qty, valor_total: qty * item.valor_unitario } : item
         ));
@@ -314,6 +331,54 @@ const ServicosTerceirosForm = () => {
                                                         <Button type="button" variant="outline" size="sm" onClick={() => setIsSelectorOpen(true)} disabled={!isPTrabEditable}><Plus className="mr-2 h-4 w-4" /> Importar da Diretriz</Button>
                                                     </div>
 
+                                                    {/* Novos campos para Fretamento Aéreo */}
+                                                    {activeTab === "fretamento-aereo" && (
+                                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+                                                            <div className="space-y-2">
+                                                                <Label>Tipo Anv</Label>
+                                                                <Input 
+                                                                    value={tipoAnv} 
+                                                                    onChange={(e) => setTipoAnv(e.target.value)} 
+                                                                    placeholder="Ex: C-105 Amazonas" 
+                                                                    disabled={!isPTrabEditable}
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Capacidade</Label>
+                                                                <Input 
+                                                                    value={capacidade} 
+                                                                    onChange={(e) => setCapacidade(e.target.value)} 
+                                                                    placeholder="Ex: 30 pax" 
+                                                                    disabled={!isPTrabEditable}
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Velocidade de Cruzeiro</Label>
+                                                                <Input 
+                                                                    type="number" 
+                                                                    value={velocidadeCruzeiro} 
+                                                                    onChange={(e) => setVelocidadeCruzeiro(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                    placeholder="km/h" 
+                                                                    disabled={!isPTrabEditable}
+                                                                    onWheel={(e) => e.currentTarget.blur()}
+                                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Distância a percorrer</Label>
+                                                                <Input 
+                                                                    type="number" 
+                                                                    value={distanciaPercorrer} 
+                                                                    onChange={(e) => setDistanciaPercorrer(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                    placeholder="Km" 
+                                                                    disabled={!isPTrabEditable}
+                                                                    onWheel={(e) => e.currentTarget.blur()}
+                                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+
                                                     {selectedItems.length > 0 ? (
                                                         <div className="border rounded-md overflow-hidden">
                                                             <Table>
@@ -332,8 +397,9 @@ const ServicosTerceirosForm = () => {
                                                                             <TableCell>
                                                                                 <Input 
                                                                                     type="number" 
-                                                                                    value={item.quantidade} 
-                                                                                    onChange={(e) => handleQuantityChange(item.id, Number(e.target.value))} 
+                                                                                    min={0}
+                                                                                    value={item.quantidade === 0 ? "" : item.quantidade} 
+                                                                                    onChange={(e) => handleQuantityChange(item.id, e.target.value)} 
                                                                                     onWheel={(e) => e.currentTarget.blur()}
                                                                                     className="h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                                                                 />
