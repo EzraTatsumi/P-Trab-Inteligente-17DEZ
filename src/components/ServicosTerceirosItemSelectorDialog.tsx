@@ -140,7 +140,7 @@ const ServicosTerceirosItemSelectorDialog: React.FC<ServicosTerceirosItemSelecto
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Selecionar Itens de Serviço ({categoria.replace('-', ' ').toUpperCase()})</DialogTitle>
+                    <DialogTitle>Selecionar Itens de Serviço (Fretamento Aéreo)</DialogTitle>
                 </DialogHeader>
                 
                 <div className="space-y-4 py-2">
