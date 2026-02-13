@@ -227,7 +227,7 @@ const ServicosTerceirosForm = () => {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Serviços e Locações</CardTitle>
+                        <CardTitle>Contratação de Serviços e Locações</CardTitle>
                         <CardDescription>Planejamento de necessidades de serviços de terceiros e locações.</CardDescription>
                     </CardHeader>
                     <CardContent>
