@@ -263,11 +263,29 @@ const ServicosTerceirosForm = () => {
                                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                                             <div className="space-y-2">
                                                                 <Label>Período (Nr Dias) *</Label>
-                                                                <Input type="number" value={diasOperacao || ""} onChange={(e) => setDiasOperacao(Number(e.target.value))} placeholder="Ex: 15" disabled={!isPTrabEditable} className="max-w-[150px]" />
+                                                                <Input 
+                                                                    type="number" 
+                                                                    value={diasOperacao || ""} 
+                                                                    onChange={(e) => setDiasOperacao(Number(e.target.value))} 
+                                                                    placeholder="Ex: 15" 
+                                                                    disabled={!isPTrabEditable} 
+                                                                    onKeyDown={handleEnterToNextField}
+                                                                    onWheel={(e) => e.currentTarget.blur()}
+                                                                    className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                />
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>Efetivo *</Label>
-                                                                <Input type="number" value={efetivo || ""} onChange={(e) => setEfetivo(Number(e.target.value))} placeholder="Ex: 50" disabled={!isPTrabEditable} className="max-w-[150px]" />
+                                                                <Input 
+                                                                    type="number" 
+                                                                    value={efetivo || ""} 
+                                                                    onChange={(e) => setEfetivo(Number(e.target.value))} 
+                                                                    placeholder="Ex: 50" 
+                                                                    disabled={!isPTrabEditable} 
+                                                                    onKeyDown={handleEnterToNextField}
+                                                                    onWheel={(e) => e.currentTarget.blur()}
+                                                                    className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                />
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>OM Destino do Recurso *</Label>
@@ -282,58 +300,68 @@ const ServicosTerceirosForm = () => {
                                                 </CardContent>
                                             </Card>
 
-                                            {/* Seleção de Itens */}
-                                            {efetivo > 0 && diasOperacao > 0 && (
-                                                <Card className="mt-4 rounded-lg p-4 bg-background">
-                                                    <div className="space-y-4">
-                                                        <div className="flex justify-between items-center">
-                                                            <h4 className="text-base font-semibold">Itens de {activeTab.replace('-', ' ')} ({selectedItems.length})</h4>
-                                                            <Button type="button" variant="outline" size="sm" onClick={() => setIsSelectorOpen(true)} disabled={!isPTrabEditable}><Plus className="mr-2 h-4 w-4" /> Importar da Diretriz</Button>
-                                                        </div>
+                                            {/* Seleção de Itens - AGORA SEMPRE VISÍVEL NA SEÇÃO 2 */}
+                                            <Card className="mt-4 rounded-lg p-4 bg-background">
+                                                <div className="space-y-4">
+                                                    <div className="flex justify-between items-center">
+                                                        <h4 className="text-base font-semibold">Itens de {activeTab.replace('-', ' ')} ({selectedItems.length})</h4>
+                                                        <Button type="button" variant="outline" size="sm" onClick={() => setIsSelectorOpen(true)} disabled={!isPTrabEditable}><Plus className="mr-2 h-4 w-4" /> Importar da Diretriz</Button>
+                                                    </div>
 
-                                                        {selectedItems.length > 0 ? (
-                                                            <div className="border rounded-md overflow-hidden">
-                                                                <Table>
-                                                                    <TableHeader>
-                                                                        <TableRow>
-                                                                            <TableHead className="w-[100px] text-center">Qtd</TableHead>
-                                                                            <TableHead>Descrição do Serviço</TableHead>
-                                                                            <TableHead className="text-right w-[120px]">Vlr Unitário</TableHead>
-                                                                            <TableHead className="text-right w-[120px]">Total</TableHead>
-                                                                            <TableHead className="w-[50px]"></TableHead>
+                                                    {selectedItems.length > 0 ? (
+                                                        <div className="border rounded-md overflow-hidden">
+                                                            <Table>
+                                                                <TableHeader>
+                                                                    <TableRow>
+                                                                        <TableHead className="w-[100px] text-center">Qtd</TableHead>
+                                                                        <TableHead>Descrição do Serviço</TableHead>
+                                                                        <TableHead className="text-right w-[120px]">Vlr Unitário</TableHead>
+                                                                        <TableHead className="text-right w-[120px]">Total</TableHead>
+                                                                        <TableHead className="w-[50px]"></TableHead>
+                                                                    </TableRow>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {selectedItems.map(item => (
+                                                                        <TableRow key={item.id}>
+                                                                            <TableCell>
+                                                                                <Input 
+                                                                                    type="number" 
+                                                                                    value={item.quantidade} 
+                                                                                    onChange={(e) => handleQuantityChange(item.id, Number(e.target.value))} 
+                                                                                    onWheel={(e) => e.currentTarget.blur()}
+                                                                                    className="h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                                />
+                                                                            </TableCell>
+                                                                            <TableCell className="text-xs font-medium">{item.descricao_reduzida || item.descricao_item}</TableCell>
+                                                                            <TableCell className="text-right text-xs text-muted-foreground">{formatCurrency(item.valor_unitario)}</TableCell>
+                                                                            <TableCell className="text-right text-sm font-bold">{formatCurrency(item.valor_total)}</TableCell>
+                                                                            <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                                                                         </TableRow>
-                                                                    </TableHeader>
-                                                                    <TableBody>
-                                                                        {selectedItems.map(item => (
-                                                                            <TableRow key={item.id}>
-                                                                                <TableCell><Input type="number" value={item.quantidade} onChange={(e) => handleQuantityChange(item.id, Number(e.target.value))} className="h-8 text-center" /></TableCell>
-                                                                                <TableCell className="text-xs font-medium">{item.descricao_reduzida || item.descricao_item}</TableCell>
-                                                                                <TableCell className="text-right text-xs text-muted-foreground">{formatCurrency(item.valor_unitario)}</TableCell>
-                                                                                <TableCell className="text-right text-sm font-bold">{formatCurrency(item.valor_total)}</TableCell>
-                                                                                <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
-                                                                            </TableRow>
-                                                                        ))}
-                                                                    </TableBody>
-                                                                </Table>
-                                                            </div>
-                                                        ) : (
-                                                            <Alert variant="default" className="border border-gray-300">
-                                                                <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                                                                <AlertTitle>Nenhum Item Selecionado</AlertTitle>
-                                                                <AlertDescription>Importe itens da diretriz para iniciar o planejamento desta categoria.</AlertDescription>
-                                                            </Alert>
-                                                        )}
-                                                    </div>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </div>
+                                                    ) : (
+                                                        <Alert variant="default" className="border border-gray-300">
+                                                            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                                                            <AlertTitle>Nenhum Item Selecionado</AlertTitle>
+                                                            <AlertDescription>Importe itens da diretriz para iniciar o planejamento desta categoria.</AlertDescription>
+                                                        </Alert>
+                                                    )}
+                                                </div>
 
-                                                    <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
-                                                        <span className="font-bold text-sm uppercase">VALOR TOTAL DO LOTE:</span>
-                                                        <span className="font-extrabold text-lg text-primary">{formatCurrency(totalLote)}</span>
-                                                    </div>
-                                                </Card>
-                                            )}
+                                                <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
+                                                    <span className="font-bold text-sm uppercase">VALOR TOTAL DO LOTE:</span>
+                                                    <span className="font-extrabold text-lg text-primary">{formatCurrency(totalLote)}</span>
+                                                </div>
+                                            </Card>
 
                                             <div className="flex justify-end gap-3 pt-4">
-                                                <Button size="lg" className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={selectedItems.length === 0 || saveMutation.isPending} onClick={() => saveMutation.mutate()}>
+                                                <Button 
+                                                    className="w-full md:w-auto bg-primary hover:bg-primary/90" 
+                                                    disabled={selectedItems.length === 0 || saveMutation.isPending} 
+                                                    onClick={() => saveMutation.mutate()}
+                                                >
                                                     {saveMutation.isPending ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
                                                     Salvar Planejamento
                                                 </Button>
