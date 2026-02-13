@@ -242,12 +242,9 @@ const ServicosTerceirosForm = () => {
 
         setPendingItems(prev => [...prev, newItem]);
         
-        // Limpar campos específicos da aba, mas manter contexto de OM/Fase se desejar
+        // IMPORTANTE: Não resetamos o formulário para permitir dirtycheck e manter contexto
+        // Apenas limpamos a seleção de itens para evitar duplicidade acidental
         setSelectedItems([]);
-        setTipoAnv("");
-        setCapacidade("");
-        setVelocidadeCruzeiro("");
-        setDistanciaPercorrer("");
         
         toast.info("Item adicionado à lista de pendentes.");
     };
@@ -615,23 +612,19 @@ const ServicosTerceirosForm = () => {
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
                                                                 <p className="font-medium">OM Destino do Recurso:</p>
-                                                                <p className="font-medium">Período/Efetivo:</p>
-                                                                <p className="font-medium">Fase:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
                                                                 <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>
                                                                     {item.om_detentora} ({formatCodug(item.ug_detentora)})
                                                                 </p>
-                                                                <p className="font-medium">{item.dias_operacao} dias / {item.efetivo} militares</p>
-                                                                <p className="font-medium">{item.fase_atividade}</p>
                                                             </div>
                                                         </div>
                                                         
                                                         <div className="w-full h-[1px] bg-secondary/30 my-3" />
 
                                                         <div className="flex justify-between text-xs">
-                                                            <span className="text-muted-foreground">Total ND 30/39:</span>
+                                                            <span className="text-muted-foreground">Total ND 33:</span>
                                                             <span className="font-medium text-green-600">{formatCurrency(item.valor_nd_30 + item.valor_nd_39)}</span>
                                                         </div>
                                                     </CardContent>
