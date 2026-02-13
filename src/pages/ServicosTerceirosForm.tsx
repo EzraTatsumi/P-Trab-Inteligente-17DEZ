@@ -44,6 +44,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { calculateServicoTotals, ServicoTerceiroRegistro } from "@/lib/servicosTerceirosUtils";
 import ServicosTerceirosMemoria from "@/components/ServicosTerceirosMemoria";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export type CategoriaServico = 
     | "fretamento-aereo" 
@@ -126,6 +136,9 @@ const ServicosTerceirosForm = () => {
     
     const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
     const [memoriaEdit, setMemoriaEdit] = useState("");
+    
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [groupToDelete, setGroupToDelete] = useState<ConsolidatedServicoRecord | null>(null);
 
     // --- CÁLCULOS AUXILIARES ---
     const suggestedHV = useMemo(() => {
@@ -233,7 +246,10 @@ const ServicosTerceirosForm = () => {
             toast.success("Lote excluído.");
             queryClient.invalidateQueries({ queryKey: ['servicosTerceirosRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
-        }
+            setShowDeleteDialog(false);
+            setGroupToDelete(null);
+        },
+        onError: (err) => toast.error("Erro ao excluir: " + err.message)
     });
 
     // --- HANDLERS ---
@@ -349,8 +365,39 @@ const ServicosTerceirosForm = () => {
             setDistanciaPercorrer(details.distancia_percorrer || "");
         }
 
-        toast.info("Modo Edição ativado. Altere os dados e clique em 'Salvar Itens na Lista'.");
+        // Move para a lista pendente para que a Seção 3 apareça
+        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(details.itens_selecionados || []);
+        const stagedItem: PendingServicoItem = {
+            tempId: reg.id,
+            organizacao: reg.organizacao,
+            ug: reg.ug,
+            om_detentora: reg.om_detentora || '',
+            ug_detentora: reg.ug_detentora || '',
+            dias_operacao: reg.dias_operacao,
+            efetivo: reg.efetivo || 0,
+            fase_atividade: reg.fase_atividade || '',
+            categoria: reg.categoria as CategoriaServico,
+            detalhes_planejamento: details,
+            valor_total: totalGeral,
+            valor_nd_30: totalND30,
+            valor_nd_39: totalND39,
+        };
+        setPendingItems([stagedItem]);
+        setLastStagedState({
+            omFavorecidaId: omFav?.id,
+            faseAtividade: reg.fase_atividade,
+            efetivo: reg.efetivo,
+            diasOperacao: reg.dias_operacao,
+            omDestinoId: omDest?.id
+        });
+
+        toast.info("Modo Edição ativado. Altere os dados e clique em 'Recalcular/Revisar Lote'.");
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleConfirmDelete = (group: ConsolidatedServicoRecord) => {
+        setGroupToDelete(group);
+        setShowDeleteDialog(true);
     };
 
     const handleSaveMemoria = async (id: string) => {
@@ -377,15 +424,12 @@ const ServicosTerceirosForm = () => {
     if (isGlobalLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
     const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
-    const isBaseFormReady = omFavorecida.nome !== "" && faseAtividade !== "";
+    const isBaseFormReady = (omFavorecida.nome !== "" && faseAtividade !== "") || !!editingId;
     const totalPendingValue = pendingItems.reduce((acc, item) => acc + item.valor_total, 0);
 
     const formatCategoryName = (cat: string) => {
         if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
-        return cat.split('-').map(word => {
-            if (word === 'aereo') return 'Aéreo';
-            return word.charAt(0).toUpperCase() + word.slice(1);
-        }).join(' ');
+        return cat.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     };
 
     return (
@@ -409,7 +453,7 @@ const ServicosTerceirosForm = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <Label>OM Favorecida *</Label>
-                                        <OmSelector selectedOmId={omFavorecida.id || undefined} onChange={handleOmFavorecidaChange} placeholder="Selecione a OM Favorecida" disabled={!isPTrabEditable || pendingItems.length > 0} />
+                                        <OmSelector selectedOmId={omFavorecida.id || undefined} onChange={handleOmFavorecidaChange} placeholder="Selecione a OM Favorecida" disabled={!isPTrabEditable || (pendingItems.length > 0 && !editingId)} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>UG Favorecida</Label>
@@ -417,7 +461,7 @@ const ServicosTerceirosForm = () => {
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Fase da Atividade *</Label>
-                                        <FaseAtividadeSelect value={faseAtividade} onChange={setFaseAtividade} disabled={!isPTrabEditable || pendingItems.length > 0} />
+                                        <FaseAtividadeSelect value={faseAtividade} onChange={setFaseAtividade} disabled={!isPTrabEditable || (pendingItems.length > 0 && !editingId)} />
                                     </div>
                                 </div>
                             </section>
@@ -456,6 +500,7 @@ const ServicosTerceirosForm = () => {
                                                                     placeholder="Ex: 15" 
                                                                     disabled={!isPTrabEditable} 
                                                                     onWheel={(e) => e.currentTarget.blur()}
+                                                                    onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
                                                                     className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                                                 />
                                                             </div>
@@ -468,6 +513,7 @@ const ServicosTerceirosForm = () => {
                                                                     placeholder="Ex: 50" 
                                                                     disabled={!isPTrabEditable} 
                                                                     onWheel={(e) => e.currentTarget.blur()}
+                                                                    onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
                                                                     className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                                                 />
                                                             </div>
@@ -492,29 +538,59 @@ const ServicosTerceirosForm = () => {
                                                     </div>
 
                                                     {activeTab === "fretamento-aereo" && (
-                                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
-                                                            <div className="space-y-2">
-                                                                <Label>Tipo Anv</Label>
-                                                                <Input value={tipoAnv} onChange={(e) => setTipoAnv(e.target.value)} placeholder="Ex: Caravan" disabled={!isPTrabEditable} />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Capacidade</Label>
-                                                                <Input value={capacidade} onChange={(e) => setCapacidade(e.target.value)} placeholder="Ex: 9 Pax ou 450kg" disabled={!isPTrabEditable} />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Velocidade de Cruzeiro</Label>
-                                                                <div className="relative">
-                                                                    <Input type="number" value={velocidadeCruzeiro} onChange={(e) => setVelocidadeCruzeiro(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Ex: 350" disabled={!isPTrabEditable} onWheel={(e) => e.currentTarget.blur()} className="pr-14 text-right" />
-                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km/h</span>
+                                                        <div className="space-y-4">
+                                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+                                                                <div className="space-y-2">
+                                                                    <Label>Tipo Anv</Label>
+                                                                    <Input value={tipoAnv} onChange={(e) => setTipoAnv(e.target.value)} placeholder="Ex: Caravan" disabled={!isPTrabEditable} />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Capacidade</Label>
+                                                                    <Input value={capacidade} onChange={(e) => setCapacidade(e.target.value)} placeholder="Ex: 9 Pax ou 450kg" disabled={!isPTrabEditable} />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Velocidade de Cruzeiro</Label>
+                                                                    <div className="relative">
+                                                                        <Input 
+                                                                            type="number" 
+                                                                            value={velocidadeCruzeiro} 
+                                                                            onChange={(e) => setVelocidadeCruzeiro(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                            placeholder="Ex: 350" 
+                                                                            disabled={!isPTrabEditable} 
+                                                                            onWheel={(e) => e.currentTarget.blur()} 
+                                                                            onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                            className="pr-14 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                        />
+                                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km/h</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Distância a percorrer</Label>
+                                                                    <div className="relative">
+                                                                        <Input 
+                                                                            type="number" 
+                                                                            value={distanciaPercorrer} 
+                                                                            onChange={(e) => setDistanciaPercorrer(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                            placeholder="Ex: 1500" 
+                                                                            disabled={!isPTrabEditable} 
+                                                                            onWheel={(e) => e.currentTarget.blur()} 
+                                                                            onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                            className="pr-10 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                        />
+                                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km</span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Distância a percorrer</Label>
-                                                                <div className="relative">
-                                                                    <Input type="number" value={distanciaPercorrer} onChange={(e) => setDistanciaPercorrer(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Ex: 1500" disabled={!isPTrabEditable} onWheel={(e) => e.currentTarget.blur()} className="pr-10 text-right" />
-                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km</span>
-                                                                </div>
-                                                            </div>
+                                                            
+                                                            {suggestedHV !== null && (
+                                                                <Alert variant="default" className="bg-blue-50 border-blue-200">
+                                                                    <Info className="h-4 w-4 text-blue-600" />
+                                                                    <AlertTitle className="text-blue-800">Sugestão de Horas de Voo</AlertTitle>
+                                                                    <AlertDescription className="text-blue-700">
+                                                                        Com base na distância e velocidade informadas, o tempo estimado de voo é de aproximadamente <strong>{suggestedHV} HV</strong>.
+                                                                    </AlertDescription>
+                                                                </Alert>
+                                                            )}
                                                         </div>
                                                     )}
 
@@ -584,7 +660,7 @@ const ServicosTerceirosForm = () => {
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertDescription className="font-medium">
-                                                Atenção: Os dados do formulário foram alterados. Clique em "Salvar Itens na Lista" na Seção 2 para atualizar o lote pendente.
+                                                Atenção: Os dados do formulário foram alterados. Clique em "Recalcular/Revisar Lote" na Seção 2 para atualizar o lote pendente.
                                             </AlertDescription>
                                         </Alert>
                                     )}
@@ -592,6 +668,10 @@ const ServicosTerceirosForm = () => {
                                     <div className="space-y-4">
                                         {pendingItems.map((item) => {
                                             const isOmDestinoDifferent = item.organizacao !== item.om_detentora || item.ug !== item.ug_detentora;
+                                            const totalHV = item.categoria === 'fretamento-aereo' 
+                                                ? item.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0)
+                                                : null;
+
                                             return (
                                                 <Card key={item.tempId} className="border-2 shadow-md border-secondary bg-secondary/10">
                                                     <CardContent className="p-4">
@@ -599,21 +679,24 @@ const ServicosTerceirosForm = () => {
                                                             <h4 className="font-bold text-base text-foreground">{formatCategoryName(item.categoria)}</h4>
                                                             <div className="flex items-center gap-2">
                                                                 <p className="font-extrabold text-lg text-foreground text-right">{formatCurrency(item.valor_total)}</p>
-                                                                <Button variant="ghost" size="icon" onClick={() => setPendingItems(prev => prev.filter(i => i.tempId !== item.tempId))} disabled={saveMutation.isPending}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                                {!editingId && (
+                                                                    <Button variant="ghost" size="icon" onClick={() => setPendingItems(prev => prev.filter(i => i.tempId !== item.tempId))} disabled={saveMutation.isPending}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                                )}
                                                             </div>
                                                         </div>
                                                         <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
                                                                 <p className="font-medium">OM Destino do Recurso:</p>
-                                                                <p className="font-medium">Período/Efetivo:</p>
-                                                                <p className="font-medium">Fase:</p>
+                                                                <p className="font-medium">Período/Efetivo/HV:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
                                                                 <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
-                                                                <p className="font-medium">{item.dias_operacao} dias / {item.efetivo} militares</p>
-                                                                <p className="font-medium">{item.fase_atividade}</p>
+                                                                <p className="font-medium">
+                                                                    {item.dias_operacao} dias / {item.efetivo} militares
+                                                                    {totalHV !== null && ` / ${totalHV} HV`}
+                                                                </p>
                                                             </div>
                                                         </div>
                                                         <div className="w-full h-[1px] bg-secondary/30 my-3" />
@@ -673,7 +756,7 @@ const ServicosTerceirosForm = () => {
                                                         <Card key={reg.id} className="p-3 bg-background border">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex flex-col">
-                                                                    <h4 className="font-semibold text-base text-foreground capitalize">{formatCategoryName(reg.categoria)}</h4>
+                                                                    <h4 className="font-semibold text-base text-foreground capitalize">{reg.categoria.replace('-', ' ')}</h4>
                                                                     <p className="text-xs text-muted-foreground">
                                                                         Período: {reg.dias_operacao} dias | Efetivo: {reg.efetivo} militares
                                                                         {totalHV !== null && ` | HV: ${totalHV}`}
@@ -683,7 +766,7 @@ const ServicosTerceirosForm = () => {
                                                                     <span className="font-extrabold text-xl text-foreground">{formatCurrency(Number(reg.valor_total))}</span>
                                                                     <div className="flex gap-1 shrink-0">
                                                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(reg)} disabled={!isPTrabEditable || pendingItems.length > 0}><Pencil className="h-4 w-4" /></Button>
-                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => deleteMutation.mutate([reg.id])} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button>
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleConfirmDelete(group)} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -751,6 +834,23 @@ const ServicosTerceirosForm = () => {
                 onAddDiretriz={() => navigate('/config/custos-operacionais')} 
                 categoria={activeTab}
             />
+
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                            <Trash2 className="h-5 w-5" /> Confirmar Exclusão de Lote
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Tem certeza que deseja excluir o lote de serviços para a OM <span className="font-bold">{groupToDelete?.organizacao}</span>? Esta ação é irreversível.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => groupToDelete && deleteMutation.mutate(groupToDelete.records.map(r => r.id))} className="bg-destructive hover:bg-destructive/90">Excluir Lote</AlertDialogAction>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };
