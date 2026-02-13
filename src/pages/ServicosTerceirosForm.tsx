@@ -269,7 +269,10 @@ const ServicosTerceirosForm = () => {
                                                                     onChange={(e) => setDiasOperacao(Number(e.target.value))} 
                                                                     placeholder="Ex: 15" 
                                                                     disabled={!isPTrabEditable} 
-                                                                    onKeyDown={handleEnterToNextField}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+                                                                        handleEnterToNextField(e);
+                                                                    }}
                                                                     onWheel={(e) => e.currentTarget.blur()}
                                                                     className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                                                 />
@@ -282,7 +285,10 @@ const ServicosTerceirosForm = () => {
                                                                     onChange={(e) => setEfetivo(Number(e.target.value))} 
                                                                     placeholder="Ex: 50" 
                                                                     disabled={!isPTrabEditable} 
-                                                                    onKeyDown={handleEnterToNextField}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+                                                                        handleEnterToNextField(e);
+                                                                    }}
                                                                     onWheel={(e) => e.currentTarget.blur()}
                                                                     className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                                                 />
@@ -300,7 +306,7 @@ const ServicosTerceirosForm = () => {
                                                 </CardContent>
                                             </Card>
 
-                                            {/* Seleção de Itens - AGORA SEMPRE VISÍVEL NA SEÇÃO 2 */}
+                                            {/* Seleção de Itens */}
                                             <Card className="mt-4 rounded-lg p-4 bg-background">
                                                 <div className="space-y-4">
                                                     <div className="flex justify-between items-center">
@@ -357,7 +363,7 @@ const ServicosTerceirosForm = () => {
                                             </Card>
 
                                             <div className="flex justify-end gap-3 pt-4">
-                                                <Button size="lg" className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={selectedItems.length === 0 || saveMutation.isPending || efetivo <= 0 || diasOperacao <= 0} onClick={() => saveMutation.mutate()}>
+                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={selectedItems.length === 0 || saveMutation.isPending || efetivo <= 0 || diasOperacao <= 0} onClick={() => saveMutation.mutate()}>
                                                     {saveMutation.isPending ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
                                                     Salvar Item na Lista
                                                 </Button>
