@@ -734,7 +734,7 @@ const getDiariasData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['diari
 };
 
 const getVerbaOperacionalData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['verbaOperacional'] => {
-    if ((data as OmTotals).omKey) return (data as OmTotals).verbaOperacional;
+    if ((data as OmTotals).omKey) return (data as OmTotals).diarias ? (data as OmTotals).verbaOperacional : (data as any).verbaOperacional;
     const g = data as PTrabAggregatedTotals;
     return { total: g.totalVerbaOperacional, totalND30: g.totalVerbaOperacionalND30, totalND39: g.totalVerbaOperacionalND39, totalEquipes: g.totalEquipesVerba, totalDias: g.totalDiasVerba };
 };
@@ -889,7 +889,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                         <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
                             <div className="flex items-center gap-2 text-foreground">
                                 <Utensils className="h-3 w-3 text-blue-500" />
-                                <span className="text-left leading-tight max-w-[120px]">Complemento de Alimentação</span>
+                                <span className="text-left leading-tight">Complemento de Alimentação</span>
                             </div>
                             <span className={cn(valueClasses, "text-xs mr-6")}>
                                 {formatCurrency(c.total)}
@@ -1052,7 +1052,7 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
       <CardHeader className="pb-2 pt-3">
         <div className="flex justify-between items-center"><CardTitle className="text-xl font-bold">Resumo de Custos</CardTitle></div>
         <CardDescription className="text-xs">Visão consolidada dos custos logísticos e orçamentários.</CardDescription>
-      </Header>
+      </CardHeader>
       <CardContent className="space-y-4 p-0 pb-3">
         {renderCostSummary()}
         <Accordion type="single" collapsible className="w-full px-6 pt-0" value={isDetailsOpen ? "summary-details" : undefined} onValueChange={(v) => viewMode === 'global' && setIsDetailsOpen(v === "summary-details")}>
