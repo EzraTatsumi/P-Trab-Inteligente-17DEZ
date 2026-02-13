@@ -47,6 +47,14 @@ const ServicosTerceirosMemoria: React.FC<ServicosTerceirosMemoriaProps> = ({
     const memoriaDisplay = registro.detalhamento_customizado || memoriaAutomatica;
     const hasCustomMemoria = !!registro.detalhamento_customizado;
 
+    const formatCategoryName = (cat: string) => {
+        if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
+        return cat.split('-').map(word => {
+            if (word === 'aereo') return 'Aéreo';
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }).join(' ');
+    };
+
     return (
         <div className="space-y-4 border p-4 rounded-lg bg-muted/30">
             <div className="flex items-start justify-between gap-4 mb-2">
@@ -56,7 +64,7 @@ const ServicosTerceirosMemoria: React.FC<ServicosTerceirosMemoriaProps> = ({
                             {registro.organizacao} (UG: {formatCodug(registro.ug)})
                         </h4>
                         <Badge variant="secondary" className="text-[10px] bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200 capitalize">
-                            {registro.categoria.replace('-', ' ')}
+                            {formatCategoryName(registro.categoria)}
                         </Badge>
                         {hasCustomMemoria && !isEditing && (
                             <Badge variant="outline" className="text-xs">Editada manualmente</Badge>

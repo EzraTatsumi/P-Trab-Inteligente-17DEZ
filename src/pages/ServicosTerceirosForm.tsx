@@ -135,7 +135,6 @@ const ServicosTerceirosForm = () => {
         return null;
     }, [activeTab, velocidadeCruzeiro, distanciaPercorrer]);
 
-    // NOVO: Cálculo do total do lote atual (itens selecionados na Seção 2)
     const totalLote = useMemo(() => {
         return selectedItems.reduce((acc, item) => acc + (item.valor_total || 0), 0);
     }, [selectedItems]);
@@ -383,7 +382,10 @@ const ServicosTerceirosForm = () => {
 
     const formatCategoryName = (cat: string) => {
         if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
-        return cat.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        return cat.split('-').map(word => {
+            if (word === 'aereo') return 'Aéreo';
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }).join(' ');
     };
 
     return (
@@ -663,18 +665,25 @@ const ServicosTerceirosForm = () => {
                                             <div className="space-y-3">
                                                 {group.records.map((reg) => {
                                                     const isDifferentOm = reg.om_detentora !== reg.organizacao || reg.ug_detentora !== reg.ug;
+                                                    const totalHV = reg.categoria === 'fretamento-aereo' 
+                                                        ? reg.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, item: any) => acc + (item.quantidade || 0), 0)
+                                                        : null;
+
                                                     return (
                                                         <Card key={reg.id} className="p-3 bg-background border">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex flex-col">
-                                                                    <h4 className="font-semibold text-base text-foreground capitalize">{reg.categoria.replace('-', ' ')}</h4>
-                                                                    <p className="text-xs text-muted-foreground">Período: {reg.dias_operacao} dias | Efetivo: {reg.efetivo} militares</p>
+                                                                    <h4 className="font-semibold text-base text-foreground capitalize">{formatCategoryName(reg.categoria)}</h4>
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        Período: {reg.dias_operacao} dias | Efetivo: {reg.efetivo} militares
+                                                                        {totalHV !== null && ` | HV: ${totalHV}`}
+                                                                    </p>
                                                                 </div>
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="font-extrabold text-xl text-foreground">{formatCurrency(Number(reg.valor_total))}</span>
                                                                     <div className="flex gap-1 shrink-0">
                                                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(reg)} disabled={!isPTrabEditable || pendingItems.length > 0}><Pencil className="h-4 w-4" /></Button>
-                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => deleteMutation.mutate(reg.id)} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button>
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => deleteMutation.mutate([reg.id])} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -691,7 +700,9 @@ const ServicosTerceirosForm = () => {
                                                                 )}
                                                                 {Number(reg.valor_nd_39) > 0 && (
                                                                     <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">ND 33.90.39:</span>
+                                                                        <span className="text-muted-foreground">
+                                                                            {reg.categoria === 'fretamento-aereo' ? 'ND 33.90.33:' : 'ND 33.90.39:'}
+                                                                        </span>
                                                                         <span className="text-green-600 font-medium">{formatCurrency(Number(reg.valor_nd_39))}</span>
                                                                     </div>
                                                                 )}
