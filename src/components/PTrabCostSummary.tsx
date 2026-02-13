@@ -194,7 +194,7 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     concessionaria: { total: 0, totalAgua: 0, totalEnergia: 0, totalRegistros: 0 },
     horasVoo: { total: 0, totalND30: 0, totalND39: 0, quantidadeHV: 0, groupedHV: {} },
     materialConsumo: { total: 0, totalND30: 0, totalND39: 0 },
-    complementoAlimentacao: { total: 0, totalND30: 0, totalND39: 0, groupedCategories: {} },
+    complementoAlimentacao: { total: 0, totalND30: 0, totalND39: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number }> },
 } as any);
 
 /**
@@ -583,7 +583,7 @@ const CategoryCard = ({ label, value, icon: Icon, colorClass, nd15, nd30, nd33, 
   return (
     <div className={cn("flex flex-col p-5 rounded-xl border border-border/50 bg-card/40 hover:bg-accent/5 transition-all group cursor-pointer min-h-[110px]", isExpanded && "ring-1 ring-primary/30 bg-accent/5 shadow-sm")} onClick={() => details && setIsExpanded(!isExpanded)}>
       <div className="flex items-center gap-4 mb-4">
-        <div className={cn("p-3 rounded-lg transition-colors", colorClass)}><Helicopter className="h-6 w-6" /></div>
+        <div className={cn("p-3 rounded-lg transition-colors", colorClass)}><Icon className="h-6 w-6" /></div>
         <div className="flex flex-col flex-1 min-w-0">
           <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-bold leading-none mb-2 truncate">{label}</span>
           <div className="flex flex-col">
@@ -865,7 +865,17 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
         return (
             <Accordion type="single" collapsible className="w-full pt-1">
                 <AccordionItem value="item-complemento-alimentacao" className="border-b-0">
-                    <AccordionTrigger className="p-0 hover:no-underline"><div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50"><div className="flex items-center gap-1 text-foreground"><Utensils className="h-3 w-3 text-blue-500" />Complemento de Alimentação</div><span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(c.total)}</span></div></AccordionTrigger>
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-2 text-foreground shrink-0">
+                                <Utensils className="h-3 w-3 text-blue-500" />
+                                <span className="whitespace-nowrap">Complemento de Alimentação</span>
+                            </div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
+                                {formatCurrency(c.total)}
+                            </span>
+                        </div>
+                    </AccordionTrigger>
                     <AccordionContent className="pt-1 pb-0"><div className="space-y-1 pl-4 text-[10px]">{Object.entries(c.groupedCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, d]: any) => (<div key={cat} className="space-y-1"><div className="flex justify-between text-muted-foreground font-semibold pt-1"><span className="w-1/2 text-left">{cat}</span><span className="w-1/2 text-right font-medium">{formatCurrency(d.totalValor)}</span></div><div className="flex justify-between text-muted-foreground text-[9px] pl-2"><span className="w-1/2 text-left">ND 30 / ND 39</span><span className="w-1/4 text-right text-green-600 font-medium">{formatCurrency(d.totalND30)}</span><span className="w-1/4 text-right text-blue-600 font-medium">{formatCurrency(d.totalND39)}</span></div></div>))}</div></AccordionContent>
                 </AccordionItem>
             </Accordion>
