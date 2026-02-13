@@ -339,7 +339,7 @@ const ServicosTerceirosForm = () => {
                                                                 <Input 
                                                                     value={tipoAnv} 
                                                                     onChange={(e) => setTipoAnv(e.target.value)} 
-                                                                    placeholder="Ex: C-105 Amazonas" 
+                                                                    placeholder="Ex: Caravan" 
                                                                     disabled={!isPTrabEditable}
                                                                 />
                                                             </div>
@@ -348,7 +348,7 @@ const ServicosTerceirosForm = () => {
                                                                 <Input 
                                                                     value={capacidade} 
                                                                     onChange={(e) => setCapacidade(e.target.value)} 
-                                                                    placeholder="Ex: 30 pax" 
+                                                                    placeholder="Ex: 9 Pax ou 450kg" 
                                                                     disabled={!isPTrabEditable}
                                                                 />
                                                             </div>
@@ -358,7 +358,7 @@ const ServicosTerceirosForm = () => {
                                                                     type="number" 
                                                                     value={velocidadeCruzeiro} 
                                                                     onChange={(e) => setVelocidadeCruzeiro(e.target.value === "" ? "" : Number(e.target.value))} 
-                                                                    placeholder="km/h" 
+                                                                    placeholder="Ex: 350 Km/h" 
                                                                     disabled={!isPTrabEditable}
                                                                     onWheel={(e) => e.currentTarget.blur()}
                                                                     className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -370,7 +370,7 @@ const ServicosTerceirosForm = () => {
                                                                     type="number" 
                                                                     value={distanciaPercorrer} 
                                                                     onChange={(e) => setDistanciaPercorrer(e.target.value === "" ? "" : Number(e.target.value))} 
-                                                                    placeholder="Km" 
+                                                                    placeholder="Ex: 1500 Km" 
                                                                     disabled={!isPTrabEditable}
                                                                     onWheel={(e) => e.currentTarget.blur()}
                                                                     className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
