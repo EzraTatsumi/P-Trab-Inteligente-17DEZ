@@ -579,7 +579,7 @@ const ServicosTerceirosForm = () => {
                             {pendingItems.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        3. Itens Adicionados - {faseAtividade} ({pendingItems.length} {pendingItems.length === 1 ? 'Planejamento' : 'Planejamentos'})
+                                        3. Itens Adicionados ({pendingItems.length})
                                     </h3>
                                     
                                     <div className="space-y-4">
