@@ -135,6 +135,11 @@ const ServicosTerceirosForm = () => {
         return null;
     }, [activeTab, velocidadeCruzeiro, distanciaPercorrer]);
 
+    // NOVO: Cálculo do total do lote atual (itens selecionados na Seção 2)
+    const totalLote = useMemo(() => {
+        return selectedItems.reduce((acc, item) => acc + (item.valor_total || 0), 0);
+    }, [selectedItems]);
+
     const isServicosTerceirosDirty = useMemo(() => {
         if (!lastStagedState || pendingItems.length === 0) return false;
         return (
@@ -662,14 +667,14 @@ const ServicosTerceirosForm = () => {
                                                         <Card key={reg.id} className="p-3 bg-background border">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex flex-col">
-                                                                    <h4 className="font-semibold text-base text-foreground capitalize">{formatCategoryName(reg.categoria)}</h4>
+                                                                    <h4 className="font-semibold text-base text-foreground capitalize">{reg.categoria.replace('-', ' ')}</h4>
                                                                     <p className="text-xs text-muted-foreground">Período: {reg.dias_operacao} dias | Efetivo: {reg.efetivo} militares</p>
                                                                 </div>
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="font-extrabold text-xl text-foreground">{formatCurrency(Number(reg.valor_total))}</span>
                                                                     <div className="flex gap-1 shrink-0">
                                                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(reg)} disabled={!isPTrabEditable || pendingItems.length > 0}><Pencil className="h-4 w-4" /></Button>
-                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => deleteMutation.mutate([reg.id])} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button>
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => deleteMutation.mutate(reg.id)} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button>
                                                                     </div>
                                                                 </div>
                                                             </div>
