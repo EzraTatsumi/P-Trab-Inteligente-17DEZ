@@ -561,7 +561,7 @@ const ServicosTerceirosForm = () => {
                                                     onClick={handleAddToPending}
                                                 >
                                                     <Plus className="mr-2 h-4 w-4" />
-                                                    Adicionar à Lista de Pendentes
+                                                    Salvar Item na Lista
                                                 </Button>
                                             </div>
                                         </Card>
