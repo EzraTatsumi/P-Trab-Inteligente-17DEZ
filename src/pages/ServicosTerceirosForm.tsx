@@ -81,7 +81,6 @@ interface PendingServicoItem {
     valor_nd_39: number;
 }
 
-// Interface para consolidação (Seção 4)
 interface ConsolidatedServicoRecord {
     groupKey: string;
     organizacao: string;
@@ -113,7 +112,6 @@ const ServicosTerceirosForm = () => {
     const [diasOperacao, setDiasOperacao] = useState<number>(0);
     const [omDestino, setOmDestino] = useState({ nome: "", ug: "", id: "" });
 
-    // Campos específicos
     const [tipoAnv, setTipoAnv] = useState("");
     const [capacidade, setCapacidade] = useState("");
     const [velocidadeCruzeiro, setVelocidadeCruzeiro] = useState<number | "">("");
@@ -122,11 +120,10 @@ const ServicosTerceirosForm = () => {
     const [selectedItems, setSelectedItems] = useState<ItemAquisicaoServico[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     
-    // Staging
     const [pendingItems, setPendingItems] = useState<PendingServicoItem[]>([]);
     const [lastStagedState, setLastStagedState] = useState<any>(null);
+    const [editingId, setEditingId] = useState<string | null>(null);
     
-    // Memória
     const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
     const [memoriaEdit, setMemoriaEdit] = useState("");
 
@@ -138,17 +135,15 @@ const ServicosTerceirosForm = () => {
         return null;
     }, [activeTab, velocidadeCruzeiro, distanciaPercorrer]);
 
-    // --- DIRTY CHECK ---
     const isServicosTerceirosDirty = useMemo(() => {
         if (!lastStagedState || pendingItems.length === 0) return false;
-        
         return (
             omFavorecida.id !== lastStagedState.omFavorecidaId ||
             faseAtividade !== lastStagedState.faseAtividade ||
             efetivo !== lastStagedState.efetivo ||
             diasOperacao !== lastStagedState.diasOperacao ||
             omDestino.id !== lastStagedState.omDestinoId ||
-            selectedItems.length > 0 // Se houver itens novos selecionados, está "sujo" em relação ao que foi estagiado
+            selectedItems.length > 0
         );
     }, [omFavorecida, faseAtividade, efetivo, diasOperacao, omDestino, selectedItems, lastStagedState, pendingItems]);
 
@@ -165,7 +160,6 @@ const ServicosTerceirosForm = () => {
         enabled: !!ptrabId,
     });
 
-    // Consolidação para Seção 4
     const consolidatedRegistros = useMemo<ConsolidatedServicoRecord[]>(() => {
         if (!registros) return [];
         const groups = registros.reduce((acc, reg) => {
@@ -194,6 +188,10 @@ const ServicosTerceirosForm = () => {
     // --- MUTATIONS ---
     const saveMutation = useMutation({
         mutationFn: async (itemsToSave: PendingServicoItem[]) => {
+            if (editingId) {
+                const { error: deleteError } = await supabase.from('servicos_terceiros_registros').delete().eq('id', editingId);
+                if (deleteError) throw deleteError;
+            }
             const records = itemsToSave.map(item => ({
                 p_trab_id: ptrabId,
                 organizacao: item.organizacao,
@@ -213,8 +211,9 @@ const ServicosTerceirosForm = () => {
             if (error) throw error;
         },
         onSuccess: () => {
-            toast.success("Registros salvos com sucesso!");
+            toast.success(editingId ? "Registro atualizado com sucesso!" : "Registros salvos com sucesso!");
             resetForm();
+            setEditingId(null);
             queryClient.invalidateQueries({ queryKey: ['servicosTerceirosRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
         },
@@ -245,6 +244,7 @@ const ServicosTerceirosForm = () => {
         setCapacidade("");
         setVelocidadeCruzeiro("");
         setDistanciaPercorrer("");
+        setEditingId(null);
     };
 
     const handleOmFavorecidaChange = (omData: OMData | undefined) => {
@@ -315,6 +315,38 @@ const ServicosTerceirosForm = () => {
         
         setSelectedItems([]);
         toast.info("Item adicionado à lista de pendentes.");
+    };
+
+    const handleEdit = (reg: ServicoTerceiroRegistro) => {
+        if (pendingItems.length > 0) {
+            toast.warning("Salve ou limpe os itens pendentes antes de editar um registro existente.");
+            return;
+        }
+
+        setEditingId(reg.id);
+        const omFav = oms?.find(om => om.nome_om === reg.organizacao && om.codug_om === reg.ug);
+        if (omFav) setOmFavorecida({ nome: omFav.nome_om, ug: omFav.codug_om, id: omFav.id });
+        
+        setFaseAtividade(reg.fase_atividade || "");
+        setEfetivo(reg.efetivo || 0);
+        setDiasOperacao(reg.dias_operacao || 0);
+        
+        const omDest = oms?.find(om => om.nome_om === reg.om_detentora && om.codug_om === reg.ug_detentora);
+        if (omDest) setOmDestino({ nome: omDest.nome_om, ug: omDest.ug, id: omDest.id });
+
+        setActiveTab(reg.categoria as CategoriaServico);
+        
+        const details = reg.detalhes_planejamento;
+        if (details) {
+            setSelectedItems(details.itens_selecionados || []);
+            setTipoAnv(details.tipo_anv || "");
+            setCapacidade(details.capacidade || "");
+            setVelocidadeCruzeiro(details.velocidade_cruzeiro || "");
+            setDistanciaPercorrer(details.distancia_percorrer || "");
+        }
+
+        toast.info("Modo Edição ativado. Altere os dados e clique em 'Salvar Itens na Lista'.");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleSaveMemoria = async (id: string) => {
@@ -528,7 +560,7 @@ const ServicosTerceirosForm = () => {
                                             <div className="flex justify-end gap-3 pt-4">
                                                 <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={selectedItems.length === 0 || saveMutation.isPending || efetivo <= 0 || diasOperacao <= 0} onClick={handleAddToPending}>
                                                     {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                    Salvar Itens na Lista
+                                                    {editingId ? "Recalcular/Revisar Lote" : "Salvar Itens na Lista"}
                                                 </Button>
                                             </div>
                                         </Card>
@@ -598,10 +630,10 @@ const ServicosTerceirosForm = () => {
                                     <div className="flex justify-end gap-3 pt-4">
                                         <Button type="button" onClick={() => saveMutation.mutate(pendingItems)} disabled={saveMutation.isPending || pendingItems.length === 0 || isServicosTerceirosDirty} className="w-full md:w-auto bg-primary hover:bg-primary/90">
                                             {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                            Salvar Registros
+                                            {editingId ? "Atualizar Lote" : "Salvar Registros"}
                                         </Button>
                                         <Button type="button" variant="outline" onClick={resetForm} disabled={saveMutation.isPending}>
-                                            <XCircle className="mr-2 h-4 w-4" /> Limpar Lista
+                                            <XCircle className="mr-2 h-4 w-4" /> {editingId ? "Cancelar Edição" : "Limpar Lista"}
                                         </Button>
                                     </div>
                                 </section>
@@ -624,20 +656,44 @@ const ServicosTerceirosForm = () => {
                                                 <span className="font-extrabold text-xl text-primary">{formatCurrency(group.totalGeral)}</span>
                                             </div>
                                             <div className="space-y-3">
-                                                {group.records.map((reg) => (
-                                                    <Card key={reg.id} className="p-3 bg-background border">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex flex-col">
-                                                                <h4 className="font-semibold text-base text-foreground capitalize">{reg.categoria.replace('-', ' ')}</h4>
-                                                                <p className="text-xs text-muted-foreground">Período: {reg.dias_operacao} dias | Efetivo: {reg.efetivo} militares</p>
+                                                {group.records.map((reg) => {
+                                                    const isDifferentOm = reg.om_detentora !== reg.organizacao || reg.ug_detentora !== reg.ug;
+                                                    return (
+                                                        <Card key={reg.id} className="p-3 bg-background border">
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex flex-col">
+                                                                    <h4 className="font-semibold text-base text-foreground capitalize">{formatCategoryName(reg.categoria)}</h4>
+                                                                    <p className="text-xs text-muted-foreground">Período: {reg.dias_operacao} dias | Efetivo: {reg.efetivo} militares</p>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-extrabold text-xl text-foreground">{formatCurrency(Number(reg.valor_total))}</span>
+                                                                    <div className="flex gap-1 shrink-0">
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(reg)} disabled={!isPTrabEditable || pendingItems.length > 0}><Pencil className="h-4 w-4" /></Button>
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => deleteMutation.mutate([reg.id])} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button>
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-extrabold text-xl text-foreground">{formatCurrency(Number(reg.valor_total))}</span>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => deleteMutation.mutate([reg.id])} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button>
+                                                            <div className="pt-2 border-t mt-2">
+                                                                <div className="flex justify-between text-xs">
+                                                                    <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                    <span className={cn("font-medium", isDifferentOm && "text-red-600")}>{reg.om_detentora} ({formatCodug(reg.ug_detentora || '')})</span>
+                                                                </div>
+                                                                {Number(reg.valor_nd_30) > 0 && (
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">ND 33.90.30:</span>
+                                                                        <span className="text-green-600 font-medium">{formatCurrency(Number(reg.valor_nd_30))}</span>
+                                                                    </div>
+                                                                )}
+                                                                {Number(reg.valor_nd_39) > 0 && (
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">ND 33.90.39:</span>
+                                                                        <span className="text-green-600 font-medium">{formatCurrency(Number(reg.valor_nd_39))}</span>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        </div>
-                                                    </Card>
-                                                ))}
+                                                        </Card>
+                                                    );
+                                                })}
                                             </div>
                                         </Card>
                                     ))}
