@@ -34,7 +34,7 @@ import {
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { formatCodug, formatCurrency } from "@/lib/formatUtils";
+import { formatCodug, formatCurrency, formatPregao } from "@/lib/formatUtils";
 import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/ptrabUtils";
 import { Badge } from "@/components/ui/badge";
 import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
@@ -404,7 +404,17 @@ const ServicosTerceirosForm = () => {
                                                                                     className="h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                                                                 />
                                                                             </TableCell>
-                                                                            <TableCell className="text-xs font-medium">{item.descricao_reduzida || item.descricao_item}</TableCell>
+                                                                            <TableCell className="text-xs">
+                                                                                <p className="font-medium">
+                                                                                    {item.descricao_reduzida || item.descricao_item}
+                                                                                </p>
+                                                                                <p className="text-muted-foreground text-[10px]">
+                                                                                    Cód. CATSER: {item.codigo_catser || item.codigo_catmat || 'N/A'}
+                                                                                </p>
+                                                                                <p className="text-muted-foreground text-[10px]">
+                                                                                    Pregão: {formatPregao(item.numero_pregao)} | UASG: {formatCodug(item.uasg) || 'N/A'}
+                                                                                </p>
+                                                                            </TableCell>
                                                                             <TableCell className="text-right text-xs text-muted-foreground">{formatCurrency(item.valor_unitario)}</TableCell>
                                                                             <TableCell className="text-right text-sm font-bold">{formatCurrency(item.valor_total)}</TableCell>
                                                                             <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
