@@ -1,480 +1,444 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Plus, Trash2, FileText, Info, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { useSession } from "@/components/SessionContextProvider";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  ServicoTerceiroRegistro, 
-  calculateServicoTotals, 
-  generateServicoMemoriaCalculo 
-} from "@/lib/servicosTerceirosUtils";
-import { formatCurrency } from "@/lib/formatUtils";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger,
-  DialogFooter,
-  DialogDescription
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+    ArrowLeft, 
+    Loader2, 
+    Save, 
+    Sparkles, 
+    AlertCircle, 
+    Check, 
+    Package, 
+    Briefcase, 
+    Plane, 
+    Satellite, 
+    Car, 
+    Tractor, 
+    TentTree, 
+    Shirt, 
+    ClipboardList, 
+    Trash2, 
+    FileText, 
+    Printer, 
+    Plus, 
+    Minus, 
+    RefreshCw, 
+    XCircle, 
+    Pencil 
+} from "lucide-react";
+import { useFormNavigation } from "@/hooks/useFormNavigation";
+import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { formatCodug, formatCurrency } from "@/lib/formatUtils";
+import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/ptrabUtils";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
+import { OmSelector } from "@/components/OmSelector";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+import { ItemAquisicaoServico, DetalhesPlanejamentoServico } from "@/types/diretrizesServicosTerceiros";
+import ServicosTerceirosItemSelectorDialog from "@/components/ServicosTerceirosItemSelectorDialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { calculateServicoTotals, ServicoTerceiroRegistro } from "@/lib/servicosTerceirosUtils";
 import ServicosTerceirosMemoria from "@/components/ServicosTerceirosMemoria";
-import PageMetadata from "@/components/PageMetadata";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+export type CategoriaServico = 
+    | "fretamento-aereo" 
+    | "servico-satelital" 
+    | "locacao-veiculos" 
+    | "locacao-engenharia" 
+    | "outros" 
+    | "locacao-estruturas" 
+    | "servico-lavanderia" 
+    | "servico-grafico";
+
+interface OMData {
+    id: string;
+    nome_om: string;
+    codug_om: string;
+    rm_vinculacao: string;
+    codug_rm_vinculacao: string;
+    cidade: string | null;
+    ativo: boolean;
+}
 
 const ServicosTerceirosForm = () => {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const ptrabId = searchParams.get('ptrabId');
-  const { user, isLoading: loadingSession } = useSession();
-  const queryClient = useQueryClient();
-
-  const [loadingPTrab, setLoadingPTrab] = useState(true);
-  const [ptrabData, setPtrabData] = useState<any>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isMemoriaOpen, setIsMemoriaOpen] = useState(false);
-  const [selectedRegistro, setSelectedRegistro] = useState<ServicoTerceiroRegistro | null>(null);
-
-  // Form state
-  const [categoria, setCategoria] = useState("");
-  const [organizacao, setOrganizacao] = useState("");
-  const [ug, setUg] = useState("");
-  const [omDetentora, setOmDetentora] = useState("");
-  const [ugDetentora, setUgDetentora] = useState("");
-  const [diasOperacao, setDiasOperacao] = useState(1);
-  const [efetivo, setEfetivo] = useState(0);
-  const [faseAtividade, setFaseAtividade] = useState("");
-  const [detalhamentoCustomizado, setDetalhamentoCustomizado] = useState("");
-  
-  // Itens de aquisição
-  const [itens, setItens] = useState<any[]>([]);
-  const [novoItem, setNovoItem] = useState({
-    descricao_item: "",
-    quantidade: 1,
-    unidade_medida: "UN",
-    valor_unitario: 0,
-    nd: "39",
-    numero_pregao: "",
-    uasg: ""
-  });
-
-  const { data: registros, isLoading: isLoadingRegistros } = useQuery({
-    queryKey: ['servicosTerceiros', ptrabId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('servicos_terceiros_registros')
-        .select('*')
-        .eq('p_trab_id', ptrabId)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as ServicoTerceiroRegistro[];
-    },
-    enabled: !!ptrabId,
-  });
-
-  useEffect(() => {
-    const loadPTrab = async () => {
-      if (!ptrabId) {
-        toast.error("P Trab não selecionado");
-        navigate('/ptrab');
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('p_trab')
-        .select('*')
-        .eq('id', ptrabId)
-        .single();
-
-      if (error || !data) {
-        toast.error("Não foi possível carregar o P Trab");
-        navigate('/ptrab');
-        return;
-      }
-
-      setPtrabData(data);
-      setOrganizacao(data.nome_om);
-      setUg(data.codug_om || "");
-      setEfetivo(Number(data.efetivo_empregado) || 0);
-      setLoadingPTrab(false);
-    };
-
-    loadPTrab();
-  }, [ptrabId, navigate]);
-
-  const saveMutation = useMutation({
-    mutationFn: async (newRegistro: any) => {
-      const { data, error } = await supabase
-        .from('servicos_terceiros_registros')
-        .insert([newRegistro])
-        .select();
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['servicosTerceiros', ptrabId] });
-      queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
-      toast.success("Registro salvo com sucesso!");
-      setIsDialogOpen(false);
-      resetForm();
-    },
-    onError: (error: any) => {
-      toast.error("Erro ao salvar: " + error.message);
-    }
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('servicos_terceiros_registros')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['servicosTerceiros', ptrabId] });
-      queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
-      toast.success("Registro excluído!");
-    }
-  });
-
-  const resetForm = () => {
-    setCategoria("");
-    setOmDetentora("");
-    setUgDetentora("");
-    setDiasOperacao(1);
-    setFaseAtividade("");
-    setDetalhamentoCustomizado("");
-    setItens([]);
-    setNovoItem({
-      descricao_item: "",
-      quantidade: 1,
-      unidade_medida: "UN",
-      valor_unitario: 0,
-      nd: "39",
-      numero_pregao: "",
-      uasg: ""
-    });
-  };
-
-  const handleAddItem = () => {
-    if (!novoItem.descricao_item || novoItem.valor_unitario <= 0) {
-      toast.error("Preencha a descrição e o valor unitário do item.");
-      return;
-    }
-    setItens([...itens, { ...novoItem, id: crypto.randomUUID() }]);
-    setNovoItem({
-      descricao_item: "",
-      quantidade: 1,
-      unidade_medida: "UN",
-      valor_unitario: 0,
-      nd: "39",
-      numero_pregao: "",
-      uasg: ""
-    });
-  };
-
-  const handleRemoveItem = (id: string) => {
-    setItens(itens.filter(i => i.id !== id));
-  };
-
-  const handleSave = () => {
-    if (!categoria || itens.length === 0) {
-      toast.error("Selecione uma categoria e adicione pelo menos um item.");
-      return;
-    }
-
-    const totals = calculateServicoTotals(itens);
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const ptrabId = searchParams.get('ptrabId');
+    const initialTab = (searchParams.get('tab') as CategoriaServico) || "fretamento-aereo";
     
-    const newRegistro = {
-      p_trab_id: ptrabId,
-      organizacao,
-      ug,
-      om_detentora: omDetentora || organizacao,
-      ug_detentora: ugDetentora || ug,
-      dias_operacao: diasOperacao,
-      efetivo,
-      fase_atividade: faseAtividade,
-      categoria,
-      detalhes_planejamento: { itens_selecionados: itens },
-      valor_total: totals.totalGeral,
-      valor_nd_30: totals.totalND30,
-      valor_nd_39: totals.totalND39,
-      detalhamento_customizado: detalhamentoCustomizado
+    const queryClient = useQueryClient();
+    const { handleEnterToNextField } = useFormNavigation();
+    const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
+
+    // --- ESTADOS DO FORMULÁRIO ---
+    const [activeTab, setActiveTab] = useState<CategoriaServico>(initialTab);
+    const [omFavorecida, setOmFavorecida] = useState({ nome: "", ug: "", id: "" });
+    const [faseAtividade, setFaseAtividade] = useState("");
+    const [efetivo, setEfetivo] = useState<number>(0);
+    const [diasOperacao, setDiasOperacao] = useState<number>(0);
+    const [omDestino, setOmDestino] = useState({ nome: "", ug: "", id: "" });
+
+    const [selectedItems, setSelectedItems] = useState<ItemAquisicaoServico[]>([]);
+    const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+    
+    // Estados de Memória
+    const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
+    const [memoriaEdit, setMemoriaEdit] = useState("");
+
+    // --- DATA FETCHING ---
+    const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
+        queryKey: ['ptrabData', ptrabId],
+        queryFn: () => fetchPTrabData(ptrabId!),
+        enabled: !!ptrabId,
+    });
+
+    const { data: registros, isLoading: isLoadingRegistros } = useQuery<ServicoTerceiroRegistro[]>({
+        queryKey: ['servicosTerceirosRegistros', ptrabId],
+        queryFn: () => fetchPTrabRecords('servicos_terceiros_registros' as any, ptrabId!),
+        enabled: !!ptrabId,
+    });
+
+    // --- MUTATIONS ---
+    const saveMutation = useMutation({
+        mutationFn: async () => {
+            const { totalND30, totalND39, totalGeral } = calculateServicoTotals(selectedItems);
+            const payload = {
+                p_trab_id: ptrabId,
+                organizacao: omFavorecida.nome,
+                ug: omFavorecida.ug,
+                om_detentora: omDestino.nome,
+                ug_detentora: omDestino.ug,
+                dias_operacao: diasOperacao,
+                efetivo: efetivo,
+                fase_atividade: faseAtividade,
+                categoria: activeTab,
+                detalhes_planejamento: { itens_selecionados: selectedItems } as any,
+                valor_total: totalGeral,
+                valor_nd_30: totalND30,
+                valor_nd_39: totalND39,
+            };
+
+            const { error } = await supabase.from('servicos_terceiros_registros').insert([payload]);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            toast.success("Planejamento salvo com sucesso!");
+            setSelectedItems([]);
+            queryClient.invalidateQueries({ queryKey: ['servicosTerceirosRegistros', ptrabId] });
+            queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
+        },
+        onError: (err) => toast.error("Erro ao salvar: " + err.message)
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase.from('servicos_terceiros_registros').delete().eq('id', id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            toast.success("Registro excluído.");
+            queryClient.invalidateQueries({ queryKey: ['servicosTerceirosRegistros', ptrabId] });
+            queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
+        }
+    });
+
+    // --- HANDLERS ---
+    const handleOmFavorecidaChange = (omData: OMData | undefined) => {
+        if (omData) {
+            setOmFavorecida({ nome: omData.nome_om, ug: omData.codug_om, id: omData.id });
+            if (!omDestino.id) setOmDestino({ nome: omData.nome_om, ug: omData.codug_om, id: omData.id });
+        } else setOmFavorecida({ nome: "", ug: "", id: "" });
     };
 
-    saveMutation.mutate(newRegistro);
-  };
+    const handleItemsSelected = (items: ItemAquisicaoServico[]) => {
+        const newItems = items.map(item => {
+            const existing = selectedItems.find(i => i.id === item.id);
+            return existing ? existing : { ...item, quantidade: 1, valor_total: item.valor_unitario };
+        });
+        setSelectedItems(newItems);
+    };
 
-  const handleViewMemoria = (registro: ServicoTerceiroRegistro) => {
-    setSelectedRegistro(registro);
-    setIsMemoriaOpen(true);
-  };
+    const handleQuantityChange = (id: string, qty: number) => {
+        setSelectedItems(prev => prev.map(item => 
+            item.id === id ? { ...item, quantidade: qty, valor_total: qty * item.valor_unitario } : item
+        ));
+    };
 
-  if (loadingSession || loadingPTrab || isLoadingRegistros) {
+    const totalLote = useMemo(() => selectedItems.reduce((acc, item) => acc + (item.valor_total || 0), 0), [selectedItems]);
+
+    // Handlers de Memória
+    const handleSaveMemoria = async (id: string) => {
+        const { error } = await supabase.from('servicos_terceiros_registros').update({ detalhamento_customizado: memoriaEdit }).eq('id', id);
+        if (error) toast.error("Erro ao salvar memória.");
+        else {
+            toast.success("Memória atualizada.");
+            setEditingMemoriaId(null);
+            queryClient.invalidateQueries({ queryKey: ['servicosTerceirosRegistros', ptrabId] });
+        }
+    };
+
+    const handleRestoreMemoria = async (id: string) => {
+        const { error } = await supabase.from('servicos_terceiros_registros').update({ detalhamento_customizado: null }).eq('id', id);
+        if (error) toast.error("Erro ao restaurar.");
+        else {
+            toast.success("Memória automática restaurada.");
+            queryClient.invalidateQueries({ queryKey: ['servicosTerceirosRegistros', ptrabId] });
+        }
+    };
+
+    // --- RENDERIZAÇÃO ---
+    const isGlobalLoading = isLoadingPTrab || isLoadingOms || isLoadingRegistros;
+    if (isGlobalLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
+
+    const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
+    const isBaseFormReady = omFavorecida.nome !== "" && faseAtividade !== "";
+
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <span className="ml-2 text-muted-foreground">Carregando...</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-background py-8 px-4">
-      <PageMetadata 
-        title="Serviços de Terceiros e Locações" 
-        description="Gerenciamento de registros de serviços de terceiros e locações para o P Trab."
-      />
-      
-      <div className="container max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <Button variant="ghost" onClick={() => navigate(`/ptrab/form?ptrabId=${ptrabId}`)}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar ao P Trab
-          </Button>
-          
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm}>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Registro
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
-              <DialogHeader>
-                <DialogTitle>Novo Planejamento de Serviço/Locação</DialogTitle>
-                <DialogDescription>
-                  Preencha os detalhes do serviço ou locação para este P Trab.
-                </DialogDescription>
-              </DialogHeader>
-              
-              <ScrollArea className="flex-1 pr-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-                  <div className="space-y-2">
-                    <Label>Categoria do Serviço</Label>
-                    <Select value={categoria} onValueChange={setCategoria}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="locacao-viaturas">Locação de Viaturas</SelectItem>
-                        <SelectItem value="locacao-equipamentos">Locação de Equipamentos</SelectItem>
-                        <SelectItem value="locacao-estruturas">Locação de Estruturas (Tendas/Banheiros)</SelectItem>
-                        <SelectItem value="servicos-manutencao">Serviços de Manutenção</SelectItem>
-                        <SelectItem value="servicos-limpeza">Serviços de Limpeza/Conservação</SelectItem>
-                        <SelectItem value="outros-servicos">Outros Serviços de Terceiros</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Fase da Atividade</Label>
-                    <Input 
-                      placeholder="Ex: Concentração, Execução..." 
-                      value={faseAtividade}
-                      onChange={(e) => setFaseAtividade(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Dias de Operação</Label>
-                    <Input 
-                      type="number" 
-                      min="1" 
-                      value={diasOperacao}
-                      onChange={(e) => setDiasOperacao(Number(e.target.value))}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Efetivo Atendido</Label>
-                    <Input 
-                      type="number" 
-                      min="0" 
-                      value={efetivo}
-                      onChange={(e) => setEfetivo(Number(e.target.value))}
-                    />
-                  </div>
-
-                  <div className="col-span-2 space-y-4 border p-4 rounded-lg bg-muted/30">
-                    <h4 className="font-semibold text-sm flex items-center gap-2">
-                      <Package className="h-4 w-4" />
-                      Itens de Aquisição / Lotes
-                    </h4>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div className="md:col-span-2 space-y-1">
-                        <Label className="text-xs">Descrição do Item/Serviço</Label>
-                        <Input 
-                          placeholder="Ex: Locação de Van 15 lugares" 
-                          value={novoItem.descricao_item}
-                          onChange={(e) => setNovoItem({...novoItem, descricao_item: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Natureza de Despesa</Label>
-                        <Select 
-                          value={novoItem.nd} 
-                          onValueChange={(v) => setNovoItem({...novoItem, nd: v})}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="30">33.90.30 (Consumo)</SelectItem>
-                            <SelectItem value="39">33.90.39 (Serviço)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Quantidade</Label>
-                        <Input 
-                          type="number" 
-                          min="1" 
-                          value={novoItem.quantidade}
-                          onChange={(e) => setNovoItem({...novoItem, quantidade: Number(e.target.value)})}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Valor Unitário</Label>
-                        <Input 
-                          type="number" 
-                          step="0.01" 
-                          value={novoItem.valor_unitario}
-                          onChange={(e) => setNovoItem({...novoItem, valor_unitario: Number(e.target.value)})}
-                        />
-                      </div>
-                      <div className="flex items-end">
-                        <Button type="button" variant="secondary" className="w-full" onClick={handleAddItem}>
-                          Adicionar Item
-                        </Button>
-                      </div>
-                    </div>
-
-                    {itens.length > 0 && (
-                      <div className="mt-4 space-y-2">
-                        <Label className="text-xs font-bold">Itens Adicionados:</Label>
-                        {itens.map((item) => (
-                          <div key={item.id} className="flex items-center justify-between bg-background p-2 rounded border text-sm">
-                            <div className="flex-1">
-                              <span className="font-medium">{item.descricao_item}</span>
-                              <div className="text-xs text-muted-foreground">
-                                {item.quantidade} x {formatCurrency(item.valor_unitario)} | ND: {item.nd}
-                              </div>
-                            </div>
-                            <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="col-span-2 space-y-2">
-                    <Label>Observações / Detalhamento Adicional</Label>
-                    <Textarea 
-                      placeholder="Informações complementares para a memória de cálculo..." 
-                      value={detalhamentoCustomizado}
-                      onChange={(e) => setDetalhamentoCustomizado(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </ScrollArea>
-
-              <DialogFooter className="mt-4">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                <Button onClick={handleSave} disabled={saveMutation.isPending}>
-                  {saveMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Salvar Registro
+        <div className="min-h-screen bg-background p-4 md:p-8">
+            <div className="max-w-6xl mx-auto space-y-6">
+                <Button variant="ghost" onClick={() => navigate(`/ptrab/form?ptrabId=${ptrabId}`)} className="mb-4">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Serviços e Locações</CardTitle>
+                        <CardDescription>Planejamento de necessidades de serviços de terceiros e locações.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-8">
+                            
+                            {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
+                            <section className="space-y-4 border-b pb-6">
+                                <h3 className="text-lg font-semibold flex items-center gap-2">1. Dados da Organização</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>OM Favorecida *</Label>
+                                        <OmSelector selectedOmId={omFavorecida.id || undefined} onChange={handleOmFavorecidaChange} placeholder="Selecione a OM Favorecida" disabled={!isPTrabEditable} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>UG Favorecida</Label>
+                                        <Input value={formatCodug(omFavorecida.ug)} disabled className="bg-muted/50" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Fase da Atividade *</Label>
+                                        <FaseAtividadeSelect value={faseAtividade} onChange={setFaseAtividade} disabled={!isPTrabEditable} />
+                                    </div>
+                                </div>
+                            </section>
+
+                            {/* SEÇÃO 2: CONFIGURAR PLANEJAMENTO */}
+                            {isBaseFormReady && (
+                                <section className="space-y-4 border-b pb-6">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">2. Configurar Planejamento</h3>
+                                    
+                                    <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as CategoriaServico); setSelectedItems([]); }} className="w-full">
+                                        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-8 h-auto gap-1 bg-muted p-1 mb-6">
+                                            <TabsTrigger value="fretamento-aereo" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Plane className="h-4 w-4" /> Fretamento</TabsTrigger>
+                                            <TabsTrigger value="servico-satelital" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Satellite className="h-4 w-4" /> Satelital</TabsTrigger>
+                                            <TabsTrigger value="locacao-veiculos" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Car className="h-4 w-4" /> Veículos</TabsTrigger>
+                                            <TabsTrigger value="locacao-engenharia" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Tractor className="h-4 w-4" /> Eqp Engenharia</TabsTrigger>
+                                            <TabsTrigger value="locacao-estruturas" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><TentTree className="h-4 w-4" /> Estruturas</TabsTrigger>
+                                            <TabsTrigger value="servico-lavanderia" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Shirt className="h-4 w-4" /> Lavanderia</TabsTrigger>
+                                            <TabsTrigger value="servico-grafico" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Printer className="h-4 w-4" /> Gráfico</TabsTrigger>
+                                            <TabsTrigger value="outros" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><ClipboardList className="h-4 w-4" /> Outros</TabsTrigger>
+                                        </TabsList>
+
+                                        <Card className="bg-muted/50 rounded-lg p-4">
+                                            {/* Dados da Solicitação */}
+                                            <Card className="rounded-lg mb-4">
+                                                <CardHeader className="py-3">
+                                                    <CardTitle className="text-base font-semibold">Período, Efetivo e Destino do Recurso</CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="pt-2">
+                                                    <div className="p-4 bg-background rounded-lg border">
+                                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                            <div className="space-y-2">
+                                                                <Label>Período (Nr Dias) *</Label>
+                                                                <Input 
+                                                                    type="number" 
+                                                                    value={diasOperacao || ""} 
+                                                                    onChange={(e) => setDiasOperacao(Number(e.target.value))} 
+                                                                    placeholder="Ex: 15" 
+                                                                    disabled={!isPTrabEditable} 
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+                                                                        handleEnterToNextField(e);
+                                                                    }}
+                                                                    onWheel={(e) => e.currentTarget.blur()}
+                                                                    className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Efetivo *</Label>
+                                                                <Input 
+                                                                    type="number" 
+                                                                    value={efetivo || ""} 
+                                                                    onChange={(e) => setEfetivo(Number(e.target.value))} 
+                                                                    placeholder="Ex: 50" 
+                                                                    disabled={!isPTrabEditable} 
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+                                                                        handleEnterToNextField(e);
+                                                                    }}
+                                                                    onWheel={(e) => e.currentTarget.blur()}
+                                                                    className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>OM Destino do Recurso *</Label>
+                                                                <OmSelector selectedOmId={omDestino.id || undefined} onChange={(om) => om && setOmDestino({nome: om.nome_om, ug: om.codug_om, id: om.id})} placeholder="Selecione a OM Destino" disabled={!isPTrabEditable} />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>UG Destino</Label>
+                                                                <Input value={formatCodug(omDestino.ug)} disabled className="bg-muted/50" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+
+                                            {/* Seleção de Itens */}
+                                            <Card className="mt-4 rounded-lg p-4 bg-background">
+                                                <div className="space-y-4">
+                                                    <div className="flex justify-between items-center">
+                                                        <h4 className="text-base font-semibold">Itens de {activeTab.replace('-', ' ')} ({selectedItems.length})</h4>
+                                                        <Button type="button" variant="outline" size="sm" onClick={() => setIsSelectorOpen(true)} disabled={!isPTrabEditable}><Plus className="mr-2 h-4 w-4" /> Importar da Diretriz</Button>
+                                                    </div>
+
+                                                    {selectedItems.length > 0 ? (
+                                                        <div className="border rounded-md overflow-hidden">
+                                                            <Table>
+                                                                <TableHeader>
+                                                                    <TableRow>
+                                                                        <TableHead className="w-[100px] text-center">Qtd</TableHead>
+                                                                        <TableHead>Descrição do Serviço</TableHead>
+                                                                        <TableHead className="text-right w-[120px]">Vlr Unitário</TableHead>
+                                                                        <TableHead className="text-right w-[120px]">Total</TableHead>
+                                                                        <TableHead className="w-[50px]"></TableHead>
+                                                                    </TableRow>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {selectedItems.map(item => (
+                                                                        <TableRow key={item.id}>
+                                                                            <TableCell>
+                                                                                <Input 
+                                                                                    type="number" 
+                                                                                    value={item.quantidade} 
+                                                                                    onChange={(e) => handleQuantityChange(item.id, Number(e.target.value))} 
+                                                                                    onWheel={(e) => e.currentTarget.blur()}
+                                                                                    className="h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                                />
+                                                                            </TableCell>
+                                                                            <TableCell className="text-xs font-medium">{item.descricao_reduzida || item.descricao_item}</TableCell>
+                                                                            <TableCell className="text-right text-xs text-muted-foreground">{formatCurrency(item.valor_unitario)}</TableCell>
+                                                                            <TableCell className="text-right text-sm font-bold">{formatCurrency(item.valor_total)}</TableCell>
+                                                                            <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </div>
+                                                    ) : (
+                                                        <Alert variant="default" className="border border-gray-300">
+                                                            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                                                            <AlertTitle>Nenhum Item Selecionado</AlertTitle>
+                                                            <AlertDescription>Importe itens da diretriz para iniciar o planejamento desta categoria.</AlertDescription>
+                                                        </Alert>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex justify-between items-center p-3 mt-4 border-t pt-4">
+                                                    <span className="font-bold text-sm uppercase">VALOR TOTAL DO LOTE:</span>
+                                                    <span className="font-extrabold text-lg text-primary">{formatCurrency(totalLote)}</span>
+                                                </div>
+                                            </Card>
+
+                                            <div className="flex justify-end gap-3 pt-4">
+                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={selectedItems.length === 0 || saveMutation.isPending || efetivo <= 0 || diasOperacao <= 0} onClick={() => saveMutation.mutate()}>
+                                                    {saveMutation.isPending ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
+                                                    Salvar Item na Lista
+                                                </Button>
+                                            </div>
+                                        </Card>
+                                    </Tabs>
+                                </section>
+                            )}
+
+                            {/* SEÇÃO 3: REGISTROS SALVOS */}
+                            {registros && registros.length > 0 && (
+                                <section className="space-y-4 border-b pb-6">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        <Sparkles className="h-5 w-5 text-accent" />
+                                        Serviços Cadastrados ({registros.length})
+                                    </h3>
+                                    <div className="grid grid-cols-1 gap-4">
+                                        {registros.map(reg => (
+                                            <Card key={reg.id} className="p-4 bg-primary/5 border-primary/20">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="font-bold text-lg text-primary capitalize">{reg.categoria.replace('-', ' ')}</h4>
+                                                            <Badge variant="outline" className="text-xs">{reg.fase_atividade}</Badge>
+                                                        </div>
+                                                        <p className="text-sm text-muted-foreground">{reg.organizacao} | {reg.efetivo} militares | {reg.dias_operacao} dias</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-4">
+                                                        <span className="font-extrabold text-xl text-primary">{formatCurrency(Number(reg.valor_total))}</span>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => deleteMutation.mutate(reg.id)} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button>
+                                                    </div>
+                                                </div>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* SEÇÃO 4: MEMÓRIAS DE CÁLCULO */}
+                            {registros && registros.length > 0 && (
+                                <section className="space-y-4 mt-8">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">📋 Memórias de Cálculos Detalhadas</h3>
+                                    {registros.map(reg => (
+                                        <ServicosTerceirosMemoria 
+                                            key={`mem-${reg.id}`}
+                                            registro={reg}
+                                            isPTrabEditable={isPTrabEditable}
+                                            isSaving={false}
+                                            editingMemoriaId={editingMemoriaId}
+                                            memoriaEdit={memoriaEdit}
+                                            setMemoriaEdit={setMemoriaEdit}
+                                            onStartEdit={(id, text) => { setEditingMemoriaId(id); setMemoriaEdit(text); }}
+                                            onCancelEdit={() => setEditingMemoriaId(null)}
+                                            onSave={handleSaveMemoria}
+                                            onRestore={handleRestoreMemoria}
+                                        />
+                                    ))}
+                                </section>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <ServicosTerceirosItemSelectorDialog 
+                open={isSelectorOpen} 
+                onOpenChange={setIsSelectorOpen} 
+                selectedYear={new Date().getFullYear()} 
+                initialItems={selectedItems} 
+                onSelect={handleItemsSelected} 
+                onAddDiretriz={() => navigate('/config/custos-operacionais')} 
+                categoria={activeTab}
+            />
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Registros de Serviços e Locações</CardTitle>
-            <CardDescription>
-              Lista de todos os serviços planejados para este P Trab.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {registros && registros.length > 0 ? (
-              <div className="space-y-4">
-                {registros.map((reg) => (
-                  <div key={reg.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg hover:bg-muted/20 transition-colors gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="capitalize">
-                          {reg.categoria.replace('-', ' ')}
-                        </Badge>
-                        <span className="font-semibold">{formatCurrency(reg.valor_total)}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {reg.fase_atividade || 'Fase não informada'} • {reg.dias_operacao} dias • {reg.efetivo} militares
-                      </p>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleViewMemoria(reg)}>
-                        <FileText className="mr-2 h-4 w-4" />
-                        Memória
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => deleteMutation.mutate(reg.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                <Info className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-medium">Nenhum registro encontrado</h3>
-                <p className="text-muted-foreground">Comece adicionando um novo planejamento de serviço ou locação.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {selectedRegistro && (
-        <ServicosTerceirosMemoria
-          open={isMemoriaOpen}
-          onOpenChange={setIsMemoriaOpen}
-          registro={selectedRegistro}
-          ptrabData={ptrabData}
-        />
-      )}
-    </div>
-  );
+    );
 };
 
 export default ServicosTerceirosForm;
