@@ -9,14 +9,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-center";
 
 interface SignupDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const SignupDialog: React.FC<SignupDialogProps> = ({ open, onOpenChange }) => {
+// Exportação nomeada para garantir compatibilidade
+export const SignupDialog: React.FC<SignupDialogProps> = ({ open, onOpenChange }) => {
   const steps = [
     "Preencha seus dados básicos",
     "Confirme seu e-mail institucional",
