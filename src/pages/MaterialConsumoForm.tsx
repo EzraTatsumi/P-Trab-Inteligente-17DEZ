@@ -1176,7 +1176,7 @@ const MaterialConsumoForm = () => {
                 <Card>
                     <CardHeader>
                         <CardTitle>
-                            Aqisição de Material de Consumo
+                            Aquisição de Material de Consumo
                         </CardTitle>
                         <CardDescription>
                             Levantamento de necessidades de Material de Consumo.
