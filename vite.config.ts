@@ -1,8 +1,21 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import dyadComponentTagger from "@dyad-sh/react-vite-component-tagger";
- 
+import path from "path";
+
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [dyadComponentTagger(), react()],
+  plugins: [
+    react(),
+    dyadComponentTagger(),
+  ],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  server: {
+    host: "0.0.0.0",
+    port: 8080,
+  },
 });
