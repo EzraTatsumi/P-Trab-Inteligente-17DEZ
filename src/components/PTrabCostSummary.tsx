@@ -9,7 +9,7 @@ import {
   Package, 
   TrendingUp, 
   Wallet, 
-  Helicopter,
+  Plane,
   ChevronDown, 
   ChevronUp,
   Info,
@@ -250,7 +250,7 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
       <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-white">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg font-bold flex items-center gap-2 text-purple-700">
-            <Helicopter className="h-5 w-5" />
+            <Plane className="h-5 w-5" />
             Aviação do Exército
           </CardTitle>
         </CardHeader>
@@ -271,7 +271,7 @@ export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, cred
                 <div className="space-y-1.5 border-l-2 border-purple-200 pl-3 py-1">
                   <div className="flex items-center justify-between text-[10px] font-bold text-purple-600/70 uppercase tracking-tighter">
                     <div className="flex items-center gap-1.5">
-                      <Helicopter className="h-3 w-3" />
+                      <Plane className="h-3 w-3" />
                       Horas de Voo
                     </div>
                     <span>{formatNumber(om.quantidadeHV, 2)} HV</span>
