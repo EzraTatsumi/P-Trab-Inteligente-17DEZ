@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle2 } from "lucide-center";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 
 interface SignupDialogProps {
   open: boolean;
