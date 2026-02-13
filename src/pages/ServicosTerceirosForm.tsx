@@ -11,8 +11,8 @@ import {
   ServicoTerceiroRegistro, 
   calculateServicoTotals, 
   generateServicoMemoriaCalculo 
-} from "@/utils/servicosTerceirosUtils";
-import { formatCurrency } from "@/utils/formatUtils";
+} from "@/lib/servicosTerceirosUtils";
+import { formatCurrency } from "@/lib/formatUtils";
 import { 
   Dialog, 
   DialogContent, 
