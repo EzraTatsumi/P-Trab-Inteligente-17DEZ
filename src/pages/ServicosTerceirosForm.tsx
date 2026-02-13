@@ -6,7 +6,31 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Save, Sparkles, AlertCircle, Check, Package, Briefcase, Plane, Satellite, Car, HardHat, Trash2, FileText, Printer, Plus, Minus, RefreshCw, XCircle, Pencil } from "lucide-react";
+import { 
+    ArrowLeft, 
+    Loader2, 
+    Save, 
+    Sparkles, 
+    AlertCircle, 
+    Check, 
+    Package, 
+    Briefcase, 
+    Plane, 
+    Satellite, 
+    Car, 
+    Tractor, 
+    TentTree, 
+    Shirt, 
+    ClipboardList, 
+    Trash2, 
+    FileText, 
+    Printer, 
+    Plus, 
+    Minus, 
+    RefreshCw, 
+    XCircle, 
+    Pencil 
+} from "lucide-react";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -29,7 +53,7 @@ export type CategoriaServico =
     | "servico-satelital" 
     | "locacao-veiculos" 
     | "locacao-engenharia" 
-    | "locacao-banheiro" 
+    | "outros" 
     | "locacao-estruturas" 
     | "servico-lavanderia" 
     | "servico-grafico";
@@ -221,10 +245,10 @@ const ServicosTerceirosForm = () => {
                                             <TabsTrigger value="fretamento-aereo" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Plane className="h-4 w-4" /> Fretamento</TabsTrigger>
                                             <TabsTrigger value="servico-satelital" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Satellite className="h-4 w-4" /> Satelital</TabsTrigger>
                                             <TabsTrigger value="locacao-veiculos" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Car className="h-4 w-4" /> Veículos</TabsTrigger>
-                                            <TabsTrigger value="locacao-engenharia" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><HardHat className="h-4 w-4" /> Engenharia</TabsTrigger>
-                                            <TabsTrigger value="locacao-banheiro" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Trash2 className="h-4 w-4" /> Banheiros</TabsTrigger>
-                                            <TabsTrigger value="locacao-estruturas" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Package className="h-4 w-4" /> Estruturas</TabsTrigger>
-                                            <TabsTrigger value="servico-lavanderia" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><RefreshCw className="h-4 w-4" /> Lavanderia</TabsTrigger>
+                                            <TabsTrigger value="locacao-engenharia" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Tractor className="h-4 w-4" /> Eqp Engenharia</TabsTrigger>
+                                            <TabsTrigger value="outros" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><ClipboardList className="h-4 w-4" /> Outros</TabsTrigger>
+                                            <TabsTrigger value="locacao-estruturas" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><TentTree className="h-4 w-4" /> Estruturas</TabsTrigger>
+                                            <TabsTrigger value="servico-lavanderia" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Shirt className="h-4 w-4" /> Lavanderia</TabsTrigger>
                                             <TabsTrigger value="servico-grafico" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Printer className="h-4 w-4" /> Gráfico</TabsTrigger>
                                         </TabsList>
 
