@@ -642,7 +642,7 @@ const ServicosTerceirosForm = () => {
                                     
                                     <Card className="bg-gray-100 shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
-                                            <span className="font-bold text-base uppercase">VALOR TOTAL DA LISTA</span>
+                                            <span className="font-bold text-base uppercase">VALOR TOTAL DA OM</span>
                                             <span className="font-extrabold text-xl text-foreground">{formatCurrency(totalPendingValue)}</span>
                                         </CardContent>
                                     </Card>
@@ -655,7 +655,7 @@ const ServicosTerceirosForm = () => {
                                             className="w-full md:w-auto bg-primary hover:bg-primary/90"
                                         >
                                             {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                            Salvar Todos os Registros no Banco
+                                            Salvar Registros
                                         </Button>
                                         <Button type="button" variant="outline" onClick={handleClearPending} disabled={saveMutation.isPending}>
                                             <XCircle className="mr-2 h-4 w-4" />
