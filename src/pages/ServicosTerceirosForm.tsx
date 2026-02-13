@@ -29,7 +29,8 @@ import {
     Minus, 
     RefreshCw, 
     XCircle, 
-    Pencil 
+    Pencil,
+    Info
 } from "lucide-react";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
@@ -98,6 +99,14 @@ const ServicosTerceirosForm = () => {
     // Estados de Memória
     const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
     const [memoriaEdit, setMemoriaEdit] = useState("");
+
+    // --- CÁLCULOS AUXILIARES ---
+    const suggestedHV = useMemo(() => {
+        if (activeTab === "fretamento-aereo" && velocidadeCruzeiro && distanciaPercorrer) {
+            return Math.ceil(Number(distanciaPercorrer) / Number(velocidadeCruzeiro));
+        }
+        return null;
+    }, [activeTab, velocidadeCruzeiro, distanciaPercorrer]);
 
     // --- DATA FETCHING ---
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
@@ -177,7 +186,9 @@ const ServicosTerceirosForm = () => {
     const handleItemsSelected = (items: ItemAquisicaoServico[]) => {
         const newItems = items.map(item => {
             const existing = selectedItems.find(i => i.id === item.id);
-            return existing ? existing : { ...item, quantidade: 1, valor_total: item.valor_unitario };
+            // Se for fretamento aéreo e tivermos sugestão, aplicamos a sugestão ao novo item
+            const initialQty = (activeTab === "fretamento-aereo" && suggestedHV) ? suggestedHV : 1;
+            return existing ? existing : { ...item, quantidade: initialQty, valor_total: initialQty * item.valor_unitario };
         });
         setSelectedItems(newItems);
     };
@@ -402,34 +413,69 @@ const ServicosTerceirosForm = () => {
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
-                                                                    {selectedItems.map(item => (
-                                                                        <TableRow key={item.id}>
-                                                                            <TableCell>
-                                                                                <Input 
-                                                                                    type="number" 
-                                                                                    min={0}
-                                                                                    value={item.quantidade === 0 ? "" : item.quantidade} 
-                                                                                    onChange={(e) => handleQuantityChange(item.id, e.target.value)} 
-                                                                                    onWheel={(e) => e.currentTarget.blur()}
-                                                                                    className="h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                                                                />
-                                                                            </TableCell>
-                                                                            <TableCell className="text-xs">
-                                                                                <p className="font-medium">
-                                                                                    {item.descricao_reduzida || item.descricao_item}
-                                                                                </p>
-                                                                                <p className="text-muted-foreground text-[10px]">
-                                                                                    Cód. CATSER: {item.codigo_catser || item.codigo_catmat || 'N/A'}
-                                                                                </p>
-                                                                                <p className="text-muted-foreground text-[10px]">
-                                                                                    Pregão: {formatPregao(item.numero_pregao)} | UASG: {formatCodug(item.uasg) || 'N/A'}
-                                                                                </p>
-                                                                            </TableCell>
-                                                                            <TableCell className="text-right text-xs text-muted-foreground">{formatCurrency(item.valor_unitario)}</TableCell>
-                                                                            <TableCell className="text-right text-sm font-bold">{formatCurrency(item.valor_total)}</TableCell>
-                                                                            <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
-                                                                        </TableRow>
-                                                                    ))}
+                                                                    {selectedItems.map(item => {
+                                                                        const isCharter = activeTab === "fretamento-aereo";
+                                                                        const showHvWarning = isCharter && suggestedHV !== null && item.quantidade !== suggestedHV;
+
+                                                                        return (
+                                                                            <TableRow key={item.id}>
+                                                                                <TableCell className="align-top pt-4">
+                                                                                    <div className="space-y-1">
+                                                                                        <Input 
+                                                                                            type="number" 
+                                                                                            min={0}
+                                                                                            value={item.quantidade === 0 ? "" : item.quantidade} 
+                                                                                            onChange={(e) => handleQuantityChange(item.id, e.target.value)} 
+                                                                                            onWheel={(e) => e.currentTarget.blur()}
+                                                                                            className={cn(
+                                                                                                "h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                                                                                                showHvWarning && "border-orange-500 focus-visible:ring-orange-500"
+                                                                                            )} 
+                                                                                        />
+                                                                                        {showHvWarning && (
+                                                                                            <div className="flex flex-col items-center gap-1 px-1">
+                                                                                                <span className="text-[9px] text-orange-600 font-bold leading-tight text-center">
+                                                                                                    Sugerido: {suggestedHV} HV
+                                                                                                </span>
+                                                                                                <Button 
+                                                                                                    variant="ghost" 
+                                                                                                    size="sm" 
+                                                                                                    className="h-5 text-[8px] px-1 text-orange-700 hover:text-orange-800 hover:bg-orange-50"
+                                                                                                    onClick={() => handleQuantityChange(item.id, suggestedHV.toString())}
+                                                                                                >
+                                                                                                    Aplicar Sugestão
+                                                                                                </Button>
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </TableCell>
+                                                                                <TableCell className="text-xs">
+                                                                                    <p className="font-medium">
+                                                                                        {item.descricao_reduzida || item.descricao_item}
+                                                                                    </p>
+                                                                                    <p className="text-muted-foreground text-[10px]">
+                                                                                        Cód. CATSER: {item.codigo_catser || item.codigo_catmat || 'N/A'}
+                                                                                    </p>
+                                                                                    <p className="text-muted-foreground text-[10px]">
+                                                                                        Pregão: {formatPregao(item.numero_pregao)} | UASG: {formatCodug(item.uasg) || 'N/A'}
+                                                                                    </p>
+                                                                                    {isCharter && suggestedHV !== null && (
+                                                                                        <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded flex items-start gap-2">
+                                                                                            <Info className="h-3 w-3 text-blue-600 mt-0.5" />
+                                                                                            <p className="text-[10px] text-blue-700 leading-tight">
+                                                                                                Cálculo: {distanciaPercorrer}km / {velocidadeCruzeiro}km/h = {(Number(distanciaPercorrer) / Number(velocidadeCruzeiro)).toFixed(2)}h. 
+                                                                                                <br />
+                                                                                                <strong>Valor arredondado para cima: {suggestedHV} HV.</strong>
+                                                                                            </p>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </TableCell>
+                                                                                <TableCell className="text-right text-xs text-muted-foreground align-top pt-4">{formatCurrency(item.valor_unitario)}</TableCell>
+                                                                                <TableCell className="text-right text-sm font-bold align-top pt-4">{formatCurrency(item.valor_total)}</TableCell>
+                                                                                <TableCell className="align-top pt-3"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                                                                            </TableRow>
+                                                                        );
+                                                                    })}
                                                                 </TableBody>
                                                             </Table>
                                                         </div>
