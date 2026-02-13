@@ -1,72 +1,59 @@
-import { ItemAquisicaoServico } from "@/types/diretrizesServicosTerceiros";
+import { ItemAquisicaoServico, DetalhesPlanejamentoServico } from "@/types/diretrizesServicosTerceiros";
+import { formatCurrency, formatCodug, formatPregao } from "./formatUtils";
+import { Tables } from "@/integrations/supabase/types";
 
-export interface ServicoTerceiroRegistro {
-  id: string;
-  p_trab_id: string;
-  organizacao: string;
-  ug: string;
-  om_detentora: string;
-  ug_detentora: string;
-  dias_operacao: number;
-  efetivo: number;
-  fase_atividade: string | null;
-  categoria: string;
-  detalhes_planejamento: {
-    itens_selecionados: ItemAquisicaoServico[];
-  };
-  valor_total: number;
-  valor_nd_30: number;
-  valor_nd_39: number;
-  detalhamento_customizado: string | null;
-  created_at: string;
-  updated_at: string;
-}
+export type ServicoTerceiroRegistro = Tables<'servicos_terceiros_registros'>;
 
 /**
- * Calcula os totais de um lote de serviços baseado nos itens selecionados.
+ * Calcula os totais do lote de serviços, separando por ND.
  */
-export const calculateServicoTotals = (itens: ItemAquisicaoServico[]) => {
-  let totalGeral = 0;
-  let totalND30 = 0;
-  let totalND39 = 0;
-
-  itens.forEach(item => {
-    const vlrTotal = (item.quantidade || 0) * (item.valor_unitario || 0);
-    totalGeral += vlrTotal;
-    if (item.nd === '30') {
-      totalND30 += vlrTotal;
-    } else {
-      totalND39 += vlrTotal;
-    }
-  });
-
-  return { totalGeral, totalND30, totalND39 };
+export const calculateServicoTotals = (items: ItemAquisicaoServico[]) => {
+    return items.reduce((acc, item) => {
+        const totalItem = (item.quantidade || 0) * item.valor_unitario;
+        if (item.nd === '30') acc.totalND30 += totalItem;
+        else acc.totalND39 += totalItem;
+        acc.totalGeral += totalItem;
+        return acc;
+    }, { totalGeral: 0, totalND30: 0, totalND39: 0 });
 };
 
 /**
- * Gera o texto da memória de cálculo para serviços de terceiros.
+ * Gera a memória de cálculo descritiva baseada na categoria e itens.
  */
-export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro, ptrabData: any) => {
-  const itens = registro.detalhes_planejamento.itens_selecionados || [];
-  
-  let texto = `MEMÓRIA DE CÁLCULO - SERVIÇOS DE TERCEIROS / LOCAÇÕES\n`;
-  texto += `--------------------------------------------------\n`;
-  texto += `OM Favorecida: ${registro.organizacao} (${registro.ug})\n`;
-  texto += `Categoria: ${registro.categoria.replace('-', ' ').toUpperCase()}\n`;
-  texto += `Fase: ${registro.fase_atividade || 'Não informada'}\n`;
-  texto += `Período: ${registro.dias_operacao} dia(s)\n`;
-  texto += `Efetivo: ${registro.efetivo} militar(es)\n\n`;
-  
-  texto += `ITENS PLANEJADOS:\n`;
-  itens.forEach((item, index) => {
-    const totalItem = (item.quantidade || 0) * (item.valor_unitario || 0);
-    texto += `${index + 1}. ${item.descricao_item}\n`;
-    texto += `   Qtd: ${item.quantidade} | Vlr Unit: R$ ${item.valor_unitario.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | Total: R$ ${totalItem.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
-    texto += `   ND: 33.90.${item.nd} | Pregão: ${item.numero_pregao || 'N/A'}\n`;
-  });
-  
-  texto += `\n--------------------------------------------------\n`;
-  texto += `VALOR TOTAL DO REGISTRO: R$ ${registro.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
-  
-  return texto;
+export const generateServicoMemoriaCalculo = (
+    registro: Partial<ServicoTerceiroRegistro>,
+    context: { organizacao: string, efetivo: number, dias_operacao: number, fase_atividade: string | null }
+): string => {
+    const { categoria, detalhes_planejamento } = registro;
+    const planejamento = detalhes_planejamento as unknown as DetalhesPlanejamentoServico;
+    const items = planejamento?.itens_selecionados || [];
+    
+    if (items.length === 0) return "Nenhum item selecionado.";
+
+    const categoriaFormatada = (categoria || "").replace('-', ' ').toUpperCase();
+    const diasText = context.dias_operacao === 1 ? "dia" : "dias";
+    
+    let texto = `MEMÓRIA DE CÁLCULO - ${categoriaFormatada}\n`;
+    texto += `--------------------------------------------------\n`;
+    texto += `OM FAVORECIDA: ${context.organizacao}\n`;
+    texto += `FINALIDADE: Atender às necessidades de ${categoriaFormatada.toLowerCase()} durante a fase de ${context.fase_atividade || 'Operação'}, com efetivo de ${context.efetivo} militares, pelo período de ${context.dias_operacao} ${diasText}.\n\n`;
+    
+    texto += `DETALHAMENTO DOS ITENS:\n`;
+    
+    items.forEach((item, index) => {
+        const totalItem = (item.quantidade || 0) * item.valor_unitario;
+        texto += `${index + 1}. ${item.descricao_item}\n`;
+        texto += `   - Quantidade: ${item.quantidade} ${item.unidade_medida}\n`;
+        texto += `   - Valor Unitário: ${formatCurrency(item.valor_unitario)}\n`;
+        texto += `   - Subtotal: ${formatCurrency(totalItem)}\n`;
+        texto += `   - Amparo: Pregão ${formatPregao(item.numero_pregao)} (UASG: ${formatCodug(item.uasg)})\n\n`;
+    });
+
+    const totals = calculateServicoTotals(items);
+    texto += `--------------------------------------------------\n`;
+    texto += `VALOR TOTAL DO PLANEJAMENTO: ${formatCurrency(totals.totalGeral)}\n`;
+    if (totals.totalND30 > 0) texto += `Dotação ND 33.90.30: ${formatCurrency(totals.totalND30)}\n`;
+    if (totals.totalND39 > 0) texto += `Dotação ND 33.90.39: ${formatCurrency(totals.totalND39)}\n`;
+
+    return texto;
 };
