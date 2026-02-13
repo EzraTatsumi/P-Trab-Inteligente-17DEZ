@@ -35,66 +35,65 @@ const ServicosTerceirosMemoria: React.FC<ServicosTerceirosMemoriaProps> = ({
     onRestore,
 }) => {
     const isEditing = editingMemoriaId === registro.id;
+    
     const context = {
         organizacao: registro.organizacao,
         efetivo: registro.efetivo,
         dias_operacao: registro.dias_operacao,
         fase_atividade: registro.fase_atividade
     };
-
+    
     const memoriaAutomatica = generateServicoMemoriaCalculo(registro, context);
     const memoriaDisplay = registro.detalhamento_customizado || memoriaAutomatica;
-    const currentText = isEditing ? memoriaEdit : memoriaDisplay;
+    const hasCustomMemoria = !!registro.detalhamento_customizado;
 
     return (
         <div className="space-y-4 border p-4 rounded-lg bg-muted/30">
-            <div className="flex items-start justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-foreground">{registro.organizacao}</h4>
-                        <Badge variant="outline" className="capitalize">
+            <div className="flex items-start justify-between gap-4 mb-2">
+                <div className="flex flex-col flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-base font-semibold text-foreground">
+                            {registro.organizacao} (UG: {formatCodug(registro.ug)})
+                        </h4>
+                        <Badge variant="secondary" className="text-[10px] bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200 capitalize">
                             {registro.categoria.replace('-', ' ')}
                         </Badge>
+                        {hasCustomMemoria && !isEditing && (
+                            <Badge variant="outline" className="text-xs">Editada manualmente</Badge>
+                        )}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                        {registro.efetivo} militares | {registro.dias_operacao} dias | {registro.fase_atividade}
-                    </p>
                 </div>
                 
-                <div className="flex gap-2">
+                <div className="flex items-center justify-end gap-2 shrink-0">
                     {!isEditing ? (
                         <>
-                            <Button size="sm" variant="outline" onClick={() => onStartEdit(registro.id, memoriaDisplay)} disabled={!isPTrabEditable}>
-                                <Pencil className="h-4 w-4 mr-2" /> Editar
+                            <Button type="button" size="sm" variant="outline" onClick={() => onStartEdit(registro.id, memoriaDisplay)} disabled={isSaving || !isPTrabEditable} className="gap-2">
+                                <Pencil className="h-4 w-4" /> Editar Memória
                             </Button>
-                            {registro.detalhamento_customizado && (
-                                <Button size="sm" variant="ghost" onClick={() => onRestore(registro.id)} disabled={!isPTrabEditable}>
-                                    <RefreshCw className="h-4 w-4" />
+                            {hasCustomMemoria && (
+                                <Button type="button" size="sm" variant="ghost" onClick={() => onRestore(registro.id)} disabled={isSaving || !isPTrabEditable} className="gap-2 text-muted-foreground">
+                                    <RefreshCw className="h-4 w-4" /> Restaurar Automática
                                 </Button>
                             )}
                         </>
                     ) : (
                         <>
-                            <Button size="sm" onClick={() => onSave(registro.id)} disabled={isSaving}>
-                                <Check className="h-4 w-4 mr-2" /> Salvar
+                            <Button type="button" size="sm" variant="default" onClick={() => onSave(registro.id)} disabled={isSaving} className="gap-2">
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Salvar
                             </Button>
-                            <Button size="sm" variant="outline" onClick={onCancelEdit}>
-                                <XCircle className="h-4 w-4" />
+                            <Button type="button" size="sm" variant="outline" onClick={onCancelEdit} disabled={isSaving} className="gap-2">
+                                <XCircle className="h-4 w-4" /> Cancelar
                             </Button>
                         </>
                     )}
                 </div>
             </div>
             
-            <Card className="p-4 bg-background font-mono text-xs">
+            <Card className="p-4 bg-background rounded-lg border">
                 {isEditing ? (
-                    <Textarea 
-                        value={memoriaEdit} 
-                        onChange={(e) => setMemoriaEdit(e.target.value)} 
-                        className="min-h-[200px]"
-                    />
+                    <Textarea value={memoriaEdit} onChange={(e) => setMemoriaEdit(e.target.value)} className="min-h-[250px] font-mono text-sm" />
                 ) : (
-                    <pre className="whitespace-pre-wrap">{currentText}</pre>
+                    <pre className="text-sm font-mono whitespace-pre-wrap text-foreground">{memoriaDisplay}</pre>
                 )}
             </Card>
         </div>
