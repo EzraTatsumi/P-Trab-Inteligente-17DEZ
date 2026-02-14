@@ -687,6 +687,8 @@ const ServicosTerceirosForm = () => {
                                                                     {selectedItems.map(item => {
                                                                         const isCharter = activeTab === "fretamento-aereo";
                                                                         const showHvWarning = isCharter && suggestedHV !== null && item.quantidade !== suggestedHV;
+                                                                        const period = (item as any).periodo || 1;
+                                                                        const unit = item.unidade_medida || 'UN';
                                                                         
                                                                         return (
                                                                             <TableRow key={item.id}>
@@ -743,21 +745,21 @@ const ServicosTerceirosForm = () => {
                                                                                     )}
                                                                                 </TableCell>
                                                                                 <TableCell className="text-right text-xs text-muted-foreground align-top pt-4">
-                                                                                    {formatCurrency(item.valor_unitario)} / {item.unidade_medida || 'UN'}
+                                                                                    {formatCurrency(item.valor_unitario)} / {unit}
                                                                                 </TableCell>
                                                                                 <TableCell className="align-top pt-4">
                                                                                     <div className="flex items-center gap-2 justify-center">
                                                                                         <Input 
                                                                                             type="number" 
                                                                                             min={1}
-                                                                                            value={(item as any).periodo || 1} 
+                                                                                            value={period} 
                                                                                             onChange={(e) => handlePeriodChange(item.id, e.target.value)}
                                                                                             onWheel={(e) => e.currentTarget.blur()}
                                                                                             onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
                                                                                             className="h-8 w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                                         />
-                                                                                        <span className="text-[10px] text-muted-foreground uppercase font-medium">
-                                                                                            {item.unidade_medida || 'UN'}(s)
+                                                                                        <span className="text-[10px] text-muted-foreground font-medium">
+                                                                                            {period > 1 ? `${unit}s` : unit}
                                                                                         </span>
                                                                                     </div>
                                                                                 </TableCell>
