@@ -86,9 +86,13 @@ export const generateServicoMemoriaCalculo = (
             const period = item.periodo || 0;
             const qty = item.quantidade || 0;
             const vlrUnit = item.valor_unitario || 0;
+            const desc = item.descricao_reduzida || item.descricao_item;
             const totalItem = item.valor_total || (qty * period * vlrUnit);
             
-            texto += `- (${qty} x ${formatCurrency(vlrUnit)}/${unit}) x ${period} ${unit}${period > 1 ? 's' : ''} = ${formatCurrency(totalItem)}.\n`;
+            // Formata o período com vírgula para decimais
+            const periodFormatted = period.toString().replace('.', ',');
+            
+            texto += `- (${qty} ${desc} x ${formatCurrency(vlrUnit)}/${unit}) x ${periodFormatted} ${unit}${period > 1 ? 's' : ''} = ${formatCurrency(totalItem)}.\n`;
         });
 
         const totals = calculateServicoTotals(items);
