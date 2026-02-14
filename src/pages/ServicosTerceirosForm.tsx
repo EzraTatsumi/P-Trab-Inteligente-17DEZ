@@ -378,7 +378,7 @@ const ServicosTerceirosForm = () => {
             omFavorecidaId: omFavorecida.id,
             faseAtividade,
             efetivo: isSatelital ? 0 : efetivo,
-            diasOperacao, // CORREÇÃO: Referência correta à variável de estado
+            diasOperacao,
             omDestinoId: omDestino.id,
             categoria: activeTab,
             itemsKey: itemsForCalc.map(i => `${i.id}-${i.quantidade}-${i.periodo}`).sort().join('|')
@@ -452,7 +452,7 @@ const ServicosTerceirosForm = () => {
             omFavorecidaId: omFav?.id || "",
             faseAtividade: reg.fase_atividade,
             efetivo: reg.efetivo,
-            diasOperacao: reg.dias_operacao, // CORREÇÃO: Referência correta
+            diasOperacao: reg.dias_operacao,
             omDestinoId: omDest?.id || "",
             categoria: reg.categoria,
             itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}-${i.periodo || 1}`).sort().join('|')
@@ -685,7 +685,7 @@ const ServicosTerceirosForm = () => {
                                                                         <TableHead className="w-[80px] text-center">Qtd</TableHead>
                                                                         <TableHead>Descrição do Serviço</TableHead>
                                                                         <TableHead className="text-right w-[140px]">Valor Unitário</TableHead>
-                                                                        <TableHead className="text-center w-[120px]">Período</TableHead>
+                                                                        {activeTab !== "fretamento-aereo" && <TableHead className="text-center w-[120px]">Período</TableHead>}
                                                                         <TableHead className="text-right w-[140px]">Total</TableHead>
                                                                         <TableHead className="w-[50px]"></TableHead>
                                                                     </TableRow>
@@ -754,26 +754,28 @@ const ServicosTerceirosForm = () => {
                                                                                 <TableCell className="text-right text-xs text-muted-foreground align-top pt-4">
                                                                                     {formatCurrency(item.valor_unitario)} / {unit}
                                                                                 </TableCell>
-                                                                                <TableCell className="align-top pt-4">
-                                                                                    <div className="flex flex-col items-center gap-1">
-                                                                                        <div className="flex items-center gap-2 justify-center">
-                                                                                            <Input 
-                                                                                                type="number" 
-                                                                                                min={0}
-                                                                                                step="any"
-                                                                                                value={period === undefined ? "" : period} 
-                                                                                                onChange={(e) => handlePeriodChange(item.id, e.target.value)}
-                                                                                                onWheel={(e) => e.currentTarget.blur()}
-                                                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                                                className="h-8 w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                                            />
-                                                                                            <span className="text-[10px] text-muted-foreground font-medium">
-                                                                                                {period > 1 ? `${unit}s` : unit}
-                                                                                            </span>
+                                                                                {activeTab !== "fretamento-aereo" && (
+                                                                                    <TableCell className="align-top pt-4">
+                                                                                        <div className="flex flex-col items-center gap-1">
+                                                                                            <div className="flex items-center gap-2 justify-center">
+                                                                                                <Input 
+                                                                                                    type="number" 
+                                                                                                    min={0}
+                                                                                                    step="any"
+                                                                                                    value={period === undefined ? "" : period} 
+                                                                                                    onChange={(e) => handlePeriodChange(item.id, e.target.value)}
+                                                                                                    onWheel={(e) => e.currentTarget.blur()}
+                                                                                                    onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                                                    className="h-8 w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                                />
+                                                                                                <span className="text-[10px] text-muted-foreground font-medium">
+                                                                                                    {period > 1 ? `${unit}s` : unit}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            <span className="text-[8px] text-muted-foreground leading-none">Aceita frações (ex: 0,5)</span>
                                                                                         </div>
-                                                                                        <span className="text-[8px] text-muted-foreground leading-none">Aceita frações (ex: 0,5)</span>
-                                                                                    </div>
-                                                                                </TableCell>
+                                                                                    </TableCell>
+                                                                                )}
                                                                                 <TableCell className="text-right text-sm font-bold align-top pt-4">{formatCurrency(item.valor_total)}</TableCell>
                                                                                 <TableCell className="align-top pt-3"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                                                                             </TableRow>
