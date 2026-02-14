@@ -930,7 +930,14 @@ const ServicosTerceirosForm = () => {
                                         {pendingItems.map((item) => {
                                             // Compara apenas o nome (normalizado) para evitar alertas falsos por UASG ausente/inconsistente
                                             const isOmDestinoDifferent = item.organizacao.trim() !== item.om_detentora.trim();
-                                            const totalQtd = item.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0) || 0;
+                                            
+                                            // Calcula o total de unidades (diárias/HV/etc) para exibição
+                                            const totalUnits = item.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => {
+                                                const qty = i.quantidade || 0;
+                                                const period = i.periodo || 0;
+                                                const trips = item.categoria === 'transporte-coletivo' ? (Number(item.detalhes_planejamento.numero_viagens) || 1) : 1;
+                                                return acc + (qty * period * trips);
+                                            }, 0) || 0;
 
                                             return (
                                                 <Card key={item.tempId} className="border-2 shadow-md border-secondary bg-secondary/10">
@@ -948,13 +955,21 @@ const ServicosTerceirosForm = () => {
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
                                                                 <p className="font-medium">OM Destino do Recurso:</p>
-                                                                <p className="font-medium">Período/Qtd Equipamento:</p>
+                                                                <p className="font-medium">
+                                                                    {item.categoria === 'fretamento-aereo' && "Período / Efetivo / HV:"}
+                                                                    {item.categoria === 'servico-satelital' && "Período / Qtd Equipamento:"}
+                                                                    {item.categoria === 'transporte-coletivo' && "Período / Efetivo / Nr Viagens / Nr Diárias:"}
+                                                                    {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo'].includes(item.categoria) && "Período / Detalhes:"}
+                                                                </p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
                                                                 <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
                                                                 <p className="font-medium">
-                                                                    {item.dias_operacao} {item.dias_operacao === 1 ? 'dia' : 'dias'} / {totalQtd} {totalQtd === 1 ? 'unidade' : 'unidades'}
+                                                                    {item.categoria === 'fretamento-aereo' && `${item.dias_operacao} dias / ${item.efetivo} mil / ${totalUnits} HV`}
+                                                                    {item.categoria === 'servico-satelital' && `${item.dias_operacao} dias / ${totalUnits} un`}
+                                                                    {item.categoria === 'transporte-coletivo' && `${item.dias_operacao} dias / ${item.efetivo} mil / ${item.detalhes_planejamento.numero_viagens || 1} viagens / ${totalUnits} diárias`}
+                                                                    {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo'].includes(item.categoria) && `${item.dias_operacao} dias / ${totalUnits} un`}
                                                                 </p>
                                                             </div>
                                                         </div>
