@@ -88,10 +88,10 @@ export const generateMaterialConsumoMemoriaCalculo = (
             const vlrUnit = i.valor_unitario || 0;
             const period = i.periodo || 0;
             const periodFormatted = period.toString().replace('.', ',');
-            // O total do item na memória deve considerar o multiplicador de viagens
             const totalItem = qty * vlrUnit * period * trips;
+            const tripsText = trips === 1 ? "viagem" : "viagens";
             
-            texto += `- (${qty} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)} x ${periodFormatted} = ${formatCurrency(totalItem)}.\n`;
+            texto += `- (${qty} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)} x ${periodFormatted}) x ${trips} ${tripsText} = ${formatCurrency(totalItem)}.\n`;
         });
 
         texto += `\nTotal: ${formatCurrency(valorTotalGeral)}. \n`;
