@@ -313,6 +313,14 @@ const ServicosTerceirosForm = () => {
         } else setOmFavorecida({ nome: "", ug: "", id: "" });
     };
 
+    const handleOmDestinoChange = (omData: OMData | undefined) => {
+        if (omData) {
+            setOmDestino({ nome: omData.nome_om, ug: omData.codug_om, id: omData.id });
+        } else {
+            setOmDestino({ nome: "", ug: "", id: "" });
+        }
+    };
+
     const handleItemsSelected = (items: ItemAquisicaoServico[]) => {
         const newItems = items.map(item => {
             const existing = selectedItems.find(i => i.id === item.id);
@@ -624,7 +632,7 @@ const ServicosTerceirosForm = () => {
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>OM Destino do Recurso *</Label>
-                                                                <OmSelector selectedOmId={omDestino.id || undefined} onChange={(om) => om && setOmDestino({nome: om.nome_om, ug: om.codug_om, id: om.id})} placeholder="Selecione a OM Destino" disabled={!isPTrabEditable} />
+                                                                <OmSelector selectedOmId={omDestino.id || undefined} onChange={handleOmDestinoChange} placeholder="Selecione a OM Destino" disabled={!isPTrabEditable} />
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>UG Destino</Label>
@@ -983,7 +991,9 @@ const ServicosTerceirosForm = () => {
                                                         </div>
                                                         <div className="w-full h-[1px] bg-secondary/30 my-3" />
                                                         <div className="flex justify-between text-xs">
-                                                            <span className="text-muted-foreground">Total ND 39:</span>
+                                                            <span className="text-muted-foreground">
+                                                                {item.categoria === 'fretamento-aereo' ? 'Total ND 33:' : 'Total ND 39:'}
+                                                            </span>
                                                             <span className="font-medium text-green-600">{formatCurrency(item.valor_nd_30 + item.valor_nd_39)}</span>
                                                         </div>
                                                     </CardContent>
