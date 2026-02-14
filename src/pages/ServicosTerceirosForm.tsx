@@ -303,7 +303,7 @@ const ServicosTerceirosForm = () => {
         const { totalND30, totalND39, totalGeral } = calculateServicoTotals(selectedItems);
         
         const newItem: PendingServicoItem = {
-            tempId: crypto.randomUUID(),
+            tempId: editingId || crypto.randomUUID(),
             organizacao: omFavorecida.nome,
             ug: omFavorecida.ug,
             om_detentora: omDestino.nome,
@@ -324,7 +324,8 @@ const ServicosTerceirosForm = () => {
             valor_nd_39: totalND39,
         };
 
-        setPendingItems(prev => [...prev, newItem]);
+        // Substitui o item pendente (staging) em vez de anexar, para permitir revisão/atualização
+        setPendingItems([newItem]);
         setLastStagedState({
             omFavorecidaId: omFavorecida.id,
             faseAtividade,
@@ -333,8 +334,8 @@ const ServicosTerceirosForm = () => {
             omDestinoId: omDestino.id
         });
         
-        setSelectedItems([]);
-        toast.info("Item adicionado à lista de pendentes.");
+        // MANTÉM OS ITENS NA SEÇÃO 2 PARA ALTERAÇÃO
+        toast.info("Item adicionado à lista de pendentes para conferência.");
     };
 
     const handleEdit = (reg: ServicoTerceiroRegistro) => {
@@ -700,7 +701,7 @@ const ServicosTerceirosForm = () => {
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertDescription className="font-medium">
-                                                Atenção: Os dados do formulário foram alterados. Clique em "Recalcular/Revisar Lote" na Seção 2 para atualizar o lote pendente.
+                                                Atenção: Os dados do formulário foram alterados. Clique em "Salvar Itens na Lista" na Seção 2 para atualizar o lote pendente.
                                             </AlertDescription>
                                         </Alert>
                                     )}
@@ -796,7 +797,7 @@ const ServicosTerceirosForm = () => {
                                                         <Card key={reg.id} className="p-3 bg-background border">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex flex-col">
-                                                                    <h4 className="font-semibold text-base text-foreground capitalize">{formatCategoryName(reg.categoria)}</h4>
+                                                                    <h4 className="font-semibold text-base text-foreground capitalize">{reg.categoria.replace('-', ' ')}</h4>
                                                                     <p className="text-xs text-muted-foreground">
                                                                         Período: {reg.dias_operacao} dias | Efetivo: {reg.efetivo} militares
                                                                         {totalHV !== null && ` | HV: ${totalHV}`}

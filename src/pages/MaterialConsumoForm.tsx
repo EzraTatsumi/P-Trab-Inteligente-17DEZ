@@ -201,7 +201,7 @@ const MaterialConsumoForm = () => {
                     organizacao: registro.organizacao,
                     ug: registro.ug,
                     om_detentora: registro.om_detentora || '',
-                    ug_detentora: registro.ug_detentora || '',
+                    ug_detentora: reg.ug_detentora || '',
                     dias_operacao: registro.dias_operacao,
                     efetivo: registro.efetivo || 0, 
                     fase_atividade: registro.fase_atividade || '',
@@ -1270,7 +1270,7 @@ const MaterialConsumoForm = () => {
                                                                 min={1}
                                                                 placeholder="Ex: 10"
                                                                 value={formData.efetivo === 0 ? "" : formData.efetivo}
-                                                                onChange={(e) => setFormData({ ...formData, efetivo: parseInt(e.target.value) || 0 })}
+                                                                onChange={(e) => setEfetivo(parseInt(e.target.value) || 0)}
                                                                 required
                                                                 disabled={!isPTrabEditable || isSaving}
                                                                 onKeyDown={handleEnterToNextField}
@@ -1307,7 +1307,7 @@ const MaterialConsumoForm = () => {
                                             </CardContent>
                                         </Card>
                                         
-                                        {/* Gerenciamento de Grupos de Aquisição */}
+                                        {/* Gerenciamento de Grupos de Aquisição (APENAS O BOTÃO/FORM) */}
                                         <Card className="mt-4 rounded-lg p-4 bg-background">
                                             <h4 className="text-base font-semibold mb-4">
                                                 Grupos de Aquisição ({formData.acquisitionGroups.length})
@@ -1326,10 +1326,7 @@ const MaterialConsumoForm = () => {
                                                 />
                                             )}
                                             
-                                            {/* Lista de Grupos Adicionados */}
-                                            {!isGroupFormOpen && renderAcquisitionGroupsList()}
-                                            
-                                            {/* Botão para Adicionar Novo Grupo */}
+                                            {/* Botão para Adicionar Novo Grupo (Sempre visível se não estiver editando) */}
                                             {!isGroupFormOpen && (
                                                 <div className="flex justify-end mt-4">
                                                     <Button 
@@ -1377,6 +1374,11 @@ const MaterialConsumoForm = () => {
                                         3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({itemsToDisplay.length} {itemsToDisplay.length === 1 ? 'Grupo' : 'Grupos'})
                                     </h3>
                                     
+                                    {/* MOVIDO PARA CÁ: Lista de Grupos Adicionados para conferência */}
+                                    <div className="mb-6">
+                                        {renderAcquisitionGroupsList()}
+                                    </div>
+
                                     {/* Alerta de Validação Final (Dirty Check) */}
                                     {isMaterialConsumoDirty && (
                                         <Alert variant="destructive">
