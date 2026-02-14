@@ -682,8 +682,8 @@ const ServicosTerceirosForm = () => {
                                                                     <TableRow>
                                                                         <TableHead className="w-[80px] text-center">Qtd</TableHead>
                                                                         <TableHead>Descrição do Serviço</TableHead>
-                                                                        <TableHead className="text-right w-[140px]">Valor Unitário</TableHead>
-                                                                        <TableHead className="text-center w-[120px]">Período</TableHead>
+                                                                        <TableHead className="text-right w-[180px]">Valor Unitário</TableHead>
+                                                                        <TableHead className="text-center w-[180px]">Período</TableHead>
                                                                         <TableHead className="text-right w-[140px]">Total</TableHead>
                                                                         <TableHead className="w-[50px]"></TableHead>
                                                                     </TableRow>
