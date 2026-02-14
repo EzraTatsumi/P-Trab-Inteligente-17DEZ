@@ -678,7 +678,7 @@ const ServicosTerceirosForm = () => {
                                                                                             <p className="text-[10px] text-blue-700 leading-tight">
                                                                                                 Cálculo: {distanciaPercorrer}km / {velocidadeCruzeiro}km/h = {(Number(distanciaPercorrer) / Number(velocidadeCruzeiro)).toFixed(2)}h. 
                                                                                                 <br />
-                                                                                                <strong>Valor arredondado para cima: {suggestedHV} HV.</strong>
+                                                                                                <strong>Arredondado para cima: {suggestedHV} HV.</strong>
                                                                                             </p>
                                                                                         </div>
                                                                                     )}
@@ -762,7 +762,7 @@ const ServicosTerceirosForm = () => {
                                                                 <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
                                                                 <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
                                                                 <p className="font-medium">
-                                                                    {item.dias_operacao} dias / {item.efetivo} militares
+                                                                    {item.dias_operacao} {item.dias_operacao === 1 ? 'dia' : 'dias'} / {item.efetivo} {item.efetivo === 1 ? 'militar' : 'militares'}
                                                                     {totalHV !== null && ` / ${totalHV} HV`}
                                                                 </p>
                                                             </div>
@@ -826,7 +826,7 @@ const ServicosTerceirosForm = () => {
                                                                 <div className="flex flex-col">
                                                                     <h4 className="font-semibold text-base text-foreground capitalize">{formatCategoryName(reg.categoria)}</h4>
                                                                     <p className="text-xs text-muted-foreground">
-                                                                        Período: {reg.dias_operacao} dias | Efetivo: {reg.efetivo} militares
+                                                                        Período: {reg.dias_operacao} {reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: {reg.efetivo} {reg.efetivo === 1 ? 'militar' : 'militares'}
                                                                         {totalHV !== null && ` | HV: ${totalHV}`}
                                                                     </p>
                                                                 </div>
