@@ -821,9 +821,7 @@ const ServicosTerceirosForm = () => {
                                         {pendingItems.map((item) => {
                                             // Compara apenas o nome (normalizado) para evitar alertas falsos por UASG ausente/inconsistente
                                             const isOmDestinoDifferent = item.organizacao.trim() !== item.om_detentora.trim();
-                                            const totalHV = item.categoria === 'fretamento-aereo' 
-                                                ? item.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0)
-                                                : null;
+                                            const totalQtd = item.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0) || 0;
 
                                             return (
                                                 <Card key={item.tempId} className="border-2 shadow-md border-secondary bg-secondary/10">
@@ -841,20 +839,19 @@ const ServicosTerceirosForm = () => {
                                                             <div className="space-y-1">
                                                                 <p className="font-medium">OM Favorecida:</p>
                                                                 <p className="font-medium">OM Destino do Recurso:</p>
-                                                                <p className="font-medium">Período/Efetivo/HV:</p>
+                                                                <p className="font-medium">Período/Qtd Equipamento:</p>
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
                                                                 <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
                                                                 <p className="font-medium">
-                                                                    {item.dias_operacao} {item.dias_operacao === 1 ? 'dia' : 'dias'} / {item.categoria === 'servico-satelital' ? 'N/A' : `${item.efetivo} ${item.efetivo === 1 ? 'militar' : 'militares'}`}
-                                                                    {totalHV !== null && ` / ${totalHV} HV`}
+                                                                    {item.dias_operacao} {item.dias_operacao === 1 ? 'dia' : 'dias'} / {totalQtd} {totalQtd === 1 ? 'unidade' : 'unidades'}
                                                                 </p>
                                                             </div>
                                                         </div>
                                                         <div className="w-full h-[1px] bg-secondary/30 my-3" />
                                                         <div className="flex justify-between text-xs">
-                                                            <span className="text-muted-foreground">Total ND 33:</span>
+                                                            <span className="text-muted-foreground">Total ND 39:</span>
                                                             <span className="font-medium text-green-600">{formatCurrency(item.valor_nd_30 + item.valor_nd_39)}</span>
                                                         </div>
                                                     </CardContent>
