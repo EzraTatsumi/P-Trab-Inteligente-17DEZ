@@ -8,6 +8,7 @@ import { Loader2, Pencil, RefreshCw, XCircle, Check } from "lucide-react";
 import { formatCodug } from "@/lib/formatUtils";
 import { ServicoTerceiroRegistro, generateServicoMemoriaCalculo } from "@/lib/servicosTerceirosUtils";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface ServicosTerceirosMemoriaProps {
     registro: ServicoTerceiroRegistro;
@@ -49,10 +50,32 @@ const ServicosTerceirosMemoria: React.FC<ServicosTerceirosMemoriaProps> = ({
 
     const formatCategoryName = (cat: string) => {
         if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
+        if (cat === 'servico-satelital') return 'Serviço Satelital';
         return cat.split('-').map(word => {
             if (word === 'aereo') return 'Aéreo';
             return word.charAt(0).toUpperCase() + word.slice(1);
         }).join(' ');
+    };
+
+    const getCategoryColor = (cat: string) => {
+        switch (cat) {
+            case 'fretamento-aereo':
+                return "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100";
+            case 'servico-satelital':
+                return "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-100";
+            case 'locacao-veiculos':
+                return "bg-green-100 text-green-800 border-green-200 hover:bg-green-100";
+            case 'locacao-engenharia':
+                return "bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-100";
+            case 'locacao-estruturas':
+                return "bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-100";
+            case 'servico-lavanderia':
+                return "bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-100";
+            case 'servico-grafico':
+                return "bg-cyan-100 text-cyan-800 border-cyan-200 hover:bg-cyan-100";
+            default:
+                return "bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-100";
+        }
     };
 
     return (
@@ -63,7 +86,7 @@ const ServicosTerceirosMemoria: React.FC<ServicosTerceirosMemoriaProps> = ({
                         <h4 className="text-base font-semibold text-foreground">
                             {registro.organizacao} (UG: {formatCodug(registro.ug)})
                         </h4>
-                        <Badge variant="secondary" className="text-[10px] bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200 capitalize">
+                        <Badge variant="secondary" className={cn("text-[10px] capitalize", getCategoryColor(registro.categoria))}>
                             {formatCategoryName(registro.categoria)}
                         </Badge>
                         {hasCustomMemoria && !isEditing && (
