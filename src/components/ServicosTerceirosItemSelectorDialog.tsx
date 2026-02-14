@@ -80,6 +80,8 @@ const ServicosTerceirosItemSelectorDialog: React.FC<ServicosTerceirosItemSelecto
             initialItems.forEach(item => { initialMap[item.id] = item; });
             setSelectedItemsMap(initialMap);
             setSearchTerm('');
+            // Resetar expansão ao abrir para que fiquem fechados por padrão
+            setExpandedSubitems({});
         }
     }, [open, initialItems]);
 
@@ -140,7 +142,7 @@ const ServicosTerceirosItemSelectorDialog: React.FC<ServicosTerceirosItemSelecto
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Selecionar Itens de Serviço (Fretamento Aéreo)</DialogTitle>
+                    <DialogTitle>Selecionar Itens de Serviço</DialogTitle>
                 </DialogHeader>
                 
                 <div className="space-y-4 py-2">
@@ -164,7 +166,7 @@ const ServicosTerceirosItemSelectorDialog: React.FC<ServicosTerceirosItemSelecto
                         ) : (
                             <TooltipProvider>
                                 {groupedAndFilteredItems.map(group => (
-                                    <Collapsible key={group.nr_subitem} open={expandedSubitems[group.nr_subitem] ?? true} onOpenChange={(open) => setExpandedSubitems(prev => ({ ...prev, [group.nr_subitem]: open }))}>
+                                    <Collapsible key={group.nr_subitem} open={expandedSubitems[group.nr_subitem] ?? false} onOpenChange={(open) => setExpandedSubitems(prev => ({ ...prev, [group.nr_subitem]: open }))}>
                                         <CollapsibleTrigger asChild>
                                             <div className="flex justify-between items-center p-3 bg-muted rounded-md cursor-pointer hover:bg-muted/80 transition-colors">
                                                 <span className="font-semibold text-sm">{group.nr_subitem} - {group.nome_subitem}</span>
