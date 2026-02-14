@@ -377,7 +377,7 @@ const ServicosTerceirosForm = () => {
             omFavorecidaId: omFavorecida.id,
             faseAtividade,
             efetivo: isSatelital ? 0 : efetivo,
-            dias_operacao,
+            diasOperacao, // CORREÇÃO: Referência correta à variável de estado
             omDestinoId: omDestino.id,
             categoria: activeTab,
             itemsKey: itemsForCalc.map(i => `${i.id}-${i.quantidade}-${i.periodo}`).sort().join('|')
@@ -451,7 +451,7 @@ const ServicosTerceirosForm = () => {
             omFavorecidaId: omFav?.id || "",
             faseAtividade: reg.fase_atividade,
             efetivo: reg.efetivo,
-            dias_operacao: reg.dias_operacao,
+            diasOperacao: reg.dias_operacao, // CORREÇÃO: Referência correta
             omDestinoId: omDest?.id || "",
             categoria: reg.categoria,
             itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}-${i.periodo || 1}`).sort().join('|')
@@ -682,8 +682,8 @@ const ServicosTerceirosForm = () => {
                                                                     <TableRow>
                                                                         <TableHead className="w-[80px] text-center">Qtd</TableHead>
                                                                         <TableHead>Descrição do Serviço</TableHead>
-                                                                        <TableHead className="text-right w-[180px]">Valor Unitário</TableHead>
-                                                                        <TableHead className="text-center w-[180px]">Período</TableHead>
+                                                                        <TableHead className="text-right w-[140px]">Valor Unitário</TableHead>
+                                                                        <TableHead className="text-center w-[120px]">Período</TableHead>
                                                                         <TableHead className="text-right w-[140px]">Total</TableHead>
                                                                         <TableHead className="w-[50px]"></TableHead>
                                                                     </TableRow>
