@@ -12,6 +12,7 @@ import ArpCatmatSearch from './pncp/ArpCatmatSearch';
 import PriceSearchForm from './pncp/PriceSearchForm'; 
 import { fetchCatalogEntry, fetchCatalogFullDescription, fetchAllExistingAcquisitionItems } from '@/integrations/supabase/api'; 
 import PNCPInspectionDialog from './pncp/PNCPInspectionDialog'; 
+import ServicoUnitMeasureDialog from './pncp/ServicoUnitMeasureDialog'; // NOVO
 import { supabase } from '@/integrations/supabase/client'; 
 
 interface ItemAquisicaoPNCPDialogProps {
@@ -91,6 +92,11 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     const [isInspecting, setIsInspecting] = useState(false);
     const [isInspectionDialogOpen, setIsInspectionDialogOpen] = useState(false);
     const [inspectionList, setInspectionList] = useState<InspectionItem[]>([]);
+    
+    // NOVO: Estados para o diálogo de unidade de medida
+    const [isUnitMeasureDialogOpen, setIsUnitMeasureDialogOpen] = useState(false);
+    const [itemsPendingUnitMeasure, setItemsPendingUnitMeasure] = useState<ItemAquisicao[]>([]);
+
     const dialogContentRef = useRef<HTMLDivElement>(null);
 
     const scrollToTop = () => {
@@ -102,6 +108,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
             setSelectedItemsState([]);
             setInspectionList([]);
             setIsInspectionDialogOpen(false);
+            setIsUnitMeasureDialogOpen(false);
             scrollToTop(); 
         }
     }, [open]);
@@ -187,18 +194,15 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 let status: InspectionStatus = 'pending';
                 let messages: string[] = [];
                 
-                // Busca no catálogo local primeiro
                 const catalogEntry = await fetchCatalogEntry(initialMappedItem.codigo_catmat, mode);
                 
                 let fullPncpDescription = 'Descrição completa não encontrada no PNCP.';
                 let nomePdm = null;
 
                 if (catalogEntry.isCataloged && catalogEntry.description) {
-                    // Se já temos no catálogo local, usamos a nossa descrição para evitar erros da API PNCP
                     fullPncpDescription = catalogEntry.description;
                     if (catalogEntry.shortDescription) initialMappedItem.descricao_reduzida = catalogEntry.shortDescription;
                 } else {
-                    // Se não temos localmente, buscamos na API
                     const pncpDetails = await fetchCatalogFullDescription(initialMappedItem.codigo_catmat, mode);
                     fullPncpDescription = pncpDetails.fullDescription || fullPncpDescription;
                     nomePdm = pncpDetails.nomePdm;
@@ -258,11 +262,31 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         onOpenChange(false);
     };
     
+    // INTERCEPTOR: Lógica de importação final
     const handleFinalImportCallback = (items: ItemAquisicao[]) => {
-        onImport(items);
+        if (mode === 'servico') {
+            // Se for serviço, abre o diálogo de unidade de medida antes de concluir
+            setItemsPendingUnitMeasure(items);
+            setIsInspectionDialogOpen(false);
+            setIsUnitMeasureDialogOpen(true);
+        } else {
+            // Se for material, segue o fluxo normal
+            onImport(items);
+            setSelectedItemsState([]);
+            setInspectionList([]);
+            setIsInspectionDialogOpen(false);
+            scrollToTop();
+            onOpenChange(false);
+        }
+    };
+    
+    // Conclusão definitiva após definir unidades de medida
+    const handleConfirmUnitsAndImport = (itemsWithUnits: ItemAquisicao[]) => {
+        onImport(itemsWithUnits);
         setSelectedItemsState([]);
         setInspectionList([]);
-        setIsInspectionDialogOpen(false);
+        setItemsPendingUnitMeasure([]);
+        setIsUnitMeasureDialogOpen(false);
         scrollToTop();
         onOpenChange(false);
     };
@@ -306,8 +330,26 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isInspecting}>Fechar</Button>
                 </div>
             </DialogContent>
+            
             {isInspectionDialogOpen && (
-                <PNCPInspectionDialog open={isInspectionDialogOpen} onOpenChange={setIsInspectionDialogOpen} inspectionList={inspectionList} onFinalImport={handleFinalImportCallback} onReviewItem={handleReviewItemCallback} mode={mode} />
+                <PNCPInspectionDialog 
+                    open={isInspectionDialogOpen} 
+                    onOpenChange={setIsInspectionDialogOpen} 
+                    inspectionList={inspectionList} 
+                    onFinalImport={handleFinalImportCallback} 
+                    onReviewItem={handleReviewItemCallback} 
+                    mode={mode} 
+                />
+            )}
+
+            {/* NOVO: Diálogo de Unidade de Medida para Serviços */}
+            {isUnitMeasureDialogOpen && (
+                <ServicoUnitMeasureDialog
+                    open={isUnitMeasureDialogOpen}
+                    onOpenChange={setIsUnitMeasureDialogOpen}
+                    items={itemsPendingUnitMeasure}
+                    onConfirm={handleConfirmUnitsAndImport}
+                />
             )}
         </Dialog>
     );
