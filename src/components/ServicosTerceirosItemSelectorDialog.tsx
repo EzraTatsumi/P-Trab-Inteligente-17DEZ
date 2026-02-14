@@ -19,6 +19,7 @@ interface SelectableItem extends ItemAquisicaoServico {
 }
 
 interface SubitemGroup {
+    id: string; // Adicionado ID para garantir unicidade do grupo
     nr_subitem: string;
     nome_subitem: string;
     items: SelectableItem[];
@@ -104,14 +105,17 @@ const ServicosTerceirosItemSelectorDialog: React.FC<ServicosTerceirosItemSelecto
             });
             
             if (filteredItems.length > 0) {
-                if (!groups[diretriz.nr_subitem]) {
-                    groups[diretriz.nr_subitem] = {
+                // Usamos o ID da diretriz como chave para garantir que subitens com mesmo número mas nomes diferentes fiquem separados
+                const groupKey = diretriz.id;
+                if (!groups[groupKey]) {
+                    groups[groupKey] = {
+                        id: diretriz.id,
                         nr_subitem: diretriz.nr_subitem,
                         nome_subitem: diretriz.nome_subitem,
                         items: [],
                     };
                 }
-                groups[diretriz.nr_subitem].items.push(...filteredItems.map(item => ({
+                groups[groupKey].items.push(...filteredItems.map(item => ({
                     ...item,
                     nr_subitem: diretriz.nr_subitem,
                     nome_subitem: diretriz.nome_subitem,
@@ -119,7 +123,12 @@ const ServicosTerceirosItemSelectorDialog: React.FC<ServicosTerceirosItemSelecto
                 })));
             }
         });
-        return Object.values(groups).sort((a, b) => a.nr_subitem.localeCompare(b.nr_subitem));
+        
+        return Object.values(groups).sort((a, b) => {
+            const numCompare = a.nr_subitem.localeCompare(b.nr_subitem);
+            if (numCompare !== 0) return numCompare;
+            return a.nome_subitem.localeCompare(b.nome_subitem);
+        });
     }, [diretrizes, searchTerm, selectedItemsMap]);
     
     const handleToggleItem = (item: ItemAquisicaoServico) => {
@@ -166,11 +175,11 @@ const ServicosTerceirosItemSelectorDialog: React.FC<ServicosTerceirosItemSelecto
                         ) : (
                             <TooltipProvider>
                                 {groupedAndFilteredItems.map(group => (
-                                    <Collapsible key={group.nr_subitem} open={expandedSubitems[group.nr_subitem] ?? false} onOpenChange={(open) => setExpandedSubitems(prev => ({ ...prev, [group.nr_subitem]: open }))}>
+                                    <Collapsible key={group.id} open={expandedSubitems[group.id] ?? false} onOpenChange={(open) => setExpandedSubitems(prev => ({ ...prev, [group.id]: open }))}>
                                         <CollapsibleTrigger asChild>
                                             <div className="flex justify-between items-center p-3 bg-muted rounded-md cursor-pointer hover:bg-muted/80 transition-colors">
                                                 <span className="font-semibold text-sm">{group.nr_subitem} - {group.nome_subitem}</span>
-                                                {expandedSubitems[group.nr_subitem] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                                {expandedSubitems[group.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                             </div>
                                         </CollapsibleTrigger>
                                         <CollapsibleContent className="pt-2">
