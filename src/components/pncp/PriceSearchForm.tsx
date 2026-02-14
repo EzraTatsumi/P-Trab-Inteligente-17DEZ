@@ -42,7 +42,7 @@ interface PriceSearchFormProps {
     isInspecting: boolean; 
     onClearPriceSelection: () => void;
     selectedItemForInspection: ItemAquisicao | null;
-    mode?: 'material' | 'servico'; // NOVO
+    mode?: 'material' | 'servico';
 }
 
 const today = new Date();
@@ -136,7 +136,9 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                             <FormItem className="col-span-4 md:col-span-2">
                                 <FormLabel>{mode === 'material' ? 'Cód. CATMAT *' : 'Cód. CATSER *'}</FormLabel>
                                 <div className="flex gap-2 items-center">
-                                    <FormControl><Input {...field} onChange={handleCodeChange} placeholder="Ex: 604269" maxLength={9} disabled={isSearching} /></FormControl>
+                                    <FormControl>
+                                        <Input {...field} onChange={handleCodeChange} placeholder="Ex: 604269" maxLength={9} disabled={isSearching} />
+                                    </FormControl>
                                     <Button 
                                         type="button" 
                                         variant="outline" 
@@ -151,22 +153,43 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                                 <FormMessage />
                             </FormItem>
                         )} />
+                        
                         <FormField control={form.control} name="dataInicio" render={({ field }) => (
-                            <FormItem className="col-span-2 md:col-span-1"><FormLabel>Início</Label><FormControl><Input type="date" {...field} disabled={isSearching || ignoreDates} /></FormControl></FormItem>
+                            <FormItem className="col-span-2 md:col-span-1">
+                                <FormLabel>Início</FormLabel>
+                                <FormControl>
+                                    <Input type="date" {...field} disabled={isSearching || ignoreDates} />
+                                </FormControl>
+                            </FormItem>
                         )} />
+                        
                         <FormField control={form.control} name="dataFim" render={({ field }) => (
-                            <FormItem className="col-span-2 md:col-span-1"><FormLabel>Fim</FormLabel><FormControl><Input type="date" {...field} disabled={isSearching || ignoreDates} /></FormControl></FormItem>
+                            <FormItem className="col-span-2 md:col-span-1">
+                                <FormLabel>Fim</FormLabel>
+                                <FormControl>
+                                    <Input type="date" {...field} disabled={isSearching || ignoreDates} />
+                                </FormControl>
+                            </FormItem>
                         )} />
+                        
                         <FormField control={form.control} name="ignoreDates" render={({ field }) => (
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 col-span-4">
-                                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isSearching} /></FormControl>
-                                <div className="space-y-1 leading-none"><FormLabel>Pesquisar sem restrição de data</FormLabel></div>
+                                <FormControl>
+                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isSearching} />
+                                </FormControl>
+                                <div className="space-y-1 leading-none">
+                                    <FormLabel>Pesquisar sem restrição de data</FormLabel>
+                                </div>
                             </FormItem>
                         )} />
                     </div>
-                    <Button type="submit" disabled={isSearching} className="w-full">{isSearching ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}Buscar Estatísticas</Button>
+                    <Button type="submit" disabled={isSearching} className="w-full">
+                        {isSearching ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+                        Buscar Estatísticas
+                    </Button>
                 </form>
             </Form>
+            
             {searchResult && currentStats && (
                 <div className="p-4 space-y-4">
                     <Card className="p-4">
@@ -182,19 +205,35 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                         </div>
                         {sortedRawRecords.length > 0 && (
                             <Collapsible open={showRawData} onOpenChange={setShowRawData} className="mt-4 border-t pt-4">
-                                <CollapsibleTrigger asChild><Button variant="link" className="p-0 h-auto">{showRawData ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}Base de Cálculo</Button></CollapsibleTrigger>
+                                <CollapsibleTrigger asChild>
+                                    <Button variant="link" className="p-0 h-auto">
+                                        {showRawData ? <ChevronUp className="h-4 w-4 mr-2" /> : <ChevronDown className="h-4 w-4 mr-2" />}
+                                        Base de Cálculo
+                                    </Button>
+                                </CollapsibleTrigger>
                                 <CollapsibleContent>
                                     <div className="max-h-60 overflow-y-auto mt-2 border rounded-md">
                                         <Table>
-                                            <TableHeader className="sticky top-0 bg-background z-10"><TableRow><TableHead className="w-[5%]"></TableHead><TableHead className="w-[15%]">UASG</TableHead><TableHead className="w-[50%]">Nome</TableHead><TableHead className="w-[30%] text-right">Preço</TableHead></TableRow></TableHeader>
-                                            <TableBody>{sortedRawRecords.map(r => (
-                                                <TableRow key={r.id} className={excludedRecordIds.has(r.id) ? 'opacity-50 bg-red-50' : ''}>
-                                                    <TableCell className="text-center"><Checkbox checked={!excludedRecordIds.has(r.id)} onCheckedChange={() => setExcludedRecordIds(prev => { const n = new Set(prev); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; })} /></TableCell>
-                                                    <TableCell className="text-xs">{formatCodug(r.codigoUasg)}</TableCell>
-                                                    <TableCell className="text-xs">{r.nomeUasg}</TableCell>
-                                                    <TableCell className="text-right text-xs font-bold">{formatCurrency(r.precoUnitario)}</TableCell>
+                                            <TableHeader className="sticky top-0 bg-background z-10">
+                                                <TableRow>
+                                                    <TableHead className="w-[5%]"></TableHead>
+                                                    <TableHead className="w-[15%]">UASG</TableHead>
+                                                    <TableHead className="w-[50%]">Nome</TableHead>
+                                                    <TableHead className="w-[30%] text-right">Preço</TableHead>
                                                 </TableRow>
-                                            ))}</TableBody>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {sortedRawRecords.map(r => (
+                                                    <TableRow key={r.id} className={excludedRecordIds.has(r.id) ? 'opacity-50 bg-red-50' : ''}>
+                                                        <TableCell className="text-center">
+                                                            <Checkbox checked={!excludedRecordIds.has(r.id)} onCheckedChange={() => setExcludedRecordIds(prev => { const n = new Set(prev); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; })} />
+                                                        </TableCell>
+                                                        <TableCell className="text-xs">{formatCodug(r.codigoUasg)}</TableCell>
+                                                        <TableCell className="text-xs">{r.nomeUasg}</TableCell>
+                                                        <TableCell className="text-right text-xs font-bold">{formatCurrency(r.precoUnitario)}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
                                         </Table>
                                     </div>
                                 </CollapsibleContent>
