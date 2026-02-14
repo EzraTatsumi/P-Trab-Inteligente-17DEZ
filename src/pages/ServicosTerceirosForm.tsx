@@ -185,6 +185,18 @@ const ServicosTerceirosForm = () => {
         return currentItemsKey !== stagedItemsKey;
     }, [omFavorecida, faseAtividade, efetivo, diasOperacao, omDestino, activeTab, selectedItems, lastStagedState, pendingItems]);
 
+    // Recalcula totais quando o número de viagens muda (apenas para Transporte Coletivo)
+    useEffect(() => {
+        if (activeTab === "transporte-coletivo" && selectedItems.length > 0) {
+            const trips = Number(numeroViagens) || 1;
+            setSelectedItems(prev => prev.map(item => {
+                const qty = item.quantidade || 0;
+                const period = (item as any).periodo || 0;
+                return { ...item, valor_total: qty * period * item.valor_unitario * trips };
+            }));
+        }
+    }, [numeroViagens, activeTab]);
+
     // --- DATA FETCHING ---
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
         queryKey: ['ptrabData', ptrabId],
@@ -306,11 +318,12 @@ const ServicosTerceirosForm = () => {
             const existing = selectedItems.find(i => i.id === item.id);
             const initialQty = (activeTab === "fretamento-aereo" && suggestedHV) ? suggestedHV : 1;
             const initialPeriod = 1;
+            const trips = activeTab === "transporte-coletivo" ? (Number(numeroViagens) || 1) : 1;
             return existing ? existing : { 
                 ...item, 
                 quantidade: initialQty, 
                 periodo: initialPeriod,
-                valor_total: initialQty * initialPeriod * item.valor_unitario 
+                valor_total: initialQty * initialPeriod * item.valor_unitario * trips
             };
         });
         setSelectedItems(newItems);
@@ -321,7 +334,8 @@ const ServicosTerceirosForm = () => {
         setSelectedItems(prev => prev.map(item => {
             if (item.id === id) {
                 const period = (item as any).periodo || 1;
-                return { ...item, quantidade: qty, valor_total: qty * period * item.valor_unitario };
+                const trips = activeTab === "transporte-coletivo" ? (Number(numeroViagens) || 1) : 1;
+                return { ...item, quantidade: qty, valor_total: qty * period * item.valor_unitario * trips };
             }
             return item;
         }));
@@ -335,7 +349,8 @@ const ServicosTerceirosForm = () => {
             if (item.id === id) {
                 const qty = item.quantidade || 0;
                 const numPeriod = typeof period === 'number' ? period : 0;
-                return { ...item, periodo: period, valor_total: qty * numPeriod * item.valor_unitario };
+                const trips = activeTab === "transporte-coletivo" ? (Number(numeroViagens) || 1) : 1;
+                return { ...item, periodo: period, valor_total: qty * numPeriod * item.valor_unitario * trips };
             }
             return item;
         }));
@@ -770,9 +785,12 @@ const ServicosTerceirosForm = () => {
                                                                 <TableBody>
                                                                     {selectedItems.map(item => {
                                                                         const isCharter = activeTab === "fretamento-aereo";
+                                                                        const isTransport = activeTab === "transporte-coletivo";
                                                                         const showHvWarning = isCharter && suggestedHV !== null && item.quantidade !== suggestedHV;
                                                                         const period = (item as any).periodo;
                                                                         const unit = item.unidade_medida || 'UN';
+                                                                        const trips = isTransport ? (Number(numeroViagens) || 1) : 1;
+                                                                        const totalUnits = item.quantidade * (period || 0) * trips;
                                                                         
                                                                         return (
                                                                             <TableRow key={item.id}>
@@ -853,7 +871,14 @@ const ServicosTerceirosForm = () => {
                                                                                         </div>
                                                                                     </TableCell>
                                                                                 )}
-                                                                                <TableCell className="text-right text-sm font-bold align-top pt-4">{formatCurrency(item.valor_total)}</TableCell>
+                                                                                <TableCell className="text-right text-sm font-bold align-top pt-4">
+                                                                                    {formatCurrency(item.valor_total)}
+                                                                                    {isTransport && (
+                                                                                        <div className="text-[10px] text-muted-foreground font-normal mt-1">
+                                                                                            Total: {totalUnits} {unit}{totalUnits !== 1 ? 's' : ''}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </TableCell>
                                                                                 <TableCell className="align-top pt-3"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                                                                             </TableRow>
                                                                         );
