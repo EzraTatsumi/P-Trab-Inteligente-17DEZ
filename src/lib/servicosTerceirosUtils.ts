@@ -6,12 +6,11 @@ export type ServicoTerceiroRegistro = Tables<'servicos_terceiros_registros'>;
 
 /**
  * Calcula os totais do lote de serviços, separando por ND.
- * Aceita um multiplicador opcional (ex: número de viagens no transporte coletivo).
+ * Baseia-se no valor_total já presente em cada item para garantir consistência.
  */
-export const calculateServicoTotals = (items: ItemAquisicaoServico[], multiplier: number = 1) => {
+export const calculateServicoTotals = (items: ItemAquisicaoServico[]) => {
     return items.reduce((acc, item) => {
-        const period = (item as any).periodo || 0;
-        const totalItem = (item.quantidade || 0) * period * item.valor_unitario * multiplier;
+        const totalItem = item.valor_total || 0;
         if (item.nd === '30') acc.totalND30 += totalItem;
         else acc.totalND39 += totalItem;
         acc.totalGeral += totalItem;

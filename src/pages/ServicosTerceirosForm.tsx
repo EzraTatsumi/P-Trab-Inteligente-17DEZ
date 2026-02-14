@@ -373,8 +373,7 @@ const ServicosTerceirosForm = () => {
 
         // Garante que períodos undefined sejam tratados como 0 para o cálculo final
         const itemsForCalc = selectedItems.map(i => ({ ...i, periodo: (i as any).periodo || 0 }));
-        const trips = activeTab === "transporte-coletivo" ? (Number(numeroViagens) || 1) : 1;
-        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(itemsForCalc, trips);
+        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(itemsForCalc);
         
         const newItem: PendingServicoItem = {
             tempId: editingId || crypto.randomUUID(),
@@ -467,8 +466,7 @@ const ServicosTerceirosForm = () => {
         }
 
         // Move para a lista pendente para que a Seção 3 apareça
-        const trips = reg.categoria === 'transporte-coletivo' ? (Number(details.numero_viagens) || 1) : 1;
-        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(details.itens_selecionados || [], trips);
+        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(details.itens_selecionados || []);
         const stagedItem: PendingServicoItem = {
             tempId: reg.id,
             organizacao: reg.organizacao,
@@ -585,7 +583,7 @@ const ServicosTerceirosForm = () => {
                                             <TabsTrigger value="fretamento-aereo" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Plane className="h-4 w-4" /> Fretamento</TabsTrigger>
                                             <TabsTrigger value="servico-satelital" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Satellite className="h-4 w-4" /> Satelital</TabsTrigger>
                                             <TabsTrigger value="transporte-coletivo" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Bus className="h-4 w-4" /> Trnp Coletivo</TabsTrigger>
-                                            <TabsTrigger value="locacao-veiculos" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Car className="h-4 w-4" /> Veículos</TabsTrigger>
+                                            <TabsTrigger value="transacao-veiculos" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Car className="h-4 w-4" /> Veículos</TabsTrigger>
                                             <TabsTrigger value="locacao-engenharia" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Tractor className="h-4 w-4" /> Eqp Engenharia</TabsTrigger>
                                             <TabsTrigger value="locacao-estruturas" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><TentTree className="h-4 w-4" /> Estruturas</TabsTrigger>
                                             <TabsTrigger value="servico-grafico" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Printer className="h-4 w-4" /> Gráfico</TabsTrigger>
