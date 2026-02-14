@@ -317,7 +317,7 @@ const ServicosTerceirosForm = () => {
             organizacao: omFavorecida.nome,
             ug: omFavorecida.ug,
             om_detentora: omDestino.nome,
-            ug_detentora: omDestino.ug,
+            ug_detentora: omDestino.ug || omFavorecida.ug, // Fallback para UG favorecida se destino estiver vazio
             dias_operacao: diasOperacao,
             efetivo: efetivo,
             fase_atividade: faseAtividade,
@@ -369,9 +369,12 @@ const ServicosTerceirosForm = () => {
         setEfetivo(reg.efetivo || 0);
         setDiasOperacao(reg.dias_operacao || 0);
         
-        const omDest = oms?.find(om => om.nome_om === reg.om_detentora && om.codug_om === reg.ug_detentora);
+        // Busca resiliente: tenta Nome+UG, se falhar tenta apenas Nome
+        const omDest = oms?.find(om => om.nome_om === reg.om_detentora && om.codug_om === reg.ug_detentora)
+                    || oms?.find(om => om.nome_om === reg.om_detentora);
+
         if (omDest) {
-            setOmDestino({ nome: omDest.nome_om, ug: omDest.ug, id: omDest.id });
+            setOmDestino({ nome: omDest.nome_om, ug: omDest.codug_om, id: omDest.id });
         } else {
             setOmDestino({ nome: reg.om_detentora || "", ug: reg.ug_detentora || "", id: "" });
         }
@@ -731,8 +734,8 @@ const ServicosTerceirosForm = () => {
                                     
                                     <div className="space-y-4">
                                         {pendingItems.map((item) => {
-                                            // Compara apenas o nome para evitar alertas falsos por UASG ausente/inconsistente
-                                            const isOmDestinoDifferent = item.organizacao !== item.om_detentora;
+                                            // Compara apenas o nome (normalizado) para evitar alertas falsos por UASG ausente/inconsistente
+                                            const isOmDestinoDifferent = item.organizacao.trim() !== item.om_detentora.trim();
                                             const totalHV = item.categoria === 'fretamento-aereo' 
                                                 ? item.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0)
                                                 : null;
@@ -812,7 +815,7 @@ const ServicosTerceirosForm = () => {
                                             </div>
                                             <div className="space-y-3">
                                                 {group.records.map((reg) => {
-                                                    const isDifferentOm = reg.om_detentora !== reg.organizacao;
+                                                    const isDifferentOm = reg.om_detentora?.trim() !== reg.organizacao?.trim();
                                                     const totalHV = reg.categoria === 'fretamento-aereo' 
                                                         ? reg.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, item: any) => acc + (item.quantidade || 0), 0)
                                                         : null;
