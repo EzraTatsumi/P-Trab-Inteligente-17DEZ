@@ -939,6 +939,9 @@ const ServicosTerceirosForm = () => {
                                                 return acc + (qty * period * trips);
                                             }, 0) || 0;
 
+                                            // Soma apenas as quantidades (input 799) para Satelital
+                                            const totalQty = item.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0) || 0;
+
                                             return (
                                                 <Card key={item.tempId} className="border-2 shadow-md border-secondary bg-secondary/10">
                                                     <CardContent className="p-4">
@@ -967,7 +970,7 @@ const ServicosTerceirosForm = () => {
                                                                 <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
                                                                 <p className="font-medium">
                                                                     {item.categoria === 'fretamento-aereo' && `${item.dias_operacao} dias / ${item.efetivo} mil / ${totalUnits} HV`}
-                                                                    {item.categoria === 'servico-satelital' && `${item.dias_operacao} dias / ${totalUnits} un`}
+                                                                    {item.categoria === 'servico-satelital' && `${item.dias_operacao} dias / ${totalQty} un`}
                                                                     {item.categoria === 'transporte-coletivo' && `${item.dias_operacao} dias / ${item.efetivo} mil / ${item.detalhes_planejamento.numero_viagens || 1} viagens / ${totalUnits} diárias`}
                                                                     {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo'].includes(item.categoria) && `${item.dias_operacao} dias / ${totalUnits} un`}
                                                                 </p>
@@ -1031,6 +1034,9 @@ const ServicosTerceirosForm = () => {
                                                         return acc + (qty * period * trips);
                                                     }, 0) || 0;
 
+                                                    // Soma apenas as quantidades para Satelital
+                                                    const totalQty = reg.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0) || 0;
+
                                                     return (
                                                         <Card key={reg.id} className="p-3 bg-background border">
                                                             <div className="flex items-center justify-between">
@@ -1038,7 +1044,7 @@ const ServicosTerceirosForm = () => {
                                                                     <h4 className="font-semibold text-base text-foreground capitalize">{formatCategoryName(reg.categoria)}</h4>
                                                                     <p className="text-xs text-muted-foreground">
                                                                         {reg.categoria === 'fretamento-aereo' && `Período: ${reg.dias_operacao} dias | Efetivo: ${reg.efetivo} mil | HV: ${totalUnits}`}
-                                                                        {reg.categoria === 'servico-satelital' && `Período: ${reg.dias_operacao} dias | Qtd: ${totalUnits} un`}
+                                                                        {reg.categoria === 'servico-satelital' && `Período: ${reg.dias_operacao} dias | Qtd: ${totalQty} un`}
                                                                         {reg.categoria === 'transporte-coletivo' && `Período: ${reg.dias_operacao} dias | Efetivo: ${reg.efetivo} mil | Viagens: ${reg.detalhes_planejamento?.numero_viagens || 1} | Diárias: ${totalUnits}`}
                                                                         {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo'].includes(reg.categoria) && `Período: ${reg.dias_operacao} dias | Efetivo: ${reg.efetivo} mil | Qtd: ${totalUnits} un`}
                                                                     </p>
