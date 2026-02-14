@@ -172,7 +172,7 @@ const ServicosTerceirosForm = () => {
         if (contextChanged) return true;
 
         // Compara itens selecionados (IDs e Quantidades)
-        const currentItemsKey = selectedItems.map(i => `${i.id}-${i.quantidade}`).sort().join('|');
+        const currentItemsKey = selectedItems.map(i => `${i.id}-${i.quantidade}-${(i as any).periodo || 1}`).sort().join('|');
         const stagedItemsKey = lastStagedState.itemsKey;
 
         return currentItemsKey !== stagedItemsKey;
@@ -294,16 +294,37 @@ const ServicosTerceirosForm = () => {
         const newItems = items.map(item => {
             const existing = selectedItems.find(i => i.id === item.id);
             const initialQty = (activeTab === "fretamento-aereo" && suggestedHV) ? suggestedHV : 1;
-            return existing ? existing : { ...item, quantidade: initialQty, valor_total: initialQty * item.valor_unitario };
+            const initialPeriod = 1;
+            return existing ? existing : { 
+                ...item, 
+                quantidade: initialQty, 
+                periodo: initialPeriod,
+                valor_total: initialQty * initialPeriod * item.valor_unitario 
+            };
         });
         setSelectedItems(newItems);
     };
 
     const handleQuantityChange = (id: string, rawValue: string) => {
         const qty = parseInt(rawValue) || 0;
-        setSelectedItems(prev => prev.map(item => 
-            item.id === id ? { ...item, quantidade: qty, valor_total: qty * item.valor_unitario } : item
-        ));
+        setSelectedItems(prev => prev.map(item => {
+            if (item.id === id) {
+                const period = (item as any).periodo || 1;
+                return { ...item, quantidade: qty, valor_total: qty * period * item.valor_unitario };
+            }
+            return item;
+        }));
+    };
+
+    const handlePeriodChange = (id: string, rawValue: string) => {
+        const period = parseInt(rawValue) || 1;
+        setSelectedItems(prev => prev.map(item => {
+            if (item.id === id) {
+                const qty = item.quantidade || 0;
+                return { ...item, periodo: period, valor_total: qty * period * item.valor_unitario };
+            }
+            return item;
+        }));
     };
 
     const handleAddToPending = () => {
@@ -354,7 +375,7 @@ const ServicosTerceirosForm = () => {
             dias_operacao,
             omDestinoId: omDestino.id,
             categoria: activeTab,
-            itemsKey: selectedItems.map(i => `${i.id}-${i.quantidade}`).sort().join('|')
+            itemsKey: selectedItems.map(i => `${i.id}-${i.quantidade}-${(i as any).periodo || 1}`).sort().join('|')
         });
         
         toast.info("Item adicionado à lista de pendentes para conferência.");
@@ -428,7 +449,7 @@ const ServicosTerceirosForm = () => {
             dias_operacao: reg.dias_operacao,
             omDestinoId: omDest?.id || "",
             categoria: reg.categoria,
-            itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}`).sort().join('|')
+            itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}-${i.periodo || 1}`).sort().join('|')
         });
 
         toast.info("Modo Edição ativado. Altere os dados e clique em 'Recalcular/Revisar Lote'.");
@@ -633,7 +654,7 @@ const ServicosTerceirosForm = () => {
                                                                 <Input 
                                                                     value={tipoEquipamento} 
                                                                     onChange={(e) => setTipoEquipamento(e.target.value)} 
-                                                                    placeholder="Ex: Comunicação e Rastreamento Satelital" 
+                                                                    placeholder="Comunicação e Rastreamento Satelital" 
                                                                     disabled={!isPTrabEditable} 
                                                                 />
                                                             </div>
@@ -642,7 +663,7 @@ const ServicosTerceirosForm = () => {
                                                                 <Input 
                                                                     value={proposito} 
                                                                     onChange={(e) => setProposito(e.target.value)} 
-                                                                    placeholder="Ex: melhor comunicabilidade e consciência situacional" 
+                                                                    placeholder="melhor comunicabilidade e consciência situacional" 
                                                                     disabled={!isPTrabEditable} 
                                                                 />
                                                             </div>
@@ -654,10 +675,11 @@ const ServicosTerceirosForm = () => {
                                                             <Table>
                                                                 <TableHeader>
                                                                     <TableRow>
-                                                                        <TableHead className="w-[100px] text-center">Qtd</TableHead>
+                                                                        <TableHead className="w-[80px] text-center">Qtd</TableHead>
                                                                         <TableHead>Descrição do Serviço</TableHead>
-                                                                        <TableHead className="text-right w-[120px]">Vlr Unitário</TableHead>
-                                                                        <TableHead className="text-right w-[120px]">Total</TableHead>
+                                                                        <TableHead className="text-right w-[140px]">Valor Unitário</TableHead>
+                                                                        <TableHead className="text-center w-[120px]">Período</TableHead>
+                                                                        <TableHead className="text-right w-[140px]">Total</TableHead>
                                                                         <TableHead className="w-[50px]"></TableHead>
                                                                     </TableRow>
                                                                 </TableHeader>
@@ -720,7 +742,25 @@ const ServicosTerceirosForm = () => {
                                                                                         </div>
                                                                                     )}
                                                                                 </TableCell>
-                                                                                <TableCell className="text-right text-xs text-muted-foreground align-top pt-4">{formatCurrency(item.valor_unitario)}</TableCell>
+                                                                                <TableCell className="text-right text-xs text-muted-foreground align-top pt-4">
+                                                                                    {formatCurrency(item.valor_unitario)} / {item.unidade_medida || 'UN'}
+                                                                                </TableCell>
+                                                                                <TableCell className="align-top pt-4">
+                                                                                    <div className="flex items-center gap-2 justify-center">
+                                                                                        <Input 
+                                                                                            type="number" 
+                                                                                            min={1}
+                                                                                            value={(item as any).periodo || 1} 
+                                                                                            onChange={(e) => handlePeriodChange(item.id, e.target.value)}
+                                                                                            onWheel={(e) => e.currentTarget.blur()}
+                                                                                            onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                                            className="h-8 w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                        />
+                                                                                        <span className="text-[10px] text-muted-foreground uppercase font-medium">
+                                                                                            {item.unidade_medida || 'UN'}(s)
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </TableCell>
                                                                                 <TableCell className="text-right text-sm font-bold align-top pt-4">{formatCurrency(item.valor_total)}</TableCell>
                                                                                 <TableCell className="align-top pt-3"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                                                                             </TableRow>
