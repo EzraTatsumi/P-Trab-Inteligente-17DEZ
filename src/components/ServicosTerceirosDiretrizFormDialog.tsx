@@ -223,14 +223,9 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                     const mappedItems = items.map(item => ({
                         ...item,
                         nome_reduzido: item.descricao_reduzida || '',
-                        unidade_medida: 'UN', 
+                        unidade_medida: (item as any).unidade_medida || 'UN', 
                     }));
                     setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...mappedItems] }));
-                    
-                    toast.info("Itens importados com unidade padrão 'UN'. Lembre-se de ajustar para hora/dia/mês se necessário.", {
-                        duration: 6000,
-                        icon: <Info className="h-4 w-4 text-blue-500" />
-                    });
                 }} 
                 existingItemsInDiretriz={subitemForm.itens_aquisicao as any} 
                 onReviewItem={handleReviewItem} 
