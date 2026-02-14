@@ -25,11 +25,39 @@ export const generateServicoMemoriaCalculo = (
     context: { organizacao: string, efetivo: number, dias_operacao: number, fase_atividade: string | null }
 ): string => {
     const { categoria, detalhes_planejamento } = registro;
-    const planejamento = detalhes_planejamento as unknown as DetalhesPlanejamentoServico;
+    const planejamento = detalhes_planejamento as any; // Cast para acessar campos dinâmicos
     const items = planejamento?.itens_selecionados || [];
     
     if (items.length === 0) return "Nenhum item selecionado.";
 
+    // --- LÓGICA ESPECÍFICA PARA FRETAMENTO AÉREO ---
+    if (categoria === 'fretamento-aereo') {
+        const item = items[0]; // Geralmente um fretamento tem um item principal de aeronave
+        if (!item) return "Nenhum item de fretamento selecionado.";
+
+        const efetivoText = context.efetivo === 1 ? "militar" : "militares";
+        const diasText = context.dias_operacao === 1 ? "dia" : "dias";
+        const valorTotal = item.valor_total || (item.quantidade * item.valor_unitario);
+        
+        let texto = `33.90.33 - Contratação de Fretamento Aéreo para o transporte de ${context.efetivo} ${efetivoText} do/da ${context.organizacao}, durante os ${context.dias_operacao} ${diasText} da ${context.fase_atividade || 'Operação'}.\n\n`;
+        
+        texto += `Cálculo:\n`;
+        texto += `- Tipo Anv: ${planejamento.tipo_anv || 'N/A'}.\n`;
+        texto += `- Capacidade: ${planejamento.capacidade || 'N/A'}.\n`;
+        texto += `- Velocidade de Cruzeiro: ${planejamento.velocidade_cruzeiro || 0} Km/h.\n`;
+        texto += `- Distância a percorrer: ${planejamento.distancia_percorrer || 0} Km.\n`;
+        texto += `- Valor da HV: ${formatCurrency(item.valor_unitario)}/HV.\n\n`;
+        
+        texto += `Fórmula: Quantidade de HV (Dist / Vel) x valor da HV.\n`;
+        texto += `- ${item.quantidade} HV x ${formatCurrency(item.valor_unitario)}/HV = ${formatCurrency(valorTotal)}.\n\n`;
+        
+        texto += `Total: ${formatCurrency(valorTotal)}.\n`;
+        texto += `(Pregão ${formatPregao(item.numero_pregao)} - UASG ${formatCodug(item.uasg)})`;
+        
+        return texto;
+    }
+
+    // --- LÓGICA GENÉRICA PARA OUTROS SERVIÇOS ---
     const categoriaFormatada = (categoria || "").replace('-', ' ').toUpperCase();
     const diasText = context.dias_operacao === 1 ? "dia" : "dias";
     
@@ -40,7 +68,7 @@ export const generateServicoMemoriaCalculo = (
     
     texto += `DETALHAMENTO DOS ITENS:\n`;
     
-    items.forEach((item, index) => {
+    items.forEach((item: ItemAquisicaoServico, index: number) => {
         const totalItem = (item.quantidade || 0) * item.valor_unitario;
         texto += `${index + 1}. ${item.descricao_item}\n`;
         texto += `   - Quantidade: ${item.quantidade} ${item.unidade_medida}\n`;
