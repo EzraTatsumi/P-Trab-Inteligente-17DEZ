@@ -983,7 +983,7 @@ const ServicosTerceirosForm = () => {
                                                         </div>
                                                         <div className="w-full h-[1px] bg-secondary/30 my-3" />
                                                         <div className="flex justify-between text-xs">
-                                                            <span className="text-muted-foreground">Total ND 39:</span>
+                                                            <span className="text-muted-foreground">{(item.categoria === 'fretamento-aereo' || item.categoria === 'transporte-coletivo') ? 'Total ND 33:' : 'Total ND 39:'}</span>
                                                             <span className="font-medium text-green-600">{formatCurrency(item.valor_nd_30 + item.valor_nd_39)}</span>
                                                         </div>
                                                     </CardContent>
