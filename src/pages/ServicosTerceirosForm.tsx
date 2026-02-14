@@ -317,11 +317,14 @@ const ServicosTerceirosForm = () => {
     };
 
     const handlePeriodChange = (id: string, rawValue: string) => {
-        const period = parseFloat(rawValue.replace(',', '.')) || 0;
+        const parsed = parseFloat(rawValue.replace(',', '.'));
+        const period = rawValue === "" ? undefined : (isNaN(parsed) ? 0 : parsed);
+        
         setSelectedItems(prev => prev.map(item => {
             if (item.id === id) {
                 const qty = item.quantidade || 0;
-                return { ...item, periodo: period, valor_total: qty * period * item.valor_unitario };
+                const numPeriod = typeof period === 'number' ? period : 0;
+                return { ...item, periodo: period, valor_total: qty * numPeriod * item.valor_unitario };
             }
             return item;
         }));
@@ -340,7 +343,9 @@ const ServicosTerceirosForm = () => {
             return;
         }
 
-        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(selectedItems);
+        // Garante que períodos undefined sejam tratados como 0 para o cálculo final
+        const itemsForCalc = selectedItems.map(i => ({ ...i, periodo: (i as any).periodo || 0 }));
+        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(itemsForCalc);
         
         const newItem: PendingServicoItem = {
             tempId: editingId || crypto.randomUUID(),
@@ -353,10 +358,10 @@ const ServicosTerceirosForm = () => {
             fase_atividade: faseAtividade,
             categoria: activeTab,
             detalhes_planejamento: { 
-                itens_selecionados: selectedItems,
+                itens_selecionados: itemsForCalc,
                 tipo_anv: tipoAnv,
                 capacidade: capacidade,
-                velocidade_cruzeiro: velocidade_cruzeiro,
+                velocidade_cruzeiro: velocidadeCruzeiro,
                 distancia_percorrer: distanciaPercorrer,
                 tipo_equipamento: tipoEquipamento,
                 proposito: proposito
@@ -375,7 +380,7 @@ const ServicosTerceirosForm = () => {
             dias_operacao,
             omDestinoId: omDestino.id,
             categoria: activeTab,
-            itemsKey: selectedItems.map(i => `${i.id}-${i.quantidade}-${(i as any).periodo || 1}`).sort().join('|')
+            itemsKey: itemsForCalc.map(i => `${i.id}-${i.quantidade}-${i.periodo}`).sort().join('|')
         });
         
         toast.info("Item adicionado à lista de pendentes para conferência.");
@@ -753,7 +758,7 @@ const ServicosTerceirosForm = () => {
                                                                                             type="number" 
                                                                                             min={0}
                                                                                             step="any"
-                                                                                            value={period === 0 ? "" : period} 
+                                                                                            value={period === undefined ? "" : period} 
                                                                                             onChange={(e) => handlePeriodChange(item.id, e.target.value)}
                                                                                             onWheel={(e) => e.currentTarget.blur()}
                                                                                             onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
