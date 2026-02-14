@@ -429,7 +429,10 @@ const ServicosTerceirosForm = () => {
 
     const formatCategoryName = (cat: string) => {
         if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
-        return cat.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        return cat.split('-').map(word => {
+            if (word === 'aereo') return 'Aéreo';
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }).join(' ');
     };
 
     return (
@@ -538,59 +541,47 @@ const ServicosTerceirosForm = () => {
                                                     </div>
 
                                                     {activeTab === "fretamento-aereo" && (
-                                                        <div className="space-y-4">
-                                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
-                                                                <div className="space-y-2">
-                                                                    <Label>Tipo Anv</Label>
-                                                                    <Input value={tipoAnv} onChange={(e) => setTipoAnv(e.target.value)} placeholder="Ex: Caravan" disabled={!isPTrabEditable} />
-                                                                </div>
-                                                                <div className="space-y-2">
-                                                                    <Label>Capacidade</Label>
-                                                                    <Input value={capacidade} onChange={(e) => setCapacidade(e.target.value)} placeholder="Ex: 9 Pax ou 450kg" disabled={!isPTrabEditable} />
-                                                                </div>
-                                                                <div className="space-y-2">
-                                                                    <Label>Velocidade de Cruzeiro</Label>
-                                                                    <div className="relative">
-                                                                        <Input 
-                                                                            type="number" 
-                                                                            value={velocidadeCruzeiro} 
-                                                                            onChange={(e) => setVelocidadeCruzeiro(e.target.value === "" ? "" : Number(e.target.value))} 
-                                                                            placeholder="Ex: 350" 
-                                                                            disabled={!isPTrabEditable} 
-                                                                            onWheel={(e) => e.currentTarget.blur()} 
-                                                                            onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                            className="pr-14 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                                                        />
-                                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km/h</span>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="space-y-2">
-                                                                    <Label>Distância a percorrer</Label>
-                                                                    <div className="relative">
-                                                                        <Input 
-                                                                            type="number" 
-                                                                            value={distanciaPercorrer} 
-                                                                            onChange={(e) => setDistanciaPercorrer(e.target.value === "" ? "" : Number(e.target.value))} 
-                                                                            placeholder="Ex: 1500" 
-                                                                            disabled={!isPTrabEditable} 
-                                                                            onWheel={(e) => e.currentTarget.blur()} 
-                                                                            onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                            className="pr-10 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                                                        />
-                                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km</span>
-                                                                    </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+                                                            <div className="space-y-2">
+                                                                <Label>Tipo Anv</Label>
+                                                                <Input value={tipoAnv} onChange={(e) => setTipoAnv(e.target.value)} placeholder="Ex: Caravan" disabled={!isPTrabEditable} />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Capacidade</Label>
+                                                                <Input value={capacidade} onChange={(e) => setCapacidade(e.target.value)} placeholder="Ex: 9 Pax ou 450kg" disabled={!isPTrabEditable} />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Velocidade de Cruzeiro</Label>
+                                                                <div className="relative">
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        value={velocidadeCruzeiro} 
+                                                                        onChange={(e) => setVelocidadeCruzeiro(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                        placeholder="Ex: 350" 
+                                                                        disabled={!isPTrabEditable} 
+                                                                        onWheel={(e) => e.currentTarget.blur()} 
+                                                                        onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                        className="pr-14 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                    />
+                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km/h</span>
                                                                 </div>
                                                             </div>
-                                                            
-                                                            {suggestedHV !== null && (
-                                                                <Alert variant="default" className="bg-blue-50 border-blue-200">
-                                                                    <Info className="h-4 w-4 text-blue-600" />
-                                                                    <AlertTitle className="text-blue-800">Sugestão de Horas de Voo</AlertTitle>
-                                                                    <AlertDescription className="text-blue-700">
-                                                                        Com base na distância e velocidade informadas, o tempo estimado de voo é de aproximadamente <strong>{suggestedHV} HV</strong>.
-                                                                    </AlertDescription>
-                                                                </Alert>
-                                                            )}
+                                                            <div className="space-y-2">
+                                                                <Label>Distância a percorrer</Label>
+                                                                <div className="relative">
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        value={distanciaPercorrer} 
+                                                                        onChange={(e) => setDistanciaPercorrer(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                        placeholder="Ex: 1500" 
+                                                                        disabled={!isPTrabEditable} 
+                                                                        onWheel={(e) => e.currentTarget.blur()} 
+                                                                        onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                        className="pr-10 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                    />
+                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km</span>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     )}
 
@@ -607,21 +598,70 @@ const ServicosTerceirosForm = () => {
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
-                                                                    {selectedItems.map(item => (
-                                                                        <TableRow key={item.id}>
-                                                                            <TableCell className="align-top pt-4">
-                                                                                <Input type="number" min={0} value={item.quantidade === 0 ? "" : item.quantidade} onChange={(e) => handleQuantityChange(item.id, e.target.value)} onWheel={(e) => e.currentTarget.blur()} className="h-8 text-center" />
-                                                                            </TableCell>
-                                                                            <TableCell className="text-xs">
-                                                                                <p className="font-medium">{item.descricao_reduzida || item.descricao_item}</p>
-                                                                                <p className="text-muted-foreground text-[10px]">Cód. CATSER: {item.codigo_catser || 'N/A'}</p>
-                                                                                <p className="text-muted-foreground text-[10px]">Pregão: {formatPregao(item.numero_pregao)}</p>
-                                                                            </TableCell>
-                                                                            <TableCell className="text-right text-xs text-muted-foreground align-top pt-4">{formatCurrency(item.valor_unitario)}</TableCell>
-                                                                            <TableCell className="text-right text-sm font-bold align-top pt-4">{formatCurrency(item.valor_total)}</TableCell>
-                                                                            <TableCell className="align-top pt-3"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
-                                                                        </TableRow>
-                                                                    ))}
+                                                                    {selectedItems.map(item => {
+                                                                        const isCharter = activeTab === "fretamento-aereo";
+                                                                        const showHvWarning = isCharter && suggestedHV !== null && item.quantidade !== suggestedHV;
+                                                                        
+                                                                        return (
+                                                                            <TableRow key={item.id}>
+                                                                                <TableCell className="align-top pt-4">
+                                                                                    <div className="space-y-1">
+                                                                                        <Input 
+                                                                                            type="number" 
+                                                                                            min={0}
+                                                                                            value={item.quantidade === 0 ? "" : item.quantidade} 
+                                                                                            onChange={(e) => handleQuantityChange(item.id, e.target.value)} 
+                                                                                            onWheel={(e) => e.currentTarget.blur()}
+                                                                                            onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                                            className={cn(
+                                                                                                "h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                                                                                                showHvWarning && "border-orange-500 focus-visible:ring-orange-500"
+                                                                                            )} 
+                                                                                        />
+                                                                                        {showHvWarning && (
+                                                                                            <div className="flex flex-col items-center gap-1 px-1">
+                                                                                                <span className="text-[9px] text-orange-600 font-bold leading-tight text-center">
+                                                                                                    Sugerido: {suggestedHV} HV
+                                                                                                </span>
+                                                                                                <Button 
+                                                                                                    variant="ghost" 
+                                                                                                    size="sm" 
+                                                                                                    className="h-5 text-[8px] px-1 text-orange-700 hover:text-orange-800 hover:bg-orange-50"
+                                                                                                    onClick={() => handleQuantityChange(item.id, suggestedHV!.toString())}
+                                                                                                >
+                                                                                                    Aplicar Sugestão
+                                                                                                </Button>
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </TableCell>
+                                                                                <TableCell className="text-xs">
+                                                                                    <p className="font-medium">
+                                                                                        {item.descricao_reduzida || item.descricao_item}
+                                                                                    </p>
+                                                                                    <p className="text-muted-foreground text-[10px]">
+                                                                                        Cód. CATSER: {item.codigo_catser || 'N/A'}
+                                                                                    </p>
+                                                                                    <p className="text-muted-foreground text-[10px]">
+                                                                                        Pregão: {formatPregao(item.numero_pregao)} | UASG: {formatCodug(item.uasg) || 'N/A'}
+                                                                                    </p>
+                                                                                    {isCharter && suggestedHV !== null && (
+                                                                                        <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded flex items-start gap-2">
+                                                                                            <Info className="h-3 w-3 text-blue-600 mt-0.5" />
+                                                                                            <p className="text-[10px] text-blue-700 leading-tight">
+                                                                                                Cálculo: {distanciaPercorrer}km / {velocidadeCruzeiro}km/h = {(Number(distanciaPercorrer) / Number(velocidadeCruzeiro)).toFixed(2)}h. 
+                                                                                                <br />
+                                                                                                <strong>Valor arredondado para cima: {suggestedHV} HV.</strong>
+                                                                                            </p>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </TableCell>
+                                                                                <TableCell className="text-right text-xs text-muted-foreground align-top pt-4">{formatCurrency(item.valor_unitario)}</TableCell>
+                                                                                <TableCell className="text-right text-sm font-bold align-top pt-4">{formatCurrency(item.valor_total)}</TableCell>
+                                                                                <TableCell className="align-top pt-3"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                                                                            </TableRow>
+                                                                        );
+                                                                    })}
                                                                 </TableBody>
                                                             </Table>
                                                         </div>
@@ -756,7 +796,7 @@ const ServicosTerceirosForm = () => {
                                                         <Card key={reg.id} className="p-3 bg-background border">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex flex-col">
-                                                                    <h4 className="font-semibold text-base text-foreground capitalize">{reg.categoria.replace('-', ' ')}</h4>
+                                                                    <h4 className="font-semibold text-base text-foreground capitalize">{formatCategoryName(reg.categoria)}</h4>
                                                                     <p className="text-xs text-muted-foreground">
                                                                         Período: {reg.dias_operacao} dias | Efetivo: {reg.efetivo} militares
                                                                         {totalHV !== null && ` | HV: ${totalHV}`}
