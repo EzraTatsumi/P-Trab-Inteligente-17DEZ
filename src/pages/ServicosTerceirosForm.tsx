@@ -356,15 +356,25 @@ const ServicosTerceirosForm = () => {
         }
 
         setEditingId(reg.id);
+        
+        // Tenta encontrar a OM na lista, mas se não encontrar (erro de importação), usa os dados do registro
         const omFav = oms?.find(om => om.nome_om === reg.organizacao && om.codug_om === reg.ug);
-        if (omFav) setOmFavorecida({ nome: omFav.nome_om, ug: omFav.codug_om, id: omFav.id });
+        if (omFav) {
+            setOmFavorecida({ nome: omFav.nome_om, ug: omFav.codug_om, id: omFav.id });
+        } else {
+            setOmFavorecida({ nome: reg.organizacao, ug: reg.ug, id: "" });
+        }
         
         setFaseAtividade(reg.fase_atividade || "");
         setEfetivo(reg.efetivo || 0);
         setDiasOperacao(reg.dias_operacao || 0);
         
         const omDest = oms?.find(om => om.nome_om === reg.om_detentora && om.codug_om === reg.ug_detentora);
-        if (omDest) setOmDestino({ nome: omDest.nome_om, ug: omDest.ug, id: omDest.id });
+        if (omDest) {
+            setOmDestino({ nome: omDest.nome_om, ug: omDest.ug, id: omDest.id });
+        } else {
+            setOmDestino({ nome: reg.om_detentora || "", ug: reg.ug_detentora || "", id: "" });
+        }
 
         setActiveTab(reg.categoria as CategoriaServico);
         
@@ -396,11 +406,11 @@ const ServicosTerceirosForm = () => {
         };
         setPendingItems([stagedItem]);
         setLastStagedState({
-            omFavorecidaId: omFav?.id,
+            omFavorecidaId: omFav?.id || "",
             faseAtividade: reg.fase_atividade,
             efetivo: reg.efetivo,
             diasOperacao: reg.dias_operacao,
-            omDestinoId: omDest?.id,
+            omDestinoId: omDest?.id || "",
             categoria: reg.categoria,
             itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}`).sort().join('|')
         });
@@ -721,7 +731,8 @@ const ServicosTerceirosForm = () => {
                                     
                                     <div className="space-y-4">
                                         {pendingItems.map((item) => {
-                                            const isOmDestinoDifferent = item.organizacao !== item.om_detentora || item.ug !== item.ug_detentora;
+                                            // Compara apenas o nome para evitar alertas falsos por UASG ausente/inconsistente
+                                            const isOmDestinoDifferent = item.organizacao !== item.om_detentora;
                                             const totalHV = item.categoria === 'fretamento-aereo' 
                                                 ? item.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0)
                                                 : null;
@@ -801,7 +812,7 @@ const ServicosTerceirosForm = () => {
                                             </div>
                                             <div className="space-y-3">
                                                 {group.records.map((reg) => {
-                                                    const isDifferentOm = reg.om_detentora !== reg.organizacao || reg.ug_detentora !== reg.ug;
+                                                    const isDifferentOm = reg.om_detentora !== reg.organizacao;
                                                     const totalHV = reg.categoria === 'fretamento-aereo' 
                                                         ? reg.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, item: any) => acc + (item.quantidade || 0), 0)
                                                         : null;
