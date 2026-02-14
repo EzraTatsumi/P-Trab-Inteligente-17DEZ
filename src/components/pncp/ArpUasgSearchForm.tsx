@@ -13,7 +13,6 @@ import { format, subDays } from 'date-fns';
 import { fetchArpsByUasg } from '@/integrations/supabase/api';
 import { ArpItemResult, DetailedArpItem } from '@/types/pncp'; 
 import ArpSearchResultsList from './ArpSearchResultsList';
-import { OMData } from '@/lib/omUtils';
 
 const formSchema = z.object({
     uasg: z.string().min(6, { message: "A UASG deve ter 6 dígitos." }).max(6, { message: "A UASG deve ter 6 dígitos." }).regex(/^\d{6}$/, { message: "A UASG deve conter apenas números." }),
@@ -56,9 +55,12 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
         setSearchedOmName(""); 
     };
     
-    const handleOmSelect = (omData: OMData) => {
-        form.setValue('uasg', omData.codug_om, { shouldValidate: true });
-        setSearchedOmName(omData.nome_om);
+    const handleOmSelect = (omData: any) => {
+        // omData agora é o objeto completo da tabela organizacoes_militares
+        if (omData && omData.codug_om) {
+            form.setValue('uasg', omData.codug_om, { shouldValidate: true });
+            setSearchedOmName(omData.nome_om);
+        }
     };
 
     const onSubmit = async (values: ArpUasgFormValues) => {
@@ -138,7 +140,7 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
                     <ArpSearchResultsList results={arpResults} onItemPreSelect={onItemPreSelect} searchedUasg={form.getValues('uasg')} searchedOmName={searchedOmName} selectedItemIds={selectedItemIds} />
                 </div>
             )}
-            <OmSelectorDialog open={isOmSelectorOpen} onOpenChange={setIsOmSelectorOpen} onSelect={handleOmSelect as any} />
+            <OmSelectorDialog open={isOmSelectorOpen} onOpenChange={setIsOmSelectorOpen} onSelect={handleOmSelect} />
         </>
     );
 };

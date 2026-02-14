@@ -16,15 +16,13 @@ type OmItem = Tables<'organizacoes_militares'>;
 interface OmSelectorDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSelect: (uasg: string) => void;
+    onSelect: (om: OmItem) => void; // Alterado para passar o objeto completo
 }
 
 const fetchOmItems = async (): Promise<OmItem[]> => {
-    // Busca OMs criadas pelo usuário (user_id IS NOT NULL) e OMs padrão (user_id IS NULL)
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
     
-    // A política de RLS já garante que o usuário veja suas OMs e as OMs padrão (user_id IS NULL)
     const { data, error } = await supabase
         .from('organizacoes_militares')
         .select('*')
@@ -69,7 +67,7 @@ const OmSelectorDialog: React.FC<OmSelectorDialogProps> = ({
 
     const handleConfirmImport = () => {
         if (selectedItem) {
-            onSelect(selectedItem.codug_om);
+            onSelect(selectedItem); // Passa o objeto completo
             onOpenChange(false);
             toast.success(`UASG ${formatCodug(selectedItem.codug_om)} selecionada.`);
         }
@@ -139,17 +137,8 @@ const OmSelectorDialog: React.FC<OmSelectorDialogProps> = ({
                                                             handlePreSelect(item);
                                                         }}
                                                     >
-                                                        {isSelected ? (
-                                                            <>
-                                                                <Check className="h-4 w-4 mr-1" />
-                                                                Selecionado
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Check className="h-4 w-4 mr-1" />
-                                                                Selecionar
-                                                            </>
-                                                        )}
+                                                        <Check className="h-4 w-4 mr-1" />
+                                                        {isSelected ? "Selecionado" : "Selecionar"}
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>
@@ -161,7 +150,6 @@ const OmSelectorDialog: React.FC<OmSelectorDialogProps> = ({
                     )}
                 </div>
 
-                {/* Ajuste do rodapé para alinhar à direita */}
                 <div className="flex justify-end gap-2 pt-4 border-t">
                     <Button 
                         type="button" 
