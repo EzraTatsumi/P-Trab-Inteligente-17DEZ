@@ -704,7 +704,7 @@ const ServicosTerceirosForm = () => {
                                                                                         {item.descricao_reduzida || item.descricao_item}
                                                                                     </p>
                                                                                     <p className="text-muted-foreground text-[10px]">
-                                                                                        Cód. CATSER: {item.codigo_catser || 'N/A'}
+                                                                                        Cód. CATSER: {item.codigo_catser || item.codigo_catmat || 'N/A'}
                                                                                     </p>
                                                                                     <p className="text-muted-foreground text-[10px]">
                                                                                         Pregão: {formatPregao(item.numero_pregao)} | UASG: {formatCodug(item.uasg) || 'N/A'}
