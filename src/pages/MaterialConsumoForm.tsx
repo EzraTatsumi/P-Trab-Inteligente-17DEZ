@@ -171,6 +171,13 @@ const MaterialConsumoForm = () => {
         enabled: !!ptrabId,
     });
 
+    const ptrabYear = useMemo(() => {
+        if (ptrabData?.periodo_inicio) {
+            return new Date(ptrabData.periodo_inicio).getFullYear();
+        }
+        return new Date().getFullYear();
+    }, [ptrabData]);
+
     // Registros de Material de Consumo
     const { data: registros, isLoading: isLoadingRegistros } = useQuery<MaterialConsumoRegistroDB[]>({
         queryKey: ['materialConsumoRegistros', ptrabId],
@@ -1014,6 +1021,8 @@ const MaterialConsumoForm = () => {
                 om_favorecida: omData.nome_om,
                 ug_favorecida: omData.codug_om,
                 om_destino: omData.nome_om, 
+                ug_favorecida: omData.codug_om, 
+                om_destino: omData.nome_om, 
                 ug_destino: omData.codug_om, 
             }));
         } else {
@@ -1684,7 +1693,7 @@ const MaterialConsumoForm = () => {
                 <AcquisitionItemSelectorDialog
                     open={isItemSelectorOpen}
                     onOpenChange={setIsItemSelectorOpen}
-                    selectedYear={new Date().getFullYear()} 
+                    selectedYear={ptrabYear} 
                     initialItems={itemsToPreselect}
                     onSelect={handleItemsSelected}
                     onAddDiretriz={handleAddDiretriz}

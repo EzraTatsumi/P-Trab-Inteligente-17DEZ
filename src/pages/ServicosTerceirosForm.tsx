@@ -186,6 +186,13 @@ const ServicosTerceirosForm = () => {
         enabled: !!ptrabId,
     });
 
+    const ptrabYear = useMemo(() => {
+        if (ptrabData?.periodo_inicio) {
+            return new Date(ptrabData.periodo_inicio).getFullYear();
+        }
+        return new Date().getFullYear();
+    }, [ptrabData]);
+
     const { data: registros, isLoading: isLoadingRegistros } = useQuery<ServicoTerceiroRegistro[]>({
         queryKey: ['servicosTerceirosRegistros', ptrabId],
         queryFn: () => fetchPTrabRecords('servicos_terceiros_registros' as any, ptrabId!),
@@ -983,7 +990,7 @@ const ServicosTerceirosForm = () => {
             <ServicosTerceirosItemSelectorDialog 
                 open={isSelectorOpen} 
                 onOpenChange={setIsSelectorOpen} 
-                selectedYear={new Date().getFullYear()} 
+                selectedYear={ptrabYear} 
                 initialItems={selectedItems} 
                 onSelect={handleItemsSelected} 
                 onAddDiretriz={() => navigate('/config/custos-operacionais')} 
