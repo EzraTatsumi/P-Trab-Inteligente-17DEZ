@@ -633,7 +633,7 @@ const ServicosTerceirosForm = () => {
                                                                 <Input 
                                                                     value={tipoEquipamento} 
                                                                     onChange={(e) => setTipoEquipamento(e.target.value)} 
-                                                                    placeholder="Comunicação e Rastreamento Satelital" 
+                                                                    placeholder="Ex: Comunicação e Rastreamento Satelital" 
                                                                     disabled={!isPTrabEditable} 
                                                                 />
                                                             </div>
@@ -642,7 +642,7 @@ const ServicosTerceirosForm = () => {
                                                                 <Input 
                                                                     value={proposito} 
                                                                     onChange={(e) => setProposito(e.target.value)} 
-                                                                    placeholder="melhor comunicabilidade e consciência situacional" 
+                                                                    placeholder="Ex: melhor comunicabilidade e consciência situacional" 
                                                                     disabled={!isPTrabEditable} 
                                                                 />
                                                             </div>
