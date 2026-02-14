@@ -24,10 +24,10 @@ const ServicoUnitMeasureDialog: React.FC<ServicoUnitMeasureDialogProps> = ({
 
     useEffect(() => {
         if (open) {
-            // Inicializa com 'UN' ou a unidade já existente (se houver)
+            // Inicializa com string vazia para forçar o preenchimento manual
             setLocalItems(items.map(item => ({
                 ...item,
-                unidade_medida: (item as any).unidade_medida || 'UN'
+                unidade_medida: (item as any).unidade_medida || ''
             })));
         }
     }, [open, items]);
@@ -51,7 +51,7 @@ const ServicoUnitMeasureDialog: React.FC<ServicoUnitMeasureDialogProps> = ({
                         Definir Unidades de Medida
                     </DialogTitle>
                     <DialogDescription>
-                        Para itens de serviço, é necessário informar a unidade de medida (ex: UN, MÊS, HORA, KM, SV).
+                        Para itens de serviço, é necessário informar a unidade de medida (ex: hora, dia, mês, ano).
                     </DialogDescription>
                 </DialogHeader>
 
@@ -68,7 +68,7 @@ const ServicoUnitMeasureDialog: React.FC<ServicoUnitMeasureDialogProps> = ({
                         <TableHeader className="bg-muted/50">
                             <TableRow>
                                 <TableHead>Item de Serviço</TableHead>
-                                <TableHead className="w-[180px] text-center">Unidade de Medida</TableHead>
+                                <TableHead className="w-[220px] text-center">Unidade de Medida</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -82,8 +82,8 @@ const ServicoUnitMeasureDialog: React.FC<ServicoUnitMeasureDialogProps> = ({
                                         <Input 
                                             value={(item as any).unidade_medida} 
                                             onChange={(e) => handleUnitChange(item.id, e.target.value.toUpperCase())}
-                                            placeholder="Ex: UN, MÊS, KM"
-                                            className="h-9 text-center font-bold"
+                                            placeholder="Ex: hora/dia/mês/ano"
+                                            className="h-9 text-center"
                                         />
                                     </TableCell>
                                 </TableRow>
