@@ -42,12 +42,9 @@ export const generateServicoMemoriaCalculo = (
         // Determinar preposição baseada no gênero da OM (ª para feminino, º para masculino)
         const prepOM = context.organizacao.includes('ª') ? 'da' : context.organizacao.includes('º') ? 'do' : 'do/da';
         
-        // Determinar preposição baseada no gênero da Fase (ex: Adestramento -> do, Operação -> da)
         const fase = context.fase_atividade || 'Operação';
-        const faseLower = fase.toLowerCase();
-        const prepFase = (faseLower.endsWith('o') && !faseLower.endsWith('ão')) ? 'do' : 'da';
         
-        let texto = `33.90.33 - Contratação de Fretamento Aéreo para o transporte de ${context.efetivo} ${efetivoText} ${prepOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} ${prepFase} ${fase}.\n\n`;
+        let texto = `33.90.33 - Contratação de Fretamento Aéreo para o transporte de ${context.efetivo} ${efetivoText} ${prepOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
         
         texto += `Cálculo:\n`;
         texto += `- Tipo Anv: ${planejamento.tipo_anv || 'N/A'}.\n`;
