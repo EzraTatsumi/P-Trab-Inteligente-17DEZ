@@ -162,8 +162,13 @@ const ServicosTerceirosForm = () => {
     }, [activeTab, velocidadeCruzeiro, distanciaPercorrer]);
 
     const totalLote = useMemo(() => {
-        return selectedItems.reduce((acc, item) => acc + (item.valor_total || 0), 0);
-    }, [selectedItems]);
+        const trips = activeTab === "transporte-coletivo" ? (Number(numeroViagens) || 1) : 1;
+        return selectedItems.reduce((acc, item) => {
+            const qty = item.quantidade || 0;
+            const period = (item as any).periodo || 0;
+            return acc + (qty * period * item.valor_unitario * trips);
+        }, 0);
+    }, [selectedItems, activeTab, numeroViagens]);
 
     const isServicosTerceirosDirty = useMemo(() => {
         if (!lastStagedState || pendingItems.length === 0) return false;
@@ -364,23 +369,22 @@ const ServicosTerceirosForm = () => {
             return;
         }
         
-        // Para Satelital, efetivo não é obrigatório
         const isSatelital = activeTab === "servico-satelital";
         if ((!isSatelital && efetivo <= 0) || diasOperacao <= 0) {
             toast.warning("Informe o efetivo e o período.");
             return;
         }
 
-        // Garante que períodos undefined sejam tratados como 0 para o cálculo final
+        const trips = activeTab === "transporte-coletivo" ? (Number(numeroViagens) || 1) : 1;
         const itemsForCalc = selectedItems.map(i => ({ ...i, periodo: (i as any).periodo || 0 }));
-        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(itemsForCalc);
+        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(itemsForCalc, trips);
         
         const newItem: PendingServicoItem = {
             tempId: editingId || crypto.randomUUID(),
             organizacao: omFavorecida.nome,
             ug: omFavorecida.ug,
             om_detentora: omDestino.nome,
-            ug_detentora: omDestino.ug || omFavorecida.ug, // Fallback para UG favorecida se destino estiver vazio
+            ug_detentora: omDestino.ug || omFavorecida.ug,
             dias_operacao: diasOperacao,
             efetivo: isSatelital ? 0 : efetivo,
             fase_atividade: faseAtividade,
@@ -403,7 +407,6 @@ const ServicosTerceirosForm = () => {
             valor_nd_39: totalND39,
         };
 
-        // Substitui o item pendente (staging) para refletir o estado atual da Seção 2
         setPendingItems([newItem]);
         setLastStagedState({
             omFavorecidaId: omFavorecida.id,
@@ -426,7 +429,6 @@ const ServicosTerceirosForm = () => {
 
         setEditingId(reg.id);
         
-        // Tenta encontrar a OM na lista, mas se não encontrar (erro de importação), usa os dados do registro
         const omFav = oms?.find(om => om.nome_om === reg.organizacao && om.codug_om === reg.ug);
         if (omFav) {
             setOmFavorecida({ nome: omFav.nome_om, ug: omFav.codug_om, id: omFav.id });
@@ -438,7 +440,6 @@ const ServicosTerceirosForm = () => {
         setEfetivo(reg.efetivo || 0);
         setDiasOperacao(reg.dias_operacao || 0);
         
-        // Busca resiliente: tenta Nome+UG, se falhar tenta apenas Nome
         const omDest = oms?.find(om => om.nome_om === reg.om_detentora && om.codug_om === reg.ug_detentora)
                     || oms?.find(om => om.nome_om === reg.om_detentora);
 
@@ -465,8 +466,8 @@ const ServicosTerceirosForm = () => {
             setNumeroViagens(details.numero_viagens || "");
         }
 
-        // Move para a lista pendente para que a Seção 3 apareça
-        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(details.itens_selecionados || []);
+        const trips = reg.categoria === 'transporte-coletivo' ? (Number(details.numero_viagens) || 1) : 1;
+        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(details.itens_selecionados || [], trips);
         const stagedItem: PendingServicoItem = {
             tempId: reg.id,
             organizacao: reg.organizacao,
@@ -583,7 +584,7 @@ const ServicosTerceirosForm = () => {
                                             <TabsTrigger value="fretamento-aereo" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Plane className="h-4 w-4" /> Fretamento</TabsTrigger>
                                             <TabsTrigger value="servico-satelital" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Satellite className="h-4 w-4" /> Satelital</TabsTrigger>
                                             <TabsTrigger value="transporte-coletivo" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Bus className="h-4 w-4" /> Trnp Coletivo</TabsTrigger>
-                                            <TabsTrigger value="transacao-veiculos" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Car className="h-4 w-4" /> Veículos</TabsTrigger>
+                                            <TabsTrigger value="locacao-veiculos" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Car className="h-4 w-4" /> Veículos</TabsTrigger>
                                             <TabsTrigger value="locacao-engenharia" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Tractor className="h-4 w-4" /> Eqp Engenharia</TabsTrigger>
                                             <TabsTrigger value="locacao-estruturas" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><TentTree className="h-4 w-4" /> Estruturas</TabsTrigger>
                                             <TabsTrigger value="servico-grafico" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Printer className="h-4 w-4" /> Gráfico</TabsTrigger>
@@ -930,19 +931,15 @@ const ServicosTerceirosForm = () => {
                                     
                                     <div className="space-y-4">
                                         {pendingItems.map((item) => {
-                                            // Compara apenas o nome (normalizado) para evitar alertas falsos por UASG ausente/inconsistente
                                             const isOmDestinoDifferent = item.organizacao.trim() !== item.om_detentora.trim();
                                             
-                                            // Calcula o total de unidades (diárias/HV/etc) para exibição
                                             const totalUnits = item.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => {
                                                 const qty = i.quantidade || 0;
-                                                // Para Fretamento, o período é implicitamente 1 para o cálculo de HV total
                                                 const period = item.categoria === 'fretamento-aereo' ? 1 : (i.periodo || 0);
                                                 const trips = item.categoria === 'transporte-coletivo' ? (Number(item.detalhes_planejamento.numero_viagens) || 1) : 1;
                                                 return acc + (qty * period * trips);
                                             }, 0) || 0;
 
-                                            // Soma apenas as quantidades (input 799) para Satelital
                                             const totalQty = item.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0) || 0;
 
                                             return (
@@ -1033,7 +1030,6 @@ const ServicosTerceirosForm = () => {
                                                 {group.records.map((reg) => {
                                                     const isDifferentOm = reg.om_detentora?.trim() !== reg.organizacao?.trim();
                                                     
-                                                    // Calcula o total de unidades (diárias/HV/etc) para exibição no resumo salvo
                                                     const totalUnits = reg.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => {
                                                         const qty = i.quantidade || 0;
                                                         const period = reg.categoria === 'fretamento-aereo' ? 1 : (i.periodo || 0);
@@ -1041,7 +1037,6 @@ const ServicosTerceirosForm = () => {
                                                         return acc + (qty * period * trips);
                                                     }, 0) || 0;
 
-                                                    // Soma apenas as quantidades para Satelital
                                                     const totalQty = reg.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0) || 0;
 
                                                     return (

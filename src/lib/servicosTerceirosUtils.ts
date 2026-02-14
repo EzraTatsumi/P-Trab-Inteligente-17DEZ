@@ -6,13 +6,20 @@ export type ServicoTerceiroRegistro = Tables<'servicos_terceiros_registros'>;
 
 /**
  * Calcula os totais do lote de serviços, separando por ND.
- * Baseia-se no valor_total já presente em cada item para garantir consistência.
+ * Realiza o cálculo completo: (Quantidade x Período x Valor Unitário) x Multiplicador.
  */
-export const calculateServicoTotals = (items: ItemAquisicaoServico[]) => {
+export const calculateServicoTotals = (items: ItemAquisicaoServico[], multiplier: number = 1) => {
     return items.reduce((acc, item) => {
-        const totalItem = item.valor_total || 0;
+        const qty = item.quantidade || 0;
+        const period = (item as any).periodo || 0;
+        const vlrUnit = item.valor_unitario || 0;
+        
+        // Cálculo base: (Qtd x Período x Valor) x Multiplicador (ex: viagens)
+        const totalItem = qty * period * vlrUnit * multiplier;
+        
         if (item.nd === '30') acc.totalND30 += totalItem;
         else acc.totalND39 += totalItem;
+        
         acc.totalGeral += totalItem;
         return acc;
     }, { totalGeral: 0, totalND30: 0, totalND39: 0 });
@@ -26,17 +33,16 @@ export const generateMaterialConsumoMemoriaCalculo = (
     context: { organizacao: string, efetivo: number, dias_operacao: number, fase_atividade: string | null }
 ): string => {
     const { categoria, detalhes_planejamento } = registro;
-    const planejamento = detalhes_planejamento as any; // Cast para acessar campos dinâmicos
+    const planejamento = detalhes_planejamento as any;
     const items = planejamento?.itens_selecionados || [];
     
     if (items.length === 0) return "Nenhum item selecionado.";
 
-    // Determinar preposição baseada no gênero da OM (ª para feminino, º para masculino)
     const prepOM = context.organizacao.includes('ª') ? 'da' : context.organizacao.includes('º') ? 'do' : 'do/da';
     const fase = context.fase_atividade || 'Operação';
     const diasText = context.dias_operacao === 1 ? "dia" : "dias";
 
-    // --- LÓGICA ESPECÍFICA PARA FRETAMENTO AÉREO ---
+    // --- FRETAMENTO AÉREO ---
     if (categoria === 'fretamento-aereo') {
         const item = items[0]; 
         if (!item) return "Nenhum item de fretamento selecionado.";
@@ -62,7 +68,7 @@ export const generateMaterialConsumoMemoriaCalculo = (
         return texto;
     }
 
-    // --- LÓGICA ESPECÍFICA PARA TRANSPORTE COLETIVO ---
+    // --- TRANSPORTE COLETIVO ---
     if (categoria === 'transporte-coletivo') {
         const efetivoText = context.efetivo === 1 ? "militar" : "militares";
         const trips = Number(planejamento.numero_viagens) || 1;
@@ -114,7 +120,7 @@ export const generateMaterialConsumoMemoriaCalculo = (
         return texto;
     }
 
-    // --- LÓGICA ESPECÍFICA PARA SERVIÇO SATELITAL ---
+    // --- SERVIÇO SATELITAL ---
     if (categoria === 'servico-satelital') {
         const tipoServico = planejamento.tipo_equipamento || '[Tipo de Serviço]';
         const proposito = planejamento.proposito || '[Propósito]';
@@ -153,7 +159,7 @@ export const generateMaterialConsumoMemoriaCalculo = (
         return texto;
     }
 
-    // --- LÓGICA GENÉRICA PARA OUTROS SERVIÇOS ---
+    // --- OUTROS SERVIÇOS ---
     const categoriaFormatada = (categoria || "").replace('-', ' ').toUpperCase();
     
     let texto = `MEMÓRIA DE CÁLCULO - ${categoriaFormatada}\n`;
@@ -182,5 +188,4 @@ export const generateMaterialConsumoMemoriaCalculo = (
     return texto;
 };
 
-// Alias para manter compatibilidade com o import no componente
 export const generateServicoMemoriaCalculo = generateMaterialConsumoMemoriaCalculo;
