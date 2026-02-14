@@ -89,8 +89,8 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     const [selectedTab, setSelectedTab] = useState("arp-uasg");
     const [selectedItemsState, setSelectedItemsState] = useState<SelectedItemState[]>([]);
     const [isInspecting, setIsInspecting] = useState(false);
-    const [inspectionList, setInspectionList] = useState<InspectionItem[]>([]);
     const [isInspectionDialogOpen, setIsInspectionDialogOpen] = useState(false);
+    const [inspectionList, setInspectionList] = useState<InspectionItem[]>([]);
     const dialogContentRef = useRef<HTMLDivElement>(null);
 
     const scrollToTop = () => {
@@ -276,7 +276,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Search className="h-5 w-5" />
-                        Importação de Itens PNCP ({mode === 'material' ? 'Materiais' : 'Serviços'})
+                        Importação de Itens PNCP ({mode === 'material' ? 'Material de Consumo' : 'Serviços de Terceiros'})
                     </DialogTitle>
                     <DialogDescription>
                         Selecione o método de busca no Portal Nacional de Contratações Públicas (PNCP).
@@ -289,10 +289,10 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         <TabsTrigger value="avg-price" className="flex items-center gap-2"><DollarSign className="h-4 w-4" />Pesquisa de Preço</TabsTrigger>
                     </TabsList>
                     <TabsContent value="arp-uasg">
-                        <ArpUasgSearch onItemPreSelect={handleItemPreSelect} selectedItemIds={selectedItemIds} onClearSelection={handleClearSelection} scrollContainerRef={dialogContentRef} />
+                        <ArpUasgSearch onItemPreSelect={handleItemPreSelect} selectedItemIds={selectedItemIds} onClearSelection={handleClearSelection} scrollContainerRef={dialogContentRef} mode={mode} />
                     </TabsContent>
                     <TabsContent value="arp-catmat">
-                        <ArpCatmatSearch onItemPreSelect={handleItemPreSelect} selectedItemIds={selectedItemIds} onClearSelection={handleClearSelection} scrollContainerRef={dialogContentRef} />
+                        <ArpCatmatSearch onItemPreSelect={handleItemPreSelect} selectedItemIds={selectedItemIds} onClearSelection={handleClearSelection} scrollContainerRef={dialogContentRef} mode={mode} />
                     </TabsContent>
                     <TabsContent value="avg-price">
                         <PriceSearchForm onPriceSelect={handlePriceSelect} isInspecting={isInspecting} onClearPriceSelection={handleClearPriceSelection} selectedItemForInspection={selectedItemForInspection} mode={mode} />
