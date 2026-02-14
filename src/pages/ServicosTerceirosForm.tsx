@@ -530,7 +530,7 @@ const ServicosTerceirosForm = () => {
     const formatCategoryName = (cat: string) => {
         if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
         if (cat === 'servico-satelital') return 'Serviço Satelital';
-        if (cat === 'transporte-coletivo') return 'Trnp Coletivo';
+        if (cat === 'transporte-coletivo') return 'Transporte Coletivo';
         return cat.split('-').map(word => {
             if (word === 'aereo') return 'Aéreo';
             return word.charAt(0).toUpperCase() + word.slice(1);
@@ -1076,7 +1076,7 @@ const ServicosTerceirosForm = () => {
                                                                 {Number(reg.valor_nd_39) > 0 && (
                                                                     <div className="flex justify-between text-xs">
                                                                         <span className="text-muted-foreground">
-                                                                            {reg.categoria === 'fretamento-aereo' ? 'ND 33.90.33:' : 'ND 33.90.39:'}
+                                                                            {(reg.categoria === 'fretamento-aereo' || reg.categoria === 'transporte-coletivo') ? 'ND 33.90.33:' : 'ND 33.90.39:'}
                                                                         </span>
                                                                         <span className="text-green-600 font-medium">{formatCurrency(Number(reg.valor_nd_39))}</span>
                                                                     </div>
