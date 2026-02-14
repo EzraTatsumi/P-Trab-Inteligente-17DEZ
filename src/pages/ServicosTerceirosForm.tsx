@@ -1022,9 +1022,14 @@ const ServicosTerceirosForm = () => {
                                             <div className="space-y-3">
                                                 {group.records.map((reg) => {
                                                     const isDifferentOm = reg.om_detentora?.trim() !== reg.organizacao?.trim();
-                                                    const totalHV = reg.categoria === 'fretamento-aereo' 
-                                                        ? reg.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, item: any) => acc + (item.quantidade || 0), 0)
-                                                        : null;
+                                                    
+                                                    // Calcula o total de unidades (diárias/HV/etc) para exibição no resumo salvo
+                                                    const totalUnits = reg.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => {
+                                                        const qty = i.quantidade || 0;
+                                                        const period = i.periodo || 0;
+                                                        const trips = reg.categoria === 'transporte-coletivo' ? (Number(reg.detalhes_planejamento.numero_viagens) || 1) : 1;
+                                                        return acc + (qty * period * trips);
+                                                    }, 0) || 0;
 
                                                     return (
                                                         <Card key={reg.id} className="p-3 bg-background border">
@@ -1032,8 +1037,10 @@ const ServicosTerceirosForm = () => {
                                                                 <div className="flex flex-col">
                                                                     <h4 className="font-semibold text-base text-foreground capitalize">{formatCategoryName(reg.categoria)}</h4>
                                                                     <p className="text-xs text-muted-foreground">
-                                                                        Período: {reg.dias_operacao} {reg.dias_operacao === 1 ? 'dia' : 'dias'} | {reg.categoria === 'servico-satelital' ? 'Efetivo: N/A' : `Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'}`}
-                                                                        {totalHV !== null && ` | HV: ${totalHV}`}
+                                                                        {reg.categoria === 'fretamento-aereo' && `Período: ${reg.dias_operacao} dias | Efetivo: ${reg.efetivo} mil | HV: ${totalUnits}`}
+                                                                        {reg.categoria === 'servico-satelital' && `Período: ${reg.dias_operacao} dias | Qtd: ${totalUnits} un`}
+                                                                        {reg.categoria === 'transporte-coletivo' && `Período: ${reg.dias_operacao} dias | Efetivo: ${reg.efetivo} mil | Viagens: ${reg.detalhes_planejamento?.numero_viagens || 1} | Diárias: ${totalUnits}`}
+                                                                        {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo'].includes(reg.categoria) && `Período: ${reg.dias_operacao} dias | Efetivo: ${reg.efetivo} mil | Qtd: ${totalUnits} un`}
                                                                     </p>
                                                                 </div>
                                                                 <div className="flex items-center gap-2">
