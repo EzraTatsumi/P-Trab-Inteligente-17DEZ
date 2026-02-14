@@ -31,7 +31,7 @@ interface ArpUasgSearchFormProps {
     onClearSelection: () => void;
     selectedItemIds: string[];
     scrollContainerRef: React.RefObject<HTMLDivElement>;
-    mode?: 'material' | 'servico'; // NOVO
+    mode?: 'material' | 'servico';
 }
 
 const today = new Date();
@@ -90,21 +90,47 @@ const ArpUasgSearchForm: React.FC<ArpUasgSearchFormProps> = ({ onItemPreSelect, 
                         <FormField control={form.control} name="uasg" render={({ field }) => (
                             <FormItem className="col-span-2">
                                 <FormLabel>UASG (Unidade Gestora) *</FormLabel>
-                                <div className="flex gap-2">
-                                    <FormControl><Input {...field} onChange={handleUasgChange} placeholder="Ex: 160001" maxLength={6} disabled={isSearching} /></FormControl>
-                                    <Button type="button" variant="outline" size="icon" onClick={() => setIsOmSelectorOpen(true)} disabled={isSearching}><BookOpen className="h-4 w-4" /></Button>
+                                <div className="flex gap-2 items-center">
+                                    <FormControl>
+                                        <Input {...field} onChange={handleUasgChange} placeholder="Ex: 160001" maxLength={6} disabled={isSearching} />
+                                    </FormControl>
+                                    <Button 
+                                        type="button" 
+                                        variant="outline" 
+                                        size="sm" 
+                                        onClick={() => setIsOmSelectorOpen(true)} 
+                                        disabled={isSearching}
+                                        className="h-8 px-2 text-[10px]"
+                                    >
+                                        <BookOpen className="h-3 w-3 mr-1" /> CODUG
+                                    </Button>
                                 </div>
                                 <FormMessage />
                             </FormItem>
                         )} />
                         <FormField control={form.control} name="dataInicio" render={({ field }) => (
-                            <FormItem className="col-span-1"><FormLabel>Início *</FormLabel><FormControl><Input type="date" {...field} disabled={isSearching} /></FormControl><FormMessage /></FormItem>
+                            <FormItem className="col-span-1">
+                                <FormLabel>Início *</FormLabel>
+                                <FormControl>
+                                    <Input type="date" {...field} disabled={isSearching} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
                         )} />
                         <FormField control={form.control} name="dataFim" render={({ field }) => (
-                            <FormItem className="col-span-1"><FormLabel>Fim *</FormLabel><FormControl><Input type="date" {...field} disabled={isSearching} /></FormControl><FormMessage /></FormItem>
+                            <FormItem className="col-span-1">
+                                <FormLabel>Fim *</FormLabel>
+                                <FormControl>
+                                    <Input type="date" {...field} disabled={isSearching} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
                         )} />
                     </div>
-                    <Button type="submit" disabled={isSearching} className="w-full">{isSearching ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}Buscar ARPs por UASG</Button>
+                    <Button type="submit" disabled={isSearching} className="w-full">
+                        {isSearching ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+                        Buscar ARPs por UASG
+                    </Button>
                 </form>
             </Form>
             {arpResults.length > 0 && (
