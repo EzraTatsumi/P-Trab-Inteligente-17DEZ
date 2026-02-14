@@ -87,11 +87,23 @@ export const generateMaterialConsumoMemoriaCalculo = (
             const qty = i.quantidade || 0;
             const vlrUnit = i.valor_unitario || 0;
             const period = i.periodo || 0;
+            const unit = i.unidade_medida || 'un';
             const periodFormatted = period.toString().replace('.', ',');
+            
+            // Pluralização simples para a unidade do período
+            let unitDisplay = unit;
+            if (period > 1) {
+                if (unit.toLowerCase() === 'dia') unitDisplay = 'dias';
+                else if (unit.toLowerCase() === 'mês') unitDisplay = 'meses';
+                else if (unit.toLowerCase() === 'hora') unitDisplay = 'horas';
+                else if (unit.toLowerCase() === 'viagem') unitDisplay = 'viagens';
+                else if (unit.toLowerCase() === 'km') unitDisplay = 'Km';
+            }
+            
             const totalItem = qty * vlrUnit * period * trips;
             const tripsText = trips === 1 ? "viagem" : "viagens";
             
-            texto += `- (${qty} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)} x ${periodFormatted}) x ${trips} ${tripsText} = ${formatCurrency(totalItem)}.\n`;
+            texto += `- (${qty} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)} x ${periodFormatted} ${unitDisplay}) x ${trips} ${tripsText} = ${formatCurrency(totalItem)}.\n`;
         });
 
         texto += `\nTotal: ${formatCurrency(valorTotalGeral)}. \n`;
