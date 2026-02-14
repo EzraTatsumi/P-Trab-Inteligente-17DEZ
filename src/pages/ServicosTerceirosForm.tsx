@@ -132,6 +132,12 @@ const ServicosTerceirosForm = () => {
     const [tipoEquipamento, setTipoEquipamento] = useState("");
     const [proposito, setProposito] = useState("");
 
+    // Novos estados para Transporte Coletivo
+    const [itinerario, setItinerario] = useState("");
+    const [distanciaItinerario, setDistanciaItinerario] = useState<number | "">("");
+    const [distanciaPercorridaDia, setDistanciaPercorridaDia] = useState<number | "">("");
+    const [numeroViagens, setNumeroViagens] = useState<number | "">("");
+
     const [selectedItems, setSelectedItems] = useState<ItemAquisicaoServico[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     
@@ -281,6 +287,10 @@ const ServicosTerceirosForm = () => {
         setDistanciaPercorrer("");
         setTipoEquipamento("");
         setProposito("");
+        setItinerario("");
+        setDistanciaItinerario("");
+        setDistanciaPercorridaDia("");
+        setNumeroViagens("");
         setEditingId(null);
     };
 
@@ -365,7 +375,11 @@ const ServicosTerceirosForm = () => {
                 velocidade_cruzeiro: velocidadeCruzeiro,
                 distancia_percorrer: distanciaPercorrer,
                 tipo_equipamento: tipoEquipamento,
-                proposito: proposito
+                proposito: proposito,
+                itinerario: itinerario,
+                distancia_itinerario: distanciaItinerario,
+                distancia_percorrida_dia: distanciaPercorridaDia,
+                numero_viagens: numeroViagens
             },
             valor_total: totalGeral,
             valor_nd_30: totalND30,
@@ -428,6 +442,10 @@ const ServicosTerceirosForm = () => {
             setDistanciaPercorrer(details.distancia_percorrer || "");
             setTipoEquipamento(details.tipo_equipamento || "");
             setProposito(details.proposito || "");
+            setItinerario(details.itinerario || "");
+            setDistanciaItinerario(details.distancia_itinerario || "");
+            setDistanciaPercorridaDia(details.distancia_percorrida_dia || "");
+            setNumeroViagens(details.numero_viagens || "");
         }
 
         // Move para a lista pendente para que a Seção 3 apareça
@@ -672,6 +690,65 @@ const ServicosTerceirosForm = () => {
                                                                     onChange={(e) => setProposito(e.target.value)} 
                                                                     placeholder="Ex: melhor comunicabilidade e consciência situacional" 
                                                                     disabled={!isPTrabEditable} 
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {activeTab === "transporte-coletivo" && (
+                                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+                                                            <div className="space-y-2">
+                                                                <Label>Itinerário</Label>
+                                                                <Input 
+                                                                    value={itinerario} 
+                                                                    onChange={(e) => setItinerario(e.target.value)} 
+                                                                    placeholder="Ex: MAB-BEL" 
+                                                                    disabled={!isPTrabEditable} 
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Distância Itinerário</Label>
+                                                                <div className="relative">
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        value={distanciaItinerario} 
+                                                                        onChange={(e) => setDistanciaItinerario(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                        placeholder="Ex: 950" 
+                                                                        disabled={!isPTrabEditable} 
+                                                                        onWheel={(e) => e.currentTarget.blur()} 
+                                                                        onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                        className="pr-10 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                    />
+                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Distância percorrida / dia</Label>
+                                                                <div className="relative">
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        value={distanciaPercorridaDia} 
+                                                                        onChange={(e) => setDistanciaPercorridaDia(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                        placeholder="Ex: 600" 
+                                                                        disabled={!isPTrabEditable} 
+                                                                        onWheel={(e) => e.currentTarget.blur()} 
+                                                                        onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                        className="pr-10 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                    />
+                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Número de Viagens</Label>
+                                                                <Input 
+                                                                    type="number" 
+                                                                    value={numeroViagens} 
+                                                                    onChange={(e) => setNumeroViagens(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                    placeholder="Ex: 4" 
+                                                                    disabled={!isPTrabEditable} 
+                                                                    onWheel={(e) => e.currentTarget.blur()} 
+                                                                    onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                 />
                                                             </div>
                                                         </div>
