@@ -962,7 +962,7 @@ const ServicosTerceirosForm = () => {
                                                                 <p className="font-medium">
                                                                     {item.categoria === 'fretamento-aereo' && "Período / Efetivo / HV:"}
                                                                     {item.categoria === 'servico-satelital' && "Período / Qtd Equipamento:"}
-                                                                    {item.categoria === 'transporte-coletivo' && "Período / Efetivo / Nr Viagens / Nr Diárias:"}
+                                                                    {item.categoria === 'transporte-coletivo' && "Período / Efetivo / Nr Viagens:"}
                                                                     {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo'].includes(item.categoria) && "Período / Detalhes:"}
                                                                 </p>
                                                             </div>
@@ -975,7 +975,7 @@ const ServicosTerceirosForm = () => {
                                                                     {item.categoria === 'servico-satelital' && 
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalQty} un`}
                                                                     {item.categoria === 'transporte-coletivo' && 
-                                                                        `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${item.efetivo} ${item.efetivo === 1 ? 'militar' : 'militares'} / ${item.detalhes_planejamento.numero_viagens || 1} viagens / ${totalUnits} diárias`}
+                                                                        `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${item.efetivo} ${item.efetivo === 1 ? 'militar' : 'militares'} / ${item.detalhes_planejamento.numero_viagens || 1} viagens`}
                                                                     {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo'].includes(item.categoria) && 
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalUnits} un`}
                                                                 </p>
@@ -1050,7 +1050,7 @@ const ServicosTerceirosForm = () => {
                                                                     <p className="text-xs text-muted-foreground">
                                                                         {reg.categoria === 'fretamento-aereo' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | HV: ${totalUnits}`}
                                                                         {reg.categoria === 'servico-satelital' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: ${totalQty} un`}
-                                                                        {reg.categoria === 'transporte-coletivo' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Viagens: ${reg.detalhes_planejamento?.numero_viagens || 1} | Diárias: ${totalUnits}`}
+                                                                        {reg.categoria === 'transporte-coletivo' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Viagens: ${reg.detalhes_planejamento?.numero_viagens || 1}`}
                                                                         {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo'].includes(reg.categoria) && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Qtd: ${totalUnits} un`}
                                                                     </p>
                                                                 </div>
