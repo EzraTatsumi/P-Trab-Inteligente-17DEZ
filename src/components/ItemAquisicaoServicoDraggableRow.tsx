@@ -31,11 +31,11 @@ const ItemAquisicaoServicoDraggableRow: React.FC<ItemAquisicaoServicoDraggableRo
             <TableCell className="px-4 py-2 text-xs font-medium">
                 {item.descricao_reduzida || (item as any).nome_reduzido || 'N/A'}
             </TableCell>
+            <TableCell className="px-4 py-2 text-center text-xs font-mono">
+                {item.codigo_catser || item.codigo_catmat || 'N/A'}
+            </TableCell>
             <TableCell className="px-4 py-2 text-center text-xs text-muted-foreground">
                 {(item as any).unidade_medida || 'UN'}
-            </TableCell>
-            <TableCell className="px-4 py-2 text-center text-xs font-mono">
-                {item.codigo_catmat || 'N/A'}
             </TableCell>
             <TableCell className="px-4 py-2 text-center text-xs">
                 {formatPregao(item.numero_pregao)}
