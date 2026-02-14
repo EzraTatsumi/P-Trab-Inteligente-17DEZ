@@ -33,6 +33,7 @@ interface ArpCatmatSearchFormProps {
     selectedItemIds: string[];
     onClearSelection: () => void;
     scrollContainerRef: React.RefObject<HTMLDivElement>;
+    mode?: 'material' | 'servico'; // NOVO: Propriedade de modo
 }
 
 // Calcula as datas padrão
@@ -43,7 +44,13 @@ const defaultDataFim = format(today, 'yyyy-MM-dd');
 const defaultDataInicio = format(oneYearAgo, 'yyyy-MM-dd');
 
 
-const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSelect, selectedItemIds, onClearSelection, scrollContainerRef }) => {
+const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ 
+    onItemPreSelect, 
+    selectedItemIds, 
+    onClearSelection, 
+    scrollContainerRef,
+    mode = 'material' // Padrão para material
+}) => {
     const [isSearching, setIsSearching] = useState(false);
     const [isCatmatCatalogOpen, setIsCatmatCatalogOpen] = useState(false);
     const [isCatserCatalogOpen, setIsCatserCatalogOpen] = useState(false);
@@ -165,7 +172,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                             name="codigoItem"
                             render={({ field }) => (
                                 <FormItem className="col-span-4 md:col-span-2">
-                                    <FormLabel>Cód. Item *</FormLabel>
+                                    <FormLabel>{mode === 'material' ? 'Cód. CATMAT *' : 'Cód. CATSER *'}</FormLabel>
                                     <div className="flex gap-2">
                                         <FormControl>
                                             <Input
@@ -178,31 +185,34 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                                             />
                                         </FormControl>
                                         <div className="flex flex-col gap-1">
-                                            <Button 
-                                                type="button" 
-                                                variant="outline" 
-                                                size="sm" 
-                                                onClick={() => setIsCatmatCatalogOpen(true)}
-                                                disabled={isSearching}
-                                                className="h-8 px-2 text-[10px]"
-                                            >
-                                                <BookOpen className="h-3 w-3 mr-1" /> CATMAT
-                                            </Button>
-                                            <Button 
-                                                type="button" 
-                                                variant="outline" 
-                                                size="sm" 
-                                                onClick={() => setIsCatserCatalogOpen(true)}
-                                                disabled={isSearching}
-                                                className="h-8 px-2 text-[10px]"
-                                            >
-                                                <BookOpen className="h-3 w-3 mr-1" /> CATSER
-                                            </Button>
+                                            {mode === 'material' ? (
+                                                <Button 
+                                                    type="button" 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    onClick={() => setIsCatmatCatalogOpen(true)}
+                                                    disabled={isSearching}
+                                                    className="h-8 px-2 text-[10px]"
+                                                >
+                                                    <BookOpen className="h-3 w-3 mr-1" /> CATMAT
+                                                </Button>
+                                            ) : (
+                                                <Button 
+                                                    type="button" 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    onClick={() => setIsCatserCatalogOpen(true)}
+                                                    disabled={isSearching}
+                                                    className="h-8 px-2 text-[10px]"
+                                                >
+                                                    <BookOpen className="h-3 w-3 mr-1" /> CATSER
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                     <FormMessage />
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Insira o código do item de material ou serviço.
+                                        Insira o código do item de {mode === 'material' ? 'material' : 'serviço'}.
                                     </p>
                                 </FormItem>
                             )}
@@ -268,7 +278,7 @@ const ArpCatmatSearchForm: React.FC<ArpCatmatSearchFormProps> = ({ onItemPreSele
                         results={mappedResults} 
                         onItemPreSelect={handleItemPreSelectWrapper} 
                         searchedUasg={''} 
-                        searchedOmName={`Item ${form.getValues('codigoItem')}`}
+                        searchedOmName={mode === 'material' ? `Item CATMAT ${form.getValues('codigoItem')}` : `Item CATSER ${form.getValues('codigoItem')}`}
                         selectedItemIds={selectedItemIds}
                     />
                 </div>
