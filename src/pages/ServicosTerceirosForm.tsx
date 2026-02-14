@@ -154,15 +154,25 @@ const ServicosTerceirosForm = () => {
 
     const isServicosTerceirosDirty = useMemo(() => {
         if (!lastStagedState || pendingItems.length === 0) return false;
-        return (
+        
+        // Compara contexto básico
+        const contextChanged = (
             omFavorecida.id !== lastStagedState.omFavorecidaId ||
             faseAtividade !== lastStagedState.faseAtividade ||
             efetivo !== lastStagedState.efetivo ||
             diasOperacao !== lastStagedState.diasOperacao ||
             omDestino.id !== lastStagedState.omDestinoId ||
-            selectedItems.length > 0
+            activeTab !== lastStagedState.categoria
         );
-    }, [omFavorecida, faseAtividade, efetivo, diasOperacao, omDestino, selectedItems, lastStagedState, pendingItems]);
+
+        if (contextChanged) return true;
+
+        // Compara itens selecionados (IDs e Quantidades)
+        const currentItemsKey = selectedItems.map(i => `${i.id}-${i.quantidade}`).sort().join('|');
+        const stagedItemsKey = lastStagedState.itemsKey;
+
+        return currentItemsKey !== stagedItemsKey;
+    }, [omFavorecida, faseAtividade, efetivo, diasOperacao, omDestino, activeTab, selectedItems, lastStagedState, pendingItems]);
 
     // --- DATA FETCHING ---
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
@@ -324,17 +334,18 @@ const ServicosTerceirosForm = () => {
             valor_nd_39: totalND39,
         };
 
-        // Substitui o item pendente (staging) em vez de anexar, para permitir revisão/atualização
+        // Substitui o item pendente (staging) para refletir o estado atual da Seção 2
         setPendingItems([newItem]);
         setLastStagedState({
             omFavorecidaId: omFavorecida.id,
             faseAtividade,
             efetivo,
             diasOperacao,
-            omDestinoId: omDestino.id
+            omDestinoId: omDestino.id,
+            categoria: activeTab,
+            itemsKey: selectedItems.map(i => `${i.id}-${i.quantidade}`).sort().join('|')
         });
         
-        // MANTÉM OS ITENS NA SEÇÃO 2 PARA ALTERAÇÃO
         toast.info("Item adicionado à lista de pendentes para conferência.");
     };
 
@@ -389,7 +400,9 @@ const ServicosTerceirosForm = () => {
             faseAtividade: reg.fase_atividade,
             efetivo: reg.efetivo,
             diasOperacao: reg.dias_operacao,
-            omDestinoId: omDest?.id
+            omDestinoId: omDest?.id,
+            categoria: reg.categoria,
+            itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}`).sort().join('|')
         });
 
         toast.info("Modo Edição ativado. Altere os dados e clique em 'Recalcular/Revisar Lote'.");
@@ -701,7 +714,7 @@ const ServicosTerceirosForm = () => {
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertDescription className="font-medium">
-                                                Atenção: Os dados do formulário foram alterados. Clique em "Salvar Itens na Lista" na Seção 2 para atualizar o lote pendente.
+                                                Atenção: Os dados do formulário foram alterados. Clique em "Recalcular/Revisar Lote" na Seção 2 para atualizar o lote pendente.
                                             </AlertDescription>
                                         </Alert>
                                     )}
@@ -797,7 +810,7 @@ const ServicosTerceirosForm = () => {
                                                         <Card key={reg.id} className="p-3 bg-background border">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex flex-col">
-                                                                    <h4 className="font-semibold text-base text-foreground capitalize">{reg.categoria.replace('-', ' ')}</h4>
+                                                                    <h4 className="font-semibold text-base text-foreground capitalize">{formatCategoryName(reg.categoria)}</h4>
                                                                     <p className="text-xs text-muted-foreground">
                                                                         Período: {reg.dias_operacao} dias | Efetivo: {reg.efetivo} militares
                                                                         {totalHV !== null && ` | HV: ${totalHV}`}

@@ -201,7 +201,7 @@ const MaterialConsumoForm = () => {
                     organizacao: registro.organizacao,
                     ug: registro.ug,
                     om_detentora: registro.om_detentora || '',
-                    ug_detentora: reg.ug_detentora || '',
+                    ug_detentora: registro.ug_detentora || '', // CORREÇÃO: reg -> registro
                     dias_operacao: registro.dias_operacao,
                     efetivo: registro.efetivo || 0, 
                     fase_atividade: registro.fase_atividade || '',
@@ -1225,11 +1225,11 @@ const MaterialConsumoForm = () => {
                                 </div>
                             </section>
 
-                            {/* SEÇÃO 2: CONFIGURAR GRUPOS DE AQUISIÇÃO */}
+                            {/* SEÇÃO 2: CONFIGURAR PLANEJAMENTO */}
                             {isBaseFormReady && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        2. Configurar Grupos de Aquisição
+                                        2. Configurar Planejamento
                                     </h3>
                                     
                                     <Card className="mt-6 bg-muted/50 rounded-lg p-4">
@@ -1310,7 +1310,7 @@ const MaterialConsumoForm = () => {
                                         {/* Gerenciamento de Grupos de Aquisição (APENAS O BOTÃO/FORM) */}
                                         <Card className="mt-4 rounded-lg p-4 bg-background">
                                             <h4 className="text-base font-semibold mb-4">
-                                                Grupos de Aquisição ({formData.acquisitionGroups.length})
+                                                Grupos de Aquisição
                                             </h4>
                                             
                                             {/* Formulário Inline de Criação/Edição */}
