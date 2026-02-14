@@ -356,7 +356,7 @@ const ServicosTerceirosForm = () => {
                 itens_selecionados: selectedItems,
                 tipo_anv: tipoAnv,
                 capacidade: capacidade,
-                velocidade_cruzeiro: velocidadeCruzeiro,
+                velocidade_cruzeiro: velocidade_cruzeiro,
                 distancia_percorrer: distanciaPercorrer,
                 tipo_equipamento: tipoEquipamento,
                 proposito: proposito
@@ -687,7 +687,7 @@ const ServicosTerceirosForm = () => {
                                                                     {selectedItems.map(item => {
                                                                         const isCharter = activeTab === "fretamento-aereo";
                                                                         const showHvWarning = isCharter && suggestedHV !== null && item.quantidade !== suggestedHV;
-                                                                        const period = (item as any).periodo || 1;
+                                                                        const period = (item as any).periodo;
                                                                         const unit = item.unidade_medida || 'UN';
                                                                         
                                                                         return (
@@ -753,7 +753,7 @@ const ServicosTerceirosForm = () => {
                                                                                             type="number" 
                                                                                             min={0}
                                                                                             step="any"
-                                                                                            value={period} 
+                                                                                            value={period === 0 ? "" : period} 
                                                                                             onChange={(e) => handlePeriodChange(item.id, e.target.value)}
                                                                                             onWheel={(e) => e.currentTarget.blur()}
                                                                                             onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
