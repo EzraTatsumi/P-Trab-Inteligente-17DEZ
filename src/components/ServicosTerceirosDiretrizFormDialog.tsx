@@ -7,7 +7,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Plus, Pencil, Trash2, Loader2, BookOpen, FileSpreadsheet, Search } from "lucide-react";
+import { Save, Plus, Pencil, Trash2, Loader2, BookOpen, FileSpreadsheet, Search } from "lucide-center";
 import { toast } from "sonner";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -102,7 +102,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
         const newItem: ItemAquisicaoServicoExtended = {
             id: editingItemId || Math.random().toString(36).substring(2, 9), 
             descricao_item: itemForm.descricao_item,
-            descricao_reduzida: itemForm.nome_reduzido, // Mapeando para o campo base
+            descricao_reduzida: itemForm.nome_reduzido, 
             nome_reduzido: itemForm.nome_reduzido,
             unidade_medida: itemForm.unidade_medida,
             valor_unitario: itemForm.valor_unitario,
@@ -226,6 +226,12 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                         unidade_medida: 'UN', 
                     }));
                     setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...mappedItems] }));
+                    
+                    // Lembrete para o usuário ajustar a unidade de medida
+                    toast.info("Itens importados com unidade padrão 'UN'. Lembre-se de ajustar para hora/dia/mês se necessário.", {
+                        duration: 6000,
+                        icon: <Info className="h-4 w-4 text-blue-500" />
+                    });
                 }} 
                 existingItemsInDiretriz={subitemForm.itens_aquisicao as any} 
                 onReviewItem={handleReviewItem} 
