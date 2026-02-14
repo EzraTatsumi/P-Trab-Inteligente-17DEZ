@@ -317,7 +317,7 @@ const ServicosTerceirosForm = () => {
     };
 
     const handlePeriodChange = (id: string, rawValue: string) => {
-        const period = parseInt(rawValue) || 1;
+        const period = parseFloat(rawValue.replace(',', '.')) || 0;
         setSelectedItems(prev => prev.map(item => {
             if (item.id === id) {
                 const qty = item.quantidade || 0;
@@ -751,7 +751,8 @@ const ServicosTerceirosForm = () => {
                                                                                     <div className="flex items-center gap-2 justify-center">
                                                                                         <Input 
                                                                                             type="number" 
-                                                                                            min={1}
+                                                                                            min={0}
+                                                                                            step="any"
                                                                                             value={period} 
                                                                                             onChange={(e) => handlePeriodChange(item.id, e.target.value)}
                                                                                             onWheel={(e) => e.currentTarget.blur()}
