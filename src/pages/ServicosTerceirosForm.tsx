@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -371,7 +373,8 @@ const ServicosTerceirosForm = () => {
 
         // Garante que períodos undefined sejam tratados como 0 para o cálculo final
         const itemsForCalc = selectedItems.map(i => ({ ...i, periodo: (i as any).periodo || 0 }));
-        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(itemsForCalc);
+        const trips = activeTab === "transporte-coletivo" ? (Number(numeroViagens) || 1) : 1;
+        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(itemsForCalc, trips);
         
         const newItem: PendingServicoItem = {
             tempId: editingId || crypto.randomUUID(),
@@ -464,7 +467,8 @@ const ServicosTerceirosForm = () => {
         }
 
         // Move para a lista pendente para que a Seção 3 apareça
-        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(details.itens_selecionados || []);
+        const trips = reg.categoria === 'transporte-coletivo' ? (Number(details.numero_viagens) || 1) : 1;
+        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(details.itens_selecionados || [], trips);
         const stagedItem: PendingServicoItem = {
             tempId: reg.id,
             organizacao: reg.organizacao,

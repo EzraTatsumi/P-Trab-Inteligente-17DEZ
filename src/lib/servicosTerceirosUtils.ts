@@ -6,11 +6,12 @@ export type ServicoTerceiroRegistro = Tables<'servicos_terceiros_registros'>;
 
 /**
  * Calcula os totais do lote de serviços, separando por ND.
+ * Aceita um multiplicador opcional (ex: número de viagens no transporte coletivo).
  */
-export const calculateServicoTotals = (items: ItemAquisicaoServico[]) => {
+export const calculateServicoTotals = (items: ItemAquisicaoServico[], multiplier: number = 1) => {
     return items.reduce((acc, item) => {
         const period = (item as any).periodo || 0;
-        const totalItem = (item.quantidade || 0) * period * item.valor_unitario;
+        const totalItem = (item.quantidade || 0) * period * item.valor_unitario * multiplier;
         if (item.nd === '30') acc.totalND30 += totalItem;
         else acc.totalND39 += totalItem;
         acc.totalGeral += totalItem;
@@ -90,7 +91,6 @@ export const generateMaterialConsumoMemoriaCalculo = (
             const unit = i.unidade_medida || 'un';
             const periodFormatted = period.toString().replace('.', ',');
             
-            // Pluralização simples para a unidade do período
             let unitDisplay = unit;
             if (period > 1) {
                 if (unit.toLowerCase() === 'dia') unitDisplay = 'dias';
