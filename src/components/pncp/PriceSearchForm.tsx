@@ -135,15 +135,24 @@ const PriceSearchForm: React.FC<PriceSearchFormProps> = ({ onPriceSelect, isInsp
                         <FormField control={form.control} name="codigoItem" render={({ field }) => (
                             <FormItem className="col-span-4 md:col-span-2">
                                 <FormLabel>{mode === 'material' ? 'Cód. CATMAT *' : 'Cód. CATSER *'}</FormLabel>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 items-center">
                                     <FormControl><Input {...field} onChange={handleCodeChange} placeholder="Ex: 604269" maxLength={9} disabled={isSearching} /></FormControl>
-                                    <Button type="button" variant="outline" size="sm" onClick={() => setIsCatalogOpen(true)} disabled={isSearching} className="h-10 px-3"><BookOpen className="h-4 w-4 mr-2" />{mode === 'material' ? 'CATMAT' : 'CATSER'}</Button>
+                                    <Button 
+                                        type="button" 
+                                        variant="outline" 
+                                        size="sm" 
+                                        onClick={() => setIsCatalogOpen(true)} 
+                                        disabled={isSearching} 
+                                        className="h-8 px-2 text-[10px]"
+                                    >
+                                        <BookOpen className="h-3 w-3 mr-1" /> {mode === 'material' ? 'CATMAT' : 'CATSER'}
+                                    </Button>
                                 </div>
                                 <FormMessage />
                             </FormItem>
                         )} />
                         <FormField control={form.control} name="dataInicio" render={({ field }) => (
-                            <FormItem className="col-span-2 md:col-span-1"><FormLabel>Início</FormLabel><FormControl><Input type="date" {...field} disabled={isSearching || ignoreDates} /></FormControl></FormItem>
+                            <FormItem className="col-span-2 md:col-span-1"><FormLabel>Início</Label><FormControl><Input type="date" {...field} disabled={isSearching || ignoreDates} /></FormControl></FormItem>
                         )} />
                         <FormField control={form.control} name="dataFim" render={({ field }) => (
                             <FormItem className="col-span-2 md:col-span-1"><FormLabel>Fim</FormLabel><FormControl><Input type="date" {...field} disabled={isSearching || ignoreDates} /></FormControl></FormItem>
