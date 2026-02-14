@@ -1086,7 +1086,7 @@ const ServicosTerceirosForm = () => {
                                                                 {Number(reg.valor_nd_39) > 0 && (
                                                                     <div className="flex justify-between text-xs">
                                                                         <span className="text-muted-foreground">
-                                                                            {reg.categoria === 'fretamento-aereo' ? 'ND 33.90.33:' : 'ND 33.90.39:'}
+                                                                            {reg.categoria === 'fretamento-aereo' ? 'ND 33:' : 'ND 39:'}
                                                                         </span>
                                                                         <span className="text-green-600 font-medium">{formatCurrency(Number(reg.valor_nd_39))}</span>
                                                                     </div>
