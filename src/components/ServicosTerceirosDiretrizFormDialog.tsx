@@ -180,7 +180,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                                 <div className="space-y-2"><Label>Nome Reduzido *</Label><Input value={itemForm.nome_reduzido} onChange={(e) => setItemForm({ ...itemForm, nome_reduzido: e.target.value })} /></div>
-                                <div className="space-y-2"><Label>Unidade *</Label><Input value={itemForm.unidade_medida} onChange={(e) => setItemForm({ ...itemForm, unidade_medida: e.target.value })} placeholder="Ex: UN" /></div>
+                                <div className="space-y-2"><Label>Unidade *</Label><Input value={itemForm.unidade_medida} onChange={(e) => setItemForm({ ...itemForm, unidade_medida: e.target.value })} placeholder="Ex: hora/dia/mês/ano" /></div>
                                 <div className="space-y-2"><Label>Valor Unitário *</Label><CurrencyInput rawDigits={itemForm.rawValor} onChange={handleItemCurrencyChange} /></div>
                                 <div className="space-y-2"><Label>Pregão/Ref. *</Label><Input value={itemForm.numero_pregao} onChange={(e) => setItemForm({ ...itemForm, numero_pregao: e.target.value })} /></div>
                                 <div className="space-y-2"><Label>UASG *</Label><Input value={itemForm.uasg} onChange={handleUasgChange} maxLength={6} /></div>
