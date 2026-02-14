@@ -77,7 +77,7 @@ export const generateServicoMemoriaCalculo = (
             const unit = item.unidade_medida || 'UN';
             const vlrUnit = item.valor_unitario || 0;
             const desc = item.descricao_reduzida || item.descricao_item;
-            texto += `- ${desc}: ${formatCurrency(vlrUnit)} / ${unit}.\n`;
+            texto += `- ${desc}: ${formatCurrency(vlrUnit)}/${unit}.\n`;
         });
 
         texto += `\nFórmula: (Nr Eqp x Valor Contrato) x Período do Contrato.\n`;
