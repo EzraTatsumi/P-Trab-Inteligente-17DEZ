@@ -9,7 +9,8 @@ export type ServicoTerceiroRegistro = Tables<'servicos_terceiros_registros'>;
  */
 export const calculateServicoTotals = (items: ItemAquisicaoServico[]) => {
     return items.reduce((acc, item) => {
-        const totalItem = (item.quantidade || 0) * item.valor_unitario;
+        const period = (item as any).periodo || 0;
+        const totalItem = (item.quantidade || 0) * period * item.valor_unitario;
         if (item.nd === '30') acc.totalND30 += totalItem;
         else acc.totalND39 += totalItem;
         acc.totalGeral += totalItem;
@@ -62,6 +63,44 @@ export const generateServicoMemoriaCalculo = (
         return texto;
     }
 
+    // --- LÓGICA ESPECÍFICA PARA SERVIÇO SATELITAL ---
+    if (categoria === 'servico-satelital') {
+        const diasText = context.dias_operacao === 1 ? "dia" : "dias";
+        const fase = context.fase_atividade || 'Operação';
+        const tipoServico = planejamento.tipo_equipamento || '[Tipo de Serviço]';
+        const proposito = planejamento.proposito || '[Propósito]';
+
+        let texto = `33.90.39 - Contratação de Serviço ${tipoServico}, visando ${proposito}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
+        
+        texto += `Cálculo:\n`;
+        items.forEach((item: any) => {
+            const unit = item.unidade_medida || 'UN';
+            const vlrUnit = item.valor_unitario || 0;
+            const desc = item.descricao_reduzida || item.descricao_item;
+            texto += `- ${desc}: ${formatCurrency(vlrUnit)} / ${unit}.\n`;
+        });
+
+        texto += `\nFórmula: (Nr Eqp x Valor Contrato) x Período do Contrato.\n`;
+        items.forEach((item: any) => {
+            const unit = item.unidade_medida || 'UN';
+            const period = item.periodo || 0;
+            const qty = item.quantidade || 0;
+            const vlrUnit = item.valor_unitario || 0;
+            const totalItem = item.valor_total || (qty * period * vlrUnit);
+            
+            texto += `- (${qty} x ${formatCurrency(vlrUnit)}/${unit}) x ${period} ${unit}${period > 1 ? 's' : ''} = ${formatCurrency(totalItem)}.\n`;
+        });
+
+        const totals = calculateServicoTotals(items);
+        texto += `\nTotal: ${formatCurrency(totals.totalGeral)}.\n`;
+        
+        if (items.length > 0) {
+            texto += `(Pregão ${formatPregao(items[0].numero_pregao)} - UASG ${formatCodug(items[0].uasg)})`;
+        }
+        
+        return texto;
+    }
+
     // --- LÓGICA GENÉRICA PARA OUTROS SERVIÇOS ---
     const categoriaFormatada = (categoria || "").replace('-', ' ').toUpperCase();
     const diasText = context.dias_operacao === 1 ? "dia" : "dias";
@@ -74,7 +113,8 @@ export const generateServicoMemoriaCalculo = (
     texto += `DETALHAMENTO DOS ITENS:\n`;
     
     items.forEach((item: ItemAquisicaoServico, index: number) => {
-        const totalItem = (item.quantidade || 0) * item.valor_unitario;
+        const period = (item as any).periodo || 1;
+        const totalItem = (item.quantidade || 0) * period * item.valor_unitario;
         texto += `${index + 1}. ${item.descricao_item}\n`;
         texto += `   - Quantidade: ${item.quantidade} ${item.unidade_medida}\n`;
         texto += `   - Valor Unitário: ${formatCurrency(item.valor_unitario)}\n`;
