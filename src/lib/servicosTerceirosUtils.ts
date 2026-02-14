@@ -21,7 +21,7 @@ export const calculateServicoTotals = (items: ItemAquisicaoServico[]) => {
 /**
  * Gera a memória de cálculo descritiva baseada na categoria e itens.
  */
-export const generateServicoMemoriaCalculo = (
+export const generateMaterialConsumoMemoriaCalculo = (
     registro: Partial<ServicoTerceiroRegistro>,
     context: { organizacao: string, efetivo: number, dias_operacao: number, fase_atividade: string | null }
 ): string => {
@@ -31,19 +31,18 @@ export const generateServicoMemoriaCalculo = (
     
     if (items.length === 0) return "Nenhum item selecionado.";
 
+    // Determinar preposição baseada no gênero da OM (ª para feminino, º para masculino)
+    const prepOM = context.organizacao.includes('ª') ? 'da' : context.organizacao.includes('º') ? 'do' : 'do/da';
+    const fase = context.fase_atividade || 'Operação';
+    const diasText = context.dias_operacao === 1 ? "dia" : "dias";
+
     // --- LÓGICA ESPECÍFICA PARA FRETAMENTO AÉREO ---
     if (categoria === 'fretamento-aereo') {
-        const item = items[0]; // Geralmente um fretamento tem um item principal de aeronave
+        const item = items[0]; 
         if (!item) return "Nenhum item de fretamento selecionado.";
 
         const efetivoText = context.efetivo === 1 ? "militar" : "militares";
-        const diasText = context.dias_operacao === 1 ? "dia" : "dias";
         const valorTotal = item.valor_total || (item.quantidade * item.valor_unitario);
-        
-        // Determinar preposição baseada no gênero da OM (ª para feminino, º para masculino)
-        const prepOM = context.organizacao.includes('ª') ? 'da' : context.organizacao.includes('º') ? 'do' : 'do/da';
-        
-        const fase = context.fase_atividade || 'Operação';
         
         let texto = `33.90.33 - Contratação de Fretamento Aéreo para o transporte de ${context.efetivo} ${efetivoText} ${prepOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
         
@@ -63,10 +62,47 @@ export const generateServicoMemoriaCalculo = (
         return texto;
     }
 
+    // --- LÓGICA ESPECÍFICA PARA TRANSPORTE COLETIVO ---
+    if (categoria === 'transporte-coletivo') {
+        const item = items[0];
+        if (!item) return "Nenhum item de transporte selecionado.";
+
+        const efetivoText = context.efetivo === 1 ? "militar" : "militares";
+        const trips = Number(planejamento.numero_viagens) || 1;
+        const valorTotalGeral = Number(registro.valor_total) || 0;
+
+        let texto = `33.90.33 - Contratação de veículos do tipo Transporte Coletivo para transporte de ${context.efetivo} ${efetivoText} ${prepOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
+        
+        texto += `Cálculo:\n\n`;
+        texto += `Itn Dslc: ${planejamento.itinerario || 'N/A'}.\n`;
+        texto += `Dist Itn: ${planejamento.distancia_itinerario || 0} Km.\n`;
+        texto += `Dist Percorrida/dia: ${planejamento.distancia_percorrida_dia || 0} Km.\n`;
+        texto += `Nr Viagens: ${trips}.\n`;
+        
+        items.forEach((i: any) => {
+            const unit = i.unidade_medida || 'UN';
+            texto += `${i.descricao_reduzida || i.descricao_item}: ${formatCurrency(i.valor_unitario)}/${unit}.\n`;
+        });
+
+        texto += `\nFórmula: (Nr Item x Valor Unitário x Período) x Nr Viagens.\n\n`;
+        
+        items.forEach((i: any) => {
+            const qty = i.quantidade || 0;
+            const vlrUnit = i.valor_unitario || 0;
+            const period = i.periodo || 0;
+            const periodFormatted = period.toString().replace('.', ',');
+            const totalItem = qty * vlrUnit * period * trips;
+            
+            texto += `(${qty} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)} x ${periodFormatted} = ${formatCurrency(totalItem)}.\n`;
+        });
+
+        texto += `Total: ${formatCurrency(valorTotalGeral)}. (Pregão ${formatPregao(item.numero_pregao)} - UASG ${formatCodug(item.uasg)})`;
+        
+        return texto;
+    }
+
     // --- LÓGICA ESPECÍFICA PARA SERVIÇO SATELITAL ---
     if (categoria === 'servico-satelital') {
-        const diasText = context.dias_operacao === 1 ? "dia" : "dias";
-        const fase = context.fase_atividade || 'Operação';
         const tipoServico = planejamento.tipo_equipamento || '[Tipo de Serviço]';
         const proposito = planejamento.proposito || '[Propósito]';
 
@@ -89,7 +125,6 @@ export const generateServicoMemoriaCalculo = (
             const desc = item.descricao_reduzida || item.descricao_item;
             const totalItem = item.valor_total || (qty * period * vlrUnit);
             
-            // Formata o período com vírgula para decimais
             const periodFormatted = period.toString().replace('.', ',');
             
             texto += `- (${qty} ${desc} x ${formatCurrency(vlrUnit)}/${unit}) x ${periodFormatted} ${unit}${period > 1 ? 's' : ''} = ${formatCurrency(totalItem)}.\n`;
@@ -107,12 +142,11 @@ export const generateServicoMemoriaCalculo = (
 
     // --- LÓGICA GENÉRICA PARA OUTROS SERVIÇOS ---
     const categoriaFormatada = (categoria || "").replace('-', ' ').toUpperCase();
-    const diasText = context.dias_operacao === 1 ? "dia" : "dias";
     
     let texto = `MEMÓRIA DE CÁLCULO - ${categoriaFormatada}\n`;
     texto += `--------------------------------------------------\n`;
     texto += `OM FAVORECIDA: ${context.organizacao}\n`;
-    texto += `FINALIDADE: Atender às necessidades de ${categoriaFormatada.toLowerCase()} durante a fase de ${context.fase_atividade || 'Operação'}, com efetivo de ${context.efetivo} militares, pelo período de ${context.dias_operacao} ${diasText}.\n\n`;
+    texto += `FINALIDADE: Atender às necessidades de ${categoriaFormatada.toLowerCase()} durante a fase de ${fase}, com efetivo de ${context.efetivo} militares, pelo período de ${context.dias_operacao} ${diasText}.\n\n`;
     
     texto += `DETALHAMENTO DOS ITENS:\n`;
     
@@ -134,3 +168,6 @@ export const generateServicoMemoriaCalculo = (
 
     return texto;
 };
+
+// Alias para manter compatibilidade com o import no componente
+export const generateServicoMemoriaCalculo = generateMaterialConsumoMemoriaCalculo;
