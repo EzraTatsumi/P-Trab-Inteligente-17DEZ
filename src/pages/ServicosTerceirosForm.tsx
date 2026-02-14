@@ -126,6 +126,10 @@ const ServicosTerceirosForm = () => {
     const [capacidade, setCapacidade] = useState("");
     const [velocidadeCruzeiro, setVelocidadeCruzeiro] = useState<number | "">("");
     const [distanciaPercorrer, setDistanciaPercorrer] = useState<number | "">("");
+    
+    // Novos estados para Satelital
+    const [tipoEquipamento, setTipoEquipamento] = useState("");
+    const [proposito, setProposito] = useState("");
 
     const [selectedItems, setSelectedItems] = useState<ItemAquisicaoServico[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
@@ -274,6 +278,8 @@ const ServicosTerceirosForm = () => {
         setCapacidade("");
         setVelocidadeCruzeiro("");
         setDistanciaPercorrer("");
+        setTipoEquipamento("");
+        setProposito("");
         setEditingId(null);
     };
 
@@ -305,7 +311,10 @@ const ServicosTerceirosForm = () => {
             toast.warning("Selecione pelo menos um item.");
             return;
         }
-        if (efetivo <= 0 || diasOperacao <= 0) {
+        
+        // Para Satelital, efetivo não é obrigatório
+        const isSatelital = activeTab === "servico-satelital";
+        if ((!isSatelital && efetivo <= 0) || diasOperacao <= 0) {
             toast.warning("Informe o efetivo e o período.");
             return;
         }
@@ -319,7 +328,7 @@ const ServicosTerceirosForm = () => {
             om_detentora: omDestino.nome,
             ug_detentora: omDestino.ug || omFavorecida.ug, // Fallback para UG favorecida se destino estiver vazio
             dias_operacao: diasOperacao,
-            efetivo: efetivo,
+            efetivo: isSatelital ? 0 : efetivo,
             fase_atividade: faseAtividade,
             categoria: activeTab,
             detalhes_planejamento: { 
@@ -327,7 +336,9 @@ const ServicosTerceirosForm = () => {
                 tipo_anv: tipoAnv,
                 capacidade: capacidade,
                 velocidade_cruzeiro: velocidadeCruzeiro,
-                distancia_percorrer: distanciaPercorrer
+                distancia_percorrer: distanciaPercorrer,
+                tipo_equipamento: tipoEquipamento,
+                proposito: proposito
             },
             valor_total: totalGeral,
             valor_nd_30: totalND30,
@@ -339,8 +350,8 @@ const ServicosTerceirosForm = () => {
         setLastStagedState({
             omFavorecidaId: omFavorecida.id,
             faseAtividade,
-            efetivo,
-            diasOperacao,
+            efetivo: isSatelital ? 0 : efetivo,
+            dias_operacao,
             omDestinoId: omDestino.id,
             categoria: activeTab,
             itemsKey: selectedItems.map(i => `${i.id}-${i.quantidade}`).sort().join('|')
@@ -388,6 +399,8 @@ const ServicosTerceirosForm = () => {
             setCapacidade(details.capacidade || "");
             setVelocidadeCruzeiro(details.velocidade_cruzeiro || "");
             setDistanciaPercorrer(details.distancia_percorrer || "");
+            setTipoEquipamento(details.tipo_equipamento || "");
+            setProposito(details.proposito || "");
         }
 
         // Move para a lista pendente para que a Seção 3 apareça
@@ -412,7 +425,7 @@ const ServicosTerceirosForm = () => {
             omFavorecidaId: omFav?.id || "",
             faseAtividade: reg.fase_atividade,
             efetivo: reg.efetivo,
-            diasOperacao: reg.dias_operacao,
+            dias_operacao: reg.dias_operacao,
             omDestinoId: omDest?.id || "",
             categoria: reg.categoria,
             itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}`).sort().join('|')
@@ -456,6 +469,7 @@ const ServicosTerceirosForm = () => {
 
     const formatCategoryName = (cat: string) => {
         if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
+        if (cat === 'servico-satelital') return 'Serviço Satelital';
         return cat.split('-').map(word => {
             if (word === 'aereo') return 'Aéreo';
             return word.charAt(0).toUpperCase() + word.slice(1);
@@ -538,10 +552,10 @@ const ServicosTerceirosForm = () => {
                                                                 <Label>Efetivo *</Label>
                                                                 <Input 
                                                                     type="number" 
-                                                                    value={efetivo || ""} 
+                                                                    value={activeTab === "servico-satelital" ? "" : (efetivo || "")} 
                                                                     onChange={(e) => setEfetivo(Number(e.target.value))} 
-                                                                    placeholder="Ex: 50" 
-                                                                    disabled={!isPTrabEditable} 
+                                                                    placeholder={activeTab === "servico-satelital" ? "N/A" : "Ex: 50"} 
+                                                                    disabled={!isPTrabEditable || activeTab === "servico-satelital"} 
                                                                     onWheel={(e) => e.currentTarget.blur()}
                                                                     onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
                                                                     className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
@@ -608,6 +622,29 @@ const ServicosTerceirosForm = () => {
                                                                     />
                                                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km</span>
                                                                 </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {activeTab === "servico-satelital" && (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+                                                            <div className="space-y-2">
+                                                                <Label>Tipo de Equipamento/Serviço</Label>
+                                                                <Input 
+                                                                    value={tipoEquipamento} 
+                                                                    onChange={(e) => setTipoEquipamento(e.target.value)} 
+                                                                    placeholder="Comunicação e Rastreamento Satelital" 
+                                                                    disabled={!isPTrabEditable} 
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Propósito</Label>
+                                                                <Input 
+                                                                    value={proposito} 
+                                                                    onChange={(e) => setProposito(e.target.value)} 
+                                                                    placeholder="melhor comunicabilidade e consciência situacional" 
+                                                                    disabled={!isPTrabEditable} 
+                                                                />
                                                             </div>
                                                         </div>
                                                     )}
@@ -708,7 +745,7 @@ const ServicosTerceirosForm = () => {
                                             </Card>
 
                                             <div className="flex justify-end gap-3 pt-4">
-                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={selectedItems.length === 0 || saveMutation.isPending || efetivo <= 0 || diasOperacao <= 0} onClick={handleAddToPending}>
+                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={selectedItems.length === 0 || saveMutation.isPending || (activeTab !== "servico-satelital" && efetivo <= 0) || diasOperacao <= 0} onClick={handleAddToPending}>
                                                     {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                                     {editingId ? "Recalcular/Revisar Lote" : "Salvar Itens na Lista"}
                                                 </Button>
@@ -762,7 +799,7 @@ const ServicosTerceirosForm = () => {
                                                                 <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
                                                                 <p className={cn("font-medium", isOmDestinoDifferent && "text-destructive font-bold")}>{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
                                                                 <p className="font-medium">
-                                                                    {item.dias_operacao} {item.dias_operacao === 1 ? 'dia' : 'dias'} / {item.efetivo} {item.efetivo === 1 ? 'militar' : 'militares'}
+                                                                    {item.dias_operacao} {item.dias_operacao === 1 ? 'dia' : 'dias'} / {item.categoria === 'servico-satelital' ? 'N/A' : `${item.efetivo} ${item.efetivo === 1 ? 'militar' : 'militares'}`}
                                                                     {totalHV !== null && ` / ${totalHV} HV`}
                                                                 </p>
                                                             </div>
@@ -826,7 +863,7 @@ const ServicosTerceirosForm = () => {
                                                                 <div className="flex flex-col">
                                                                     <h4 className="font-semibold text-base text-foreground capitalize">{formatCategoryName(reg.categoria)}</h4>
                                                                     <p className="text-xs text-muted-foreground">
-                                                                        Período: {reg.dias_operacao} {reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: {reg.efetivo} {reg.efetivo === 1 ? 'militar' : 'militares'}
+                                                                        Período: {reg.dias_operacao} {reg.dias_operacao === 1 ? 'dia' : 'dias'} | {reg.categoria === 'servico-satelital' ? 'Efetivo: N/A' : `Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'}`}
                                                                         {totalHV !== null && ` | HV: ${totalHV}`}
                                                                     </p>
                                                                 </div>
