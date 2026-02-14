@@ -39,7 +39,10 @@ export const generateServicoMemoriaCalculo = (
         const diasText = context.dias_operacao === 1 ? "dia" : "dias";
         const valorTotal = item.valor_total || (item.quantidade * item.valor_unitario);
         
-        let texto = `33.90.33 - Contratação de Fretamento Aéreo para o transporte de ${context.efetivo} ${efetivoText} do/da ${context.organizacao}, durante os ${context.dias_operacao} ${diasText} da ${context.fase_atividade || 'Operação'}.\n\n`;
+        // Determinar preposição baseada no gênero da OM (ª para feminino, º para masculino)
+        const prep = context.organizacao.includes('ª') ? 'da' : context.organizacao.includes('º') ? 'do' : 'do/da';
+        
+        let texto = `33.90.33 - Contratação de Fretamento Aéreo para o transporte de ${context.efetivo} ${efetivoText} ${prep} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} da ${context.fase_atividade || 'Operação'}.\n\n`;
         
         texto += `Cálculo:\n`;
         texto += `- Tipo Anv: ${planejamento.tipo_anv || 'N/A'}.\n`;
