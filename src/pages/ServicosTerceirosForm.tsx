@@ -753,20 +753,23 @@ const ServicosTerceirosForm = () => {
                                                                                     {formatCurrency(item.valor_unitario)} / {unit}
                                                                                 </TableCell>
                                                                                 <TableCell className="align-top pt-4">
-                                                                                    <div className="flex items-center gap-2 justify-center">
-                                                                                        <Input 
-                                                                                            type="number" 
-                                                                                            min={0}
-                                                                                            step="any"
-                                                                                            value={period === undefined ? "" : period} 
-                                                                                            onChange={(e) => handlePeriodChange(item.id, e.target.value)}
-                                                                                            onWheel={(e) => e.currentTarget.blur()}
-                                                                                            onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                                            className="h-8 w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                                        />
-                                                                                        <span className="text-[10px] text-muted-foreground font-medium">
-                                                                                            {period > 1 ? `${unit}s` : unit}
-                                                                                        </span>
+                                                                                    <div className="flex flex-col items-center gap-1">
+                                                                                        <div className="flex items-center gap-2 justify-center">
+                                                                                            <Input 
+                                                                                                type="number" 
+                                                                                                min={0}
+                                                                                                step="any"
+                                                                                                value={period === undefined ? "" : period} 
+                                                                                                onChange={(e) => handlePeriodChange(item.id, e.target.value)}
+                                                                                                onWheel={(e) => e.currentTarget.blur()}
+                                                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                                                className="h-8 w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                            />
+                                                                                            <span className="text-[10px] text-muted-foreground font-medium">
+                                                                                                {period > 1 ? `${unit}s` : unit}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                        <span className="text-[8px] text-muted-foreground leading-none">Aceita frações (ex: 0,5)</span>
                                                                                     </div>
                                                                                 </TableCell>
                                                                                 <TableCell className="text-right text-sm font-bold align-top pt-4">{formatCurrency(item.valor_total)}</TableCell>
