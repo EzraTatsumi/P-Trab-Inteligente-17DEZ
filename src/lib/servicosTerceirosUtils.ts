@@ -64,39 +64,41 @@ export const generateMaterialConsumoMemoriaCalculo = (
 
     // --- LÓGICA ESPECÍFICA PARA TRANSPORTE COLETIVO ---
     if (categoria === 'transporte-coletivo') {
-        const item = items[0];
-        if (!item) return "Nenhum item de transporte selecionado.";
-
         const efetivoText = context.efetivo === 1 ? "militar" : "militares";
         const trips = Number(planejamento.numero_viagens) || 1;
         const valorTotalGeral = Number(registro.valor_total) || 0;
 
         let texto = `33.90.33 - Contratação de veículos do tipo Transporte Coletivo para transporte de ${context.efetivo} ${efetivoText} ${prepOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
         
-        texto += `Cálculo:\n\n`;
-        texto += `Itn Dslc: ${planejamento.itinerario || 'N/A'}.\n`;
-        texto += `Dist Itn: ${planejamento.distancia_itinerario || 0} Km.\n`;
-        texto += `Dist Percorrida/dia: ${planejamento.distancia_percorrida_dia || 0} Km.\n`;
-        texto += `Nr Viagens: ${trips}.\n`;
+        texto += `Cálculo:\n`;
+        texto += `- Itn Dslc: ${planejamento.itinerario || 'N/A'}.\n`;
+        texto += `- Dist Itn: ${planejamento.distancia_itinerario || 0} Km.\n`;
+        texto += `- Dist Percorrida/dia: ${planejamento.distancia_percorrida_dia || 0} Km.\n`;
+        texto += `- Nr Viagens: ${trips}.\n`;
         
         items.forEach((i: any) => {
             const unit = i.unidade_medida || 'UN';
-            texto += `${i.descricao_reduzida || i.descricao_item}: ${formatCurrency(i.valor_unitario)}/${unit}.\n`;
+            texto += `- ${i.descricao_reduzida || i.descricao_item}: ${formatCurrency(i.valor_unitario)}/${unit}.\n`;
         });
 
-        texto += `\nFórmula: (Nr Item x Valor Unitário x Período) x Nr Viagens.\n\n`;
+        texto += `\nFórmula: (Nr Item x Valor Unitário x Período) x Nr Viagens.\n`;
         
         items.forEach((i: any) => {
             const qty = i.quantidade || 0;
             const vlrUnit = i.valor_unitario || 0;
             const period = i.periodo || 0;
             const periodFormatted = period.toString().replace('.', ',');
+            // O total do item na memória deve considerar o multiplicador de viagens
             const totalItem = qty * vlrUnit * period * trips;
             
-            texto += `(${qty} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)} x ${periodFormatted} = ${formatCurrency(totalItem)}.\n`;
+            texto += `- (${qty} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)} x ${periodFormatted} = ${formatCurrency(totalItem)}.\n`;
         });
 
-        texto += `Total: ${formatCurrency(valorTotalGeral)}. (Pregão ${formatPregao(item.numero_pregao)} - UASG ${formatCodug(item.uasg)})`;
+        texto += `\nTotal: ${formatCurrency(valorTotalGeral)}. \n`;
+        
+        if (items.length > 0) {
+            texto += `(Pregão ${formatPregao(items[0].numero_pregao)} - UASG ${formatCodug(items[0].uasg)})`;
+        }
         
         return texto;
     }
