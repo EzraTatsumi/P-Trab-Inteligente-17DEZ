@@ -81,7 +81,7 @@ const ServicoUnitMeasureDialog: React.FC<ServicoUnitMeasureDialogProps> = ({
                                     <TableCell>
                                         <Input 
                                             value={(item as any).unidade_medida} 
-                                            onChange={(e) => handleUnitChange(item.id, e.target.value.toUpperCase())}
+                                            onChange={(e) => handleUnitChange(item.id, e.target.value)}
                                             placeholder="Ex: hora/dia/mês/ano"
                                             className="h-9 text-center"
                                         />
