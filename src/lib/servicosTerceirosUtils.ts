@@ -67,11 +67,12 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
 
         let memoria = `${ndHeader} - ${tipoContrato} de ${catLabel} ${beneficiary}, durante ${registro.dias_operacao} dias de Planejamento.\n\n`;
         
-        memoria += `Cálculo:\n\n`;
+        memoria += `Cálculo:\n`;
         items.forEach((item: any) => {
-            memoria += `${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${item.unidade_medida || 'un'}. `;
+            memoria += `- ${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${item.unidade_medida || 'un'}.\n`;
         });
-        memoria += `Fórmula: Nr Item x Valor Unitário.\n\n`;
+        
+        memoria += `\nFórmula: Nr Item x Valor Unitário.\n`;
 
         items.forEach((item: any) => {
             const qty = item.quantidade || 0;
@@ -81,10 +82,10 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
             const total = qty * period * val;
             const periodFormatted = Number.isInteger(period) ? period.toString() : period.toString().replace('.', ',');
 
-            memoria += `${qty} ${item.descricao_reduzida || item.descricao_item} (${periodFormatted} ${unit}) x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)}.\n`;
+            memoria += `- ${qty} ${item.descricao_reduzida || item.descricao_item} (${periodFormatted} ${unit}) x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)}.\n`;
         });
 
-        memoria += `\nTotal: ${formatCurrency(registro.valor_total)}. `;
+        memoria += `\nTotal: ${formatCurrency(registro.valor_total)}.\n`;
         if (items.length > 0) {
             const firstItem = items[0];
             memoria += `(Pregão ${formatPregao(firstItem.numero_pregao)} - UASG ${formatCodug(firstItem.uasg)})`;
