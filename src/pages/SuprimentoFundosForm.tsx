@@ -1440,9 +1440,6 @@ const SuprimentoFundosForm = () => {
                                                 <div className="flex items-center justify-between mb-3 border-b pb-2">
                                                     <h3 className="font-bold text-lg text-primary flex items-center gap-2">
                                                         {omName} (UG: {formatCodug(ug)})
-                                                        <Badge variant="outline" className="text-xs">
-                                                            {omRegistros[0].fase_atividade}
-                                                        </Badge>
                                                     </h3>
                                                     <span className="font-extrabold text-xl text-primary">
                                                         {formatCurrency(totalOM)}
@@ -1470,14 +1467,12 @@ const SuprimentoFundosForm = () => {
                                                                 <div className="flex items-center justify-between">
                                                                     <div className="flex flex-col">
                                                                         <div className="flex items-center gap-2">
-                                                                            <h4 className="font-semibold text-base text-foreground">
+                                                                            <h4 className="font-semibold text-base text-foreground flex items-center gap-2">
                                                                                 Suprimento de Fundos
-                                                                            </h4>
-                                                                            {registro.fase_atividade !== omRegistros[0].fase_atividade && (
-                                                                                <Badge variant="outline" className="text-xs">
+                                                                                <Badge variant="outline" className="text-xs font-semibold">
                                                                                     {registro.fase_atividade}
                                                                                 </Badge>
-                                                                            )}
+                                                                            </h4>
                                                                         </div>
                                                                         <p className="text-xs text-muted-foreground">
                                                                             Período: {registro.dias_operacao} {diasText} | Efetivo: {registro.quantidade_equipes} {efetivoText}
