@@ -197,6 +197,33 @@ export const generateServicoMemoriaCalculo = (
         return texto;
     }
 
+    // --- SERVIÇO GRÁFICO ---
+    if (categoria === 'servico-grafico') {
+        let texto = `33.90.39 - Contratação de Serviço Gráfico, ${paraOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
+        
+        texto += `Cálculo:\n`;
+        items.forEach((item: any) => {
+            const unit = item.unidade_medida || 'UN';
+            texto += `- ${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${unit}.\n`;
+        });
+
+        texto += `\nFórmula: Nr Item x Valor Unitário.\n`;
+        items.forEach((item: any) => {
+            const qty = item.quantidade || 0;
+            const period = item.periodo || 1;
+            const unit = item.unidade_medida || 'UN';
+            const totalItem = qty * period * item.valor_unitario;
+            
+            texto += `- ${formatNumber(qty, 0)} ${item.descricao_reduzida || item.descricao_item} (${formatNumber(period, 0)} ${unit}) x ${formatCurrency(item.valor_unitario)}/${unit} = ${formatCurrency(totalItem)}.\n`;
+        });
+
+        texto += `\nTotal: ${formatCurrency(Number(registro.valor_total))}.\n`;
+        if (items.length > 0) {
+            texto += `(Pregão ${formatPregao(items[0].numero_pregao)} - UASG ${formatCodug(items[0].uasg)})`;
+        }
+        return texto;
+    }
+
     // --- OUTROS SERVIÇOS ---
     const categoriaFormatada = (categoria || "").replace('-', ' ').toUpperCase();
     let texto = `MEMÓRIA DE CÁLCULO - ${categoriaFormatada}\n`;
