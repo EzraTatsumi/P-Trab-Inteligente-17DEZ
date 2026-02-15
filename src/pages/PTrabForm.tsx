@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,7 +67,6 @@ const PTrabForm = () => {
     { id: "passagem-aerea", name: "Passagens" },
     { id: "suprimento-fundos", name: "Suprimento de Fundos" },
     { id: "verba-operacional", name: "Verba Operacional" },
-    { id: "outros-servicos", name: "Outros Serviços" },
   ];
 
   const { data: credits, isLoading: isLoadingCredits } = useQuery({
