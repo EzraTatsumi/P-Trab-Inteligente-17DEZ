@@ -47,7 +47,12 @@ export const calculateServicoTotals = (items: any[], trips: number = 1) => {
     };
 };
 
-export const generateServicoMemory = (reg: ServicoTerceiroRegistro): string => {
+/**
+ * Gera o texto da memória de cálculo automática para Serviços de Terceiros.
+ * @param reg O registro do serviço.
+ * @param context Contexto adicional (opcional, para compatibilidade de assinatura).
+ */
+export const generateServicoMemoriaCalculo = (reg: ServicoTerceiroRegistro, context?: any): string => {
     const details = reg.detalhes_planejamento;
     if (!details || !details.itens_selecionados) return "Sem detalhes de planejamento.";
 
