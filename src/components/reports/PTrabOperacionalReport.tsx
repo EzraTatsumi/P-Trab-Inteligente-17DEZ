@@ -352,6 +352,48 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     });
   }, [consolidatedConcessionarias, concessionariaDetailsMap]);
 
+  /**
+   * Helper para gerar o rótulo da coluna Despesas em CAIXA ALTA e sem o prefixo genérico.
+   */
+  const getDespesaLabel = (row: ExpenseRow): string => {
+    const { type, data, isContinuation } = row;
+    
+    if (type === 'SERVIÇOS DE TERCEIROS') {
+        const servico = data as ServicoTerceiroRegistro;
+        const details = servico.detalhes_planejamento;
+        const cat = servico.categoria;
+        
+        if (cat === 'transporte-coletivo') {
+            return 'LOCAÇÃO DE VEÍCULOS (TRANSPORTE COLETIVO)';
+        }
+        
+        if (cat === 'locacao-veiculos') {
+            const groupName = servico.group_name || details?.group_name || 'GERAL';
+            return `LOCAÇÃO DE VEÍCULOS (${groupName.toUpperCase()})`;
+        }
+        
+        if (cat === 'outros' && details?.nome_servico_outros) {
+            return details.nome_servico_outros.toUpperCase();
+        }
+        
+        return formatCategoryName(cat, details).toUpperCase();
+    }
+    
+    if (type === 'MATERIAL DE CONSUMO') {
+        const mat = data as MaterialConsumoRegistro;
+        let label = (mat.group_name || type).toUpperCase();
+        if (isContinuation) label += '\n(CONTINUAÇÃO)';
+        return label;
+    }
+    
+    if (type === 'COMPLEMENTO DE ALIMENTAÇÃO') {
+        const comp = data as { registro: ComplementoAlimentacaoRegistro };
+        return (comp.registro.group_name || type).toUpperCase();
+    }
+    
+    return type.toUpperCase();
+  };
+
   const getSortedRowsForOM = useCallback((omName: string, group: GrupoOMOperacional): ExpenseRow[] => { 
     const allRows: ExpenseRow[] = [];
 
@@ -666,7 +708,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             const row = worksheet.getRow(currentRow);
             const type = rowItem.type;
             const data = rowItem.data;
-            let totalLinha = 0, memoria = '', despesasLabel = type;
+            let totalLinha = 0, memoria = '', despesasLabel = getDespesaLabel(rowItem);
             let nd15 = 0, nd30 = 0, nd33 = 0, nd39 = 0, nd00 = 0;
             let omDetentora = omName, ugDetentora = ugReference;
 
@@ -683,7 +725,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                     const passagemConsolidada = data as ConsolidatedPassagemReport;
                     totalLinha = passagemConsolidada.totalND33; nd33 = passagemConsolidada.totalND33;
                     omDetentora = passagemConsolidada.om_detentora; ugDetentora = passagemConsolidada.ug_detentora;
-                    if (passagemConsolidada.organizacao !== omDetentora || passagemConsolidada.ug !== ugDetentora) despesasLabel += `\n${passagemConsolidada.organizacao}`;
                     const firstRecordPassagem = passagemConsolidada.records[0];
                     memoria = firstRecordPassagem.detalhamento_customizado || generateConsolidatedPassagemMemoriaCalculo(passagemConsolidada);
                     if (!firstRecordPassagem.detalhamento_customizado && passagemConsolidada.diretrizDetails?.numero_pregao) memoria += `(Pregão ${passagemConsolidada.diretrizDetails.numero_pregao} - UASG ${formatCodug(passagemConsolidada.diretrizDetails.ug_referencia)})\n`;
@@ -692,18 +733,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                     const concessionariaConsolidada = data as ConsolidatedConcessionariaReport;
                     totalLinha = concessionariaConsolidada.totalND39; nd39 = concessionariaConsolidada.totalND39;
                     omDetentora = concessionariaConsolidada.om_detentora; ugDetentora = concessionariaConsolidada.ug_detentora;
-                    if (concessionariaConsolidada.organizacao !== omDetentora || concessionariaConsolidada.ug !== ugDetentora) despesasLabel += `\n${concessionariaConsolidada.organizacao}`;
                     memoria = concessionariaConsolidada.records[0].detalhamento_customizado || generateConsolidatedConcessionariaMemoriaCalculo(concessionariaConsolidada);
                     break;
                 case 'MATERIAL DE CONSUMO':
                     const matConsumo = data as MaterialConsumoRegistro;
-                    const isContinuation = rowItem.isContinuation;
-                    if (matConsumo.group_name) {
-                        despesasLabel = `${type}\n(${matConsumo.group_name})`;
-                        if (isContinuation) {
-                            despesasLabel += `\n\nContinuação`;
-                        }
-                    }
                     totalLinha = rowItem.partialTotal ?? (matConsumo.valor_total);
                     nd30 = rowItem.partialND30 ?? (matConsumo.valor_nd_30);
                     nd39 = rowItem.partialND39 ?? (matConsumo.valor_nd_39);
@@ -726,7 +759,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 case 'COMPLEMENTO DE ALIMENTAÇÃO':
                     const compItem = data as { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' };
                     const r = compItem.registro;
-                    despesasLabel = `${type}\n(${r.group_name})`;
                     
                     if (r.categoria_complemento === 'genero' && compItem.subType) {
                         totalLinha = compItem.subType === 'QS' ? (r.efetivo * r.dias_operacao * r.valor_etapa_qs) : (r.efetivo * r.dias_operacao * r.valor_etapa_qr);
@@ -745,7 +777,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 case 'SERVIÇOS DE TERCEIROS':
                     const servico = data as ServicoTerceiroRegistro;
                     totalLinha = Number(servico.valor_total || 0);
-                    despesasLabel = `${type}\n(${formatCategoryName(servico.categoria, servico.detalhes_planejamento)})`;
                     if (['fretamento-aereo', 'locacao-veiculos', 'transporte-coletivo'].includes(servico.categoria)) {
                         nd33 = totalLinha;
                     } else {
@@ -889,7 +920,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     a.href = url; a.download = generateFileName('Excel'); a.click();
     window.URL.revokeObjectURL(url);
     toast({ title: "Excel Exportado!", description: "O relatório Operacional foi salvo com sucesso.", duration: 3000 });
-  }, [omsOrdenadas, gruposPorOM, consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosMaterialConsumo, registrosComplementoAlimentacao, registrosServicosTerceiros, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, generateMaterialConsumoMemoriaCalculo, generateComplementoMemoriaCalculo, generateServicoMemoriaCalculo, diretrizesOperacionais, toast, getSortedRowsForOM]);
+  }, [omsOrdenadas, gruposPorOM, consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosMaterialConsumo, registrosComplementoAlimentacao, registrosServicosTerceiros, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, generateMaterialConsumoMemoriaCalculo, generateComplementoMemoriaCalculo, generateServicoMemoriaCalculo, diretrizesOperacionais, toast, getSortedRowsForOM, getDespesaLabel]);
 
 
   if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0 && registrosSuprimentoFundos.length === 0 && registrosPassagem.length === 0 && registrosConcessionaria.length === 0 && registrosMaterialConsumo.length === 0 && registrosComplementoAlimentacao.length === 0 && registrosServicosTerceiros.length === 0) {
@@ -1017,7 +1048,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                       {sortedRows.map((rowItem) => {
                           const type = rowItem.type;
                           const data = rowItem.data;
-                          let totalLinha = 0, memoria = '', despesasLabel = type;
+                          let totalLinha = 0, memoria = '', despesasLabel = getDespesaLabel(rowItem);
                           let nd15 = 0, nd30 = 0, nd33 = 0, nd39 = 0, nd00 = 0;
                           let omDetentora = omName, ugDetentora = ugReference;
 
@@ -1034,7 +1065,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                   const passagemConsolidada = data as ConsolidatedPassagemReport;
                                   totalLinha = passagemConsolidada.totalND33; nd33 = passagemConsolidada.totalND33;
                                   omDetentora = passagemConsolidada.om_detentora; ugDetentora = passagemConsolidada.ug_detentora;
-                                  if (passagemConsolidada.organizacao !== omDetentora || passagemConsolidada.ug !== ugDetentora) despesasLabel += `\n${passagemConsolidada.organizacao}`;
                                   const firstRecordPassagem = passagemConsolidada.records[0];
                                   memoria = firstRecordPassagem.detalhamento_customizado || generateConsolidatedPassagemMemoriaCalculo(passagemConsolidada);
                                   if (!firstRecordPassagem.detalhamento_customizado && passagemConsolidada.diretrizDetails?.numero_pregao) memoria += `(Pregão ${passagemConsolidada.diretrizDetails.numero_pregao} - UASG ${formatCodug(passagemConsolidada.diretrizDetails.ug_referencia)})\n`;
@@ -1043,18 +1073,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                   const concessionariaConsolidada = data as ConsolidatedConcessionariaReport;
                                   totalLinha = concessionariaConsolidada.totalND39; nd39 = concessionariaConsolidada.totalND39;
                                   omDetentora = concessionariaConsolidada.om_detentora; ugDetentora = concessionariaConsolidada.ug_detentora;
-                                  if (concessionariaConsolidada.organizacao !== omDetentora || concessionariaConsolidada.ug !== ugDetentora) despesasLabel += `\n${concessionariaConsolidada.organizacao}`;
                                   memoria = concessionariaConsolidada.records[0].detalhamento_customizado || generateConsolidatedConcessionariaMemoriaCalculo(concessionariaConsolidada);
                                   break;
                               case 'MATERIAL DE CONSUMO':
                                   const matConsumo = data as MaterialConsumoRegistro;
-                                  const isContinuation = rowItem.isContinuation;
-                                  if (matConsumo.group_name) {
-                                      despesasLabel = `${type}\n(${matConsumo.group_name})`;
-                                      if (isContinuation) {
-                                          despesasLabel += `\n\nContinuação`;
-                                      }
-                                  }
                                   totalLinha = rowItem.partialTotal ?? (matConsumo.valor_total);
                                   nd30 = rowItem.partialND30 ?? (matConsumo.valor_nd_30);
                                   nd39 = rowItem.partialND39 ?? (matConsumo.valor_nd_39);
@@ -1077,7 +1099,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                               case 'COMPLEMENTO DE ALIMENTAÇÃO':
                                   const compItem = data as { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' };
                                   const r = compItem.registro;
-                                  despesasLabel = `${type}\n(${r.group_name})`;
                                   
                                   if (r.categoria_complemento === 'genero' && compItem.subType) {
                                       totalLinha = compItem.subType === 'QS' ? (r.efetivo * r.dias_operacao * r.valor_etapa_qs) : (r.efetivo * r.dias_operacao * r.valor_etapa_qr);
@@ -1096,7 +1117,6 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                               case 'SERVIÇOS DE TERCEIROS':
                                   const servico = data as ServicoTerceiroRegistro;
                                   totalLinha = Number(servico.valor_total || 0);
-                                  despesasLabel = `${type}\n(${formatCategoryName(servico.categoria, servico.detalhes_planejamento)})`;
                                   if (['fretamento-aereo', 'locacao-veiculos', 'transporte-coletivo'].includes(servico.categoria)) {
                                       nd33 = totalLinha;
                                   } else {
