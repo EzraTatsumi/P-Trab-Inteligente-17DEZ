@@ -74,7 +74,6 @@ export type CategoriaServico =
     | "servico-satelital" 
     | "transporte-coletivo"
     | "locacao-veiculos" 
-    | "locacao-engenharia" 
     | "outros" 
     | "locacao-estruturas" 
     | "servico-grafico";
@@ -1031,12 +1030,11 @@ const ServicosTerceirosForm = () => {
                                     <h3 className="text-lg font-semibold flex items-center gap-2">2. Configurar Planejamento</h3>
                                     
                                     <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as CategoriaServico); setSelectedItems([]); setVehicleGroups([]); }} className="w-full">
-                                        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-8 h-auto gap-1 bg-muted p-1 mb-6">
+                                        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7 h-auto gap-1 bg-muted p-1 mb-6">
                                             <TabsTrigger value="fretamento-aereo" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Plane className="h-4 w-4" /> Fretamento</TabsTrigger>
                                             <TabsTrigger value="servico-satelital" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Satellite className="h-4 w-4" /> Satelital</TabsTrigger>
                                             <TabsTrigger value="transporte-coletivo" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Bus className="h-4 w-4" /> Trnp Coletivo</TabsTrigger>
                                             <TabsTrigger value="locacao-veiculos" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Car className="h-4 w-4" /> Veículos</TabsTrigger>
-                                            <TabsTrigger value="locacao-engenharia" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Tractor className="h-4 w-4" /> Eqp Engenharia</TabsTrigger>
                                             <TabsTrigger value="locacao-estruturas" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><TentTree className="h-4 w-4" /> Estruturas</TabsTrigger>
                                             <TabsTrigger value="servico-grafico" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Printer className="h-4 w-4" /> Gráfico</TabsTrigger>
                                             <TabsTrigger value="outros" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><ClipboardList className="h-4 w-4" /> Outros</TabsTrigger>
