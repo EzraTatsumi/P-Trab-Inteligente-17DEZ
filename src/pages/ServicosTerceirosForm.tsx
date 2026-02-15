@@ -92,6 +92,7 @@ interface OMData {
 
 interface PendingServicoItem {
     tempId: string;
+    dbId?: string; // ID do banco de dados para substituição
     organizacao: string;
     ug: string;
     om_detentora: string;
@@ -630,10 +631,14 @@ const ServicosTerceirosForm = () => {
     // --- MUTATIONS ---
     const saveMutation = useMutation({
         mutationFn: async (itemsToSave: PendingServicoItem[]) => {
-            if (editingId) {
-                const { error: deleteError = null } = await supabase.from('servicos_terceiros_registros').delete().eq('id', editingId);
+            // Coleta todos os IDs de banco de dados que precisam ser removidos (substituídos)
+            const idsToDelete = itemsToSave.map(i => i.dbId).filter(Boolean) as string[];
+            
+            if (idsToDelete.length > 0) {
+                const { error: deleteError } = await supabase.from('servicos_terceiros_registros').delete().in('id', idsToDelete);
                 if (deleteError) throw deleteError;
             }
+
             const records = itemsToSave.map(item => ({
                 p_trab_id: ptrabId,
                 organizacao: item.organizacao,
@@ -858,6 +863,7 @@ const ServicosTerceirosForm = () => {
         if (isLocacao) {
             newItems = vehicleGroups.map(group => ({
                 tempId: editingId || group.tempId,
+                dbId: editingId || undefined, // Preserva o ID do banco para substituição
                 organizacao: omFavorecida.nome,
                 ug: omFavorecida.ug,
                 om_detentora: omDestino.nome,
@@ -880,6 +886,7 @@ const ServicosTerceirosForm = () => {
             
             const newItem: PendingServicoItem = {
                 tempId: editingId || crypto.randomUUID(),
+                dbId: editingId || undefined, // Preserva o ID do banco para substituição
                 organizacao: omFavorecida.nome,
                 ug: omFavorecida.ug,
                 om_detentora: omDestino.nome,
@@ -1006,6 +1013,7 @@ const ServicosTerceirosForm = () => {
         if (reg.categoria === 'locacao-veiculos') {
             const stagedItem: PendingServicoItem = {
                 tempId: reg.id,
+                dbId: reg.id, // Preserva o ID original
                 organizacao: reg.organizacao,
                 ug: reg.ug,
                 om_detentora: reg.om_detentora || '',
@@ -1036,6 +1044,7 @@ const ServicosTerceirosForm = () => {
             const { totalND30, totalND39, totalGeral } = calculateServicoTotals(details.itens_selecionados || [], trips);
             const stagedItem: PendingServicoItem = {
                 tempId: reg.id,
+                dbId: reg.id, // Preserva o ID original
                 organizacao: reg.organizacao,
                 ug: reg.ug,
                 om_detentora: reg.om_detentora || '',
