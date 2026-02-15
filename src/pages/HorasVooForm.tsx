@@ -541,7 +541,7 @@ const HorasVooForm = () => {
         // 2. Populate formData com os dados do PRIMEIRO registro do grupo (para edição)
         const firstRecord = group.records[0];
         
-        // Determina se o registro original tinha valores zero (indicando COTER)
+        // Determina se the registro original tinha valores zero (indicando COTER)
         const isCoter = firstRecord.valor_nd_30 === 0 && firstRecord.valor_nd_39 === 0;
 
         const newFormData: HorasVooFormState = {
@@ -1395,9 +1395,6 @@ const HorasVooForm = () => {
                                                 <div className="flex items-center justify-between mb-3 border-b pb-2">
                                                     <h3 className="font-bold text-lg text-primary flex items-center gap-2">
                                                         {omName} (UG: {formatCodug(ug)})
-                                                        <Badge variant="outline" className="text-xs">
-                                                            {faseAtividade}
-                                                        </Badge>
                                                     </h3>
                                                     <span className="font-extrabold text-xl text-primary">
                                                         {isCoter ? "A CARGO DO COTER" : formatCurrency(totalOM)}
@@ -1413,8 +1410,9 @@ const HorasVooForm = () => {
                                                         <div className="flex items-center justify-between">
                                                             <div className="flex flex-col">
                                                                 <div className="flex items-center gap-2">
-                                                                    <h4 className="font-semibold text-base text-foreground">
+                                                                    <h4 className="font-semibold text-base text-foreground flex items-center gap-2">
                                                                         Horas de Voo ({group.records.length} {group.records.length === 1 ? 'registro' : 'registros'})
+                                                                        <Badge variant="outline" className="text-xs font-semibold">{faseAtividade}</Badge>
                                                                     </h4>
                                                                 </div>
                                                                 <p className="text-xs text-muted-foreground">
