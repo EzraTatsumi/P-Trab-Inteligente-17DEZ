@@ -949,7 +949,7 @@ const CustosOperacionaisPage = () => {
   const renderDiariaTable = () => {
     const handleDiariaChange = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais', rawValue: string) => {
       const fieldKey = `diaria_${rankKey}_${destination}` as keyof DiretrizOperacional;
-      handleCurrencyChange(fieldKey, rawValue);
+      handleDiariaChange(rankKey, destination, rawValue);
     };
     
     const getDiariaProps = (rankKey: string, destination: 'bsb' | 'capitais' | 'demais') => {
@@ -1785,8 +1785,7 @@ const CustosOperacionaisPage = () => {
                           <TableHead className="w-[40%]">Item de Serviço</TableHead>
                           <TableHead className="w-[40%]">Subitem ND</TableHead>
                           <TableHead className="w-[20%] text-center">Ações</TableHead>
-                      </TableRow>
-                  </TableHeader>
+                      </TableHeader>
                   <TableBody>
                       {filteredItemsServicos.map((item, index) => (
                           <TableRow key={`${item.diretrizId}-${index}`}>
@@ -1924,7 +1923,7 @@ const CustosOperacionaisPage = () => {
                   {searchTerm ? (
                       renderSearchResults()
                   ) : (
-                      diretrizesMaterialConsumo.length > 0 ? (
+                      (diretrizesMaterialConsumo?.length || 0) > 0 ? (
                           <Table>
                               <TableHeader>
                                   <TableRow>
@@ -2018,7 +2017,7 @@ const CustosOperacionaisPage = () => {
                   {searchTermServicos ? (
                       renderSearchResultsServicos()
                   ) : (
-                      diretrizesServicosTerceiros.length > 0 ? (
+                      (diretrizesServicosTerceiros?.length || 0) > 0 ? (
                           <Table>
                               <TableHeader>
                                   <TableRow>
@@ -2113,7 +2112,7 @@ const CustosOperacionaisPage = () => {
                   {searchTermPermanente ? (
                       renderSearchResultsPermanente()
                   ) : (
-                      diretrizesMaterialPermanente.length > 0 ? (
+                      (diretrizesMaterialPermanente?.length || 0) > 0 ? (
                           <Table>
                               <TableHeader>
                                   <TableRow>
@@ -2473,7 +2472,7 @@ const CustosOperacionaisPage = () => {
           open={isExportImportDialogOpen}
           onOpenChange={setIsExportImportDialogOpen}
           selectedYear={selectedYear}
-          diretrizes={diretrizesMaterialConsumo}
+          diretrizes={diretrizesMaterialConsumo || []}
           onImportSuccess={handleMaterialConsumoImportSuccess}
       />
 
@@ -2490,7 +2489,7 @@ const CustosOperacionaisPage = () => {
           open={isExportImportServicosDialogOpen}
           onOpenChange={setIsExportImportServicosDialogOpen}
           selectedYear={selectedYear}
-          diretrizes={diretrizesServicosTerceiros}
+          diretrizes={diretrizesServicosTerceiros || []}
           onImportSuccess={handleServicosTerceirosImportSuccess}
       />
 
@@ -2508,7 +2507,7 @@ const CustosOperacionaisPage = () => {
           open={isExportImportPermanenteDialogOpen}
           onOpenChange={setIsExportImportPermanenteDialogOpen}
           selectedYear={selectedYear}
-          diretrizes={diretrizesMaterialPermanente}
+          diretrizes={diretrizesMaterialPermanente || []}
           onImportSuccess={handleMaterialPermanenteImportSuccess}
       />
     </div>
