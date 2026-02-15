@@ -104,38 +104,24 @@ const MaterialPermanenteForm = () => {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [recordToDelete, setRecordToDelete] = useState<any>(null);
 
-    // --- CÁLCULOS ---
-    const totalLote = useMemo(() => {
-        return selectedItems.reduce((acc, item) => {
-            const qty = item.quantidade || 0;
-            return acc + (qty * item.valor_unitario);
-        }, 0);
-    }, [selectedItems]);
-
-    const isDirty = useMemo(() => {
-        if (!lastStagedState || pendingItems.length === 0) return false;
-        
-        const contextChanged = (
-            omFavorecida.id !== lastStagedState.omFavorecidaId ||
-            faseAtividade !== lastStagedState.faseAtividade ||
-            efetivo !== lastStagedState.efetivo ||
-            hasEfetivo !== lastStagedState.hasEfetivo ||
-            diasOperacao !== lastStagedState.diasOperacao ||
-            omDestino.id !== lastStagedState.omDestinoId
-        );
-
-        if (contextChanged) return true;
-
-        const currentItemsKey = selectedItems.map(i => `${i.id}-${i.quantidade}`).sort().join('|');
-        return currentItemsKey !== lastStagedState.itemsKey;
-    }, [omFavorecida, faseAtividade, efetivo, hasEfetivo, diasOperacao, omDestino, selectedItems, lastStagedState, pendingItems]);
-
     // --- DATA FETCHING ---
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
         queryKey: ['ptrabData', ptrabId],
         queryFn: () => fetchPTrabData(ptrabId!),
         enabled: !!ptrabId,
     });
+
+    // Extração robusta do ano
+    const selectedYear = useMemo(() => {
+        const dateStr = ptrabData?.periodo_inicio;
+        if (!dateStr) return new Date().getFullYear();
+        
+        // Tenta encontrar 4 dígitos seguidos (o ano) na string de data
+        const yearMatch = dateStr.match(/\d{4}/);
+        if (yearMatch) return parseInt(yearMatch[0]);
+        
+        return new Date().getFullYear();
+    }, [ptrabData?.periodo_inicio]);
 
     const { data: registros, isLoading: isLoadingRegistros } = useQuery<any[]>({
         queryKey: ['materialPermanenteRegistros', ptrabId],
@@ -166,6 +152,32 @@ const MaterialPermanenteForm = () => {
 
         return Object.values(groups).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
     }, [registros]);
+
+    // --- CÁLCULOS ---
+    const totalLote = useMemo(() => {
+        return selectedItems.reduce((acc, item) => {
+            const qty = item.quantidade || 0;
+            return acc + (qty * item.valor_unitario);
+        }, 0);
+    }, [selectedItems]);
+
+    const isDirty = useMemo(() => {
+        if (!lastStagedState || pendingItems.length === 0) return false;
+        
+        const contextChanged = (
+            omFavorecida.id !== lastStagedState.omFavorecidaId ||
+            faseAtividade !== lastStagedState.faseAtividade ||
+            efetivo !== lastStagedState.efetivo ||
+            hasEfetivo !== lastStagedState.hasEfetivo ||
+            diasOperacao !== lastStagedState.diasOperacao ||
+            omDestino.id !== lastStagedState.omDestinoId
+        );
+
+        if (contextChanged) return true;
+
+        const currentItemsKey = selectedItems.map(i => `${i.id}-${i.quantidade}`).sort().join('|');
+        return currentItemsKey !== lastStagedState.itemsKey;
+    }, [omFavorecida, faseAtividade, efetivo, hasEfetivo, diasOperacao, omDestino, selectedItems, lastStagedState, pendingItems]);
 
     // --- MUTATIONS ---
     const saveMutation = useMutation({
@@ -330,7 +342,7 @@ const MaterialPermanenteForm = () => {
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
-            <PageMetadata title="Material Permanente - GND 4" description="Gerenciamento de aquisições de material permanente." />
+            <PageMetadata title="Material Permanente" description="Gerenciamento de aquisições de material permanente." />
             
             <div className="max-w-6xl mx-auto space-y-6">
                 <Button variant="ghost" onClick={() => navigate(`/ptrab/form?ptrabId=${ptrabId}`)} className="mb-4">
@@ -554,7 +566,7 @@ const MaterialPermanenteForm = () => {
             <MaterialPermanenteItemSelectorDialog 
                 open={isSelectorOpen} 
                 onOpenChange={setIsSelectorOpen} 
-                selectedYear={new Date(ptrabData?.periodo_inicio || new Date()).getFullYear()} 
+                selectedYear={selectedYear} 
                 initialItems={selectedItems} 
                 onSelect={(items) => {
                     setSelectedItems(items.map(item => ({

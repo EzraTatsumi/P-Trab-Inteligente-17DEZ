@@ -16,6 +16,7 @@ import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { formatCurrency, formatPregao } from "@/lib/formatUtils";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 interface MaterialPermanenteItemSelectorDialogProps {
     open: boolean;
@@ -41,6 +42,7 @@ const MaterialPermanenteItemSelectorDialog: React.FC<MaterialPermanenteItemSelec
     const { data: diretrizes, isLoading } = useQuery({
         queryKey: ['diretrizesMaterialPermanente', selectedYear],
         queryFn: async () => {
+            // Busca as diretrizes para o ano selecionado
             const { data, error } = await supabase
                 .from('diretrizes_material_permanente')
                 .select('*')
@@ -48,22 +50,25 @@ const MaterialPermanenteItemSelectorDialog: React.FC<MaterialPermanenteItemSelec
                 .eq('ativo', true);
 
             if (error) throw error;
-            return data;
+            return data || [];
         },
         enabled: open
     });
 
     const allItems = React.useMemo(() => {
         if (!diretrizes) return [];
-        return diretrizes.flatMap(d => (d.itens_aquisicao as any[] || []).map(item => ({
-            ...item,
-            subitem_nome: d.nome_subitem,
-            subitem_nr: d.nr_subitem
-        })));
+        return diretrizes.flatMap(d => {
+            const items = Array.isArray(d.itens_aquisicao) ? d.itens_aquisicao : [];
+            return items.map(item => ({
+                ...item,
+                subitem_nome: d.nome_subitem,
+                subitem_nr: d.nr_subitem
+            }));
+        });
     }, [diretrizes]);
 
     const filteredItems = allItems.filter(item => 
-        item.descricao_item.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.descricao_item?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.codigo_catmat?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.subitem_nome?.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -110,7 +115,7 @@ const MaterialPermanenteItemSelectorDialog: React.FC<MaterialPermanenteItemSelec
                             </div>
                         ) : filteredItems.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-40 text-muted-foreground gap-2">
-                                <p>Nenhum item encontrado para este ano.</p>
+                                <p>Nenhum item encontrado para o ano {selectedYear}.</p>
                                 <Button variant="link" onClick={onAddDiretriz}>Cadastrar Diretriz</Button>
                             </div>
                         ) : (
@@ -164,7 +169,5 @@ const MaterialPermanenteItemSelectorDialog: React.FC<MaterialPermanenteItemSelec
         </Dialog>
     );
 };
-
-import { cn } from "@/lib/utils";
 
 export default MaterialPermanenteItemSelectorDialog;
