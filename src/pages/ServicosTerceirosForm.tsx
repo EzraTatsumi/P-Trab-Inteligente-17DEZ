@@ -1209,6 +1209,18 @@ const ServicosTerceirosForm = () => {
                                                     .reduce((acc: number, i: any) => acc + (i.valor_total || 0), 0)
                                                 : 0;
 
+                                            const totalDiarias = item.categoria === 'transporte-coletivo'
+                                                ? item.detalhes_planejamento.itens_selecionados
+                                                    .filter((i: any) => i.sub_categoria === 'meio-transporte')
+                                                    .reduce((acc: number, i: any) => acc + (Number(i.quantidade) * Number(i.periodo || 0)), 0)
+                                                : 0;
+
+                                            const totalKmAdicional = item.categoria === 'transporte-coletivo'
+                                                ? item.detalhes_planejamento.itens_selecionados
+                                                    .filter((i: any) => i.sub_categoria === 'meio-transporte' && i.has_daily_limit)
+                                                    .reduce((acc: number, i: any) => acc + (Number(i.daily_limit_km || 0) * Number(i.periodo || 0)), 0)
+                                                : 0;
+
                                             return (
                                                 <Card key={item.tempId} className="border-2 shadow-md border-secondary bg-secondary/10">
                                                     <CardContent className="p-4">
@@ -1248,6 +1260,11 @@ const ServicosTerceirosForm = () => {
                                                                     {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo'].includes(item.categoria) && 
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalUnits} un`}
                                                                 </p>
+                                                                {item.categoria === 'transporte-coletivo' && (
+                                                                    <p className="font-medium">
+                                                                        {totalDiarias} {totalDiarias === 1 ? 'diária' : 'diárias'} / {totalKmAdicional} Km
+                                                                    </p>
+                                                                )}
                                                                 {item.categoria === 'transporte-coletivo' && (
                                                                     <p className="font-medium text-blue-700">
                                                                         Meios: {formatCurrency(totalMeios)} | Adicionais: {formatCurrency(totalAdicionais)}
@@ -1314,6 +1331,18 @@ const ServicosTerceirosForm = () => {
 
                                                     const totalQty = reg.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0) || 0;
 
+                                                    const totalDiarias = reg.categoria === 'transporte-coletivo'
+                                                        ? reg.detalhes_planejamento?.itens_selecionados
+                                                            ?.filter((i: any) => i.sub_categoria === 'meio-transporte')
+                                                            ?.reduce((acc: number, i: any) => acc + (Number(i.quantidade) * Number(i.periodo || 0)), 0)
+                                                        : 0;
+
+                                                    const totalKmAdicional = reg.categoria === 'transporte-coletivo'
+                                                        ? reg.detalhes_planejamento?.itens_selecionados
+                                                            ?.filter((i: any) => i.sub_categoria === 'meio-transporte' && i.has_daily_limit)
+                                                            ?.reduce((acc: number, i: any) => acc + (Number(i.daily_limit_km || 0) * Number(i.periodo || 0)), 0)
+                                                        : 0;
+
                                                     return (
                                                         <Card key={reg.id} className="p-3 bg-background border">
                                                             <div className="flex items-center justify-between">
@@ -1325,6 +1354,11 @@ const ServicosTerceirosForm = () => {
                                                                         {reg.categoria === 'transporte-coletivo' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Viagens: ${reg.detalhes_planejamento?.numero_viagens || 1}`}
                                                                         {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo'].includes(reg.categoria) && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Qtd: ${totalUnits} un`}
                                                                     </p>
+                                                                    {reg.categoria === 'transporte-coletivo' && (
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            Nr Diárias: {totalDiarias} {totalDiarias === 1 ? 'diária' : 'diárias'} | Qtd Km Adicional: {totalKmAdicional} Km
+                                                                        </p>
+                                                                    )}
                                                                 </div>
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="font-extrabold text-xl text-foreground">{formatCurrency(Number(reg.valor_total))}</span>
