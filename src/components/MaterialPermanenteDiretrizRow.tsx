@@ -65,9 +65,6 @@ const MaterialPermanenteDiretrizRow: React.FC<MaterialPermanenteDiretrizRowProps
                     <div className="flex items-center gap-2">
                         {diretriz.nome_subitem}
                         {!diretriz.ativo && <Badge variant="destructive">Inativo</Badge>}
-                        <Badge variant="secondary" className="ml-auto font-normal text-[10px] opacity-70">
-                            {itensAquisicao.length} {itensAquisicao.length === 1 ? 'item' : 'itens'}
-                        </Badge>
                     </div>
                 </TableCell>
                 
