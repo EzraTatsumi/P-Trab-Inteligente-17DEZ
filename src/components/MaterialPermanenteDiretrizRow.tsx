@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TableCell, TableRow, Table } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, ChevronDown, ChevronUp, Package } from "lucide-react";
+import { Pencil, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { DiretrizMaterialPermanente } from "@/types/diretrizesMaterialPermanente";
 import { formatCurrency, formatCodug, formatPregao } from "@/lib/formatUtils";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
@@ -99,47 +99,43 @@ const MaterialPermanenteDiretrizRow: React.FC<MaterialPermanenteDiretrizRowProps
                         <CollapsibleContent>
                             <div className="p-4 bg-muted/50 border-t border-border">
                                 {itensAquisicao.length > 0 ? (
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-2">
-                                            <Package className="h-3 w-3" />
-                                            Itens de Aquisição Permanente
-                                        </div>
-                                        <Table className="bg-background border rounded-md overflow-hidden">
-                                            <thead>
-                                                <TableRow className="text-xs text-muted-foreground hover:bg-background">
-                                                    <th className="px-4 py-2 text-left font-normal w-[35%]">Descrição Reduzida</th>
-                                                    <th className="px-4 py-2 text-center font-normal w-[10%]">Cód. CATMAT</th>
-                                                    <th className="px-4 py-2 text-center font-normal w-[10%]">Pregão</th>
-                                                    <th className="px-4 py-2 text-center font-normal w-[10%]">UASG</th>
-                                                    <th className="px-4 py-2 text-right font-normal w-[15%]">Valor Unitário</th>
+                                    <Table className="bg-background border rounded-md overflow-hidden">
+                                        <thead>
+                                            <TableRow className="text-xs text-muted-foreground hover:bg-background">
+                                                <th className="px-4 py-2 text-left font-normal w-[20px]"></th> {/* Espaço para manter o alinhamento com o ícone de drag de outras tabelas */}
+                                                <th className="px-4 py-2 text-left font-normal w-[35%]">Descrição Reduzida</th>
+                                                <th className="px-4 py-2 text-center font-normal w-[10%]">Cód. CATMAT</th>
+                                                <th className="px-4 py-2 text-center font-normal w-[10%]">Pregão</th>
+                                                <th className="px-4 py-2 text-center font-normal w-[10%]">UASG</th>
+                                                <th className="px-4 py-2 text-center font-normal w-[15%]">Valor Unitário</th>
+                                            </TableRow>
+                                        </thead>
+                                        <tbody>
+                                            {itensAquisicao.map((item, idx) => (
+                                                <TableRow key={item.id || idx} className="hover:bg-muted/30">
+                                                    <TableCell className="px-4 py-2 w-[20px]"></TableCell>
+                                                    <TableCell className="px-4 py-2">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-sm">{item.descricao_reduzida || 'N/A'}</span>
+                                                            <span className="text-[10px] text-muted-foreground line-clamp-1">{item.descricao_item}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-2 text-center font-mono text-xs">
+                                                        {item.codigo_catmat || 'N/A'}
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-2 text-center text-xs">
+                                                        {formatPregao(item.numero_pregao)}
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-2 text-center text-xs">
+                                                        {formatCodug(item.uasg)}
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-2 text-center font-bold text-sm">
+                                                        {formatCurrency(item.valor_unitario)}
+                                                    </TableCell>
                                                 </TableRow>
-                                            </thead>
-                                            <tbody>
-                                                {itensAquisicao.map((item, idx) => (
-                                                    <TableRow key={item.id || idx} className="hover:bg-muted/30">
-                                                        <TableCell className="px-4 py-2">
-                                                            <div className="flex flex-col">
-                                                                <span className="font-medium text-sm">{item.descricao_reduzida || 'N/A'}</span>
-                                                                <span className="text-[10px] text-muted-foreground line-clamp-1">{item.descricao_item}</span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="px-4 py-2 text-center font-mono text-xs">
-                                                            {item.codigo_catmat || 'N/A'}
-                                                        </TableCell>
-                                                        <TableCell className="px-4 py-2 text-center text-xs">
-                                                            {formatPregao(item.numero_pregao)}
-                                                        </TableCell>
-                                                        <TableCell className="px-4 py-2 text-center text-xs">
-                                                            {formatCodug(item.uasg)}
-                                                        </TableCell>
-                                                        <TableCell className="px-4 py-2 text-right font-bold text-primary text-sm">
-                                                            {formatCurrency(item.valor_unitario)}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </tbody>
-                                        </Table>
-                                    </div>
+                                            ))}
+                                        </tbody>
+                                    </Table>
                                 ) : (
                                     <p className="text-sm text-muted-foreground text-center py-4">
                                         Nenhum item de aquisição detalhado para este subitem.
