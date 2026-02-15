@@ -1,22 +1,21 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber, formatCodug } from "@/lib/formatUtils";
-import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Helicopter, TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase, Droplet, Zap, MapPin, Building2, Coffee, Droplets, Plane, Satellite, Bus, Car, TentTree, Printer, Info } from "lucide-react";
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from "@/components/ui/accordion";
+import { 
+  Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Helicopter, 
+  TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, 
+  HeartPulse, Truck, Briefcase, Droplet, Building2, MapPin, Plane 
+} from "lucide-react";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-// --- Tipos e Interfaces ---
+// --- Interfaces ---
 
 interface OmTotals {
     omKey: string;
@@ -748,30 +747,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: any) => {
                                 <CategoryCard label="Passagens" value={om.passagens.total} icon={Plane} colorClass="bg-blue-500/10 text-blue-600" nd33={om.passagens.total} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Quantidade</span><span className="font-bold text-foreground whitespace-nowrap">{om.passagens.totalQuantidade} un.</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Trechos</span><span className="font-bold text-foreground whitespace-nowrap">{om.passagens.totalTrechos}</span></div></div>} />
                                 <CategoryCard label="Serviços de Terceiros/Locações" value={om.servicosTerceiros.total} icon={ClipboardList} colorClass="bg-blue-500/10 text-blue-600" nd33={om.servicosTerceiros.totalND33} nd39={om.servicosTerceiros.totalND39} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.servicosTerceiros.groupedCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, data]: any) => (<div key={cat} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{cat}</span><div className="flex w-1/2 justify-between gap-3"><span className="font-bold text-foreground text-right w-full whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div></div>))}</div>} />
                                 <CategoryCard label="Suprimento de Fundos" value={om.suprimentoFundos.total} icon={Wallet} colorClass="bg-blue-500/10 text-blue-600" nd30={om.suprimentoFundos.totalND30} nd39={om.suprimentoFundos.totalND39} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Equipes</span><span className="font-bold text-foreground whitespace-nowrap">{om.suprimentoFundos.totalEquipes}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Dias</span><span className="font-bold text-foreground whitespace-nowrap">{om.suprimentoFundos.totalDias}</span></div></div>} />
-                                <CategoryCard label="Verba Operacional" value={om.verbaOperacional.total} icon={Activity} colorClass="bg-blue-500/10 text-blue-600" nd30={om.verbaOperacional.totalND30} nd39={om.verbaOperacional.totalND39} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Equipes</span><span className="font-bold text-foreground whitespace-nowrap">{om.verbaOperacional.totalEquipes}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Dias</span><span className="font-bold text-foreground whitespace-nowrap">{om.verbaOperacional.totalDias}</span></div></div>} />
-                            </div>
-                        </div>
-                    )}
-                    {(om.totalAviacaoExercito > 0 || om.horasVoo.quantidadeHV > 0) && (
-                        <div>
-                            <h3 className="text-base font-bold text-purple-600 uppercase tracking-wider mb-5 flex items-center justify-between border-b border-purple-500/20 pb-2">
-                                <div className="flex items-center gap-2"><Helicopter className="h-5 w-5" />Aba Aviação do Exército</div>
-                                <span className="text-xl font-extrabold">{formatCurrency(om.totalAviacaoExercito)}</span>
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                                <CategoryCard label="Horas de Voo" value={om.horasVoo.total} icon={Helicopter} colorClass="bg-purple-500/10 text-purple-600" nd30={om.horasVoo.totalND30} nd39={om.horasVoo.totalND39} extraInfo={`${formatNumber(om.horasVoo.quantidadeHV, 2)} HV`} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.horasVoo.groupedHV || {}).sort(([a], [b]) => a.localeCompare(b)).map(([tipo, data]: any) => (<div key={tipo} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{tipo}</span><div className="flex w-1/2 justify-between gap-3"><span className="font-medium text-right w-1/2 whitespace-nowrap">{formatNumber(data.totalHV, 2)} HV</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div></div>))}</div>} />
-                            </div>
-                        </div>
-                    )}
-                </div>
-                <div className="p-8 pt-5 border-t border-border/30 bg-muted/20">
-                    <div className="flex justify-between items-end mb-3"><span className="text-[11px] font-bold text-muted-foreground uppercase">Impacto no Orçamento GND 3</span><span className="text-sm font-bold text-primary">{impactPercentage}%</span></div>
-                    <div className="w-full bg-secondary h-2 rounded-full overflow-hidden"><div className="bg-primary h-full transition-all duration-700 ease-out" style={{ width: `${impactPercentage}%` }} /></div>
-                </div>
-            </DialogContent>
-        </Dialog>
-    );
-};
+                                <CategoryCard label="Verba Operacional" value={om.verbaOperacional.total} icon={Activity} colorClass="bg-blue-500/10 text-blue-600" nd30={om.verbaOperacional.totalND30} nd39={om.verbaOperacional.totalND39} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Equipes</span><span className="font-bold text-foreground whitespace-nowrap">{om.verbaOperacional.totalEquipes}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Dias</span><span className="font-bold text-foreground whitespace-nowrap">{om.verbaOperacional.totalDias}</span></div></div>} /> </div> </div> )} {(om.totalAviacaoExercito > 0 || om.horasVoo.quantidadeHV > 0) && ( <div> <h3 className="text-base font-bold text-purple-600 uppercase tracking-wider mb-5 flex items-center justify-between border-b border-purple-500/20 pb-2"> <div className="flex items-center gap-2"><Helicopter className="h-5 w-5" />Aba Aviação do Exército</div> <span className="text-xl font-extrabold">{formatCurrency(om.totalAviacaoExercito)}</span> </h3> <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"> <CategoryCard label="Horas de Voo" value={om.horasVoo.total} icon={Helicopter} colorClass="bg-purple-500/10 text-purple-600" nd30={om.horasVoo.totalND30} nd39={om.horasVoo.totalND39} extraInfo={`${formatNumber(om.horasVoo.quantidadeHV, 2)} HV`} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.horasVoo.groupedHV || {}).sort(([a], [b]) => a.localeCompare(b)).map(([tipo, data]: any) => (<div key={tipo} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{tipo}</span><div className="flex w-1/2 justify-between gap-3"><span className="font-medium text-right w-1/2 whitespace-nowrap">{formatNumber(data.totalHV, 2)} HV</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div></div>))}</div>} /> </div> </div> )} </div> <div className="p-8 pt-5 border-t border-border/30 bg-muted/20"> <div className="flex justify-between items-end mb-3"><span className="text-[11px] font-bold text-muted-foreground uppercase">Impacto no Orçamento GND 3</span><span className="text-sm font-bold text-primary">{impactPercentage}%</span></div> <div className="w-full bg-secondary h-2 rounded-full overflow-hidden"><div className="bg-primary h-full transition-all duration-700 ease-out" style={{ width: `${impactPercentage}%` }} /></div> </div> </DialogContent> </Dialog> ); };
 
 interface TabDetailsProps {
     mode: 'logistica' | 'operacional' | 'permanente' | 'avex';
@@ -779,54 +755,446 @@ interface TabDetailsProps {
 }
 
 const TabDetails = ({ mode, data }: TabDetailsProps) => {
-    const renderClassDetails = (group: any, unitLabel: string = 'un.') => (
-      <div className="space-y-2.5 text-[12px]">
-        {Object.entries(group || {}).sort(([a], [b]) => a.localeCompare(b)).map(([category, catData]: [string, any]) => (
-          <div key={category} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0">
-            <span className="font-medium w-1/2 text-left truncate pr-3">{category}</span>
-            <div className="flex w-1/2 justify-between gap-3">
-              <span className="font-medium text-right w-1/2 whitespace-nowrap">{formatNumber((catData as any).totalItens || 0)} {unitLabel}</span>
-              <span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency((catData as any).totalValor)}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+    const valueClasses = "font-medium text-foreground text-right w-[6rem] flex-shrink-0";
+    
+    const renderClassAccordion = (key: string, title: string, icon: any, unitLabel: string, isRemonta = false) => {
+        const g = data as PTrabAggregatedTotals;
+        const k = key.charAt(0).toUpperCase() + key.slice(1);
+        const classData = {
+            total: (g as any)[`totalClasse${key.toUpperCase()}`],
+            totalND30: (g as any)[`totalClasse${key.toUpperCase()}_ND30`],
+            totalND39: (g as any)[`totalClasse${key.toUpperCase()}_ND39`],
+            totalItens: (g as any)[`totalItensClasse${key.toUpperCase()}`],
+            groupedCategories: (g as any)[`groupedClasse${key.toUpperCase()}Categories`]
+        };
+
+        if (!classData.total || classData.total === 0) return null;
+
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value={`item-${key}`} className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground">{icon}{title}</div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(classData.total)}</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            {Object.entries(classData.groupedCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, d]: any) => (
+                                <div key={cat} className="space-y-1">
+                                    <div className="flex justify-between text-muted-foreground font-semibold pt-1">
+                                        <span className="w-1/2 text-left">{cat}</span>
+                                        <span className="w-1/4 text-right font-medium">{formatNumber(d.totalItens)} {isRemonta ? 'animais' : unitLabel}</span>
+                                        <span className="w-1/4 text-right font-medium">{formatCurrency(d.totalValor)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
+                                        <span className="w-1/2 text-left">ND 30 / ND 39</span>
+                                        <span className="w-1/4 text-right text-green-600 font-medium">{formatCurrency(d.totalND30)}</span>
+                                        <span className="w-1/4 text-right text-blue-600 font-medium">{formatCurrency(d.totalND39)}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+
+    const renderClasseI = () => {
+        const c = data;
+        if (c.totalClasseI === 0 && c.totalRacoesOperacionaisGeral === 0) return null;
+        return (
+            <Accordion type="single" collapsible className="w-full pt-0">
+                <AccordionItem value="item-classe-i" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground"><Utensils className="h-3 w-3 text-orange-500" />Classe I</div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(c.totalClasseI)}</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Complemento (Ref. Int.)</span>
+                                <span className="w-1/4 text-right font-medium">{formatNumber(c.totalRefeicoesIntermediarias)}</span>
+                                <span className="w-1/4 text-right font-medium">{formatCurrency(c.totalComplemento)}</span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Etapa Solicitada</span>
+                                <span className="w-1/4 text-right font-medium">{formatNumber(c.totalDiasEtapaSolicitada)} dias</span>
+                                <span className="w-1/4 text-right font-medium">{formatCurrency(c.totalEtapaSolicitadaValor)}</span>
+                            </div>
+                            {c.totalRacoesOperacionaisGeral > 0 && (
+                                <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                    <span className="w-1/2 text-left text-muted-foreground">Ração Operacional (R2/R3)</span>
+                                    <span className="w-1/4 text-right font-medium">{formatNumber(c.totalRacoesOperacionaisGeral)} un.</span>
+                                    <span className="w-1/4 text-right font-medium text-foreground">{formatCurrency(0)}</span>
+                                </div>
+                            )}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+
+    const renderClasseIII = () => {
+        const c = data;
+        if (c.totalCombustivel === 0) return null;
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value="item-classe-iii" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground"><Fuel className="h-3 w-3 text-orange-500" />Classe III</div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(c.totalCombustivel)}</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Óleo Diesel</span>
+                                <span className="w-1/4 text-right font-medium">{formatNumber(c.totalDieselLitros)} L</span>
+                                <span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(c.totalDieselValor)}</span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Gasolina</span>
+                                <span className="w-1/4 text-right font-medium">{formatNumber(c.totalGasolinaLitros)} L</span>
+                                <span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(c.totalGasolinaValor)}</span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Lubrificante</span>
+                                <span className="w-1/4 text-right font-medium">{formatNumber(c.totalLubrificanteLitros || 0, 2)} L</span>
+                                <span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(c.totalLubrificanteValor)}</span>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+
+    const renderDiarias = () => {
+        const d = data;
+        if (d.totalDiarias === 0) return null;
+        return (
+            <Accordion type="single" collapsible className="w-full pt-0">
+                <AccordionItem value="item-diarias" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground"><Briefcase className="h-3 w-3 text-blue-500" />Diárias</div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(d.totalDiarias)}</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Total de Militares</span>
+                                <span className="w-1/4 text-right font-medium">{formatNumber(d.totalMilitaresDiarias)}</span>
+                                <span className="w-1/4 text-right font-medium text-background"></span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Total de Dias de Viagem</span>
+                                <span className="w-1/4 text-right font-medium">{formatNumber(d.totalDiasViagem)} dias</span>
+                                <span className="w-1/4 text-right font-medium text-background"></span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                <span className="w-1/2 text-left font-semibold">Diárias (ND 15) / Taxa Embarque + ND 30</span>
+                                <span className="w-1/4 text-right font-medium text-green-600">{formatCurrency(d.totalDiariasND15)}</span>
+                                <span className="w-1/4 text-right font-medium text-blue-600">{formatCurrency(d.totalDiariasND30)}</span>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+
+    const renderVerbaSuprimento = (key: string, title: string) => {
+        const g = key === 'verbaOperacional' ? data.totalVerbaOperacional : data.totalSuprimentoFundos;
+        const nd30 = key === 'verbaOperacional' ? data.totalVerbaOperacionalND30 : data.totalSuprimentoFundosND30;
+        const nd39 = key === 'verbaOperacional' ? data.totalVerbaOperacionalND39 : data.totalSuprimentoFundosND39;
+        const equipes = key === 'verbaOperacional' ? data.totalEquipesVerba : data.totalEquipesSuprimento;
+        const dias = key === 'verbaOperacional' ? data.totalDiasVerba : data.totalDiasSuprimento;
+
+        if (g === 0) return null;
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value={`item-${key}`} className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground">{key === 'verbaOperacional' ? <ClipboardList className="h-3 w-3 text-blue-500" /> : <Wallet className="h-3 w-3 text-blue-500" />}{title}</div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(g)}</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Total de Equipes</span>
+                                <span className="w-1/4 text-right font-medium">{formatNumber(equipes)}</span>
+                                <span className="w-1/4 text-right font-medium text-background"></span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Total de Dias</span>
+                                <span className="w-1/4 text-right font-medium">{formatNumber(dias)} dias</span>
+                                <span className="w-1/4 text-right font-medium text-background"></span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                <span className="w-1/2 text-left font-semibold">ND 30 / ND 39</span>
+                                <span className="w-1/4 text-right font-medium text-green-600">{formatCurrency(nd30)}</span>
+                                <span className="w-1/4 text-right font-medium text-blue-600">{formatCurrency(nd39)}</span>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+
+    const renderPassagens = () => {
+        const p = data;
+        if (p.totalPassagensND33 === 0) return null;
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value="item-passagens" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground"><Plane className="h-3 w-3 text-blue-500" />Passagens</div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(p.totalPassagensND33)}</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Total de Passagens</span>
+                                <span className="w-1/4 text-right font-medium">{formatNumber(p.totalQuantidadePassagens)} un.</span>
+                                <span className="w-1/4 text-right font-medium text-background"></span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground">
+                                <span className="w-1/2 text-left">Total de Trechos Registrados</span>
+                                <span className="w-1/4 text-right font-medium">{formatNumber(p.totalTrechosPassagens)}</span>
+                                <span className="w-1/4 text-right font-medium text-background"></span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                <span className="w-1/2 text-left font-semibold">ND 33 (Passagens)</span>
+                                <span className="w-1/4 text-right font-medium text-background"></span>
+                                <span className="w-1/4 text-right font-medium text-green-600">{formatCurrency(p.totalPassagensND33)}</span>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+
+    const renderConcessionaria = () => {
+        const c = data;
+        if (c.totalConcessionariaND39 === 0) return null;
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value="item-concessionaria" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground"><Droplet className="h-3 w-3 text-blue-500" />Concessionária</div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(c.totalConcessionariaND39)}</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            {c.totalConcessionariaAgua > 0 && <div className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left">Água/Esgoto</span><span className="w-1/4 text-right font-medium text-background"></span><span className="w-1/4 text-right font-medium">{formatCurrency(c.totalConcessionariaAgua)}</span></div>}
+                            {c.totalConcessionariaEnergia > 0 && <div className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left">Energia Elétrica</span><span className="w-1/4 text-right font-medium text-background"></span><span className="w-1/4 text-right font-medium">{formatCurrency(c.totalConcessionariaEnergia)}</span></div>}
+                            <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1">
+                                <span className="w-1/2 text-left font-semibold">ND 39 (Serviços de Terceiros)</span>
+                                <span className="w-1/4 text-right font-medium text-background"></span>
+                                <span className="w-1/4 text-right font-medium text-blue-600">{formatCurrency(c.totalConcessionariaND39)}</span>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+
+    const renderMaterialConsumo = () => {
+        const m = data;
+        if (m.totalMaterialConsumo === 0) return null;
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value="item-material-consumo" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground"><Package className="h-3 w-3 text-blue-500" />Material de Consumo</div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(m.totalMaterialConsumo)}</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            {Object.entries(m.groupedMaterialConsumoCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, d]: any) => (
+                                <div key={cat} className="space-y-1">
+                                    <div className="flex justify-between text-muted-foreground font-semibold pt-1">
+                                        <span className="w-1/2 text-left">{cat}</span>
+                                        <span className="w-1/2 text-right font-medium">{formatCurrency(d.totalValor)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
+                                        <span className="w-1/2 text-left">ND 30 / ND 39</span>
+                                        <span className="w-1/4 text-right text-green-600 font-medium">{formatCurrency(d.totalND30)}</span>
+                                        <span className="w-1/4 text-right text-blue-600 font-medium">{formatCurrency(d.totalND39)}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+
+    const renderComplementoAlimentacao = () => {
+        const c = data;
+        if (c.totalComplementoAlimentacao === 0) return null;
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value="item-complemento-alimentacao" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground"><Utensils className="h-3 w-3 text-blue-500" />Complemento de Alimentação</div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(c.totalComplementoAlimentacao)}</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            {Object.entries(c.groupedComplementoCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, d]: any) => (
+                                <div key={cat} className="space-y-1">
+                                    <div className="flex justify-between text-muted-foreground font-semibold pt-1">
+                                        <span className="w-1/2 text-left">{cat}</span>
+                                        <span className="w-1/2 text-right font-medium">{formatCurrency(d.totalValor)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
+                                        <span className="w-1/2 text-left">ND 30 / ND 39</span>
+                                        <span className="w-1/4 text-right text-green-600 font-medium">{formatCurrency(d.totalND30)}</span>
+                                        <span className="w-1/4 text-right text-blue-600 font-medium">{formatCurrency(d.totalND39)}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
+
+    const renderServicosTerceiros = () => {
+        const s = data;
+        if (s.totalServicosTerceiros === 0) return null;
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value="item-servicos-terceiros" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-1 text-foreground"><ClipboardList className="h-3 w-3 text-blue-500" />Serviços de Terceiros/Locações</div>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(s.totalServicosTerceiros)}</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0">
+                        <div className="space-y-1 pl-4 text-[10px]">
+                            {Object.entries(s.groupedServicosTerceirosCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, d]: any) => (
+                                <div key={cat} className="space-y-1">
+                                    <div className="flex justify-between text-muted-foreground font-semibold pt-1">
+                                        <span className="w-1/2 text-left">{cat}</span>
+                                        <span className="w-1/2 text-right font-medium">{formatCurrency(d.totalValor)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-muted-foreground text-[9px] pl-2">
+                                        <span className="w-1/2 text-left">ND 33 / ND 39</span>
+                                        <span className="w-1/4 text-right text-cyan-600 font-medium">{formatCurrency(d.totalND33)}</span>
+                                        <span className="w-1/4 text-right text-blue-600 font-medium">{formatCurrency(d.totalND39)}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
 
     if (mode === 'logistica') {
+        const total = data.totalLogisticoGeral;
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <CategoryCard label="Classe I (Alimentação)" value={data.totalClasseI} icon={Utensils} colorClass="bg-orange-500/10 text-orange-600" nd30={data.totalClasseI} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Complemento (Ref. Int.)</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(data.totalRefeicoesIntermediarias)}</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(data.totalComplemento)}</span></div><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Etapa Solicitada</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(data.totalDiasEtapaSolicitada)} dias</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(data.totalEtapaSolicitadaValor)}</span></div>{data.totalRacoesOperacionaisGeral > 0 && <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1"><span className="w-1/2 text-left truncate pr-3">Ração Operacional (R2/R3)</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{data.totalRacoesOperacionaisGeral} un.</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(0)}</span></div>}</div>} />
-                <CategoryCard label="Classe II (Intendência)" value={data.totalClasseII} icon={ClipboardList} colorClass="bg-orange-500/10 text-orange-600" nd30={data.totalClasseII_ND30} nd39={data.totalClasseII_ND39} details={renderClassDetails(data.groupedClasseIICategories)} />
-                <CategoryCard label="Classe III (Combustíveis)" value={data.totalCombustivel} icon={Fuel} colorClass="bg-orange-500/10 text-orange-600" nd30={data.totalCombustivel} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Óleo Diesel</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(data.totalDieselLitros)} L</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(data.totalDieselValor)}</span></div><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Gasolina</span><span className="w-1/4 text-right font-medium">{formatNumber(data.totalGasolinaLitros)} L</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(data.totalGasolinaValor)}</span></div><div className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left truncate pr-3">Lubrificante</span><span className="w-1/4 text-right font-medium">{formatNumber(data.totalLubrificanteLitros || 0, 2)} L</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(data.totalLubrificanteValor)}</span></div></div>} />
-                <CategoryCard label="Classe V (Armamento)" value={data.totalClasseV} icon={Swords} colorClass="bg-orange-500/10 text-orange-600" nd30={data.totalClasseV_ND30} nd39={data.totalClasseV_ND39} details={renderClassDetails(data.groupedClasseVCategories)} />
-                <CategoryCard label="Classe VI (Engenharia)" value={data.totalClasseVI} icon={HardHat} colorClass="bg-orange-500/10 text-orange-600" nd30={data.totalClasseVI_ND30} nd39={data.totalClasseVI_ND39} details={renderClassDetails(data.groupedClasseVICategories)} />
-                <CategoryCard label="Classe VII (Com/Inf)" value={data.totalClasseVII} icon={Radio} colorClass="bg-orange-500/10 text-orange-600" nd30={data.totalClasseVII_ND30} nd39={data.totalClasseVII_ND39} details={renderClassDetails(data.groupedClasseVIICategories)} />
-                <CategoryCard label="Classe VIII (Saúde/Remonta)" value={data.totalClasseVIII} icon={HeartPulse} colorClass="bg-orange-500/10 text-orange-600" nd30={data.totalClasseVIII_ND30} nd39={data.totalClasseVIII_ND39} details={renderClassDetails(data.groupedClasseVIIICategories)} />
-                <CategoryCard label="Classe IX (Motomecanização)" value={data.totalClasseIX} icon={Truck} colorClass="bg-orange-500/10 text-orange-600" nd30={data.totalClasseIX_ND30} nd39={data.totalClasseIX_ND39} details={renderClassDetails(data.groupedClasseIXCategories, 'vtr')} />
+            <div className="space-y-3 border-l-4 border-orange-500 pl-3">
+                <div className="flex items-center justify-between text-xs font-semibold text-orange-600 mb-2">
+                    <div className="flex items-center gap-2"><Package className="h-3 w-3" />Logística</div>
+                    <span className="font-bold text-sm">{formatCurrency(total)}</span>
+                </div>
+                {renderClasseI()}
+                {renderClassAccordion('II', 'Classe II', <ClipboardList className="h-3 w-3 text-orange-500" />, 'un.')}
+                {renderClasseIII()}
+                {renderClassAccordion('V', 'Classe V', <Swords className="h-3 w-3 text-orange-500" />, 'un.')}
+                {renderClassAccordion('VI', 'Classe VI', <HardHat className="h-3 w-3 text-orange-500" />, 'un.')}
+                {renderClassAccordion('VII', 'Classe VII', <Radio className="h-3 w-3 text-orange-500" />, 'un.')}
+                {renderClassAccordion('VIII', 'Classe VIII', <HeartPulse className="h-3 w-3 text-orange-500" />, 'un.', true)}
+                {renderClassAccordion('IX', 'Classe IX', <Truck className="h-3 w-3 text-orange-500" />, 'vtr')}
             </div>
         );
     }
 
     if (mode === 'operacional') {
+        const total = data.totalOperacional;
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <CategoryCard label="Complemento de Alimentação" value={data.totalComplementoAlimentacao} icon={Utensils} colorClass="bg-blue-500/10 text-blue-600" nd30={data.totalComplementoAlimentacaoND30} nd39={data.totalComplementoAlimentacaoND39} details={<div className="space-y-2.5 text-[12px]">{Object.entries(data.groupedComplementoCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, catData]: any) => (<div key={cat} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{cat}</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(catData.totalValor)}</span></div>))}</div>} />
-                <CategoryCard label="Concessionária" value={data.totalConcessionariaND39} icon={Droplet} colorClass="bg-blue-500/10 text-blue-600" nd39={data.totalConcessionariaND39} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Água/Esgoto</span><span className="font-bold text-foreground whitespace-nowrap">{formatCurrency(data.totalConcessionariaAgua)}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Energia Elétrica</span><span className="font-bold text-foreground whitespace-nowrap">{formatCurrency(data.totalConcessionariaEnergia)}</span></div></div>} />
-                <CategoryCard label="Diárias" value={data.totalDiarias} icon={Briefcase} colorClass="bg-blue-500/10 text-blue-600" nd15={data.totalDiariasND15} nd30={data.totalDiariasND30} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Militares</span><span className="font-bold text-foreground whitespace-nowrap">{data.totalMilitaresDiarias}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Dias de Viagem</span><span className="font-bold text-foreground whitespace-nowrap">{data.totalDiasViagem}</span></div></div>} />
-                <CategoryCard label="Material de Consumo" value={data.totalMaterialConsumo} icon={Package} colorClass="bg-blue-500/10 text-blue-600" nd30={data.totalMaterialConsumoND30} nd39={data.totalMaterialConsumoND39} details={<div className="space-y-2.5 text-[12px]">{Object.entries(data.groupedMaterialConsumoCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, catData]: any) => (<div key={cat} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{cat}</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(catData.totalValor)}</span></div>))}</div>} />
-                <CategoryCard label="Passagens" value={data.totalPassagensND33} icon={Plane} colorClass="bg-blue-500/10 text-blue-600" nd33={data.totalPassagensND33} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Quantidade</span><span className="font-bold text-foreground whitespace-nowrap">{data.totalQuantidadePassagens} un.</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Trechos</span><span className="font-bold text-foreground whitespace-nowrap">{data.totalTrechosPassagens}</span></div></div>} />
-                <CategoryCard label="Serviços de Terceiros/Locações" value={data.totalServicosTerceiros} icon={ClipboardList} colorClass="bg-blue-500/10 text-blue-600" nd33={data.totalServicosTerceirosND33} nd39={data.totalServicosTerceirosND39} details={<div className="space-y-2.5 text-[12px]">{Object.entries(data.groupedServicosTerceirosCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, catData]: any) => (<div key={cat} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{cat}</span><div className="flex w-1/2 justify-between gap-3"><span className="font-bold text-foreground text-right w-full whitespace-nowrap">{formatCurrency(catData.totalValor)}</span></div></div>))}</div>} />
-                <CategoryCard label="Suprimento de Fundos" value={data.totalSuprimentoFundos} icon={Wallet} colorClass="bg-blue-500/10 text-blue-600" nd30={data.totalSuprimentoFundosND30} nd39={data.totalSuprimentoFundosND39} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Equipes</span><span className="font-bold text-foreground whitespace-nowrap">{data.totalEquipesSuprimento}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Dias</span><span className="font-bold text-foreground whitespace-nowrap">{data.totalDiasSuprimento}</span></div></div>} />
-                <CategoryCard label="Verba Operacional" value={data.totalVerbaOperacional} icon={Activity} colorClass="bg-blue-500/10 text-blue-600" nd30={data.totalVerbaOperacionalND30} nd39={data.totalVerbaOperacionalND39} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Equipes</span><span className="font-bold text-foreground whitespace-nowrap">{data.totalEquipesVerba}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Dias</span><span className="font-bold text-foreground whitespace-nowrap">{data.totalDiasVerba}</span></div></div>} />
+            <div className="space-y-3 border-l-4 border-blue-500 pl-3">
+                <div className="flex items-center justify-between text-xs font-semibold text-blue-600 mb-2">
+                    <div className="flex items-center gap-2"><Activity className="h-3 w-3" />Operacional</div>
+                    <span className="font-bold text-sm">{formatCurrency(total)}</span>
+                </div>
+                {renderComplementoAlimentacao()}
+                {renderDiarias()}
+                {renderPassagens()}
+                {renderServicosTerceiros()}
+                {renderVerbaSuprimento('verbaOperacional', 'Verba Operacional')}
+                {renderVerbaSuprimento('suprimentoFundos', 'Suprimento de Fundos')}
+                {renderConcessionaria()}
+                {renderMaterialConsumo()}
+            </div>
+        );
+    }
+
+    if (mode === 'permanente') {
+        const total = data.totalMaterialPermanente;
+        if (total === 0) return null;
+        return (
+            <div className="space-y-3 border-l-4 border-green-500 pl-3 pt-4">
+                <div className="flex items-center justify-between text-xs font-semibold text-green-600 mb-2">
+                    <div className="flex items-center gap-2"><HardHat className="h-3 w-3" />Material Permanente</div>
+                    <span className="font-bold text-sm">{formatCurrency(total)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                    <span className="w-1/2 text-left">Itens de Material Permanente</span>
+                    <span className="w-1/4 text-right font-medium"></span>
+                    <span className="w-1/4 text-right font-medium">{formatCurrency(total)}</span>
+                </div>
             </div>
         );
     }
 
     if (mode === 'avex') {
+        const h = data;
+        if (h.totalHorasVoo === 0 && h.quantidadeHorasVoo === 0) return null;
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <CategoryCard label="Horas de Voo" value={data.totalHorasVoo} icon={Helicopter} colorClass="bg-purple-500/10 text-purple-600" nd30={data.totalHorasVooND30} nd39={data.totalHorasVooND39} extraInfo={`${formatNumber(data.quantidadeHorasVoo, 2)} HV`} details={<div className="space-y-2.5 text-[12px]">{Object.entries(data.groupedHorasVoo || {}).sort(([a], [b]) => a.localeCompare(b)).map(([tipo, catData]: any) => (<div key={tipo} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{tipo}</span><div className="flex w-1/2 justify-between gap-3"><span className="font-medium text-right w-1/2 whitespace-nowrap">{formatNumber(catData.totalHV, 2)} HV</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(catData.totalValor)}</span></div></div>))}</div>} />
+            <div className="space-y-3 border-l-4 border-purple-500 pl-3 pt-4">
+                <div className="flex items-center justify-between text-xs font-semibold text-purple-600 mb-2">
+                    <div className="flex items-center gap-2"><Helicopter className="h-3 w-3" />Aviação do Exército</div>
+                    <span className="font-bold text-sm">{formatNumber(h.quantidadeHorasVoo, 2)} HV</span>
+                </div>
+                <div className="space-y-1 pl-4 text-[10px]">
+                    {Object.entries(h.groupedHorasVoo || {}).sort(([a], [b]) => a.localeCompare(b)).map(([tipo, d]: any) => (
+                        <div key={tipo} className="flex justify-between text-muted-foreground">
+                            <span className="w-1/2 text-left">{tipo}</span>
+                            <span className="w-1/4 text-right font-medium text-background"></span>
+                            <span className="w-1/4 text-right font-medium">{formatNumber(d.totalHV, 2)} HV</span>
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     }
@@ -834,192 +1202,171 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
     return null;
 };
 
-export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, creditGND4 }: { ptrabId: string, onOpenCreditDialog: () => void, creditGND3: number, creditGND4: number }) => {
-  const [selectedOm, setSelectedOm] = useState<OmTotals | null>(null);
-  const [viewMode, setViewMode] = useState<'om' | 'category'>('category');
-  
-  const { data: totals, isLoading } = useQuery({
+interface PTrabCostSummaryProps {
+    ptrabId: string;
+    onOpenCreditDialog: () => void;
+    creditGND3: number;
+    creditGND4: number;
+}
+
+export const PTrabCostSummary = ({ ptrabId, onOpenCreditDialog, creditGND3, creditGND4 }: PTrabCostSummaryProps) => {
+  const { data, isLoading, error } = useQuery<PTrabAggregatedTotals>({
     queryKey: ['ptrabTotals', ptrabId],
     queryFn: () => fetchPTrabTotals(ptrabId),
+    enabled: !!ptrabId,
     refetchInterval: 10000,
   });
 
-  const totalGND3Cost = useMemo(() => {
-    if (!totals) return 0;
-    return totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito;
-  }, [totals]);
+  const [viewMode, setViewMode] = useState<'global' | 'byOm'>('global');
+  const [omGroupingMode, setOmGroupingMode] = useState<'solicitante' | 'destino'>('solicitante');
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [selectedOm, setSelectedOm] = useState<OmTotals | null>(null);
+  const detailsRef = useRef<HTMLDivElement>(null);
 
-  const totalGND4Cost = useMemo(() => {
-    if (!totals) return 0;
-    return totals.totalMaterialPermanente;
-  }, [totals]);
+  const sortedOmTotals = useMemo(() => {
+    const omGroups = omGroupingMode === 'solicitante' ? data?.groupedByOmSolicitante : data?.groupedByOmDestino;
+    if (!omGroups) return [];
+    return Object.values(omGroups).sort((a, b) => b.totalGeral - a.totalGeral);
+  }, [data, omGroupingMode]);
 
-  const gnd3UsagePercent = useMemo(() => {
-    if (creditGND3 <= 0) return 0;
-    return Math.min(100, (totalGND3Cost / creditGND3) * 100);
-  }, [totalGND3Cost, creditGND3]);
-
-  const gnd4UsagePercent = useMemo(() => {
-    if (creditGND4 <= 0) return 0;
-    return Math.min(100, (totalGND4Cost / creditGND4) * 100);
-  }, [totalGND4Cost, creditGND4]);
+  const handleSummaryClick = () => {
+    const newState = !isDetailsOpen;
+    setIsDetailsOpen(newState);
+    if (newState) {
+        setTimeout(() => detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    }
+  };
 
   if (isLoading) return (
-    <Card className="shadow-lg border-primary/20">
-      <CardContent className="p-12 flex flex-col items-center justify-center gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground font-medium animate-pulse">Calculando custos consolidados...</p>
+    <Card className="shadow-lg">
+      <CardHeader className="py-3"><CardTitle className="text-xl font-bold">Resumo de Custos</CardTitle></CardHeader>
+      <CardContent className="flex items-center justify-center py-4">
+        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+        <span className="ml-2 text-sm text-muted-foreground">Calculando...</span>
       </CardContent>
     </Card>
   );
 
-  if (!totals) return null;
+  if (error || !data) return (
+    <Card className="shadow-lg border-destructive">
+      <CardHeader className="py-3"><CardTitle className="text-xl font-bold text-destructive">Erro no Cálculo</CardTitle></CardHeader>
+      <CardContent className="py-4"><p className="text-sm text-muted-foreground">Ocorreu um erro ao buscar os dados de custeio.</p></CardContent>
+    </Card>
+  );
 
-  return (
-    <div className="space-y-4">
-      <Card className="shadow-lg border-primary/20 overflow-hidden">
-        <CardHeader className="bg-primary/5 border-b border-primary/10 pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">Resumo de Custos</CardTitle>
-            </div>
-            <Button variant="ghost" size="sm" onClick={onOpenCreditDialog} className="h-8 text-xs gap-1.5 hover:bg-primary/10">
-              <Wallet className="h-3.5 w-3.5" />
-              Configurar Créditos
+  const totals = data;
+  const totalGND3Cost = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito;
+  const totalGeralFinal = totalGND3Cost + totals.totalMaterialPermanente;
+  const saldoGND3 = creditGND3 - totalGND3Cost;
+  const saldoGND4 = creditGND4 - totals.totalMaterialPermanente;
+
+  const renderCostSummary = () => {
+    if (viewMode === 'global') {
+      return (
+        <div className="w-full space-y-1 text-sm px-6 pt-3">
+          <div className="flex justify-between text-orange-600 cursor-pointer" onClick={handleSummaryClick}>
+            <span className="font-semibold text-sm">Aba Logística</span>
+            <span className="font-bold text-sm">{formatCurrency(totals.totalLogisticoGeral)}</span>
+          </div>
+          <div className="flex justify-between text-blue-600 cursor-pointer" onClick={handleSummaryClick}>
+            <span className="font-semibold text-sm">Aba Operacional</span>
+            <span className="font-bold text-sm">{formatCurrency(totals.totalOperacional)}</span>
+          </div>
+          <div className="flex justify-between text-green-600 cursor-pointer" onClick={handleSummaryClick}>
+            <span className="font-semibold text-sm">Aba Material Permanente</span>
+            <span className="font-bold text-sm">{formatCurrency(totals.totalMaterialPermanente)}</span>
+          </div>
+          <div className="flex justify-between text-purple-600 cursor-pointer" onClick={handleSummaryClick}>
+            <span className="font-semibold text-sm">Aba Aviação do Exército</span>
+            <span className="font-bold text-sm">{formatNumber(totals.quantidadeHorasVoo, 2)} HV</span>
+          </div>
+        </div>
+      );
+    } else {
+      if (sortedOmTotals.length === 0) return <div className="w-full space-y-1 text-sm px-6 pt-3 text-muted-foreground">Nenhuma OM com custos registrados.</div>;
+      const totalGND3 = totals.totalLogisticoGeral + totals.totalOperacional + totals.totalAviacaoExercito;
+      return (
+        <div className="w-full space-y-1 text-sm px-6 pt-3">
+          {sortedOmTotals.map(om => {
+            const omGND3Total = om.totalLogistica + om.totalOperacional + om.totalAviacaoExercito;
+            const impactPercentage = totalGND3 > 0 ? ((omGND3Total / totalGND3) * 100).toFixed(1) : '0.0';
+            return (
+              <div key={om.omKey} className="flex justify-between items-center text-foreground cursor-pointer p-1 rounded-md transition-colors hover:bg-muted/50" onClick={() => setSelectedOm(om)}>
+                <span className="font-semibold text-sm text-foreground">{om.omName}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-muted-foreground/80">({impactPercentage}%)</span>
+                  <span className="font-bold text-sm text-primary">{formatCurrency(om.totalGeral)}</span>
+                </div>
+              </div>
+            );
+          })}
+          <div className="flex gap-2 mt-4 pt-3 border-t border-border/50">
+            <Button variant={omGroupingMode === 'solicitante' ? 'default' : 'outline'} size="sm" className="flex-1 h-8 text-[10px] gap-1.5" onClick={() => setOmGroupingMode('solicitante')}>
+              <Building2 className="h-3 w-3" /> Por OM Solicitante
+            </Button>
+            <Button variant={omGroupingMode === 'destino' ? 'default' : 'outline'} size="sm" className="flex-1 h-8 text-[10px] gap-1.5" onClick={() => setOmGroupingMode('destino')}>
+              <MapPin className="h-3 w-3" /> Por OM Destino
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="p-6 space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between items-end">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">GND 3 (Custeio)</span>
-                <div className="text-right">
-                  <span className="text-sm font-extrabold text-primary block">{formatCurrency(totalGND3Cost)}</span>
-                  <span className="text-[10px] text-muted-foreground">de {formatCurrency(creditGND3)}</span>
+        </div>
+      );
+    }
+  };
+
+  return (
+    <Card className="shadow-lg">
+      <CardHeader className="pb-2 pt-3">
+        <div className="flex justify-between items-center"><CardTitle className="text-xl font-bold">Resumo de Custos</CardTitle></div>
+        <CardDescription className="text-xs">Visão consolidada dos custos logísticos e orçamentários.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4 p-0 pb-3">
+        {renderCostSummary()}
+        <Accordion type="single" collapsible className="w-full px-6 pt-0" value={isDetailsOpen ? "summary-details" : undefined} onValueChange={(v) => viewMode === 'global' && setIsDetailsOpen(v === "summary-details")}>
+          <AccordionItem value="summary-details" className="border-b-0">
+            <AccordionTrigger className="py-0 px-0 hover:no-underline flex items-center justify-between w-full text-xs text-muted-foreground border-t border-border/50" onClick={(e) => { e.preventDefault(); if (viewMode === 'global') handleSummaryClick(); }}>
+              <div className="flex justify-between items-center w-full py-2">
+                <div className="flex flex-col items-start gap-1">
+                  <span className="text-base font-bold text-foreground">Total Geral</span>
+                  <Button variant={viewMode === 'byOm' ? 'default' : 'outline'} size="sm" className="h-6 text-[10px] px-2" onClick={(e) => { e.stopPropagation(); setViewMode(viewMode === 'byOm' ? 'global' : 'byOm'); setIsDetailsOpen(false); setSelectedOm(null); }}>
+                    {viewMode === 'byOm' ? 'Voltar ao Global' : 'Ver por OM'}
+                  </Button>
+                </div>
+                <div className="flex flex-col items-end gap-0">
+                  <span className="text-lg font-bold text-foreground">{formatCurrency(totalGeralFinal)}</span>
+                  {viewMode === 'global' && (
+                    <span className="font-semibold text-primary flex items-center gap-1 text-xs lowercase">
+                      {isDetailsOpen ? "menos detalhes" : "mais detalhes"}
+                      <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform duration-200", isDetailsOpen ? "rotate-180" : "rotate-0")} />
+                    </span>
+                  )}
                 </div>
               </div>
-              <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                <div 
-                  className={cn("h-full transition-all duration-1000 ease-out", gnd3UsagePercent > 90 ? "bg-destructive" : gnd3UsagePercent > 70 ? "bg-orange-500" : "bg-primary")} 
-                  style={{ width: `${gnd3UsagePercent}%` }} 
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between items-end">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">GND 4 (Investimento)</span>
-                <div className="text-right">
-                  <span className="text-sm font-extrabold text-green-600 block">{formatCurrency(totalGND4Cost)}</span>
-                  <span className="text-[10px] text-muted-foreground">de {formatCurrency(creditGND4)}</span>
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 pb-0">
+              {viewMode === 'global' && (
+                <div className="space-y-2" ref={detailsRef}>
+                  <TabDetails mode="logistica" data={totals} />
+                  <div className="pt-4"><TabDetails mode="operacional" data={totals} /></div>
+                  <div className="pt-4"><TabDetails mode="permanente" data={totals} /></div>
+                  <div className="pt-4"><TabDetails mode="avex" data={totals} /></div>
                 </div>
-              </div>
-              <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                <div 
-                  className={cn("h-full transition-all duration-1000 ease-out", gnd4UsagePercent > 90 ? "bg-destructive" : "bg-green-500")} 
-                  style={{ width: `${gnd4UsagePercent}%` }} 
-                />
-              </div>
-            </div>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+        <div className="px-6 pt-0 border-t border-border/50 space-y-2">
+          <div className="flex justify-between items-center">
+            <h4 className="font-bold text-sm text-muted-foreground flex items-center gap-2"><TrendingUp className="h-4 w-4" />Saldo GND 3</h4>
+            <span className={cn("font-bold text-lg", saldoGND3 >= 0 ? "text-green-600" : "text-destructive")}>{formatCurrency(saldoGND3)}</span>
           </div>
-
-          <div className="pt-4 border-t border-border/50">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Detalhamento</span>
-              <div className="flex bg-muted p-0.5 rounded-md">
-                <Button 
-                  variant={viewMode === 'category' ? 'secondary' : 'ghost'} 
-                  size="sm" 
-                  className="h-7 text-[10px] px-2"
-                  onClick={() => setViewMode('category')}
-                >
-                  Por Categoria
-                </Button>
-                <Button 
-                  variant={viewMode === 'om' ? 'secondary' : 'ghost'} 
-                  size="sm" 
-                  className="h-7 text-[10px] px-2"
-                  onClick={() => setViewMode('om')}
-                >
-                  Por OM
-                </Button>
-              </div>
-            </div>
-
-            {viewMode === 'category' ? (
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="logistica" className="border-none">
-                  <AccordionTrigger className="py-3 hover:no-underline group">
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-orange-500" />
-                      <span className="text-sm font-semibold">Aba Logística</span>
-                    </div>
-                    <span className="ml-auto mr-4 text-sm font-bold text-orange-600">{formatCurrency(totals.totalLogisticoGeral)}</span>
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-2 pb-4">
-                    <TabDetails mode="logistica" data={totals} />
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="operacional" className="border-none">
-                  <AccordionTrigger className="py-3 hover:no-underline group">
-                    <div className="flex items-center gap-2">
-                      <Activity className="h-4 w-4 text-blue-500" />
-                      <span className="text-sm font-semibold">Aba Operacional</span>
-                    </div>
-                    <span className="ml-auto mr-4 text-sm font-bold text-blue-600">{formatCurrency(totals.totalOperacional)}</span>
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-2 pb-4">
-                    <TabDetails mode="operacional" data={totals} />
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="avex" className="border-none">
-                  <AccordionTrigger className="py-3 hover:no-underline group">
-                    <div className="flex items-center gap-2">
-                      <Helicopter className="h-4 w-4 text-purple-500" />
-                      <span className="text-sm font-semibold">Aba AvEx</span>
-                    </div>
-                    <span className="ml-auto mr-4 text-sm font-bold text-purple-600">{formatCurrency(totals.totalAviacaoExercito)}</span>
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-2 pb-4">
-                    <TabDetails mode="avex" data={totals} />
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            ) : (
-              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                {Object.values(totals.groupedByOmSolicitante)
-                  .sort((a, b) => b.totalGeral - a.totalGeral)
-                  .map((om) => (
-                    <div 
-                      key={om.omKey}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-card/50 hover:bg-accent/5 cursor-pointer transition-colors group"
-                      onClick={() => setSelectedOm(om)}
-                    >
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-bold truncate pr-2">{om.omName}</span>
-                        <span className="text-[10px] text-muted-foreground">UG: {om.ug.split(', ')[0]}</span>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-xs font-extrabold text-primary">{formatCurrency(om.totalGeral)}</span>
-                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            )}
+          <div className="flex justify-between items-center">
+            <h4 className="font-bold text-sm text-muted-foreground flex items-center gap-2"><TrendingUp className="h-4 w-4" />Saldo GND 4</h4>
+            <span className={cn("font-bold text-lg", saldoGND4 >= 0 ? "text-green-600" : "text-destructive")}>{formatCurrency(saldoGND4)}</span>
           </div>
-        </CardContent>
-      </Card>
-
-      <OmDetailsDialog 
-        om={selectedOm} 
-        totals={totals} 
-        onClose={() => setSelectedOm(null)} 
-      />
-    </div>
+          <Button onClick={onOpenCreditDialog} variant="outline" className="w-full mt-2 border-primary text-primary hover:bg-primary/10 h-8 text-sm">Informar Crédito</Button>
+        </div>
+      </CardContent>
+      <OmDetailsDialog om={selectedOm} totals={totals} onClose={() => setSelectedOm(null)} />
+    </Card>
   );
 };
