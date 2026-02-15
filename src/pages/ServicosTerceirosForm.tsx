@@ -404,6 +404,7 @@ const ServicosTerceirosForm = () => {
 
     const [selectedItems, setSelectedItems] = useState<ItemAquisicaoServicoExt[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+    const [itemsToPreselect, setItemsToPreselect] = useState<ItemAquisicaoServico[]>([]);
     
     const [pendingItems, setPendingItems] = useState<PendingServicoItem[]>([]);
     const [lastStagedState, setLastStagedState] = useState<any>(null);
@@ -732,7 +733,8 @@ const ServicosTerceirosForm = () => {
         }
         
         const isSatelital = activeTab === "servico-satelital";
-        if ((!isSatelital && efetivo <= 0) || diasOperacao <= 0) {
+        const isLocacaoVeiculos = activeTab === "locacao-veiculos";
+        if ((!isSatelital && !isLocacaoVeiculos && efetivo <= 0) || diasOperacao <= 0) {
             toast.warning("Informe o efetivo e o período.");
             return;
         }
@@ -1052,10 +1054,10 @@ const ServicosTerceirosForm = () => {
                                                                 <Label>Efetivo *</Label>
                                                                 <Input 
                                                                     type="number" 
-                                                                    value={activeTab === "servico-satelital" ? "" : (efetivo || "")} 
+                                                                    value={(activeTab === "servico-satelital" || activeTab === "locacao-veiculos") ? "" : (efetivo || "")} 
                                                                     onChange={(e) => setEfetivo(Number(e.target.value))} 
-                                                                    placeholder={activeTab === "servico-satelital" ? "N/A" : "Ex: 50"} 
-                                                                    disabled={!isPTrabEditable || activeTab === "servico-satelital"} 
+                                                                    placeholder={(activeTab === "servico-satelital" || activeTab === "locacao-veiculos") ? "N/A" : "Ex: 50"} 
+                                                                    disabled={!isPTrabEditable || activeTab === "servico-satelital" || activeTab === "locacao-veiculos"} 
                                                                     onWheel={(e) => e.currentTarget.blur()}
                                                                     onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
                                                                     className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
@@ -1080,9 +1082,6 @@ const ServicosTerceirosForm = () => {
                                                         <>
                                                             <div className="flex justify-between items-center">
                                                                 <h4 className="text-base font-semibold">Grupos de Veículos ({vehicleGroups.length})</h4>
-                                                                {!isGroupFormOpen && (
-                                                                    <Button type="button" variant="outline" size="sm" onClick={() => { setGroupToEdit(undefined); setIsGroupFormOpen(true); }} disabled={!isPTrabEditable}><Plus className="mr-2 h-4 w-4" /> Criar Novo Grupo de Veículos</Button>
-                                                                )}
                                                             </div>
 
                                                             {isGroupFormOpen && (
@@ -1123,6 +1122,21 @@ const ServicosTerceirosForm = () => {
                                                                     <AlertTitle>Nenhum Grupo Adicionado</AlertTitle>
                                                                     <AlertDescription>Crie um grupo para selecionar os veículos necessários.</AlertDescription>
                                                                 </Alert>
+                                                            )}
+
+                                                            {!isGroupFormOpen && (
+                                                                <div className="flex justify-end mt-4">
+                                                                    <Button 
+                                                                        type="button" 
+                                                                        onClick={() => { setGroupToEdit(undefined); setIsGroupFormOpen(true); }}
+                                                                        disabled={!isPTrabEditable || saveMutation.isPending}
+                                                                        variant="outline"
+                                                                        className="w-full"
+                                                                    >
+                                                                        <Plus className="mr-2 h-4 w-4" />
+                                                                        Criar Novo Grupo de Veículos
+                                                                    </Button>
+                                                                </div>
                                                             )}
                                                         </>
                                                     ) : (
@@ -1366,7 +1380,7 @@ const ServicosTerceirosForm = () => {
                                             </Card>
 
                                             <div className="flex justify-end gap-3 pt-4">
-                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={(activeTab === "locacao-veiculos" ? vehicleGroups.length === 0 : selectedItems.length === 0) || saveMutation.isPending || (activeTab !== "servico-satelital" && efetivo <= 0) || diasOperacao <= 0 || isGroupFormOpen} onClick={handleAddToPending}>
+                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={(activeTab === "locacao-veiculos" ? vehicleGroups.length === 0 : selectedItems.length === 0) || saveMutation.isPending || (activeTab !== "servico-satelital" && activeTab !== "locacao-veiculos" && efetivo <= 0) || diasOperacao <= 0 || isGroupFormOpen} onClick={handleAddToPending}>
                                                     {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                                     {editingId ? "Recalcular/Revisar Lote" : "Salvar Itens na Lista"}
                                                 </Button>
