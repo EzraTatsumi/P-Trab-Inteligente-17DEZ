@@ -164,7 +164,7 @@ const ItemsTable = ({
         <div className="space-y-2">
             {title && (
                 <h5 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                    {title === "Serviços Adicionais" ? <HandPlatter className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+                    {title === "Serviços Adicionais" ? <HandPlatter className="h-4 w-4" /> : <Bus className="h-4 w-4" />}
                     {title}
                 </h5>
             )}
@@ -250,9 +250,9 @@ const ItemsTable = ({
                                         
                                         {/* Limite Diário por Item movido para debaixo do valor unitário */}
                                         {isTransport && item.sub_categoria === 'meio-transporte' && (
-                                            <div className="mt-2 flex flex-col items-end gap-1 p-1.5 bg-blue-50/50 rounded border border-blue-100 w-fit ml-auto">
-                                                <div className="flex items-center gap-2">
-                                                    <Label className="text-[9px] font-bold text-blue-700 cursor-pointer">Limite Diário?</Label>
+                                            <div className="mt-2 flex flex-col items-center gap-1.5 p-2 bg-blue-50/50 rounded border border-blue-100 w-full max-w-[120px] ml-auto">
+                                                <div className="flex items-center justify-between w-full gap-2">
+                                                    <Label className="text-[10px] font-bold text-blue-700 cursor-pointer leading-tight">Limite Diário?</Label>
                                                     <Switch 
                                                         checked={item.has_daily_limit || false} 
                                                         onCheckedChange={(checked) => onLimitToggle?.(item.id, checked)}
@@ -261,12 +261,14 @@ const ItemsTable = ({
                                                     />
                                                 </div>
                                                 {item.has_daily_limit && (
-                                                    <div className="flex items-center gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                    <div className="flex items-center gap-1 animate-in fade-in slide-in-from-top-1 duration-200 w-full justify-center">
                                                         <Input 
                                                             type="number" 
                                                             value={item.daily_limit_km || ""} 
                                                             onChange={(e) => onLimitChange?.(item.id, e.target.value)}
-                                                            className="h-5 w-12 text-right text-[9px] px-1"
+                                                            onWheel={(e) => e.currentTarget.blur()}
+                                                            onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                            className="h-7 w-14 text-center text-[10px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none px-1"
                                                             disabled={!isPTrabEditable}
                                                         />
                                                         <span className="text-[9px] font-bold text-blue-600">Km</span>
@@ -794,7 +796,7 @@ const ServicosTerceirosForm = () => {
     };
 
     const handleRestoreMemoria = async (id: string) => {
-        const { error } = await supabase.from('servicos_terceiros_registros').update({ detalhamento_customizado: null }).eq('id', id);
+        const { error = null } = await supabase.from('servicos_terceiros_registros').update({ detalhamento_customizado: null }).eq('id', id);
         if (error) toast.error("Erro ao restaurar.");
         else {
             toast.success("Memória automática restaurada.");
