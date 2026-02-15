@@ -20,6 +20,28 @@ export interface ServicoTerceiroRegistro {
     group_purpose?: string | null;
 }
 
+/**
+ * Define a preposição correta (do/da) baseada no nome da OM.
+ */
+const getOmPreposition = (name: string) => {
+    const lower = name.toLowerCase();
+    const feminineKeywords = ['cia', 'companhia', 'base', 'escola', 'academia', 'policlínica', 'prefeitura', 'delegacia', 'seção', 'brigada', 'divisão', 'região', 'inspetoria', 'diretoria', 'secretaria', 'superintendência', 'agência', 'fundação', 'universidade', 'faculdade', 'biblioteca', 'gráfica'];
+    
+    if (feminineKeywords.some(k => lower.includes(k))) return 'da';
+    return 'do';
+};
+
+/**
+ * Define o artigo correto (o/a) baseado no nome da OM.
+ */
+const getOmArticle = (name: string) => {
+    const lower = name.toLowerCase();
+    const feminineKeywords = ['cia', 'companhia', 'base', 'escola', 'academia', 'policlínica', 'prefeitura', 'delegacia', 'seção', 'brigada', 'divisão', 'região', 'inspetoria', 'diretoria', 'secretaria', 'superintendência', 'agência', 'fundação', 'universidade', 'faculdade', 'biblioteca', 'gráfica'];
+    
+    if (feminineKeywords.some(k => lower.includes(k))) return 'a';
+    return 'o';
+};
+
 export const calculateServicoTotals = (items: any[], trips: number = 1) => {
     let totalND30 = 0;
     let totalND39 = 0;
@@ -64,9 +86,12 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
         const pluralMilitar = registro.efetivo === 1 ? 'militar' : 'militares';
         const pluralDia = registro.dias_operacao === 1 ? 'dia' : 'dias';
         
+        const prep = getOmPreposition(registro.organizacao);
+        const art = getOmArticle(registro.organizacao);
+
         const beneficiary = details.has_efetivo
-            ? `para atender ${registro.efetivo} ${pluralMilitar} do/da ${registro.organizacao}`
-            : `para atender o/a ${registro.organizacao}`;
+            ? `para atender ${registro.efetivo} ${pluralMilitar} ${prep} ${registro.organizacao}`
+            : `para atender ${art} ${registro.organizacao}`;
 
         let memoria = `${ndHeader} - ${tipoContrato} de ${catLabel} ${beneficiary}, durante ${registro.dias_operacao} ${pluralDia} de Planejamento.\n\n`;
         
