@@ -94,8 +94,9 @@ export const generateMaterialConsumoMemoriaCalculo = (
             texto += `- ${i.descricao_reduzida || i.descricao_item}: ${formatCurrency(i.valor_unitario)}/${unit}${limitInfo}.\n`;
         });
 
+        // Alinhamento da fórmula com 9 espaços para alinhar com o parêntese da linha de cima
         texto += `\nFórmula: (Nr Item x Valor Unitário x Período) x Nr Viagens.\n`;
-        texto += `                  Qtd Km adicional x Valor Unitário.\n\n`;
+        texto += `         Qtd Km adicional x Valor Unitário.\n\n`;
         
         items.forEach((i: any) => {
             const qty = i.quantidade || 0;
