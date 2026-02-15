@@ -32,7 +32,9 @@ import {
     Bus,
     ArrowRightLeft,
     ArrowDownUp,
-    LayoutGrid
+    LayoutGrid,
+    ToggleLeft,
+    ToggleRight
 } from "lucide-react";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
@@ -60,6 +62,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Switch } from "@/components/ui/switch";
 
 export type CategoriaServico = 
     | "fretamento-aereo" 
@@ -149,6 +152,8 @@ const ServicosTerceirosForm = () => {
     const [distanciaItinerario, setDistanciaItinerario] = useState<number | "">("");
     const [distanciaPercorridaDia, setDistanciaPercorridaDia] = useState<number | "">("");
     const [numeroViagens, setNumeroViagens] = useState<number | "">("");
+    const [hasDailyLimit, setHasDailyLimit] = useState(false);
+    const [dailyLimitKm, setDailyLimitKm] = useState<number | "">("");
 
     const [selectedItems, setSelectedItems] = useState<ItemAquisicaoServicoExt[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
@@ -320,6 +325,8 @@ const ServicosTerceirosForm = () => {
         setDistanciaItinerario("");
         setDistanciaPercorridaDia("");
         setNumeroViagens("");
+        setHasDailyLimit(false);
+        setDailyLimitKm("");
         setEditingId(null);
     };
 
@@ -426,7 +433,9 @@ const ServicosTerceirosForm = () => {
                 itinerario: itinerario,
                 distancia_itinerario: distanciaItinerario,
                 distancia_percorrida_dia: distanciaPercorridaDia,
-                numero_viagens: numeroViagens
+                numero_viagens: numeroViagens,
+                has_daily_limit: hasDailyLimit,
+                daily_limit_km: dailyLimitKm
             },
             valor_total: totalGeral,
             valor_nd_30: totalND30,
@@ -490,6 +499,8 @@ const ServicosTerceirosForm = () => {
             setDistanciaItinerario(details.distancia_itinerario || "");
             setDistanciaPercorridaDia(details.distancia_percorrida_dia || "");
             setNumeroViagens(details.numero_viagens || "");
+            setHasDailyLimit(details.has_daily_limit || false);
+            setDailyLimitKm(details.daily_limit_km || "");
         }
 
         const trips = reg.categoria === 'transporte-coletivo' ? (Number(details.numero_viagens) || 1) : 1;
@@ -567,12 +578,24 @@ const ServicosTerceirosForm = () => {
     };
 
     // Componente de Tabela de Itens (Reutilizável)
-    const ItemsTable = ({ items, title, showClassificationActions = false }: { items: ItemAquisicaoServicoExt[], title?: string, showClassificationActions?: boolean }) => {
+    const ItemsTable = ({ 
+        items, 
+        title, 
+        showClassificationActions = false,
+        hidePeriod = false,
+        hideTotalUnits = false
+    }: { 
+        items: ItemAquisicaoServicoExt[], 
+        title?: string, 
+        showClassificationActions?: boolean,
+        hidePeriod?: boolean,
+        hideTotalUnits?: boolean
+    }) => {
         if (items.length === 0) return null;
         
         return (
             <div className="space-y-2">
-                {title && <h5 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><LayoutGrid className="h-4 w-4" /> {title}</h5>}
+                {title && <h5 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">{title}</h5>}
                 <div className="border rounded-md overflow-hidden bg-background">
                     <Table>
                         <TableHeader>
@@ -580,7 +603,7 @@ const ServicosTerceirosForm = () => {
                                 <TableHead className="w-[80px] text-center">Qtd</TableHead>
                                 <TableHead>Descrição do Serviço</TableHead>
                                 <TableHead className="text-right w-[140px]">Valor Unitário</TableHead>
-                                {activeTab !== "fretamento-aereo" && <TableHead className="text-center w-[120px]">Período</TableHead>}
+                                {!hidePeriod && activeTab !== "fretamento-aereo" && <TableHead className="text-center w-[120px]">Período</TableHead>}
                                 <TableHead className="text-right w-[140px]">Total</TableHead>
                                 <TableHead className="w-[100px] text-center">Ações</TableHead>
                             </TableRow>
@@ -652,7 +675,7 @@ const ServicosTerceirosForm = () => {
                                         <TableCell className="text-right text-xs text-muted-foreground align-top pt-4">
                                             {formatCurrency(item.valor_unitario)} / {unit}
                                         </TableCell>
-                                        {activeTab !== "fretamento-aereo" && (
+                                        {!hidePeriod && activeTab !== "fretamento-aereo" && (
                                             <TableCell className="align-top pt-4">
                                                 <div className="flex flex-col items-center gap-1">
                                                     <div className="flex items-center gap-2 justify-center">
@@ -676,7 +699,7 @@ const ServicosTerceirosForm = () => {
                                         )}
                                         <TableCell className="text-right text-sm font-bold align-top pt-4">
                                             {formatCurrency(item.valor_total)}
-                                            {isTransport && (
+                                            {!hideTotalUnits && isTransport && (
                                                 <div className="text-[10px] text-muted-foreground font-normal mt-1">
                                                     Total: {totalUnits} {unit}{totalUnits !== 1 ? 's' : ''}
                                                 </div>
@@ -986,8 +1009,36 @@ const ServicosTerceirosForm = () => {
 
                                                                     {/* Seção Meios de Transporte */}
                                                                     <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-lg space-y-3">
+                                                                        <div className="flex items-center justify-between mb-2">
+                                                                            <h5 className="text-sm font-bold text-blue-700 uppercase tracking-wider flex items-center gap-2">
+                                                                                <Bus className="h-4 w-4" /> Meios de Transporte
+                                                                            </h5>
+                                                                            <div className="flex items-center gap-4 bg-background/50 p-2 rounded-md border border-blue-200">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <Label htmlFor="daily-limit" className="text-xs font-medium cursor-pointer">Tem limite diário?</Label>
+                                                                                    <Switch 
+                                                                                        id="daily-limit" 
+                                                                                        checked={hasDailyLimit} 
+                                                                                        onCheckedChange={setHasDailyLimit} 
+                                                                                        disabled={!isPTrabEditable}
+                                                                                    />
+                                                                                </div>
+                                                                                {hasDailyLimit && (
+                                                                                    <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2 duration-200">
+                                                                                        <Input 
+                                                                                            type="number" 
+                                                                                            value={dailyLimitKm} 
+                                                                                            onChange={(e) => setDailyLimitKm(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                                            placeholder="Km" 
+                                                                                            className="h-7 w-20 text-right text-xs"
+                                                                                            disabled={!isPTrabEditable}
+                                                                                        />
+                                                                                        <span className="text-[10px] font-bold text-muted-foreground">KM</span>
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
                                                                         <ItemsTable 
-                                                                            title="Meios de Transporte" 
                                                                             items={selectedItems.filter(i => i.sub_categoria === 'meio-transporte')} 
                                                                             showClassificationActions={true}
                                                                         />
@@ -1002,6 +1053,8 @@ const ServicosTerceirosForm = () => {
                                                                             title="Serviços Adicionais" 
                                                                             items={selectedItems.filter(i => i.sub_categoria === 'servico-adicional')} 
                                                                             showClassificationActions={true}
+                                                                            hidePeriod={true}
+                                                                            hideTotalUnits={true}
                                                                         />
                                                                         {selectedItems.filter(i => i.sub_categoria === 'servico-adicional').length === 0 && (
                                                                             <p className="text-xs text-muted-foreground italic text-center py-4">Nenhum serviço adicional classificado.</p>
