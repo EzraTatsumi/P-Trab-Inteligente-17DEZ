@@ -1,5 +1,5 @@
 import { ItemAquisicaoServico } from "@/types/diretrizesServicosTerceiros";
-import { formatCurrency, formatCodug, formatPregao } from "./formatUtils";
+import { formatCurrency, formatCodug, formatPregao, formatNumber } from "./formatUtils";
 import { Tables } from "@/integrations/supabase/types";
 
 export type ServicoTerceiroRegistro = Tables<'servicos_terceiros_registros'>;
@@ -36,8 +36,6 @@ export const generateServicoMemoriaCalculo = (
     const { categoria, detalhes_planejamento } = registro;
     const planejamento = detalhes_planejamento as any;
     
-    // CORREÇÃO: Busca o group_name e group_purpose dentro do objeto de planejamento, 
-    // já que estas colunas podem não existir fisicamente na tabela servicos_terceiros_registros
     const group_name = (registro as any).group_name || planejamento?.group_name;
     const group_purpose = (registro as any).group_purpose || planejamento?.group_purpose;
     
@@ -49,7 +47,6 @@ export const generateServicoMemoriaCalculo = (
     const diasText = context.dias_operacao === 1 ? "dia" : "dias";
     const efetivoText = context.efetivo === 1 ? "militar" : "militares";
 
-    // Lógica de concordância para a OM
     const paraOM = context.organizacao.includes('ª') ? 'para a' : context.organizacao.includes('º') ? 'para o' : 'para o/a';
 
     // --- FRETAMENTO AÉREO ---
@@ -63,11 +60,11 @@ export const generateServicoMemoriaCalculo = (
         texto += `Cálculo:\n`;
         texto += `- Tipo Anv: ${planejamento.tipo_anv || 'N/A'}.\n`;
         texto += `- Capacidade: ${planejamento.capacidade || 'N/A'}.\n`;
-        texto += `- Velocidade de Cruzeiro: ${planejamento.velocidade_cruzeiro || 0} Km/h.\n`;
-        texto += `- Distância a percorrer: ${planejamento.distancia_percorrer || 0} Km.\n`;
+        texto += `- Velocidade de Cruzeiro: ${formatNumber(planejamento.velocidade_cruzeiro, 0)} Km/h.\n`;
+        texto += `- Distância a percorrer: ${formatNumber(planejamento.distancia_percorrer, 0)} Km.\n`;
         texto += `- Valor da HV: ${formatCurrency(item.valor_unitario)}/HV.\n\n`;
         texto += `Fórmula: Quantidade de HV (Dist / Vel) x valor da HV.\n`;
-        texto += `- ${item.quantidade} HV x ${formatCurrency(item.valor_unitario)}/HV = ${formatCurrency(valorTotal)}.\n\n`;
+        texto += `- ${formatNumber(item.quantidade, 4)} HV x ${formatCurrency(item.valor_unitario)}/HV = ${formatCurrency(valorTotal)}.\n\n`;
         texto += `Total: ${formatCurrency(valorTotal)}.\n`;
         texto += `(Pregão ${formatPregao(item.numero_pregao)} - UASG ${formatCodug(item.uasg)})`;
         return texto;
@@ -81,8 +78,8 @@ export const generateServicoMemoriaCalculo = (
         let texto = `33.90.33 - Contratação de veículos do tipo Transporte Coletivo para transporte de ${context.efetivo} ${efetivoText} ${paraOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
         texto += `Cálculo:\n`;
         texto += `- Itn Dslc: ${planejamento.itinerario || 'N/A'}.\n`;
-        texto += `- Dist Itn: ${planejamento.distancia_itinerario || 0} Km.\n`;
-        texto += `- Dist Percorrida/dia: ${planejamento.distancia_percorrida_dia || 0} Km.\n`;
+        texto += `- Dist Itn: ${formatNumber(planejamento.distancia_itinerario, 0)} Km.\n`;
+        texto += `- Dist Percorrida/dia: ${formatNumber(planejamento.distancia_percorrida_dia, 0)} Km.\n`;
         texto += `- Nr Viagens: ${trips}.\n`;
         
         items.forEach((i: any) => {
@@ -103,9 +100,9 @@ export const generateServicoMemoriaCalculo = (
             const totalItem = qty * vlrUnit * period * itemMultiplier;
             
             if (isAdditional) {
-                texto += `- ${qty} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)}/${unit} = ${formatCurrency(totalItem)}.\n`;
+                texto += `- ${formatNumber(qty, 4)} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)}/${unit} = ${formatCurrency(totalItem)}.\n`;
             } else {
-                texto += `- (${qty} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)}/${unit} x ${period} ${unit}${period > 1 ? 's' : ''}) x ${trips} ${trips === 1 ? 'viagem' : 'viagens'} = ${formatCurrency(totalItem)}.\n`;
+                texto += `- (${formatNumber(qty, 4)} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)}/${unit} x ${formatNumber(period, 4)} ${unit}${period > 1 ? 's' : ''}) x ${trips} ${trips === 1 ? 'viagem' : 'viagens'} = ${formatCurrency(totalItem)}.\n`;
             }
         });
 
@@ -132,7 +129,7 @@ export const generateServicoMemoriaCalculo = (
             const totalItem = qty * period * item.valor_unitario;
             const itemDiasText = period === 1 ? "dia" : "dias";
             
-            texto += `- ${qty} ${item.descricao_reduzida || item.descricao_item} x ${formatCurrency(item.valor_unitario)}/${unit} x ${period} ${itemDiasText} = ${formatCurrency(totalItem)}.\n`;
+            texto += `- ${formatNumber(qty, 4)} ${item.descricao_reduzida || item.descricao_item} x ${formatCurrency(item.valor_unitario)}/${unit} x ${formatNumber(period, 4)} ${itemDiasText} = ${formatCurrency(totalItem)}.\n`;
         });
 
         texto += `\nTotal: ${formatCurrency(Number(registro.valor_total))}.\n`;
@@ -158,7 +155,7 @@ export const generateServicoMemoriaCalculo = (
             const period = item.periodo || 0;
             const qty = item.quantidade || 0;
             const totalItem = qty * period * item.valor_unitario;
-            texto += `- (${qty} un x ${formatCurrency(item.valor_unitario)}/${unit}) x ${period} ${unit}${period > 1 ? 's' : ''} = ${formatCurrency(totalItem)}.\n`;
+            texto += `- (${formatNumber(qty, 4)} un x ${formatCurrency(item.valor_unitario)}/${unit}) x ${formatNumber(period, 4)} ${unit}${period > 1 ? 's' : ''} = ${formatCurrency(totalItem)}.\n`;
         });
         texto += `\nTotal: ${formatCurrency(Number(registro.valor_total))}.\n`;
         if (items.length > 0) texto += `(Pregão ${formatPregao(items[0].numero_pregao)} - UASG ${formatCodug(items[0].uasg)})`;
@@ -181,7 +178,7 @@ export const generateServicoMemoriaCalculo = (
         const period = item.periodo || 1;
         const totalItem = (item.quantidade || 0) * period * item.valor_unitario;
         texto += `${index + 1}. ${item.descricao_item}\n`;
-        texto += `   - Quantidade: ${item.quantidade} ${item.unidade_medida}\n`;
+        texto += `   - Quantidade: ${formatNumber(item.quantidade, 4)} ${item.unidade_medida}\n`;
         texto += `   - Valor Unitário: ${formatCurrency(item.valor_unitario)}\n`;
         texto += `   - Subtotal: ${formatCurrency(totalItem)}\n`;
         texto += `   - Amparo: Pregão ${formatPregao(item.numero_pregao)} (UASG: ${formatCodug(item.uasg)})\n\n`;
