@@ -1,19 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TableCell, TableRow, Table } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import { DiretrizMaterialPermanente } from "@/types/diretrizesMaterialPermanente";
+import { DiretrizMaterialPermanente, ItemAquisicaoPermanente } from "@/types/diretrizesMaterialPermanente";
 import { formatCurrency, formatCodug, formatPregao } from "@/lib/formatUtils";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { cn } from '@/lib/utils';
+import ItemAquisicaoPermanenteDraggableRow from './ItemAquisicaoPermanenteDraggableRow';
 
 interface MaterialPermanenteDiretrizRowProps {
     diretriz: DiretrizMaterialPermanente;
     onEdit: (diretriz: DiretrizMaterialPermanente) => void;
     onDelete: (id: string, nome: string) => Promise<void>;
     loading?: boolean;
-    // Props para consistência com a busca e navegação
+    onMoveItem?: (item: ItemAquisicaoPermanente, sourceDiretrizId: string, targetDiretrizId: string) => void;
     id?: string;
     forceOpen?: boolean;
 }
@@ -23,10 +24,15 @@ const MaterialPermanenteDiretrizRow: React.FC<MaterialPermanenteDiretrizRowProps
     onEdit,
     onDelete,
     loading = false,
+    onMoveItem,
     id,
     forceOpen = false,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [isDragOver, setIsDragOver] = useState(false);
+    
+    // Ref para o temporizador de expansão automática
+    const expandTimerRef = useRef<number | null>(null); 
     
     // Sincroniza a abertura forçada (usada na busca)
     useEffect(() => {
@@ -36,6 +42,62 @@ const MaterialPermanenteDiretrizRow: React.FC<MaterialPermanenteDiretrizRowProps
     }, [forceOpen]);
 
     const itensAquisicao = diretriz.itens_aquisicao || [];
+
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        setIsDragOver(true);
+        
+        if (expandTimerRef.current) {
+            clearTimeout(expandTimerRef.current);
+            expandTimerRef.current = null;
+        }
+    };
+    
+    const handleDragLeave = () => {
+        setIsDragOver(false);
+    };
+    
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        
+        const data = e.dataTransfer.getData("application/json");
+        if (!data || !onMoveItem) return;
+        
+        try {
+            const { item, sourceDiretrizId } = JSON.parse(data) as { item: ItemAquisicaoPermanente, sourceDiretrizId: string };
+            
+            if (sourceDiretrizId === diretriz.id) {
+                return;
+            }
+            
+            setIsOpen(true); 
+            onMoveItem(item, sourceDiretrizId, diretriz.id);
+            
+        } catch (error) {
+            console.error("Erro ao processar dados de drop:", error);
+        }
+    };
+    
+    const handleDragEnterTrigger = (e: React.DragEvent<HTMLTableRowElement>) => {
+        const hasJsonData = e.dataTransfer.types.includes("application/json");
+        if (!hasJsonData || isOpen) return;
+        
+        if (expandTimerRef.current) return;
+        
+        expandTimerRef.current = setTimeout(() => {
+            setIsOpen(true);
+            expandTimerRef.current = null;
+        }, 300) as unknown as number;
+    };
+    
+    const handleDragLeaveTrigger = () => {
+        if (expandTimerRef.current) {
+            clearTimeout(expandTimerRef.current);
+            expandTimerRef.current = null;
+        }
+    };
 
     return (
         <React.Fragment>
@@ -47,6 +109,8 @@ const MaterialPermanenteDiretrizRow: React.FC<MaterialPermanenteDiretrizRowProps
                     isOpen && "bg-muted/50"
                 )}
                 onClick={() => setIsOpen(!isOpen)}
+                onDragEnter={handleDragEnterTrigger}
+                onDragLeave={handleDragLeaveTrigger}
             >
                 {/* Coluna Nr Subitem (com Chevron integrado) */}
                 <TableCell className="font-semibold w-[150px] text-center">
@@ -97,12 +161,20 @@ const MaterialPermanenteDiretrizRow: React.FC<MaterialPermanenteDiretrizRowProps
                 <TableCell colSpan={3} className="p-0">
                     <Collapsible open={isOpen}>
                         <CollapsibleContent>
-                            <div className="p-4 bg-muted/50 border-t border-border">
+                            <div 
+                                className={cn(
+                                    "p-4 bg-muted/50 border-t border-border transition-colors",
+                                    isDragOver && "bg-primary/10 border-primary ring-2 ring-primary/50"
+                                )}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
+                            >
                                 {itensAquisicao.length > 0 ? (
                                     <Table className="bg-background border rounded-md overflow-hidden">
                                         <thead>
                                             <TableRow className="text-xs text-muted-foreground hover:bg-background">
-                                                <th className="px-4 py-2 text-left font-normal w-[20px]"></th> {/* Espaço para manter o alinhamento com o ícone de drag de outras tabelas */}
+                                                <th className="px-4 py-2 text-left font-normal w-[20px]"></th>
                                                 <th className="px-4 py-2 text-left font-normal w-[35%]">Descrição Reduzida</th>
                                                 <th className="px-4 py-2 text-center font-normal w-[10%]">Cód. CATMAT</th>
                                                 <th className="px-4 py-2 text-center font-normal w-[10%]">Pregão</th>
@@ -111,33 +183,18 @@ const MaterialPermanenteDiretrizRow: React.FC<MaterialPermanenteDiretrizRowProps
                                             </TableRow>
                                         </thead>
                                         <tbody>
-                                            {itensAquisicao.map((item, idx) => (
-                                                <TableRow key={item.id || idx} className="hover:bg-muted/30">
-                                                    <TableCell className="px-4 py-2 w-[20px]"></TableCell>
-                                                    <TableCell className="px-4 py-2">
-                                                        <div className="flex flex-col">
-                                                            <span className="font-bold text-sm">{item.descricao_reduzida || 'N/A'}</span>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="px-4 py-2 text-center text-xs">
-                                                        {item.codigo_catmat || 'N/A'}
-                                                    </TableCell>
-                                                    <TableCell className="px-4 py-2 text-center text-xs">
-                                                        {formatPregao(item.numero_pregao)}
-                                                    </TableCell>
-                                                    <TableCell className="px-4 py-2 text-center text-xs">
-                                                        {formatCodug(item.uasg)}
-                                                    </TableCell>
-                                                    <TableCell className="px-4 py-2 text-center font-bold text-sm">
-                                                        {formatCurrency(item.valor_unitario)}
-                                                    </TableCell>
-                                                </TableRow>
+                                            {itensAquisicao.map((item) => (
+                                                <ItemAquisicaoPermanenteDraggableRow 
+                                                    key={item.id} 
+                                                    item={item}
+                                                    diretrizId={diretriz.id}
+                                                />
                                             ))}
                                         </tbody>
                                     </Table>
                                 ) : (
                                     <p className="text-sm text-muted-foreground text-center py-4">
-                                        Nenhum item de aquisição detalhado para este subitem.
+                                        {isDragOver ? "Solte o item aqui para movê-lo para este subitem." : "Nenhum item de aquisição detalhado para este subitem."}
                                     </p>
                                 )}
                             </div>
