@@ -424,7 +424,7 @@ const ServicosTerceirosForm = () => {
     const [memoriaEdit, setMemoriaEdit] = useState("");
     
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-    const [groupToDelete, setGroupToDelete] = useState<ConsolidatedServicoRecord | null>(null);
+    const [recordToDelete, setRecordToDelete] = useState<ServicoTerceiroRegistro | null>(null);
 
     // --- ESTADOS PARA GRUPOS DE VEÍCULOS ---
     const [vehicleGroups, setVehicleGroups] = useState<VehicleGroup[]>([]);
@@ -609,11 +609,11 @@ const ServicosTerceirosForm = () => {
             if (error) throw error;
         },
         onSuccess: () => {
-            toast.success("Lote excluído.");
+            toast.success("Registro excluído.");
             queryClient.invalidateQueries({ queryKey: ['servicosTerceirosRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
             setShowDeleteDialog(false);
-            setGroupToDelete(null);
+            setRecordToDelete(null);
         },
         onError: (err) => toast.error("Erro ao excluir: " + err.message)
     });
@@ -999,8 +999,8 @@ const ServicosTerceirosForm = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const handleConfirmDelete = (group: ConsolidatedServicoRecord) => {
-        setGroupToDelete(group);
+    const handleConfirmDelete = (reg: ServicoTerceiroRegistro) => {
+        setRecordToDelete(reg);
         setShowDeleteDialog(true);
     };
 
@@ -1703,7 +1703,7 @@ const ServicosTerceirosForm = () => {
                                                                     <span className="font-extrabold text-xl text-foreground">{formatCurrency(Number(reg.valor_total))}</span>
                                                                     <div className="flex gap-1 shrink-0">
                                                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(reg)} disabled={!isPTrabEditable || pendingItems.length > 0}><Pencil className="h-4 w-4" /></Button>
-                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleConfirmDelete(group)} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button>
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleConfirmDelete(reg)} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1776,14 +1776,14 @@ const ServicosTerceirosForm = () => {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                            <Trash2 className="h-5 w-5" /> Confirmar Exclusão de Lote
+                            <Trash2 className="h-5 w-5" /> Confirmar Exclusão de Registro
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Tem certeza que deseja excluir o lote de serviços para a OM <span className="font-bold">{groupToDelete?.organizacao}</span>? Esta ação é irreversível.
+                            Tem certeza que deseja excluir o registro de <span className="font-bold">{recordToDelete ? formatCategoryName(recordToDelete.categoria) : ''}</span> para a OM <span className="font-bold">{recordToDelete?.organizacao}</span>? Esta ação é irreversível.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogAction onClick={() => groupToDelete && deleteMutation.mutate(groupToDelete.records.map(r => r.id))} className="bg-destructive hover:bg-destructive/90">Excluir Lote</AlertDialogAction>
+                        <AlertDialogAction onClick={() => recordToDelete && deleteMutation.mutate([recordToDelete.id])} className="bg-destructive hover:bg-destructive/90">Excluir Registro</AlertDialogAction>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                     </AlertDialogFooter>
                 </AlertDialogContent>
