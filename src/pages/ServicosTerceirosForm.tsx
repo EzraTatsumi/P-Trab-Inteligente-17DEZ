@@ -234,34 +234,6 @@ const ItemsTable = ({
                                             Pregão: {formatPregao(item.numero_pregao)} | UASG: {formatCodug(item.uasg) || 'N/A'}
                                         </p>
                                         
-                                        {/* Limite Diário por Item */}
-                                        {isTransport && item.sub_categoria === 'meio-transporte' && (
-                                            <div className="mt-2 flex items-center gap-3 p-2 bg-blue-50/50 rounded border border-blue-100 w-fit">
-                                                <div className="flex items-center gap-2">
-                                                    <Label className="text-[10px] font-bold text-blue-700 cursor-pointer">Limite Diário?</Label>
-                                                    <Switch 
-                                                        checked={item.has_daily_limit || false} 
-                                                        onCheckedChange={(checked) => onLimitToggle?.(item.id, checked)}
-                                                        disabled={!isPTrabEditable}
-                                                        className="scale-75"
-                                                    />
-                                                </div>
-                                                {item.has_daily_limit && (
-                                                    <div className="flex items-center gap-1 animate-in fade-in slide-in-from-left-1 duration-200">
-                                                        <Input 
-                                                            type="number" 
-                                                            value={item.daily_limit_km || ""} 
-                                                            onChange={(e) => onLimitChange?.(item.id, e.target.value)}
-                                                            placeholder="Km"
-                                                            className="h-6 w-16 text-right text-[10px] px-1"
-                                                            disabled={!isPTrabEditable}
-                                                        />
-                                                        <span className="text-[9px] font-bold text-blue-600">KM</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
                                         {isCharter && suggestedHV !== null && (
                                             <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded flex items-start gap-2">
                                                 <Info className="h-3 w-3 text-blue-600 mt-0.5" />
@@ -274,7 +246,34 @@ const ItemsTable = ({
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right text-xs text-muted-foreground align-top pt-4">
-                                        {formatCurrency(item.valor_unitario)} / {unit}
+                                        <div>{formatCurrency(item.valor_unitario)} / {unit}</div>
+                                        
+                                        {/* Limite Diário por Item movido para debaixo do valor unitário */}
+                                        {isTransport && item.sub_categoria === 'meio-transporte' && (
+                                            <div className="mt-2 flex flex-col items-end gap-1 p-1.5 bg-blue-50/50 rounded border border-blue-100 w-fit ml-auto">
+                                                <div className="flex items-center gap-2">
+                                                    <Label className="text-[9px] font-bold text-blue-700 cursor-pointer">Limite Diário?</Label>
+                                                    <Switch 
+                                                        checked={item.has_daily_limit || false} 
+                                                        onCheckedChange={(checked) => onLimitToggle?.(item.id, checked)}
+                                                        disabled={!isPTrabEditable}
+                                                        className="scale-50"
+                                                    />
+                                                </div>
+                                                {item.has_daily_limit && (
+                                                    <div className="flex items-center gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                        <Input 
+                                                            type="number" 
+                                                            value={item.daily_limit_km || ""} 
+                                                            onChange={(e) => onLimitChange?.(item.id, e.target.value)}
+                                                            className="h-5 w-12 text-right text-[9px] px-1"
+                                                            disabled={!isPTrabEditable}
+                                                        />
+                                                        <span className="text-[9px] font-bold text-blue-600">Km</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </TableCell>
                                     {!hidePeriod && activeTab !== "fretamento-aereo" && (
                                         <TableCell className="align-top pt-4">
@@ -329,7 +328,7 @@ const ItemsTable = ({
                                                             title="Mover para Serviços Adicionais"
                                                             onClick={() => onMoveItem(item.id, 'servico-adicional')}
                                                         >
-                                                            <Plus className="h-3.5 w-3.5" />
+                                                            <HandPlatter className="h-3.5 w-3.5" />
                                                         </Button>
                                                     )}
                                                     {item.sub_categoria && (
@@ -1195,6 +1194,19 @@ const ServicosTerceirosForm = () => {
 
                                             const totalQty = item.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0) || 0;
 
+                                            // Cálculos para Transporte Coletivo
+                                            const totalMeios = item.categoria === 'transporte-coletivo' 
+                                                ? item.detalhes_planejamento.itens_selecionados
+                                                    .filter((i: any) => i.sub_categoria === 'meio-transporte')
+                                                    .reduce((acc: number, i: any) => acc + (i.valor_total || 0), 0)
+                                                : 0;
+                                            
+                                            const totalAdicionais = item.categoria === 'transporte-coletivo'
+                                                ? item.detalhes_planejamento.itens_selecionados
+                                                    .filter((i: any) => i.sub_categoria === 'servico-adicional')
+                                                    .reduce((acc: number, i: any) => acc + (i.valor_total || 0), 0)
+                                                : 0;
+
                                             return (
                                                 <Card key={item.tempId} className="border-2 shadow-md border-secondary bg-secondary/10">
                                                     <CardContent className="p-4">
@@ -1217,6 +1229,9 @@ const ServicosTerceirosForm = () => {
                                                                     {item.categoria === 'transporte-coletivo' && "Período / Efetivo / Nr Viagens:"}
                                                                     {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo'].includes(item.categoria) && "Período / Detalhes:"}
                                                                 </p>
+                                                                {item.categoria === 'transporte-coletivo' && (
+                                                                    <p className="font-medium">Nr Diárias / Qtd Km Adicional:</p>
+                                                                )}
                                                             </div>
                                                             <div className="text-right space-y-1">
                                                                 <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
@@ -1231,6 +1246,11 @@ const ServicosTerceirosForm = () => {
                                                                     {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo'].includes(item.categoria) && 
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalUnits} un`}
                                                                 </p>
+                                                                {item.categoria === 'transporte-coletivo' && (
+                                                                    <p className="font-medium text-blue-700">
+                                                                        Meios: {formatCurrency(totalMeios)} | Adicionais: {formatCurrency(totalAdicionais)}
+                                                                    </p>
+                                                                )}
                                                             </div>
                                                         </div>
                                                         <div className="w-full h-[1px] bg-secondary/30 my-3" />
