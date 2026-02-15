@@ -1322,9 +1322,6 @@ const ComplementoAlimentacaoForm = () => {
                                                 <div className="flex items-center justify-between mb-3 border-b pb-2">
                                                     <h3 className="font-bold text-lg text-primary flex items-center gap-2">
                                                         {omName} (UG: {formatCodug(ug)})
-                                                        <Badge variant="outline" className="text-xs">
-                                                            {faseAtividade}
-                                                        </Badge>
                                                     </h3>
                                                     <span className="font-extrabold text-xl text-primary">
                                                         {formatCurrency(totalOM)}
@@ -1345,8 +1342,9 @@ const ComplementoAlimentacaoForm = () => {
                                                                 <div className="flex items-center justify-between">
                                                                     <div className="flex flex-col">
                                                                         <div className="flex items-center gap-2">
-                                                                            <h4 className="font-semibold text-base text-foreground">
+                                                                            <h4 className="font-semibold text-base text-foreground flex items-center gap-2">
                                                                                 Complemento de Alimentação ({registro.group_name})
+                                                                                <Badge variant="outline" className="text-xs font-semibold">{faseAtividade}</Badge>
                                                                             </h4>
                                                                         </div>
                                                                         <p className="text-xs text-muted-foreground">
