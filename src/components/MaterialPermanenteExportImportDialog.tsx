@@ -175,6 +175,16 @@ const MaterialPermanenteExportImportDialog: React.FC<MaterialPermanenteExportImp
                                 <div className="p-3 border rounded-lg bg-yellow-50/50 border-yellow-200"><p className="text-2xl font-bold text-yellow-600">{importSummary.totalDuplicates}</p><p className="text-sm text-muted-foreground">Duplicados</p></div>
                                 <div className="p-3 border rounded-lg bg-orange-50/50 border-orange-200"><p className="text-2xl font-bold text-orange-600">{importSummary.totalExisting}</p><p className="text-sm text-muted-foreground">Existentes</p></div>
                             </div>
+                            
+                            {importSummary.totalInvalid > 0 && (
+                                <div className="flex items-center p-3 bg-red-100 border border-red-300 rounded-md text-red-800">
+                                    <FileWarning className="h-5 w-5 mr-2 flex-shrink-0" />
+                                    <p className="text-sm font-medium">
+                                        {importSummary.totalInvalid} linhas possuem erros, são duplicatas internas ou já estão cadastradas e serão ignoradas na importação.
+                                    </p>
+                                </div>
+                            )}
+
                             <ScrollArea className="h-[300px] border rounded-lg">
                                 <Table>
                                     <TableHeader className="sticky top-0 bg-background z-10">
@@ -184,22 +194,45 @@ const MaterialPermanenteExportImportDialog: React.FC<MaterialPermanenteExportImp
                                             <TableHead className="w-[30%]">Item</TableHead>
                                             <TableHead className="w-[10%] text-center">Pregão</TableHead>
                                             <TableHead className="w-[10%] text-right">Valor</TableHead>
-                                            <TableHead className="w-[15%]">Status</TableHead>
+                                            <TableHead className="w-[15%]">Status/Erros</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {stagedData.map((row, index) => (
-                                            <TableRow key={index} className={cn(!row.isValid && "bg-red-50/50")}>
+                                            <TableRow key={index} className={cn(
+                                                !row.isValid && "bg-red-50/50",
+                                                row.isDuplicateInternal && "bg-yellow-50/50",
+                                                row.isDuplicateExternal && "bg-orange-50/50"
+                                            )}>
                                                 <TableCell className="text-center text-xs p-2">{row.originalRowIndex}</TableCell>
                                                 <TableCell className="text-xs font-medium p-2">{row.nr_subitem} - {row.nome_subitem}</TableCell>
                                                 <TableCell className="text-xs p-2">{row.descricao_item}</TableCell>
                                                 <TableCell className="text-center text-xs p-2">{row.numero_pregao}</TableCell>
                                                 <TableCell className="text-right font-bold text-xs p-2">{formatCurrency(row.valor_unitario)}</TableCell>
                                                 <TableCell className="p-2">
-                                                    {row.isValid ? <Badge variant="ptrab-aprovado" className="text-xs">Válido</Badge> : (
+                                                    {row.isValid ? (
+                                                        <Badge variant="ptrab-aprovado" className="text-xs">Válido</Badge>
+                                                    ) : (
                                                         <div className="space-y-1">
-                                                            <Badge variant="destructive" className="text-xs">Inválido</Badge>
-                                                            {row.errors.map((err, i) => <p key={i} className="text-[10px] text-red-600">- {err}</p>)}
+                                                            <Badge variant="destructive" className="text-xs flex items-center justify-center">
+                                                                <XCircle className="h-3 w-3 mr-1" />
+                                                                Inválido
+                                                            </Badge>
+                                                            {row.errors.map((err, i) => (
+                                                                <p key={i} className="text-[10px] text-red-600">
+                                                                    - {err}
+                                                                </p>
+                                                            ))}
+                                                            {row.isDuplicateInternal && (
+                                                                <p className="text-[10px] text-yellow-700">
+                                                                    - Duplicata no arquivo
+                                                                </p>
+                                                            )}
+                                                            {row.isDuplicateExternal && (
+                                                                <p className="text-[10px] text-orange-700">
+                                                                    - Já cadastrado no DB
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </TableCell>
