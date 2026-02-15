@@ -117,10 +117,9 @@ const MaterialPermanenteDiretrizRow: React.FC<MaterialPermanenteDiretrizRowProps
                                                     <TableCell className="px-4 py-2">
                                                         <div className="flex flex-col">
                                                             <span className="font-bold text-sm">{item.descricao_reduzida || 'N/A'}</span>
-                                                            <span className="text-[10px] text-muted-foreground line-clamp-1">{item.descricao_item}</span>
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="px-4 py-2 text-center font-mono text-xs">
+                                                    <TableCell className="px-4 py-2 text-center text-xs">
                                                         {item.codigo_catmat || 'N/A'}
                                                     </TableCell>
                                                     <TableCell className="px-4 py-2 text-center text-xs">
