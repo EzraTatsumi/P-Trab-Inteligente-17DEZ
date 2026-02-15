@@ -1,22 +1,57 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Plus, Loader2, Package } from "lucide-react";
+import { 
+    Search, 
+    Check, 
+    Package, 
+    ChevronDown, 
+    ChevronUp, 
+    AlertCircle, 
+    Loader2 
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { formatCurrency, formatPregao } from "@/lib/formatUtils";
+import { formatCurrency, formatCodug, formatPregao } from "@/lib/formatUtils";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { useSession } from "@/components/SessionContextProvider";
+import { 
+    Collapsible, 
+    CollapsibleContent, 
+    CollapsibleTrigger 
+} from "@/components/ui/collapsible";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { 
+    Tooltip, 
+    TooltipContent, 
+    TooltipProvider, 
+    TooltipTrigger 
+} from "@/components/ui/tooltip";
+
+interface SelectableItem extends ItemAquisicao {
+    isSelected: boolean;
+    subitem_nr?: string;
+    subitem_nome?: string;
+}
+
+interface SubitemGroup {
+    id: string;
+    nr_subitem: string;
+    nome_subitem: string;
+    items: SelectableItem[];
+}
 
 interface MaterialPermanenteItemSelectorDialogProps {
     open: boolean;
@@ -36,55 +71,100 @@ const MaterialPermanenteItemSelectorDialog: React.FC<MaterialPermanenteItemSelec
     onSelect,
     onAddDiretriz,
 }) => {
+    const { user } = useSession();
     const [searchTerm, setSearchTerm] = useState("");
-    const [tempSelected, setTempSelected] = useState<ItemAquisicao[]>(initialItems);
+    const [selectedItemsMap, setSelectedItemsMap] = useState<Record<string, ItemAquisicao>>({});
+    const [expandedSubitems, setExpandedSubitems] = useState<Record<string, boolean>>({});
 
     const { data: diretrizes, isLoading } = useQuery({
-        queryKey: ['diretrizesMaterialPermanente', selectedYear],
+        queryKey: ['diretrizesMaterialPermanenteSelector', selectedYear, user?.id],
         queryFn: async () => {
+            if (!user?.id) return [];
             const { data, error } = await supabase
                 .from('diretrizes_material_permanente')
                 .select('*')
+                .eq('user_id', user.id)
                 .eq('ano_referencia', selectedYear)
-                .eq('ativo', true);
+                .eq('ativo', true)
+                .order('nr_subitem', { ascending: true });
 
             if (error) throw error;
             return data || [];
         },
-        enabled: open
+        enabled: open && !!user?.id
     });
 
-    const allItems = React.useMemo(() => {
-        if (!diretrizes) return [];
-        return diretrizes.flatMap(d => {
-            const items = Array.isArray(d.itens_aquisicao) ? d.itens_aquisicao : [];
-            return items.map(item => ({
-                ...item,
-                subitem_nome: d.nome_subitem,
-                subitem_nr: d.nr_subitem
-            }));
-        });
-    }, [diretrizes]);
-
-    const filteredItems = allItems.filter(item => 
-        item.descricao_item?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.codigo_catmat?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.subitem_nome?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const toggleItem = (item: any) => {
-        const isSelected = tempSelected.some(i => i.id === item.id);
-        if (isSelected) {
-            setTempSelected(tempSelected.filter(i => i.id !== item.id));
-        } else {
-            setTempSelected([...tempSelected, { ...item, quantidade: 1 }]);
+    useEffect(() => {
+        if (open) {
+            const initialMap: Record<string, ItemAquisicao> = {};
+            initialItems.forEach(item => { initialMap[item.id] = item; });
+            setSelectedItemsMap(initialMap);
+            setSearchTerm('');
+            setExpandedSubitems({});
         }
+    }, [open, initialItems]);
+
+    const groupedAndFilteredItems = useMemo<SubitemGroup[]>(() => {
+        if (!diretrizes) return [];
+        const groups: Record<string, SubitemGroup> = {};
+        const lowerCaseSearch = searchTerm.toLowerCase().trim();
+
+        diretrizes.forEach(diretriz => {
+            const items = Array.isArray(diretriz.itens_aquisicao) ? (diretriz.itens_aquisicao as any[]) : [];
+            
+            const filteredItems = items.filter(item => {
+                const searchString = [
+                    item.descricao_item,
+                    item.descricao_reduzida, 
+                    item.codigo_catmat,
+                    item.numero_pregao,
+                    diretriz.nr_subitem,
+                    diretriz.nome_subitem,
+                ].join(' ').toLowerCase();
+                return searchString.includes(lowerCaseSearch);
+            });
+            
+            if (filteredItems.length > 0) {
+                const groupKey = diretriz.id;
+                if (!groups[groupKey]) {
+                    groups[groupKey] = {
+                        id: diretriz.id,
+                        nr_subitem: diretriz.nr_subitem,
+                        nome_subitem: diretriz.nome_subitem,
+                        items: [],
+                    };
+                }
+                groups[groupKey].items.push(...filteredItems.map(item => ({
+                    ...item,
+                    subitem_nr: diretriz.nr_subitem,
+                    subitem_nome: diretriz.nome_subitem,
+                    isSelected: !!selectedItemsMap[item.id],
+                })));
+            }
+        });
+        
+        return Object.values(groups).sort((a, b) => {
+            const numCompare = a.nr_subitem.localeCompare(b.nr_subitem);
+            if (numCompare !== 0) return numCompare;
+            return a.nome_subitem.localeCompare(b.nome_subitem);
+        });
+    }, [diretrizes, searchTerm, selectedItemsMap]);
+
+    const handleToggleItem = (item: ItemAquisicao) => {
+        setSelectedItemsMap(prev => {
+            const newMap = { ...prev };
+            if (newMap[item.id]) delete newMap[item.id];
+            else newMap[item.id] = { ...item, quantidade: 1 };
+            return newMap;
+        });
     };
 
-    const handleConfirm = () => {
-        onSelect(tempSelected);
+    const handleConfirmSelection = () => {
+        onSelect(Object.values(selectedItemsMap));
         onOpenChange(false);
     };
+
+    const totalSelected = Object.keys(selectedItemsMap).length;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -100,7 +180,7 @@ const MaterialPermanenteItemSelectorDialog: React.FC<MaterialPermanenteItemSelec
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
-                            placeholder="Buscar por descrição, CATMAT ou subitem..." 
+                            placeholder="Buscar por descrição, CATMAT, pregão ou subitem..." 
                             className="pl-10"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -112,58 +192,89 @@ const MaterialPermanenteItemSelectorDialog: React.FC<MaterialPermanenteItemSelec
                             <div className="flex items-center justify-center h-40">
                                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
                             </div>
-                        ) : filteredItems.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-40 text-muted-foreground gap-2">
-                                <p>Nenhum item encontrado para o ano {selectedYear}.</p>
-                                <Button variant="link" onClick={onAddDiretriz}>Cadastrar Diretriz</Button>
+                        ) : groupedAndFilteredItems.length === 0 ? (
+                            <div className="p-4">
+                                <Alert>
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertTitle>Nenhum Item Encontrado</AlertTitle>
+                                    <AlertDescription>
+                                        Não encontramos diretrizes para o ano {selectedYear}.
+                                        <Button variant="link" className="p-0 h-auto ml-1" onClick={onAddDiretriz}>Cadastrar Diretriz</Button>
+                                    </AlertDescription>
+                                </Alert>
                             </div>
                         ) : (
-                            <div className="p-4 space-y-2">
-                                {filteredItems.map((item) => {
-                                    const isSelected = tempSelected.some(i => i.id === item.id);
-                                    return (
-                                        <div 
-                                            key={item.id}
-                                            className={cn(
-                                                "flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer hover:border-primary/50",
-                                                isSelected ? "bg-primary/10 border-primary" : "bg-background"
-                                            )}
-                                            onClick={() => toggleItem(item)}
+                            <TooltipProvider>
+                                <div className="p-4 space-y-3">
+                                    {groupedAndFilteredItems.map(group => (
+                                        <Collapsible 
+                                            key={group.id} 
+                                            open={expandedSubitems[group.id] ?? false} 
+                                            onOpenChange={(isOpen) => setExpandedSubitems(prev => ({ ...prev, [group.id]: isOpen }))}
                                         >
-                                            <div className="flex-1 min-w-0 pr-4">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <Badge variant="outline" className="text-[10px]">{item.subitem_nr} - {item.subitem_nome}</Badge>
-                                                    <span className="text-[10px] text-muted-foreground font-mono">CATMAT: {item.codigo_catmat}</span>
+                                            <CollapsibleTrigger asChild>
+                                                <div className="flex justify-between items-center p-3 bg-muted rounded-md cursor-pointer hover:bg-muted/80 transition-colors">
+                                                    <span className="font-semibold text-sm">{group.nr_subitem} - {group.nome_subitem}</span>
+                                                    {expandedSubitems[group.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                                 </div>
-                                                <p className="text-sm font-medium truncate">{item.descricao_item}</p>
-                                                <p className="text-[10px] text-muted-foreground">Pregão: {formatPregao(item.numero_pregao)} | UASG: {item.uasg}</p>
-                                            </div>
-                                            <div className="text-right flex flex-col items-end gap-2">
-                                                <span className="text-sm font-bold text-primary">{formatCurrency(item.valor_unitario)}</span>
-                                                <div className={cn(
-                                                    "h-5 w-5 rounded-full border flex items-center justify-center transition-colors",
-                                                    isSelected ? "bg-primary border-primary text-white" : "border-muted-foreground/30"
-                                                )}>
-                                                    {isSelected && <Plus className="h-3 w-3" />}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent className="pt-2 space-y-1">
+                                                {group.items.map(item => (
+                                                    <Tooltip key={item.id}>
+                                                        <TooltipTrigger asChild>
+                                                            <div 
+                                                                className={cn(
+                                                                    "flex items-center justify-between p-2 border rounded-md cursor-pointer transition-colors", 
+                                                                    item.isSelected ? "bg-primary/10 border-primary/50" : "bg-background hover:bg-gray-50"
+                                                                )} 
+                                                                onClick={() => handleToggleItem(item)}
+                                                            >
+                                                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                    <div className={cn(
+                                                                        "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0", 
+                                                                        item.isSelected ? "bg-primary border-primary" : "border-gray-300"
+                                                                    )}>
+                                                                        {item.isSelected && <Check className="h-3 w-3 text-white" />}
+                                                                    </div>
+                                                                    <div className="text-sm min-w-0 flex-1">
+                                                                        <p className="font-medium truncate">{item.descricao_reduzida || item.descricao_item}</p>
+                                                                        <p className="text-[10px] text-muted-foreground">
+                                                                            CATMAT: {item.codigo_catmat} | Pregão: {formatPregao(item.numero_pregao)} | UASG: {formatCodug(item.uasg)}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right shrink-0 ml-4">
+                                                                    <p className="font-bold text-sm text-primary">{formatCurrency(item.valor_unitario)}</p>
+                                                                </div>
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent className="max-w-md">
+                                                            <p className="text-sm">{item.descricao_item}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                ))}
+                                            </CollapsibleContent>
+                                        </Collapsible>
+                                    ))}
+                                </div>
+                            </TooltipProvider>
                         )}
                     </ScrollArea>
                 </div>
 
-                <div className="p-6 pt-2 border-t flex justify-between items-center bg-muted/10">
-                    <span className="text-sm text-muted-foreground">
-                        {tempSelected.length} item(ns) selecionado(s)
-                    </span>
-                    <div className="flex gap-2">
-                        <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-                        <Button onClick={handleConfirm} disabled={tempSelected.length === 0}>Confirmar Seleção</Button>
+                <DialogFooter className="p-6 pt-2 border-t bg-muted/10">
+                    <div className="flex justify-between items-center w-full">
+                        <p className="text-sm font-medium">
+                            Selecionados: <span className="font-bold text-primary">{totalSelected}</span>
+                        </p>
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+                            <Button onClick={handleConfirmSelection} disabled={totalSelected === 0}>
+                                <Check className="mr-2 h-4 w-4" /> Confirmar Seleção
+                            </Button>
+                        </div>
                     </div>
-                </div>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
