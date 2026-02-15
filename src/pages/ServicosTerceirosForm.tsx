@@ -1197,22 +1197,15 @@ const ServicosTerceirosForm = () => {
                                             const totalQty = item.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0) || 0;
 
                                             // Cálculos para Transporte Coletivo
-                                            const totalMeios = item.categoria === 'transporte-coletivo' 
-                                                ? item.detalhes_planejamento.itens_selecionados
-                                                    .filter((i: any) => i.sub_categoria === 'meio-transporte')
-                                                    .reduce((acc: number, i: any) => acc + (i.valor_total || 0), 0)
-                                                : 0;
-                                            
-                                            const totalAdicionais = item.categoria === 'transporte-coletivo'
-                                                ? item.detalhes_planejamento.itens_selecionados
-                                                    .filter((i: any) => i.sub_categoria === 'servico-adicional')
-                                                    .reduce((acc: number, i: any) => acc + (i.valor_total || 0), 0)
-                                                : 0;
-
                                             const totalDiarias = item.categoria === 'transporte-coletivo'
                                                 ? item.detalhes_planejamento.itens_selecionados
                                                     .filter((i: any) => i.sub_categoria === 'meio-transporte')
-                                                    .reduce((acc: number, i: any) => acc + (Number(i.quantidade) * Number(i.periodo || 0)), 0)
+                                                    .reduce((acc: number, i: any) => {
+                                                        const qty = i.quantidade || 0;
+                                                        const period = i.periodo || 0;
+                                                        const trips = Number(item.detalhes_planejamento.numero_viagens) || 1;
+                                                        return acc + (qty * period * trips);
+                                                    }, 0)
                                                 : 0;
 
                                             const totalKmAdicional = item.categoria === 'transporte-coletivo'
@@ -1263,11 +1256,6 @@ const ServicosTerceirosForm = () => {
                                                                 {item.categoria === 'transporte-coletivo' && (
                                                                     <p className="font-medium">
                                                                         {totalDiarias} {totalDiarias === 1 ? 'diária' : 'diárias'} / {totalKmAdicional} Km
-                                                                    </p>
-                                                                )}
-                                                                {item.categoria === 'transporte-coletivo' && (
-                                                                    <p className="font-medium text-blue-700">
-                                                                        Meios: {formatCurrency(totalMeios)} | Adicionais: {formatCurrency(totalAdicionais)}
                                                                     </p>
                                                                 )}
                                                             </div>
@@ -1334,7 +1322,12 @@ const ServicosTerceirosForm = () => {
                                                     const totalDiarias = reg.categoria === 'transporte-coletivo'
                                                         ? reg.detalhes_planejamento?.itens_selecionados
                                                             ?.filter((i: any) => i.sub_categoria === 'meio-transporte')
-                                                            ?.reduce((acc: number, i: any) => acc + (Number(i.quantidade) * Number(i.periodo || 0)), 0)
+                                                            ?.reduce((acc: number, i: any) => {
+                                                                const qty = i.quantidade || 0;
+                                                                const period = i.periodo || 0;
+                                                                const trips = Number(reg.detalhes_planejamento.numero_viagens) || 1;
+                                                                return acc + (qty * period * trips);
+                                                            }, 0)
                                                         : 0;
 
                                                     const totalKmAdicional = reg.categoria === 'transporte-coletivo'
