@@ -17,7 +17,7 @@ import PassagemAerea from "./pages/PassagemAerea";
 import HorasVooAvEx from "./pages/HorasVooAvEx";
 import Concessionaria from "./pages/Concessionaria";
 import MaterialConsumo from "./pages/MaterialConsumo";
-import MaterialPermanente from "./pages/MaterialPermanente";
+import MaterialPermanenteForm from "./pages/MaterialPermanenteForm"; // ATUALIZADO
 import ComplementoAlimentacao from "./pages/ComplementoAlimentacao";
 import ServicosTerceiros from "./pages/ServicosTerceiros";
 import Login from "./pages/Login";
@@ -102,7 +102,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/ptrab/material-permanente",
-    element: <ProtectedRoute><MaterialPermanente /></ProtectedRoute>,
+    element: <ProtectedRoute><MaterialPermanenteForm /></ProtectedRoute>, // ATUALIZADO
   },
   {
     path: "/ptrab/complemento-alimentacao",
