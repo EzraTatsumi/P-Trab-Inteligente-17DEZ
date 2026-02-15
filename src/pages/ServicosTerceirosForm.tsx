@@ -470,6 +470,22 @@ const ServicosTerceirosForm = () => {
 
         if (contextChanged) return true;
 
+        // Compara detalhes específicos da categoria (Parte B)
+        const detailsChanged = (
+            tipoAnv !== lastStagedState.tipoAnv ||
+            capacidade !== lastStagedState.capacidade ||
+            velocidadeCruzeiro !== lastStagedState.velocidadeCruzeiro ||
+            distanciaPercorrer !== lastStagedState.distanciaPercorrer ||
+            tipoEquipamento !== lastStagedState.tipoEquipamento ||
+            proposito !== lastStagedState.proposito ||
+            itinerario !== lastStagedState.itinerario ||
+            distanciaItinerario !== lastStagedState.distanciaItinerario ||
+            distanciaPercorridaDia !== lastStagedState.distanciaPercorridaDia ||
+            numeroViagens !== lastStagedState.numeroViagens
+        );
+
+        if (detailsChanged) return true;
+
         if (activeTab === "locacao-veiculos") {
             const currentGroupsKey = vehicleGroups.map(g => `${g.tempId}-${g.totalValue}`).sort().join('|');
             return currentGroupsKey !== lastStagedState.groupsKey;
@@ -480,7 +496,7 @@ const ServicosTerceirosForm = () => {
         const stagedItemsKey = lastStagedState.itemsKey;
 
         return currentItemsKey !== stagedItemsKey;
-    }, [omFavorecida, faseAtividade, efetivo, diasOperacao, omDestino, activeTab, selectedItems, lastStagedState, pendingItems, vehicleGroups]);
+    }, [omFavorecida, faseAtividade, efetivo, diasOperacao, omDestino, activeTab, selectedItems, lastStagedState, pendingItems, vehicleGroups, tipoAnv, capacidade, velocidadeCruzeiro, distanciaPercorrer, tipoEquipamento, proposito, itinerario, distanciaItinerario, distanciaPercorridaDia, numeroViagens]);
 
     // Recalcula totais quando o número de viagens muda (apenas para Transporte Coletivo)
     useEffect(() => {
@@ -828,7 +844,7 @@ const ServicosTerceirosForm = () => {
             return [...filtered, ...newItems];
         });
 
-        // Define o estado de staging para o dirty check
+        // Define o estado de staging para o dirty check INCLUINDO todos os campos da Parte B
         setLastStagedState({
             omFavorecidaId: omFavorecida.id,
             faseAtividade,
@@ -836,23 +852,23 @@ const ServicosTerceirosForm = () => {
             diasOperacao,
             omDestinoId: omDestino.id,
             categoria: activeTab,
-            // Chave simplificada para o dirty check
-            itemsKey: isLocacao ? "" : selectedItems.map(i => `${i.id}-${i.quantidade}`).sort().join('|')
+            // Campos da Parte B para evitar o dirty check indevido
+            tipoAnv,
+            capacidade,
+            velocidadeCruzeiro,
+            distanciaPercorrer,
+            tipoEquipamento,
+            proposito,
+            itinerario,
+            distanciaItinerario,
+            distanciaPercorridaDia,
+            numeroViagens,
+            // Chave simplificada para o dirty check de itens
+            itemsKey: isLocacao ? "" : selectedItems.map(i => `${i.id}-${i.quantidade}-${(i as any).periodo || 1}-${i.sub_categoria || 'none'}`).sort().join('|'),
+            groupsKey: isLocacao ? vehicleGroups.map(g => `${g.tempId}-${g.totalValue}`).sort().join('|') : ""
         });
 
-        // LIMPA OS CAMPOS ESPECÍFICOS DA CATEGORIA NA SEÇÃO 2
-        setSelectedItems([]);
-        setVehicleGroups([]);
-        setTipoAnv("");
-        setCapacidade("");
-        setVelocidadeCruzeiro("");
-        setDistanciaPercorrer("");
-        setTipoEquipamento("");
-        setProposito("");
-        setItinerario("");
-        setDistanciaItinerario("");
-        setDistanciaPercorridaDia("");
-        setNumeroViagens("");
+        // NÃO LIMPA MAIS OS CAMPOS, APENAS O MODO EDIÇÃO
         setEditingId(null);
         
         toast.info("Item adicionado à lista de pendentes. Você pode mudar de categoria ou salvar os registros.");
