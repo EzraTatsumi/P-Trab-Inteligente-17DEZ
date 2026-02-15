@@ -42,6 +42,23 @@ const getOmArticle = (name: string) => {
     return 'o';
 };
 
+/**
+ * Formata o plural das unidades de medida.
+ */
+const formatUnitPlural = (unit: string, count: number) => {
+    if (!unit || count <= 1) return unit;
+    const lowerUnit = unit.toLowerCase().trim();
+    const noPlural = ['m', 'km', 'kg', 'l', 'un', 'hv', 'gl', 'pax', 'cx', 'pct', 'm2', 'm3'];
+    if (noPlural.includes(lowerUnit)) return unit;
+    if (lowerUnit === 'mês') return 'meses';
+    if (lowerUnit.endsWith('r') || lowerUnit.endsWith('z')) return `${unit}es`;
+    if (lowerUnit.endsWith('m')) return unit.slice(0, -1) + 'ns';
+    if (lowerUnit.endsWith('al') || lowerUnit.endsWith('el') || lowerUnit.endsWith('ol') || lowerUnit.endsWith('ul')) {
+        return unit.slice(0, -1) + 'is';
+    }
+    return `${unit}s`;
+};
+
 export const calculateServicoTotals = (items: any[], trips: number = 1) => {
     let totalND30 = 0;
     let totalND39 = 0;
@@ -50,7 +67,6 @@ export const calculateServicoTotals = (items: any[], trips: number = 1) => {
         const qty = item.quantidade || 0;
         const period = item.periodo || 0;
         const val = item.valor_unitario || 0;
-        
         const multiplier = (item.sub_categoria === 'servico-adicional') ? 1 : trips;
         const total = qty * period * val * multiplier;
 
@@ -81,7 +97,6 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
         const hasND33 = items.some((i: any) => i.natureza_despesa === '33');
         const hasND39 = items.some((i: any) => i.natureza_despesa === '39' || !i.natureza_despesa);
         const ndHeader = (hasND33 && hasND39) ? '33.90.33 / 33.90.39' : (hasND33 ? '33.90.33' : '33.90.39');
-        
         const catLabel = details.nome_servico_outros || 'Serviços de Terceiros';
         const tipoContrato = details.tipo_contrato_outros === 'locacao' ? 'Locação' : 'Contratação';
 
@@ -90,14 +105,11 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
             : `para atender ${art} ${registro.organizacao}`;
 
         let memoria = `${ndHeader} - ${tipoContrato} de ${catLabel} ${beneficiary}, durante ${registro.dias_operacao} ${diasText} de ${fase}.\n\n`;
-        
         memoria += `Cálculo:\n`;
         items.forEach((item: any) => {
             memoria += `- ${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${item.unidade_medida || 'un'}.\n`;
         });
-        
         memoria += `\nFórmula: Nr Item x Valor Unitário.\n`;
-
         items.forEach((item: any) => {
             const qty = item.quantidade || 0;
             const period = (item.periodo !== undefined) ? item.periodo : 1;
@@ -105,10 +117,8 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
             const val = item.valor_unitario || 0;
             const total = qty * period * val;
             const periodFormatted = Number.isInteger(period) ? period.toString() : period.toString().replace('.', ',');
-
             memoria += `- ${qty} ${item.descricao_reduzida || item.descricao_item} (${periodFormatted} ${unit}) x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)}.\n`;
         });
-
         memoria += `\nTotal: ${formatCurrency(registro.valor_total)}.\n`;
         if (items.length > 0) {
             const firstItem = items[0];
@@ -121,19 +131,15 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
     if (categoria === 'fretamento-aereo') {
         const item = items[0];
         if (!item) return "Nenhum item selecionado.";
-        
         let memoria = `33.90.33 - Contratação de Fretamento Aéreo para o transporte de ${registro.efetivo} ${milText} ${prep} ${registro.organizacao}, durante ${registro.dias_operacao} ${diasText} de ${fase}.\n\n`;
-        
         memoria += `Cálculo:\n`;
         memoria += `- Tipo Anv: ${details.tipo_anv || 'N/A'}.\n`;
         memoria += `- Capacidade: ${details.capacidade || 'N/A'}.\n`;
         memoria += `- Velocidade de Cruzeiro: ${details.velocidade_cruzeiro || 0} Km/h.\n`;
         memoria += `- Distância a percorrer: ${formatNumber(details.distancia_percorrer || 0, 0)} Km.\n`;
         memoria += `- Valor da HV: ${formatCurrency(item.valor_unitario)}/HV.\n\n`;
-        
         memoria += `Fórmula: Quantidade de HV (Dist / Vel) x valor da HV.\n`;
         memoria += `- ${item.quantidade} HV x ${formatCurrency(item.valor_unitario)}/HV = ${formatCurrency(registro.valor_total)}.\n\n`;
-        
         memoria += `Total: ${formatCurrency(registro.valor_total)}.\n`;
         memoria += `(Pregão ${formatPregao(item.numero_pregao)} - UASG ${formatCodug(item.uasg)})`;
         return memoria;
@@ -143,19 +149,15 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
     if (categoria === 'transporte-coletivo') {
         const trips = Number(details.numero_viagens) || 1;
         let memoria = `33.90.33 - Contratação de veículos do tipo Transporte Coletivo para transporte de ${registro.efetivo} ${milText} ${prep} ${registro.organizacao}, durante ${registro.dias_operacao} ${diasText} de ${fase}.\n\n`;
-        
         memoria += `Cálculo:\n`;
         memoria += `- Itn Dslc: ${details.itinerario || 'N/A'}.\n`;
         memoria += `- Dist Itn: ${details.distancia_itinerario || 0} Km.\n`;
         memoria += `- Dist Percorrida/dia: ${details.distancia_percorrida_dia || 0} Km.\n`;
         memoria += `- Nr Viagens: ${trips}.\n`;
-        
         items.forEach((i: any) => {
             memoria += `- ${i.descricao_reduzida || i.descricao_item}: ${formatCurrency(i.valor_unitario)}/${i.unidade_medida || 'un'}.\n`;
         });
-
         memoria += `\nFórmula: (Nr Item x Valor Unitário x Período) x Nr Viagens.\n`;
-        
         items.forEach((i: any) => {
             const qty = i.quantidade || 0;
             const vlrUnit = i.valor_unitario || 0;
@@ -164,14 +166,12 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
             const periodFormatted = period.toString().replace('.', ',');
             const multiplier = (i.sub_categoria === 'servico-adicional') ? 1 : trips;
             const totalItem = qty * vlrUnit * period * multiplier;
-            
             if (i.sub_categoria === 'servico-adicional') {
                 memoria += `- ${qty} ${i.descricao_reduzida || i.descricao_item} (${periodFormatted} ${unit}) x ${formatCurrency(vlrUnit)}/${unit} = ${formatCurrency(totalItem)}.\n`;
             } else {
-                memoria += `- (${qty} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)} x ${periodFormatted} ${unit}) x ${trips} ${trips === 1 ? 'viagem' : 'viagens'} = ${formatCurrency(totalItem)}.\n`;
+                memoria += `- (${qty} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)} x ${periodFormatted} ${formatUnitPlural(unit, period)}) x ${trips} ${trips === 1 ? 'viagem' : 'viagens'} = ${formatCurrency(totalItem)}.\n`;
             }
         });
-
         memoria += `\nTotal: ${formatCurrency(registro.valor_total)}.\n`;
         if (items.length > 0) {
             memoria += `(Pregão ${formatPregao(items[0].numero_pregao)} - UASG ${formatCodug(items[0].uasg)})`;
@@ -179,17 +179,15 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
         return memoria;
     }
 
-    // --- CATEGORIA: SERVIÇO SATELITAL ---
+    // --- CATEGORIA: SERVIÇO SATELITAL (CONFORME IMAGEM 3) ---
     if (categoria === 'servico-satelital') {
         const tipo = details.tipo_equipamento || 'N/A';
         const prop = details.proposito || 'N/A';
-        let memoria = `33.90.39 - Contratação de Serviço Satelital de ${tipo}, visando ${prop}, durante ${registro.dias_operacao} ${diasText} de ${fase}.\n\n`;
-        
+        let memoria = `33.90.39 - Contratação de Serviço ${tipo}, visando ${prop}, durante ${registro.dias_operacao} ${diasText} de ${fase}.\n\n`;
         memoria += `Cálculo:\n`;
         items.forEach((item: any) => {
             memoria += `- ${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${item.unidade_medida || 'un'}.\n`;
         });
-
         memoria += `\nFórmula: (Nr Eqp x Valor Contrato) x Período do Contrato.\n`;
         items.forEach((item: any) => {
             const unit = item.unidade_medida || 'un';
@@ -198,10 +196,8 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
             const vlrUnit = item.valor_unitario || 0;
             const totalItem = qty * period * vlrUnit;
             const periodFormatted = period.toString().replace('.', ',');
-            
-            memoria += `- (${qty} ${item.descricao_reduzida || item.descricao_item} x ${formatCurrency(vlrUnit)}/${unit}) x ${periodFormatted} ${unit}${period > 1 ? 's' : ''} = ${formatCurrency(totalItem)}.\n`;
+            memoria += `- (${qty} un x ${formatCurrency(vlrUnit)}/${unit}) x ${periodFormatted} ${formatUnitPlural(unit, period)} = ${formatCurrency(totalItem)}.\n`;
         });
-
         memoria += `\nTotal: ${formatCurrency(registro.valor_total)}.\n`;
         if (items.length > 0) {
             memoria += `(Pregão ${formatPregao(items[0].numero_pregao)} - UASG ${formatCodug(items[0].uasg)})`;
@@ -209,17 +205,15 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
         return memoria;
     }
 
-    // --- CATEGORIA: LOCAÇÃO DE VEÍCULOS ---
+    // --- CATEGORIA: LOCAÇÃO DE VEÍCULOS (CONFORME IMAGEM 2) ---
     if (categoria === 'locacao-veiculos') {
         const groupName = registro.group_name || details?.group_name || 'Grupo de Veículos';
-        let memoria = `33.90.33 - Contratação de Locação de Veículos (${groupName}), para a ${registro.organizacao}, durante ${registro.dias_operacao} ${diasText} de ${fase}.\n\n`;
-        
+        let memoria = `33.90.33 - Locação de Veículos (${groupName}), para a ${registro.organizacao}, durante ${registro.dias_operacao} ${diasText} de ${fase}.\n\n`;
         memoria += `Cálculo:\n`;
         items.forEach((item: any) => {
             memoria += `- ${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${item.unidade_medida || 'un'}.\n`;
         });
-
-        memoria += `\nFórmula: Nr Item x Valor Unitário x Período.\n`;
+        memoria += `\nFórmula: Nr Veículos x Valor Unitário x Período.\n`;
         items.forEach((item: any) => {
             const qty = item.quantidade || 0;
             const period = item.periodo || 0;
@@ -227,10 +221,8 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
             const val = item.valor_unitario || 0;
             const total = qty * period * val;
             const periodFormatted = period.toString().replace('.', ',');
-
-            memoria += `- ${qty} ${item.descricao_reduzida || item.descricao_item} (${periodFormatted} ${unit}) x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)}.\n`;
+            memoria += `- ${qty} ${item.descricao_reduzida || item.descricao_item} x ${formatCurrency(val)}/${unit} x ${periodFormatted} ${formatUnitPlural(unit, period)} = ${formatCurrency(total)}.\n`;
         });
-
         memoria += `\nTotal: ${formatCurrency(registro.valor_total)}.\n`;
         if (items.length > 0) {
             memoria += `(Pregão ${formatPregao(items[0].numero_pregao)} - UASG ${formatCodug(items[0].uasg)})`;
@@ -238,16 +230,38 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
         return memoria;
     }
 
-    // --- DEMAIS CATEGORIAS (ESTRUTURAS, GRÁFICO) ---
+    // --- CATEGORIA: LOCAÇÃO DE ESTRUTURAS (CONFORME IMAGEM 1) ---
+    if (categoria === 'locacao-estruturas') {
+        let memoria = `33.90.39 - Locação de Estruturas, para a ${registro.organizacao}, durante ${registro.dias_operacao} ${diasText} de ${fase}.\n\n`;
+        memoria += `Cálculo:\n`;
+        items.forEach((item: any) => {
+            memoria += `- ${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${item.unidade_medida || 'un'}.\n`;
+        });
+        memoria += `\nFórmula: Nr Estruturas x Valor Unitário x Período.\n`;
+        items.forEach((item: any) => {
+            const qty = item.quantidade || 0;
+            const period = item.periodo || 0;
+            const unit = item.unidade_medida || 'un';
+            const val = item.valor_unitario || 0;
+            const total = qty * period * val;
+            const periodFormatted = period.toString().replace('.', ',');
+            memoria += `- ${qty} ${item.descricao_reduzida || item.descricao_item} x ${formatCurrency(val)}/${unit} x ${periodFormatted} ${formatUnitPlural(unit, period)} = ${formatCurrency(total)}.\n`;
+        });
+        memoria += `\nTotal: ${formatCurrency(registro.valor_total)}.\n`;
+        if (items.length > 0) {
+            memoria += `(Pregão ${formatPregao(items[0].numero_pregao)} - UASG ${formatCodug(items[0].uasg)})`;
+        }
+        return memoria;
+    }
+
+    // --- DEMAIS CATEGORIAS (SERVIÇO GRÁFICO, ETC) ---
     const nd = '33.90.39';
     const catLabel = formatCategoryLabel(categoria);
     let memoria = `${nd} - Contratação de ${catLabel}, para a ${registro.organizacao}, durante ${registro.dias_operacao} ${diasText} de ${fase}.\n\n`;
-
     memoria += `Cálculo:\n`;
     items.forEach((item: any) => {
         memoria += `- ${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${item.unidade_medida || 'un'}.\n`;
     });
-
     memoria += `\nFórmula: Nr Item x Valor Unitário x Período.\n`;
     items.forEach((item: any) => {
         const qty = item.quantidade || 0;
@@ -256,10 +270,8 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
         const val = item.valor_unitario || 0;
         const total = qty * period * val;
         const periodFormatted = period.toString().replace('.', ',');
-
         memoria += `- ${qty} ${item.descricao_reduzida || item.descricao_item} (${periodFormatted} ${unit}) x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)}.\n`;
     });
-
     memoria += `\nTotal: ${formatCurrency(registro.valor_total)}.\n`;
     if (items.length > 0) {
         memoria += `(Pregão ${formatPregao(items[0].numero_pregao)} - UASG ${formatCodug(items[0].uasg)})`;
