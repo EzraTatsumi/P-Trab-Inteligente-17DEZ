@@ -51,6 +51,7 @@ const initialItemForm = {
     numero_pregao: '',
     uasg: '',
     codigo_catmat: '',
+    nd: '39' as string,
 };
 
 type InternalServicosForm = Omit<DiretrizServicosTerceiros, 'user_id' | 'created_at' | 'updated_at'> & { 
@@ -109,6 +110,7 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
             numero_pregao: itemForm.numero_pregao,
             uasg: itemForm.uasg,
             codigo_catmat: itemForm.codigo_catmat, 
+            nd: itemForm.nd || '39',
         };
         const updatedItens = editingItemId ? subitemForm.itens_aquisicao.map(t => t.id === editingItemId ? newItem : t) : [...subitemForm.itens_aquisicao, newItem];
         setSubitemForm(prev => ({ ...prev, itens_aquisicao: updatedItens }));
@@ -122,7 +124,8 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
             ...item, 
             nome_reduzido: item.nome_reduzido || item.descricao_reduzida || '',
             unidade_medida: item.unidade_medida || 'UN',
-            rawValor: numberToRawDigits(item.valor_unitario) 
+            rawValor: numberToRawDigits(item.valor_unitario),
+            nd: item.nd || '39'
         });
         itemFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
@@ -223,9 +226,10 @@ const ServicosTerceirosDiretrizFormDialog: React.FC<ServicosTerceirosDiretrizFor
                     const mappedItems = items.map(item => ({
                         ...item,
                         nome_reduzido: item.descricao_reduzida || '',
-                        unidade_medida: (item as any).unidade_medida || 'UN', 
+                        unidade_medida: (item as any).unidade_medida || 'UN',
+                        nd: (item as any).nd || '39',
                     }));
-                    setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...mappedItems] }));
+                    setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...mappedItems] as ItemAquisicaoServico[] }));
                 }} 
                 existingItemsInDiretriz={subitemForm.itens_aquisicao as any} 
                 onReviewItem={handleReviewItem} 
