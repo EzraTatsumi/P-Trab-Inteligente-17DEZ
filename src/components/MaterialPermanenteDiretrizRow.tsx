@@ -17,6 +17,9 @@ interface MaterialPermanenteDiretrizRowProps {
     onMoveItem?: (item: ItemAquisicaoPermanente, sourceDiretrizId: string, targetDiretrizId: string) => void;
     id?: string;
     forceOpen?: boolean;
+    // Novas props para resolver erro de compilação
+    isExpanded?: boolean;
+    onToggleExpand?: () => void;
 }
 
 const MaterialPermanenteDiretrizRow: React.FC<MaterialPermanenteDiretrizRowProps> = ({
@@ -27,17 +30,21 @@ const MaterialPermanenteDiretrizRow: React.FC<MaterialPermanenteDiretrizRowProps
     onMoveItem,
     id,
     forceOpen = false,
+    isExpanded,
+    onToggleExpand,
 }) => {
-    const [isOpen, setIsOpen] = useState(false);
+    const [internalIsOpen, setInternalIsOpen] = useState(false);
     const [isDragOver, setIsDragOver] = useState(false);
     
-    // Ref para o temporizador de expansão automática
+    // Usa o estado controlado se fornecido, caso contrário usa o interno
+    const isOpen = isExpanded !== undefined ? isExpanded : internalIsOpen;
+    const toggleOpen = onToggleExpand || (() => setInternalIsOpen(!internalIsOpen));
+    
     const expandTimerRef = useRef<number | null>(null); 
     
-    // Sincroniza a abertura forçada (usada na busca)
     useEffect(() => {
         if (forceOpen && !isOpen) {
-            setIsOpen(true);
+            toggleOpen();
         }
     }, [forceOpen]);
 
@@ -72,7 +79,7 @@ const MaterialPermanenteDiretrizRow: React.FC<MaterialPermanenteDiretrizRowProps
                 return;
             }
             
-            setIsOpen(true); 
+            if (!isOpen) toggleOpen(); 
             onMoveItem(item, sourceDiretrizId, diretriz.id);
             
         } catch (error) {
@@ -87,7 +94,7 @@ const MaterialPermanenteDiretrizRow: React.FC<MaterialPermanenteDiretrizRowProps
         if (expandTimerRef.current) return;
         
         expandTimerRef.current = setTimeout(() => {
-            setIsOpen(true);
+            if (!isOpen) toggleOpen();
             expandTimerRef.current = null;
         }, 300) as unknown as number;
     };
@@ -101,18 +108,16 @@ const MaterialPermanenteDiretrizRow: React.FC<MaterialPermanenteDiretrizRowProps
 
     return (
         <React.Fragment>
-            {/* Linha Principal */}
             <TableRow 
                 id={id}
                 className={cn(
                     "hover:bg-muted/50 transition-colors cursor-pointer",
                     isOpen && "bg-muted/50"
                 )}
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={toggleOpen}
                 onDragEnter={handleDragEnterTrigger}
                 onDragLeave={handleDragLeaveTrigger}
             >
-                {/* Coluna Nr Subitem (com Chevron integrado) */}
                 <TableCell className="font-semibold w-[150px] text-center">
                     <div className="flex items-center justify-center gap-2">
                         {diretriz.nr_subitem}
@@ -124,7 +129,6 @@ const MaterialPermanenteDiretrizRow: React.FC<MaterialPermanenteDiretrizRowProps
                     </div>
                 </TableCell>
                 
-                {/* Coluna Nome do Subitem */}
                 <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                         {diretriz.nome_subitem}
@@ -132,7 +136,6 @@ const MaterialPermanenteDiretrizRow: React.FC<MaterialPermanenteDiretrizRowProps
                     </div>
                 </TableCell>
                 
-                {/* Coluna Ações */}
                 <TableCell className="text-right w-[100px]" onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-end gap-1">
                         <Button
@@ -156,7 +159,6 @@ const MaterialPermanenteDiretrizRow: React.FC<MaterialPermanenteDiretrizRowProps
                 </TableCell>
             </TableRow>
             
-            {/* Linha de Conteúdo Colapsável */}
             <TableRow className="p-0">
                 <TableCell colSpan={3} className="p-0">
                     <Collapsible open={isOpen}>

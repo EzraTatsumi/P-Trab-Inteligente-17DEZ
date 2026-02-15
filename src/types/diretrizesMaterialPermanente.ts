@@ -1,5 +1,8 @@
 import { ItemAquisicao } from "./diretrizesMaterialConsumo";
 
+// Exportando o tipo para resolver erros de importação em outros componentes
+export type ItemAquisicaoPermanente = ItemAquisicao;
+
 export interface DiretrizMaterialPermanente {
     id: string;
     user_id: string;
@@ -7,7 +10,7 @@ export interface DiretrizMaterialPermanente {
     nr_subitem: string;
     nome_subitem: string;
     descricao_subitem: string | null;
-    itens_aquisicao: ItemAquisicao[];
+    itens_aquisicao: ItemAquisicaoPermanente[];
     ativo: boolean;
     created_at: string;
     updated_at: string;

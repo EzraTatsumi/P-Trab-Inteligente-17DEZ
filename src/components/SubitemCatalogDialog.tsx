@@ -16,7 +16,7 @@ interface SubitemCatalogDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSelect: (item: { nr_subitem: string, nome_subitem: string, descricao_subitem: string | null }) => void;
-    mode?: 'consumo' | 'permanente'; // NOVO: Define qual catálogo buscar
+    mode?: 'consumo' | 'permanente'; 
 }
 
 const fetchCatalogItems = async (mode: 'consumo' | 'permanente'): Promise<CatalogoSubitem[]> => {
@@ -33,7 +33,7 @@ const fetchCatalogItems = async (mode: 'consumo' | 'permanente'): Promise<Catalo
         throw new Error("Falha ao carregar o catálogo de subitens.");
     }
     
-    return data as CatalogoSubitem[];
+    return data as unknown as CatalogoSubitem[];
 };
 
 const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
@@ -65,10 +65,8 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
         };
 
         if (selectedItem?.nr_subitem === item.nr_subitem) {
-            // Desselecionar se já estiver selecionado
             setSelectedItem(null);
         } else {
-            // Selecionar o novo item
             setSelectedItem(newItem);
         }
     };
@@ -149,7 +147,6 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
                                                         variant={isSelected ? "default" : "outline"}
                                                         size="sm"
                                                         onClick={(e) => {
-                                                            // Previne que o clique na linha dispare duas vezes
                                                             e.stopPropagation(); 
                                                             handlePreSelect(item);
                                                         }}
@@ -176,7 +173,6 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
                     )}
                 </div>
 
-                {/* Ajuste do rodapé para alinhar à direita */}
                 <div className="flex justify-end gap-2 pt-4 border-t">
                     <Button 
                         type="button" 

@@ -54,15 +54,15 @@ export async function processMaterialPermanenteImport(file: File, year: number, 
 
                 if (json.length === 0) throw new Error("O arquivo está vazio.");
 
-                // Buscar itens existentes para verificar duplicatas
+                // Buscar itens existentes para verificar duplicatas - Usando cast para evitar erro de inferência
                 const { data: existingData } = await supabase
-                    .from('diretrizes_material_permanente')
+                    .from('diretrizes_material_permanente' as any)
                     .select('itens_aquisicao')
                     .eq('user_id', userId)
                     .eq('ano_referencia', year);
 
                 const existingKeys = new Set<string>();
-                (existingData || []).forEach(d => {
+                (existingData || []).forEach((d: any) => {
                     (d.itens_aquisicao as any[] || []).forEach(item => {
                         existingKeys.add(`${item.codigo_catmat}|${item.numero_pregao}|${item.uasg}`);
                     });
@@ -170,9 +170,9 @@ export async function persistMaterialPermanenteImport(stagedData: StagingRowPerm
     for (const nr_subitem in groupedBySubitem) {
         const { nome, descricao, itens } = groupedBySubitem[nr_subitem];
         
-        // Verificar se a diretriz já existe
+        // Verificar se a diretriz já existe - Usando cast para evitar erro de inferência
         const { data: existingDiretriz } = await supabase
-            .from('diretrizes_material_permanente')
+            .from('diretrizes_material_permanente' as any)
             .select('id, itens_aquisicao')
             .eq('user_id', userId)
             .eq('ano_referencia', year)
@@ -180,14 +180,15 @@ export async function persistMaterialPermanenteImport(stagedData: StagingRowPerm
             .maybeSingle();
 
         if (existingDiretriz) {
-            const updatedItens = [...(existingDiretriz.itens_aquisicao as any[] || []), ...itens];
+            const typedExisting = existingDiretriz as any;
+            const updatedItens = [...(typedExisting.itens_aquisicao as any[] || []), ...itens];
             await supabase
-                .from('diretrizes_material_permanente')
+                .from('diretrizes_material_permanente' as any)
                 .update({ itens_aquisicao: updatedItens })
-                .eq('id', existingDiretriz.id);
+                .eq('id', typedExisting.id);
         } else {
             await supabase
-                .from('diretrizes_material_permanente')
+                .from('diretrizes_material_permanente' as any)
                 .insert({
                     user_id: userId,
                     ano_referencia: year,
