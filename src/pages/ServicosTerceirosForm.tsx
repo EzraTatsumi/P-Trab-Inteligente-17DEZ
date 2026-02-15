@@ -29,7 +29,10 @@ import {
     XCircle, 
     Pencil,
     Info,
-    Bus
+    Bus,
+    ArrowRightLeft,
+    ArrowDownUp,
+    LayoutGrid
 } from "lucide-react";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
@@ -67,6 +70,8 @@ export type CategoriaServico =
     | "outros" 
     | "locacao-estruturas" 
     | "servico-grafico";
+
+export type SubCategoriaTransporte = "meio-transporte" | "servico-adicional";
 
 interface OMData {
     id: string;
@@ -107,6 +112,11 @@ interface ConsolidatedServicoRecord {
     totalGeral: number;
 }
 
+// Estendendo o tipo localmente para incluir a sub-categoria
+interface ItemAquisicaoServicoExt extends ItemAquisicaoServico {
+    sub_categoria?: SubCategoriaTransporte;
+}
+
 const ServicosTerceirosForm = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -140,7 +150,7 @@ const ServicosTerceirosForm = () => {
     const [distanciaPercorridaDia, setDistanciaPercorridaDia] = useState<number | "">("");
     const [numeroViagens, setNumeroViagens] = useState<number | "">("");
 
-    const [selectedItems, setSelectedItems] = useState<ItemAquisicaoServico[]>([]);
+    const [selectedItems, setSelectedItems] = useState<ItemAquisicaoServicoExt[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     
     const [pendingItems, setPendingItems] = useState<PendingServicoItem[]>([]);
@@ -185,8 +195,8 @@ const ServicosTerceirosForm = () => {
 
         if (contextChanged) return true;
 
-        // Compara itens selecionados (IDs e Quantidades)
-        const currentItemsKey = selectedItems.map(i => `${i.id}-${i.quantidade}-${(i as any).periodo || 1}`).sort().join('|');
+        // Compara itens selecionados (IDs, Quantidades e Sub-categorias)
+        const currentItemsKey = selectedItems.map(i => `${i.id}-${i.quantidade}-${(i as any).periodo || 1}-${i.sub_categoria || 'none'}`).sort().join('|');
         const stagedItemsKey = lastStagedState.itemsKey;
 
         return currentItemsKey !== stagedItemsKey;
@@ -330,7 +340,8 @@ const ServicosTerceirosForm = () => {
                 ...item, 
                 quantidade: initialQty, 
                 periodo: initialPeriod,
-                valor_total: initialQty * initialPeriod * item.valor_unitario * trips
+                valor_total: initialQty * initialPeriod * item.valor_unitario * trips,
+                sub_categoria: undefined // Novos itens iniciam sem classificação
             };
         });
         setSelectedItems(newItems);
@@ -363,10 +374,25 @@ const ServicosTerceirosForm = () => {
         }));
     };
 
+    const handleMoveItem = (id: string, subCat: SubCategoriaTransporte | undefined) => {
+        setSelectedItems(prev => prev.map(item => 
+            item.id === id ? { ...item, sub_categoria: subCat } : item
+        ));
+    };
+
     const handleAddToPending = () => {
         if (selectedItems.length === 0) {
             toast.warning("Selecione pelo menos um item.");
             return;
+        }
+
+        // Validação de classificação para Transporte Coletivo
+        if (activeTab === "transporte-coletivo") {
+            const unclassified = selectedItems.some(i => !i.sub_categoria);
+            if (unclassified) {
+                toast.warning("Classifique todos os itens em 'Meios de Transporte' ou 'Serviços Adicionais' antes de prosseguir.");
+                return;
+            }
         }
         
         const isSatelital = activeTab === "servico-satelital";
@@ -415,7 +441,7 @@ const ServicosTerceirosForm = () => {
             diasOperacao,
             omDestinoId: omDestino.id,
             categoria: activeTab,
-            itemsKey: itemsForCalc.map(i => `${i.id}-${i.quantidade}-${i.periodo}`).sort().join('|')
+            itemsKey: itemsForCalc.map(i => `${i.id}-${i.quantidade}-${i.periodo}-${i.sub_categoria || 'none'}`).sort().join('|')
         });
         
         toast.info("Item adicionado à lista de pendentes para conferência.");
@@ -491,7 +517,7 @@ const ServicosTerceirosForm = () => {
             diasOperacao: reg.dias_operacao,
             omDestinoId: omDest?.id || "",
             categoria: reg.categoria,
-            itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}-${i.periodo || 1}`).sort().join('|')
+            itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}-${i.periodo || 1}-${i.sub_categoria || 'none'}`).sort().join('|')
         });
 
         toast.info("Modo Edição ativado. Altere os dados e clique em 'Recalcular/Revisar Lote'.");
@@ -538,6 +564,174 @@ const ServicosTerceirosForm = () => {
             if (word === 'aereo') return 'Aéreo';
             return word.charAt(0).toUpperCase() + word.slice(1);
         }).join(' ');
+    };
+
+    // Componente de Tabela de Itens (Reutilizável)
+    const ItemsTable = ({ items, title, showClassificationActions = false }: { items: ItemAquisicaoServicoExt[], title?: string, showClassificationActions?: boolean }) => {
+        if (items.length === 0) return null;
+        
+        return (
+            <div className="space-y-2">
+                {title && <h5 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><LayoutGrid className="h-4 w-4" /> {title}</h5>}
+                <div className="border rounded-md overflow-hidden bg-background">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[80px] text-center">Qtd</TableHead>
+                                <TableHead>Descrição do Serviço</TableHead>
+                                <TableHead className="text-right w-[140px]">Valor Unitário</TableHead>
+                                {activeTab !== "fretamento-aereo" && <TableHead className="text-center w-[120px]">Período</TableHead>}
+                                <TableHead className="text-right w-[140px]">Total</TableHead>
+                                <TableHead className="w-[100px] text-center">Ações</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {items.map(item => {
+                                const isCharter = activeTab === "fretamento-aereo";
+                                const isTransport = activeTab === "transporte-coletivo";
+                                const showHvWarning = isCharter && suggestedHV !== null && item.quantidade !== suggestedHV;
+                                const period = (item as any).periodo;
+                                const unit = item.unidade_medida || 'UN';
+                                const trips = isTransport ? (Number(numeroViagens) || 1) : 1;
+                                const totalUnits = item.quantidade * (period || 0) * trips;
+                                
+                                return (
+                                    <TableRow key={item.id}>
+                                        <TableCell className="align-top pt-4">
+                                            <div className="space-y-1">
+                                                <Input 
+                                                    type="number" 
+                                                    min={0}
+                                                    value={item.quantidade === 0 ? "" : item.quantidade} 
+                                                    onChange={(e) => handleQuantityChange(item.id, e.target.value)} 
+                                                    onWheel={(e) => e.currentTarget.blur()}
+                                                    onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                    className={cn(
+                                                        "h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                                                        showHvWarning && "border-orange-500 focus-visible:ring-orange-500"
+                                                    )} 
+                                                />
+                                                {showHvWarning && (
+                                                    <div className="flex flex-col items-center gap-1 px-1">
+                                                        <span className="text-[9px] text-orange-600 font-bold leading-tight text-center">
+                                                            Sugerido: {suggestedHV} HV
+                                                        </span>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="sm" 
+                                                            className="h-5 text-[8px] px-1 text-orange-700 hover:text-orange-800 hover:bg-orange-50"
+                                                            onClick={() => handleQuantityChange(item.id, suggestedHV!.toString())}
+                                                        >
+                                                            Aplicar Sugestão
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                            <p className="font-medium">
+                                                {item.descricao_reduzida || item.descricao_item}
+                                            </p>
+                                            <p className="text-muted-foreground text-[10px]">
+                                                Cód. CATSER: {item.codigo_catser || item.codigo_catmat || 'N/A'}
+                                            </p>
+                                            <p className="text-muted-foreground text-[10px]">
+                                                Pregão: {formatPregao(item.numero_pregao)} | UASG: {formatCodug(item.uasg) || 'N/A'}
+                                            </p>
+                                            {isCharter && suggestedHV !== null && (
+                                                <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded flex items-start gap-2">
+                                                    <Info className="h-3 w-3 text-blue-600 mt-0.5" />
+                                                    <p className="text-[10px] text-blue-700 leading-tight">
+                                                        Cálculo: {distanciaPercorrer}km / {velocidadeCruzeiro}km/h = {(Number(distanciaPercorrer) / Number(velocidadeCruzeiro)).toFixed(2)}h. 
+                                                        <br />
+                                                        <strong>Arredondado para cima: {suggestedHV} HV.</strong>
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right text-xs text-muted-foreground align-top pt-4">
+                                            {formatCurrency(item.valor_unitario)} / {unit}
+                                        </TableCell>
+                                        {activeTab !== "fretamento-aereo" && (
+                                            <TableCell className="align-top pt-4">
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <div className="flex items-center gap-2 justify-center">
+                                                        <Input 
+                                                            type="number" 
+                                                            min={0}
+                                                            step="any"
+                                                            value={period === undefined ? "" : period} 
+                                                            onChange={(e) => handlePeriodChange(item.id, e.target.value)}
+                                                            onWheel={(e) => e.currentTarget.blur()}
+                                                            onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                            className="h-8 w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                        />
+                                                        <span className="text-[10px] text-muted-foreground font-medium">
+                                                            {period > 1 ? `${unit}s` : unit}
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-[8px] text-muted-foreground leading-none">Aceita frações (ex: 0,5)</span>
+                                                </div>
+                                            </TableCell>
+                                        )}
+                                        <TableCell className="text-right text-sm font-bold align-top pt-4">
+                                            {formatCurrency(item.valor_total)}
+                                            {isTransport && (
+                                                <div className="text-[10px] text-muted-foreground font-normal mt-1">
+                                                    Total: {totalUnits} {unit}{totalUnits !== 1 ? 's' : ''}
+                                                </div>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="align-top pt-3">
+                                            <div className="flex flex-col gap-1 items-center">
+                                                {showClassificationActions && (
+                                                    <div className="flex gap-1">
+                                                        {item.sub_categoria !== 'meio-transporte' && (
+                                                            <Button 
+                                                                variant="outline" 
+                                                                size="icon" 
+                                                                className="h-7 w-7 text-blue-600 border-blue-200 hover:bg-blue-50" 
+                                                                title="Mover para Meios de Transporte"
+                                                                onClick={() => handleMoveItem(item.id, 'meio-transporte')}
+                                                            >
+                                                                <Bus className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        )}
+                                                        {item.sub_categoria !== 'servico-adicional' && (
+                                                            <Button 
+                                                                variant="outline" 
+                                                                size="icon" 
+                                                                className="h-7 w-7 text-purple-600 border-purple-200 hover:bg-purple-50" 
+                                                                title="Mover para Serviços Adicionais"
+                                                                onClick={() => handleMoveItem(item.id, 'servico-adicional')}
+                                                            >
+                                                                <Plus className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        )}
+                                                        {item.sub_categoria && (
+                                                            <Button 
+                                                                variant="outline" 
+                                                                size="icon" 
+                                                                className="h-7 w-7 text-gray-600 border-gray-200 hover:bg-gray-50" 
+                                                                title="Remover Classificação"
+                                                                onClick={() => handleMoveItem(item.id, undefined)}
+                                                            >
+                                                                <ArrowDownUp className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -773,121 +967,50 @@ const ServicosTerceirosForm = () => {
                                                     )}
 
                                                     {selectedItems.length > 0 ? (
-                                                        <div className="border rounded-md overflow-hidden">
-                                                            <Table>
-                                                                <TableHeader>
-                                                                    <TableRow>
-                                                                        <TableHead className="w-[80px] text-center">Qtd</TableHead>
-                                                                        <TableHead>Descrição do Serviço</TableHead>
-                                                                        <TableHead className="text-right w-[140px]">Valor Unitário</TableHead>
-                                                                        {activeTab !== "fretamento-aereo" && <TableHead className="text-center w-[120px]">Período</TableHead>}
-                                                                        <TableHead className="text-right w-[140px]">Total</TableHead>
-                                                                        <TableHead className="w-[50px]"></TableHead>
-                                                                    </TableRow>
-                                                                </TableHeader>
-                                                                <TableBody>
-                                                                    {selectedItems.map(item => {
-                                                                        const isCharter = activeTab === "fretamento-aereo";
-                                                                        const isTransport = activeTab === "transporte-coletivo";
-                                                                        const showHvWarning = isCharter && suggestedHV !== null && item.quantidade !== suggestedHV;
-                                                                        const period = (item as any).periodo;
-                                                                        const unit = item.unidade_medida || 'UN';
-                                                                        const trips = isTransport ? (Number(numeroViagens) || 1) : 1;
-                                                                        const totalUnits = item.quantidade * (period || 0) * trips;
-                                                                        
-                                                                        return (
-                                                                            <TableRow key={item.id}>
-                                                                                <TableCell className="align-top pt-4">
-                                                                                    <div className="space-y-1">
-                                                                                        <Input 
-                                                                                            type="number" 
-                                                                                            min={0}
-                                                                                            value={item.quantidade === 0 ? "" : item.quantidade} 
-                                                                                            onChange={(e) => handleQuantityChange(item.id, e.target.value)} 
-                                                                                            onWheel={(e) => e.currentTarget.blur()}
-                                                                                            onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                                            className={cn(
-                                                                                                "h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                                                                                                showHvWarning && "border-orange-500 focus-visible:ring-orange-500"
-                                                                                            )} 
-                                                                                        />
-                                                                                        {showHvWarning && (
-                                                                                            <div className="flex flex-col items-center gap-1 px-1">
-                                                                                                <span className="text-[9px] text-orange-600 font-bold leading-tight text-center">
-                                                                                                    Sugerido: {suggestedHV} HV
-                                                                                                </span>
-                                                                                                <Button 
-                                                                                                    variant="ghost" 
-                                                                                                    size="sm" 
-                                                                                                    className="h-5 text-[8px] px-1 text-orange-700 hover:text-orange-800 hover:bg-orange-50"
-                                                                                                    onClick={() => handleQuantityChange(item.id, suggestedHV!.toString())}
-                                                                                                >
-                                                                                                    Aplicar Sugestão
-                                                                                                </Button>
-                                                                                            </div>
-                                                                                        )}
-                                                                                    </div>
-                                                                                </TableCell>
-                                                                                <TableCell className="text-xs">
-                                                                                    <p className="font-medium">
-                                                                                        {item.descricao_reduzida || item.descricao_item}
-                                                                                    </p>
-                                                                                    <p className="text-muted-foreground text-[10px]">
-                                                                                        Cód. CATSER: {item.codigo_catser || item.codigo_catmat || 'N/A'}
-                                                                                    </p>
-                                                                                    <p className="text-muted-foreground text-[10px]">
-                                                                                        Pregão: {formatPregao(item.numero_pregao)} | UASG: {formatCodug(item.uasg) || 'N/A'}
-                                                                                    </p>
-                                                                                    {isCharter && suggestedHV !== null && (
-                                                                                        <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded flex items-start gap-2">
-                                                                                            <Info className="h-3 w-3 text-blue-600 mt-0.5" />
-                                                                                            <p className="text-[10px] text-blue-700 leading-tight">
-                                                                                                Cálculo: {distanciaPercorrer}km / {velocidadeCruzeiro}km/h = {(Number(distanciaPercorrer) / Number(velocidadeCruzeiro)).toFixed(2)}h. 
-                                                                                                <br />
-                                                                                                <strong>Arredondado para cima: {suggestedHV} HV.</strong>
-                                                                                            </p>
-                                                                                        </div>
-                                                                                    )}
-                                                                                </TableCell>
-                                                                                <TableCell className="text-right text-xs text-muted-foreground align-top pt-4">
-                                                                                    {formatCurrency(item.valor_unitario)} / {unit}
-                                                                                </TableCell>
-                                                                                {activeTab !== "fretamento-aereo" && (
-                                                                                    <TableCell className="align-top pt-4">
-                                                                                        <div className="flex flex-col items-center gap-1">
-                                                                                            <div className="flex items-center gap-2 justify-center">
-                                                                                                <Input 
-                                                                                                    type="number" 
-                                                                                                    min={0}
-                                                                                                    step="any"
-                                                                                                    value={period === undefined ? "" : period} 
-                                                                                                    onChange={(e) => handlePeriodChange(item.id, e.target.value)}
-                                                                                                    onWheel={(e) => e.currentTarget.blur()}
-                                                                                                    onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                                                    className="h-8 w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                                                />
-                                                                                                <span className="text-[10px] text-muted-foreground font-medium">
-                                                                                                    {period > 1 ? `${unit}s` : unit}
-                                                                                                </span>
-                                                                                            </div>
-                                                                                            <span className="text-[8px] text-muted-foreground leading-none">Aceita frações (ex: 0,5)</span>
-                                                                                        </div>
-                                                                                    </TableCell>
-                                                                                )}
-                                                                                <TableCell className="text-right text-sm font-bold align-top pt-4">
-                                                                                    {formatCurrency(item.valor_total)}
-                                                                                    {isTransport && (
-                                                                                        <div className="text-[10px] text-muted-foreground font-normal mt-1">
-                                                                                            Total: {totalUnits} {unit}{totalUnits !== 1 ? 's' : ''}
-                                                                                        </div>
-                                                                                    )}
-                                                                                </TableCell>
-                                                                                <TableCell className="align-top pt-3"><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
-                                                                            </TableRow>
-                                                                        );
-                                                                    })}
-                                                                </TableBody>
-                                                            </Table>
+                                                        <div className="space-y-6">
+                                                            {activeTab === "transporte-coletivo" ? (
+                                                                <>
+                                                                    {/* Seção de Itens Não Classificados */}
+                                                                    {selectedItems.filter(i => !i.sub_categoria).length > 0 && (
+                                                                        <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg space-y-3">
+                                                                            <div className="flex items-center gap-2 text-orange-700">
+                                                                                <AlertCircle className="h-5 w-5" />
+                                                                                <h5 className="font-bold text-sm uppercase">Itens Pendentes de Classificação</h5>
+                                                                            </div>
+                                                                            <ItemsTable 
+                                                                                items={selectedItems.filter(i => !i.sub_categoria)} 
+                                                                                showClassificationActions={true}
+                                                                            />
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Seção Meios de Transporte */}
+                                                                    <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-lg space-y-3">
+                                                                        <ItemsTable 
+                                                                            title="Meios de Transporte" 
+                                                                            items={selectedItems.filter(i => i.sub_categoria === 'meio-transporte')} 
+                                                                            showClassificationActions={true}
+                                                                        />
+                                                                        {selectedItems.filter(i => i.sub_categoria === 'meio-transporte').length === 0 && (
+                                                                            <p className="text-xs text-muted-foreground italic text-center py-4">Nenhum meio de transporte classificado.</p>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Seção Serviços Adicionais */}
+                                                                    <div className="p-4 bg-purple-50/50 border border-purple-100 rounded-lg space-y-3">
+                                                                        <ItemsTable 
+                                                                            title="Serviços Adicionais" 
+                                                                            items={selectedItems.filter(i => i.sub_categoria === 'servico-adicional')} 
+                                                                            showClassificationActions={true}
+                                                                        />
+                                                                        {selectedItems.filter(i => i.sub_categoria === 'servico-adicional').length === 0 && (
+                                                                            <p className="text-xs text-muted-foreground italic text-center py-4">Nenhum serviço adicional classificado.</p>
+                                                                        )}
+                                                                    </div>
+                                                                </>
+                                                            ) : (
+                                                                <ItemsTable items={selectedItems} />
+                                                            )}
                                                         </div>
                                                     ) : (
                                                         <Alert variant="default" className="border border-gray-300">
