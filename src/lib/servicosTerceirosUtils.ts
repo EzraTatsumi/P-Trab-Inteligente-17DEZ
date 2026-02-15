@@ -61,11 +61,14 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
     // LÓGICA ESPECÍFICA PARA CATEGORIA "OUTROS"
     if (categoria === 'outros') {
         const tipoContrato = details.tipo_contrato_outros === 'locacao' ? 'Locação' : 'Contratação';
+        const pluralMilitar = registro.efetivo === 1 ? 'militar' : 'militares';
+        const pluralDia = registro.dias_operacao === 1 ? 'dia' : 'dias';
+        
         const beneficiary = details.has_efetivo
-            ? `para atender ${registro.efetivo} militares do/da ${registro.organizacao}`
+            ? `para atender ${registro.efetivo} ${pluralMilitar} do/da ${registro.organizacao}`
             : `para atender o/a ${registro.organizacao}`;
 
-        let memoria = `${ndHeader} - ${tipoContrato} de ${catLabel} ${beneficiary}, durante ${registro.dias_operacao} dias de Planejamento.\n\n`;
+        let memoria = `${ndHeader} - ${tipoContrato} de ${catLabel} ${beneficiary}, durante ${registro.dias_operacao} ${pluralDia} de Planejamento.\n\n`;
         
         memoria += `Cálculo:\n`;
         items.forEach((item: any) => {
