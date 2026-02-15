@@ -1,4 +1,4 @@
-import { formatCurrency, formatPregao, formatCodug } from "./formatUtils";
+import { formatCurrency, formatPregao } from "./formatUtils";
 
 export interface ServicoTerceiroRegistro {
     id: string;
@@ -29,9 +29,11 @@ export const calculateServicoTotals = (items: any[], trips: number = 1) => {
         const period = item.periodo || 0;
         const val = item.valor_unitario || 0;
         
+        // Se for serviço adicional no transporte coletivo, não multiplica por viagens
         const multiplier = (item.sub_categoria === 'servico-adicional') ? 1 : trips;
         const total = qty * period * val * multiplier;
 
+        // Verifica se a ND selecionada é 33 (que mapeamos para valor_nd_30 no banco por legado de estrutura) ou 39
         if (item.natureza_despesa === '33') totalND30 += total;
         else totalND39 += total;
     });
@@ -48,27 +50,16 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
     const items = details?.itens_selecionados || [];
     const categoria = registro.categoria;
     
-    // 1. Determinar ND (33 ou 39)
-    const hasND33 = items.some((i: any) => i.natureza_despesa === '33');
-    const ndCode = hasND33 ? '33.90.33' : '33.90.39';
-    
-    // 2. Determinar Ação (Contratação ou Locação)
-    const isLocacao = details?.tipo_contrato_outros === 'locacao';
-    const actionLabel = isLocacao ? 'Locação' : 'Contratação';
-    
-    // 3. Determinar Nome do Serviço
+    // Usa o nome customizado se for a categoria 'outros'
     const catLabel = categoria === 'outros' ? (details.nome_servico_outros || 'Serviços de Terceiros') : formatCategoryLabel(categoria);
     
-    // 4. Determinar Destinatário (Efetivo ou apenas OM)
-    const hasEfetivo = details?.has_efetivo !== false && registro.efetivo > 0;
-    const targetLabel = hasEfetivo 
-        ? `para atender ${registro.efetivo} militares do/da ${registro.organizacao}`
-        : `para atender o/a ${registro.organizacao}`;
+    // Determina a ND predominante para o cabeçalho (simplificado)
+    const hasND33 = items.some((i: any) => i.natureza_despesa === '33');
+    const hasND39 = items.some((i: any) => i.natureza_despesa === '39' || !i.natureza_despesa);
+    const ndHeader = (hasND33 && hasND39) ? '33.90.33 / 33.90.39' : (hasND33 ? '33.90.33' : '33.90.39');
+    
+    let memoria = `${ndHeader} - Contratação de ${catLabel}, para a ${registro.organizacao}, durante ${registro.dias_operacao} dias de Planejamento.\n\n`;
 
-    // Montagem do Cabeçalho
-    let memoria = `${ndCode} - ${actionLabel} de ${catLabel} ${targetLabel}, durante ${registro.dias_operacao} dias de Planejamento.\n\n`;
-
-    // Detalhes específicos de outras categorias (mantidos)
     if (categoria === 'fretamento-aereo') {
         memoria += `Detalhes da Aeronave:\n`;
         memoria += `- Tipo: ${details.tipo_anv || 'N/A'}\n`;
@@ -90,13 +81,19 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
         memoria += `- Número de Viagens: ${details.numero_viagens || 1}\n\n`;
     }
 
-    // Seção de Cálculo
-    memoria += `Cálculo:\n\n`;
+    if (categoria === 'outros') {
+        memoria += `Detalhamento do Serviço:\n`;
+        memoria += `- Objeto: ${details.objeto_outros || 'N/A'}\n`;
+        memoria += `- Local: ${details.local_om_outros || 'N/A'}\n`;
+        memoria += `- Finalidade: ${details.finalidade_outros || 'N/A'}\n\n`;
+    }
+
+    memoria += `Cálculo:\n`;
     items.forEach((item: any) => {
-        memoria += `${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${item.unidade_medida || 'un'}.\n`;
+        memoria += `- ${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${item.unidade_medida || 'un'}.\n`;
     });
 
-    memoria += `Fórmula: Nr Item x Valor Unitário.\n\n`;
+    memoria += `\nFórmula: Nr Item x Valor Unitário.\n`;
     
     const trips = categoria === 'transporte-coletivo' ? (Number(details.numero_viagens) || 1) : 1;
 
@@ -105,6 +102,7 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
         const period = (item.periodo !== undefined) ? item.periodo : 1;
         const unit = item.unidade_medida || 'un';
         const val = item.valor_unitario || 0;
+        const ndItem = item.natureza_despesa === '33' ? 'ND 33' : 'ND 39';
         
         const periodFormatted = Number.isInteger(period) ? period.toString() : period.toString().replace('.', ',');
         
@@ -112,16 +110,15 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
         const total = qty * period * val * multiplier;
 
         if (categoria === 'transporte-coletivo' && item.sub_categoria === 'meio-transporte') {
-            memoria += `${qty} ${item.descricao_reduzida || item.descricao_item} (${periodFormatted} ${unit} x ${trips} viagens) x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)}.\n`;
+            memoria += `- ${qty} ${item.descricao_reduzida || item.descricao_item} (${periodFormatted} ${unit} x ${trips} viagens) x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)} (${ndItem}).\n`;
         } else if (categoria === 'fretamento-aereo') {
-            memoria += `${qty} ${item.descricao_reduzida || item.descricao_item} x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)}.\n`;
+            memoria += `- ${qty} ${item.descricao_reduzida || item.descricao_item} x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)} (${ndItem}).\n`;
         } else {
-            // Formato padrão para Outros e demais categorias
-            memoria += `${qty} ${item.descricao_reduzida || item.descricao_item} (${periodFormatted} ${unit}) x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)}.\n`;
+            memoria += `- ${qty} ${item.descricao_reduzida || item.descricao_item} (${periodFormatted} ${unit}) x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)} (${ndItem}).\n`;
         }
     });
 
-    memoria += `Total: ${formatCurrency(registro.valor_total)}. `;
+    memoria += `\nTotal: ${formatCurrency(registro.valor_total)}.\n`;
     
     if (items.length > 0) {
         const firstItem = items[0];
@@ -139,4 +136,9 @@ const formatCategoryLabel = (cat: string) => {
     if (cat === 'locacao-estruturas') return 'Locação de Estruturas';
     if (cat === 'servico-grafico') return 'Serviço Gráfico';
     return 'Serviços de Terceiros';
+};
+
+const formatCodug = (ug: string) => {
+    if (!ug) return 'N/A';
+    return ug.replace(/^0+/, '');
 };
