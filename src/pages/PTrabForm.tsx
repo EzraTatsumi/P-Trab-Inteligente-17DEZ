@@ -58,6 +58,7 @@ const PTrabForm = () => {
     { id: "complemento-alimentacao", name: "Complemento de Alimentação" },
     { id: "horas-voo-avex", name: "Horas de Voo (AvEx)" },
     { id: "material-consumo", name: "Material de Consumo" },
+    { id: "material-permanente", name: "Material Permanente" },
     { id: "servicos-terceiros", name: "Serviço de Terceiros/Locações" },
     { id: "concessionaria", name: "Pagamento de Concessionárias" },
     { id: "diaria", name: "Pagamento de Diárias" },
@@ -194,6 +195,8 @@ const PTrabForm = () => {
       navigate(`/ptrab/concessionaria?ptrabId=${ptrabId}`);
     } else if (itemId === 'material-consumo') {
       navigate(`/ptrab/material-consumo?ptrabId=${ptrabId}`);
+    } else if (itemId === 'material-permanente') {
+      navigate(`/ptrab/material-permanente?ptrabId=${ptrabId}`);
     } else if (itemId === 'complemento-alimentacao') {
       navigate(`/ptrab/complemento-alimentacao?ptrabId=${ptrabId}`);
     } else if (itemId === 'servicos-terceiros') {
