@@ -133,13 +133,13 @@ const MaterialPermanenteDiretrizFormDialog: React.FC<MaterialPermanenteDiretrizF
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>{subitemForm.id ? `Editar Subitem ND 52: ${subitemForm.nr_subitem}` : "Novo Subitem de Material Permanente (ND 44.90.52)"}</DialogTitle>
+                    <DialogTitle>{subitemForm.id ? `Editar Subitem: ${subitemForm.nr_subitem}` : "Novo Subitem de Material Permanente"}</DialogTitle>
                     <DialogDescription>Cadastre o subitem da ND e os itens de aquisição permanente associados.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-2">
                     <Card className="p-4">
                         <div className="flex justify-between items-center mb-4">
-                            <CardTitle className="text-base">Dados do Subitem da ND 52</CardTitle>
+                            <CardTitle className="text-base">Dados do Subitem</CardTitle>
                             <Button type="button" variant="outline" size="sm" onClick={() => setIsCatalogOpen(true)} disabled={loading}><BookOpen className="h-4 w-4 mr-2" />Catálogo ND 52</Button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
