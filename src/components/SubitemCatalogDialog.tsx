@@ -16,17 +16,20 @@ interface SubitemCatalogDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSelect: (item: { nr_subitem: string, nome_subitem: string, descricao_subitem: string | null }) => void;
+    mode?: 'consumo' | 'permanente'; // NOVO: Define qual catálogo buscar
 }
 
-const fetchCatalogItems = async (): Promise<CatalogoSubitem[]> => {
+const fetchCatalogItems = async (mode: 'consumo' | 'permanente'): Promise<CatalogoSubitem[]> => {
+    const tableName = mode === 'consumo' ? 'catalogo_subitens_nd' : 'catalogo_subitens_nd_52';
+    
     const { data, error } = await supabase
-        .from('catalogo_subitens_nd')
+        .from(tableName as any)
         .select('*')
         .eq('ativo', true)
         .order('nr_subitem', { ascending: true });
 
     if (error) {
-        console.error("Erro ao buscar catálogo de subitens:", error);
+        console.error(`Erro ao buscar catálogo de subitens (${mode}):`, error);
         throw new Error("Falha ao carregar o catálogo de subitens.");
     }
     
@@ -37,10 +40,11 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
     open,
     onOpenChange,
     onSelect,
+    mode = 'consumo',
 }) => {
     const { data: items, isLoading, error } = useQuery({
-        queryKey: ['subitemCatalog'],
-        queryFn: fetchCatalogItems,
+        queryKey: ['subitemCatalog', mode],
+        queryFn: () => fetchCatalogItems(mode),
         enabled: open,
     });
     
@@ -81,11 +85,15 @@ const SubitemCatalogDialog: React.FC<SubitemCatalogDialogProps> = ({
         toast.error(error.message);
     }
 
+    const title = mode === 'consumo' 
+        ? "Catálogo de Subitens da ND 30.33.30 (Material de Consumo)"
+        : "Catálogo de Subitens da ND 44.90.52 (Material Permanente)";
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Catálogo de Subitens da ND 30.33.30 (Material de Consumo)</DialogTitle>
+                    <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>
                         Selecione um subitem de referência e confirme a importação para o seu registro.
                     </DialogDescription>
