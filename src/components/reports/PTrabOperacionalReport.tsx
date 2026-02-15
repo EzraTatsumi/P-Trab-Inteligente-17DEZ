@@ -162,6 +162,11 @@ const formatCategoryName = (cat: string, details?: any) => {
     }).join(' ');
 };
 
+const toTitleCase = (str: string) => {
+    if (!str) return '';
+    return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+};
+
 
 const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   ptrabData,
@@ -353,9 +358,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   }, [consolidatedConcessionarias, concessionariaDetailsMap]);
 
   /**
-   * Helper para gerar o rótulo da coluna Despesas em CAIXA ALTA e sem o prefixo genérico.
+   * Helper para gerar o rótulo da coluna Despesas.
+   * Aplica regras específicas para Serviços de Terceiros e restaura o padrão para os demais.
    */
-  const getDespesaLabel = (row: ExpenseRow): string => {
+  const getDespesaLabel = (row: ExpenseRow, omName: string): string => {
     const { type, data, isContinuation } = row;
     
     if (type === 'SERVIÇOS DE TERCEIROS') {
@@ -364,12 +370,12 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         const cat = servico.categoria;
         
         if (cat === 'transporte-coletivo') {
-            return 'LOCAÇÃO DE VEÍCULOS (TRANSPORTE COLETIVO)';
+            return 'LOCAÇÃO DE VEÍCULOS (Transporte Coletivo)';
         }
         
         if (cat === 'locacao-veiculos') {
-            const groupName = servico.group_name || details?.group_name || 'GERAL';
-            return `LOCAÇÃO DE VEÍCULOS (${groupName.toUpperCase()})`;
+            const groupName = servico.group_name || details?.group_name || 'Geral';
+            return `LOCAÇÃO DE VEÍCULOS (${toTitleCase(groupName)})`;
         }
         
         if (cat === 'outros' && details?.nome_servico_outros) {
@@ -379,19 +385,43 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         return formatCategoryName(cat, details).toUpperCase();
     }
     
+    // RESTAURAÇÃO DOS DEMAIS ITENS PARA O PADRÃO ORIGINAL
     if (type === 'MATERIAL DE CONSUMO') {
         const mat = data as MaterialConsumoRegistro;
-        let label = (mat.group_name || type).toUpperCase();
-        if (isContinuation) label += '\n(CONTINUAÇÃO)';
+        let label = type;
+        if (mat.group_name) {
+            label += `\n(${mat.group_name})`;
+        }
+        if (isContinuation) {
+            label += `\n\nContinuação`;
+        }
         return label;
     }
     
     if (type === 'COMPLEMENTO DE ALIMENTAÇÃO') {
         const comp = data as { registro: ComplementoAlimentacaoRegistro };
-        return (comp.registro.group_name || type).toUpperCase();
+        return `${type}\n(${comp.registro.group_name})`;
+    }
+
+    if (type === 'PASSAGENS') {
+        const passagem = data as ConsolidatedPassagemReport;
+        let label = type;
+        if (passagem.organizacao !== omName) {
+            label += `\n${passagem.organizacao}`;
+        }
+        return label;
+    }
+
+    if (type === 'CONCESSIONÁRIA') {
+        const concessionaria = data as ConsolidatedConcessionariaReport;
+        let label = type;
+        if (concessionaria.organizacao !== omName) {
+            label += `\n${concessionaria.organizacao}`;
+        }
+        return label;
     }
     
-    return type.toUpperCase();
+    return type;
   };
 
   const getSortedRowsForOM = useCallback((omName: string, group: GrupoOMOperacional): ExpenseRow[] => { 
@@ -708,7 +738,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
             const row = worksheet.getRow(currentRow);
             const type = rowItem.type;
             const data = rowItem.data;
-            let totalLinha = 0, memoria = '', despesasLabel = getDespesaLabel(rowItem);
+            let totalLinha = 0, memoria = '', despesasLabel = getDespesaLabel(rowItem, omName);
             let nd15 = 0, nd30 = 0, nd33 = 0, nd39 = 0, nd00 = 0;
             let omDetentora = omName, ugDetentora = ugReference;
 
@@ -920,7 +950,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     a.href = url; a.download = generateFileName('Excel'); a.click();
     window.URL.revokeObjectURL(url);
     toast({ title: "Excel Exportado!", description: "O relatório Operacional foi salvo com sucesso.", duration: 3000 });
-  }, [omsOrdenadas, gruposPorOM, consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosMaterialConsumo, registrosComplementoAlimentacao, registrosServicosTerceiros, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, generateMaterialConsumoMemoriaCalculo, generateComplementoMemoriaCalculo, generateServicoMemoriaCalculo, diretrizesOperacionais, toast, getSortedRowsForOM, getDespesaLabel]);
+  }, [omsOrdenadas, gruposPorOM, consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosMaterialConsumo, registrosComplementoAlimentacao, registrosServicosTerceiros, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, generateMaterialConsumoMemoriaCalculo, generateComplementoMemoriaCalculo, generateServicoMemoriaCalculo, diretrizesOperacionais, toast, getSortedRowsForOM]);
 
 
   if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0 && registrosSuprimentoFundos.length === 0 && registrosPassagem.length === 0 && registrosConcessionaria.length === 0 && registrosMaterialConsumo.length === 0 && registrosComplementoAlimentacao.length === 0 && registrosServicosTerceiros.length === 0) {
@@ -1048,7 +1078,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                       {sortedRows.map((rowItem) => {
                           const type = rowItem.type;
                           const data = rowItem.data;
-                          let totalLinha = 0, memoria = '', despesasLabel = getDespesaLabel(rowItem);
+                          let totalLinha = 0, memoria = '', despesasLabel = getDespesaLabel(rowItem, omName);
                           let nd15 = 0, nd30 = 0, nd33 = 0, nd39 = 0, nd00 = 0;
                           let omDetentora = omName, ugDetentora = ugReference;
 
