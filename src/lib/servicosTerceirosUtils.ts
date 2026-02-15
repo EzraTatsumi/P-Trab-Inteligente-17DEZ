@@ -1,4 +1,4 @@
-import { formatCurrency, formatPregao, formatCodug } from "./formatUtils";
+import { formatCurrency, formatPregao, formatCodug, formatNumber } from "./formatUtils";
 
 export interface ServicoTerceiroRegistro {
     id: string;
@@ -116,25 +116,38 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
         return memoria;
     }
 
-    // LÓGICA PARA DEMAIS CATEGORIAS (PRESERVANDO FORMATO ORIGINAL)
-    const nd = (categoria === 'fretamento-aereo' || categoria === 'transporte-coletivo') ? '33.90.33' : '33.90.39';
-    const catLabel = formatCategoryLabel(categoria);
+    // LÓGICA PARA DEMAIS CATEGORIAS
+    // Locação de veículos agora é 33.90.33 conforme solicitado
+    const nd = (categoria === 'fretamento-aereo' || categoria === 'transporte-coletivo' || categoria === 'locacao-veiculos') ? '33.90.33' : '33.90.39';
     
-    let memoria = `${nd} - Contratação de ${catLabel}, para a ${registro.organizacao}, durante ${registro.dias_operacao} dias de Planejamento.\n\n`;
+    let catLabel = formatCategoryLabel(categoria);
+    // Inclui o nome do grupo no cabeçalho da Locação de Veículos
+    if (categoria === 'locacao-veiculos') {
+        const groupName = registro.group_name || details?.group_name || 'Grupo de Veículos';
+        catLabel = `${catLabel} (${groupName})`;
+    }
+
+    let header = `${nd} - Contratação de ${catLabel}`;
+    
+    // Ajuste no cabeçalho do Serviço Satelital
+    if (categoria === 'servico-satelital') {
+        header = `${nd} - Contratação de Serviço Satelital de ${details.tipo_equipamento || 'N/A'}, visando ${details.proposito || 'N/A'}`;
+    }
+    
+    let memoria = `${header}, para a ${registro.organizacao}, durante ${registro.dias_operacao} dias de Planejamento.\n\n`;
 
     if (categoria === 'fretamento-aereo') {
         memoria += `Detalhes da Aeronave:\n`;
         memoria += `- Tipo: ${details.tipo_anv || 'N/A'}\n`;
         memoria += `- Capacidade: ${details.capacidade || 'N/A'}\n`;
         memoria += `- Velocidade de Cruzeiro: ${details.velocidade_cruzeiro || 0} Km/h\n`;
-        memoria += `- Distância a percorrer: ${details.distancia_percorrer || 0} Km\n\n`;
+        // Distância a percorrer com ponto de milhar
+        memoria += `- Distância a percorrer: ${formatNumber(details.distancia_percorrer || 0, 0)} Km\n\n`;
     }
 
-    if (categoria === 'servico-satelital') {
-        memoria += `Propósito: ${details.proposito || 'N/A'}\n`;
-        memoria += `Equipamento: ${details.tipo_equipamento || 'N/A'}\n\n`;
-    }
-
+    memoria += `Cálculo:\n`;
+    
+    // Dados de Logística de Transporte movidos para dentro do bloco Cálculo
     if (categoria === 'transporte-coletivo') {
         memoria += `Logística de Transporte:\n`;
         memoria += `- Itinerário: ${details.itinerario || 'N/A'}\n`;
@@ -143,8 +156,8 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
         memoria += `- Número de Viagens: ${details.numero_viagens || 1}\n\n`;
     }
 
-    memoria += `Cálculo:\n`;
     items.forEach((item: any) => {
+        // Descrição do item preservando o case original do banco
         memoria += `- ${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${item.unidade_medida || 'un'}.\n`;
     });
 
