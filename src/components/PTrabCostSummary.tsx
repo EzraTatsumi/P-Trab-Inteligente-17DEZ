@@ -493,8 +493,16 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
         const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
         const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
         const val = Number(record.valor_total || 0);
-        const nd33 = Number(record.valor_nd_30 || 0); // No form, valor_nd_30 armazena ND 33
-        const nd39 = Number(record.valor_nd_39 || 0);
+        
+        // Regras de ND: Fretamento, Locação de Veículos e Transporte Coletivo são ND 33
+        let nd33 = Number(record.valor_nd_30 || 0); // No form, valor_nd_30 armazena ND 33
+        let nd39 = Number(record.valor_nd_39 || 0);
+        
+        if (['fretamento-aereo', 'locacao-veiculos', 'transporte-coletivo'].includes(record.categoria)) {
+            nd33 = val;
+            nd39 = 0;
+        }
+
         const cat = formatCategoryLabel(record.categoria, record.detalhes_planejamento);
 
         [omS, omD].forEach(omTotals => {
