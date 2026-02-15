@@ -9,7 +9,7 @@ import { ArrowLeft, Plus, Loader2, FileSpreadsheet, Package, Briefcase, HardDriv
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSession } from '@/components/SessionContextProvider';
-import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DiretrizMaterialConsumo } from "@/types/diretrizesMaterialConsumo";
 import { DiretrizMaterialPermanente } from "@/types/diretrizesMaterialPermanente";
 import MaterialConsumoDiretrizRow from '@/components/MaterialConsumoDiretrizRow';
@@ -274,7 +274,7 @@ const CustosOperacionaisPage = () => {
             <MaterialConsumoExportImportDialog open={isConsumoExportImportOpen} onOpenChange={setIsConsumoExportImportOpen} selectedYear={selectedYear} diretrizes={diretrizesConsumo} onImportSuccess={loadDiretrizesConsumo} />
             
             <MaterialPermanenteDiretrizFormDialog open={isPermanenteFormOpen} onOpenChange={setIsPermanenteFormOpen} selectedYear={selectedYear} diretrizToEdit={diretrizPermanenteToEdit} onSave={handleSavePermanente} loading={false} />
-            <MaterialPermanenteExportImportDialog open={isPermanenteExportImportOpen} onOpenChange={setIsPermanenteExportImportOpen} selectedYear={selectedYear} diretrizes={direrizesPermanente} onImportSuccess={loadDiretrizesPermanente} />
+            <MaterialPermanenteExportImportDialog open={isPermanenteExportImportOpen} onOpenChange={setIsPermanenteExportImportOpen} selectedYear={selectedYear} diretrizes={diretrizesPermanente} onImportSuccess={loadDiretrizesPermanente} />
         </div>
     );
 };
