@@ -2085,7 +2085,7 @@ const CustosOperacionaisPage = () => {
               <Card className="p-4">
                   <div className="flex justify-between items-center mb-4">
                       <CardTitle className="text-base font-semibold">
-                          Subitens da ND 52 Cadastrados
+                          Subitens da ND Cadastrados
                       </CardTitle>
                       <Button 
                           type="button" 
@@ -2140,7 +2140,7 @@ const CustosOperacionaisPage = () => {
                           </Table>
                       ) : (
                           <Card className="p-4 text-center text-muted-foreground">
-                              Nenhum subitem da ND 52 cadastrado para o ano de referência.
+                              Nenhum subitem da ND cadastrado para o ano de referência.
                           </Card>
                       )
                   )}
@@ -2156,7 +2156,7 @@ const CustosOperacionaisPage = () => {
                       className="w-full"
                   >
                       <Plus className="mr-2 h-4 w-4" />
-                      Adicionar Novo Subitem da ND 52
+                      Adicionar Novo Subitem da ND
                   </Button>
               </div>
               
