@@ -166,24 +166,31 @@ export const generateServicoMemoriaCalculo = (
     if (categoria === 'locacao-estruturas') {
         let texto = `33.90.39 - Locação de Estruturas, ${paraOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
         
-        texto += `Cálculo:\n\n`;
+        texto += `Cálculo:\n`;
         items.forEach((item: any) => {
             const unit = item.unidade_medida || 'UN';
-            texto += `${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${unit}.\n`;
+            texto += `- ${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${unit}.\n`;
         });
 
-        texto += `\nFórmula: Nr Estruturas x Valor Unitário x Período.\n\n`;
+        texto += `\nFórmula: Nr Estruturas x Valor Unitário x Período.\n`;
         items.forEach((item: any) => {
             const qty = item.quantidade || 0;
             const period = item.periodo || 0;
             const unit = item.unidade_medida || 'UN';
             const totalItem = qty * period * item.valor_unitario;
-            const itemDiasText = period === 1 ? "dia" : "dias";
             
-            texto += `${formatNumber(qty, 4)} ${item.descricao_reduzida || item.descricao_item} x ${formatCurrency(item.valor_unitario)}/${unit} x ${formatNumber(period, 4)} ${itemDiasText} = ${formatCurrency(totalItem)}.\n`;
+            // Determina o texto do período baseado na unidade de medida
+            let periodLabel = "dia";
+            if (unit.toLowerCase().includes('mês') || unit.toLowerCase().includes('mes')) {
+                periodLabel = period === 1 ? "mês" : "meses";
+            } else {
+                periodLabel = period === 1 ? "dia" : "dias";
+            }
+            
+            texto += `- ${formatNumber(qty, 0)} ${item.descricao_reduzida || item.descricao_item} x ${formatCurrency(item.valor_unitario)}/${unit} x ${formatNumber(period, 0)} ${periodLabel} = ${formatCurrency(totalItem)}.\n`;
         });
 
-        texto += `\nTotal: ${formatCurrency(Number(registro.valor_total))}. `;
+        texto += `\nTotal: ${formatCurrency(Number(registro.valor_total))}.\n`;
         if (items.length > 0) {
             texto += `(Pregão ${formatPregao(items[0].numero_pregao)} - UASG ${formatCodug(items[0].uasg)})`;
         }
