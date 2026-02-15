@@ -123,6 +123,28 @@ interface ItemAquisicaoServicoExt extends ItemAquisicaoServico {
     daily_limit_km?: number | "";
 }
 
+// Helper para formatar o plural das unidades de medida
+const formatUnitPlural = (unit: string, count: number) => {
+    if (!unit || count <= 1) return unit;
+    
+    const lowerUnit = unit.toLowerCase().trim();
+    
+    // Abreviações técnicas que não variam no plural (SI e comuns)
+    const noPlural = ['m', 'km', 'kg', 'l', 'un', 'hv', 'gl', 'pax', 'cx', 'pct'];
+    if (noPlural.includes(lowerUnit)) return unit;
+    
+    // Regras de plural em Português
+    if (lowerUnit === 'mês') return 'meses';
+    if (lowerUnit.endsWith('r') || lowerUnit.endsWith('z')) return `${unit}es`;
+    if (lowerUnit.endsWith('m')) return unit.slice(0, -1) + 'ns';
+    if (lowerUnit.endsWith('al') || lowerUnit.endsWith('el') || lowerUnit.endsWith('ol') || lowerUnit.endsWith('ul')) {
+        return unit.slice(0, -1) + 'is';
+    }
+    
+    // Padrão: apenas adiciona 's'
+    return `${unit}s`;
+};
+
 // Helper fora do componente para ser usado em useMemo
 const formatCategoryName = (cat: string) => {
     if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
@@ -289,7 +311,7 @@ const ServiceItemRow = ({
                                 className="h-8 w-16 text-center"
                             />
                             <span className="text-[10px] text-muted-foreground font-medium">
-                                {period > 1 ? `${unit}s` : unit}
+                                {formatUnitPlural(unit, period)}
                             </span>
                         </div>
                         <span className="text-[8px] text-muted-foreground leading-none">Aceita frações (ex: 0,5)</span>
@@ -300,7 +322,7 @@ const ServiceItemRow = ({
                 {formatCurrency(item.valor_total)}
                 {!hideTotalUnits && isTransport && (
                     <div className="text-[10px] text-muted-foreground font-normal mt-1">
-                        Total: {totalUnits} {unit}{totalUnits !== 1 ? 's' : ''}
+                        Total: {totalUnits} {formatUnitPlural(unit, totalUnits)}
                     </div>
                 )}
             </TableCell>
@@ -917,7 +939,7 @@ const ServicosTerceirosForm = () => {
             groupsKey: isLocacao ? vehicleGroups.map(g => `${g.tempId}-${g.totalValue}`).sort().join('|') : ""
         });
 
-        // NÃO LIMPA MAIS OS CAMPOS, APENAS O MODO EDIÇÃO
+        // NÃO LIMPA MAIS OS CAMPOS, APENENAS O MODO EDIÇÃO
         setEditingId(null);
         
         toast.info("Item adicionado à lista de pendentes. Você pode mudar de categoria ou salvar os registros.");
