@@ -62,6 +62,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import VehicleGroupForm from "@/components/VehicleGroupForm";
+import { VehicleGroup, calculateVehicleGroupTotals } from "@/lib/vehicleGroupUtils";
 
 export type CategoriaServico = 
     | "fretamento-aereo" 
@@ -99,6 +103,9 @@ interface PendingServicoItem {
     valor_total: number;
     valor_nd_30: number;
     valor_nd_39: number;
+    // Campos para grupos
+    group_name?: string;
+    group_purpose?: string | null;
 }
 
 interface ConsolidatedServicoRecord {
@@ -408,6 +415,12 @@ const ServicosTerceirosForm = () => {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [groupToDelete, setGroupToDelete] = useState<ConsolidatedServicoRecord | null>(null);
 
+    // --- ESTADOS PARA GRUPOS DE VEÍCULOS ---
+    const [vehicleGroups, setVehicleGroups] = useState<VehicleGroup[]>([]);
+    const [isGroupFormOpen, setIsGroupFormOpen] = useState(false);
+    const [groupToEdit, setGroupToEdit] = useState<VehicleGroup | undefined>(undefined);
+    const [selectedItemsFromSelector, setSelectedItemsFromSelector] = useState<ItemAquisicaoServico[] | null>(null);
+
     // --- CÁLCULOS AUXILIARES ---
     const suggestedHV = useMemo(() => {
         if (activeTab === "fretamento-aereo" && velocidadeCruzeiro && distanciaPercorrer) {
@@ -417,6 +430,9 @@ const ServicosTerceirosForm = () => {
     }, [activeTab, velocidadeCruzeiro, distanciaPercorrer]);
 
     const totalLote = useMemo(() => {
+        if (activeTab === "locacao-veiculos") {
+            return vehicleGroups.reduce((acc, g) => acc + g.totalValue, 0);
+        }
         const trips = activeTab === "transporte-coletivo" ? (Number(numeroViagens) || 1) : 1;
         return selectedItems.reduce((acc, item) => {
             const qty = item.quantidade || 0;
@@ -426,7 +442,7 @@ const ServicosTerceirosForm = () => {
             const multiplier = (activeTab === "transporte-coletivo" && item.sub_categoria === 'servico-adicional') ? 1 : trips;
             return acc + (qty * period * item.valor_unitario * multiplier);
         }, 0);
-    }, [selectedItems, activeTab, numeroViagens]);
+    }, [selectedItems, activeTab, numeroViagens, vehicleGroups]);
 
     const isServicosTerceirosDirty = useMemo(() => {
         if (!lastStagedState || pendingItems.length === 0) return false;
@@ -443,12 +459,17 @@ const ServicosTerceirosForm = () => {
 
         if (contextChanged) return true;
 
+        if (activeTab === "locacao-veiculos") {
+            const currentGroupsKey = vehicleGroups.map(g => `${g.tempId}-${g.totalValue}`).sort().join('|');
+            return currentGroupsKey !== lastStagedState.groupsKey;
+        }
+
         // Compara itens selecionados (IDs, Quantidades e Sub-categorias)
         const currentItemsKey = selectedItems.map(i => `${i.id}-${i.quantidade}-${(i as any).periodo || 1}-${i.sub_categoria || 'none'}`).sort().join('|');
         const stagedItemsKey = lastStagedState.itemsKey;
 
         return currentItemsKey !== stagedItemsKey;
-    }, [omFavorecida, faseAtividade, efetivo, diasOperacao, omDestino, activeTab, selectedItems, lastStagedState, pendingItems]);
+    }, [omFavorecida, faseAtividade, efetivo, diasOperacao, omDestino, activeTab, selectedItems, lastStagedState, pendingItems, vehicleGroups]);
 
     // Recalcula totais quando o número de viagens muda (apenas para Transporte Coletivo)
     useEffect(() => {
@@ -524,6 +545,8 @@ const ServicosTerceirosForm = () => {
                 valor_total: item.valor_total,
                 valor_nd_30: item.valor_nd_30,
                 valor_nd_39: item.valor_nd_39,
+                group_name: item.group_name,
+                group_purpose: item.group_purpose,
             }));
             const { error } = await supabase.from('servicos_terceiros_registros').insert(records);
             if (error) throw error;
@@ -558,6 +581,7 @@ const ServicosTerceirosForm = () => {
         setPendingItems([]);
         setLastStagedState(null);
         setSelectedItems([]);
+        setVehicleGroups([]);
         setEfetivo(0);
         setDiasOperacao(0);
         setFaseAtividade("");
@@ -670,9 +694,32 @@ const ServicosTerceirosForm = () => {
         ));
     };
 
+    // --- HANDLERS DE GRUPOS DE VEÍCULOS ---
+    const handleSaveVehicleGroup = (group: VehicleGroup) => {
+        setVehicleGroups(prev => {
+            const idx = prev.findIndex(g => g.tempId === group.tempId);
+            if (idx !== -1) {
+                const newGroups = [...prev];
+                newGroups[idx] = group;
+                return newGroups;
+            }
+            return [...prev, group];
+        });
+        setIsGroupFormOpen(false);
+        setGroupToEdit(undefined);
+        toast.success(`Grupo "${group.groupName}" salvo.`);
+    };
+
     const handleAddToPending = () => {
-        if (selectedItems.length === 0) {
+        const isLocacao = activeTab === "locacao-veiculos";
+        
+        if (!isLocacao && selectedItems.length === 0) {
             toast.warning("Selecione pelo menos um item.");
+            return;
+        }
+
+        if (isLocacao && vehicleGroups.length === 0) {
+            toast.warning("Crie pelo menos um grupo de veículos.");
             return;
         }
 
@@ -690,48 +737,78 @@ const ServicosTerceirosForm = () => {
             return;
         }
 
-        const trips = activeTab === "transporte-coletivo" ? (Number(numeroViagens) || 1) : 1;
-        const itemsForCalc = selectedItems.map(i => ({ ...i, periodo: (i as any).periodo || 0 }));
-        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(itemsForCalc, trips);
-        
-        const newItem: PendingServicoItem = {
-            tempId: editingId || crypto.randomUUID(),
-            organizacao: omFavorecida.nome,
-            ug: omFavorecida.ug,
-            om_detentora: omDestino.nome,
-            ug_detentora: omDestino.ug || omFavorecida.ug,
-            dias_operacao: diasOperacao,
-            efetivo: isSatelital ? 0 : efetivo,
-            fase_atividade: faseAtividade,
-            categoria: activeTab,
-            detalhes_planejamento: { 
-                itens_selecionados: itemsForCalc,
-                tipo_anv: tipoAnv,
-                capacidade: capacidade,
-                velocidade_cruzeiro: velocidadeCruzeiro,
-                distancia_percorrer: distanciaPercorrer,
-                tipo_equipamento: tipoEquipamento,
-                proposito: proposito,
-                itinerario: itinerario,
-                distancia_itinerario: distanciaItinerario,
-                distancia_percorrida_dia: distanciaPercorridaDia,
-                numero_viagens: numeroViagens
-            },
-            valor_total: totalGeral,
-            valor_nd_30: totalND30,
-            valor_nd_39: totalND39,
-        };
+        if (isLocacao) {
+            const newPendingItems: PendingServicoItem[] = vehicleGroups.map(group => ({
+                tempId: editingId || group.tempId,
+                organizacao: omFavorecida.nome,
+                ug: omFavorecida.ug,
+                om_detentora: omDestino.nome,
+                ug_detentora: omDestino.ug || omFavorecida.ug,
+                dias_operacao: diasOperacao,
+                efetivo: efetivo,
+                fase_atividade: faseAtividade,
+                categoria: activeTab,
+                group_name: group.groupName,
+                group_purpose: group.groupPurpose,
+                detalhes_planejamento: { itens_selecionados: group.items },
+                valor_total: group.totalValue,
+                valor_nd_30: group.totalND30,
+                valor_nd_39: group.totalND39,
+            }));
+            setPendingItems(newPendingItems);
+            setLastStagedState({
+                omFavorecidaId: omFavorecida.id,
+                faseAtividade,
+                efetivo,
+                diasOperacao,
+                omDestinoId: omDestino.id,
+                categoria: activeTab,
+                groupsKey: vehicleGroups.map(g => `${g.tempId}-${g.totalValue}`).sort().join('|')
+            });
+        } else {
+            const trips = activeTab === "transporte-coletivo" ? (Number(numeroViagens) || 1) : 1;
+            const itemsForCalc = selectedItems.map(i => ({ ...i, periodo: (i as any).periodo || 0 }));
+            const { totalND30, totalND39, totalGeral } = calculateServicoTotals(itemsForCalc, trips);
+            
+            const newItem: PendingServicoItem = {
+                tempId: editingId || crypto.randomUUID(),
+                organizacao: omFavorecida.nome,
+                ug: omFavorecida.ug,
+                om_detentora: omDestino.nome,
+                ug_detentora: omDestino.ug || omFavorecida.ug,
+                dias_operacao: diasOperacao,
+                efetivo: isSatelital ? 0 : efetivo,
+                fase_atividade: faseAtividade,
+                categoria: activeTab,
+                detalhes_planejamento: { 
+                    itens_selecionados: itemsForCalc,
+                    tipo_anv: tipoAnv,
+                    capacidade: capacidade,
+                    velocidade_cruzeiro: velocidadeCruzeiro,
+                    distancia_percorrer: distanciaPercorrer,
+                    tipo_equipamento: tipoEquipamento,
+                    proposito: proposito,
+                    itinerario: itinerario,
+                    distancia_itinerario: distanciaItinerario,
+                    distancia_percorrida_dia: distanciaPercorridaDia,
+                    numero_viagens: numeroViagens
+                },
+                valor_total: totalGeral,
+                valor_nd_30: totalND30,
+                valor_nd_39: totalND39,
+            };
 
-        setPendingItems([newItem]);
-        setLastStagedState({
-            omFavorecidaId: omFavorecida.id,
-            faseAtividade,
-            efetivo: isSatelital ? 0 : efetivo,
-            diasOperacao,
-            omDestinoId: omDestino.id,
-            categoria: activeTab,
-            itemsKey: itemsForCalc.map(i => `${i.id}-${i.quantidade}-${i.periodo}-${i.sub_categoria || 'none'}`).sort().join('|')
-        });
+            setPendingItems([newItem]);
+            setLastStagedState({
+                omFavorecidaId: omFavorecida.id,
+                faseAtividade,
+                efetivo: isSatelital ? 0 : efetivo,
+                diasOperacao,
+                omDestinoId: omDestino.id,
+                categoria: activeTab,
+                itemsKey: itemsForCalc.map(i => `${i.id}-${i.quantidade}-${i.periodo}-${i.sub_categoria || 'none'}`).sort().join('|')
+            });
+        }
         
         toast.info("Item adicionado à lista de pendentes para conferência.");
     };
@@ -768,46 +845,89 @@ const ServicosTerceirosForm = () => {
         
         const details = reg.detalhes_planejamento;
         if (details) {
-            setSelectedItems(details.itens_selecionados || []);
-            setTipoAnv(details.tipo_anv || "");
-            setCapacidade(details.capacidade || "");
-            setVelocidadeCruzeiro(details.velocidade_cruzeiro || "");
-            setDistanciaPercorrer(details.distancia_percorrer || "");
-            setTipoEquipamento(details.tipo_equipamento || "");
-            setProposito(details.proposito || "");
-            setItinerario(details.itinerario || "");
-            setDistanciaItinerario(details.distancia_itinerario || "");
-            setDistanciaPercorridaDia(details.distancia_percorrida_dia || "");
-            setNumeroViagens(details.numero_viagens || "");
+            if (reg.categoria === 'locacao-veiculos') {
+                const group: VehicleGroup = {
+                    tempId: reg.id,
+                    groupName: reg.group_name || 'Grupo de Veículos',
+                    groupPurpose: reg.group_purpose || null,
+                    items: details.itens_selecionados || [],
+                    totalValue: Number(reg.valor_total),
+                    totalND30: Number(reg.valor_nd_30),
+                    totalND39: Number(reg.valor_nd_39),
+                };
+                setVehicleGroups([group]);
+            } else {
+                setSelectedItems(details.itens_selecionados || []);
+                setTipoAnv(details.tipo_anv || "");
+                setCapacidade(details.capacidade || "");
+                setVelocidadeCruzeiro(details.velocidade_cruzeiro || "");
+                setDistanciaPercorrer(details.distancia_percorrer || "");
+                setTipoEquipamento(details.tipo_equipamento || "");
+                setProposito(details.proposito || "");
+                setItinerario(details.itinerario || "");
+                setDistanciaItinerario(details.distancia_itinerario || "");
+                setDistanciaPercorridaDia(details.distancia_percorrida_dia || "");
+                setNumeroViagens(details.numero_viagens || "");
+            }
         }
 
-        const trips = reg.categoria === 'transporte-coletivo' ? (Number(details.numero_viagens) || 1) : 1;
-        const { totalND30, totalND39, totalGeral } = calculateServicoTotals(details.itens_selecionados || [], trips);
-        const stagedItem: PendingServicoItem = {
-            tempId: reg.id,
-            organizacao: reg.organizacao,
-            ug: reg.ug,
-            om_detentora: reg.om_detentora || '',
-            ug_detentora: reg.ug_detentora || '',
-            dias_operacao: reg.dias_operacao,
-            efetivo: reg.efetivo || 0,
-            fase_atividade: reg.fase_atividade || '',
-            categoria: reg.categoria as CategoriaServico,
-            detalhes_planejamento: details,
-            valor_total: totalGeral,
-            valor_nd_30: totalND30,
-            valor_nd_39: totalND39,
-        };
-        setPendingItems([stagedItem]);
-        setLastStagedState({
-            omFavorecidaId: omFav?.id || "",
-            faseAtividade: reg.fase_atividade,
-            efetivo: reg.efetivo,
-            diasOperacao: reg.dias_operacao,
-            omDestinoId: omDest?.id || "",
-            categoria: reg.categoria,
-            itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}-${i.periodo || 1}-${i.sub_categoria || 'none'}`).sort().join('|')
-        });
+        if (reg.categoria === 'locacao-veiculos') {
+            const stagedItem: PendingServicoItem = {
+                tempId: reg.id,
+                organizacao: reg.organizacao,
+                ug: reg.ug,
+                om_detentora: reg.om_detentora || '',
+                ug_detentora: reg.ug_detentora || '',
+                dias_operacao: reg.dias_operacao,
+                efetivo: reg.efetivo || 0,
+                fase_atividade: reg.fase_atividade || '',
+                categoria: reg.categoria as CategoriaServico,
+                group_name: reg.group_name || '',
+                group_purpose: reg.group_purpose,
+                detalhes_planejamento: details,
+                valor_total: Number(reg.valor_total),
+                valor_nd_30: Number(reg.valor_nd_30),
+                valor_nd_39: Number(reg.valor_nd_39),
+            };
+            setPendingItems([stagedItem]);
+            setLastStagedState({
+                omFavorecidaId: omFav?.id || "",
+                faseAtividade: reg.fase_atividade,
+                efetivo: reg.efetivo,
+                diasOperacao: reg.dias_operacao,
+                omDestinoId: omDest?.id || "",
+                categoria: reg.categoria,
+                groupsKey: `${reg.id}-${reg.valor_total}`
+            });
+        } else {
+            const trips = reg.categoria === 'transporte-coletivo' ? (Number(details.numero_viagens) || 1) : 1;
+            const { totalND30, totalND39, totalGeral } = calculateServicoTotals(details.itens_selecionados || [], trips);
+            const stagedItem: PendingServicoItem = {
+                tempId: reg.id,
+                organizacao: reg.organizacao,
+                ug: reg.ug,
+                om_detentora: reg.om_detentora || '',
+                ug_detentora: reg.ug_detentora || '',
+                dias_operacao: reg.dias_operacao,
+                efetivo: reg.efetivo || 0,
+                fase_atividade: reg.fase_atividade || '',
+                categoria: reg.categoria as CategoriaServico,
+                detalhes_planejamento: details,
+                valor_total: totalGeral,
+                valor_nd_30: totalND30,
+                valor_nd_39: totalND39,
+            };
+            setPendingItems([stagedItem]);
+            setLastStagedState({
+                omFavorecidaId: omFav?.id || "",
+                faseAtividade: reg.fase_atividade,
+                efetivo: reg.efetivo,
+                diasOperacao: reg.dias_operacao,
+                omDestinoId: omDest?.id || "",
+                categoria: reg.categoria,
+                itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}-${i.periodo || 1}-${i.sub_categoria || 'none'}`).sort().join('|')
+            });
+        }
 
         toast.info("Modo Edição ativado. Altere os dados e clique em 'Recalcular/Revisar Lote'.");
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -849,6 +969,7 @@ const ServicosTerceirosForm = () => {
         if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
         if (cat === 'servico-satelital') return 'Serviço Satelital';
         if (cat === 'transporte-coletivo') return 'Transporte Coletivo';
+        if (cat === 'locacao-veiculos') return 'Locação de Veículos';
         return cat.split('-').map(word => {
             if (word === 'aereo') return 'Aéreo';
             return word.charAt(0).toUpperCase() + word.slice(1);
@@ -894,7 +1015,7 @@ const ServicosTerceirosForm = () => {
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">2. Configurar Planejamento</h3>
                                     
-                                    <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as CategoriaServico); setSelectedItems([]); }} className="w-full">
+                                    <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as CategoriaServico); setSelectedItems([]); setVehicleGroups([]); }} className="w-full">
                                         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-8 h-auto gap-1 bg-muted p-1 mb-6">
                                             <TabsTrigger value="fretamento-aereo" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Plane className="h-4 w-4" /> Fretamento</TabsTrigger>
                                             <TabsTrigger value="servico-satelital" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Satellite className="h-4 w-4" /> Satelital</TabsTrigger>
@@ -955,233 +1076,286 @@ const ServicosTerceirosForm = () => {
 
                                             <Card className="mt-4 rounded-lg p-4 bg-background">
                                                 <div className="space-y-4">
-                                                    <div className="flex justify-between items-center">
-                                                        <h4 className="text-base font-semibold">Itens de {formatCategoryName(activeTab)}</h4>
-                                                        <Button type="button" variant="outline" size="sm" onClick={() => setIsSelectorOpen(true)} disabled={!isPTrabEditable}><Plus className="mr-2 h-4 w-4" /> Importar da Diretriz</Button>
-                                                    </div>
+                                                    {activeTab === "locacao-veiculos" ? (
+                                                        <>
+                                                            <div className="flex justify-between items-center">
+                                                                <h4 className="text-base font-semibold">Grupos de Veículos ({vehicleGroups.length})</h4>
+                                                                {!isGroupFormOpen && (
+                                                                    <Button type="button" variant="outline" size="sm" onClick={() => { setGroupToEdit(undefined); setIsGroupFormOpen(true); }} disabled={!isPTrabEditable}><Plus className="mr-2 h-4 w-4" /> Criar Novo Grupo de Veículos</Button>
+                                                                )}
+                                                            </div>
 
-                                                    {activeTab === "fretamento-aereo" && (
-                                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
-                                                            <div className="space-y-2">
-                                                                <Label>Tipo Anv</Label>
-                                                                <Input value={tipoAnv} onChange={(e) => setTipoAnv(e.target.value)} placeholder="Ex: Caravan" disabled={!isPTrabEditable} />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Capacidade</Label>
-                                                                <Input value={capacidade} onChange={(e) => setCapacidade(e.target.value)} placeholder="Ex: 9 Pax ou 450kg" disabled={!isPTrabEditable} />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Velocidade de Cruzeiro</Label>
-                                                                <div className="relative">
-                                                                    <Input 
-                                                                        type="number" 
-                                                                        value={velocidadeCruzeiro} 
-                                                                        onChange={(e) => setVelocidadeCruzeiro(e.target.value === "" ? "" : Number(e.target.value))} 
-                                                                        placeholder="Ex: 350" 
-                                                                        disabled={!isPTrabEditable} 
-                                                                        onWheel={(e) => e.currentTarget.blur()} 
-                                                                        onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                        className="pr-14 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                                                    />
-                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km/h</span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Distância a percorrer</Label>
-                                                                <div className="relative">
-                                                                    <Input 
-                                                                        type="number" 
-                                                                        value={distanciaPercorrer} 
-                                                                        onChange={(e) => setDistanciaPercorrer(e.target.value === "" ? "" : Number(e.target.value))} 
-                                                                        placeholder="Ex: 1500" 
-                                                                        disabled={!isPTrabEditable} 
-                                                                        onWheel={(e) => e.currentTarget.blur()} 
-                                                                        onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                        className="pr-10 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                                                    />
-                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    
-                                                    {activeTab === "servico-satelital" && (
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
-                                                            <div className="space-y-2">
-                                                                <Label>Tipo de Equipamento/Serviço</Label>
-                                                                <Input 
-                                                                    value={tipoEquipamento} 
-                                                                    onChange={(e) => setTipoEquipamento(e.target.value)} 
-                                                                    placeholder="Ex: Comunicação e Rastreamento Satelital" 
-                                                                    disabled={!isPTrabEditable} 
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Propósito</Label>
-                                                                <Input 
-                                                                    value={proposito} 
-                                                                    onChange={(e) => setProposito(e.target.value)} 
-                                                                    placeholder="Ex: melhor comunicabilidade e consciência situacional" 
-                                                                    disabled={!isPTrabEditable} 
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {activeTab === "transporte-coletivo" && (
-                                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
-                                                            <div className="space-y-2">
-                                                                <Label>Itinerário</Label>
-                                                                <Input 
-                                                                    value={itinerario} 
-                                                                    onChange={(e) => setItinerario(e.target.value)} 
-                                                                    placeholder="Ex: MAB-BEL" 
-                                                                    disabled={!isPTrabEditable} 
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Distância Itinerário</Label>
-                                                                <div className="relative">
-                                                                    <Input 
-                                                                        type="number" 
-                                                                        value={distanciaItinerario} 
-                                                                        onChange={(e) => setDistanciaItinerario(e.target.value === "" ? "" : Number(e.target.value))} 
-                                                                        placeholder="Ex: 950" 
-                                                                        disabled={!isPTrabEditable} 
-                                                                        onWheel={(e) => e.currentTarget.blur()} 
-                                                                        onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                        className="pr-10 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                                                    />
-                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km</span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Distância percorrida / dia</Label>
-                                                                <div className="relative">
-                                                                    <Input 
-                                                                        type="number" 
-                                                                        value={distanciaPercorridaDia} 
-                                                                        onChange={(e) => setDistanciaPercorridaDia(e.target.value === "" ? "" : Number(e.target.value))} 
-                                                                        placeholder="Ex: 600" 
-                                                                        disabled={!isPTrabEditable} 
-                                                                        onWheel={(e) => e.currentTarget.blur()} 
-                                                                        onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                        className="pr-10 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                                                    />
-                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km</span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Número de Viagens</Label>
-                                                                <Input 
-                                                                    type="number" 
-                                                                    value={numeroViagens} 
-                                                                    onChange={(e) => setNumeroViagens(e.target.value === "" ? "" : Number(e.target.value))} 
-                                                                    placeholder="Ex: 4" 
-                                                                    disabled={!isPTrabEditable} 
-                                                                    onWheel={(e) => e.currentTarget.blur()} 
-                                                                    onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {selectedItems.length > 0 ? (
-                                                        <div className="space-y-6">
-                                                            {activeTab === "transporte-coletivo" ? (
-                                                                <>
-                                                                    {selectedItems.filter(i => !i.sub_categoria).length > 0 && (
-                                                                        <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg space-y-3">
-                                                                            <div className="flex items-center gap-2 text-orange-700">
-                                                                                <AlertCircle className="h-5 w-5" />
-                                                                                <h5 className="font-bold text-sm uppercase">Itens Pendentes de Classificação</h5>
-                                                                            </div>
-                                                                            <ItemsTable 
-                                                                                items={selectedItems.filter(i => !i.sub_categoria)} 
-                                                                                showClassificationActions={true}
-                                                                                activeTab={activeTab}
-                                                                                suggestedHV={suggestedHV}
-                                                                                distanciaPercorrer={distanciaPercorrer}
-                                                                                velocidadeCruzeiro={velocidadeCruzeiro}
-                                                                                numeroViagens={numeroViagens}
-                                                                                onQuantityChange={handleQuantityChange}
-                                                                                onPeriodChange={handlePeriodChange}
-                                                                                onMoveItem={handleMoveItem}
-                                                                                onRemoveItem={(id) => setSelectedItems(prev => prev.filter(i => i.id !== id))}
-                                                                                isPTrabEditable={isPTrabEditable}
-                                                                            />
-                                                                        </div>
-                                                                    )}
-
-                                                                    <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-lg space-y-3">
-                                                                        <ItemsTable 
-                                                                            title="Meios de Transporte" 
-                                                                            items={selectedItems.filter(i => i.sub_categoria === 'meio-transporte')} 
-                                                                            showClassificationActions={true}
-                                                                            activeTab={activeTab}
-                                                                            suggestedHV={suggestedHV}
-                                                                            distanciaPercorrer={distanciaPercorrer}
-                                                                            velocidadeCruzeiro={velocidadeCruzeiro}
-                                                                            numeroViagens={numeroViagens}
-                                                                            onQuantityChange={handleQuantityChange}
-                                                                            onPeriodChange={handlePeriodChange}
-                                                                            onMoveItem={handleMoveItem}
-                                                                            onRemoveItem={(id) => setSelectedItems(prev => prev.filter(i => i.id !== id))}
-                                                                            onLimitToggle={handleLimitToggle}
-                                                                            onLimitChange={handleLimitChange}
-                                                                            isPTrabEditable={isPTrabEditable}
-                                                                        />
-                                                                        {selectedItems.filter(i => i.sub_categoria === 'meio-transporte').length === 0 && (
-                                                                            <p className="text-xs text-muted-foreground italic text-center py-4">Nenhum meio de transporte classificado.</p>
-                                                                        )}
-                                                                    </div>
-
-                                                                    <div className="p-4 bg-purple-50/50 border border-purple-100 rounded-lg space-y-3">
-                                                                        <ItemsTable 
-                                                                            title="Serviços Adicionais" 
-                                                                            items={selectedItems.filter(i => i.sub_categoria === 'servico-adicional')} 
-                                                                            showClassificationActions={true}
-                                                                            hidePeriod={true}
-                                                                            hideTotalUnits={true}
-                                                                            activeTab={activeTab}
-                                                                            suggestedHV={suggestedHV}
-                                                                            distanciaPercorrer={distanciaPercorrer}
-                                                                            velocidadeCruzeiro={velocidadeCruzeiro}
-                                                                            numeroViagens={numeroViagens}
-                                                                            onQuantityChange={handleQuantityChange}
-                                                                            onPeriodChange={handlePeriodChange}
-                                                                            onMoveItem={handleMoveItem}
-                                                                            onRemoveItem={(id) => setSelectedItems(prev => prev.filter(i => i.id !== id))}
-                                                                            isPTrabEditable={isPTrabEditable}
-                                                                        />
-                                                                        {selectedItems.filter(i => i.sub_categoria === 'servico-adicional').length === 0 && (
-                                                                            <p className="text-xs text-muted-foreground italic text-center py-4">Nenhum serviço adicional classificado.</p>
-                                                                        )}
-                                                                    </div>
-                                                                </>
-                                                            ) : (
-                                                                <ItemsTable 
-                                                                    items={selectedItems} 
-                                                                    activeTab={activeTab}
-                                                                    suggestedHV={suggestedHV}
-                                                                    distanciaPercorrer={distanciaPercorrer}
-                                                                    velocidadeCruzeiro={velocidadeCruzeiro}
-                                                                    numeroViagens={numeroViagens}
-                                                                    onQuantityChange={handleQuantityChange}
-                                                                    onPeriodChange={handlePeriodChange}
-                                                                    onMoveItem={handleMoveItem}
-                                                                    onRemoveItem={(id) => setSelectedItems(prev => prev.filter(i => i.id !== id))}
-                                                                    isPTrabEditable={isPTrabEditable}
+                                                            {isGroupFormOpen && (
+                                                                <VehicleGroupForm 
+                                                                    initialGroup={groupToEdit}
+                                                                    onSave={handleSaveVehicleGroup}
+                                                                    onCancel={() => { setIsGroupFormOpen(false); setGroupToEdit(undefined); }}
+                                                                    isSaving={saveMutation.isPending}
+                                                                    onOpenItemSelector={(items) => { setItemsToPreselect(items); setIsSelectorOpen(true); }}
+                                                                    selectedItemsFromSelector={selectedItemsFromSelector}
+                                                                    onClearSelectedItems={() => setSelectedItemsFromSelector(null)}
                                                                 />
                                                             )}
-                                                        </div>
+
+                                                            {!isGroupFormOpen && vehicleGroups.length > 0 && (
+                                                                <div className="space-y-3">
+                                                                    {vehicleGroups.map(group => (
+                                                                        <Card key={group.tempId} className="p-3 border rounded-md">
+                                                                            <div className="flex justify-between items-center">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className="font-semibold">{group.groupName}</span>
+                                                                                    <Badge variant="secondary" className="text-xs">{group.items.length} Veículos</Badge>
+                                                                                </div>
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className="font-bold text-sm">{formatCurrency(group.totalValue)}</span>
+                                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setGroupToEdit(group); setIsGroupFormOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setVehicleGroups(prev => prev.filter(g => g.tempId !== group.tempId))}><Trash2 className="h-4 w-4" /></Button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </Card>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+
+                                                            {!isGroupFormOpen && vehicleGroups.length === 0 && (
+                                                                <Alert variant="default" className="border border-gray-300">
+                                                                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                                                                    <AlertTitle>Nenhum Grupo Adicionado</AlertTitle>
+                                                                    <AlertDescription>Crie um grupo para selecionar os veículos necessários.</AlertDescription>
+                                                                </Alert>
+                                                            )}
+                                                        </>
                                                     ) : (
-                                                        <Alert variant="default" className="border border-gray-300">
-                                                            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                                                            <AlertTitle>Nenhum Item Selecionado</AlertTitle>
-                                                            <AlertDescription>Importe itens da diretriz para iniciar o planejamento.</AlertDescription>
-                                                        </Alert>
+                                                        <>
+                                                            <div className="flex justify-between items-center">
+                                                                <h4 className="text-base font-semibold">Itens de {formatCategoryName(activeTab)}</h4>
+                                                                <Button type="button" variant="outline" size="sm" onClick={() => setIsSelectorOpen(true)} disabled={!isPTrabEditable}><Plus className="mr-2 h-4 w-4" /> Importar da Diretriz</Button>
+                                                            </div>
+
+                                                            {activeTab === "fretamento-aereo" && (
+                                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+                                                                    <div className="space-y-2">
+                                                                        <Label>Tipo Anv</Label>
+                                                                        <Input value={tipoAnv} onChange={(e) => setTipoAnv(e.target.value)} placeholder="Ex: Caravan" disabled={!isPTrabEditable} />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label>Capacidade</Label>
+                                                                        <Input value={capacidade} onChange={(e) => setCapacidade(e.target.value)} placeholder="Ex: 9 Pax ou 450kg" disabled={!isPTrabEditable} />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label>Velocidade de Cruzeiro</Label>
+                                                                        <div className="relative">
+                                                                            <Input 
+                                                                                type="number" 
+                                                                                value={velocidadeCruzeiro} 
+                                                                                onChange={(e) => setVelocidadeCruzeiro(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                                placeholder="Ex: 350" 
+                                                                                disabled={!isPTrabEditable} 
+                                                                                onWheel={(e) => e.currentTarget.blur()} 
+                                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                                className="pr-14 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                            />
+                                                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km/h</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label>Distância a percorrer</Label>
+                                                                        <div className="relative">
+                                                                            <Input 
+                                                                                type="number" 
+                                                                                value={distanciaPercorrer} 
+                                                                                onChange={(e) => setDistanciaPercorrer(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                                placeholder="Ex: 1500" 
+                                                                                disabled={!isPTrabEditable} 
+                                                                                onWheel={(e) => e.currentTarget.blur()} 
+                                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                                className="pr-10 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                            />
+                                                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            {activeTab === "servico-satelital" && (
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+                                                                    <div className="space-y-2">
+                                                                        <Label>Tipo de Equipamento/Serviço</Label>
+                                                                        <Input 
+                                                                            value={tipoEquipamento} 
+                                                                            onChange={(e) => setTipoEquipamento(e.target.value)} 
+                                                                            placeholder="Ex: Comunicação e Rastreamento Satelital" 
+                                                                            disabled={!isPTrabEditable} 
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label>Propósito</Label>
+                                                                        <Input 
+                                                                            value={proposito} 
+                                                                            onChange={(e) => setProposito(e.target.value)} 
+                                                                            placeholder="Ex: melhor comunicabilidade e consciência situacional" 
+                                                                            disabled={!isPTrabEditable} 
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {activeTab === "transporte-coletivo" && (
+                                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+                                                                    <div className="space-y-2">
+                                                                        <Label>Itinerário</Label>
+                                                                        <Input 
+                                                                            value={itinerario} 
+                                                                            onChange={(e) => setItinerario(e.target.value)} 
+                                                                            placeholder="Ex: MAB-BEL" 
+                                                                            disabled={!isPTrabEditable} 
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label>Distância Itinerário</Label>
+                                                                        <div className="relative">
+                                                                            <Input 
+                                                                                type="number" 
+                                                                                value={distanciaItinerario} 
+                                                                                onChange={(e) => setDistanciaItinerario(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                                placeholder="Ex: 950" 
+                                                                                disabled={!isPTrabEditable} 
+                                                                                onWheel={(e) => e.currentTarget.blur()} 
+                                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                                className="pr-10 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                            />
+                                                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label>Distância percorrida / dia</Label>
+                                                                        <div className="relative">
+                                                                            <Input 
+                                                                                type="number" 
+                                                                                value={distanciaPercorridaDia} 
+                                                                                onChange={(e) => setDistanciaPercorridaDia(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                                placeholder="Ex: 600" 
+                                                                                disabled={!isPTrabEditable} 
+                                                                                onWheel={(e) => e.currentTarget.blur()} 
+                                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                                className="pr-10 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                                            />
+                                                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">Km</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label>Número de Viagens</Label>
+                                                                        <Input 
+                                                                            type="number" 
+                                                                            value={numeroViagens} 
+                                                                            onChange={(e) => setNumeroViagens(e.target.value === "" ? "" : Number(e.target.value))} 
+                                                                            placeholder="Ex: 4" 
+                                                                            disabled={!isPTrabEditable} 
+                                                                            onWheel={(e) => e.currentTarget.blur()} 
+                                                                            onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {selectedItems.length > 0 ? (
+                                                                <div className="space-y-6">
+                                                                    {activeTab === "transporte-coletivo" ? (
+                                                                        <>
+                                                                            {selectedItems.filter(i => !i.sub_categoria).length > 0 && (
+                                                                                <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg space-y-3">
+                                                                                    <div className="flex items-center gap-2 text-orange-700">
+                                                                                        <AlertCircle className="h-5 w-5" />
+                                                                                        <h5 className="font-bold text-sm uppercase">Itens Pendentes de Classificação</h5>
+                                                                                    </div>
+                                                                                    <ItemsTable 
+                                                                                        items={selectedItems.filter(i => !i.sub_categoria)} 
+                                                                                        showClassificationActions={true}
+                                                                                        activeTab={activeTab}
+                                                                                        suggestedHV={suggestedHV}
+                                                                                        distanciaPercorrer={distanciaPercorrer}
+                                                                                        velocidadeCruzeiro={velocidadeCruzeiro}
+                                                                                        numeroViagens={numeroViagens}
+                                                                                        onQuantityChange={handleQuantityChange}
+                                                                                        onPeriodChange={handlePeriodChange}
+                                                                                        onMoveItem={handleMoveItem}
+                                                                                        onRemoveItem={(id) => setSelectedItems(prev => prev.filter(i => i.id !== id))}
+                                                                                        isPTrabEditable={isPTrabEditable}
+                                                                                    />
+                                                                                </div>
+                                                                            )}
+
+                                                                            <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-lg space-y-3">
+                                                                                <ItemsTable 
+                                                                                    title="Meios de Transporte" 
+                                                                                    items={selectedItems.filter(i => i.sub_categoria === 'meio-transporte')} 
+                                                                                    showClassificationActions={true}
+                                                                                    activeTab={activeTab}
+                                                                                    suggestedHV={suggestedHV}
+                                                                                    distanciaPercorrer={distanciaPercorrer}
+                                                                                    velocidadeCruzeiro={velocidadeCruzeiro}
+                                                                                    numeroViagens={numeroViagens}
+                                                                                    onQuantityChange={handleQuantityChange}
+                                                                                    onPeriodChange={handlePeriodChange}
+                                                                                    onMoveItem={handleMoveItem}
+                                                                                    onRemoveItem={(id) => setSelectedItems(prev => prev.filter(i => i.id !== id))}
+                                                                                    onLimitToggle={handleLimitToggle}
+                                                                                    onLimitChange={handleLimitChange}
+                                                                                    isPTrabEditable={isPTrabEditable}
+                                                                                />
+                                                                                {selectedItems.filter(i => i.sub_categoria === 'meio-transporte').length === 0 && (
+                                                                                    <p className="text-xs text-muted-foreground italic text-center py-4">Nenhum meio de transporte classificado.</p>
+                                                                                )}
+                                                                            </div>
+
+                                                                            <div className="p-4 bg-purple-50/50 border border-purple-100 rounded-lg space-y-3">
+                                                                                <ItemsTable 
+                                                                                    title="Serviços Adicionais" 
+                                                                                    items={selectedItems.filter(i => i.sub_categoria === 'servico-adicional')} 
+                                                                                    showClassificationActions={true}
+                                                                                    hidePeriod={true}
+                                                                                    hideTotalUnits={true}
+                                                                                    activeTab={activeTab}
+                                                                                    suggestedHV={suggestedHV}
+                                                                                    distanciaPercorrer={distanciaPercorrer}
+                                                                                    velocidadeCruzeiro={velocidadeCruzeiro}
+                                                                                    numeroViagens={numeroViagens}
+                                                                                    onQuantityChange={handleQuantityChange}
+                                                                                    onPeriodChange={handlePeriodChange}
+                                                                                    onMoveItem={handleMoveItem}
+                                                                                    onRemoveItem={(id) => setSelectedItems(prev => prev.filter(i => i.id !== id))}
+                                                                                    isPTrabEditable={isPTrabEditable}
+                                                                                />
+                                                                                {selectedItems.filter(i => i.sub_categoria === 'servico-adicional').length === 0 && (
+                                                                                    <p className="text-xs text-muted-foreground italic text-center py-4">Nenhum serviço adicional classificado.</p>
+                                                                                )}
+                                                                            </div>
+                                                                        </>
+                                                                    ) : (
+                                                                        <ItemsTable 
+                                                                            items={selectedItems} 
+                                                                            activeTab={activeTab}
+                                                                            suggestedHV={suggestedHV}
+                                                                            distanciaPercorrer={distanciaPercorrer}
+                                                                            velocidadeCruzeiro={velocidadeCruzeiro}
+                                                                            numeroViagens={numeroViagens}
+                                                                            onQuantityChange={handleQuantityChange}
+                                                                            onPeriodChange={handlePeriodChange}
+                                                                            onMoveItem={handleMoveItem}
+                                                                            onRemoveItem={(id) => setSelectedItems(prev => prev.filter(i => i.id !== id))}
+                                                                            isPTrabEditable={isPTrabEditable}
+                                                                        />
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <Alert variant="default" className="border border-gray-300">
+                                                                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                                                                    <AlertTitle>Nenhum Item Selecionado</AlertTitle>
+                                                                    <AlertDescription>Importe itens da diretriz para iniciar o planejamento.</AlertDescription>
+                                                                </Alert>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </div>
 
@@ -1192,7 +1366,7 @@ const ServicosTerceirosForm = () => {
                                             </Card>
 
                                             <div className="flex justify-end gap-3 pt-4">
-                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={selectedItems.length === 0 || saveMutation.isPending || (activeTab !== "servico-satelital" && efetivo <= 0) || diasOperacao <= 0} onClick={handleAddToPending}>
+                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={(activeTab === "locacao-veiculos" ? vehicleGroups.length === 0 : selectedItems.length === 0) || saveMutation.isPending || (activeTab !== "servico-satelital" && efetivo <= 0) || diasOperacao <= 0 || isGroupFormOpen} onClick={handleAddToPending}>
                                                     {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                                     {editingId ? "Recalcular/Revisar Lote" : "Salvar Itens na Lista"}
                                                 </Button>
@@ -1254,7 +1428,10 @@ const ServicosTerceirosForm = () => {
                                                 <Card key={item.tempId} className="border-2 shadow-md border-secondary bg-secondary/10">
                                                     <CardContent className="p-4">
                                                         <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/30">
-                                                            <h4 className="font-bold text-base text-foreground">{formatCategoryName(item.categoria)}</h4>
+                                                            <h4 className="font-bold text-base text-foreground">
+                                                                {formatCategoryName(item.categoria)}
+                                                                {item.group_name && ` (${item.group_name})`}
+                                                            </h4>
                                                             <div className="flex items-center gap-2">
                                                                 <p className="font-extrabold text-lg text-foreground text-right">{formatCurrency(item.valor_total)}</p>
                                                                 {!editingId && (
@@ -1270,7 +1447,8 @@ const ServicosTerceirosForm = () => {
                                                                     {item.categoria === 'fretamento-aereo' && "Período / Efetivo / HV:"}
                                                                     {item.categoria === 'servico-satelital' && "Período / Qtd Equipamento:"}
                                                                     {item.categoria === 'transporte-coletivo' && "Período / Efetivo / Nr Viagens:"}
-                                                                    {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo'].includes(item.categoria) && "Período / Detalhes:"}
+                                                                    {item.categoria === 'locacao-veiculos' && "Período / Efetivo / Qtd Veículos:"}
+                                                                    {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos'].includes(item.categoria) && "Período / Detalhes:"}
                                                                 </p>
                                                                 {item.categoria === 'transporte-coletivo' && (
                                                                     <p className="font-medium">Nr Diárias / Qtd Km Adicional:</p>
@@ -1286,7 +1464,9 @@ const ServicosTerceirosForm = () => {
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalQty} un`}
                                                                     {item.categoria === 'transporte-coletivo' && 
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${item.efetivo} ${item.efetivo === 1 ? 'militar' : 'militares'} / ${item.detalhes_planejamento.numero_viagens || 1} viagens`}
-                                                                    {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo'].includes(item.categoria) && 
+                                                                    {item.categoria === 'locacao-veiculos' && 
+                                                                        `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${item.efetivo} ${item.efetivo === 1 ? 'militar' : 'militares'} / ${totalQty} un`}
+                                                                    {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos'].includes(item.categoria) && 
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalUnits} un`}
                                                                 </p>
                                                                 {item.categoria === 'transporte-coletivo' && (
@@ -1379,12 +1559,16 @@ const ServicosTerceirosForm = () => {
                                                         <Card key={reg.id} className="p-3 bg-background border">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex flex-col">
-                                                                    <h4 className="font-semibold text-base text-foreground capitalize">{formatCategoryName(reg.categoria)}</h4>
+                                                                    <h4 className="font-semibold text-base text-foreground capitalize">
+                                                                        {formatCategoryName(reg.categoria)}
+                                                                        {reg.group_name && ` (${reg.group_name})`}
+                                                                    </h4>
                                                                     <p className="text-xs text-muted-foreground">
                                                                         {reg.categoria === 'fretamento-aereo' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | HV: ${totalUnits}`}
                                                                         {reg.categoria === 'servico-satelital' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: ${totalQty} un`}
                                                                         {reg.categoria === 'transporte-coletivo' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Viagens: ${reg.detalhes_planejamento?.numero_viagens || 1}`}
-                                                                        {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo'].includes(reg.categoria) && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Qtd: ${totalUnits} un`}
+                                                                        {reg.categoria === 'locacao-veiculos' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Qtd: ${totalQty} un`}
+                                                                        {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos'].includes(reg.categoria) && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Qtd: ${totalUnits} un`}
                                                                     </p>
                                                                     {reg.categoria === 'transporte-coletivo' && (
                                                                         <p className="text-xs text-muted-foreground">
@@ -1459,8 +1643,8 @@ const ServicosTerceirosForm = () => {
                 open={isSelectorOpen} 
                 onOpenChange={setIsSelectorOpen} 
                 selectedYear={new Date().getFullYear()} 
-                initialItems={selectedItems} 
-                onSelect={handleItemsSelected} 
+                initialItems={activeTab === 'locacao-veiculos' ? (groupToEdit?.items || []) : selectedItems} 
+                onSelect={activeTab === 'locacao-veiculos' ? setSelectedItemsFromSelector : handleItemsSelected} 
                 onAddDiretriz={() => navigate('/config/custos-operacionais')} 
                 categoria={activeTab}
             />
