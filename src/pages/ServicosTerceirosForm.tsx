@@ -1560,56 +1560,60 @@ const ServicosTerceirosForm = () => {
                                                             )}
 
                                                             {activeTab === "outros" && (
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
-                                                                    <div className="space-y-2">
-                                                                        <Label>Natureza de Despesa</Label>
-                                                                        <div className="flex items-center gap-2 p-2 bg-background rounded border h-10 w-fit">
-                                                                            <span className={cn("text-[10px] font-bold", naturezaDespesaOutros === '33' ? "text-primary" : "text-muted-foreground")}>ND 33</span>
-                                                                            <Switch 
-                                                                                checked={naturezaDespesaOutros === '39'} 
-                                                                                onCheckedChange={(checked) => setNaturezaDespesaOutros(checked ? '39' : '33')}
-                                                                                disabled={!isPTrabEditable}
-                                                                                className="scale-75"
-                                                                            />
-                                                                            <span className={cn("text-[10px] font-bold", naturezaDespesaOutros === '39' ? "text-primary" : "text-muted-foreground")}>ND 39</span>
+                                                                <div className="flex flex-col gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+                                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                                        <div className="space-y-2">
+                                                                            <Label>Natureza de Despesa</Label>
+                                                                            <div className="flex items-center gap-2 p-2 bg-background rounded border h-10 w-fit">
+                                                                                <span className={cn("text-[10px] font-bold", naturezaDespesaOutros === '33' ? "text-primary" : "text-muted-foreground")}>ND 33</span>
+                                                                                <Switch 
+                                                                                    checked={naturezaDespesaOutros === '39'} 
+                                                                                    onCheckedChange={(checked) => setNaturezaDespesaOutros(checked ? '39' : '33')}
+                                                                                    disabled={!isPTrabEditable}
+                                                                                    className="scale-75"
+                                                                                />
+                                                                                <span className={cn("text-[10px] font-bold", naturezaDespesaOutros === '39' ? "text-primary" : "text-muted-foreground")}>ND 39</span>
+                                                                            </div>
+                                                                            <p className="text-[10px] text-muted-foreground">Aplica-se a todos os itens deste lote.</p>
                                                                         </div>
-                                                                        <p className="text-[10px] text-muted-foreground">Aplica-se a todos os itens deste lote.</p>
+                                                                        <div className="space-y-2">
+                                                                            <Label>Nome do Serviço/Locação *</Label>
+                                                                            <Input 
+                                                                                value={nomeServicoOutros} 
+                                                                                onChange={(e) => setNomeServicoOutros(e.target.value)} 
+                                                                                placeholder="Ex: Serviço de Lavandeira" 
+                                                                                disabled={!isPTrabEditable} 
+                                                                            />
+                                                                        </div>
+                                                                        <div className="space-y-2">
+                                                                            <Label>Objeto *</Label>
+                                                                            <Input 
+                                                                                value={objetoOutros} 
+                                                                                onChange={(e) => setObjetoOutros(e.target.value)} 
+                                                                                placeholder="Ex: lavagem de roupa da tropa" 
+                                                                                disabled={!isPTrabEditable} 
+                                                                            />
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label>Nome do Serviço/Locação *</Label>
-                                                                        <Input 
-                                                                            value={nomeServicoOutros} 
-                                                                            onChange={(e) => setNomeServicoOutros(e.target.value)} 
-                                                                            placeholder="Ex: Serviço de Lavandeira" 
-                                                                            disabled={!isPTrabEditable} 
-                                                                        />
-                                                                    </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label>Objeto *</Label>
-                                                                        <Input 
-                                                                            value={objetoOutros} 
-                                                                            onChange={(e) => setObjetoOutros(e.target.value)} 
-                                                                            placeholder="Ex: lavagem de roupa da tropa" 
-                                                                            disabled={!isPTrabEditable} 
-                                                                        />
-                                                                    </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label>Local *</Label>
-                                                                        <Input 
-                                                                            value={localOmOutros} 
-                                                                            onChange={(e) => setLocalOmOutros(e.target.value)} 
-                                                                            placeholder="Ex: Base Operacional CUMARU" 
-                                                                            disabled={!isPTrabEditable} 
-                                                                        />
-                                                                    </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label>Finalidade *</Label>
-                                                                        <Input 
-                                                                            value={finalidadeOutros} 
-                                                                            onChange={(e) => setFinalidadeOutros(e.target.value)} 
-                                                                            placeholder="Ex: manter a higidez e apresentação individual" 
-                                                                            disabled={!isPTrabEditable} 
-                                                                        />
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                        <div className="space-y-2">
+                                                                            <Label>Local *</Label>
+                                                                            <Input 
+                                                                                value={localOmOutros} 
+                                                                                onChange={(e) => setLocalOmOutros(e.target.value)} 
+                                                                                placeholder="Ex: Base Operacional CUMARU" 
+                                                                                disabled={!isPTrabEditable} 
+                                                                            />
+                                                                        </div>
+                                                                        <div className="space-y-2">
+                                                                            <Label>Finalidade *</Label>
+                                                                            <Input 
+                                                                                value={finalidadeOutros} 
+                                                                                onChange={(e) => setFinalidadeOutros(e.target.value)} 
+                                                                                placeholder="Ex: manter a higidez e apresentação individual" 
+                                                                                disabled={!isPTrabEditable} 
+                                                                            />
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             )}
@@ -1790,7 +1794,7 @@ const ServicosTerceirosForm = () => {
                                                             <h4 className="font-bold text-base text-foreground">
                                                                 {formatCategoryName(item.categoria, item.detalhes_planejamento)}
                                                                 {item.group_name && ` (${item.group_name})`}
-                                                            </h4>
+                                                        </h4>
                                                             <div className="flex items-center gap-2">
                                                                 <p className="font-extrabold text-lg text-foreground text-right">{formatCurrency(item.valor_total)}</p>
                                                                 {!editingId && (
