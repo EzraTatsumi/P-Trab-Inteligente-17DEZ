@@ -162,6 +162,34 @@ export const generateServicoMemoriaCalculo = (
         return texto;
     }
 
+    // --- LOCAÇÃO DE ESTRUTURAS ---
+    if (categoria === 'locacao-estruturas') {
+        let texto = `33.90.39 - Locação de Estruturas, ${paraOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
+        
+        texto += `Cálculo:\n\n`;
+        items.forEach((item: any) => {
+            const unit = item.unidade_medida || 'UN';
+            texto += `${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${unit}.\n`;
+        });
+
+        texto += `\nFórmula: Nr Estruturas x Valor Unitário x Período.\n\n`;
+        items.forEach((item: any) => {
+            const qty = item.quantidade || 0;
+            const period = item.periodo || 0;
+            const unit = item.unidade_medida || 'UN';
+            const totalItem = qty * period * item.valor_unitario;
+            const itemDiasText = period === 1 ? "dia" : "dias";
+            
+            texto += `${formatNumber(qty, 4)} ${item.descricao_reduzida || item.descricao_item} x ${formatCurrency(item.valor_unitario)}/${unit} x ${formatNumber(period, 4)} ${itemDiasText} = ${formatCurrency(totalItem)}.\n`;
+        });
+
+        texto += `\nTotal: ${formatCurrency(Number(registro.valor_total))}. `;
+        if (items.length > 0) {
+            texto += `(Pregão ${formatPregao(items[0].numero_pregao)} - UASG ${formatCodug(items[0].uasg)})`;
+        }
+        return texto;
+    }
+
     // --- OUTROS SERVIÇOS ---
     const categoriaFormatada = (categoria || "").replace('-', ' ').toUpperCase();
     let texto = `MEMÓRIA DE CÁLCULO - ${categoriaFormatada}\n`;
