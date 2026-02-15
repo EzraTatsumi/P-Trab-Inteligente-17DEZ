@@ -42,7 +42,6 @@ const MaterialPermanenteItemSelectorDialog: React.FC<MaterialPermanenteItemSelec
     const { data: diretrizes, isLoading } = useQuery({
         queryKey: ['diretrizesMaterialPermanente', selectedYear],
         queryFn: async () => {
-            // Busca as diretrizes para o ano selecionado
             const { data, error } = await supabase
                 .from('diretrizes_material_permanente')
                 .select('*')

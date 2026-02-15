@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import PageMetadata from "@/components/PageMetadata";
+import { useSession } from "@/components/SessionContextProvider";
 
 interface PendingPermanenteItem {
     tempId: string;
@@ -79,6 +80,7 @@ const MaterialPermanenteForm = () => {
     const [searchParams] = useSearchParams();
     const ptrabId = searchParams.get('ptrabId');
     const queryClient = useQueryClient();
+    const { user } = useSession();
     const { data: oms } = useMilitaryOrganizations();
 
     // --- ESTADOS DO FORMULÁRIO ---
@@ -111,17 +113,34 @@ const MaterialPermanenteForm = () => {
         enabled: !!ptrabId,
     });
 
-    // Extração robusta do ano
+    // Busca o perfil para obter o ano padrão
+    const { data: profile } = useQuery({
+        queryKey: ['userProfile', user?.id],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('default_logistica_year, default_operacional_year')
+                .eq('id', user?.id)
+                .single();
+            if (error) throw error;
+            return data;
+        },
+        enabled: !!user?.id
+    });
+
+    // Lógica de ano: Prioriza o ano padrão do perfil (2026) conforme solicitado
     const selectedYear = useMemo(() => {
+        if (profile?.default_logistica_year) return profile.default_logistica_year;
+        if (profile?.default_operacional_year) return profile.default_operacional_year;
+
         const dateStr = ptrabData?.periodo_inicio;
-        if (!dateStr) return new Date().getFullYear();
-        
-        // Tenta encontrar 4 dígitos seguidos (o ano) na string de data
-        const yearMatch = dateStr.match(/\d{4}/);
-        if (yearMatch) return parseInt(yearMatch[0]);
+        if (dateStr) {
+            const yearMatch = dateStr.match(/\d{4}/);
+            if (yearMatch) return parseInt(yearMatch[0]);
+        }
         
         return new Date().getFullYear();
-    }, [ptrabData?.periodo_inicio]);
+    }, [ptrabData?.periodo_inicio, profile]);
 
     const { data: registros, isLoading: isLoadingRegistros } = useQuery<any[]>({
         queryKey: ['materialPermanenteRegistros', ptrabId],
