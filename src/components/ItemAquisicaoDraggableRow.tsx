@@ -1,6 +1,6 @@
 import React from 'react';
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
-import { formatCurrency, formatCodug } from "@/lib/formatUtils";
+import { formatCurrency, formatCodug, formatPregao } from "@/lib/formatUtils";
 import { TableRow, TableCell } from "@/components/ui/table";
 import { GripVertical } from 'lucide-react';
 
@@ -33,7 +33,7 @@ const ItemAquisicaoDraggableRow: React.FC<ItemAquisicaoDraggableRowProps> = ({ i
             </TableCell>
             <TableCell className="font-center font-bold text-xs w-[35%] p-2">{item.descricao_reduzida || item.descricao_item}</TableCell>
             <TableCell className="w-[10%] text-center text-xs p-2">{item.codigo_catmat || 'N/A'}</TableCell>
-            <TableCell className="w-[10%] text-center text-xs p-2">{item.numero_pregao || 'N/A'}</TableCell>
+            <TableCell className="w-[10%] text-center text-xs p-2">{formatPregao(item.numero_pregao) || 'N/A'}</TableCell>
             <TableCell className="w-[10%] text-center text-xs p-2">{formatCodug(item.uasg) || 'N/A'}</TableCell>
             <TableCell className="w-[15%] text-right font-bold text-xs p-2">
                 {formatCurrency(item.valor_unitario)}
