@@ -138,7 +138,7 @@ const formatUnitPlural = (unit: string, count: number) => {
     // Regras de plural em Português
     if (lowerUnit === 'mês') return 'meses';
     if (lowerUnit.endsWith('r') || lowerUnit.endsWith('z')) return `${unit}es`;
-    if (lowerUnit.endsWith('m')) return unit.slice(0, -1) + 'ns';
+    if (lowerUnit.endsWith('m')) unit.slice(0, -1) + 'ns';
     if (lowerUnit.endsWith('al') || lowerUnit.endsWith('el') || lowerUnit.endsWith('ol') || lowerUnit.endsWith('ul')) {
         return unit.slice(0, -1) + 'is';
     }
@@ -471,8 +471,7 @@ const ServicosTerceirosForm = () => {
     const initialTab = (searchParams.get('tab') as CategoriaServico) || "fretamento-aereo";
     
     const queryClient = useQueryClient();
-    const { handleEnterToNextField } = useFormNavigation();
-    const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
+    const { data: oms } = useMilitaryOrganizations();
 
     // --- ESTADOS DO FORMULÁRIO ---
     const [activeTab, setActiveTab] = useState<CategoriaServico>(initialTab);
@@ -618,13 +617,16 @@ const ServicosTerceirosForm = () => {
 
     const { data: registros, isLoading: isLoadingRegistros } = useQuery<ServicoTerceiroRegistro[]>({
         queryKey: ['servicosTerceirosRegistros', ptrabId],
-        queryFn: () => fetchPTrabRecords('servicos_terceiros_registros' as any, ptrabId!),
+        queryFn: async () => {
+            const data = await fetchPTrabRecords('servicos_terceiros_registros' as any, ptrabId!);
+            return data as unknown as ServicoTerceiroRegistro[];
+        },
         enabled: !!ptrabId,
     });
 
     const consolidatedRegistros = useMemo<ConsolidatedServicoRecord[]>(() => {
         if (!registros) return [];
-        const groups = registros.reduce((acc, reg) => {
+        const groups = (registros as ServicoTerceiroRegistro[]).reduce((acc, reg) => {
             const key = `${reg.organizacao}|${reg.ug}`; // Agrupa apenas por OM e UG
             if (!acc[key]) {
                 acc[key] = {
@@ -666,7 +668,7 @@ const ServicosTerceirosForm = () => {
             const idsToDelete = itemsToSave.map(i => i.dbId).filter(Boolean) as string[];
             
             if (idsToDelete.length > 0) {
-                const { error: deleteError } = await supabase.from('servicos_terceiros_registros').delete().in('id', idsToDelete);
+                const { error: deleteError } = await supabase.from('servicos_terceiros_registros' as any).delete().in('id', idsToDelete);
                 if (deleteError) throw deleteError;
             }
 
@@ -690,7 +692,7 @@ const ServicosTerceirosForm = () => {
                 valor_nd_30: item.valor_nd_30,
                 valor_nd_39: item.valor_nd_39,
             }));
-            const { error } = await supabase.from('servicos_terceiros_registros').insert(records);
+            const { error } = await supabase.from('servicos_terceiros_registros' as any).insert(records);
             if (error) throw error;
         },
         onSuccess: () => {
@@ -705,7 +707,7 @@ const ServicosTerceirosForm = () => {
 
     const deleteMutation = useMutation({
         mutationFn: async (ids: string[]) => {
-            const { error } = await supabase.from('servicos_terceiros_registros').delete().in('id', ids);
+            const { error } = await supabase.from('servicos_terceiros_registros' as any).delete().in('id', ids);
             if (error) throw error;
         },
         onSuccess: () => {
@@ -762,16 +764,16 @@ const ServicosTerceirosForm = () => {
             // Se for serviço adicional no transporte coletivo, não multiplica por viagens
             const multiplier = (activeTab === "transporte-coletivo" && (item as any).sub_categoria === 'servico-adicional') ? 1 : trips;
             
-            return existing ? existing : { 
+            return existing ? existing : ({ 
                 ...item, 
                 quantidade: initialQty, 
                 periodo: initialPeriod,
                 valor_total: initialQty * initialPeriod * item.valor_unitario * multiplier,
                 sub_categoria: undefined,
                 has_daily_limit: false,
-                daily_limit_km: "",
+                daily_limit_km: "" as const,
                 natureza_despesa: (activeTab === 'fretamento-aereo' || activeTab === 'transporte-coletivo') ? '33' : '39'
-            };
+            } as ItemAquisicaoServicoExt);
         });
         setSelectedItems(newItems);
     };
@@ -1156,7 +1158,7 @@ const ServicosTerceirosForm = () => {
     };
 
     const handleSaveMemoria = async (id: string) => {
-        const { error } = await supabase.from('servicos_terceiros_registros').update({ detalhamento_customizado: memoriaEdit }).eq('id', id);
+        const { error } = await supabase.from('servicos_terceiros_registros' as any).update({ detalhamento_customizado: memoriaEdit }).eq('id', id);
         if (error) toast.error("Erro ao salvar memória.");
         else {
             toast.success("Memória atualizada.");
@@ -1166,7 +1168,7 @@ const ServicosTerceirosForm = () => {
     };
 
     const handleRestoreMemoria = async (id: string) => {
-        const { error = null } = await supabase.from('servicos_terceiros_registros').update({ detalhamento_customizado: null }).eq('id', id);
+        const { error = null } = await supabase.from('servicos_terceiros_registros' as any).update({ detalhamento_customizado: null }).eq('id', id);
         if (error) toast.error("Erro ao restaurar.");
         else {
             toast.success("Memória automática restaurada.");
@@ -1175,7 +1177,7 @@ const ServicosTerceirosForm = () => {
     };
 
     // --- RENDERIZAÇÃO ---
-    const isGlobalLoading = isLoadingPTrab || isLoadingOms || isLoadingRegistros;
+    const isGlobalLoading = isLoadingPTrab || isLoadingRegistros;
     if (isGlobalLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
     const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
@@ -1279,7 +1281,7 @@ const ServicosTerceirosForm = () => {
                                                                                 setHasEfetivo(checked);
                                                                                 if (!checked) setEfetivo(0);
                                                                             }}
-                                                                            disabled={!isPTrabEditable || activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas" || activeTab === "servico-grafico"}
+                                                                            disabled={!isPTrabEditable}
                                                                             className="scale-75"
                                                                         />
                                                                     </div>
@@ -1313,7 +1315,7 @@ const ServicosTerceirosForm = () => {
                                                                     onCancel={() => { setIsGroupFormOpen(false); setGroupToEdit(undefined); }}
                                                                     isSaving={saveMutation.isPending}
                                                                     onOpenItemSelector={(items) => { setItemsToPreselect(items); setIsSelectorOpen(true); }}
-                                                                    selectedItemsFromSelector={selectedItemsFromSelector}
+                                                                    selectedItemsFromSelector={selectedItemsFromSelector as any}
                                                                     onClearSelectedItems={() => setSelectedItemsFromSelector(null)}
                                                                 />
                                                             )}
@@ -1998,7 +2000,7 @@ const ServicosTerceirosForm = () => {
                 onOpenChange={setIsSelectorOpen} 
                 selectedYear={new Date().getFullYear()} 
                 initialItems={activeTab === 'locacao-veiculos' ? (groupToEdit?.items || []) : selectedItems} 
-                onSelect={activeTab === 'locacao-veiculos' ? setSelectedItemsFromSelector : handleItemsSelected} 
+                onSelect={activeTab === 'locacao-veiculos' ? (setSelectedItemsFromSelector as any) : handleItemsSelected} 
                 onAddDiretriz={() => navigate('/config/custos-operacionais')} 
                 categoria={activeTab}
             />
