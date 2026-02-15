@@ -48,7 +48,8 @@ const ServicosTerceirosMemoria: React.FC<ServicosTerceirosMemoriaProps> = ({
     const memoriaDisplay = registro.detalhamento_customizado || memoriaAutomatica;
     const hasCustomMemoria = !!registro.detalhamento_customizado;
 
-    const formatCategoryName = (cat: string) => {
+    const formatCategoryName = (cat: string, details?: any) => {
+        if (cat === 'outros' && details?.nome_servico_outros) return details.nome_servico_outros;
         if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
         if (cat === 'servico-satelital') return 'Serviço Satelital';
         if (cat === 'transporte-coletivo') return 'Transporte Coletivo';
@@ -92,7 +93,7 @@ const ServicosTerceirosMemoria: React.FC<ServicosTerceirosMemoriaProps> = ({
                             {registro.organizacao} (UG: {formatCodug(registro.ug)})
                         </h4>
                         <Badge variant="secondary" className={cn("text-[10px]", getCategoryColor(registro.categoria))}>
-                            {formatCategoryName(registro.categoria)}
+                            {formatCategoryName(registro.categoria, registro.detalhes_planejamento)}
                         </Badge>
                         {hasCustomMemoria && !isEditing && (
                             <Badge variant="outline" className="text-xs">Editada manualmente</Badge>

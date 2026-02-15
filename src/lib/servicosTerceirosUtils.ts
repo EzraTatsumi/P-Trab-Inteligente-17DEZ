@@ -33,7 +33,8 @@ export const calculateServicoTotals = (items: any[], trips: number = 1) => {
         const multiplier = (item.sub_categoria === 'servico-adicional') ? 1 : trips;
         const total = qty * period * val * multiplier;
 
-        if (item.natureza_despesa === '339030') totalND30 += total;
+        // Verifica se a ND selecionada é 33 (que mapeamos para valor_nd_30 no banco por legado de estrutura) ou 39
+        if (item.natureza_despesa === '33') totalND30 += total;
         else totalND39 += total;
     });
 
@@ -49,10 +50,15 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
     const items = details?.itens_selecionados || [];
     const categoria = registro.categoria;
     
-    const nd = (categoria === 'fretamento-aereo' || categoria === 'transporte-coletivo') ? '33.90.33' : '33.90.39';
-    const catLabel = formatCategoryLabel(categoria);
+    // Usa o nome customizado se for a categoria 'outros'
+    const catLabel = categoria === 'outros' ? (details.nome_servico_outros || 'Serviços de Terceiros') : formatCategoryLabel(categoria);
     
-    let memoria = `${nd} - Contratação de ${catLabel}, para a ${registro.organizacao}, durante ${registro.dias_operacao} dias de Planejamento.\n\n`;
+    // Determina a ND predominante para o cabeçalho (simplificado)
+    const hasND33 = items.some((i: any) => i.natureza_despesa === '33');
+    const hasND39 = items.some((i: any) => i.natureza_despesa === '39' || !i.natureza_despesa);
+    const ndHeader = (hasND33 && hasND39) ? '33.90.33 / 33.90.39' : (hasND33 ? '33.90.33' : '33.90.39');
+    
+    let memoria = `${ndHeader} - Contratação de ${catLabel}, para a ${registro.organizacao}, durante ${registro.dias_operacao} dias de Planejamento.\n\n`;
 
     if (categoria === 'fretamento-aereo') {
         memoria += `Detalhes da Aeronave:\n`;
@@ -75,6 +81,13 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
         memoria += `- Número de Viagens: ${details.numero_viagens || 1}\n\n`;
     }
 
+    if (categoria === 'outros') {
+        memoria += `Detalhamento do Serviço:\n`;
+        memoria += `- Objeto: ${details.objeto_outros || 'N/A'}\n`;
+        memoria += `- Local/OM: ${details.local_om_outros || 'N/A'}\n`;
+        memoria += `- Finalidade: ${details.finalidade_outros || 'N/A'}\n\n`;
+    }
+
     memoria += `Cálculo:\n`;
     items.forEach((item: any) => {
         memoria += `- ${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${item.unidade_medida || 'un'}.\n`;
@@ -89,19 +102,19 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
         const period = (item.periodo !== undefined) ? item.periodo : 1;
         const unit = item.unidade_medida || 'un';
         const val = item.valor_unitario || 0;
+        const ndItem = item.natureza_despesa === '33' ? 'ND 33' : 'ND 39';
         
-        // Formata o período para mostrar decimais se existirem, ou inteiro se não
         const periodFormatted = Number.isInteger(period) ? period.toString() : period.toString().replace('.', ',');
         
         const multiplier = (categoria === 'transporte-coletivo' && item.sub_categoria === 'servico-adicional') ? 1 : trips;
         const total = qty * period * val * multiplier;
 
         if (categoria === 'transporte-coletivo' && item.sub_categoria === 'meio-transporte') {
-            memoria += `- ${qty} ${item.descricao_reduzida || item.descricao_item} (${periodFormatted} ${unit} x ${trips} viagens) x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)}.\n`;
+            memoria += `- ${qty} ${item.descricao_reduzida || item.descricao_item} (${periodFormatted} ${unit} x ${trips} viagens) x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)} (${ndItem}).\n`;
         } else if (categoria === 'fretamento-aereo') {
-            memoria += `- ${qty} ${item.descricao_reduzida || item.descricao_item} x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)}.\n`;
+            memoria += `- ${qty} ${item.descricao_reduzida || item.descricao_item} x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)} (${ndItem}).\n`;
         } else {
-            memoria += `- ${qty} ${item.descricao_reduzida || item.descricao_item} (${periodFormatted} ${unit}) x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)}.\n`;
+            memoria += `- ${qty} ${item.descricao_reduzida || item.descricao_item} (${periodFormatted} ${unit}) x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)} (${ndItem}).\n`;
         }
     });
 

@@ -122,6 +122,7 @@ interface ItemAquisicaoServicoExt extends ItemAquisicaoServico {
     sub_categoria?: SubCategoriaTransporte;
     has_daily_limit?: boolean;
     daily_limit_km?: number | "";
+    natureza_despesa?: '33' | '39';
 }
 
 // Helper para formatar o plural das unidades de medida
@@ -147,7 +148,8 @@ const formatUnitPlural = (unit: string, count: number) => {
 };
 
 // Helper fora do componente para ser usado em useMemo
-const formatCategoryName = (cat: string) => {
+const formatCategoryName = (cat: string, details?: any) => {
+    if (cat === 'outros' && details?.nome_servico_outros) return details.nome_servico_outros;
     if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
     if (cat === 'servico-satelital') return 'Serviço Satelital';
     if (cat === 'transporte-coletivo') return 'Transporte Coletivo';
@@ -175,6 +177,7 @@ const ServiceItemRow = ({
     onRemoveItem, 
     onLimitToggle, 
     onLimitChange, 
+    onNDToggle,
     isPTrabEditable,
     showClassificationActions,
     hidePeriod,
@@ -321,7 +324,21 @@ const ServiceItemRow = ({
                 </TableCell>
             )}
             <TableCell className="text-right text-sm font-bold align-top pt-4">
-                {formatCurrency(item.valor_total)}
+                <div className="flex flex-col items-end gap-2">
+                    {formatCurrency(item.valor_total)}
+                    <div className="flex flex-col items-center gap-1 p-1.5 bg-muted/50 rounded border border-muted-foreground/20">
+                        <div className="flex items-center gap-2">
+                            <span className={cn("text-[9px] font-bold", item.natureza_despesa === '33' ? "text-primary" : "text-muted-foreground")}>ND 33</span>
+                            <Switch 
+                                checked={item.natureza_despesa === '39' || !item.natureza_despesa} 
+                                onCheckedChange={(checked) => onNDToggle?.(item.id, checked ? '39' : '33')}
+                                disabled={!isPTrabEditable}
+                                className="scale-50"
+                            />
+                            <span className={cn("text-[9px] font-bold", (item.natureza_despesa === '39' || !item.natureza_despesa) ? "text-primary" : "text-muted-foreground")}>ND 39</span>
+                        </div>
+                    </div>
+                </div>
                 {!hideTotalUnits && isTransport && (
                     <div className="text-[10px] text-muted-foreground font-normal mt-1">
                         Total: {totalUnits} {formatUnitPlural(unit, totalUnits)}
@@ -392,6 +409,7 @@ const ItemsTable = ({
     onRemoveItem,
     onLimitToggle,
     onLimitChange,
+    onNDToggle,
     isPTrabEditable
 }: any) => {
     if (items.length === 0) return null;
@@ -432,6 +450,7 @@ const ItemsTable = ({
                                 onRemoveItem={onRemoveItem}
                                 onLimitToggle={onLimitToggle}
                                 onLimitChange={onLimitChange}
+                                onNDToggle={onNDToggle}
                                 isPTrabEditable={isPTrabEditable}
                                 showClassificationActions={showClassificationActions}
                                 hidePeriod={hidePeriod}
@@ -569,8 +588,8 @@ const ServicosTerceirosForm = () => {
             return currentGroupsKey !== lastStagedState.groupsKey;
         }
 
-        // Compara itens selecionados (IDs, Quantidades e Sub-categorias)
-        const currentItemsKey = selectedItems.map(i => `${i.id}-${i.quantidade}-${(i as any).periodo || 1}-${i.sub_categoria || 'none'}`).sort().join('|');
+        // Compara itens selecionados (IDs, Quantidades, Sub-categorias e ND)
+        const currentItemsKey = selectedItems.map(i => `${i.id}-${i.quantidade}-${(i as any).periodo || 1}-${i.sub_categoria || 'none'}-${i.natureza_despesa || '39'}`).sort().join('|');
         const stagedItemsKey = lastStagedState.itemsKey;
 
         return currentItemsKey !== stagedItemsKey;
@@ -627,8 +646,8 @@ const ServicosTerceirosForm = () => {
         // Ordena os registros internos por ordem alfabética do nome da categoria formatado
         result.forEach(group => {
             group.records.sort((a, b) => {
-                const nameA = formatCategoryName(a.categoria);
-                const nameB = formatCategoryName(b.categoria);
+                const nameA = formatCategoryName(a.categoria, a.detalhes_planejamento);
+                const nameB = formatCategoryName(b.categoria, b.detalhes_planejamento);
                 return nameA.localeCompare(nameB);
             });
         });
@@ -751,7 +770,8 @@ const ServicosTerceirosForm = () => {
                 valor_total: initialQty * initialPeriod * item.valor_unitario * multiplier,
                 sub_categoria: undefined,
                 has_daily_limit: false,
-                daily_limit_km: ""
+                daily_limit_km: "",
+                natureza_despesa: (activeTab === 'fretamento-aereo' || activeTab === 'transporte-coletivo') ? '33' : '39'
             };
         });
         setSelectedItems(newItems);
@@ -821,6 +841,12 @@ const ServicosTerceirosForm = () => {
         const km = val === "" ? "" : Number(val);
         setSelectedItems(prev => prev.map(item => 
             item.id === id ? { ...item, daily_limit_km: km } : item
+        ));
+    };
+
+    const handleNDToggle = (id: string, nd: '33' | '39') => {
+        setSelectedItems(prev => prev.map(item => 
+            item.id === id ? { ...item, natureza_despesa: nd } : item
         ));
     };
 
@@ -971,7 +997,7 @@ const ServicosTerceirosForm = () => {
             localOmOutros,
             finalidadeOutros,
             // Chave simplificada para o dirty check de itens
-            itemsKey: isLocacao ? "" : selectedItems.map(i => `${i.id}-${i.quantidade}-${(i as any).periodo || 1}-${i.sub_categoria || 'none'}`).sort().join('|'),
+            itemsKey: isLocacao ? "" : selectedItems.map(i => `${i.id}-${i.quantidade}-${(i as any).periodo || 1}-${i.sub_categoria || 'none'}-${i.natureza_despesa || '39'}`).sort().join('|'),
             groupsKey: isLocacao ? vehicleGroups.map(g => `${g.tempId}-${g.totalValue}`).sort().join('|') : ""
         });
 
@@ -1102,7 +1128,7 @@ const ServicosTerceirosForm = () => {
                 diasOperacao: reg.dias_operacao,
                 omDestinoId: omDest?.id || "",
                 categoria: reg.categoria,
-                itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}-${i.periodo || 1}-${i.sub_categoria || 'none'}`).sort().join('|')
+                itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}-${i.periodo || 1}-${i.sub_categoria || 'none'}-${i.natureza_despesa || '39'}`).sort().join('|')
             });
         }
 
@@ -1214,21 +1240,7 @@ const ServicosTerceirosForm = () => {
                                                                 />
                                                             </div>
                                                             <div className="space-y-2">
-                                                                <div className="flex items-center justify-between">
-                                                                    <Label>Efetivo *</Label>
-                                                                    <div className="flex items-center gap-1">
-                                                                        <span className="text-[10px] font-bold text-muted-foreground uppercase">{hasEfetivo ? 'Ativo' : 'Inativo'}</span>
-                                                                        <Switch 
-                                                                            checked={hasEfetivo} 
-                                                                            onCheckedChange={(checked) => {
-                                                                                setHasEfetivo(checked);
-                                                                                if (!checked) setEfetivo(0);
-                                                                            }}
-                                                                            disabled={!isPTrabEditable || activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas" || activeTab === "servico-grafico"}
-                                                                            className="scale-75"
-                                                                        />
-                                                                    </div>
-                                                                </div>
+                                                                <Label>Efetivo *</Label>
                                                                 <Input 
                                                                     type="number" 
                                                                     value={(activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas" || activeTab === "servico-grafico" || !hasEfetivo) ? "" : (efetivo || "")} 
@@ -1239,6 +1251,18 @@ const ServicosTerceirosForm = () => {
                                                                     onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
                                                                     className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                                                 />
+                                                                <div className="flex items-center gap-1 mt-1">
+                                                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{hasEfetivo ? 'Ativo' : 'Inativo'}</span>
+                                                                    <Switch 
+                                                                        checked={hasEfetivo} 
+                                                                        onCheckedChange={(checked) => {
+                                                                            setHasEfetivo(checked);
+                                                                            if (!checked) setEfetivo(0);
+                                                                        }}
+                                                                        disabled={!isPTrabEditable || activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas" || activeTab === "servico-grafico"}
+                                                                        className="scale-75"
+                                                                    />
+                                                                </div>
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>OM Destino do Recurso *</Label>
@@ -1372,7 +1396,7 @@ const ServicosTerceirosForm = () => {
                                                     ) : (
                                                         <>
                                                             <div className="flex justify-between items-center">
-                                                                <h4 className="text-base font-semibold">Itens de {formatCategoryName(activeTab)}</h4>
+                                                                <h4 className="text-base font-semibold">Itens de {formatCategoryName(activeTab, { nome_servico_outros: nomeServicoOutros })}</h4>
                                                                 <Button type="button" variant="outline" size="sm" onClick={() => setIsSelectorOpen(true)} disabled={!isPTrabEditable}><Plus className="mr-2 h-4 w-4" /> Importar da Diretriz</Button>
                                                             </div>
 
@@ -1566,6 +1590,7 @@ const ServicosTerceirosForm = () => {
                                                                                         onPeriodChange={handlePeriodChange}
                                                                                         onMoveItem={handleMoveItem}
                                                                                         onRemoveItem={(id: string) => setSelectedItems(prev => prev.filter(i => i.id !== id))}
+                                                                                        onNDToggle={handleNDToggle}
                                                                                         isPTrabEditable={isPTrabEditable}
                                                                                     />
                                                                                 </div>
@@ -1587,6 +1612,7 @@ const ServicosTerceirosForm = () => {
                                                                                     onRemoveItem={(id: string) => setSelectedItems(prev => prev.filter(i => i.id !== id))}
                                                                                     onLimitToggle={handleLimitToggle}
                                                                                     onLimitChange={handleLimitChange}
+                                                                                    onNDToggle={handleNDToggle}
                                                                                     isPTrabEditable={isPTrabEditable}
                                                                                 />
                                                                                 {selectedItems.filter(i => i.sub_categoria === 'meio-transporte').length === 0 && (
@@ -1610,6 +1636,7 @@ const ServicosTerceirosForm = () => {
                                                                                     onPeriodChange={handlePeriodChange}
                                                                                     onMoveItem={handleMoveItem}
                                                                                     onRemoveItem={(id: string) => setSelectedItems(prev => prev.filter(i => i.id !== id))}
+                                                                                    onNDToggle={handleNDToggle}
                                                                                     isPTrabEditable={isPTrabEditable}
                                                                                 />
                                                                                 {selectedItems.filter(i => i.sub_categoria === 'servico-adicional').length === 0 && (
@@ -1629,6 +1656,7 @@ const ServicosTerceirosForm = () => {
                                                                             onPeriodChange={handlePeriodChange}
                                                                             onMoveItem={handleMoveItem}
                                                                             onRemoveItem={(id: string) => setSelectedItems(prev => prev.filter(i => i.id !== id))}
+                                                                            onNDToggle={handleNDToggle}
                                                                             isPTrabEditable={isPTrabEditable}
                                                                         />
                                                                     )}
@@ -1714,7 +1742,7 @@ const ServicosTerceirosForm = () => {
                                                     <CardContent className="p-4">
                                                         <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/30">
                                                             <h4 className="font-bold text-base text-foreground">
-                                                                {formatCategoryName(item.categoria)}
+                                                                {formatCategoryName(item.categoria, item.detalhes_planejamento)}
                                                                 {item.group_name && ` (${item.group_name})`}
                                                             </h4>
                                                             <div className="flex items-center gap-2">
@@ -1771,9 +1799,19 @@ const ServicosTerceirosForm = () => {
                                                             </div>
                                                         </div>
                                                         <div className="w-full h-[1px] bg-secondary/30 my-3" />
-                                                        <div className="flex justify-between text-xs">
-                                                            <span className="text-muted-foreground">{(item.categoria === 'fretamento-aereo' || item.categoria === 'transporte-coletivo') ? 'Total ND 33:' : 'Total ND 39:'}</span>
-                                                            <span className="font-medium text-green-600">{formatCurrency(item.valor_nd_30 + item.valor_nd_39)}</span>
+                                                        <div className="flex flex-col gap-1">
+                                                            {item.valor_nd_30 > 0 && (
+                                                                <div className="flex justify-between text-xs">
+                                                                    <span className="text-muted-foreground">Total ND 33:</span>
+                                                                    <span className="font-medium text-green-600">{formatCurrency(item.valor_nd_30)}</span>
+                                                                </div>
+                                                            )}
+                                                            {item.valor_nd_39 > 0 && (
+                                                                <div className="flex justify-between text-xs">
+                                                                    <span className="text-muted-foreground">Total ND 39:</span>
+                                                                    <span className="font-medium text-green-600">{formatCurrency(item.valor_nd_39)}</span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </CardContent>
                                                 </Card>
@@ -1853,7 +1891,7 @@ const ServicosTerceirosForm = () => {
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex flex-col">
                                                                     <h4 className="font-semibold text-base text-foreground flex items-center gap-2">
-                                                                        {formatCategoryName(reg.categoria)}
+                                                                        {formatCategoryName(reg.categoria, reg.detalhes_planejamento)}
                                                                         {(reg.group_name || reg.detalhes_planejamento?.group_name) && ` (${reg.group_name || reg.detalhes_planejamento?.group_name})`}
                                                                         <Badge variant="outline" className="text-xs font-semibold">{reg.fase_atividade}</Badge>
                                                                     </h4>
@@ -1888,15 +1926,13 @@ const ServicosTerceirosForm = () => {
                                                                 </div>
                                                                 {Number(reg.valor_nd_30) > 0 && (
                                                                     <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">ND 33.90.30:</span>
+                                                                        <span className="text-muted-foreground">ND 33.90.33:</span>
                                                                         <span className="text-green-600 font-medium">{formatCurrency(Number(reg.valor_nd_30))}</span>
                                                                     </div>
                                                                 )}
                                                                 {Number(reg.valor_nd_39) > 0 && (
                                                                     <div className="flex justify-between text-xs">
-                                                                        <span className="text-muted-foreground">
-                                                                            {(reg.categoria === 'fretamento-aereo' || reg.categoria === 'transporte-coletivo') ? 'ND 33.90.33:' : 'ND 33.90.39:'}
-                                                                        </span>
+                                                                        <span className="text-muted-foreground">ND 33.90.39:</span>
                                                                         <span className="text-green-600 font-medium">{formatCurrency(Number(reg.valor_nd_39))}</span>
                                                                     </div>
                                                                 )}
@@ -1953,7 +1989,7 @@ const ServicosTerceirosForm = () => {
                             <Trash2 className="h-5 w-5" /> Confirmar Exclusão de Registro
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Tem certeza que deseja excluir o registro de <span className="font-bold">{recordToDelete ? formatCategoryName(recordToDelete.categoria) : ''}</span> para a OM <span className="font-bold">{recordToDelete?.organizacao}</span>? Esta ação é irreversível.
+                            Tem certeza que deseja excluir o registro de <span className="font-bold">{recordToDelete ? formatCategoryName(recordToDelete.categoria, recordToDelete.detalhes_planejamento) : ''}</span> para a OM <span className="font-bold">{recordToDelete?.organizacao}</span>? Esta ação é irreversível.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
