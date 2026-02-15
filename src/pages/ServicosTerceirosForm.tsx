@@ -50,7 +50,7 @@ import { cn } from "@/lib/utils";
 import { ItemAquisicaoServico } from "@/types/diretrizesServicosTerceiros";
 import ServicosTerceirosItemSelectorDialog from "@/components/ServicosTerceirosItemSelectorDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { calculateServicoTotals, ServicoTerceiroRegistro } from "@/lib/servicosTerceirosUtils";
+import { calculateServicoTotals, ServicoTerceiroRegistro, generateServicoMemoriaCalculo } from "@/lib/servicosTerceirosUtils";
 import ServicosTerceirosMemoria from "@/components/ServicosTerceirosMemoria";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -766,8 +766,10 @@ const ServicosTerceirosForm = () => {
             return;
         }
 
+        let newItems: PendingServicoItem[] = [];
+
         if (isLocacao) {
-            const newPendingItems: PendingServicoItem[] = vehicleGroups.map(group => ({
+            newItems = vehicleGroups.map(group => ({
                 tempId: editingId || group.tempId,
                 organizacao: omFavorecida.nome,
                 ug: omFavorecida.ug,
@@ -784,16 +786,6 @@ const ServicosTerceirosForm = () => {
                 valor_nd_30: group.totalND30,
                 valor_nd_39: group.totalND39,
             }));
-            setPendingItems(newPendingItems);
-            setLastStagedState({
-                omFavorecidaId: omFavorecida.id,
-                faseAtividade,
-                efetivo,
-                diasOperacao,
-                omDestinoId: omDestino.id,
-                categoria: activeTab,
-                groupsKey: vehicleGroups.map(g => `${g.tempId}-${g.totalValue}`).sort().join('|')
-            });
         } else {
             const trips = activeTab === "transporte-coletivo" ? (Number(numeroViagens) || 1) : 1;
             const itemsForCalc = selectedItems.map(i => ({ ...i, periodo: (i as any).periodo || 0 }));
@@ -826,20 +818,44 @@ const ServicosTerceirosForm = () => {
                 valor_nd_30: totalND30,
                 valor_nd_39: totalND39,
             };
-
-            setPendingItems([newItem]);
-            setLastStagedState({
-                omFavorecidaId: omFavorecida.id,
-                faseAtividade,
-                efetivo: (isSatelital || isLocacaoEstruturas) ? 0 : efetivo,
-                diasOperacao,
-                omDestinoId: omDestino.id,
-                categoria: activeTab,
-                itemsKey: itemsForCalc.map(i => `${i.id}-${i.quantidade}-${i.periodo}-${i.sub_categoria || 'none'}`).sort().join('|')
-            });
+            newItems = [newItem];
         }
+
+        // ACUMULA OS ITENS NA LISTA PENDENTE
+        setPendingItems(prev => {
+            // Se estiver editando, remove o item antigo com o mesmo ID antes de adicionar o novo
+            const filtered = editingId ? prev.filter(p => p.tempId !== editingId) : prev;
+            return [...filtered, ...newItems];
+        });
+
+        // Define o estado de staging para o dirty check
+        setLastStagedState({
+            omFavorecidaId: omFavorecida.id,
+            faseAtividade,
+            efetivo,
+            diasOperacao,
+            omDestinoId: omDestino.id,
+            categoria: activeTab,
+            // Chave simplificada para o dirty check
+            itemsKey: isLocacao ? "" : selectedItems.map(i => `${i.id}-${i.quantidade}`).sort().join('|')
+        });
+
+        // LIMPA OS CAMPOS ESPECÍFICOS DA CATEGORIA NA SEÇÃO 2
+        setSelectedItems([]);
+        setVehicleGroups([]);
+        setTipoAnv("");
+        setCapacidade("");
+        setVelocidadeCruzeiro("");
+        setDistanciaPercorrer("");
+        setTipoEquipamento("");
+        setProposito("");
+        setItinerario("");
+        setDistanciaItinerario("");
+        setDistanciaPercorridaDia("");
+        setNumeroViagens("");
+        setEditingId(null);
         
-        toast.info("Item adicionado à lista de pendentes para conferência.");
+        toast.info("Item adicionado à lista de pendentes. Você pode mudar de categoria ou salvar os registros.");
     };
 
     const handleEdit = (reg: ServicoTerceiroRegistro) => {
@@ -1450,7 +1466,7 @@ const ServicosTerceirosForm = () => {
                                             <div className="flex justify-end gap-3 pt-4">
                                                 <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={(activeTab === "locacao-veiculos" ? vehicleGroups.length === 0 : selectedItems.length === 0) || saveMutation.isPending || (activeTab !== "servico-satelital" && activeTab !== "locacao-veiculos" && activeTab !== "locacao-estruturas" && efetivo <= 0) || diasOperacao <= 0 || isGroupFormOpen} onClick={handleAddToPending}>
                                                     {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                    {editingId ? "Recalcular/Revisar Lote" : "Salvar Itens na Lista"}
+                                                    {editingId ? "Recalcular/Revisar Lote" : "Salvar Item na Lista"}
                                                 </Button>
                                             </div>
                                         </Card>
@@ -1467,7 +1483,7 @@ const ServicosTerceirosForm = () => {
                                         <Alert variant="destructive">
                                             <AlertCircle className="h-4 w-4" />
                                             <AlertDescription className="font-medium">
-                                                Atenção: Os dados do formulário foram alterados. Clique em "Recalcular/Revisar Lote" na Seção 2 para atualizar o lote pendente.
+                                                Atenção: Os dados do formulário foram alterados. Clique em "Salvar Item na Lista" na Seção 2 para atualizar o lote pendente.
                                             </AlertDescription>
                                         </Alert>
                                     )}
