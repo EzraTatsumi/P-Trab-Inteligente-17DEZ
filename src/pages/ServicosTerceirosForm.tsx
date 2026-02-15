@@ -154,6 +154,7 @@ const formatCategoryName = (cat: string) => {
     if (cat === 'locacao-veiculos') return 'Locação de Veículos';
     if (cat === 'locacao-estruturas') return 'Locação de Estruturas';
     if (cat === 'servico-grafico') return 'Serviço Gráfico';
+    if (cat === 'outros') return 'Outros Serviços/Locações';
     return cat.split('-').map(word => {
         if (word === 'aereo') return 'Aéreo';
         return word.charAt(0).toUpperCase() + word.slice(1);
@@ -459,6 +460,7 @@ const ServicosTerceirosForm = () => {
     const [omFavorecida, setOmFavorecida] = useState({ nome: "", ug: "", id: "" });
     const [faseAtividade, setFaseAtividade] = useState("");
     const [efetivo, setEfetivo] = useState<number>(0);
+    const [hasEfetivo, setHasEfetivo] = useState(true);
     const [diasOperacao, setDiasOperacao] = useState<number>(0);
     const [omDestino, setOmDestino] = useState({ nome: "", ug: "", id: "" });
 
@@ -476,6 +478,12 @@ const ServicosTerceirosForm = () => {
     const [distanciaItinerario, setDistanciaItinerario] = useState<number | "">("");
     const [distanciaPercorridaDia, setDistanciaPercorridaDia] = useState<number | "">("");
     const [numeroViagens, setNumeroViagens] = useState<number | "">("");
+
+    // Novos estados para Outros
+    const [nomeServicoOutros, setNomeServicoOutros] = useState("");
+    const [objetoOutros, setObjetoOutros] = useState("");
+    const [localOmOutros, setLocalOmOutros] = useState("");
+    const [finalidadeOutros, setFinalidadeOutros] = useState("");
 
     const [selectedItems, setSelectedItems] = useState<ItemAquisicaoServicoExt[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
@@ -528,6 +536,7 @@ const ServicosTerceirosForm = () => {
             omFavorecida.id !== lastStagedState.omFavorecidaId ||
             faseAtividade !== lastStagedState.faseAtividade ||
             efetivo !== lastStagedState.efetivo ||
+            hasEfetivo !== lastStagedState.hasEfetivo ||
             diasOperacao !== lastStagedState.diasOperacao ||
             omDestino.id !== lastStagedState.omDestinoId ||
             activeTab !== lastStagedState.categoria
@@ -546,7 +555,11 @@ const ServicosTerceirosForm = () => {
             itinerario !== lastStagedState.itinerario ||
             distanciaItinerario !== lastStagedState.distanciaItinerario ||
             distanciaPercorridaDia !== lastStagedState.distanciaPercorridaDia ||
-            numeroViagens !== lastStagedState.numeroViagens
+            numeroViagens !== lastStagedState.numeroViagens ||
+            nomeServicoOutros !== lastStagedState.nomeServicoOutros ||
+            objetoOutros !== lastStagedState.objetoOutros ||
+            localOmOutros !== lastStagedState.localOmOutros ||
+            finalidadeOutros !== lastStagedState.finalidadeOutros
         );
 
         if (detailsChanged) return true;
@@ -561,7 +574,7 @@ const ServicosTerceirosForm = () => {
         const stagedItemsKey = lastStagedState.itemsKey;
 
         return currentItemsKey !== stagedItemsKey;
-    }, [omFavorecida, faseAtividade, efetivo, diasOperacao, omDestino, activeTab, selectedItems, lastStagedState, pendingItems, vehicleGroups, tipoAnv, capacidade, velocidadeCruzeiro, distanciaPercorrer, tipoEquipamento, proposito, itinerario, distanciaItinerario, distanciaPercorridaDia, numeroViagens]);
+    }, [omFavorecida, faseAtividade, efetivo, hasEfetivo, diasOperacao, omDestino, activeTab, selectedItems, lastStagedState, pendingItems, vehicleGroups, tipoAnv, capacidade, velocidadeCruzeiro, distanciaPercorrer, tipoEquipamento, proposito, itinerario, distanciaItinerario, distanciaPercorridaDia, numeroViagens, nomeServicoOutros, objetoOutros, localOmOutros, finalidadeOutros]);
 
     // Recalcula totais quando o número de viagens muda (apenas para Transporte Coletivo)
     useEffect(() => {
@@ -694,6 +707,7 @@ const ServicosTerceirosForm = () => {
         setSelectedItems([]);
         setVehicleGroups([]);
         setEfetivo(0);
+        setHasEfetivo(true);
         setDiasOperacao(0);
         setFaseAtividade("");
         setTipoAnv("");
@@ -706,6 +720,10 @@ const ServicosTerceirosForm = () => {
         setDistanciaItinerario("");
         setDistanciaPercorridaDia("");
         setNumeroViagens("");
+        setNomeServicoOutros("");
+        setObjetoOutros("");
+        setLocalOmOutros("");
+        setFinalidadeOutros("");
         setEditingId(null);
     };
 
@@ -847,8 +865,9 @@ const ServicosTerceirosForm = () => {
         const isLocacaoVeiculos = activeTab === "locacao-veiculos";
         const isLocacaoEstruturas = activeTab === "locacao-estruturas";
         const isServicoGrafico = activeTab === "servico-grafico";
+        const isOutros = activeTab === "outros";
 
-        if ((!isSatelital && !isLocacaoVeiculos && !isLocacaoEstruturas && !isServicoGrafico && efetivo <= 0) || diasOperacao <= 0) {
+        if ((!isSatelital && !isLocacaoVeiculos && !isLocacaoEstruturas && !isServicoGrafico && !isOutros && efetivo <= 0) || diasOperacao <= 0) {
             toast.warning("Informe o efetivo e o período.");
             return;
         }
@@ -892,7 +911,7 @@ const ServicosTerceirosForm = () => {
                 om_detentora: omDestino.nome,
                 ug_detentora: omDestino.ug || omFavorecida.ug,
                 dias_operacao: diasOperacao,
-                efetivo: (isSatelital || isLocacaoEstruturas || isServicoGrafico) ? 0 : efetivo,
+                efetivo: (isSatelital || isLocacaoEstruturas || isServicoGrafico || (isOutros && !hasEfetivo)) ? 0 : efetivo,
                 fase_atividade: faseAtividade,
                 categoria: activeTab,
                 detalhes_planejamento: { 
@@ -906,7 +925,12 @@ const ServicosTerceirosForm = () => {
                     itinerario: itinerario,
                     distancia_itinerario: distanciaItinerario,
                     distancia_percorrida_dia: distanciaPercorridaDia,
-                    numero_viagens: numeroViagens
+                    numero_viagens: numeroViagens,
+                    nome_servico_outros: nomeServicoOutros,
+                    objeto_outros: objetoOutros,
+                    local_om_outros: localOmOutros,
+                    finalidade_outros: finalidadeOutros,
+                    has_efetivo: hasEfetivo
                 },
                 valor_total: totalGeral,
                 valor_nd_30: totalND30,
@@ -927,6 +951,7 @@ const ServicosTerceirosForm = () => {
             omFavorecidaId: omFavorecida.id,
             faseAtividade,
             efetivo,
+            hasEfetivo,
             diasOperacao,
             omDestinoId: omDestino.id,
             categoria: activeTab,
@@ -941,6 +966,10 @@ const ServicosTerceirosForm = () => {
             distanciaItinerario,
             distanciaPercorridaDia,
             numeroViagens,
+            nomeServicoOutros,
+            objetoOutros,
+            localOmOutros,
+            finalidadeOutros,
             // Chave simplificada para o dirty check de itens
             itemsKey: isLocacao ? "" : selectedItems.map(i => `${i.id}-${i.quantidade}-${(i as any).periodo || 1}-${i.sub_categoria || 'none'}`).sort().join('|'),
             groupsKey: isLocacao ? vehicleGroups.map(g => `${g.tempId}-${g.totalValue}`).sort().join('|') : ""
@@ -1007,6 +1036,11 @@ const ServicosTerceirosForm = () => {
                 setDistanciaItinerario(details.distancia_itinerario || "");
                 setDistanciaPercorridaDia(details.distancia_percorrida_dia || "");
                 setNumeroViagens(details.numero_viagens || "");
+                setNomeServicoOutros(details.nome_servico_outros || "");
+                setObjetoOutros(details.objeto_outros || "");
+                setLocalOmOutros(details.local_om_outros || "");
+                setFinalidadeOutros(details.finalidade_outros || "");
+                setHasEfetivo(details.has_efetivo !== undefined ? details.has_efetivo : true);
             }
         }
 
@@ -1034,6 +1068,7 @@ const ServicosTerceirosForm = () => {
                 omFavorecidaId: omFav?.id || "",
                 faseAtividade: reg.fase_atividade,
                 efetivo: reg.efetivo,
+                hasEfetivo: true,
                 diasOperacao: reg.dias_operacao,
                 omDestinoId: omDest?.id || "",
                 categoria: reg.categoria,
@@ -1063,6 +1098,7 @@ const ServicosTerceirosForm = () => {
                 omFavorecidaId: omFav?.id || "",
                 faseAtividade: reg.fase_atividade,
                 efetivo: reg.efetivo,
+                hasEfetivo: details.has_efetivo !== undefined ? details.has_efetivo : true,
                 diasOperacao: reg.dias_operacao,
                 omDestinoId: omDest?.id || "",
                 categoria: reg.categoria,
@@ -1178,13 +1214,27 @@ const ServicosTerceirosForm = () => {
                                                                 />
                                                             </div>
                                                             <div className="space-y-2">
-                                                                <Label>Efetivo *</Label>
+                                                                <div className="flex items-center justify-between">
+                                                                    <Label>Efetivo *</Label>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <span className="text-[10px] font-bold text-muted-foreground uppercase">{hasEfetivo ? 'Ativo' : 'Inativo'}</span>
+                                                                        <Switch 
+                                                                            checked={hasEfetivo} 
+                                                                            onCheckedChange={(checked) => {
+                                                                                setHasEfetivo(checked);
+                                                                                if (!checked) setEfetivo(0);
+                                                                            }}
+                                                                            disabled={!isPTrabEditable || activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas" || activeTab === "servico-grafico"}
+                                                                            className="scale-75"
+                                                                        />
+                                                                    </div>
+                                                                </div>
                                                                 <Input 
                                                                     type="number" 
-                                                                    value={(activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas" || activeTab === "servico-grafico") ? "" : (efetivo || "")} 
+                                                                    value={(activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas" || activeTab === "servico-grafico" || !hasEfetivo) ? "" : (efetivo || "")} 
                                                                     onChange={(e) => setEfetivo(Number(e.target.value))} 
-                                                                    placeholder={(activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas" || activeTab === "servico-grafico") ? "N/A" : "Ex: 50"} 
-                                                                    disabled={!isPTrabEditable || activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas" || activeTab === "servico-grafico"} 
+                                                                    placeholder={(activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas" || activeTab === "servico-grafico" || !hasEfetivo) ? "N/A" : "Ex: 50"} 
+                                                                    disabled={!isPTrabEditable || activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas" || activeTab === "servico-grafico" || !hasEfetivo} 
                                                                     onWheel={(e) => e.currentTarget.blur()}
                                                                     onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
                                                                     className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
@@ -1453,6 +1503,47 @@ const ServicosTerceirosForm = () => {
                                                                 </div>
                                                             )}
 
+                                                            {activeTab === "outros" && (
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+                                                                    <div className="space-y-2">
+                                                                        <Label>Nome do Serviço/Locação *</Label>
+                                                                        <Input 
+                                                                            value={nomeServicoOutros} 
+                                                                            onChange={(e) => setNomeServicoOutros(e.target.value)} 
+                                                                            placeholder="Ex: Locação de Banheiros Químicos" 
+                                                                            disabled={!isPTrabEditable} 
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label>Objeto *</Label>
+                                                                        <Input 
+                                                                            value={objetoOutros} 
+                                                                            onChange={(e) => setObjetoOutros(e.target.value)} 
+                                                                            placeholder="Ex: Banheiro Químico Standard" 
+                                                                            disabled={!isPTrabEditable} 
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label>Local/OM *</Label>
+                                                                        <Input 
+                                                                            value={localOmOutros} 
+                                                                            onChange={(e) => setLocalOmOutros(e.target.value)} 
+                                                                            placeholder="Ex: Campo de Instrução" 
+                                                                            disabled={!isPTrabEditable} 
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label>Finalidade *</Label>
+                                                                        <Input 
+                                                                            value={finalidadeOutros} 
+                                                                            onChange={(e) => setFinalidadeOutros(e.target.value)} 
+                                                                            placeholder="Ex: Atender o efetivo no terreno" 
+                                                                            disabled={!isPTrabEditable} 
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
                                                             {selectedItems.length > 0 ? (
                                                                 <div className="space-y-6">
                                                                     {activeTab === "transporte-coletivo" ? (
@@ -1560,7 +1651,7 @@ const ServicosTerceirosForm = () => {
                                             </Card>
 
                                             <div className="flex justify-end gap-3 pt-4">
-                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={(activeTab === "locacao-veiculos" ? vehicleGroups.length === 0 : selectedItems.length === 0) || saveMutation.isPending || (activeTab !== "servico-satelital" && activeTab !== "locacao-veiculos" && activeTab !== "locacao-estruturas" && activeTab !== "servico-grafico" && efetivo <= 0) || (activeTab === "servico-satelital" && (!tipoEquipamento || !proposito)) || diasOperacao <= 0 || isGroupFormOpen} onClick={handleAddToPending}>
+                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={(activeTab === "locacao-veiculos" ? vehicleGroups.length === 0 : selectedItems.length === 0) || saveMutation.isPending || (activeTab !== "servico-satelital" && activeTab !== "locacao-veiculos" && activeTab !== "locacao-estruturas" && activeTab !== "servico-grafico" && activeTab !== "outros" && efetivo <= 0) || (activeTab === "servico-satelital" && (!tipoEquipamento || !proposito)) || (activeTab === "outros" && (!nomeServicoOutros || !objetoOutros || !localOmOutros || !finalidadeOutros)) || diasOperacao <= 0 || isGroupFormOpen} onClick={handleAddToPending}>
                                                     {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                                     {editingId ? "Recalcular/Revisar Lote" : "Salvar Item na Lista"}
                                                 </Button>
@@ -1644,7 +1735,8 @@ const ServicosTerceirosForm = () => {
                                                                     {item.categoria === 'locacao-veiculos' && "Período / Qtd Veículos:"}
                                                                     {item.categoria === 'locacao-estruturas' && "Período / Qtd Itens:"}
                                                                     {item.categoria === 'servico-grafico' && "Período / Qtd Itens:"}
-                                                                    {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos', 'locacao-estruturas', 'servico-grafico'].includes(item.categoria) && "Período / Detalhes:"}
+                                                                    {item.categoria === 'outros' && "Período / Efetivo / Qtd Itens:"}
+                                                                    {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos', 'locacao-estruturas', 'servico-grafico', 'outros'].includes(item.categoria) && "Período / Detalhes:"}
                                                                 </p>
                                                                 {item.categoria === 'transporte-coletivo' && (
                                                                     <p className="font-medium">Nr Diárias / Qtd Km Adicional:</p>
@@ -1666,7 +1758,9 @@ const ServicosTerceirosForm = () => {
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalQty} un`}
                                                                     {item.categoria === 'servico-grafico' && 
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalQty} un`}
-                                                                    {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos', 'locacao-estruturas', 'servico-grafico'].includes(item.categoria) && 
+                                                                    {item.categoria === 'outros' && 
+                                                                        `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${item.efetivo > 0 ? `${item.efetivo} mil` : 'N/A'} / ${totalQty} un`}
+                                                                    {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos', 'locacao-estruturas', 'servico-grafico', 'outros'].includes(item.categoria) && 
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalUnits} un`}
                                                                 </p>
                                                                 {item.categoria === 'transporte-coletivo' && (
@@ -1770,7 +1864,8 @@ const ServicosTerceirosForm = () => {
                                                                         {reg.categoria === 'locacao-veiculos' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: ${totalQty} un`}
                                                                         {reg.categoria === 'locacao-estruturas' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: ${totalQty} un`}
                                                                         {reg.categoria === 'servico-grafico' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: ${totalQty} un`}
-                                                                        {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos', 'locacao-estruturas', 'servico-grafico'].includes(reg.categoria) && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Qtd: ${totalUnits} un`}
+                                                                        {reg.categoria === 'outros' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo > 0 ? `${reg.efetivo} mil` : 'N/A'} | Qtd: ${totalQty} un`}
+                                                                        {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos', 'locacao-estruturas', 'servico-grafico', 'outros'].includes(reg.categoria) && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Qtd: ${totalUnits} un`}
                                                                     </p>
                                                                     {reg.categoria === 'transporte-coletivo' && (
                                                                         <p className="text-xs text-muted-foreground">
