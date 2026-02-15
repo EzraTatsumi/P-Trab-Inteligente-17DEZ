@@ -456,7 +456,7 @@ const PTrabManager = () => {
           let totalMaterialConsumoND39 = (materialConsumoData || []).reduce((sum, record) => sum + (record.valor_nd_39 || 0), 0);
           const totalMaterialConsumo = totalMaterialConsumoND30 + totalMaterialConsumoND39;
 
-          // 10. Fetch Complemento Alimentação totals - NOVO
+          // 10. Fetch Complemento Alimentação totals
           const { data: complementoAlimentacaoData, error: complementoAlimentacaoError } = await supabase
             .from('complemento_alimentacao_registros')
             .select('valor_total')
@@ -468,11 +468,23 @@ const PTrabManager = () => {
               totalComplementoAlimentacao = (complementoAlimentacaoData || []).reduce((sum, record) => sum + (Number(record.valor_total) || 0), 0);
           }
 
+          // 11. Fetch Serviços de Terceiros totals - NOVO
+          const { data: servicosTerceirosData, error: servicosTerceirosError } = await supabase
+            .from('servicos_terceiros_registros' as any)
+            .select('valor_total')
+            .eq('p_trab_id', ptrab.id);
+            
+          let totalServicosTerceiros = 0;
+          if (servicosTerceirosError) console.error("Erro ao carregar Serviços de Terceiros para PTrab", ptrab.numero_ptrab, servicosTerceirosError);
+          else {
+              totalServicosTerceiros = (servicosTerceirosData || []).reduce((sum, record) => sum + (Number(record.valor_total) || 0), 0);
+          }
+
           // SOMA TOTAL DA ABA LOGÍSTICA
           totalLogisticaCalculado = totalClasseI + totalClassesDiversas + totalClasseIII;
           
-          // SOMA TOTAL DA ABA OPERACIONAL (Incluindo Complemento Alimentação)
-          totalOperacionalCalculado = totalDiariaND15 + totalDiariaND30 + totalVerbaOperacionalND30 + totalVerbaOperacionalND39 + totalPassagemND33 + totalConcessionariaND39 + totalHorasVoo + totalMaterialConsumo + totalComplementoAlimentacao;
+          // SOMA TOTAL DA ABA OPERACIONAL (Incluindo Complemento Alimentação e Serviços de Terceiros)
+          totalOperacionalCalculado = totalDiariaND15 + totalDiariaND30 + totalVerbaOperacionalND30 + totalVerbaOperacionalND39 + totalPassagemND33 + totalConcessionariaND39 + totalHorasVoo + totalMaterialConsumo + totalComplementoAlimentacao + totalServicosTerceiros;
           
           const isOwner = ptrab.user_id === user.id;
           const isShared = !isOwner && (ptrab.shared_with || []).includes(user.id);
@@ -951,7 +963,7 @@ const PTrabManager = () => {
         const basePTrab = selectedPTrabsData[0];
         const { id, created_at, updated_at, share_token, shared_with, user_id, ...restOfBasePTrab } = basePTrab;
         const newPTrabData: TablesInsert<'p_trab'> = { ...restOfBasePTrab, user_id: user.id, numero_ptrab: finalMinutaNumber, nome_operacao: basePTrab.nome_operacao, status: 'aberto', origem: 'consolidado', comentario: `Consolidação dos P Trabs: ${selectedPTrabsData.map(p => p.numero_ptrab).join(', ')}`, rotulo_versao: null };
-        const { data: newPTrab, error: insertError } = await supabase.from("p_trab").insert([newPTrabData]).select('id').single();
+        const { data: newPTrab, error: insertError = null } = await supabase.from("p_trab").insert([newPTrabData]).select('id').single();
         if (insertError || !newPTrab) throw insertError;
         const newPTrabId = newPTrab.id;
         const tablesToConsolidate: PTrabLinkedTableName[] = ['classe_i_registros', 'classe_ii_registros', 'classe_iii_registros', 'classe_v_registros', 'classe_vi_registros', 'classe_vii_registros', 'classe_viii_saude_registros', 'classe_viii_remonta_registros', 'classe_ix_registros', 'diaria_registros', 'verba_operacional_registros', 'passagem_registros', 'concessionaria_registros', 'horas_voo_registros', 'material_consumo_registros', 'complemento_alimentacao_registros'];
