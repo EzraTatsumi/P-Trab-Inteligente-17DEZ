@@ -188,7 +188,10 @@ const ItemsTable = ({
                             const period = (item as any).periodo;
                             const unit = item.unidade_medida || 'UN';
                             const trips = isTransport ? (Number(numeroViagens) || 1) : 1;
-                            const totalUnits = item.quantidade * (period || 0) * trips;
+                            
+                            // Se for serviço adicional no transporte coletivo, não multiplica por viagens
+                            const multiplier = (isTransport && item.sub_categoria === 'servico-adicional') ? 1 : trips;
+                            const totalUnits = item.quantidade * (period || 0) * multiplier;
                             
                             return (
                                 <TableRow key={item.id}>
@@ -418,7 +421,10 @@ const ServicosTerceirosForm = () => {
         return selectedItems.reduce((acc, item) => {
             const qty = item.quantidade || 0;
             const period = (item as any).periodo || 0;
-            return acc + (qty * period * item.valor_unitario * trips);
+            
+            // Se for serviço adicional no transporte coletivo, não multiplica por viagens
+            const multiplier = (activeTab === "transporte-coletivo" && item.sub_categoria === 'servico-adicional') ? 1 : trips;
+            return acc + (qty * period * item.valor_unitario * multiplier);
         }, 0);
     }, [selectedItems, activeTab, numeroViagens]);
 
@@ -451,7 +457,10 @@ const ServicosTerceirosForm = () => {
             setSelectedItems(prev => prev.map(item => {
                 const qty = item.quantidade || 0;
                 const period = (item as any).periodo || 0;
-                return { ...item, valor_total: qty * period * item.valor_unitario * trips };
+                
+                // Se for serviço adicional no transporte coletivo, não multiplica por viagens
+                const multiplier = (item.sub_categoria === 'servico-adicional') ? 1 : trips;
+                return { ...item, valor_total: qty * period * item.valor_unitario * multiplier };
             }));
         }
     }, [numeroViagens, activeTab]);
@@ -578,11 +587,15 @@ const ServicosTerceirosForm = () => {
             const initialQty = (activeTab === "fretamento-aereo" && suggestedHV) ? suggestedHV : 1;
             const initialPeriod = 1;
             const trips = activeTab === "transporte-coletivo" ? (Number(numeroViagens) || 1) : 1;
+            
+            // Se for serviço adicional no transporte coletivo, não multiplica por viagens
+            const multiplier = (activeTab === "transporte-coletivo" && (item as any).sub_categoria === 'servico-adicional') ? 1 : trips;
+            
             return existing ? existing : { 
                 ...item, 
                 quantidade: initialQty, 
                 periodo: initialPeriod,
-                valor_total: initialQty * initialPeriod * item.valor_unitario * trips,
+                valor_total: initialQty * initialPeriod * item.valor_unitario * multiplier,
                 sub_categoria: undefined,
                 has_daily_limit: false,
                 daily_limit_km: ""
@@ -597,7 +610,10 @@ const ServicosTerceirosForm = () => {
             if (item.id === id) {
                 const period = (item as any).periodo || 1;
                 const trips = activeTab === "transporte-coletivo" ? (Number(numeroViagens) || 1) : 1;
-                return { ...item, quantidade: qty, valor_total: qty * period * item.valor_unitario * trips };
+                
+                // Se for serviço adicional no transporte coletivo, não multiplica por viagens
+                const multiplier = (activeTab === "transporte-coletivo" && item.sub_categoria === 'servico-adicional') ? 1 : trips;
+                return { ...item, quantidade: qty, valor_total: qty * period * item.valor_unitario * multiplier };
             }
             return item;
         }));
@@ -612,16 +628,33 @@ const ServicosTerceirosForm = () => {
                 const qty = item.quantidade || 0;
                 const numPeriod = typeof period === 'number' ? period : 0;
                 const trips = activeTab === "transporte-coletivo" ? (Number(numeroViagens) || 1) : 1;
-                return { ...item, periodo: period, valor_total: qty * numPeriod * item.valor_unitario * trips };
+                
+                // Se for serviço adicional no transporte coletivo, não multiplica por viagens
+                const multiplier = (activeTab === "transporte-coletivo" && item.sub_categoria === 'servico-adicional') ? 1 : trips;
+                return { ...item, periodo: period, valor_total: qty * numPeriod * item.valor_unitario * multiplier };
             }
             return item;
         }));
     };
 
     const handleMoveItem = (id: string, subCat: SubCategoriaTransporte | undefined) => {
-        setSelectedItems(prev => prev.map(item => 
-            item.id === id ? { ...item, sub_categoria: subCat } : item
-        ));
+        setSelectedItems(prev => prev.map(item => {
+            if (item.id === id) {
+                const trips = activeTab === "transporte-coletivo" ? (Number(numeroViagens) || 1) : 1;
+                
+                // Se for serviço adicional no transporte coletivo, não multiplica por viagens
+                const multiplier = (activeTab === "transporte-coletivo" && subCat === 'servico-adicional') ? 1 : trips;
+                const qty = item.quantidade || 0;
+                const period = (item as any).periodo || 1;
+                
+                return { 
+                    ...item, 
+                    sub_categoria: subCat, 
+                    valor_total: qty * period * item.valor_unitario * multiplier 
+                };
+            }
+            return item;
+        }));
     };
 
     const handleLimitToggle = (id: string, checked: boolean) => {
@@ -1191,7 +1224,10 @@ const ServicosTerceirosForm = () => {
                                                 const qty = i.quantidade || 0;
                                                 const period = item.categoria === 'fretamento-aereo' ? 1 : (i.periodo || 0);
                                                 const trips = item.categoria === 'transporte-coletivo' ? (Number(item.detalhes_planejamento.numero_viagens) || 1) : 1;
-                                                return acc + (qty * period * trips);
+                                                
+                                                // Se for serviço adicional no transporte coletivo, não multiplica por viagens
+                                                const multiplier = (item.categoria === 'transporte-coletivo' && i.sub_categoria === 'servico-adicional') ? 1 : trips;
+                                                return acc + (qty * period * multiplier);
                                             }, 0) || 0;
 
                                             const totalQty = item.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0) || 0;
@@ -1211,12 +1247,7 @@ const ServicosTerceirosForm = () => {
                                             const totalKmAdicional = item.categoria === 'transporte-coletivo'
                                                 ? item.detalhes_planejamento.itens_selecionados
                                                     .filter((i: any) => i.sub_categoria === 'servico-adicional')
-                                                    .reduce((acc: number, i: any) => {
-                                                        const qty = i.quantidade || 0;
-                                                        const period = i.periodo || 1; // Km Adicional geralmente não tem período, mas se tiver, multiplicamos
-                                                        const trips = Number(item.detalhes_planejamento.numero_viagens) || 1;
-                                                        return acc + (qty * period * trips);
-                                                    }, 0)
+                                                    .reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0) // Soma direta das quantidades
                                                 : 0;
 
                                             return (
@@ -1319,7 +1350,10 @@ const ServicosTerceirosForm = () => {
                                                         const qty = i.quantidade || 0;
                                                         const period = reg.categoria === 'fretamento-aereo' ? 1 : (i.periodo || 0);
                                                         const trips = reg.categoria === 'transporte-coletivo' ? (Number(reg.detalhes_planejamento.numero_viagens) || 1) : 1;
-                                                        return acc + (qty * period * trips);
+                                                        
+                                                        // Se for serviço adicional no transporte coletivo, não multiplica por viagens
+                                                        const multiplier = (reg.categoria === 'transporte-coletivo' && i.sub_categoria === 'servico-adicional') ? 1 : trips;
+                                                        return acc + (qty * period * multiplier);
                                                     }, 0) || 0;
 
                                                     const totalQty = reg.detalhes_planejamento?.itens_selecionados?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0) || 0;
@@ -1338,12 +1372,7 @@ const ServicosTerceirosForm = () => {
                                                     const totalKmAdicional = reg.categoria === 'transporte-coletivo'
                                                         ? reg.detalhes_planejamento?.itens_selecionados
                                                             ?.filter((i: any) => i.sub_categoria === 'servico-adicional')
-                                                            ?.reduce((acc: number, i: any) => {
-                                                                const qty = i.quantidade || 0;
-                                                                const period = i.periodo || 1;
-                                                                const trips = Number(reg.detalhes_planejamento.numero_viagens) || 1;
-                                                                return acc + (qty * period * trips);
-                                                            }, 0)
+                                                            ?.reduce((acc: number, i: any) => acc + (i.quantidade || 0), 0) // Soma direta das quantidades
                                                         : 0;
 
                                                     return (

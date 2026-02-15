@@ -28,11 +28,11 @@ export const calculateServicoTotals = (items: any[], trips: number = 1) => {
     items.forEach(item => {
         const qty = item.quantidade || 0;
         const period = item.periodo || 0;
-        const subtotal = qty * period * item.valor_unitario * trips;
+        
+        // Se for serviço adicional no transporte coletivo, não multiplica por viagens
+        const multiplier = (item.sub_categoria === 'servico-adicional') ? 1 : trips;
+        const subtotal = qty * period * item.valor_unitario * multiplier;
 
-        // Lógica de ND baseada na categoria e subcategoria
-        // Para transporte coletivo, meios de transporte e serviços adicionais (como Km) vão para ND 33
-        // No banco, usamos valor_nd_39 para representar ND 33/39 dependendo do contexto
         if (item.codigo_catser?.startsWith('3.3.90.30') || item.codigo_catmat?.startsWith('3.3.90.30')) {
             totalND30 += subtotal;
         } else {
@@ -47,11 +47,6 @@ export const calculateServicoTotals = (items: any[], trips: number = 1) => {
     };
 };
 
-/**
- * Gera o texto da memória de cálculo automática para Serviços de Terceiros.
- * @param reg O registro do serviço.
- * @param context Contexto adicional (opcional, para compatibilidade de assinatura).
- */
 export const generateServicoMemoriaCalculo = (reg: ServicoTerceiroRegistro, context?: any): string => {
     const details = reg.detalhes_planejamento;
     if (!details || !details.itens_selecionados) return "Sem detalhes de planejamento.";
@@ -77,15 +72,20 @@ export const generateServicoMemoriaCalculo = (reg: ServicoTerceiroRegistro, cont
         const period = item.periodo || 0;
         const unit = item.unidade_medida || 'un';
         const valUnit = formatCurrency(item.valor_unitario);
-        const totalItem = formatCurrency(qty * period * item.valor_unitario * trips);
         
-        // Adiciona informação de limite diário se existir
+        const multiplier = (isTransport && item.sub_categoria === 'servico-adicional') ? 1 : trips;
+        const totalItem = formatCurrency(qty * period * item.valor_unitario * multiplier);
+        
         const limitInfo = (isTransport && item.sub_categoria === 'meio-transporte' && item.has_daily_limit && item.daily_limit_km)
             ? ` (até ${item.daily_limit_km} Km)`
             : "";
 
         if (isTransport) {
-            lines.push(`- ${item.descricao_reduzida || item.descricao_item}: ${qty} un x ${period} ${unit} x ${trips} viagens x ${valUnit}/${unit}${limitInfo} = ${totalItem}`);
+            if (item.sub_categoria === 'servico-adicional') {
+                lines.push(`- ${item.descricao_reduzida || item.descricao_item}: ${qty} ${unit} x ${valUnit}/${unit} = ${totalItem}`);
+            } else {
+                lines.push(`- ${item.descricao_reduzida || item.descricao_item}: ${qty} un x ${period} ${unit} x ${trips} viagens x ${valUnit}/${unit}${limitInfo} = ${totalItem}`);
+            }
         } else if (reg.categoria === 'fretamento-aereo') {
             lines.push(`- ${item.descricao_reduzida || item.descricao_item}: ${qty} HV x ${valUnit}/HV = ${totalItem}`);
         } else {
