@@ -20,7 +20,6 @@ import {
     XCircle, 
     Pencil,
     ChevronDown,
-    HardHat,
     Calculator,
     Package
 } from "lucide-react";
@@ -340,8 +339,8 @@ const MaterialPermanenteForm = () => {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><HardHat className="h-6 w-6 text-green-600" /> Aquisição de Material Permanente (GND 4)</CardTitle>
-                        <CardDescription>Planejamento de necessidades de materiais permanentes (ND 44.90.52).</CardDescription>
+                        <CardTitle className="flex items-center gap-2">Aquisição de Material Permanente</CardTitle>
+                        <CardDescription>Planejamento de necessidades de materiais permanentes.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-8">
