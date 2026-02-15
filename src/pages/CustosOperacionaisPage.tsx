@@ -2316,7 +2316,7 @@ const CustosOperacionaisPage = () => {
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
                           <h2 className="text-base font-medium flex items-center gap-2">
-                            Aquisição de Material de Consumo (GND 3)
+                            Aquisição de Material de Consumo
                           </h2>
                           {fieldCollapseState['material_consumo_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </div>
@@ -2338,7 +2338,7 @@ const CustosOperacionaisPage = () => {
                       <CollapsibleTrigger asChild>
                         <div className="flex items-center justify-between cursor-pointer py-2">
                           <h2 className="text-base font-medium flex items-center gap-2">
-                            Aquisição de Material Permanente (GND 4)
+                            Aquisição de Material Permanente
                           </h2>
                           {fieldCollapseState['material_permanente_detalhe'] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </div>
