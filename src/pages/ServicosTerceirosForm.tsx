@@ -129,6 +129,8 @@ const formatCategoryName = (cat: string) => {
     if (cat === 'servico-satelital') return 'Serviço Satelital';
     if (cat === 'transporte-coletivo') return 'Transporte Coletivo';
     if (cat === 'locacao-veiculos') return 'Locação de Veículos';
+    if (cat === 'locacao-estruturas') return 'Locação de Estruturas';
+    if (cat === 'servico-grafico') return 'Serviço Gráfico';
     return cat.split('-').map(word => {
         if (word === 'aereo') return 'Aéreo';
         return word.charAt(0).toUpperCase() + word.slice(1);
@@ -1641,7 +1643,7 @@ const ServicosTerceirosForm = () => {
                                                         <Card key={reg.id} className="p-3 bg-background border">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex flex-col">
-                                                                    <h4 className="font-semibold text-base text-foreground capitalize flex items-center gap-2">
+                                                                    <h4 className="font-semibold text-base text-foreground flex items-center gap-2">
                                                                         {formatCategoryName(reg.categoria)}
                                                                         {(reg.group_name || reg.detalhes_planejamento?.group_name) && ` (${reg.group_name || reg.detalhes_planejamento?.group_name})`}
                                                                         <Badge variant="outline" className="text-xs font-semibold">{reg.fase_atividade}</Badge>
