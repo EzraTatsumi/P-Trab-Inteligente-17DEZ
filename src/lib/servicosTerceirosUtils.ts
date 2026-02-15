@@ -6,7 +6,6 @@ export type ServicoTerceiroRegistro = Tables<'servicos_terceiros_registros'>;
 
 /**
  * Calcula os totais do lote de serviços, separando por ND.
- * Realiza o cálculo completo: (Quantidade x Período x Valor Unitário) x Multiplicador.
  */
 export const calculateServicoTotals = (items: ItemAquisicaoServico[], multiplier: number = 1) => {
     return items.reduce((acc, item) => {
@@ -34,22 +33,25 @@ export const generateServicoMemoriaCalculo = (
     registro: Partial<ServicoTerceiroRegistro>,
     context: { organizacao: string, efetivo: number, dias_operacao: number, fase_atividade: string | null }
 ): string => {
-    const { categoria, detalhes_planejamento, group_name, group_purpose } = registro;
+    const { categoria, detalhes_planejamento, group_name } = registro;
     const planejamento = detalhes_planejamento as any;
     const items = planejamento?.itens_selecionados || [];
     
     if (items.length === 0) return "Nenhum item selecionado.";
 
-    const prepOM = context.organizacao.includes('ª') ? 'da' : context.organizacao.includes('º') ? 'do' : 'do/da';
     const fase = context.fase_atividade || 'Operação';
     const diasText = context.dias_operacao === 1 ? "dia" : "dias";
     const efetivoText = context.efetivo === 1 ? "militar" : "militares";
+
+    // Lógica de concordância para a OM
+    const paraOM = context.organizacao.includes('ª') ? 'para a' : context.organizacao.includes('º') ? 'para o' : 'para o/a';
 
     // --- FRETAMENTO AÉREO ---
     if (categoria === 'fretamento-aereo') {
         const item = items[0]; 
         if (!item) return "Nenhum item de fretamento selecionado.";
         const valorTotal = item.valor_total || (item.quantidade * item.valor_unitario);
+        const prepOM = context.organizacao.includes('ª') ? 'da' : context.organizacao.includes('º') ? 'do' : 'do/da';
         
         let texto = `33.90.33 - Contratação de Fretamento Aéreo para o transporte de ${context.efetivo} ${efetivoText} ${prepOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
         texto += `Cálculo:\n`;
@@ -70,7 +72,7 @@ export const generateServicoMemoriaCalculo = (
         const trips = Number(planejamento.numero_viagens) || 1;
         const valorTotalGeral = Number(registro.valor_total) || 0;
 
-        let texto = `33.90.33 - Contratação de veículos do tipo Transporte Coletivo para transporte de ${context.efetivo} ${efetivoText} ${prepOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
+        let texto = `33.90.33 - Contratação de veículos do tipo Transporte Coletivo para transporte de ${context.efetivo} ${efetivoText} ${paraOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
         texto += `Cálculo:\n`;
         texto += `- Itn Dslc: ${planejamento.itinerario || 'N/A'}.\n`;
         texto += `- Dist Itn: ${planejamento.distancia_itinerario || 0} Km.\n`;
@@ -108,26 +110,26 @@ export const generateServicoMemoriaCalculo = (
 
     // --- LOCAÇÃO DE VEÍCULOS ---
     if (categoria === 'locacao-veiculos') {
-        let texto = `33.90.33 - Locação de Veículos (${group_name}), para ${prepOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
+        let texto = `33.90.33 - Locação de Veículos (${group_name}), ${paraOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
         
-        texto += `Cálculo:\n\n`;
+        texto += `Cálculo:\n`;
         items.forEach((item: any) => {
-            const unit = item.unidade_medida || 'UN';
-            texto += `${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${unit}.\n`;
+            const unit = item.unidade_medida || 'dia';
+            texto += `- ${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${unit}.\n`;
         });
 
-        texto += `\nFórmula: Nr Veículos x Valor Unitário x Período.\n\n`;
+        texto += `\nFórmula: Nr Veículos x Valor Unitário x Período.\n`;
         items.forEach((item: any) => {
             const qty = item.quantidade || 0;
             const period = item.periodo || 0;
-            const unit = item.unidade_medida || 'un';
+            const unit = item.unidade_medida || 'dia';
             const totalItem = qty * period * item.valor_unitario;
             const itemDiasText = period === 1 ? "dia" : "dias";
             
-            texto += `${qty} ${item.descricao_reduzida || item.descricao_item} x ${formatCurrency(item.valor_unitario)}/${unit} x ${period} ${itemDiasText} = ${formatCurrency(totalItem)}.\n`;
+            texto += `- ${qty} ${item.descricao_reduzida || item.descricao_item} x ${formatCurrency(item.valor_unitario)}/${unit} x ${period} ${itemDiasText} = ${formatCurrency(totalItem)}.\n`;
         });
 
-        texto += `\nTotal: ${formatCurrency(Number(registro.valor_total))}. `;
+        texto += `\nTotal: ${formatCurrency(Number(registro.valor_total))}.\n`;
         if (items.length > 0) {
             texto += `(Pregão ${formatPregao(items[0].numero_pregao)} - UASG ${formatCodug(items[0].uasg)})`;
         }
