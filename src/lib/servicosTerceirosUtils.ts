@@ -84,7 +84,7 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
     if (categoria === 'outros') {
         memoria += `Detalhamento do Serviço:\n`;
         memoria += `- Objeto: ${details.objeto_outros || 'N/A'}\n`;
-        memoria += `- Local/OM: ${details.local_om_outros || 'N/A'}\n`;
+        memoria += `- Local: ${details.local_om_outros || 'N/A'}\n`;
         memoria += `- Finalidade: ${details.finalidade_outros || 'N/A'}\n\n`;
     }
 

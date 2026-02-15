@@ -261,6 +261,17 @@ const ServiceItemRow = ({
                     Pregão: {formatPregao(item.numero_pregao)} | UASG: {formatCodug(item.uasg) || 'N/A'}
                 </p>
                 
+                <div className="mt-2 flex items-center gap-2 p-1.5 bg-muted/50 rounded border border-muted-foreground/20 w-fit">
+                    <span className={cn("text-[9px] font-bold", item.natureza_despesa === '33' ? "text-primary" : "text-muted-foreground")}>ND 33</span>
+                    <Switch 
+                        checked={item.natureza_despesa === '39' || !item.natureza_despesa} 
+                        onCheckedChange={(checked) => onNDToggle?.(item.id, checked ? '39' : '33')}
+                        disabled={!isPTrabEditable}
+                        className="scale-50"
+                    />
+                    <span className={cn("text-[9px] font-bold", (item.natureza_despesa === '39' || !item.natureza_despesa) ? "text-primary" : "text-muted-foreground")}>ND 39</span>
+                </div>
+                
                 {isCharter && suggestedHV !== null && (
                     <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded flex items-start gap-2">
                         <Info className="h-3 w-3 text-blue-600 mt-0.5" />
@@ -324,21 +335,7 @@ const ServiceItemRow = ({
                 </TableCell>
             )}
             <TableCell className="text-right text-sm font-bold align-top pt-4">
-                <div className="flex flex-col items-end gap-2">
-                    {formatCurrency(item.valor_total)}
-                    <div className="flex flex-col items-center gap-1 p-1.5 bg-muted/50 rounded border border-muted-foreground/20">
-                        <div className="flex items-center gap-2">
-                            <span className={cn("text-[9px] font-bold", item.natureza_despesa === '33' ? "text-primary" : "text-muted-foreground")}>ND 33</span>
-                            <Switch 
-                                checked={item.natureza_despesa === '39' || !item.natureza_despesa} 
-                                onCheckedChange={(checked) => onNDToggle?.(item.id, checked ? '39' : '33')}
-                                disabled={!isPTrabEditable}
-                                className="scale-50"
-                            />
-                            <span className={cn("text-[9px] font-bold", (item.natureza_despesa === '39' || !item.natureza_despesa) ? "text-primary" : "text-muted-foreground")}>ND 39</span>
-                        </div>
-                    </div>
-                </div>
+                {formatCurrency(item.valor_total)}
                 {!hideTotalUnits && isTransport && (
                     <div className="text-[10px] text-muted-foreground font-normal mt-1">
                         Total: {totalUnits} {formatUnitPlural(unit, totalUnits)}
@@ -511,6 +508,7 @@ const ServicosTerceirosForm = () => {
     const [pendingItems, setPendingItems] = useState<PendingServicoItem[]>([]);
     const [lastStagedState, setLastStagedState] = useState<any>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [activeCompositionId, setActiveCompositionId] = useState<string | null>(null);
     
     const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
     const [memoriaEdit, setMemoriaEdit] = useState("");
@@ -744,6 +742,7 @@ const ServicosTerceirosForm = () => {
         setLocalOmOutros("");
         setFinalidadeOutros("");
         setEditingId(null);
+        setActiveCompositionId(null);
     };
 
     const handleOmFavorecidaChange = (omData: OMData | undefined) => {
@@ -903,11 +902,19 @@ const ServicosTerceirosForm = () => {
             return;
         }
 
+        if (isOutros && (!nomeServicoOutros || !objetoOutros || !localOmOutros || !finalidadeOutros)) {
+            toast.warning("Informe todos os campos obrigatórios da categoria Outros.");
+            return;
+        }
+
+        const compositionId = editingId || activeCompositionId || crypto.randomUUID();
+        if (!editingId && !activeCompositionId) setActiveCompositionId(compositionId);
+
         let newItems: PendingServicoItem[] = [];
 
         if (isLocacao) {
             newItems = vehicleGroups.map(group => ({
-                tempId: editingId || group.tempId,
+                tempId: compositionId,
                 dbId: editingId || undefined, // Preserva o ID do banco para substituição
                 organizacao: omFavorecida.nome,
                 ug: omFavorecida.ug,
@@ -930,7 +937,7 @@ const ServicosTerceirosForm = () => {
             const { totalND30, totalND39, totalGeral } = calculateServicoTotals(itemsForCalc, trips);
             
             const newItem: PendingServicoItem = {
-                tempId: editingId || crypto.randomUUID(),
+                tempId: compositionId,
                 dbId: editingId || undefined, // Preserva o ID do banco para substituição
                 organizacao: omFavorecida.nome,
                 ug: omFavorecida.ug,
@@ -965,10 +972,9 @@ const ServicosTerceirosForm = () => {
             newItems = [newItem];
         }
 
-        // ACUMULA OS ITENS NA LISTA PENDENTE
+        // ACUMULA OS ITENS NA LISTA PENDENTE (SOBRESCREVENDO SE JÁ EXISTIR O MESMO ID)
         setPendingItems(prev => {
-            // Se estiver editando, remove o item antigo com o mesmo ID antes de adicionar o novo
-            const filtered = editingId ? prev.filter(p => p.tempId !== editingId) : prev;
+            const filtered = prev.filter(p => p.tempId !== compositionId);
             return [...filtered, ...newItems];
         });
 
@@ -1004,7 +1010,7 @@ const ServicosTerceirosForm = () => {
         // NÃO LIMPA MAIS OS CAMPOS, APENENAS O MODO EDIÇÃO
         setEditingId(null);
         
-        toast.info("Item adicionado à lista de pendentes. Você pode mudar de categoria ou salvar os registros.");
+        toast.info(activeCompositionId ? "Item atualizado na lista." : "Item adicionado à lista de pendentes.");
     };
 
     const handleEdit = (reg: ServicoTerceiroRegistro) => {
@@ -1014,6 +1020,7 @@ const ServicosTerceirosForm = () => {
         }
 
         setEditingId(reg.id);
+        setActiveCompositionId(reg.id);
         
         const omFav = oms?.find(om => om.nome_om === reg.organizacao && om.codug_om === reg.ug);
         if (omFav) {
@@ -1207,7 +1214,12 @@ const ServicosTerceirosForm = () => {
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-lg font-semibold flex items-center gap-2">2. Configurar Planejamento</h3>
                                     
-                                    <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as CategoriaServico); setSelectedItems([]); setVehicleGroups([]); }} className="w-full">
+                                    <Tabs value={activeTab} onValueChange={(v) => { 
+                                        setActiveTab(v as CategoriaServico); 
+                                        setSelectedItems([]); 
+                                        setVehicleGroups([]); 
+                                        if (!editingId) setActiveCompositionId(null);
+                                    }} className="w-full">
                                         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7 h-auto gap-1 bg-muted p-1 mb-6">
                                             <TabsTrigger value="fretamento-aereo" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Plane className="h-4 w-4" /> Fretamento</TabsTrigger>
                                             <TabsTrigger value="servico-satelital" className="flex items-center gap-2 py-2 text-[10px] uppercase font-bold"><Satellite className="h-4 w-4" /> Satelital</TabsTrigger>
@@ -1548,7 +1560,7 @@ const ServicosTerceirosForm = () => {
                                                                         />
                                                                     </div>
                                                                     <div className="space-y-2">
-                                                                        <Label>Local/OM *</Label>
+                                                                        <Label>Local *</Label>
                                                                         <Input 
                                                                             value={localOmOutros} 
                                                                             onChange={(e) => setLocalOmOutros(e.target.value)} 

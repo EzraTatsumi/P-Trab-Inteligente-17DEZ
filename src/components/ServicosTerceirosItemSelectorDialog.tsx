@@ -194,7 +194,7 @@ const ServicosTerceirosItemSelectorDialog: React.FC<ServicosTerceirosItemSelecto
                                                                     </div>
                                                                     <div className="text-sm min-w-0 flex-1">
                                                                         <p className="font-medium truncate">{item.descricao_reduzida || item.descricao_item}</p>
-                                                                        <p className="text-xs text-muted-foreground">CATMAT: {item.codigo_catmat} | Pregão: {formatPregao(item.numero_pregao)}</p>
+                                                                        <p className="text-xs text-muted-foreground">CATMAT: {item.codigo_catmat} | Pregão: {formatPregao(item.numero_pregao)} | UASG: {formatCodug(item.uasg)}</p>
                                                                     </div>
                                                                 </div>
                                                                 <div className="text-right shrink-0 ml-4">
