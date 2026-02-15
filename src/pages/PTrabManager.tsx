@@ -1,3 +1,4 @@
+{/* ... keep existing imports */}
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -477,7 +478,8 @@ const PTrabManager = () => {
           let totalServicosTerceiros = 0;
           if (servicosTerceirosError) console.error("Erro ao carregar Serviços de Terceiros para PTrab", ptrab.numero_ptrab, servicosTerceirosError);
           else {
-              totalServicosTerceiros = (servicosTerceirosData || []).reduce((sum, record) => sum + (Number(record.valor_total) || 0), 0);
+              // Cast para any[] para evitar erro de inferência do SelectQueryError
+              totalServicosTerceiros = (servicosTerceirosData as any[] || []).reduce((sum, record) => sum + (Number(record.valor_total) || 0), 0);
           }
 
           // SOMA TOTAL DA ABA LOGÍSTICA
@@ -962,7 +964,7 @@ const PTrabManager = () => {
         if (fetchError || !selectedPTrabsData || selectedPTrabsData.length === 0) throw new Error("Falha ao carregar dados dos P Trabs selecionados.");
         const basePTrab = selectedPTrabsData[0];
         const { id, created_at, updated_at, share_token, shared_with, user_id, ...restOfBasePTrab } = basePTrab;
-        const newPTrabData: TablesInsert<'p_trab'> = { ...restOfBasePTrab, user_id: user.id, numero_ptrab: finalMinutaNumber, nome_operacao: basePTrab.nome_operacao, status: 'aberto', origem: 'consolidado', comentario: `Consolidação dos P Trabs: ${selectedPTrabsData.map(p => p.numero_ptrab).join(', ')}`, rotulo_versao: null };
+        const newPTrabData: TablesInsert<'p_trab'> = { ...restOfBasePTrab, user_id: user.id, numero_ptrab: finalMinutaNumber, nome_operacao: basePTrab.nome_operacao, status: 'aberto', origem: 'consolidated', comentario: `Consolidação dos P Trabs: ${selectedPTrabsData.map(p => p.numero_ptrab).join(', ')}`, rotulo_versao: null };
         const { data: newPTrab, error: insertError = null } = await supabase.from("p_trab").insert([newPTrabData]).select('id').single();
         if (insertError || !newPTrab) throw insertError;
         const newPTrabId = newPTrab.id;
