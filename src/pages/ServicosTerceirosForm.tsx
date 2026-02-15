@@ -544,12 +544,15 @@ const ServicosTerceirosForm = () => {
                 efetivo: item.efetivo,
                 fase_atividade: item.fase_atividade,
                 categoria: item.categoria,
-                detalhes_planejamento: item.detalhes_planejamento,
+                // Salva group_name e group_purpose dentro do JSON para evitar erro de coluna ausente
+                detalhes_planejamento: {
+                    ...item.detalhes_planejamento,
+                    group_name: item.group_name,
+                    group_purpose: item.group_purpose
+                },
                 valor_total: item.valor_total,
                 valor_nd_30: item.valor_nd_30,
                 valor_nd_39: item.valor_nd_39,
-                group_name: item.group_name,
-                group_purpose: item.group_purpose,
             }));
             const { error } = await supabase.from('servicos_terceiros_registros').insert(records);
             if (error) throw error;
@@ -852,8 +855,8 @@ const ServicosTerceirosForm = () => {
             if (reg.categoria === 'locacao-veiculos') {
                 const group: VehicleGroup = {
                     tempId: reg.id,
-                    groupName: reg.group_name || 'Grupo de Veículos',
-                    groupPurpose: reg.group_purpose || null,
+                    groupName: reg.group_name || details.group_name || 'Grupo de Veículos',
+                    groupPurpose: reg.group_purpose || details.group_purpose || null,
                     items: details.itens_selecionados || [],
                     totalValue: Number(reg.valor_total),
                     totalND30: Number(reg.valor_nd_30),
@@ -886,8 +889,8 @@ const ServicosTerceirosForm = () => {
                 efetivo: reg.efetivo || 0,
                 fase_atividade: reg.fase_atividade || '',
                 categoria: reg.categoria as CategoriaServico,
-                group_name: reg.group_name || '',
-                group_purpose: reg.group_purpose,
+                group_name: reg.group_name || details?.group_name || '',
+                group_purpose: reg.group_purpose || details?.group_purpose,
                 detalhes_planejamento: details,
                 valor_total: Number(reg.valor_total),
                 valor_nd_30: Number(reg.valor_nd_30),
@@ -1516,7 +1519,7 @@ const ServicosTerceirosForm = () => {
                                                                     {item.categoria === 'fretamento-aereo' && "Período / Efetivo / HV:"}
                                                                     {item.categoria === 'servico-satelital' && "Período / Qtd Equipamento:"}
                                                                     {item.categoria === 'transporte-coletivo' && "Período / Efetivo / Nr Viagens:"}
-                                                                    {item.categoria === 'locacao-veiculos' && "Período / Efetivo / Qtd Veículos:"}
+                                                                    {item.categoria === 'locacao-veiculos' && "Período / Qtd Veículos:"}
                                                                     {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos'].includes(item.categoria) && "Período / Detalhes:"}
                                                                 </p>
                                                                 {item.categoria === 'transporte-coletivo' && (
@@ -1534,7 +1537,7 @@ const ServicosTerceirosForm = () => {
                                                                     {item.categoria === 'transporte-coletivo' && 
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${item.efetivo} ${item.efetivo === 1 ? 'militar' : 'militares'} / ${item.detalhes_planejamento.numero_viagens || 1} viagens`}
                                                                     {item.categoria === 'locacao-veiculos' && 
-                                                                        `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${item.efetivo} ${item.efetivo === 1 ? 'militar' : 'militares'} / ${totalQty} un`}
+                                                                        `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalQty} un`}
                                                                     {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos'].includes(item.categoria) && 
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalUnits} un`}
                                                                 </p>
@@ -1630,13 +1633,13 @@ const ServicosTerceirosForm = () => {
                                                                 <div className="flex flex-col">
                                                                     <h4 className="font-semibold text-base text-foreground capitalize">
                                                                         {formatCategoryName(reg.categoria)}
-                                                                        {reg.group_name && ` (${reg.group_name})`}
+                                                                        {(reg.group_name || reg.detalhes_planejamento?.group_name) && ` (${reg.group_name || reg.detalhes_planejamento?.group_name})`}
                                                                     </h4>
                                                                     <p className="text-xs text-muted-foreground">
                                                                         {reg.categoria === 'fretamento-aereo' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | HV: ${totalUnits}`}
                                                                         {reg.categoria === 'servico-satelital' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: ${totalQty} un`}
                                                                         {reg.categoria === 'transporte-coletivo' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Viagens: ${reg.detalhes_planejamento?.numero_viagens || 1}`}
-                                                                        {reg.categoria === 'locacao-veiculos' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Qtd: ${totalQty} un`}
+                                                                        {reg.categoria === 'locacao-veiculos' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: ${totalQty} un`}
                                                                         {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos'].includes(reg.categoria) && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Qtd: ${totalUnits} un`}
                                                                     </p>
                                                                     {reg.categoria === 'transporte-coletivo' && (
