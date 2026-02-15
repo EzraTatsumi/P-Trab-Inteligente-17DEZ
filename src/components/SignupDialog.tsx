@@ -14,10 +14,11 @@ import { AlertCircle, CheckCircle2 } from "lucide-react";
 interface SignupDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSignupSuccess?: (email: string) => void;
 }
 
 // Exportação nomeada para garantir compatibilidade
-export const SignupDialog: React.FC<SignupDialogProps> = ({ open, onOpenChange }) => {
+export const SignupDialog: React.FC<SignupDialogProps> = ({ open, onOpenChange, onSignupSuccess }) => {
   const steps = [
     "Preencha seus dados básicos",
     "Confirme seu e-mail institucional",
