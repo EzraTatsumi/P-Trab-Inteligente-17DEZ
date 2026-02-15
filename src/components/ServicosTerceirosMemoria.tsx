@@ -91,7 +91,7 @@ const ServicosTerceirosMemoria: React.FC<ServicosTerceirosMemoriaProps> = ({
                         <h4 className="text-base font-semibold text-foreground">
                             {registro.organizacao} (UG: {formatCodug(registro.ug)})
                         </h4>
-                        <Badge variant="secondary" className={cn("text-[10px] capitalize", getCategoryColor(registro.categoria))}>
+                        <Badge variant="secondary" className={cn("text-[10px]", getCategoryColor(registro.categoria))}>
                             {formatCategoryName(registro.categoria)}
                         </Badge>
                         {hasCustomMemoria && !isEditing && (
