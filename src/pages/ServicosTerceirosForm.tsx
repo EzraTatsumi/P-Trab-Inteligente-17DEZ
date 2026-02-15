@@ -33,7 +33,9 @@ import {
     ArrowRightLeft,
     ArrowDownUp,
     LayoutGrid,
-    HandPlatter
+    HandPlatter,
+    ChevronDown,
+    ChevronUp
 } from "lucide-react";
 import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
@@ -1099,19 +1101,72 @@ const ServicosTerceirosForm = () => {
                                                             {!isGroupFormOpen && vehicleGroups.length > 0 && (
                                                                 <div className="space-y-3">
                                                                     {vehicleGroups.map(group => (
-                                                                        <Card key={group.tempId} className="p-3 border rounded-md">
-                                                                            <div className="flex justify-between items-center">
-                                                                                <div className="flex items-center gap-2">
-                                                                                    <span className="font-semibold">{group.groupName}</span>
-                                                                                    <Badge variant="secondary" className="text-xs">{group.items.length} Veículos</Badge>
-                                                                                </div>
-                                                                                <div className="flex items-center gap-2">
-                                                                                    <span className="font-bold text-sm">{formatCurrency(group.totalValue)}</span>
-                                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setGroupToEdit(group); setIsGroupFormOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setVehicleGroups(prev => prev.filter(g => g.tempId !== group.tempId))}><Trash2 className="h-4 w-4" /></Button>
-                                                                                </div>
-                                                                            </div>
-                                                                        </Card>
+                                                                        <Collapsible key={group.tempId} defaultOpen={false}>
+                                                                            <Card className="">
+                                                                                <CollapsibleTrigger asChild>
+                                                                                    <div className="flex justify-between items-center p-3 cursor-pointer hover:bg-muted/50 transition-colors border rounded-md">
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <span className="font-semibold">{group.groupName}</span>
+                                                                                            <Badge variant="secondary" className="text-xs">
+                                                                                                {group.items.length} Veículos
+                                                                                            </Badge>
+                                                                                        </div>
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <span className="font-bold text-sm">{formatCurrency(group.totalValue)}</span>
+                                                                                            <ChevronDown className="h-4 w-4" />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </CollapsibleTrigger>
+                                                                                <CollapsibleContent className="border-t p-3 bg-background">
+                                                                                    <div className="space-y-2">
+                                                                                        {group.groupPurpose && (
+                                                                                            <p className="text-sm text-muted-foreground">
+                                                                                                Finalidade: Locação de Viatura para atender {group.groupPurpose}.
+                                                                                            </p>
+                                                                                        )}
+                                                                                        <div className="max-h-[350px] overflow-y-auto relative">
+                                                                                            <Table>
+                                                                                                <TableHeader className="sticky top-0 bg-background z-10">
+                                                                                                    <TableRow>
+                                                                                                        <TableHead className="w-[80px] text-center">Qtd</TableHead>
+                                                                                                        <TableHead>Veículo</TableHead>
+                                                                                                        <TableHead className="text-right w-[140px]">Vlr Unitário</TableHead>
+                                                                                                        <TableHead className="text-center w-[100px]">Período</TableHead>
+                                                                                                        <TableHead className="text-right w-[120px]">Total</TableHead>
+                                                                                                    </TableRow>
+                                                                                                </TableHeader>
+                                                                                                <TableBody>
+                                                                                                    {group.items.map(item => (
+                                                                                                        <TableRow key={item.id}>
+                                                                                                            <TableCell className="text-center text-xs">{item.quantidade}</TableCell>
+                                                                                                            <TableCell className="text-xs">
+                                                                                                                {item.descricao_reduzida || item.descricao_item}
+                                                                                                                <p className="text-muted-foreground text-[10px]">Pregão: {formatPregao(item.numero_pregao)}</p>
+                                                                                                            </TableCell>
+                                                                                                            <TableCell className="text-right text-xs text-muted-foreground">
+                                                                                                                {formatCurrency(item.valor_unitario)} / {item.unidade_medida || 'UN'}
+                                                                                                            </TableCell>
+                                                                                                            <TableCell className="text-center text-xs">{(item as any).periodo}</TableCell>
+                                                                                                            <TableCell className="text-right text-sm font-medium">
+                                                                                                                {formatCurrency((item.quantidade || 0) * ((item as any).periodo || 0) * item.valor_unitario)}
+                                                                                                            </TableCell>
+                                                                                                        </TableRow>
+                                                                                                    ))}
+                                                                                                </TableBody>
+                                                                                            </Table>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div className="flex justify-end gap-2 pt-3 border-t mt-3">
+                                                                                        <Button type="button" variant="outline" size="sm" onClick={() => { setGroupToEdit(group); setIsGroupFormOpen(true); }}>
+                                                                                            <Pencil className="mr-2 h-4 w-4" /> Editar Grupo
+                                                                                        </Button>
+                                                                                        <Button type="button" variant="destructive" size="sm" onClick={() => setVehicleGroups(prev => prev.filter(g => g.tempId !== group.tempId))}>
+                                                                                            <Trash2 className="mr-2 h-4 w-4" /> Excluir Grupo
+                                                                                        </Button>
+                                                                                    </div>
+                                                                                </CollapsibleContent>
+                                                                            </Card>
+                                                                        </Collapsible>
                                                                     ))}
                                                                 </div>
                                                             )}
@@ -1509,7 +1564,7 @@ const ServicosTerceirosForm = () => {
                                     </Card>
                                     
                                     <div className="flex justify-end gap-3 pt-4">
-                                        <Button type="button" onClick={() => saveMutation.mutate(pendingItems)} disabled={saveMutation.isPending || pendingItems.length === 0 || isServicosTerceirosDirty} className="w-full md:w-auto bg-primary hover:bg-primary/90">
+                                        <Button type="button" onClick={() => saveMutation.mutate(pendingItems)} disabled={saveMutation.isPending || pendingItems.length === 0 || isServicosTerceirosDirty} className="w-full md:w-auto bg-primary hover:bg-primary/90" id="save-records-btn">
                                             {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                             {editingId ? "Atualizar Lote" : "Salvar Registros"}
                                         </Button>

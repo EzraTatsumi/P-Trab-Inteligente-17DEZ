@@ -121,7 +121,7 @@ const VehicleGroupForm: React.FC<VehicleGroupFormProps> = ({
                         id="groupName"
                         value={groupName} 
                         onChange={(e) => setGroupName(e.target.value)} 
-                        placeholder="Ex: Viaturas Administrativas" 
+                        placeholder="Ex: Vtr Pqn Porte, Vtr Especializada, Eqp Engenharia" 
                         disabled={isSaving} 
                     />
                     <p className="text-xs text-muted-foreground">
@@ -167,6 +167,7 @@ const VehicleGroupForm: React.FC<VehicleGroupFormProps> = ({
                                                 <TableRow>
                                                     <TableHead className="w-[80px] text-center">Qtd</TableHead>
                                                     <TableHead>Veículo</TableHead>
+                                                    <TableHead className="text-right w-[140px]">Valor Unitário</TableHead>
                                                     <TableHead className="text-center w-[100px]">Período</TableHead>
                                                     <TableHead className="text-right w-[120px]">Total</TableHead>
                                                     <TableHead className="w-[50px] text-center">Ação</TableHead>
@@ -175,12 +176,33 @@ const VehicleGroupForm: React.FC<VehicleGroupFormProps> = ({
                                             <TableBody>
                                                 {group.items.map(item => (
                                                     <TableRow key={item.id}>
-                                                        <TableCell><Input type="number" value={item.quantidade || ""} onChange={(e) => handleQuantityChange(item.id, e.target.value)} className="h-8 text-center" /></TableCell>
+                                                        <TableCell>
+                                                            <Input 
+                                                                type="number" 
+                                                                value={item.quantidade || ""} 
+                                                                onChange={(e) => handleQuantityChange(item.id, e.target.value)} 
+                                                                onWheel={(e) => e.currentTarget.blur()}
+                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                className="h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                            />
+                                                        </TableCell>
                                                         <TableCell className="text-xs">
                                                             <p className="font-medium">{item.descricao_reduzida || item.descricao_item}</p>
                                                             <p className="text-[10px] text-muted-foreground">Pregão: {formatPregao(item.numero_pregao)}</p>
                                                         </TableCell>
-                                                        <TableCell><Input type="number" value={(item as any).periodo || ""} onChange={(e) => handlePeriodChange(item.id, e.target.value)} className="h-8 text-center" /></TableCell>
+                                                        <TableCell className="text-right text-xs text-muted-foreground">
+                                                            {formatCurrency(item.valor_unitario)} / {item.unidade_medida || 'UN'}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Input 
+                                                                type="number" 
+                                                                value={(item as any).periodo || ""} 
+                                                                onChange={(e) => handlePeriodChange(item.id, e.target.value)} 
+                                                                onWheel={(e) => e.currentTarget.blur()}
+                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                className="h-8 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                            />
+                                                        </TableCell>
                                                         <TableCell className="text-right text-sm font-medium">{formatCurrency((item.quantidade || 0) * ((item as any).periodo || 0) * item.valor_unitario)}</TableCell>
                                                         <TableCell className="text-center"><Button variant="ghost" size="icon" onClick={() => setItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                                                     </TableRow>
