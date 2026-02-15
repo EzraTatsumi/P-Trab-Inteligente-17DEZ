@@ -124,6 +124,18 @@ interface ItemAquisicaoServicoExt extends ItemAquisicaoServico {
     daily_limit_km?: number | "";
 }
 
+// Helper fora do componente para ser usado em useMemo
+const formatCategoryName = (cat: string) => {
+    if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
+    if (cat === 'servico-satelital') return 'Serviço Satelital';
+    if (cat === 'transporte-coletivo') return 'Transporte Coletivo';
+    if (cat === 'locacao-veiculos') return 'Locação de Veículos';
+    return cat.split('-').map(word => {
+        if (word === 'aereo') return 'Aéreo';
+        return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+};
+
 // Componente de Tabela de Itens movido para fora para evitar perda de foco nos inputs
 const ItemsTable = ({ 
     items, 
@@ -514,8 +526,25 @@ const ServicosTerceirosForm = () => {
             acc[key].totalGeral += Number(reg.valor_total || 0);
             return acc;
         }, {} as Record<string, ConsolidatedServicoRecord>);
-        return Object.values(groups).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
+
+        const result = Object.values(groups).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
+        
+        // Ordena os registros internos por ordem alfabética do nome da categoria formatado
+        result.forEach(group => {
+            group.records.sort((a, b) => {
+                const nameA = formatCategoryName(a.categoria);
+                const nameB = formatCategoryName(b.categoria);
+                return nameA.localeCompare(nameB);
+            });
+        });
+
+        return result;
     }, [registros]);
+
+    // Sincroniza a ordem das memórias de cálculo com a ordem da Seção 4
+    const sortedRegistrosForMemoria = useMemo(() => {
+        return consolidatedRegistros.flatMap(group => group.records);
+    }, [consolidatedRegistros]);
 
     // --- MUTATIONS ---
     const saveMutation = useMutation({
@@ -961,17 +990,6 @@ const ServicosTerceirosForm = () => {
     const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
     const isBaseFormReady = (omFavorecida.nome !== "" && faseAtividade !== "") || !!editingId;
     const totalPendingValue = pendingItems.reduce((acc, item) => acc + item.valor_total, 0);
-
-    const formatCategoryName = (cat: string) => {
-        if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
-        if (cat === 'servico-satelital') return 'Serviço Satelital';
-        if (cat === 'transporte-coletivo') return 'Transporte Coletivo';
-        if (cat === 'locacao-veiculos') return 'Locação de Veículos';
-        return cat.split('-').map(word => {
-            if (word === 'aereo') return 'Aéreo';
-            return word.charAt(0).toUpperCase() + word.slice(1);
-        }).join(' ');
-    };
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
@@ -1623,13 +1641,13 @@ const ServicosTerceirosForm = () => {
                                                                     <h4 className="font-semibold text-base text-foreground capitalize flex items-center gap-2">
                                                                         {formatCategoryName(reg.categoria)}
                                                                         {(reg.group_name || reg.detalhes_planejamento?.group_name) && ` (${reg.group_name || reg.detalhes_planejamento?.group_name})`}
-                                                                        <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-normal">{reg.fase_atividade}</Badge>
+                                                                        <Badge variant="outline" className="text-xs font-semibold">{reg.fase_atividade}</Badge>
                                                                     </h4>
                                                                     <p className="text-xs text-muted-foreground">
                                                                         {reg.categoria === 'fretamento-aereo' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | HV: ${totalUnits}`}
                                                                         {reg.categoria === 'servico-satelital' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: ${totalQty} un`}
                                                                         {reg.categoria === 'transporte-coletivo' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Viagens: ${reg.detalhes_planejamento?.numero_viagens || 1}`}
-                                                                        {reg.categoria === 'locacao-veiculos' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: ${totalQty} un`}
+                                                                        {reg.categoria === 'locacao-veiculos' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Qtd: ${totalQty} un`}
                                                                         {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos'].includes(reg.categoria) && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Qtd: ${totalUnits} un`}
                                                                     </p>
                                                                     {reg.categoria === 'transporte-coletivo' && (
@@ -1676,10 +1694,10 @@ const ServicosTerceirosForm = () => {
                             )}
 
                             {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULO */}
-                            {registros && registros.length > 0 && (
+                            {sortedRegistrosForMemoria && sortedRegistrosForMemoria.length > 0 && (
                                 <section className="space-y-4 mt-8">
                                     <h3 className="text-xl font-bold flex items-center gap-2">📋 Memórias de Cálculos Detalhadas</h3>
-                                    {registros.map(reg => (
+                                    {sortedRegistrosForMemoria.map(reg => (
                                         <ServicosTerceirosMemoria 
                                             key={`mem-${reg.id}`}
                                             registro={reg}
