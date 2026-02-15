@@ -500,9 +500,6 @@ const ServicosTerceirosForm = () => {
 
     // Novos estados para Outros
     const [nomeServicoOutros, setNomeServicoOutros] = useState("");
-    const [objetoOutros, setObjetoOutros] = useState("");
-    const [localOmOutros, setLocalOmOutros] = useState("");
-    const [finalidadeOutros, setFinalidadeOutros] = useState("");
     const [naturezaDespesaOutros, setNaturezaDespesaOutros] = useState<'33' | '39'>('39');
 
     const [selectedItems, setSelectedItems] = useState<ItemAquisicaoServicoExt[]>([]);
@@ -578,9 +575,6 @@ const ServicosTerceirosForm = () => {
             distanciaPercorridaDia !== lastStagedState.distanciaPercorridaDia ||
             numeroViagens !== lastStagedState.numeroViagens ||
             nomeServicoOutros !== lastStagedState.nomeServicoOutros ||
-            objetoOutros !== lastStagedState.objetoOutros ||
-            localOmOutros !== lastStagedState.localOmOutros ||
-            finalidadeOutros !== lastStagedState.finalidadeOutros ||
             (activeTab === 'outros' && naturezaDespesaOutros !== lastStagedState.naturezaDespesaOutros)
         );
 
@@ -596,7 +590,7 @@ const ServicosTerceirosForm = () => {
         const stagedItemsKey = lastStagedState.itemsKey;
 
         return currentItemsKey !== stagedItemsKey;
-    }, [omFavorecida, faseAtividade, efetivo, hasEfetivo, diasOperacao, omDestino, activeTab, selectedItems, lastStagedState, pendingItems, vehicleGroups, tipoAnv, capacidade, velocidadeCruzeiro, distanciaPercorrer, tipoEquipamento, proposito, itinerario, distanciaItinerario, distanciaPercorridaDia, numeroViagens, nomeServicoOutros, objetoOutros, localOmOutros, finalidadeOutros, naturezaDespesaOutros]);
+    }, [omFavorecida, faseAtividade, efetivo, hasEfetivo, diasOperacao, omDestino, activeTab, selectedItems, lastStagedState, pendingItems, vehicleGroups, tipoAnv, capacidade, velocidadeCruzeiro, distanciaPercorrer, tipoEquipamento, proposito, itinerario, distanciaItinerario, distanciaPercorridaDia, numeroViagens, nomeServicoOutros, naturezaDespesaOutros]);
 
     // Recalcula totais quando o número de viagens muda (apenas para Transporte Coletivo)
     useEffect(() => {
@@ -743,9 +737,6 @@ const ServicosTerceirosForm = () => {
         setDistanciaPercorridaDia("");
         setNumeroViagens("");
         setNomeServicoOutros("");
-        setObjetoOutros("");
-        setLocalOmOutros("");
-        setFinalidadeOutros("");
         setNaturezaDespesaOutros('39');
         setEditingId(null);
         setActiveCompositionId(null);
@@ -908,8 +899,8 @@ const ServicosTerceirosForm = () => {
             return;
         }
 
-        if (isOutros && (!nomeServicoOutros || !objetoOutros || !localOmOutros || !finalidadeOutros)) {
-            toast.warning("Informe todos os campos obrigatórios da categoria Outros.");
+        if (isOutros && !nomeServicoOutros) {
+            toast.warning("Informe o nome do serviço/locação.");
             return;
         }
 
@@ -971,9 +962,6 @@ const ServicosTerceirosForm = () => {
                     distancia_percorrida_dia: distanciaPercorridaDia,
                     numero_viagens: numeroViagens,
                     nome_servico_outros: nomeServicoOutros,
-                    objeto_outros: objetoOutros,
-                    local_om_outros: localOmOutros,
-                    finalidade_outros: finalidadeOutros,
                     has_efetivo: hasEfetivo
                 },
                 valor_total: totalGeral,
@@ -1010,9 +998,6 @@ const ServicosTerceirosForm = () => {
             distanciaPercorridaDia,
             numeroViagens,
             nomeServicoOutros,
-            objetoOutros,
-            localOmOutros,
-            finalidadeOutros,
             naturezaDespesaOutros: activeTab === 'outros' ? naturezaDespesaOutros : undefined,
             // Chave simplificada para o dirty check de itens
             itemsKey: isLocacao ? "" : selectedItems.map(i => `${i.id}-${i.quantidade}-${(i as any).periodo || 1}-${i.sub_categoria || 'none'}-${i.natureza_despesa || '39'}`).sort().join('|'),
@@ -1082,9 +1067,6 @@ const ServicosTerceirosForm = () => {
                 setDistanciaPercorridaDia(details.distancia_percorrida_dia || "");
                 setNumeroViagens(details.numero_viagens || "");
                 setNomeServicoOutros(details.nome_servico_outros || "");
-                setObjetoOutros(details.objeto_outros || "");
-                setLocalOmOutros(details.local_om_outros || "");
-                setFinalidadeOutros(details.finalidade_outros || "");
                 setHasEfetivo(details.has_efetivo !== undefined ? details.has_efetivo : true);
                 
                 // Define a ND global para Outros se estiver editando
@@ -1560,60 +1542,29 @@ const ServicosTerceirosForm = () => {
                                                             )}
 
                                                             {activeTab === "outros" && (
-                                                                <div className="flex flex-col gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
-                                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                                        <div className="space-y-2">
-                                                                            <Label>Natureza de Despesa</Label>
-                                                                            <div className="flex items-center gap-2 p-2 bg-background rounded border h-10 w-fit">
-                                                                                <span className={cn("text-[10px] font-bold", naturezaDespesaOutros === '33' ? "text-primary" : "text-muted-foreground")}>ND 33</span>
-                                                                                <Switch 
-                                                                                    checked={naturezaDespesaOutros === '39'} 
-                                                                                    onCheckedChange={(checked) => setNaturezaDespesaOutros(checked ? '39' : '33')}
-                                                                                    disabled={!isPTrabEditable}
-                                                                                    className="scale-75"
-                                                                                />
-                                                                                <span className={cn("text-[10px] font-bold", naturezaDespesaOutros === '39' ? "text-primary" : "text-muted-foreground")}>ND 39</span>
-                                                                            </div>
-                                                                            <p className="text-[10px] text-muted-foreground">Aplica-se a todos os itens deste lote.</p>
-                                                                        </div>
-                                                                        <div className="space-y-2">
-                                                                            <Label>Nome do Serviço/Locação *</Label>
-                                                                            <Input 
-                                                                                value={nomeServicoOutros} 
-                                                                                onChange={(e) => setNomeServicoOutros(e.target.value)} 
-                                                                                placeholder="Ex: Serviço de Lavandeira" 
-                                                                                disabled={!isPTrabEditable} 
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+                                                                    <div className="space-y-2">
+                                                                        <Label>Natureza de Despesa</Label>
+                                                                        <div className="flex items-center gap-2 p-2 bg-background rounded border h-10 w-fit">
+                                                                            <span className={cn("text-[10px] font-bold", naturezaDespesaOutros === '33' ? "text-primary" : "text-muted-foreground")}>ND 33</span>
+                                                                            <Switch 
+                                                                                checked={naturezaDespesaOutros === '39'} 
+                                                                                onCheckedChange={(checked) => setNaturezaDespesaOutros(checked ? '39' : '33')}
+                                                                                disabled={!isPTrabEditable}
+                                                                                className="scale-75"
                                                                             />
+                                                                            <span className={cn("text-[10px] font-bold", naturezaDespesaOutros === '39' ? "text-primary" : "text-muted-foreground")}>ND 39</span>
                                                                         </div>
-                                                                        <div className="space-y-2">
-                                                                            <Label>Objeto *</Label>
-                                                                            <Input 
-                                                                                value={objetoOutros} 
-                                                                                onChange={(e) => setObjetoOutros(e.target.value)} 
-                                                                                placeholder="Ex: lavagem de roupa da tropa" 
-                                                                                disabled={!isPTrabEditable} 
-                                                                            />
-                                                                        </div>
+                                                                        <p className="text-[10px] text-muted-foreground">Aplica-se a todos os itens deste lote.</p>
                                                                     </div>
-                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                                        <div className="space-y-2">
-                                                                            <Label>Local *</Label>
-                                                                            <Input 
-                                                                                value={localOmOutros} 
-                                                                                onChange={(e) => setLocalOmOutros(e.target.value)} 
-                                                                                placeholder="Ex: Base Operacional CUMARU" 
-                                                                                disabled={!isPTrabEditable} 
-                                                                            />
-                                                                        </div>
-                                                                        <div className="space-y-2">
-                                                                            <Label>Finalidade *</Label>
-                                                                            <Input 
-                                                                                value={finalidadeOutros} 
-                                                                                onChange={(e) => setFinalidadeOutros(e.target.value)} 
-                                                                                placeholder="Ex: manter a higidez e apresentação individual" 
-                                                                                disabled={!isPTrabEditable} 
-                                                                            />
-                                                                        </div>
+                                                                    <div className="space-y-2">
+                                                                        <Label>Nome do Serviço/Locação *</Label>
+                                                                        <Input 
+                                                                            value={nomeServicoOutros} 
+                                                                            onChange={(e) => setNomeServicoOutros(e.target.value)} 
+                                                                            placeholder="Ex: Serviço de Lavandeira" 
+                                                                            disabled={!isPTrabEditable} 
+                                                                        />
                                                                     </div>
                                                                 </div>
                                                             )}
@@ -1729,7 +1680,7 @@ const ServicosTerceirosForm = () => {
                                             </Card>
 
                                             <div className="flex justify-end gap-3 pt-4">
-                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={(activeTab === "locacao-veiculos" ? vehicleGroups.length === 0 : selectedItems.length === 0) || saveMutation.isPending || (activeTab !== "servico-satelital" && activeTab !== "locacao-veiculos" && activeTab !== "locacao-estruturas" && activeTab !== "servico-grafico" && activeTab !== "outros" && efetivo <= 0) || (activeTab === "servico-satelital" && (!tipoEquipamento || !proposito)) || (activeTab === "outros" && (!nomeServicoOutros || !objetoOutros || !localOmOutros || !finalidadeOutros)) || diasOperacao <= 0 || isGroupFormOpen} onClick={handleAddToPending}>
+                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={(activeTab === "locacao-veiculos" ? vehicleGroups.length === 0 : selectedItems.length === 0) || saveMutation.isPending || (activeTab !== "servico-satelital" && activeTab !== "locacao-veiculos" && activeTab !== "locacao-estruturas" && activeTab !== "servico-grafico" && activeTab !== "outros" && efetivo <= 0) || (activeTab === "servico-satelital" && (!tipoEquipamento || !proposito)) || (activeTab === "outros" && !nomeServicoOutros) || diasOperacao <= 0 || isGroupFormOpen} onClick={handleAddToPending}>
                                                     {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                                     {editingId ? "Recalcular/Revisar Lote" : "Salvar Item na Lista"}
                                                 </Button>
