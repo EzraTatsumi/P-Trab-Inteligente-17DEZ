@@ -1,4 +1,4 @@
-import { formatCurrency, formatPregao } from "./formatUtils";
+import { formatCurrency, formatPregao, formatCodug } from "./formatUtils";
 
 export interface ServicoTerceiroRegistro {
     id: string;
@@ -53,11 +53,46 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
     // Usa o nome customizado se for a categoria 'outros'
     const catLabel = categoria === 'outros' ? (details.nome_servico_outros || 'Serviços de Terceiros') : formatCategoryLabel(categoria);
     
-    // Determina a ND predominante para o cabeçalho (simplificado)
+    // Determina a ND predominante para o cabeçalho
     const hasND33 = items.some((i: any) => i.natureza_despesa === '33');
     const hasND39 = items.some((i: any) => i.natureza_despesa === '39' || !i.natureza_despesa);
     const ndHeader = (hasND33 && hasND39) ? '33.90.33 / 33.90.39' : (hasND33 ? '33.90.33' : '33.90.39');
     
+    // LÓGICA ESPECÍFICA PARA CATEGORIA "OUTROS"
+    if (categoria === 'outros') {
+        const tipoContrato = details.tipo_contrato_outros === 'locacao' ? 'Locação' : 'Contratação';
+        const beneficiary = details.has_efetivo
+            ? `para atender ${registro.efetivo} militares do/da ${registro.organizacao}`
+            : `para atender o/a ${registro.organizacao}`;
+
+        let memoria = `${ndHeader} - ${tipoContrato} de ${catLabel} ${beneficiary}, durante ${registro.dias_operacao} dias de Planejamento.\n\n`;
+        
+        memoria += `Cálculo:\n\n`;
+        items.forEach((item: any) => {
+            memoria += `${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${item.unidade_medida || 'un'}. `;
+        });
+        memoria += `Fórmula: Nr Item x Valor Unitário.\n\n`;
+
+        items.forEach((item: any) => {
+            const qty = item.quantidade || 0;
+            const period = (item.periodo !== undefined) ? item.periodo : 1;
+            const unit = item.unidade_medida || 'un';
+            const val = item.valor_unitario || 0;
+            const total = qty * period * val;
+            const periodFormatted = Number.isInteger(period) ? period.toString() : period.toString().replace('.', ',');
+
+            memoria += `${qty} ${item.descricao_reduzida || item.descricao_item} (${periodFormatted} ${unit}) x ${formatCurrency(val)}/${unit} = ${formatCurrency(total)}.\n`;
+        });
+
+        memoria += `\nTotal: ${formatCurrency(registro.valor_total)}. `;
+        if (items.length > 0) {
+            const firstItem = items[0];
+            memoria += `(Pregão ${formatPregao(firstItem.numero_pregao)} - UASG ${formatCodug(firstItem.uasg)})`;
+        }
+        return memoria;
+    }
+
+    // LÓGICA PARA DEMAIS CATEGORIAS (MANTIDA ORIGINAL)
     let memoria = `${ndHeader} - Contratação de ${catLabel}, para a ${registro.organizacao}, durante ${registro.dias_operacao} dias de Planejamento.\n\n`;
 
     if (categoria === 'fretamento-aereo') {
@@ -79,13 +114,6 @@ export const generateServicoMemoriaCalculo = (registro: ServicoTerceiroRegistro,
         memoria += `- Distância Itinerário: ${details.distancia_itinerario || 0} Km\n`;
         memoria += `- Distância percorrida/dia: ${details.distancia_percorrida_dia || 0} Km\n`;
         memoria += `- Número de Viagens: ${details.numero_viagens || 1}\n\n`;
-    }
-
-    if (categoria === 'outros') {
-        memoria += `Detalhamento do Serviço:\n`;
-        memoria += `- Objeto: ${details.objeto_outros || 'N/A'}\n`;
-        memoria += `- Local: ${details.local_om_outros || 'N/A'}\n`;
-        memoria += `- Finalidade: ${details.finalidade_outros || 'N/A'}\n\n`;
     }
 
     memoria += `Cálculo:\n`;
@@ -136,9 +164,4 @@ const formatCategoryLabel = (cat: string) => {
     if (cat === 'locacao-estruturas') return 'Locação de Estruturas';
     if (cat === 'servico-grafico') return 'Serviço Gráfico';
     return 'Serviços de Terceiros';
-};
-
-const formatCodug = (ug: string) => {
-    if (!ug) return 'N/A';
-    return ug.replace(/^0+/, '');
 };
