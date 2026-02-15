@@ -90,11 +90,12 @@ export const generateMaterialConsumoMemoriaCalculo = (
         
         items.forEach((i: any) => {
             const unit = i.unidade_medida || 'UN';
-            texto += `- ${i.descricao_reduzida || i.descricao_item}: ${formatCurrency(i.valor_unitario)}/${unit}.\n`;
+            const limitInfo = (i.has_daily_limit && i.daily_limit_km) ? ` (até ${i.daily_limit_km} Km)` : "";
+            texto += `- ${i.descricao_reduzida || i.descricao_item}: ${formatCurrency(i.valor_unitario)}/${unit}${limitInfo}.\n`;
         });
 
         texto += `\nFórmula: (Nr Item x Valor Unitário x Período) x Nr Viagens.\n`;
-        texto += `* Nota: Serviços adicionais (Km) não são multiplicados pelo número de viagens.\n\n`;
+        texto += `                  Qtd Km adicional x Valor Unitário.\n\n`;
         
         items.forEach((i: any) => {
             const qty = i.quantidade || 0;
@@ -118,9 +119,9 @@ export const generateMaterialConsumoMemoriaCalculo = (
             const tripsText = trips === 1 ? "viagem" : "viagens";
             
             if (isAdditional) {
-                texto += `- ${qty} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)} x ${periodFormatted} ${unitDisplay} = ${formatCurrency(totalItem)}.\n`;
+                texto += `- ${qty} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)}/${unit} = ${formatCurrency(totalItem)}.\n`;
             } else {
-                texto += `- (${qty} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)} x ${periodFormatted} ${unitDisplay}) x ${trips} ${tripsText} = ${formatCurrency(totalItem)}.\n`;
+                texto += `- (${qty} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)}/${unit} x ${periodFormatted} ${unitDisplay}) x ${trips} ${tripsText} = ${formatCurrency(totalItem)}.\n`;
             }
         });
 
