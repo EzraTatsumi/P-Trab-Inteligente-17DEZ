@@ -836,11 +836,11 @@ const getServicosTerceirosData = (data: OmTotals | PTrabAggregatedTotals): OmTot
 const getHorasVooData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['horasVoo'] => {
     if ((data as OmTotals).omKey) return (data as OmTotals).horasVoo;
     const g = data as PTrabAggregatedTotals;
-    return { total: g.totalHorasVoo, totalND30: g.totalHorasVooND30, totalND39: g.totalHorasVooND39, quantidadeHV: g.quantidadeHorasVoo, groupedHV: g.groupedHorasVoo };
+    return { total: g.totalHorasVoo, totalND30: g.totalHorasVooND30, totalHorasVooND39: g.totalHorasVooND39, quantidadeHV: g.quantidadeHorasVoo, groupedHV: g.groupedHorasVoo };
 };
 
 const TabDetails = ({ mode, data }: TabDetailsProps) => {
-    const valueClasses = "font-medium text-foreground text-right w-[6rem]"; 
+    const valueClasses = "font-medium text-foreground text-right w-[6rem] flex-shrink-0"; 
     const getClassData = (key: string) => {
         if ((data as OmTotals).omKey) return (data as any)[key];
         const g = data as PTrabAggregatedTotals;
@@ -951,11 +951,11 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                 <AccordionItem value="item-complemento-alimentacao" className="border-b-0">
                     <AccordionTrigger className="p-0 hover:no-underline">
                         <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-2 text-foreground">
+                            <div className="flex items-center gap-1 text-foreground">
                                 <Utensils className="h-3 w-3 text-blue-500" />
-                                <span className="text-left leading-tight">Complemento de Alimentação</span>
+                                Complemento de Alimentação
                             </div>
-                            <span className={cn(valueClasses, "text-xs mr-6")}>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
                                 {formatCurrency(c.total)}
                             </span>
                         </div>
@@ -973,11 +973,11 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                 <AccordionItem value="item-servicos-terceiros" className="border-b-0">
                     <AccordionTrigger className="p-0 hover:no-underline">
                         <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-2 text-foreground">
+                            <div className="flex items-center gap-1 text-foreground">
                                 <ClipboardList className="h-3 w-3 text-blue-500" />
-                                <span className="text-left leading-tight">Serviços de Terceiros/Locações</span>
+                                Serviços de Terceiros/Locações
                             </div>
-                            <span className={cn(valueClasses, "text-xs mr-6")}>
+                            <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>
                                 {formatCurrency(s.total)}
                             </span>
                         </div>
