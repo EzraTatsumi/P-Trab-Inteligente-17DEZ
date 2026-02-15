@@ -1014,7 +1014,7 @@ const PTrabReportManager = () => {
           itens_aquisicao: (r.itens_aquisicao as unknown as ItemAquisicao[]) || []
       })) as unknown as ComplementoAlimentacaoRegistro[]);
 
-      setRegistrosServicosTerceiros((servicosTerceirosData || []).map(r => ({
+      setRegistrosServicosTerceiros(((servicosTerceirosData as any[]) || []).map(r => ({
           ...r,
           valor_total: Number(r.valor_total || 0),
           valor_nd_30: Number(r.valor_nd_30 || 0),
