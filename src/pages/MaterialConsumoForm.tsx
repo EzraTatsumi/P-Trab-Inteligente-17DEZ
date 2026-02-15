@@ -822,8 +822,8 @@ const MaterialConsumoForm = () => {
             return {
                 tempId: group.tempId, 
                 p_trab_id: ptrabId!,
-                organizacao: newFormData.om_favorecida,
-                ug: newFormData.ug_favorecida,
+                organizacao: newFormData.om_favorecida, 
+                ug: newFormData.ug_favorecida, 
                 om_detentora: newFormData.om_destino,
                 ug_detentora: newFormData.ug_destino,
                 dias_operacao: newFormData.dias_operacao,
@@ -1410,7 +1410,7 @@ const MaterialConsumoForm = () => {
                                                         
                                                         <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/30">
                                                             <h4 className="font-bold text-base text-foreground">
-                                                                Material de Consumo ({groupName})
+                                                                {groupName}
                                                             </h4>
                                                             <div className="flex items-center gap-2">
                                                                 <p className="font-extrabold text-lg text-foreground text-right">
@@ -1548,7 +1548,7 @@ const MaterialConsumoForm = () => {
                                                                     <div className="flex flex-col">
                                                                         <div className="flex items-center gap-2">
                                                                             <h4 className="font-semibold text-base text-foreground flex items-center gap-2">
-                                                                                Material de Consumo ({registro.group_name})
+                                                                                {registro.group_name}
                                                                                 <Badge variant="outline" className="text-xs font-semibold">{faseAtividade}</Badge>
                                                                             </h4>
                                                                         </div>
