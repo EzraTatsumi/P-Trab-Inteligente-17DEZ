@@ -5,6 +5,7 @@ export interface ItemAquisicaoServico {
     descricao_item: string;
     descricao_reduzida: string | null;
     codigo_catmat: string;
+    codigo_catser?: string; // Adicionado para compatibilidade com serviços
     valor_unitario: number;
     unidade_medida: string;
     numero_pregao: string;
@@ -13,6 +14,7 @@ export interface ItemAquisicaoServico {
     // Campos injetados para controle de UI
     quantidade?: number;
     valor_total?: number;
+    periodo?: number; // Adicionado para controle de tempo/frequência
     nr_subitem?: string;
     nome_subitem?: string;
 }

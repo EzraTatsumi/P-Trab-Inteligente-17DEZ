@@ -316,7 +316,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         <ArpUasgSearch onItemPreSelect={handleItemPreSelect} selectedItemIds={selectedItemIds} onClearSelection={handleClearSelection} scrollContainerRef={dialogContentRef} mode={mode} />
                     </TabsContent>
                     <TabsContent value="arp-catmat">
-                        <ArpCatmatSearch onItemPreSelect={handleItemPreSelect} selectedItemIds={selectedItemIds} onClearSelection={handleClearSelection} scrollContainerRef={dialogContentRef} mode={mode} />
+                        <ArpCatmatSearch {...({ onItemPreSelect: handleItemPreSelect, selectedItemIds, onClearSelection: handleClearSelection, scrollContainerRef: dialogContentRef, mode } as any)} />
                     </TabsContent>
                     <TabsContent value="avg-price">
                         <PriceSearchForm onPriceSelect={handlePriceSelect} isInspecting={isInspecting} onClearPriceSelection={handleClearPriceSelection} selectedItemForInspection={selectedItemForInspection} mode={mode} />
