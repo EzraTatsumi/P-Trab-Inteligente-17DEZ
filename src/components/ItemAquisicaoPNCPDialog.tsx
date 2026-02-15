@@ -12,7 +12,7 @@ import ArpCatmatSearch from './pncp/ArpCatmatSearch';
 import PriceSearchForm from './pncp/PriceSearchForm'; 
 import { fetchCatalogEntry, fetchCatalogFullDescription, fetchAllExistingAcquisitionItems } from '@/integrations/supabase/api'; 
 import PNCPInspectionDialog from './pncp/PNCPInspectionDialog'; 
-import ServicoUnitMeasureDialog from './pncp/ServicoUnitMeasureDialog'; // NOVO
+import ServicoUnitMeasureDialog from './pncp/ServicoUnitMeasureDialog'; 
 import { supabase } from '@/integrations/supabase/client'; 
 
 interface ItemAquisicaoPNCPDialogProps {
@@ -22,7 +22,7 @@ interface ItemAquisicaoPNCPDialogProps {
     existingItemsInDiretriz: ItemAquisicao[]; 
     onReviewItem: (item: ItemAquisicao) => void;
     selectedYear: number; 
-    mode?: 'material' | 'servico'; 
+    mode?: 'material' | 'servico' | 'permanente'; // ATUALIZADO: Adicionado 'permanente'
 }
 
 interface SelectedItemState {
@@ -93,11 +93,13 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     const [isInspectionDialogOpen, setIsInspectionDialogOpen] = useState(false);
     const [inspectionList, setInspectionList] = useState<InspectionItem[]>([]);
     
-    // NOVO: Estados para o diálogo de unidade de medida
     const [isUnitMeasureDialogOpen, setIsUnitMeasureDialogOpen] = useState(false);
     const [itemsPendingUnitMeasure, setItemsPendingUnitMeasure] = useState<ItemAquisicao[]>([]);
 
     const dialogContentRef = useRef<HTMLDivElement>(null);
+
+    // Mapeia o modo para o tipo de catálogo (material ou servico) para chamadas de API
+    const apiMode = mode === 'permanente' ? 'material' : mode;
 
     const scrollToTop = () => {
         if (dialogContentRef.current) dialogContentRef.current.scrollTo(0, 0);
@@ -152,7 +154,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 setIsInspecting(false);
                 return;
             }
-            const allExistingItems = await fetchAllExistingAcquisitionItems(selectedYear, user.id, mode);
+            const allExistingItems = await fetchAllExistingAcquisitionItems(selectedYear, user.id, apiMode);
             const combinedExistingItems = [...allExistingItems, ...existingItemsInDiretriz];
             const inspectionPromises = itemsToInspect.map(async ({ item: selectedItem, pregaoFormatado, uasg, isPriceReference }) => {
                 let initialMappedItem: ItemAquisicao;
@@ -194,7 +196,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                 let status: InspectionStatus = 'pending';
                 let messages: string[] = [];
                 
-                const catalogEntry = await fetchCatalogEntry(initialMappedItem.codigo_catmat, mode);
+                const catalogEntry = await fetchCatalogEntry(initialMappedItem.codigo_catmat, apiMode);
                 
                 let fullPncpDescription = 'Descrição completa não encontrada no PNCP.';
                 let nomePdm = null;
@@ -203,7 +205,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     fullPncpDescription = catalogEntry.description;
                     if (catalogEntry.shortDescription) initialMappedItem.descricao_reduzida = catalogEntry.shortDescription;
                 } else {
-                    const pncpDetails = await fetchCatalogFullDescription(initialMappedItem.codigo_catmat, mode);
+                    const pncpDetails = await fetchCatalogFullDescription(initialMappedItem.codigo_catmat, apiMode);
                     fullPncpDescription = pncpDetails.fullDescription || fullPncpDescription;
                     nomePdm = pncpDetails.nomePdm;
                     
@@ -230,7 +232,7 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         status = 'needs_catmat_info';
                         if (isPriceReference) messages.push('Item de referência de preço. Requer preenchimento de Pregão/UASG e descrição reduzida.');
                         else if (catalogEntry.isCataloged && !catalogEntry.shortDescription) messages.push('Item catalogado localmente, mas requer descrição reduzida.');
-                        else messages.push(`Requer descrição reduzida para o catálogo ${mode === 'material' ? 'CATMAT' : 'CATSER'}.`);
+                        else messages.push(`Requer descrição reduzida para o catálogo ${apiMode === 'material' ? 'CATMAT' : 'CATSER'}.`);
                     }
                 }
                 return {
@@ -262,15 +264,12 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         onOpenChange(false);
     };
     
-    // INTERCEPTOR: Lógica de importação final
     const handleFinalImportCallback = (items: ItemAquisicao[]) => {
         if (mode === 'servico') {
-            // Se for serviço, abre o diálogo de unidade de medida antes de concluir
             setItemsPendingUnitMeasure(items);
             setIsInspectionDialogOpen(false);
             setIsUnitMeasureDialogOpen(true);
         } else {
-            // Se for material, segue o fluxo normal
             onImport(items);
             setSelectedItemsState([]);
             setInspectionList([]);
@@ -280,7 +279,6 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
         }
     };
     
-    // Conclusão definitiva após definir unidades de medida
     const handleConfirmUnitsAndImport = (itemsWithUnits: ItemAquisicao[]) => {
         onImport(itemsWithUnits);
         setSelectedItemsState([]);
@@ -294,13 +292,19 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
     const isAnyItemSelected = isPriceFlowActive || selectedArpItems.length > 0;
     const buttonText = isPriceFlowActive ? `Inspecionar Preço Médio (${selectedPriceItems.length})` : `Inspecionar e Importar (${selectedArpItems.length})`;
         
+    const getModeLabel = () => {
+        if (mode === 'permanente') return 'Material Permanente';
+        if (mode === 'servico') return 'Serviços de Terceiros';
+        return 'Material de Consumo';
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent ref={dialogContentRef} className="max-w-7xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Search className="h-5 w-5" />
-                        Importação de Itens PNCP ({mode === 'material' ? 'Material de Consumo' : 'Serviços de Terceiros'})
+                        Importação de Itens PNCP ({getModeLabel()})
                     </DialogTitle>
                     <DialogDescription>
                         Selecione o método de busca no Portal Nacional de Contratações Públicas (PNCP).
@@ -313,13 +317,13 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                         <TabsTrigger value="avg-price" className="flex items-center gap-2"><DollarSign className="h-4 w-4" />Pesquisa de Preço</TabsTrigger>
                     </TabsList>
                     <TabsContent value="arp-uasg">
-                        <ArpUasgSearch onItemPreSelect={handleItemPreSelect} selectedItemIds={selectedItemIds} onClearSelection={handleClearSelection} scrollContainerRef={dialogContentRef} mode={mode} />
+                        <ArpUasgSearch onItemPreSelect={handleItemPreSelect} selectedItemIds={selectedItemIds} onClearSelection={handleClearSelection} scrollContainerRef={dialogContentRef} mode={apiMode} />
                     </TabsContent>
                     <TabsContent value="arp-catmat">
-                        <ArpCatmatSearch {...({ onItemPreSelect: handleItemPreSelect, selectedItemIds, onClearSelection: handleClearSelection, scrollContainerRef: dialogContentRef, mode } as any)} />
+                        <ArpCatmatSearch {...({ onItemPreSelect: handleItemPreSelect, selectedItemIds, onClearSelection: handleClearSelection, scrollContainerRef: dialogContentRef, mode: apiMode } as any)} />
                     </TabsContent>
                     <TabsContent value="avg-price">
-                        <PriceSearchForm onPriceSelect={handlePriceSelect} isInspecting={isInspecting} onClearPriceSelection={handleClearPriceSelection} selectedItemForInspection={selectedItemForInspection} mode={mode} />
+                        <PriceSearchForm onPriceSelect={handlePriceSelect} isInspecting={isInspecting} onClearPriceSelection={handleClearPriceSelection} selectedItemForInspection={selectedItemForInspection} mode={apiMode} />
                     </TabsContent>
                 </Tabs>
                 <div className="flex justify-end gap-2 pt-4 border-t">
@@ -338,11 +342,10 @@ const ItemAquisicaoPNCPDialog: React.FC<ItemAquisicaoPNCPDialogProps> = ({
                     inspectionList={inspectionList} 
                     onFinalImport={handleFinalImportCallback} 
                     onReviewItem={handleReviewItemCallback} 
-                    mode={mode} 
+                    mode={apiMode} 
                 />
             )}
 
-            {/* NOVO: Diálogo de Unidade de Medida para Serviços */}
             {isUnitMeasureDialogOpen && (
                 <ServicoUnitMeasureDialog
                     open={isUnitMeasureDialogOpen}

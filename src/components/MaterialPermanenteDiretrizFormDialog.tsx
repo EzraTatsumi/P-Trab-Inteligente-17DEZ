@@ -203,7 +203,15 @@ const MaterialPermanenteDiretrizFormDialog: React.FC<MaterialPermanenteDiretrizF
             />
             <CatmatCatalogDialog open={isCatmatCatalogOpen} onOpenChange={setIsCatmatCatalogOpen} onSelect={(c) => setItemForm(p => ({ ...p, codigo_catmat: c.code, descricao_item: c.description, descricao_reduzida: c.short_description || '' }))} />
             <ItemAquisicaoBulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items] }))} existingItemsInDiretriz={subitemForm.itens_aquisicao} mode="material" />
-            <ItemAquisicaoPNCPDialog open={isPNCPSearchOpen} onOpenChange={setIsPNCPSearchOpen} onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items] }))} existingItemsInDiretriz={subitemForm.itens_aquisicao} onReviewItem={(item) => { handleEditItem(item); setIsPNCPSearchOpen(false); }} selectedYear={selectedYear} mode="material" />
+            <ItemAquisicaoPNCPDialog 
+                open={isPNCPSearchOpen} 
+                onOpenChange={setIsPNCPSearchOpen} 
+                onImport={(items) => setSubitemForm(p => ({ ...p, itens_aquisicao: [...p.itens_aquisicao, ...items] }))} 
+                existingItemsInDiretriz={subitemForm.itens_aquisicao} 
+                onReviewItem={(item) => { handleEditItem(item); setIsPNCPSearchOpen(false); }} 
+                selectedYear={selectedYear} 
+                mode="permanente" // ATUALIZADO: Passando o modo correto
+            />
         </Dialog>
     );
 };
