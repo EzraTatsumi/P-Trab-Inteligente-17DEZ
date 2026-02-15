@@ -18,6 +18,7 @@ import {
   GrupoOMOperacional, 
   MaterialConsumoRegistro,
   ComplementoAlimentacaoRegistro,
+  ServicoTerceiroRegistro,
 } from "@/pages/PTrabReportManager"; 
 import { DIARIA_RANKS_CONFIG } from "@/lib/diariaUtils";
 import { generateConsolidatedPassagemMemoriaCalculo, ConsolidatedPassagemRecord } from "@/lib/passagemUtils"; 
@@ -44,6 +45,7 @@ interface PTrabOperacionalReportProps {
   registrosConcessionaria: ConcessionariaRegistroComDiretriz[]; 
   registrosMaterialConsumo: MaterialConsumoRegistro[];
   registrosComplementoAlimentacao: ComplementoAlimentacaoRegistro[];
+  registrosServicosTerceiros: ServicoTerceiroRegistro[];
   diretrizesOperacionais: Tables<'diretrizes_operacionais'> | null;
   diretrizesPassagens: Tables<'diretrizes_passagens'>[]; 
   fileSuffix: string;
@@ -54,6 +56,7 @@ interface PTrabOperacionalReportProps {
   generateConcessionariaMemoriaCalculo: (registro: ConcessionariaRegistroComDiretriz) => string; 
   generateMaterialConsumoMemoriaCalculo: (registro: MaterialConsumoRegistro) => string;
   generateComplementoMemoriaCalculo: (registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR') => string;
+  generateServicoMemoriaCalculo: (registro: ServicoTerceiroRegistro) => string;
 }
 
 const fetchDiretrizDetails = async (diretrizId: string): Promise<{ numero_pregao: string | null, ug_referencia: string | null } | null> => {
@@ -130,18 +133,33 @@ const EXPENSE_ORDER_MAP: Record<string, number> = {
     'COMPLEMENTO DE ALIMENTAÇÃO': 3,
     'MATERIAL DE CONSUMO': 4,
     'PASSAGENS': 5,
-    'SUPRIMENTO DE FUNDOS': 6,
-    'VERBA OPERACIONAL': 7,
+    'SERVIÇOS DE TERCEIROS': 6,
+    'SUPRIMENTO DE FUNDOS': 7,
+    'VERBA OPERACIONAL': 8,
 };
 
 type ExpenseRow = {
     type: keyof typeof EXPENSE_ORDER_MAP;
-    data: DiariaRegistro | ConsolidatedPassagemReport | ConsolidatedConcessionariaReport | VerbaOperacionalRegistro | MaterialConsumoRegistro | { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' };
+    data: DiariaRegistro | ConsolidatedPassagemReport | ConsolidatedConcessionariaReport | VerbaOperacionalRegistro | MaterialConsumoRegistro | ServicoTerceiroRegistro | { registro: ComplementoAlimentacaoRegistro, subType?: 'QS' | 'QR' };
     isContinuation?: boolean;
     partialItems?: ItemAquisicao[];
     partialTotal?: number;
     partialND30?: number;
     partialND39?: number;
+};
+
+const formatCategoryName = (cat: string, details?: any) => {
+    if (cat === 'outros' && details?.nome_servico_outros) return details.nome_servico_outros;
+    if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
+    if (cat === 'servico-satelital') return 'Serviço Satelital';
+    if (cat === 'transporte-coletivo') return 'Transporte Coletivo';
+    if (cat === 'locacao-veiculos') return 'Locação de Veículos';
+    if (cat === 'locacao-estruturas') return 'Locação de Estruturas';
+    if (cat === 'servico-grafico') return 'Serviço Gráfico';
+    return cat.split('-').map(word => {
+        if (word === 'aereo') return 'Aéreo';
+        return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
 };
 
 
@@ -156,6 +174,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   registrosConcessionaria,
   registrosMaterialConsumo,
   registrosComplementoAlimentacao,
+  registrosServicosTerceiros,
   diretrizesOperacionais,
   diretrizesPassagens, 
   fileSuffix,
@@ -166,6 +185,7 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
   generateConcessionariaMemoriaCalculo,
   generateMaterialConsumoMemoriaCalculo,
   generateComplementoMemoriaCalculo,
+  generateServicoMemoriaCalculo,
 }) => {
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -371,6 +391,11 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         allRows.push({ type: 'COMPLEMENTO DE ALIMENTAÇÃO', data: item });
     });
 
+    // Serviços de Terceiros
+    group.servicosTerceiros.forEach(registro => {
+        allRows.push({ type: 'SERVIÇOS DE TERCEIROS', data: registro });
+    });
+
     group.verbaOperacional.forEach(registro => {
         allRows.push({ type: 'VERBA OPERACIONAL', data: registro });
     });
@@ -430,10 +455,20 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
         totals.nd39 += Number(r.valor_nd_39 || 0);
     });
 
+    registrosServicosTerceiros.forEach(r => {
+        // Regras de ND: Fretamento, Locação de Veículos e Transporte Coletivo são ND 33
+        if (['fretamento-aereo', 'locacao-veiculos', 'transporte-coletivo'].includes(r.categoria)) {
+            totals.nd33 += Number(r.valor_total || 0);
+        } else {
+            totals.nd33 += Number(r.valor_nd_30 || 0); // No form, valor_nd_30 armazena ND 33
+            totals.nd39 += Number(r.valor_nd_39 || 0);
+        }
+    });
+
     const totalGND3 = totals.nd15 + totals.nd30 + totals.nd33 + totals.nd39 + totals.nd00;
     
     return { ...totals, totalGND3 };
-  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosMaterialConsumo, registrosComplementoAlimentacao]);
+  }, [registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosPassagem, registrosConcessionaria, registrosMaterialConsumo, registrosComplementoAlimentacao, registrosServicosTerceiros]);
   
   const generateFileName = (reportType: 'PDF' | 'Excel') => {
     const dataAtz = formatDateDDMMMAA(ptrabData.updated_at);
@@ -616,6 +651,16 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                 subtotalOM.totalGND3 += Number(r.valor_total || 0);
             }
         });
+        group.servicosTerceiros.forEach(r => {
+            const val = Number(r.valor_total || 0);
+            subtotalOM.totalGND3 += val;
+            if (['fretamento-aereo', 'locacao-veiculos', 'transporte-coletivo'].includes(r.categoria)) {
+                subtotalOM.nd33 += val;
+            } else {
+                subtotalOM.nd33 += Number(r.valor_nd_30 || 0);
+                subtotalOM.nd39 += Number(r.valor_nd_39 || 0);
+            }
+        });
 
         sortedRows.forEach(rowItem => {
             const row = worksheet.getRow(currentRow);
@@ -696,6 +741,20 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                         ugDetentora = r.ug_detentora || r.ug;
                     }
                     memoria = generateComplementoMemoriaCalculo(r, compItem.subType);
+                    break;
+                case 'SERVIÇOS DE TERCEIROS':
+                    const servico = data as ServicoTerceiroRegistro;
+                    totalLinha = Number(servico.valor_total || 0);
+                    despesasLabel = `${type}\n(${formatCategoryName(servico.categoria, servico.detalhes_planejamento)})`;
+                    if (['fretamento-aereo', 'locacao-veiculos', 'transporte-coletivo'].includes(servico.categoria)) {
+                        nd33 = totalLinha;
+                    } else {
+                        nd33 = Number(servico.valor_nd_30 || 0);
+                        nd39 = Number(servico.valor_nd_39 || 0);
+                    }
+                    memoria = generateServicoMemoriaCalculo(servico);
+                    omDetentora = servico.om_detentora || servico.organizacao;
+                    ugDetentora = servico.ug_detentora || servico.ug;
                     break;
                 case 'VERBA OPERACIONAL':
                     const verba = data as VerbaOperacionalRegistro;
@@ -830,10 +889,10 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
     a.href = url; a.download = generateFileName('Excel'); a.click();
     window.URL.revokeObjectURL(url);
     toast({ title: "Excel Exportado!", description: "O relatório Operacional foi salvo com sucesso.", duration: 3000 });
-  }, [omsOrdenadas, gruposPorOM, consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosMaterialConsumo, registrosComplementoAlimentacao, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, generateMaterialConsumoMemoriaCalculo, generateComplementoMemoriaCalculo, diretrizesOperacionais, toast, getSortedRowsForOM]);
+  }, [omsOrdenadas, gruposPorOM, consolidatedPassagensWithDetails, consolidatedConcessionariasWithDetails, registrosDiaria, registrosVerbaOperacional, registrosSuprimentoFundos, registrosMaterialConsumo, registrosComplementoAlimentacao, registrosServicosTerceiros, ptrabData, diasOperacao, totaisND, fileSuffix, generateDiariaMemoriaCalculo, generateVerbaOperacionalMemoriaCalculo, generateSuprimentoFundosMemoriaCalculo, generateMaterialConsumoMemoriaCalculo, generateComplementoMemoriaCalculo, generateServicoMemoriaCalculo, diretrizesOperacionais, toast, getSortedRowsForOM]);
 
 
-  if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0 && registrosSuprimentoFundos.length === 0 && registrosPassagem.length === 0 && registrosConcessionaria.length === 0 && registrosMaterialConsumo.length === 0 && registrosComplementoAlimentacao.length === 0) {
+  if (registrosDiaria.length === 0 && registrosVerbaOperacional.length === 0 && registrosSuprimentoFundos.length === 0 && registrosPassagem.length === 0 && registrosConcessionaria.length === 0 && registrosMaterialConsumo.length === 0 && registrosComplementoAlimentacao.length === 0 && registrosServicosTerceiros.length === 0) {
     return (
       <Card className="mt-4">
         <CardHeader>
@@ -942,6 +1001,16 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                       subtotalOM.totalGND3 += Number(r.valor_total || 0);
                   }
               });
+              group.servicosTerceiros.forEach(r => {
+                  const val = Number(r.valor_total || 0);
+                  subtotalOM.totalGND3 += val;
+                  if (['fretamento-aereo', 'locacao-veiculos', 'transporte-coletivo'].includes(r.categoria)) {
+                      subtotalOM.nd33 += val;
+                  } else {
+                      subtotalOM.nd33 += Number(r.valor_nd_30 || 0);
+                      subtotalOM.nd39 += Number(r.valor_nd_39 || 0);
+                  }
+              });
 
               return (
                   <React.Fragment key={omName}>
@@ -1023,6 +1092,20 @@ const PTrabOperacionalReport: React.FC<PTrabOperacionalReportProps> = ({
                                       ugDetentora = r.ug_detentora || r.ug;
                                   }
                                   memoria = generateComplementoMemoriaCalculo(r, compItem.subType);
+                                  break;
+                              case 'SERVIÇOS DE TERCEIROS':
+                                  const servico = data as ServicoTerceiroRegistro;
+                                  totalLinha = Number(servico.valor_total || 0);
+                                  despesasLabel = `${type}\n(${formatCategoryName(servico.categoria, servico.detalhes_planejamento)})`;
+                                  if (['fretamento-aereo', 'locacao-veiculos', 'transporte-coletivo'].includes(servico.categoria)) {
+                                      nd33 = totalLinha;
+                                  } else {
+                                      nd33 = Number(servico.valor_nd_30 || 0);
+                                      nd39 = Number(servico.valor_nd_39 || 0);
+                                  }
+                                  memoria = generateServicoMemoriaCalculo(servico);
+                                  omDetentora = servico.om_detentora || servico.organizacao;
+                                  ugDetentora = servico.ug_detentora || servico.ug;
                                   break;
                               case 'VERBA OPERACIONAL':
                                   const verba = data as VerbaOperacionalRegistro;
