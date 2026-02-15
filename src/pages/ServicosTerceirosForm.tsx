@@ -114,11 +114,6 @@ interface ConsolidatedServicoRecord {
     groupKey: string;
     organizacao: string;
     ug: string;
-    om_detentora: string;
-    ug_detentora: string;
-    dias_operacao: number;
-    efetivo: number;
-    fase_atividade: string;
     records: ServicoTerceiroRegistro[];
     totalGeral: number;
 }
@@ -505,17 +500,12 @@ const ServicosTerceirosForm = () => {
     const consolidatedRegistros = useMemo<ConsolidatedServicoRecord[]>(() => {
         if (!registros) return [];
         const groups = registros.reduce((acc, reg) => {
-            const key = `${reg.organizacao}|${reg.ug}|${reg.om_detentora}|${reg.ug_detentora}|${reg.dias_operacao}|${reg.efetivo}|${reg.fase_atividade}`;
+            const key = `${reg.organizacao}|${reg.ug}`; // Agrupa apenas por OM e UG
             if (!acc[key]) {
                 acc[key] = {
                     groupKey: key,
                     organizacao: reg.organizacao,
                     ug: reg.ug,
-                    om_detentora: reg.om_detentora || '',
-                    ug_detentora: reg.ug_detentora || '',
-                    dias_operacao: reg.dias_operacao,
-                    efetivo: reg.efetivo || 0,
-                    fase_atividade: reg.fase_atividade || '',
                     records: [],
                     totalGeral: 0
                 };
@@ -1590,7 +1580,6 @@ const ServicosTerceirosForm = () => {
                                             <div className="flex items-center justify-between mb-3 border-b pb-2">
                                                 <h3 className="font-bold text-lg text-primary flex items-center gap-2">
                                                     {group.organizacao} (UG: {formatCodug(group.ug)})
-                                                    <Badge variant="outline" className="text-xs">{group.fase_atividade}</Badge>
                                                 </h3>
                                                 <span className="font-extrabold text-xl text-primary">{formatCurrency(group.totalGeral)}</span>
                                             </div>
@@ -1631,9 +1620,10 @@ const ServicosTerceirosForm = () => {
                                                         <Card key={reg.id} className="p-3 bg-background border">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex flex-col">
-                                                                    <h4 className="font-semibold text-base text-foreground capitalize">
+                                                                    <h4 className="font-semibold text-base text-foreground capitalize flex items-center gap-2">
                                                                         {formatCategoryName(reg.categoria)}
                                                                         {(reg.group_name || reg.detalhes_planejamento?.group_name) && ` (${reg.group_name || reg.detalhes_planejamento?.group_name})`}
+                                                                        <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-normal">{reg.fase_atividade}</Badge>
                                                                     </h4>
                                                                     <p className="text-xs text-muted-foreground">
                                                                         {reg.categoria === 'fretamento-aereo' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | HV: ${totalUnits}`}
