@@ -112,31 +112,49 @@ const VehicleGroupForm: React.FC<VehicleGroupFormProps> = ({
 
     return (
         <Card className="border border-gray-300 bg-gray-50 p-4 shadow-lg space-y-4">
-            <h4 className="font-bold text-lg">{groupName.trim() || (initialGroup ? 'Editando Grupo' : 'Novo Grupo de Veículos')}</h4>
+            <h4 className="font-bold text-lg">{groupName.trim() || (initialGroup ? 'Editando Grupo' : 'Novo Grupo')}</h4>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label>Nome do Grupo *</Label>
-                    <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Ex: Viaturas Administrativas" disabled={isSaving} />
+                    <Label htmlFor="groupName">Nome do Grupo *</Label>
+                    <Input 
+                        id="groupName"
+                        value={groupName} 
+                        onChange={(e) => setGroupName(e.target.value)} 
+                        placeholder="Ex: Viaturas Administrativas" 
+                        disabled={isSaving} 
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        Coluna Despesas (P Trab Op): <br /> Locação de Viatura ({groupName.trim() || 'Nome do Grupo'})
+                    </p>
                 </div>
                 <div className="space-y-2">
-                    <Label>Finalidade (Opcional)</Label>
-                    <Input value={groupPurpose} onChange={(e) => setGroupPurpose(e.target.value)} placeholder="Ex: atender aos deslocamentos administrativos" disabled={isSaving} />
+                    <Label htmlFor="groupPurpose">Locação de Viatura para atender</Label>
+                    <Input 
+                        id="groupPurpose"
+                        value={groupPurpose} 
+                        onChange={(e) => setGroupPurpose(e.target.value)} 
+                        placeholder="Ex: atender aos deslocamentos administrativos" 
+                        disabled={isSaving} 
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        *Cabeçalho personalizado para a Memória de Cálculo não automatizada.
+                    </p>
                 </div>
             </div>
             
             <div className="space-y-2">
-                <Label>Veículos Selecionados ({items.length})</Label>
+                <Label>Veículos Selecionados ({items.length} itens)</Label>
                 <Card className="p-3 bg-background border">
                     {groupedItems.length === 0 ? (
-                        <div className="text-center text-muted-foreground py-4">Nenhum veículo selecionado.</div>
+                        <div className="text-center text-muted-foreground py-4">Nenhum veículo selecionado. Clique em "Importar/Alterar Veículos" para adicionar.</div>
                     ) : (
                         <div className="space-y-3">
                             {groupedItems.map(group => (
                                 <Collapsible key={group.nr} open={expandedSubitems[group.nr] ?? true} onOpenChange={(open) => setExpandedSubitems(prev => ({ ...prev, [group.nr]: open }))}>
                                     <CollapsibleTrigger asChild>
                                         <div className="flex justify-between items-center p-2 bg-[#E2EEEE] border border-gray-300 rounded-md cursor-pointer hover:bg-gray-200 transition-colors">
-                                            <span className="font-semibold text-sm">{group.nr} - {group.nome}</span>
+                                            <span className="font-semibold text-sm">{group.nr} - {group.nome} ({group.items.length} itens)</span>
                                             <div className="flex items-center gap-2">
                                                 <span className="font-bold text-sm text-green-700">{formatCurrency(group.total)}</span>
                                                 {expandedSubitems[group.nr] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -151,7 +169,7 @@ const VehicleGroupForm: React.FC<VehicleGroupFormProps> = ({
                                                     <TableHead>Veículo</TableHead>
                                                     <TableHead className="text-center w-[100px]">Período</TableHead>
                                                     <TableHead className="text-right w-[120px]">Total</TableHead>
-                                                    <TableHead className="w-[50px]"></TableHead>
+                                                    <TableHead className="w-[50px] text-center">Ação</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -164,7 +182,7 @@ const VehicleGroupForm: React.FC<VehicleGroupFormProps> = ({
                                                         </TableCell>
                                                         <TableCell><Input type="number" value={(item as any).periodo || ""} onChange={(e) => handlePeriodChange(item.id, e.target.value)} className="h-8 text-center" /></TableCell>
                                                         <TableCell className="text-right text-sm font-medium">{formatCurrency((item.quantidade || 0) * ((item as any).periodo || 0) * item.valor_unitario)}</TableCell>
-                                                        <TableCell><Button variant="ghost" size="icon" onClick={() => setItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                                                        <TableCell className="text-center"><Button variant="ghost" size="icon" onClick={() => setItems(prev => prev.filter(i => i.id !== item.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                                                     </TableRow>
                                                 ))}
                                             </TableBody>
@@ -183,7 +201,7 @@ const VehicleGroupForm: React.FC<VehicleGroupFormProps> = ({
 
             <div className="flex justify-between gap-3">
                 <Button type="button" variant="secondary" onClick={() => onOpenItemSelector(items)} className="flex-1">
-                    <Package className="mr-2 h-4 w-4" /> Importar/Alterar Veículos da Diretriz
+                    <Package className="mr-2 h-4 w-4" /> Importar/Alterar Veículos da Diretriz ({items.length} itens)
                 </Button>
             </div>
             
