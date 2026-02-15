@@ -64,7 +64,7 @@ const PTrabForm = () => {
     { id: "passagem-aerea", name: "Passagens" },
     { id: "suprimento-fundos", name: "Suprimento de Fundos" },
     { id: "verba-operacional", name: "Verba Operacional" },
-    { id: "material-permanente", name: "Material Permanente" },
+    { id: "outros-servicos", name: "Outros Serviços" },
   ];
 
   const { data: credits, isLoading: isLoadingCredits } = useQuery({
@@ -198,8 +198,6 @@ const PTrabForm = () => {
       navigate(`/ptrab/complemento-alimentacao?ptrabId=${ptrabId}`);
     } else if (itemId === 'servicos-terceiros') {
       navigate(`/ptrab/servicos-terceiros?ptrabId=${ptrabId}`);
-    } else if (itemId === 'material-permanente') {
-      navigate(`/ptrab/material-permanente?ptrabId=${ptrabId}`);
     } else {
       toast.info(`Funcionalidade '${itemName}' (Operacional) ainda não implementada.`);
     }
