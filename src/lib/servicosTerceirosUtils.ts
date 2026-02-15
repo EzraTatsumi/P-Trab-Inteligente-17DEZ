@@ -33,8 +33,14 @@ export const generateServicoMemoriaCalculo = (
     registro: Partial<ServicoTerceiroRegistro>,
     context: { organizacao: string, efetivo: number, dias_operacao: number, fase_atividade: string | null }
 ): string => {
-    const { categoria, detalhes_planejamento, group_name } = registro;
+    const { categoria, detalhes_planejamento } = registro;
     const planejamento = detalhes_planejamento as any;
+    
+    // CORREÇÃO: Busca o group_name e group_purpose dentro do objeto de planejamento, 
+    // já que estas colunas podem não existir fisicamente na tabela servicos_terceiros_registros
+    const group_name = (registro as any).group_name || planejamento?.group_name;
+    const group_purpose = (registro as any).group_purpose || planejamento?.group_purpose;
+    
     const items = planejamento?.itens_selecionados || [];
     
     if (items.length === 0) return "Nenhum item selecionado.";
@@ -139,8 +145,8 @@ export const generateServicoMemoriaCalculo = (
     // --- SERVIÇO SATELITAL ---
     if (categoria === 'servico-satelital') {
         const tipoServico = planejamento.tipo_equipamento || '[Tipo de Serviço]';
-        const proposito = planejamento.proposito || '[Propósito]';
-        let texto = `33.90.39 - Contratação de Serviço ${tipoServico}, visando ${proposito}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
+        const propositoStr = group_purpose || planejamento.proposito || '[Propósito]';
+        let texto = `33.90.39 - Contratação de Serviço ${tipoServico}, visando ${propositoStr}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
         texto += `Cálculo:\n`;
         items.forEach((item: any) => {
             const unit = item.unidade_medida || 'UN';
@@ -165,6 +171,11 @@ export const generateServicoMemoriaCalculo = (
     texto += `--------------------------------------------------\n`;
     texto += `OM FAVORECIDA: ${context.organizacao}\n`;
     texto += `FINALIDADE: Atender às necessidades de ${categoriaFormatada.toLowerCase()} durante a fase de ${fase}, com efetivo de ${context.efetivo} militares, pelo período de ${context.dias_operacao} ${diasText}.\n\n`;
+    
+    if (group_purpose) {
+        texto += `PROPÓSITO: ${group_purpose}\n\n`;
+    }
+
     texto += `DETALHAMENTO DOS ITENS:\n`;
     items.forEach((item: any, index: number) => {
         const period = item.periodo || 1;
