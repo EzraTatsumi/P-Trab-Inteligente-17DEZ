@@ -501,6 +501,7 @@ const ServicosTerceirosForm = () => {
     // Novos estados para Outros
     const [nomeServicoOutros, setNomeServicoOutros] = useState("");
     const [naturezaDespesaOutros, setNaturezaDespesaOutros] = useState<'33' | '39'>('39');
+    const [tipoContratoOutros, setTipoContratoOutros] = useState<"contratacao" | "locacao">("contratacao");
 
     const [selectedItems, setSelectedItems] = useState<ItemAquisicaoServicoExt[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
@@ -575,6 +576,7 @@ const ServicosTerceirosForm = () => {
             distanciaPercorridaDia !== lastStagedState.distanciaPercorridaDia ||
             numeroViagens !== lastStagedState.numeroViagens ||
             nomeServicoOutros !== lastStagedState.nomeServicoOutros ||
+            tipoContratoOutros !== lastStagedState.tipoContratoOutros ||
             (activeTab === 'outros' && naturezaDespesaOutros !== lastStagedState.naturezaDespesaOutros)
         );
 
@@ -590,7 +592,7 @@ const ServicosTerceirosForm = () => {
         const stagedItemsKey = lastStagedState.itemsKey;
 
         return currentItemsKey !== stagedItemsKey;
-    }, [omFavorecida, faseAtividade, efetivo, hasEfetivo, diasOperacao, omDestino, activeTab, selectedItems, lastStagedState, pendingItems, vehicleGroups, tipoAnv, capacidade, velocidadeCruzeiro, distanciaPercorrer, tipoEquipamento, proposito, itinerario, distanciaItinerario, distanciaPercorridaDia, numeroViagens, nomeServicoOutros, naturezaDespesaOutros]);
+    }, [omFavorecida, faseAtividade, efetivo, hasEfetivo, diasOperacao, omDestino, activeTab, selectedItems, lastStagedState, pendingItems, vehicleGroups, tipoAnv, capacidade, velocidadeCruzeiro, distanciaPercorrer, tipoEquipamento, proposito, itinerario, distanciaItinerario, distanciaPercorridaDia, numeroViagens, nomeServicoOutros, naturezaDespesaOutros, tipoContratoOutros]);
 
     // Recalcula totais quando o número de viagens muda (apenas para Transporte Coletivo)
     useEffect(() => {
@@ -738,6 +740,7 @@ const ServicosTerceirosForm = () => {
         setNumeroViagens("");
         setNomeServicoOutros("");
         setNaturezaDespesaOutros('39');
+        setTipoContratoOutros("contratacao");
         setEditingId(null);
         setActiveCompositionId(null);
     };
@@ -962,6 +965,7 @@ const ServicosTerceirosForm = () => {
                     distancia_percorrida_dia: distanciaPercorridaDia,
                     numero_viagens: numeroViagens,
                     nome_servico_outros: nomeServicoOutros,
+                    tipo_contrato_outros: tipoContratoOutros,
                     has_efetivo: hasEfetivo
                 },
                 valor_total: totalGeral,
@@ -998,6 +1002,7 @@ const ServicosTerceirosForm = () => {
             distanciaPercorridaDia,
             numeroViagens,
             nomeServicoOutros,
+            tipoContratoOutros,
             naturezaDespesaOutros: activeTab === 'outros' ? naturezaDespesaOutros : undefined,
             // Chave simplificada para o dirty check de itens
             itemsKey: isLocacao ? "" : selectedItems.map(i => `${i.id}-${i.quantidade}-${(i as any).periodo || 1}-${i.sub_categoria || 'none'}-${i.natureza_despesa || '39'}`).sort().join('|'),
@@ -1067,6 +1072,7 @@ const ServicosTerceirosForm = () => {
                 setDistanciaPercorridaDia(details.distancia_percorrida_dia || "");
                 setNumeroViagens(details.numero_viagens || "");
                 setNomeServicoOutros(details.nome_servico_outros || "");
+                setTipoContratoOutros(details.tipo_contrato_outros || "contratacao");
                 setHasEfetivo(details.has_efetivo !== undefined ? details.has_efetivo : true);
                 
                 // Define a ND global para Outros se estiver editando
@@ -1135,7 +1141,8 @@ const ServicosTerceirosForm = () => {
                 omDestinoId: omDest?.id || "",
                 categoria: reg.categoria,
                 itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}-${i.periodo || 1}-${i.sub_categoria || 'none'}-${i.natureza_despesa || '39'}`).sort().join('|'),
-                naturezaDespesaOutros: reg.categoria === 'outros' ? (details.itens_selecionados?.[0]?.natureza_despesa || '39') : undefined
+                naturezaDespesaOutros: reg.categoria === 'outros' ? (details.itens_selecionados?.[0]?.natureza_despesa || '39') : undefined,
+                tipoContratoOutros: reg.categoria === 'outros' ? (details.tipo_contrato_outros || "contratacao") : undefined
             });
         }
 
@@ -1542,7 +1549,20 @@ const ServicosTerceirosForm = () => {
                                                             )}
 
                                                             {activeTab === "outros" && (
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+                                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+                                                                    <div className="space-y-2">
+                                                                        <Label>Tipo de Contrato</Label>
+                                                                        <div className="flex items-center gap-2 p-2 bg-background rounded border h-10 w-fit">
+                                                                            <span className={cn("text-[10px] font-bold", tipoContratoOutros === 'contratacao' ? "text-primary" : "text-muted-foreground")}>CONTRATAÇÃO</span>
+                                                                            <Switch 
+                                                                                checked={tipoContratoOutros === 'locacao'} 
+                                                                                onCheckedChange={(checked) => setTipoContratoOutros(checked ? 'locacao' : 'contratacao')}
+                                                                                disabled={!isPTrabEditable}
+                                                                                className="scale-75"
+                                                                            />
+                                                                            <span className={cn("text-[10px] font-bold", tipoContratoOutros === 'locacao' ? "text-primary" : "text-muted-foreground")}>LOCAÇÃO</span>
+                                                                        </div>
+                                                                    </div>
                                                                     <div className="space-y-2">
                                                                         <Label>Natureza de Despesa</Label>
                                                                         <div className="flex items-center gap-2 p-2 bg-background rounded border h-10 w-fit">
