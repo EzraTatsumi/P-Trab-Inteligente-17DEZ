@@ -819,8 +819,9 @@ const ServicosTerceirosForm = () => {
         const isSatelital = activeTab === "servico-satelital";
         const isLocacaoVeiculos = activeTab === "locacao-veiculos";
         const isLocacaoEstruturas = activeTab === "locacao-estruturas";
+        const isServicoGrafico = activeTab === "servico-grafico";
 
-        if ((!isSatelital && !isLocacaoVeiculos && !isLocacaoEstruturas && efetivo <= 0) || diasOperacao <= 0) {
+        if ((!isSatelital && !isLocacaoVeiculos && !isLocacaoEstruturas && !isServicoGrafico && efetivo <= 0) || diasOperacao <= 0) {
             toast.warning("Informe o efetivo e o período.");
             return;
         }
@@ -862,7 +863,7 @@ const ServicosTerceirosForm = () => {
                 om_detentora: omDestino.nome,
                 ug_detentora: omDestino.ug || omFavorecida.ug,
                 dias_operacao: diasOperacao,
-                efetivo: (isSatelital || isLocacaoEstruturas) ? 0 : efetivo,
+                efetivo: (isSatelital || isLocacaoEstruturas || isServicoGrafico) ? 0 : efetivo,
                 fase_atividade: faseAtividade,
                 categoria: activeTab,
                 detalhes_planejamento: { 
@@ -1149,10 +1150,10 @@ const ServicosTerceirosForm = () => {
                                                                 <Label>Efetivo *</Label>
                                                                 <Input 
                                                                     type="number" 
-                                                                    value={(activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas") ? "" : (efetivo || "")} 
+                                                                    value={(activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas" || activeTab === "servico-grafico") ? "" : (efetivo || "")} 
                                                                     onChange={(e) => setEfetivo(Number(e.target.value))} 
-                                                                    placeholder={(activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas") ? "N/A" : "Ex: 50"} 
-                                                                    disabled={!isPTrabEditable || activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas"} 
+                                                                    placeholder={(activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas" || activeTab === "servico-grafico") ? "N/A" : "Ex: 50"} 
+                                                                    disabled={!isPTrabEditable || activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas" || activeTab === "servico-grafico"} 
                                                                     onWheel={(e) => e.currentTarget.blur()}
                                                                     onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
                                                                     className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
@@ -1528,7 +1529,7 @@ const ServicosTerceirosForm = () => {
                                             </Card>
 
                                             <div className="flex justify-end gap-3 pt-4">
-                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={(activeTab === "locacao-veiculos" ? vehicleGroups.length === 0 : selectedItems.length === 0) || saveMutation.isPending || (activeTab !== "servico-satelital" && activeTab !== "locacao-veiculos" && activeTab !== "locacao-estruturas" && efetivo <= 0) || (activeTab === "servico-satelital" && (!tipoEquipamento || !proposito)) || diasOperacao <= 0 || isGroupFormOpen} onClick={handleAddToPending}>
+                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={(activeTab === "locacao-veiculos" ? vehicleGroups.length === 0 : selectedItems.length === 0) || saveMutation.isPending || (activeTab !== "servico-satelital" && activeTab !== "locacao-veiculos" && activeTab !== "locacao-estruturas" && activeTab !== "servico-grafico" && efetivo <= 0) || (activeTab === "servico-satelital" && (!tipoEquipamento || !proposito)) || diasOperacao <= 0 || isGroupFormOpen} onClick={handleAddToPending}>
                                                     {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                                     {editingId ? "Recalcular/Revisar Lote" : "Salvar Item na Lista"}
                                                 </Button>
@@ -1611,7 +1612,8 @@ const ServicosTerceirosForm = () => {
                                                                     {item.categoria === 'transporte-coletivo' && "Período / Efetivo / Nr Viagens:"}
                                                                     {item.categoria === 'locacao-veiculos' && "Período / Qtd Veículos:"}
                                                                     {item.categoria === 'locacao-estruturas' && "Período / Qtd Itens:"}
-                                                                    {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos', 'locacao-estruturas'].includes(item.categoria) && "Período / Detalhes:"}
+                                                                    {item.categoria === 'servico-grafico' && "Período / Qtd Itens:"}
+                                                                    {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos', 'locacao-estruturas', 'servico-grafico'].includes(item.categoria) && "Período / Detalhes:"}
                                                                 </p>
                                                                 {item.categoria === 'transporte-coletivo' && (
                                                                     <p className="font-medium">Nr Diárias / Qtd Km Adicional:</p>
@@ -1631,7 +1633,9 @@ const ServicosTerceirosForm = () => {
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalQty} un`}
                                                                     {item.categoria === 'locacao-estruturas' && 
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalQty} un`}
-                                                                    {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos', 'locacao-estruturas'].includes(item.categoria) && 
+                                                                    {item.categoria === 'servico-grafico' && 
+                                                                        `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalQty} un`}
+                                                                    {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos', 'locacao-estruturas', 'servico-grafico'].includes(item.categoria) && 
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalUnits} un`}
                                                                 </p>
                                                                 {item.categoria === 'transporte-coletivo' && (
@@ -1734,7 +1738,8 @@ const ServicosTerceirosForm = () => {
                                                                         {reg.categoria === 'transporte-coletivo' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Viagens: ${reg.detalhes_planejamento?.numero_viagens || 1}`}
                                                                         {reg.categoria === 'locacao-veiculos' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: ${totalQty} un`}
                                                                         {reg.categoria === 'locacao-estruturas' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: ${totalQty} un`}
-                                                                        {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos', 'locacao-estruturas'].includes(reg.categoria) && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Qtd: ${totalUnits} un`}
+                                                                        {reg.categoria === 'servico-grafico' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: ${totalQty} un`}
+                                                                        {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos', 'locacao-estruturas', 'servico-grafico'].includes(reg.categoria) && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Qtd: ${totalUnits} un`}
                                                                     </p>
                                                                     {reg.categoria === 'transporte-coletivo' && (
                                                                         <p className="text-xs text-muted-foreground">
