@@ -876,7 +876,7 @@ const ServicosTerceirosForm = () => {
                     itinerario: itinerario,
                     distancia_itinerario: distanciaItinerario,
                     distancia_percorrida_dia: distanciaPercorridaDia,
-                    numero_viagens: numeroViagens
+                    numero_viagens: numero_viagens
                 },
                 valor_total: totalGeral,
                 valor_nd_30: totalND30,
@@ -1039,6 +1039,8 @@ const ServicosTerceirosForm = () => {
         }
 
         toast.info("Modo Edição ativado. Altere os dados e clique em 'Recalcular/Revisar Lote'.");
+        
+        // Garante a rolagem para o topo da página
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
