@@ -109,7 +109,6 @@ export async function fetchCatalogEntry(codigo: string, mode: 'material' | 'serv
     if (!cleanCode) return { description: null, shortDescription: null, isCataloged: false };
     
     try {
-        // Cast para any para evitar erro de "Type instantiation is excessively deep"
         let { data, error } = await (supabase.from(table as any))
             .select('description, short_description')
             .eq('code', cleanCode)
@@ -130,7 +129,6 @@ export async function fetchCatalogEntry(codigo: string, mode: 'material' | 'serv
         }
 
         if (data) {
-            // Corrigido: Adicionado unknown como intermediário para evitar erro de conversão
             const typedData = data as unknown as { description: string | null, short_description: string | null };
             return {
                 description: typedData.description || null,
@@ -158,7 +156,6 @@ export async function saveNewCatalogEntry(code: string, description: string, sho
         });
         if (error) throw error;
     } else {
-        // Cast para any para evitar erro de sobrecarga de método
         const { error } = await (supabase.from('catalogo_catser' as any)).upsert({
             code: cleanCode,
             description: description,
@@ -307,11 +304,14 @@ export async function fetchArpItemsById(numeroControlePncpAta: string): Promise<
 /**
  * Busca todos os itens de aquisição existentes para um dado ano e usuário, considerando o modo.
  */
-export async function fetchAllExistingAcquisitionItems(year: number, userId: string, mode: 'material' | 'servico'): Promise<ItemAquisicao[]> {
+export async function fetchAllExistingAcquisitionItems(year: number, userId: string, mode: 'material' | 'servico' | 'permanente'): Promise<ItemAquisicao[]> {
     if (!year || typeof year !== 'number' || year <= 0) return [];
-    const table = mode === 'material' ? 'diretrizes_material_consumo' : 'diretrizes_servicos_terceiros';
+    
+    let table = 'diretrizes_material_consumo';
+    if (mode === 'servico') table = 'diretrizes_servicos_terceiros';
+    if (mode === 'permanente') table = 'diretrizes_material_permanente';
+
     try {
-        // Cast para any para evitar erro de "Type instantiation is excessively deep"
         const { data, error } = await (supabase.from(table as any))
             .select('itens_aquisicao')
             .eq('user_id', userId)
@@ -320,7 +320,6 @@ export async function fetchAllExistingAcquisitionItems(year: number, userId: str
         if (error) throw error;
 
         return (data || []).flatMap(diretriz => {
-            // Corrigido: Adicionado unknown como intermediário para evitar erro de conversão
             const typedDiretriz = diretriz as unknown as { itens_aquisicao: any };
             return (typedDiretriz.itens_aquisicao as unknown as ItemAquisicao[]) || [];
         });
