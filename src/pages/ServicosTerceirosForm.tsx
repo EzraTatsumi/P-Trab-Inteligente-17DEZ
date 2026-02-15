@@ -1550,7 +1550,7 @@ const ServicosTerceirosForm = () => {
                                                                     {item.categoria === 'locacao-veiculos' && 
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalQty} un`}
                                                                     {item.categoria === 'locacao-estruturas' && 
-                                                                        `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalUnits} un`}
+                                                                        `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalQty} un`}
                                                                     {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos', 'locacao-estruturas'].includes(item.categoria) && 
                                                                         `${item.dias_operacao} ${item.dias_operacao === 1 ? 'dia' : 'dias'} / ${totalUnits} un`}
                                                                 </p>
@@ -1653,7 +1653,7 @@ const ServicosTerceirosForm = () => {
                                                                         {reg.categoria === 'servico-satelital' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: ${totalQty} un`}
                                                                         {reg.categoria === 'transporte-coletivo' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Viagens: ${reg.detalhes_planejamento?.numero_viagens || 1}`}
                                                                         {reg.categoria === 'locacao-veiculos' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: ${totalQty} un`}
-                                                                        {reg.categoria === 'locacao-estruturas' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: ${totalUnits} un`}
+                                                                        {reg.categoria === 'locacao-estruturas' && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Qtd: ${totalQty} un`}
                                                                         {!['fretamento-aereo', 'servico-satelital', 'transporte-coletivo', 'locacao-veiculos', 'locacao-estruturas'].includes(reg.categoria) && `Período: ${reg.dias_operacao} ${reg.dias_operacao === 1 ? 'dia' : 'dias'} | Efetivo: ${reg.efetivo} ${reg.efetivo === 1 ? 'militar' : 'militares'} | Qtd: ${totalUnits} un`}
                                                                     </p>
                                                                     {reg.categoria === 'transporte-coletivo' && (

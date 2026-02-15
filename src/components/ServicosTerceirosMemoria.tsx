@@ -51,6 +51,11 @@ const ServicosTerceirosMemoria: React.FC<ServicosTerceirosMemoriaProps> = ({
     const formatCategoryName = (cat: string) => {
         if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
         if (cat === 'servico-satelital') return 'Serviço Satelital';
+        if (cat === 'transporte-coletivo') return 'Transporte Coletivo';
+        if (cat === 'locacao-veiculos') return 'Locação de Veículos';
+        if (cat === 'locacao-estruturas') return 'Locação de Estruturas';
+        if (cat === 'servico-grafico') return 'Serviço Gráfico';
+        
         return cat.split('-').map(word => {
             if (word === 'aereo') return 'Aéreo';
             return word.charAt(0).toUpperCase() + word.slice(1);
