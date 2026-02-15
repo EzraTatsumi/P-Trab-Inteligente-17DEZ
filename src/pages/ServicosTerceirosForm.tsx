@@ -261,16 +261,19 @@ const ServiceItemRow = ({
                     Pregão: {formatPregao(item.numero_pregao)} | UASG: {formatCodug(item.uasg) || 'N/A'}
                 </p>
                 
-                <div className="mt-2 flex items-center gap-2 p-1.5 bg-muted/50 rounded border border-muted-foreground/20 w-fit">
-                    <span className={cn("text-[9px] font-bold", item.natureza_despesa === '33' ? "text-primary" : "text-muted-foreground")}>ND 33</span>
-                    <Switch 
-                        checked={item.natureza_despesa === '39' || !item.natureza_despesa} 
-                        onCheckedChange={(checked) => onNDToggle?.(item.id, checked ? '39' : '33')}
-                        disabled={!isPTrabEditable}
-                        className="scale-50"
-                    />
-                    <span className={cn("text-[9px] font-bold", (item.natureza_despesa === '39' || !item.natureza_despesa) ? "text-primary" : "text-muted-foreground")}>ND 39</span>
-                </div>
+                {/* O seletor de ND agora é oculto para a categoria Outros, pois foi movido para a grade de configuração */}
+                {activeTab !== 'outros' && (
+                    <div className="mt-2 flex items-center gap-2 p-1.5 bg-muted/50 rounded border border-muted-foreground/20 w-fit">
+                        <span className={cn("text-[9px] font-bold", item.natureza_despesa === '33' ? "text-primary" : "text-muted-foreground")}>ND 33</span>
+                        <Switch 
+                            checked={item.natureza_despesa === '39' || !item.natureza_despesa} 
+                            onCheckedChange={(checked) => onNDToggle?.(item.id, checked ? '39' : '33')}
+                            disabled={!isPTrabEditable}
+                            className="scale-50"
+                        />
+                        <span className={cn("text-[9px] font-bold", (item.natureza_despesa === '39' || !item.natureza_despesa) ? "text-primary" : "text-muted-foreground")}>ND 39</span>
+                    </div>
+                )}
                 
                 {isCharter && suggestedHV !== null && (
                     <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded flex items-start gap-2">
@@ -500,6 +503,7 @@ const ServicosTerceirosForm = () => {
     const [objetoOutros, setObjetoOutros] = useState("");
     const [localOmOutros, setLocalOmOutros] = useState("");
     const [finalidadeOutros, setFinalidadeOutros] = useState("");
+    const [naturezaDespesaOutros, setNaturezaDespesaOutros] = useState<'33' | '39'>('39');
 
     const [selectedItems, setSelectedItems] = useState<ItemAquisicaoServicoExt[]>([]);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
@@ -576,7 +580,8 @@ const ServicosTerceirosForm = () => {
             nomeServicoOutros !== lastStagedState.nomeServicoOutros ||
             objetoOutros !== lastStagedState.objetoOutros ||
             localOmOutros !== lastStagedState.localOmOutros ||
-            finalidadeOutros !== lastStagedState.finalidadeOutros
+            finalidadeOutros !== lastStagedState.finalidadeOutros ||
+            (activeTab === 'outros' && naturezaDespesaOutros !== lastStagedState.naturezaDespesaOutros)
         );
 
         if (detailsChanged) return true;
@@ -591,7 +596,7 @@ const ServicosTerceirosForm = () => {
         const stagedItemsKey = lastStagedState.itemsKey;
 
         return currentItemsKey !== stagedItemsKey;
-    }, [omFavorecida, faseAtividade, efetivo, hasEfetivo, diasOperacao, omDestino, activeTab, selectedItems, lastStagedState, pendingItems, vehicleGroups, tipoAnv, capacidade, velocidadeCruzeiro, distanciaPercorrer, tipoEquipamento, proposito, itinerario, distanciaItinerario, distanciaPercorridaDia, numeroViagens, nomeServicoOutros, objetoOutros, localOmOutros, finalidadeOutros]);
+    }, [omFavorecida, faseAtividade, efetivo, hasEfetivo, diasOperacao, omDestino, activeTab, selectedItems, lastStagedState, pendingItems, vehicleGroups, tipoAnv, capacidade, velocidadeCruzeiro, distanciaPercorrer, tipoEquipamento, proposito, itinerario, distanciaItinerario, distanciaPercorridaDia, numeroViagens, nomeServicoOutros, objetoOutros, localOmOutros, finalidadeOutros, naturezaDespesaOutros]);
 
     // Recalcula totais quando o número de viagens muda (apenas para Transporte Coletivo)
     useEffect(() => {
@@ -741,6 +746,7 @@ const ServicosTerceirosForm = () => {
         setObjetoOutros("");
         setLocalOmOutros("");
         setFinalidadeOutros("");
+        setNaturezaDespesaOutros('39');
         setEditingId(null);
         setActiveCompositionId(null);
     };
@@ -933,7 +939,12 @@ const ServicosTerceirosForm = () => {
             }));
         } else {
             const trips = activeTab === "transporte-coletivo" ? (Number(numeroViagens) || 1) : 1;
-            const itemsForCalc = selectedItems.map(i => ({ ...i, periodo: (i as any).periodo || 0 }));
+            // Aplica a ND global se a categoria for 'outros'
+            const itemsForCalc = selectedItems.map(i => ({ 
+                ...i, 
+                periodo: (i as any).periodo || 0,
+                ...(activeTab === 'outros' ? { natureza_despesa: naturezaDespesaOutros } : {})
+            }));
             const { totalND30, totalND39, totalGeral } = calculateServicoTotals(itemsForCalc, trips);
             
             const newItem: PendingServicoItem = {
@@ -1002,6 +1013,7 @@ const ServicosTerceirosForm = () => {
             objetoOutros,
             localOmOutros,
             finalidadeOutros,
+            naturezaDespesaOutros: activeTab === 'outros' ? naturezaDespesaOutros : undefined,
             // Chave simplificada para o dirty check de itens
             itemsKey: isLocacao ? "" : selectedItems.map(i => `${i.id}-${i.quantidade}-${(i as any).periodo || 1}-${i.sub_categoria || 'none'}-${i.natureza_despesa || '39'}`).sort().join('|'),
             groupsKey: isLocacao ? vehicleGroups.map(g => `${g.tempId}-${g.totalValue}`).sort().join('|') : ""
@@ -1074,6 +1086,11 @@ const ServicosTerceirosForm = () => {
                 setLocalOmOutros(details.local_om_outros || "");
                 setFinalidadeOutros(details.finalidade_outros || "");
                 setHasEfetivo(details.has_efetivo !== undefined ? details.has_efetivo : true);
+                
+                // Define a ND global para Outros se estiver editando
+                if (reg.categoria === 'outros') {
+                    setNaturezaDespesaOutros(details.itens_selecionados?.[0]?.natureza_despesa || '39');
+                }
             }
         }
 
@@ -1135,7 +1152,8 @@ const ServicosTerceirosForm = () => {
                 diasOperacao: reg.dias_operacao,
                 omDestinoId: omDest?.id || "",
                 categoria: reg.categoria,
-                itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}-${i.periodo || 1}-${i.sub_categoria || 'none'}-${i.natureza_despesa || '39'}`).sort().join('|')
+                itemsKey: (details.itens_selecionados || []).map((i: any) => `${i.id}-${i.quantidade}-${i.periodo || 1}-${i.sub_categoria || 'none'}-${i.natureza_despesa || '39'}`).sort().join('|'),
+                naturezaDespesaOutros: reg.categoria === 'outros' ? (details.itens_selecionados?.[0]?.natureza_despesa || '39') : undefined
             });
         }
 
@@ -1263,18 +1281,20 @@ const ServicosTerceirosForm = () => {
                                                                     onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
                                                                     className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                                                 />
-                                                                <div className="flex items-center gap-1 mt-1">
-                                                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{hasEfetivo ? 'Ativo' : 'Inativo'}</span>
-                                                                    <Switch 
-                                                                        checked={hasEfetivo} 
-                                                                        onCheckedChange={(checked) => {
-                                                                            setHasEfetivo(checked);
-                                                                            if (!checked) setEfetivo(0);
-                                                                        }}
-                                                                        disabled={!isPTrabEditable || activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas" || activeTab === "servico-grafico"}
-                                                                        className="scale-75"
-                                                                    />
-                                                                </div>
+                                                                {activeTab === 'outros' && (
+                                                                    <div className="flex items-center gap-1 mt-1">
+                                                                        <span className="text-[10px] font-bold text-muted-foreground uppercase">{hasEfetivo ? 'Ativo' : 'Inativo'}</span>
+                                                                        <Switch 
+                                                                            checked={hasEfetivo} 
+                                                                            onCheckedChange={(checked) => {
+                                                                                setHasEfetivo(checked);
+                                                                                if (!checked) setEfetivo(0);
+                                                                            }}
+                                                                            disabled={!isPTrabEditable || activeTab === "servico-satelital" || activeTab === "locacao-veiculos" || activeTab === "locacao-estruturas" || activeTab === "servico-grafico"}
+                                                                            className="scale-75"
+                                                                        />
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label>OM Destino do Recurso *</Label>
@@ -1540,13 +1560,27 @@ const ServicosTerceirosForm = () => {
                                                             )}
 
                                                             {activeTab === "outros" && (
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
+                                                                    <div className="space-y-2">
+                                                                        <Label>Natureza de Despesa</Label>
+                                                                        <div className="flex items-center gap-2 p-2 bg-background rounded border h-10 w-fit">
+                                                                            <span className={cn("text-[10px] font-bold", naturezaDespesaOutros === '33' ? "text-primary" : "text-muted-foreground")}>ND 33</span>
+                                                                            <Switch 
+                                                                                checked={naturezaDespesaOutros === '39'} 
+                                                                                onCheckedChange={(checked) => setNaturezaDespesaOutros(checked ? '39' : '33')}
+                                                                                disabled={!isPTrabEditable}
+                                                                                className="scale-75"
+                                                                            />
+                                                                            <span className={cn("text-[10px] font-bold", naturezaDespesaOutros === '39' ? "text-primary" : "text-muted-foreground")}>ND 39</span>
+                                                                        </div>
+                                                                        <p className="text-[10px] text-muted-foreground">Aplica-se a todos os itens deste lote.</p>
+                                                                    </div>
                                                                     <div className="space-y-2">
                                                                         <Label>Nome do Serviço/Locação *</Label>
                                                                         <Input 
                                                                             value={nomeServicoOutros} 
                                                                             onChange={(e) => setNomeServicoOutros(e.target.value)} 
-                                                                            placeholder="Ex: Locação de Banheiros Químicos" 
+                                                                            placeholder="Ex: Serviço de Lavandeira" 
                                                                             disabled={!isPTrabEditable} 
                                                                         />
                                                                     </div>
@@ -1555,7 +1589,7 @@ const ServicosTerceirosForm = () => {
                                                                         <Input 
                                                                             value={objetoOutros} 
                                                                             onChange={(e) => setObjetoOutros(e.target.value)} 
-                                                                            placeholder="Ex: Banheiro Químico Standard" 
+                                                                            placeholder="Ex: lavagem de roupa da tropa" 
                                                                             disabled={!isPTrabEditable} 
                                                                         />
                                                                     </div>
@@ -1564,7 +1598,7 @@ const ServicosTerceirosForm = () => {
                                                                         <Input 
                                                                             value={localOmOutros} 
                                                                             onChange={(e) => setLocalOmOutros(e.target.value)} 
-                                                                            placeholder="Ex: Campo de Instrução" 
+                                                                            placeholder="Ex: Base Operacional CUMARU" 
                                                                             disabled={!isPTrabEditable} 
                                                                         />
                                                                     </div>
@@ -1573,7 +1607,7 @@ const ServicosTerceirosForm = () => {
                                                                         <Input 
                                                                             value={finalidadeOutros} 
                                                                             onChange={(e) => setFinalidadeOutros(e.target.value)} 
-                                                                            placeholder="Ex: Atender o efetivo no terreno" 
+                                                                            placeholder="Ex: manter a higidez e apresentação individual" 
                                                                             disabled={!isPTrabEditable} 
                                                                         />
                                                                     </div>
