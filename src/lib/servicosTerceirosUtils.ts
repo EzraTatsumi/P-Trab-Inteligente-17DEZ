@@ -1,191 +1,95 @@
-import { ItemAquisicaoServico, DetalhesPlanejamentoServico } from "@/types/diretrizesServicosTerceiros";
-import { formatCurrency, formatCodug, formatPregao } from "./formatUtils";
-import { Tables } from "@/integrations/supabase/types";
+import { formatCurrency } from "./formatUtils";
+import { ItemAquisicaoServico } from "@/types/diretrizesServicosTerceiros";
 
-export type ServicoTerceiroRegistro = Tables<'servicos_terceiros_registros'>;
+export interface ServicoTerceiroRegistro {
+    id: string;
+    p_trab_id: string;
+    organizacao: string;
+    ug: string;
+    om_detentora: string;
+    ug_detentora: string;
+    dias_operacao: number;
+    efetivo: number;
+    fase_atividade: string;
+    categoria: string;
+    detalhes_planejamento: any;
+    valor_total: number;
+    valor_nd_30: number;
+    valor_nd_39: number;
+    detalhamento_customizado?: string | null;
+    created_at?: string;
+    updated_at?: string;
+}
 
-/**
- * Calcula os totais do lote de serviços, separando por ND.
- * Realiza o cálculo completo: (Quantidade x Período x Valor Unitário) x Multiplicador.
- */
-export const calculateServicoTotals = (items: ItemAquisicaoServico[], multiplier: number = 1) => {
-    return items.reduce((acc, item) => {
+export const calculateServicoTotals = (items: any[], trips: number = 1) => {
+    let totalND30 = 0;
+    let totalND39 = 0;
+
+    items.forEach(item => {
         const qty = item.quantidade || 0;
-        const period = (item as any).periodo || 0;
-        const vlrUnit = item.valor_unitario || 0;
-        
-        // Cálculo base: (Qtd x Período x Valor) x Multiplicador (ex: viagens)
-        const totalItem = qty * period * vlrUnit * multiplier;
-        
-        if (item.nd === '30') acc.totalND30 += totalItem;
-        else acc.totalND39 += totalItem;
-        
-        acc.totalGeral += totalItem;
-        return acc;
-    }, { totalGeral: 0, totalND30: 0, totalND39: 0 });
-};
+        const period = item.periodo || 0;
+        const subtotal = qty * period * item.valor_unitario * trips;
 
-/**
- * Gera a memória de cálculo descritiva baseada na categoria e itens.
- */
-export const generateMaterialConsumoMemoriaCalculo = (
-    registro: Partial<ServicoTerceiroRegistro>,
-    context: { organizacao: string, efetivo: number, dias_operacao: number, fase_atividade: string | null }
-): string => {
-    const { categoria, detalhes_planejamento } = registro;
-    const planejamento = detalhes_planejamento as any;
-    const items = planejamento?.itens_selecionados || [];
-    
-    if (items.length === 0) return "Nenhum item selecionado.";
-
-    const prepOM = context.organizacao.includes('ª') ? 'da' : context.organizacao.includes('º') ? 'do' : 'do/da';
-    const fase = context.fase_atividade || 'Operação';
-    const diasText = context.dias_operacao === 1 ? "dia" : "dias";
-
-    // --- FRETAMENTO AÉREO ---
-    if (categoria === 'fretamento-aereo') {
-        const item = items[0]; 
-        if (!item) return "Nenhum item de fretamento selecionado.";
-
-        const efetivoText = context.efetivo === 1 ? "militar" : "militares";
-        const valorTotal = item.valor_total || (item.quantidade * item.valor_unitario);
-        
-        let texto = `33.90.33 - Contratação de Fretamento Aéreo para o transporte de ${context.efetivo} ${efetivoText} ${prepOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
-        
-        texto += `Cálculo:\n`;
-        texto += `- Tipo Anv: ${planejamento.tipo_anv || 'N/A'}.\n`;
-        texto += `- Capacidade: ${planejamento.capacidade || 'N/A'}.\n`;
-        texto += `- Velocidade de Cruzeiro: ${planejamento.velocidade_cruzeiro || 0} Km/h.\n`;
-        texto += `- Distância a percorrer: ${planejamento.distancia_percorrer || 0} Km.\n`;
-        texto += `- Valor da HV: ${formatCurrency(item.valor_unitario)}/HV.\n\n`;
-        
-        texto += `Fórmula: Quantidade de HV (Dist / Vel) x valor da HV.\n`;
-        texto += `- ${item.quantidade} HV x ${formatCurrency(item.valor_unitario)}/HV = ${formatCurrency(valorTotal)}.\n\n`;
-        
-        texto += `Total: ${formatCurrency(valorTotal)}.\n`;
-        texto += `(Pregão ${formatPregao(item.numero_pregao)} - UASG ${formatCodug(item.uasg)})`;
-        
-        return texto;
-    }
-
-    // --- TRANSPORTE COLETIVO ---
-    if (categoria === 'transporte-coletivo') {
-        const efetivoText = context.efetivo === 1 ? "militar" : "militares";
-        const trips = Number(planejamento.numero_viagens) || 1;
-        const valorTotalGeral = Number(registro.valor_total) || 0;
-
-        let texto = `33.90.33 - Contratação de veículos do tipo Transporte Coletivo para transporte de ${context.efetivo} ${efetivoText} ${prepOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
-        
-        texto += `Cálculo:\n`;
-        texto += `- Itn Dslc: ${planejamento.itinerario || 'N/A'}.\n`;
-        texto += `- Dist Itn: ${planejamento.distancia_itinerario || 0} Km.\n`;
-        texto += `- Dist Percorrida/dia: ${planejamento.distancia_percorrida_dia || 0} Km.\n`;
-        texto += `- Nr Viagens: ${trips}.\n`;
-        
-        items.forEach((i: any) => {
-            const unit = i.unidade_medida || 'UN';
-            texto += `- ${i.descricao_reduzida || i.descricao_item}: ${formatCurrency(i.valor_unitario)}/${unit}.\n`;
-        });
-
-        texto += `\nFórmula: (Nr Item x Valor Unitário x Período) x Nr Viagens.\n`;
-        
-        items.forEach((i: any) => {
-            const qty = i.quantidade || 0;
-            const vlrUnit = i.valor_unitario || 0;
-            const period = i.periodo || 0;
-            const unit = i.unidade_medida || 'un';
-            const periodFormatted = period.toString().replace('.', ',');
-            
-            let unitDisplay = unit;
-            if (period > 1) {
-                if (unit.toLowerCase() === 'dia') unitDisplay = 'dias';
-                else if (unit.toLowerCase() === 'mês') unitDisplay = 'meses';
-                else if (unit.toLowerCase() === 'hora') unitDisplay = 'horas';
-                else if (unit.toLowerCase() === 'viagem') unitDisplay = 'viagens';
-                else if (unit.toLowerCase() === 'km') unitDisplay = 'Km';
-            }
-            
-            const totalItem = qty * vlrUnit * period * trips;
-            const tripsText = trips === 1 ? "viagem" : "viagens";
-            
-            texto += `- (${qty} ${i.descricao_reduzida || i.descricao_item} x ${formatCurrency(vlrUnit)} x ${periodFormatted} ${unitDisplay}) x ${trips} ${tripsText} = ${formatCurrency(totalItem)}.\n`;
-        });
-
-        texto += `\nTotal: ${formatCurrency(valorTotalGeral)}. \n`;
-        
-        if (items.length > 0) {
-            texto += `(Pregão ${formatPregao(items[0].numero_pregao)} - UASG ${formatCodug(items[0].uasg)})`;
+        // Lógica de ND baseada na categoria e subcategoria
+        // Para transporte coletivo, meios de transporte e serviços adicionais (como Km) vão para ND 33
+        // No banco, usamos valor_nd_39 para representar ND 33/39 dependendo do contexto
+        if (item.codigo_catser?.startsWith('3.3.90.30') || item.codigo_catmat?.startsWith('3.3.90.30')) {
+            totalND30 += subtotal;
+        } else {
+            totalND39 += subtotal;
         }
-        
-        return texto;
-    }
-
-    // --- SERVIÇO SATELITAL ---
-    if (categoria === 'servico-satelital') {
-        const tipoServico = planejamento.tipo_equipamento || '[Tipo de Serviço]';
-        const proposito = planejamento.proposito || '[Propósito]';
-
-        let texto = `33.90.39 - Contratação de Serviço ${tipoServico}, visando ${proposito}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
-        
-        texto += `Cálculo:\n`;
-        items.forEach((item: any) => {
-            const unit = item.unidade_medida || 'UN';
-            const vlrUnit = item.valor_unitario || 0;
-            const desc = item.descricao_reduzida || item.descricao_item;
-            texto += `- ${desc}: ${formatCurrency(vlrUnit)}/${unit}.\n`;
-        });
-
-        texto += `\nFórmula: (Nr Eqp x Valor Contrato) x Período do Contrato.\n`;
-        items.forEach((item: any) => {
-            const unit = item.unidade_medida || 'UN';
-            const period = item.periodo || 0;
-            const qty = item.quantidade || 0;
-            const vlrUnit = item.valor_unitario || 0;
-            const desc = item.descricao_reduzida || item.descricao_item;
-            const totalItem = item.valor_total || (qty * period * vlrUnit);
-            
-            const periodFormatted = period.toString().replace('.', ',');
-            
-            texto += `- (${qty} ${desc} x ${formatCurrency(vlrUnit)}/${unit}) x ${periodFormatted} ${unit}${period > 1 ? 's' : ''} = ${formatCurrency(totalItem)}.\n`;
-        });
-
-        const totals = calculateServicoTotals(items);
-        texto += `\nTotal: ${formatCurrency(totals.totalGeral)}.\n`;
-        
-        if (items.length > 0) {
-            texto += `(Pregão ${formatPregao(items[0].numero_pregao)} - UASG ${formatCodug(items[0].uasg)})`;
-        }
-        
-        return texto;
-    }
-
-    // --- OUTROS SERVIÇOS ---
-    const categoriaFormatada = (categoria || "").replace('-', ' ').toUpperCase();
-    
-    let texto = `MEMÓRIA DE CÁLCULO - ${categoriaFormatada}\n`;
-    texto += `--------------------------------------------------\n`;
-    texto += `OM FAVORECIDA: ${context.organizacao}\n`;
-    texto += `FINALIDADE: Atender às necessidades de ${categoriaFormatada.toLowerCase()} durante a fase de ${fase}, com efetivo de ${context.efetivo} militares, pelo período de ${context.dias_operacao} ${diasText}.\n\n`;
-    
-    texto += `DETALHAMENTO DOS ITENS:\n`;
-    
-    items.forEach((item: ItemAquisicaoServico, index: number) => {
-        const period = (item as any).periodo || 1;
-        const totalItem = (item.quantidade || 0) * period * item.valor_unitario;
-        texto += `${index + 1}. ${item.descricao_item}\n`;
-        texto += `   - Quantidade: ${item.quantidade} ${item.unidade_medida}\n`;
-        texto += `   - Valor Unitário: ${formatCurrency(item.valor_unitario)}\n`;
-        texto += `   - Subtotal: ${formatCurrency(totalItem)}\n`;
-        texto += `   - Amparo: Pregão ${formatPregao(item.numero_pregao)} (UASG: ${formatCodug(item.uasg)})\n\n`;
     });
 
-    const totals = calculateServicoTotals(items);
-    texto += `--------------------------------------------------\n`;
-    texto += `VALOR TOTAL DO PLANEJAMENTO: ${formatCurrency(totals.totalGeral)}\n`;
-    if (totals.totalND30 > 0) texto += `Dotação ND 33.90.30: ${formatCurrency(totals.totalND30)}\n`;
-    if (totals.totalND39 > 0) texto += `Dotação ND 33.90.39: ${formatCurrency(totals.totalND39)}\n`;
-
-    return texto;
+    return {
+        totalND30,
+        totalND39,
+        totalGeral: totalND30 + totalND39
+    };
 };
 
-export const generateServicoMemoriaCalculo = generateMaterialConsumoMemoriaCalculo;
+export const generateServicoMemory = (reg: ServicoTerceiroRegistro): string => {
+    const details = reg.detalhes_planejamento;
+    if (!details || !details.itens_selecionados) return "Sem detalhes de planejamento.";
+
+    const lines: string[] = [];
+    const isTransport = reg.categoria === 'transporte-coletivo';
+    const trips = isTransport ? (Number(details.numero_viagens) || 1) : 1;
+
+    lines.push(`CATEGORIA: ${reg.categoria.toUpperCase()}`);
+    
+    if (isTransport) {
+        lines.push(`ITINERÁRIO: ${details.itinerario || 'N/A'}`);
+        lines.push(`DISTÂNCIA ITINERÁRIO: ${details.distancia_itinerario || 0} Km`);
+        lines.push(`DISTÂNCIA PERCORRIDA/DIA: ${details.distancia_percorrida_dia || 0} Km`);
+        lines.push(`NÚMERO DE VIAGENS: ${trips}`);
+    }
+
+    lines.push("");
+    lines.push("CÁLCULO:");
+
+    details.itens_selecionados.forEach((item: any) => {
+        const qty = item.quantidade || 0;
+        const period = item.periodo || 0;
+        const unit = item.unidade_medida || 'un';
+        const valUnit = formatCurrency(item.valor_unitario);
+        const totalItem = formatCurrency(qty * period * item.valor_unitario * trips);
+        
+        // Adiciona informação de limite diário se existir
+        const limitInfo = (isTransport && item.sub_categoria === 'meio-transporte' && item.has_daily_limit && item.daily_limit_km)
+            ? ` (até ${item.daily_limit_km} Km)`
+            : "";
+
+        if (isTransport) {
+            lines.push(`- ${item.descricao_reduzida || item.descricao_item}: ${qty} un x ${period} ${unit} x ${trips} viagens x ${valUnit}/${unit}${limitInfo} = ${totalItem}`);
+        } else if (reg.categoria === 'fretamento-aereo') {
+            lines.push(`- ${item.descricao_reduzida || item.descricao_item}: ${qty} HV x ${valUnit}/HV = ${totalItem}`);
+        } else {
+            lines.push(`- ${item.descricao_reduzida || item.descricao_item}: ${qty} un x ${period} ${unit} x ${valUnit}/${unit} = ${totalItem}`);
+        }
+    });
+
+    lines.push("");
+    lines.push(`VALOR TOTAL: ${formatCurrency(reg.valor_total)}`);
+
+    return lines.join("\n");
+};

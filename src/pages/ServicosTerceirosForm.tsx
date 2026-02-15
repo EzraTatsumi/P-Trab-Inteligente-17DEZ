@@ -268,7 +268,7 @@ const ItemsTable = ({
                                                             onChange={(e) => onLimitChange?.(item.id, e.target.value)}
                                                             onWheel={(e) => e.currentTarget.blur()}
                                                             onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                            className="h-7 w-14 text-center text-[10px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none px-1"
+                                                            className="h-8 w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                             disabled={!isPTrabEditable}
                                                         />
                                                         <span className="text-[9px] font-bold text-blue-600">Km</span>
@@ -1210,8 +1210,13 @@ const ServicosTerceirosForm = () => {
 
                                             const totalKmAdicional = item.categoria === 'transporte-coletivo'
                                                 ? item.detalhes_planejamento.itens_selecionados
-                                                    .filter((i: any) => i.sub_categoria === 'meio-transporte' && i.has_daily_limit)
-                                                    .reduce((acc: number, i: any) => acc + (Number(i.daily_limit_km || 0) * Number(i.periodo || 0)), 0)
+                                                    .filter((i: any) => i.sub_categoria === 'servico-adicional')
+                                                    .reduce((acc: number, i: any) => {
+                                                        const qty = i.quantidade || 0;
+                                                        const period = i.periodo || 1; // Km Adicional geralmente não tem período, mas se tiver, multiplicamos
+                                                        const trips = Number(item.detalhes_planejamento.numero_viagens) || 1;
+                                                        return acc + (qty * period * trips);
+                                                    }, 0)
                                                 : 0;
 
                                             return (
@@ -1332,8 +1337,13 @@ const ServicosTerceirosForm = () => {
 
                                                     const totalKmAdicional = reg.categoria === 'transporte-coletivo'
                                                         ? reg.detalhes_planejamento?.itens_selecionados
-                                                            ?.filter((i: any) => i.sub_categoria === 'meio-transporte' && i.has_daily_limit)
-                                                            ?.reduce((acc: number, i: any) => acc + (Number(i.daily_limit_km || 0) * Number(i.periodo || 0)), 0)
+                                                            ?.filter((i: any) => i.sub_categoria === 'servico-adicional')
+                                                            ?.reduce((acc: number, i: any) => {
+                                                                const qty = i.quantidade || 0;
+                                                                const period = i.periodo || 1;
+                                                                const trips = Number(reg.detalhes_planejamento.numero_viagens) || 1;
+                                                                return acc + (qty * period * trips);
+                                                            }, 0)
                                                         : 0;
 
                                                     return (
