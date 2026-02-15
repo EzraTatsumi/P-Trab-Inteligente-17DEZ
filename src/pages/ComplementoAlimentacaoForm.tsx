@@ -1,39 +1,29 @@
-"use client";
-
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { 
-    ArrowLeft, 
-    Loader2, 
-    Save, 
-    Sparkles, 
-    AlertCircle, 
-    Trash2, 
-    XCircle, 
-    Pencil,
-    UtensilsCrossed,
-    Plus
-} from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, Edit, Plus, Users, XCircle, Pencil, Sparkles, AlertCircle, RefreshCw, Check, Package, Minus, ChevronDown, ChevronUp, FileSpreadsheet, FileText, Utensils, Droplets, Coffee, Eraser, History } from "lucide-react";
+import { sanitizeError } from "@/lib/errorUtils";
+import { useFormNavigation } from "@/hooks/useFormNavigation";
 import { useMilitaryOrganizations } from "@/hooks/useMilitaryOrganizations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { formatCodug, formatCurrency } from "@/lib/formatUtils";
+import { Tables, TablesInsert, TablesUpdate, Json } from "@/integrations/supabase/types";
+import { formatCurrency, formatCodug, formatPregao } from "@/lib/formatUtils";
 import { PTrabData, fetchPTrabData, fetchPTrabRecords } from "@/lib/ptrabUtils";
-import { Badge } from "@/components/ui/badge";
-import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
-import { OmSelector } from "@/components/OmSelector";
-import { cn } from "@/lib/utils";
 import { 
     ComplementoAlimentacaoRegistro, 
-    calculateComplementoTotals,
-    generateComplementoMemoriaCalculo 
+    ConsolidatedComplementoRecord,
+    AcquisitionGroup,
+    calculateGroupTotals,
+    generateComplementoMemoriaCalculo,
 } from "@/lib/complementoAlimentacaoUtils";
-import ComplementoAlimentacaoMemoria from "@/components/ComplementoAlimentacaoMemoria";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,124 +34,221 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import ComplementoAlimentacaoItemSelector from "@/components/ComplementoAlimentacaoItemSelector";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { FaseAtividadeSelect } from "@/components/FaseAtividadeSelect";
+import { OmSelector } from "@/components/OmSelector";
+import { RmSelector } from "@/components/RmSelector";
+import { cn } from "@/lib/utils"; 
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AcquisitionGroupForm from "@/components/AcquisitionGroupForm";
+import ComplementoAlimentacaoMemoria from "@/components/ComplementoAlimentacaoMemoria";
+import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo"; 
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; 
+import AcquisitionItemSelectorDialog from "@/components/AcquisitionItemSelectorDialog"; 
+import PageMetadata from "@/components/PageMetadata";
+import { PublicoSelect } from "@/components/PublicoSelect";
+import CurrencyInput from "@/components/CurrencyInput";
+import { useSession } from "@/components/SessionContextProvider";
 
-interface OMData {
+interface LancheItem {
     id: string;
-    nome_om: string;
-    codug_om: string;
-    rm_vinculacao: string;
-    codug_rm_vinculacao: string;
-    cidade: string | null;
-    ativo: boolean;
+    descricao: string;
+    quantidade: number;
+    valor_unitario: number;
 }
 
-interface PendingComplementoItem {
+// Tipo para o item calculado na lista pendente
+interface StagedComplemento {
     tempId: string;
-    dbId?: string;
-    organizacao: string;
-    ug: string;
-    om_detentora: string;
-    ug_detentora: string;
+    categoria: 'genero' | 'agua' | 'lanche';
+    om_favorecida: string;
+    ug_favorecida: string;
+    om_destino: string;
+    ug_destino: string;
     dias_operacao: number;
     efetivo: number;
     fase_atividade: string;
-    group_name: string;
-    group_purpose?: string | null;
-    categoria_complemento: string;
-    publico?: string | null;
-    valor_etapa_qs?: number | null;
-    pregao_qs?: string | null;
-    om_qs?: string | null;
-    ug_qs?: string | null;
-    valor_etapa_qr?: number | null;
-    pregao_qr?: string | null;
-    om_qr?: string | null;
-    ug_qr?: string | null;
-    agua_consumo_dia?: number | null;
-    agua_tipo_envase?: string | null;
-    agua_volume_envase?: number | null;
-    agua_valor_unitario?: number | null;
-    agua_pregao?: string | null;
-    itens_aquisicao: any[];
+    publico: string;
+    
+    // Valores calculados
     valor_total: number;
     valor_nd_30: number;
     valor_nd_39: number;
+    
+    // Detalhes específicos para Gênero
+    total_qs?: number;
+    total_qr?: number;
+    
+    // Itens para Lanche
+    lanche_items?: LancheItem[];
+    
+    // Dados brutos do formulário para o dirty check
+    formDataSnapshot: any;
 }
 
-interface ConsolidatedComplementoRecord {
-    groupKey: string;
-    organizacao: string;
-    ug: string;
-    records: ComplementoAlimentacaoRegistro[];
-    totalGeral: number;
+// Estado inicial para o formulário
+interface ComplementoAlimentacaoFormState {
+    om_favorecida: string; 
+    ug_favorecida: string; 
+    rm_vinculacao: string;
+    codug_rm_vinculacao: string;
+    om_destino: string; 
+    ug_destino: string; 
+    fase_atividade: string;
+    categoria_complemento: 'genero' | 'agua' | 'lanche';
+    
+    // Campos unificados
+    efetivo: number;
+    dias_operacao: number;
+    publico: string;
+
+    // Gênero Alimentício
+    valor_etapa_qs: number;
+    pregao_qs: string;
+    om_qs: string;
+    ug_qs: string;
+    valor_etapa_qr: number;
+    pregao_qr: string;
+    om_qr: string;
+    ug_qr: string;
+
+    // Água Mineral
+    agua_consumo_dia: number;
+    agua_tipo_envase: string;
+    agua_volume_envase: number;
+    agua_valor_unitario: number;
+    agua_pregao: string;
+    agua_om_uasg: string;
+    agua_ug_uasg: string;
+
+    // Lanche/Catanho
+    lanche_pregao: string;
+    lanche_om_uasg: string;
+    lanche_ug_uasg: string;
+    lanche_items: LancheItem[];
+
+    acquisitionGroups: AcquisitionGroup[];
 }
+
+const initialFormState: ComplementoAlimentacaoFormState = {
+    om_favorecida: "", 
+    ug_favorecida: "", 
+    rm_vinculacao: "",
+    codug_rm_vinculacao: "",
+    om_destino: "",
+    ug_destino: "",
+    fase_atividade: "",
+    categoria_complemento: 'genero',
+    
+    efetivo: 0,
+    dias_operacao: 0,
+    publico: "OSP",
+
+    valor_etapa_qs: 0,
+    pregao_qs: "",
+    om_qs: "",
+    ug_qs: "",
+    valor_etapa_qr: 0,
+    pregao_qr: "",
+    om_qr: "",
+    ug_qr: "",
+
+    agua_consumo_dia: 0,
+    agua_tipo_envase: "Garrafa",
+    agua_volume_envase: 0.5,
+    agua_valor_unitario: 0,
+    agua_pregao: "",
+    agua_om_uasg: "",
+    agua_ug_uasg: "",
+
+    lanche_pregao: "",
+    lanche_om_uasg: "",
+    lanche_ug_uasg: "",
+    lanche_items: [],
+
+    acquisitionGroups: [],
+};
+
+/**
+ * Função de Dirty Check refinada.
+ */
+const compareFormData = (current: ComplementoAlimentacaoFormState, staged: ComplementoAlimentacaoFormState) => {
+    if (
+        current.om_favorecida !== staged.om_favorecida ||
+        current.ug_favorecida !== staged.ug_favorecida ||
+        current.fase_atividade !== staged.fase_atividade ||
+        current.efetivo !== staged.efetivo ||
+        current.dias_operacao !== staged.dias_operacao ||
+        current.publico !== staged.publico ||
+        current.categoria_complemento !== staged.categoria_complemento
+    ) return true;
+
+    const cat = current.categoria_complemento;
+
+    if (cat === 'genero') {
+        if (
+            current.valor_etapa_qs !== staged.valor_etapa_qs ||
+            current.pregao_qs !== staged.pregao_qs ||
+            current.om_qs !== staged.om_qs ||
+            current.valor_etapa_qr !== staged.valor_etapa_qr ||
+            current.pregao_qr !== staged.pregao_qr ||
+            current.om_qr !== staged.om_qr
+        ) return true;
+    } else if (cat === 'agua') {
+        if (
+            current.agua_consumo_dia !== staged.agua_consumo_dia ||
+            current.agua_tipo_envase !== staged.agua_tipo_envase ||
+            current.agua_volume_envase !== staged.agua_volume_envase ||
+            current.agua_valor_unitario !== staged.agua_valor_unitario ||
+            current.agua_pregao !== staged.agua_pregao ||
+            current.agua_om_uasg !== staged.agua_om_uasg ||
+            current.agua_ug_uasg !== staged.agua_ug_uasg
+        ) return true;
+    } else if (cat === 'lanche') {
+        if (
+            current.lanche_pregao !== staged.lanche_pregao ||
+            current.lanche_om_uasg !== staged.lanche_om_uasg ||
+            current.lanche_ug_uasg !== staged.lanche_ug_uasg ||
+            JSON.stringify(current.lanche_items) !== JSON.stringify(staged.lanche_items)
+        ) return true;
+    }
+
+    return false;
+};
 
 const ComplementoAlimentacaoForm = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const ptrabId = searchParams.get('ptrabId');
-    
     const queryClient = useQueryClient();
-    const { data: oms } = useMilitaryOrganizations();
-
-    // --- ESTADOS DO FORMULÁRIO ---
-    const [omFavorecida, setOmFavorecida] = useState({ nome: "", ug: "", id: "" });
-    const [faseAtividade, setFaseAtividade] = useState("");
-    const [efetivo, setEfetivo] = useState<number>(0);
-    const [diasOperacao, setDiasOperacao] = useState<number>(0);
-    const [omDestino, setOmDestino] = useState({ nome: "", ug: "", id: "" });
-
-    const [groupName, setGroupName] = useState("");
-    const [groupPurpose, setGroupPurpose] = useState("");
-    const [categoriaComplemento, setCategoriaComplemento] = useState<string>("ETAPA_ALIMENTACAO");
+    const { user } = useSession();
+    const { handleEnterToNextField } = useFormNavigation();
     
-    // Estados específicos para Etapa de Alimentação
-    const [publico, setPublico] = useState("");
-    const [valorEtapaQs, setValorEtapaQs] = useState<number | "">("");
-    const [pregaoQs, setPregaoQs] = useState("");
-    const [omQs, setOmQs] = useState("");
-    const [ugQs, setUgQs] = useState("");
-    const [valorEtapaQr, setValorEtapaQr] = useState<number | "">("");
-    const [pregaoQr, setPregaoQr] = useState("");
-    const [omQr, setOmQr] = useState("");
-    const [ugQr, setUgQr] = useState("");
-
-    // Estados específicos para Água Mineral
-    const [aguaConsumoDia, setAguaConsumoDia] = useState<number | "">("");
-    const [aguaTipoEnvase, setAguaTipoEnvase] = useState("GARRAFAO_20L");
-    const [aguaVolumeEnvase, setAguaVolumeEnvase] = useState<number | "">("");
-    const [aguaValorUnitario, setAguaValorUnitario] = useState<number | "">("");
-    const [aguaPregao, setAguaPregao] = useState("");
-
-    // Estados para Itens de Aquisição (Outros)
-    const [selectedItems, setSelectedItems] = useState<any[]>([]);
-    
-    const [pendingItems, setPendingItems] = useState<PendingComplementoItem[]>([]);
+    const [formData, setFormData] = useState<ComplementoAlimentacaoFormState>(initialFormState);
+    const [pendingItems, setPendingItems] = useState<StagedComplemento[]>([]);
+    const [lastStagedFormData, setLastStagedFormData] = useState<ComplementoAlimentacaoFormState | null>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [activeCompositionId, setActiveCompositionId] = useState<string | null>(null);
-    
-    const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
-    const [memoriaEdit, setMemoriaEdit] = useState("");
-    
+    const [groupToReplace, setGroupToReplace] = useState<ConsolidatedComplementoRecord | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-    const [recordToDelete, setRecordToDelete] = useState<ComplementoAlimentacaoRegistro | null>(null);
+    const [groupToDelete, setGroupToDelete] = useState<ConsolidatedComplementoRecord | null>(null);
+    
+    const [selectedOmFavorecidaId, setSelectedOmFavorecidaId] = useState<string | undefined>(undefined);
+    const [selectedOmQrId, setSelectedOmQrId] = useState<string | undefined>(undefined);
+    const [selectedOmAguaId, setSelectedOmAguaId] = useState<string | undefined>(undefined);
+    const [selectedOmLancheId, setSelectedOmLancheId] = useState<string | undefined>(undefined);
+    
+    const [isItemSelectorOpen, setIsItemSelectorOpen] = useState(false);
+    const [itemsToPreselect, setItemsToPreselect] = useState<ItemAquisicao[]>([]);
+    const [selectedItemsFromSelector, setSelectedItemsFromSelector] = useState<ItemAquisicao[] | null>(null);
+    
+    // ESTADOS DE EDIÇÃO DE MEMÓRIA
+    const [editingMemoriaId, setEditingMemoriaId] = useState<string | null>(null);
+    const [memoriaEdit, setMemoriaEdit] = useState<string>("");
 
-    // --- CÁLCULOS AUXILIARES ---
-    const currentTotals = useMemo(() => {
-        return calculateComplementoTotals({
-            categoria_complemento: categoriaComplemento,
-            efetivo,
-            dias_operacao: diasOperacao,
-            valor_etapa_qs: Number(valorEtapaQs) || 0,
-            valor_etapa_qr: Number(valorEtapaQr) || 0,
-            agua_consumo_dia: Number(aguaConsumoDia) || 0,
-            agua_valor_unitario: Number(aguaValorUnitario) || 0,
-            itens_aquisicao: selectedItems
-        });
-    }, [categoriaComplemento, efetivo, diasOperacao, valorEtapaQs, valorEtapaQr, aguaConsumoDia, aguaValorUnitario, selectedItems]);
+    // ESTADO DE SUGESTÃO
+    const [hasSuggestion, setHasSuggestion] = useState(false);
 
-    // --- DATA FETCHING ---
     const { data: ptrabData, isLoading: isLoadingPTrab } = useQuery<PTrabData>({
         queryKey: ['ptrabData', ptrabId],
         queryFn: () => fetchPTrabData(ptrabId!),
@@ -171,618 +258,1186 @@ const ComplementoAlimentacaoForm = () => {
     const { data: registros, isLoading: isLoadingRegistros } = useQuery<ComplementoAlimentacaoRegistro[]>({
         queryKey: ['complementoAlimentacaoRegistros', ptrabId],
         queryFn: async () => {
-            const data = await fetchPTrabRecords('complemento_alimentacao_registros' as any, ptrabId!);
-            return data as unknown as ComplementoAlimentacaoRegistro[];
+            const data = await fetchPTrabRecords('complemento_alimentacao_registros', ptrabId!);
+            return (data as any[]).map(r => ({
+                ...r,
+                itens_aquisicao: (r.itens_aquisicao as unknown as ItemAquisicao[]) || []
+            })) as unknown as ComplementoAlimentacaoRegistro[];
         },
         enabled: !!ptrabId,
     });
 
     const consolidatedRegistros = useMemo<ConsolidatedComplementoRecord[]>(() => {
         if (!registros) return [];
-        const groups = (registros as ComplementoAlimentacaoRegistro[]).reduce((acc, reg) => {
-            const key = `${reg.organizacao}|${reg.ug}`;
+
+        const groups = (registros as ComplementoAlimentacaoRegistro[]).reduce((acc, registro) => {
+            const key = [
+                registro.organizacao,
+                registro.ug,
+                registro.fase_atividade,
+            ].join('|');
+
             if (!acc[key]) {
                 acc[key] = {
-                    groupKey: key,
-                    organizacao: reg.organizacao,
-                    ug: reg.ug,
+                    groupKey: key, 
+                    organizacao: registro.organizacao,
+                    ug: registro.ug,
+                    om_detentora: registro.om_detentora,
+                    ug_detentora: registro.ug_detentora,
+                    dias_operacao: registro.dias_operacao,
+                    efetivo: registro.efetivo, 
+                    fase_atividade: registro.fase_atividade,
                     records: [],
-                    totalGeral: 0
+                    totalGeral: 0,
+                    totalND30: 0,
+                    totalND39: 0,
                 };
             }
-            acc[key].records.push(reg);
-            acc[key].totalGeral += Number(reg.valor_total || 0);
+
+            acc[key].records.push(registro);
+            acc[key].totalGeral += Number(registro.valor_total || 0);
+            acc[key].totalND30 += Number(registro.valor_nd_30 || 0);
+            acc[key].totalND39 += Number(registro.valor_nd_39 || 0);
+
             return acc;
         }, {} as Record<string, ConsolidatedComplementoRecord>);
 
         return Object.values(groups).sort((a, b) => a.organizacao.localeCompare(b.organizacao));
     }, [registros]);
 
-    // --- MUTATIONS ---
-    const saveMutation = useMutation({
-        mutationFn: async (itemsToSave: PendingComplementoItem[]) => {
-            const idsToDelete = itemsToSave.map(i => i.dbId).filter(Boolean) as string[];
-            
-            if (idsToDelete.length > 0) {
-                const { error: deleteError } = await supabase.from('complemento_alimentacao_registros' as any).delete().in('id', idsToDelete);
-                if (deleteError) throw deleteError;
-            }
+    const { data: oms, isLoading: isLoadingOms } = useMilitaryOrganizations();
+    
+    // --- Variáveis Derivadas ---
+    const isBaseFormReady = formData.om_favorecida.length > 0 && formData.fase_atividade.length > 0;
+    const isGenero = formData.categoria_complemento === 'genero';
 
-            const records = itemsToSave.map(item => ({
-                p_trab_id: ptrabId,
-                organizacao: item.organizacao,
-                ug: item.ug,
-                om_detentora: item.om_detentora,
-                ug_detentora: item.ug_detentora,
-                dias_operacao: item.dias_operacao,
-                efetivo: item.efetivo,
-                fase_atividade: item.fase_atividade,
-                group_name: item.group_name,
-                group_purpose: item.group_purpose,
-                categoria_complemento: item.categoria_complemento,
-                publico: item.publico,
-                valor_etapa_qs: item.valor_etapa_qs,
-                pregao_qs: item.pregao_qs,
-                om_qs: item.om_qs,
-                ug_qs: item.ug_qs,
-                valor_etapa_qr: item.valor_etapa_qr,
-                pregao_qr: item.pregao_qr,
-                om_qr: item.om_qr,
-                ug_qr: item.ug_qr,
-                agua_consumo_dia: item.agua_consumo_dia,
-                agua_tipo_envase: item.agua_tipo_envase,
-                agua_volume_envase: item.agua_volume_envase,
-                agua_valor_unitario: item.agua_valor_unitario,
-                agua_pregao: item.agua_pregao,
-                itens_aquisicao: item.itens_aquisicao,
-                valor_total: item.valor_total,
-                valor_nd_30: item.valor_nd_30,
-                valor_nd_39: item.valor_nd_39,
-            }));
-            const { error } = await supabase.from('complemento_alimentacao_registros' as any).insert(records);
+    const getCategoryBadgeClasses = (categoria: string) => {
+        switch (categoria) {
+            case 'genero':
+                return "bg-green-100 text-green-800 hover:bg-green-100 border-green-200";
+            case 'agua':
+                return "bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200";
+            case 'lanche':
+                return "bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200";
+            default:
+                return "bg-gray-100 text-gray-800 hover:bg-gray-100 border-gray-200";
+        }
+    };
+
+    // --- Lógica de Sugestões ---
+
+    const loadSuggestions = async (category: string) => {
+        if (!user?.id || editingId) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('complemento_alimentacao_registros')
+                .select('*')
+                .eq('categoria_complemento', category)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (error) throw error;
+
+            if (data) {
+                setFormData(prev => {
+                    const updates: any = {};
+                    if (category === 'genero') {
+                        updates.valor_etapa_qs = data.valor_etapa_qs || 0;
+                        updates.pregao_qs = data.pregao_qs || "";
+                        updates.om_qs = data.om_qs || "";
+                        updates.ug_qs = data.ug_qs || "";
+                        updates.valor_etapa_qr = data.valor_etapa_qr || 0;
+                        updates.pregao_qr = data.pregao_qr || "";
+                        updates.om_qr = data.om_qr || "";
+                        updates.ug_qr = data.ug_qr || "";
+                        
+                        // Atualiza IDs dos seletores
+                        const omQr = oms?.find(o => o.nome_om === data.om_qr && o.codug_om === data.ug_qr);
+                        setSelectedOmQrId(omQr?.id);
+                    } else if (category === 'agua') {
+                        updates.agua_valor_unitario = data.agua_valor_unitario || 0;
+                        updates.agua_pregao = data.agua_pregao || "";
+                        updates.agua_om_uasg = data.om_detentora || "";
+                        updates.agua_ug_uasg = data.ug_detentora || "";
+                        
+                        const omAgua = oms?.find(o => o.nome_om === data.om_detentora && o.codug_om === data.ug_detentora);
+                        setSelectedOmAguaId(omAgua?.id);
+                    } else if (category === 'lanche') {
+                        updates.lanche_pregao = data.pregao_qs || ""; // Usando pregao_qs como padrão para lanche
+                        updates.lanche_om_uasg = data.om_detentora || "";
+                        updates.lanche_ug_uasg = data.ug_detentora || "";
+                        updates.lanche_items = (data.itens_aquisicao as unknown as LancheItem[]) || [];
+                        
+                        const omLanche = oms?.find(o => o.nome_om === data.om_detentora && o.codug_om === data.ug_detentora);
+                        setSelectedOmLancheId(omLanche?.id);
+                    }
+                    return { ...prev, ...updates };
+                });
+                setHasSuggestion(true);
+            } else {
+                setHasSuggestion(false);
+            }
+        } catch (err) {
+            console.error("Erro ao carregar sugestões:", err);
+        }
+    };
+
+    // Carrega sugestões ao trocar de categoria
+    useEffect(() => {
+        if (isBaseFormReady && !editingId) {
+            loadSuggestions(formData.categoria_complemento);
+        }
+    }, [formData.categoria_complemento, isBaseFormReady, editingId, oms]);
+
+    // --- Funções de Reset ---
+
+    const handleFullReset = () => {
+        setFormData(initialFormState);
+        setPendingItems([]);
+        setLastStagedFormData(null);
+        setEditingId(null);
+        setGroupToReplace(null);
+        setSelectedOmFavorecidaId(undefined);
+        setSelectedOmQrId(undefined);
+        setSelectedOmAguaId(undefined);
+        setSelectedOmLancheId(undefined);
+        setHasSuggestion(false);
+        toast.info("Formulário resetado para novo registro.");
+    };
+
+    const handleClearForm = () => {
+        setFormData(prev => ({
+            ...initialFormState,
+            om_favorecida: prev.om_favorecida,
+            ug_favorecida: prev.ug_favorecida,
+            rm_vinculacao: prev.rm_vinculacao,
+            codug_rm_vinculacao: prev.codug_rm_vinculacao,
+            fase_atividade: prev.fase_atividade,
+            categoria_complemento: prev.categoria_complemento,
+        }));
+        setHasSuggestion(false);
+        toast.info("Campos do formulário limpos.");
+    };
+
+    // --- Mutations ---
+
+    const mapToDbInsert = (item: StagedComplemento): TablesInsert<'complemento_alimentacao_registros'> => {
+        const base: TablesInsert<'complemento_alimentacao_registros'> = {
+            p_trab_id: ptrabId!,
+            organizacao: item.om_favorecida,
+            ug: item.ug_favorecida,
+            om_detentora: item.om_destino,
+            ug_detentora: item.ug_destino,
+            dias_operacao: item.dias_operacao,
+            efetivo: item.efetivo,
+            fase_atividade: item.fase_atividade,
+            categoria_complemento: item.categoria,
+            publico: item.publico,
+            valor_total: item.valor_total,
+            valor_nd_30: item.valor_nd_30,
+            valor_nd_39: item.valor_nd_39,
+            group_name: item.categoria === 'genero' ? 'Gênero Alimentício' : item.categoria === 'agua' ? 'Água Mineral' : 'Lanche/Catanho',
+        };
+
+        if (item.categoria === 'genero') {
+            const snap = item.formDataSnapshot;
+            return {
+                ...base,
+                valor_etapa_qs: snap.valor_etapa_qs,
+                pregao_qs: snap.pregao_qs,
+                om_qs: snap.om_qs,
+                ug_qs: snap.ug_qs,
+                valor_etapa_qr: snap.valor_etapa_qr,
+                pregao_qr: snap.pregao_qr,
+                om_qr: snap.om_qr,
+                ug_qr: snap.ug_qr,
+            };
+        } else if (item.categoria === 'agua') {
+            const snap = item.formDataSnapshot;
+            return {
+                ...base,
+                agua_consumo_dia: snap.agua_consumo_dia,
+                agua_tipo_envase: snap.agua_tipo_envase,
+                agua_volume_envase: snap.agua_volume_envase,
+                agua_valor_unitario: snap.agua_valor_unitario,
+                agua_pregao: snap.agua_pregao,
+            };
+        } else {
+            const snap = item.formDataSnapshot;
+            return {
+                ...base,
+                pregao_qs: snap.lanche_pregao, // Salvando pregão do lanche em pregao_qs
+                itens_aquisicao: item.lanche_items as unknown as Json,
+            };
+        }
+    };
+
+    const insertMutation = useMutation({
+        mutationFn: async (items: StagedComplemento[]) => {
+            const recordsToInsert = items.map(mapToDbInsert);
+            const { error } = await supabase.from('complemento_alimentacao_registros').insert(recordsToInsert);
             if (error) throw error;
         },
         onSuccess: () => {
-            toast.success(editingId ? "Registro atualizado com sucesso!" : "Registros salvos com sucesso!");
-            resetForm();
+            toast.success("Registros salvos com sucesso!");
+            handleFullReset();
             queryClient.invalidateQueries({ queryKey: ['complementoAlimentacaoRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
         },
-        onError: (err) => toast.error("Erro ao salvar: " + err.message)
+        onError: (error) => toast.error("Falha ao salvar.", { description: sanitizeError(error) })
+    });
+
+    const replaceGroupMutation = useMutation({
+        mutationFn: async ({ oldIds, newItems }: { oldIds: string[], newItems: StagedComplemento[] }) => {
+            // 1. Delete old records
+            const { error: deleteError } = await supabase
+                .from('complemento_alimentacao_registros')
+                .delete()
+                .in('id', oldIds);
+            if (deleteError) throw deleteError;
+            
+            // 2. Insert new records
+            const recordsToInsert = newItems.map(mapToDbInsert);
+            const { error: insertError } = await supabase
+                .from('complemento_alimentacao_registros')
+                .insert(recordsToInsert);
+            if (insertError) throw insertError;
+        },
+        onSuccess: () => {
+            toast.success("Lote atualizado com sucesso!");
+            handleFullReset();
+            queryClient.invalidateQueries({ queryKey: ['complementoAlimentacaoRegistros', ptrabId] });
+            queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
+        },
+        onError: (error) => toast.error("Falha ao atualizar lote.", { description: sanitizeError(error) })
     });
 
     const deleteMutation = useMutation({
         mutationFn: async (ids: string[]) => {
-            const { error } = await supabase.from('complemento_alimentacao_registros' as any).delete().in('id', ids);
+            const { error } = await supabase.from('complemento_alimentacao_registros').delete().in('id', ids);
             if (error) throw error;
         },
         onSuccess: () => {
-            toast.success("Registro excluído.");
+            toast.success("Lote excluído.");
             queryClient.invalidateQueries({ queryKey: ['complementoAlimentacaoRegistros', ptrabId] });
             queryClient.invalidateQueries({ queryKey: ['ptrabTotals', ptrabId] });
             setShowDeleteDialog(false);
-            setRecordToDelete(null);
         },
-        onError: (err) => toast.error("Erro ao excluir: " + err.message)
+        onError: (error) => toast.error("Falha ao excluir.", { description: sanitizeError(error) })
     });
 
-    // --- HANDLERS ---
-    const resetForm = () => {
-        setPendingItems([]);
-        setOmFavorecida({ nome: "", ug: "", id: "" });
-        setFaseAtividade("");
-        setEfetivo(0);
-        setDiasOperacao(0);
-        setOmDestino({ nome: "", ug: "", id: "" });
-        setGroupName("");
-        setGroupPurpose("");
-        setCategoriaComplemento("ETAPA_ALIMENTACAO");
-        setPublico("");
-        setValorEtapaQs("");
-        setPregaoQs("");
-        setOmQs("");
-        setUgQs("");
-        setValorEtapaQr("");
-        setPregaoQr("");
-        setOmQr("");
-        setUgQr("");
-        setAguaConsumoDia("");
-        setAguaTipoEnvase("GARRAFAO_20L");
-        setAguaVolumeEnvase("");
-        setAguaValorUnitario("");
-        setAguaPregao("");
-        setSelectedItems([]);
-        setEditingId(null);
-        setActiveCompositionId(null);
-    };
-
-    const handleOmFavorecidaChange = (omData: OMData | undefined) => {
+    // Lógica de pré-seleção das UASGs baseada na OM Favorecida
+    const handleOmFavorecidaChange = (omData: any) => {
         if (omData) {
-            setOmFavorecida({ nome: omData.nome_om, ug: omData.codug_om, id: omData.id });
-            if (!omDestino.id) setOmDestino({ nome: omData.nome_om, ug: omData.codug_om, id: omData.id });
-        } else setOmFavorecida({ nome: "", ug: "", id: "" });
+            setSelectedOmFavorecidaId(omData.id);
+            setSelectedOmQrId(omData.id);
+            setSelectedOmAguaId(omData.id);
+            setSelectedOmLancheId(omData.id);
+
+            setFormData(prev => ({ 
+                ...prev, 
+                om_favorecida: omData.nome_om, 
+                ug_favorecida: omData.codug_om, 
+                rm_vinculacao: omData.rm_vinculacao,
+                codug_rm_vinculacao: omData.codug_rm_vinculacao,
+                om_qs: omData.rm_vinculacao,
+                ug_qs: omData.codug_rm_vinculacao,
+                om_qr: omData.nome_om,
+                ug_qr: omData.codug_om,
+                om_destino: omData.nome_om,
+                ug_destino: omData.codug_om,
+                agua_om_uasg: omData.nome_om,
+                agua_ug_uasg: omData.codug_om,
+                lanche_om_uasg: omData.nome_om,
+                lanche_ug_uasg: omData.codug_om
+            }));
+        }
     };
 
-    const handleAddToPending = () => {
-        if (!omFavorecida.nome || !faseAtividade || !groupName || efetivo <= 0 || diasOperacao <= 0) {
-            toast.warning("Preencha todos os campos obrigatórios.");
-            return;
+    // Cálculos em tempo real
+    const currentTotalQS = useMemo(() => {
+        return formData.efetivo * formData.valor_etapa_qs * formData.dias_operacao;
+    }, [formData.efetivo, formData.valor_etapa_qs, formData.dias_operacao]);
+
+    const currentTotalQR = useMemo(() => {
+        return formData.efetivo * formData.valor_etapa_qr * formData.dias_operacao;
+    }, [formData.efetivo, formData.valor_etapa_qr, formData.dias_operacao]);
+
+    const currentTotalAgua = useMemo(() => {
+        const totalLitros = formData.efetivo * formData.agua_consumo_dia * formData.dias_operacao;
+        if (formData.agua_volume_envase <= 0) return 0;
+        const totalGarrafas = Math.ceil(totalLitros / formData.agua_volume_envase);
+        return totalGarrafas * formData.agua_valor_unitario;
+    }, [formData.efetivo, formData.agua_consumo_dia, formData.dias_operacao, formData.agua_volume_envase, formData.agua_valor_unitario]);
+
+    const currentKitValue = useMemo(() => {
+        return formData.lanche_items.reduce((sum, item) => sum + (item.quantidade * item.valor_unitario), 0);
+    }, [formData.lanche_items]);
+
+    const currentTotalLanche = useMemo(() => {
+        return currentKitValue * formData.efetivo * formData.dias_operacao;
+    }, [currentKitValue, formData.efetivo, formData.dias_operacao]);
+
+    const currentCategoryTotal = useMemo(() => {
+        if (formData.categoria_complemento === 'genero') {
+            return currentTotalQS + currentTotalQR;
+        } else if (formData.categoria_complemento === 'agua') {
+            return currentTotalAgua;
+        } else {
+            return currentTotalLanche;
+        }
+    }, [formData.categoria_complemento, currentTotalQS, currentTotalQR, currentTotalAgua, currentTotalLanche]);
+
+    // Memo para Dirty Check
+    const isDirty = useMemo(() => {
+        if (pendingItems.length > 0 && lastStagedFormData) {
+            return compareFormData(formData, lastStagedFormData);
+        }
+        return false;
+    }, [formData, pendingItems.length, lastStagedFormData]);
+
+    // Lógica de cálculo e adição à lista pendente
+    const handleStageCalculation = () => {
+        const { categoria_complemento } = formData;
+        
+        let newItem: StagedComplemento;
+
+        if (categoria_complemento === 'genero') {
+            const totalQS = currentTotalQS;
+            const totalQR = currentTotalQR;
+            const totalGeral = totalQS + totalQR;
+
+            newItem = {
+                tempId: crypto.randomUUID(),
+                categoria: 'genero',
+                om_favorecida: formData.om_favorecida,
+                ug_favorecida: formData.ug_favorecida,
+                om_destino: formData.om_qr,
+                ug_destino: formData.ug_qr,
+                dias_operacao: formData.dias_operacao,
+                efetivo: formData.efetivo,
+                fase_atividade: formData.fase_atividade,
+                publico: formData.publico,
+                valor_total: totalGeral,
+                valor_nd_30: totalGeral,
+                valor_nd_39: 0,
+                total_qs: totalQS,
+                total_qr: totalQR,
+                formDataSnapshot: { ...formData }
+            };
+        } else if (categoria_complemento === 'agua') {
+            const totalValue = currentTotalAgua;
+            newItem = {
+                tempId: crypto.randomUUID(),
+                categoria: 'agua',
+                om_favorecida: formData.om_favorecida,
+                ug_favorecida: formData.ug_favorecida,
+                om_destino: formData.agua_om_uasg,
+                ug_destino: formData.agua_ug_uasg,
+                dias_operacao: formData.dias_operacao,
+                efetivo: formData.efetivo,
+                fase_atividade: formData.fase_atividade,
+                publico: formData.publico,
+                valor_total: totalValue,
+                valor_nd_30: totalValue,
+                valor_nd_39: 0,
+                formDataSnapshot: { ...formData }
+            };
+        } else {
+            const totalValue = currentTotalLanche;
+            newItem = {
+                tempId: crypto.randomUUID(),
+                categoria: 'lanche',
+                om_favorecida: formData.om_favorecida,
+                ug_favorecida: formData.ug_favorecida,
+                om_destino: formData.lanche_om_uasg,
+                ug_destino: formData.lanche_ug_uasg,
+                dias_operacao: formData.dias_operacao,
+                efetivo: formData.efetivo,
+                fase_atividade: formData.fase_atividade,
+                publico: formData.publico,
+                valor_total: totalValue,
+                valor_nd_30: totalValue,
+                valor_nd_39: 0,
+                lanche_items: [...formData.lanche_items],
+                formDataSnapshot: { ...formData }
+            };
         }
 
-        const compositionId = editingId || activeCompositionId || crypto.randomUUID();
-        if (!editingId && !activeCompositionId) setActiveCompositionId(compositionId);
+        if (editingId) {
+            // No modo edição, substituímos a lista pendente pelo novo cálculo
+            setPendingItems([newItem]);
+        } else {
+            setPendingItems(prev => [...prev, newItem]);
+        }
+        
+        setLastStagedFormData({ ...formData }); 
+        toast.success(editingId ? "Cálculo atualizado para revisão." : "Item adicionado à lista de revisão.");
+    };
 
-        const newItem: PendingComplementoItem = {
-            tempId: compositionId,
-            dbId: editingId || undefined,
-            organizacao: omFavorecida.nome,
-            ug: omFavorecida.ug,
-            om_detentora: omDestino.nome,
-            ug_detentora: omDestino.ug || omFavorecida.ug,
-            dias_operacao: diasOperacao,
-            efetivo: efetivo,
-            fase_atividade: faseAtividade,
-            group_name: groupName,
-            group_purpose: groupPurpose,
-            categoria_complemento: categoriaComplemento,
-            publico,
-            valor_etapa_qs: Number(valorEtapaQs) || null,
-            pregao_qs: pregaoQs,
-            om_qs: omQs,
-            ug_qs: ugQs,
-            valor_etapa_qr: Number(valorEtapaQr) || null,
-            pregao_qr: pregaoQr,
-            om_qr: omQr,
-            ug_qr: ugQr,
-            agua_consumo_dia: Number(aguaConsumoDia) || null,
-            agua_tipo_envase: aguaTipoEnvase,
-            agua_volume_envase: Number(aguaVolumeEnvase) || null,
-            agua_valor_unitario: Number(aguaValorUnitario) || null,
-            agua_pregao: aguaPregao,
-            itens_aquisicao: selectedItems,
-            valor_total: currentTotals.totalGeral,
-            valor_nd_30: currentTotals.totalND30,
-            valor_nd_39: currentTotals.totalND39,
-        };
-
+    const handleRemovePending = (id: string) => {
         setPendingItems(prev => {
-            const filtered = prev.filter(p => p.tempId !== compositionId);
-            return [...filtered, newItem];
+            const newList = prev.filter(item => item.tempId !== id);
+            if (newList.length === 0) setLastStagedFormData(null);
+            return newList;
         });
-
-        setEditingId(null);
-        toast.info(activeCompositionId ? "Item atualizado na lista." : "Item adicionado à lista de pendentes.");
     };
 
-    const handleEdit = (reg: ComplementoAlimentacaoRegistro) => {
+    const totalGeralOM = useMemo(() => {
+        return pendingItems.reduce((sum, item) => sum + item.valor_total, 0);
+    }, [pendingItems]);
+
+    const isSaveDisabled = useMemo(() => {
+        if (!isBaseFormReady) return true;
+        if (formData.efetivo <= 0 || formData.dias_operacao <= 0) return true;
+        
+        if (isGenero) {
+            return (
+                formData.valor_etapa_qs <= 0 || 
+                !formData.pregao_qs || 
+                !formData.om_qs ||
+                formData.valor_etapa_qr <= 0 || 
+                !formData.pregao_qr || 
+                !formData.om_qr
+            );
+        } else if (formData.categoria_complemento === 'agua') {
+            return (
+                formData.agua_consumo_dia <= 0 ||
+                !formData.agua_tipo_envase ||
+                formData.agua_volume_envase <= 0 ||
+                formData.agua_valor_unitario <= 0 ||
+                !formData.agua_pregao ||
+                !formData.agua_om_uasg ||
+                !formData.agua_ug_uasg
+            );
+        } else {
+            return (
+                formData.lanche_items.length === 0 || 
+                formData.lanche_items.some(i => !i.descricao || i.quantidade <= 0 || i.valor_unitario <= 0) || 
+                !formData.lanche_pregao || 
+                !formData.lanche_om_uasg ||
+                !formData.lanche_ug_uasg
+            );
+        }
+    }, [formData, isBaseFormReady, isGenero]);
+
+    const addLancheItem = () => {
+        setFormData(prev => ({
+            ...prev,
+            lanche_items: [...prev.lanche_items, { id: crypto.randomUUID(), descricao: "", quantidade: 0, valor_unitario: 0 }]
+        }));
+    };
+
+    const removeLancheItem = (id: string) => {
+        setFormData(prev => ({
+            ...prev,
+            lanche_items: prev.lanche_items.filter(i => i.id !== id)
+        }));
+    };
+
+    const updateLancheItem = (id: string, field: keyof LancheItem, value: any) => {
+        setFormData(prev => ({
+            ...prev,
+            lanche_items: prev.lanche_items.map(i => i.id === id ? { ...i, [field]: value } : i)
+        }));
+    };
+
+    // --- Lógica de Edição de Memória ---
+    
+    const handleIniciarEdicaoMemoria = (registroId: string, memoriaCompleta: string) => {
+        setEditingMemoriaId(registroId);
+        setMemoriaEdit(memoriaCompleta || "");
+        toast.info("Editando memória de cálculo.");
+    };
+
+    const handleCancelarEdicaoMemoria = () => {
+        setEditingMemoriaId(null);
+        setMemoriaEdit("");
+    };
+
+    const handleSalvarMemoriaCustomizada = async (registroId: string) => {
+        try {
+            const { error } = await supabase
+                .from("complemento_alimentacao_registros")
+                .update({
+                    detalhamento_customizado: memoriaEdit.trim() || null, 
+                })
+                .eq("id", registroId);
+
+            if (error) throw error;
+
+            toast.success("Memória de cálculo atualizada!");
+            handleCancelarEdicaoMemoria();
+            queryClient.invalidateQueries({ queryKey: ["complementoAlimentacaoRegistros", ptrabId] });
+        } catch (error) {
+            toast.error(sanitizeError(error));
+        }
+    };
+
+    const handleRestaurarMemoriaAutomatica = async (registroId: string) => {
+        if (!confirm("Deseja restaurar a memória automática?")) return;
+        
+        try {
+            const { error } = await supabase
+                .from("complemento_alimentacao_registros")
+                .update({ detalhamento_customizado: null })
+                .eq("id", registroId);
+
+            if (error) throw error;
+
+            toast.success("Memória restaurada!");
+            queryClient.invalidateQueries({ queryKey: ["complementoAlimentacaoRegistros", ptrabId] });
+        } catch (error) {
+            toast.error(sanitizeError(error));
+        }
+    };
+
+    const handleEdit = (group: ConsolidatedComplementoRecord) => {
         if (pendingItems.length > 0) {
-            toast.warning("Salve ou limpe os itens pendentes antes de editar.");
+            toast.warning("Salve ou limpe os itens pendentes antes de editar um registro existente.");
             return;
         }
-
-        setEditingId(reg.id);
-        setActiveCompositionId(reg.id);
         
-        const omFav = oms?.find(om => om.nome_om === reg.organizacao && om.codug_om === reg.ug);
-        if (omFav) setOmFavorecida({ nome: omFav.nome_om, ug: omFav.codug_om, id: omFav.id });
-        else setOmFavorecida({ nome: reg.organizacao, ug: reg.ug, id: "" });
+        setPendingItems([]);
+        setLastStagedFormData(null);
+        setEditingId(group.records[0].id); 
+        setGroupToReplace(group);
         
-        setFaseAtividade(reg.fase_atividade);
-        setEfetivo(reg.efetivo);
-        setDiasOperacao(reg.dias_operacao);
+        const omFavorecidaToEdit = oms?.find(om => om.nome_om === group.organizacao && om.codug_om === group.ug);
+        setSelectedOmFavorecidaId(omFavorecidaToEdit?.id);
         
-        const omDest = oms?.find(om => om.nome_om === reg.om_detentora && om.codug_om === reg.ug_detentora);
-        if (omDest) setOmDestino({ nome: omDest.nome_om, ug: omDest.codug_om, id: omDest.id });
-        else setOmDestino({ nome: reg.om_detentora, ug: reg.ug_detentora, id: "" });
-
-        setGroupName(reg.group_name);
-        setGroupPurpose(reg.group_purpose || "");
-        setCategoriaComplemento(reg.categoria_complemento);
-        setPublico(reg.publico || "");
-        setValorEtapaQs(reg.valor_etapa_qs || "");
-        setPregaoQs(reg.pregao_qs || "");
-        setOmQs(reg.om_qs || "");
-        setUgQs(reg.ug_qs || "");
-        setValorEtapaQr(reg.valor_etapa_qr || "");
-        setPregaoQr(reg.pregao_qr || "");
-        setOmQr(reg.om_qr || "");
-        setUgQr(reg.ug_qr || "");
-        setAguaConsumoDia(reg.agua_consumo_dia || "");
-        setAguaTipoEnvase(reg.agua_tipo_envase || "GARRAFAO_20L");
-        setAguaVolumeEnvase(reg.agua_volume_envase || "");
-        setAguaValorUnitario(reg.agua_valor_unitario || "");
-        setAguaPregao(reg.agua_pregao || "");
-        setSelectedItems(reg.itens_aquisicao || []);
-
-        const stagedItem: PendingComplementoItem = {
-            tempId: reg.id,
-            dbId: reg.id,
-            organizacao: reg.organizacao,
-            ug: reg.ug,
-            om_detentora: reg.om_detentora,
-            ug_detentora: reg.ug_detentora,
-            dias_operacao: reg.dias_operacao,
-            efetivo: reg.efetivo,
-            fase_atividade: reg.fase_atividade,
-            group_name: reg.group_name,
-            group_purpose: reg.group_purpose,
-            categoria_complemento: reg.categoria_complemento,
-            publico: reg.publico,
-            valor_etapa_qs: reg.valor_etapa_qs,
-            pregao_qs: reg.pregao_qs,
-            om_qs: reg.om_qs,
-            ug_qs: reg.ug_qs,
-            valor_etapa_qr: reg.valor_etapa_qr,
-            pregao_qr: reg.pregao_qr,
-            om_qr: reg.om_qr,
-            ug_qr: reg.ug_qr,
-            agua_consumo_dia: reg.agua_consumo_dia,
-            agua_tipo_envase: reg.agua_tipo_envase,
-            agua_volume_envase: reg.agua_volume_envase,
-            agua_valor_unitario: reg.agua_valor_unitario,
-            agua_pregao: reg.agua_pregao,
-            itens_aquisicao: reg.itens_aquisicao || [],
-            valor_total: Number(reg.valor_total),
-            valor_nd_30: Number(reg.valor_nd_30),
-            valor_nd_39: Number(reg.valor_nd_39),
+        const first = group.records[0];
+        
+        const newFormData: ComplementoAlimentacaoFormState = {
+            ...initialFormState,
+            om_favorecida: group.organizacao,
+            ug_favorecida: group.ug,
+            fase_atividade: group.fase_atividade,
+            categoria_complemento: first.categoria_complemento as any,
+            efetivo: first.efetivo,
+            dias_operacao: first.dias_operacao,
+            publico: first.publico || "OSP",
+            
+            ...(first.categoria_complemento === 'genero' && {
+                valor_etapa_qs: first.valor_etapa_qs,
+                pregao_qs: first.pregao_qs || "",
+                om_qs: first.om_qs || "",
+                ug_qs: first.ug_qs || "",
+                valor_etapa_qr: first.valor_etapa_qr,
+                pregao_qr: first.pregao_qr || "",
+                om_qr: first.om_qr || "",
+                ug_qr: first.ug_qr || "",
+            }),
+            ...(first.categoria_complemento === 'agua' && {
+                agua_consumo_dia: first.agua_consumo_dia || 0,
+                agua_tipo_envase: first.agua_tipo_envase || "Garrafa",
+                agua_volume_envase: first.agua_volume_envase || 0.5,
+                agua_valor_unitario: first.agua_valor_unitario || 0,
+                agua_pregao: first.agua_pregao || "",
+                agua_om_uasg: first.om_detentora,
+                agua_ug_uasg: first.ug_detentora,
+            }),
+            ...(first.categoria_complemento === 'lanche' && {
+                lanche_pregao: first.pregao_qs || "", 
+                lanche_om_uasg: first.om_detentora,
+                lanche_ug_uasg: first.ug_detentora,
+                lanche_items: (first.itens_aquisicao as unknown as LancheItem[]) || [],
+            })
         };
-        setPendingItems([stagedItem]);
 
-        toast.info("Modo Edição ativado.");
+        setFormData(newFormData);
+        toast.info("Modo Edição ativado. Altere os dados e clique em 'Salvar Itens na Lista'.");
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const handleConfirmDelete = (reg: ComplementoAlimentacaoRegistro) => {
-        setRecordToDelete(reg);
-        setShowDeleteDialog(true);
-    };
-
-    const handleSaveMemoria = async (id: string) => {
-        const { error } = await supabase.from('complemento_alimentacao_registros' as any).update({ detalhamento_customizado: memoriaEdit }).eq('id', id);
-        if (error) toast.error("Erro ao salvar memória.");
-        else {
-            toast.success("Memória atualizada.");
-            setEditingMemoriaId(null);
-            queryClient.invalidateQueries({ queryKey: ['complementoAlimentacaoRegistros', ptrabId] });
+    const handleSaveOrUpdate = () => {
+        if (editingId && groupToReplace) {
+            const oldIds = groupToReplace.records.map(r => r.id);
+            replaceGroupMutation.mutate({ oldIds, newItems: pendingItems });
+        } else {
+            insertMutation.mutate(pendingItems);
         }
     };
-
-    const handleRestoreMemoria = async (id: string) => {
-        const { error } = await supabase.from('complemento_alimentacao_registros' as any).update({ detalhamento_customizado: null }).eq('id', id);
-        if (error) toast.error("Erro ao restaurar.");
-        else {
-            toast.success("Memória automática restaurada.");
-            queryClient.invalidateQueries({ queryKey: ['complementoAlimentacaoRegistros', ptrabId] });
-        }
-    };
-
-    // --- RENDERIZAÇÃO ---
-    const isGlobalLoading = isLoadingPTrab || isLoadingRegistros;
-    if (isGlobalLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
     const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
-    const totalPendingValue = pendingItems.reduce((acc, item) => acc + item.valor_total, 0);
+    const isSaving = insertMutation.isPending || replaceGroupMutation.isPending || deleteMutation.isPending;
 
     return (
         <div className="min-h-screen bg-background p-4 md:p-8">
+            <PageMetadata title="Complemento de Alimentação" description="Gerenciamento de Complemento de Alimentação" canonicalPath={`/ptrab/complemento-alimentacao?ptrabId=${ptrabId}`} />
+            
             <div className="max-w-6xl mx-auto space-y-6">
                 <Button variant="ghost" onClick={() => navigate(`/ptrab/form?ptrabId=${ptrabId}`)} className="mb-4">
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Voltar
                 </Button>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Complemento de Alimentação</CardTitle>
-                        <CardDescription>Planejamento de etapas de alimentação, água mineral e outros complementos.</CardDescription>
+                        <CardTitle className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                Complemento de Alimentação
+                            </div>
+                        </CardTitle>
+                        <CardDescription>
+                            Levantamento de necessidades de Gêneros, Água e Lanches.
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-8">
-                            
                             {/* SEÇÃO 1: DADOS DA ORGANIZAÇÃO */}
                             <section className="space-y-4 border-b pb-6">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">1. Dados da Organização</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <Label>OM Favorecida *</Label>
-                                        <OmSelector selectedOmId={omFavorecida.id || undefined} onChange={handleOmFavorecidaChange} placeholder="Selecione a OM Favorecida" disabled={!isPTrabEditable || (pendingItems.length > 0 && !editingId)} />
+                                        <OmSelector selectedOmId={selectedOmFavorecidaId} onChange={handleOmFavorecidaChange} placeholder="Selecione a OM" disabled={!isPTrabEditable || isSaving || !!editingId} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>UG Favorecida</Label>
-                                        <Input value={formatCodug(omFavorecida.ug)} disabled className="bg-muted/50" />
+                                        <Input value={formatCodug(formData.ug_favorecida)} disabled className="bg-muted/50" />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Fase da Atividade *</Label>
-                                        <FaseAtividadeSelect value={faseAtividade} onChange={setFaseAtividade} disabled={!isPTrabEditable || (pendingItems.length > 0 && !editingId)} />
+                                        <FaseAtividadeSelect value={formData.fase_atividade} onChange={(f) => setFormData({...formData, fase_atividade: f})} disabled={!isPTrabEditable || isSaving || !!editingId} />
                                     </div>
                                 </div>
                             </section>
 
-                            {/* SEÇÃO 2: CONFIGURAR PLANEJAMENTO */}
-                            <section className="space-y-4 border-b pb-6">
-                                <h3 className="text-lg font-semibold flex items-center gap-2">2. Configurar Planejamento</h3>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Nome do Grupo/Evento *</Label>
-                                        <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Ex: Alimentação para o Efetivo da Operação" disabled={!isPTrabEditable} />
+                            {/* SEÇÃO 2: CONFIGURAR COMPLEMENTO */}
+                            {isBaseFormReady && (
+                                <section className="space-y-4 border-b pb-6">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-lg font-semibold flex items-center gap-2">2. Configurar Complemento</h3>
+                                        {hasSuggestion && !editingId && (
+                                            <Badge variant="secondary" className="flex items-center gap-1 bg-blue-50 text-blue-700 border-blue-200">
+                                                <History className="h-3 w-3" />
+                                                Sugestões carregadas do último registro
+                                                <Button variant="ghost" size="icon" className="h-4 w-4 ml-1 hover:bg-blue-200" onClick={handleClearForm}>
+                                                    <XCircle className="h-3 w-3" />
+                                                </Button>
+                                            </Badge>
+                                        )}
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Finalidade (Opcional)</Label>
-                                        <Input value={groupPurpose} onChange={(e) => setGroupPurpose(e.target.value)} placeholder="Ex: Atender o pessoal em deslocamento" disabled={!isPTrabEditable} />
-                                    </div>
-                                </div>
+                                    
+                                    <Tabs value={formData.categoria_complemento} onValueChange={(v: any) => setFormData({...formData, categoria_complemento: v})} className="w-full">
+                                        <TabsList className="grid w-full grid-cols-3 mb-6">
+                                            <TabsTrigger value="genero" className="flex items-center gap-2" disabled={!!editingId && formData.categoria_complemento !== 'genero'}>
+                                                <Utensils className="h-4 w-4" />
+                                                Gênero Alimentício
+                                            </TabsTrigger>
+                                            <TabsTrigger value="agua" className="flex items-center gap-2" disabled={!!editingId && formData.categoria_complemento !== 'agua'}>
+                                                <Droplets className="h-4 w-4" />
+                                                Água Mineral
+                                            </TabsTrigger>
+                                            <TabsTrigger value="lanche" className="flex items-center gap-2" disabled={!!editingId && formData.categoria_complemento !== 'lanche'}>
+                                                <Coffee className="h-4 w-4" />
+                                                Lanche/Catanho
+                                            </TabsTrigger>
+                                        </TabsList>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Efetivo *</Label>
-                                        <Input type="number" value={efetivo || ""} onChange={(e) => setEfetivo(Number(e.target.value))} placeholder="Ex: 100" disabled={!isPTrabEditable} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Período (Nr Dias) *</Label>
-                                        <Input type="number" value={diasOperacao || ""} onChange={(e) => setDiasOperacao(Number(e.target.value))} placeholder="Ex: 10" disabled={!isPTrabEditable} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>OM Destino do Recurso *</Label>
-                                        <OmSelector selectedOmId={omDestino.id || undefined} onChange={(om) => om && setOmDestino({nome: om.nome_om, ug: om.codug_om, id: om.id})} placeholder="Selecione a OM Destino" disabled={!isPTrabEditable} />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4 pt-4">
-                                    <Label>Categoria do Complemento *</Label>
-                                    <div className="flex flex-wrap gap-2">
-                                        <Button variant={categoriaComplemento === "ETAPA_ALIMENTACAO" ? "default" : "outline"} onClick={() => setCategoriaComplemento("ETAPA_ALIMENTACAO")} disabled={!isPTrabEditable}>Etapa de Alimentação</Button>
-                                        <Button variant={categoriaComplemento === "AGUA_MINERAL" ? "default" : "outline"} onClick={() => setCategoriaComplemento("AGUA_MINERAL")} disabled={!isPTrabEditable}>Água Mineral</Button>
-                                        <Button variant={categoriaComplemento === "OUTROS" ? "default" : "outline"} onClick={() => setCategoriaComplemento("OUTROS")} disabled={!isPTrabEditable}>Outros Itens</Button>
-                                    </div>
-                                </div>
-
-                                <Card className="bg-muted/30 p-4">
-                                    {categoriaComplemento === "ETAPA_ALIMENTACAO" && (
-                                        <div className="space-y-6">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label>Público Alvo</Label>
-                                                    <Input value={publico} onChange={(e) => setPublico(e.target.value)} placeholder="Ex: Oficiais e Sargentos" disabled={!isPTrabEditable} />
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div className="space-y-4 p-4 bg-background rounded-lg border">
-                                                    <h4 className="font-bold text-sm uppercase text-primary">Quota de Suprimento (QS)</h4>
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <div className="space-y-2">
-                                                            <Label>Valor Etapa (R$)</Label>
-                                                            <Input type="number" step="0.01" value={valorEtapaQs} onChange={(e) => setValorEtapaQs(e.target.value === "" ? "" : Number(e.target.value))} placeholder="0,00" disabled={!isPTrabEditable} />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label>Nr Pregão</Label>
-                                                            <Input value={pregaoQs} onChange={(e) => setPregaoQs(e.target.value)} placeholder="Ex: 01/2024" disabled={!isPTrabEditable} />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label>OM Detentora</Label>
-                                                            <Input value={omQs} onChange={(e) => setOmQs(e.target.value)} placeholder="Ex: 8º BPE" disabled={!isPTrabEditable} />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label>UG Detentora</Label>
-                                                            <Input value={ugQs} onChange={(e) => setUgQs(e.target.value)} placeholder="Ex: 160123" disabled={!isPTrabEditable} />
-                                                        </div>
+                                        <Card className="bg-muted/50 p-4">
+                                            <div className="space-y-6 bg-background p-4 rounded-lg border">
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div className="space-y-2">
+                                                        <Label>Efetivo *</Label>
+                                                        <Input 
+                                                            type="number" 
+                                                            value={formData.efetivo || ""} 
+                                                            onChange={(e) => setFormData({...formData, efetivo: parseInt(e.target.value) || 0})}
+                                                            placeholder="Ex: 150"
+                                                            disabled={!isPTrabEditable || isSaving}
+                                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Público *</Label>
+                                                        <PublicoSelect value={formData.publico} onChange={(v) => setFormData({...formData, publico: v})} disabled={!isPTrabEditable || isSaving} />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Período (Nr Dias) *</Label>
+                                                        <Input 
+                                                            type="number" 
+                                                            value={formData.dias_operacao || ""} 
+                                                            onChange={(e) => setFormData({...formData, dias_operacao: parseInt(e.target.value) || 0})}
+                                                            placeholder="Ex: 15"
+                                                            disabled={!isPTrabEditable || isSaving}
+                                                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                        />
                                                     </div>
                                                 </div>
-                                                <div className="space-y-4 p-4 bg-background rounded-lg border">
-                                                    <h4 className="font-bold text-sm uppercase text-primary">Quota de Rancho (QR)</h4>
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <div className="space-y-2">
-                                                            <Label>Valor Etapa (R$)</Label>
-                                                            <Input type="number" step="0.01" value={valorEtapaQr} onChange={(e) => setValorEtapaQr(e.target.value === "" ? "" : Number(e.target.value))} placeholder="0,00" disabled={!isPTrabEditable} />
+
+                                                {isGenero && (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+                                                        <div className="space-y-4 p-4 bg-primary/5 rounded-md border border-primary/10 relative overflow-hidden">
+                                                            <div className="flex justify-between items-start">
+                                                                <h4 className="font-bold text-sm text-primary uppercase">Quantitativo de Subsistência (QS)</h4>
+                                                                <div className="text-right">
+                                                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Subtotal Estimado</p>
+                                                                    <p className="text-sm font-extrabold text-primary">{formatCurrency(currentTotalQS)}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label>Valor Complemento *</Label>
+                                                                    <CurrencyInput value={formData.valor_etapa_qs} onChange={(val) => setFormData({...formData, valor_etapa_qs: val})} disabled={!isPTrabEditable || isSaving} />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Pregão *</Label>
+                                                                    <Input value={formData.pregao_qs} onChange={(e) => setFormData({...formData, pregao_qs: e.target.value})} placeholder="Ex: 90.001/24" disabled={!isPTrabEditable || isSaving} />
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>UASG *</Label>
+                                                                <RmSelector value={formData.om_qs} onChange={(name, codug) => setFormData({...formData, om_qs: name, ug_qs: codug})} placeholder="Selecione a UASG" disabled={!isPTrabEditable || isSaving} />
+                                                            </div>
                                                         </div>
-                                                        <div className="space-y-2">
-                                                            <Label>Nr Pregão</Label>
-                                                            <Input value={pregaoQr} onChange={(e) => setPregaoQr(e.target.value)} placeholder="Ex: 02/2024" disabled={!isPTrabEditable} />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label>OM Detentora</Label>
-                                                            <Input value={omQr} onChange={(e) => setOmQr(e.target.value)} placeholder="Ex: 8º BPE" disabled={!isPTrabEditable} />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label>UG Detentora</Label>
-                                                            <Input value={ugQr} onChange={(e) => setUgQr(e.target.value)} placeholder="Ex: 160123" disabled={!isPTrabEditable} />
+
+                                                        <div className="space-y-4 p-4 bg-orange-500/5 rounded-md border border-orange-500/10 relative overflow-hidden">
+                                                            <div className="flex justify-between items-start">
+                                                                <h4 className="font-bold text-sm text-orange-600 uppercase">Quantitativo de Rancho (QR)</h4>
+                                                                <div className="text-right">
+                                                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Subtotal Estimado</p>
+                                                                    <p className="text-sm font-extrabold text-orange-600">{formatCurrency(currentTotalQR)}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label>Valor Complemento *</Label>
+                                                                    <CurrencyInput value={formData.valor_etapa_qr} onChange={(val) => setFormData({...formData, valor_etapa_qr: val})} disabled={!isPTrabEditable || isSaving} />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Pregão *</Label>
+                                                                    <Input value={formData.pregao_qr} onChange={(e) => setFormData({...formData, pregao_qr: e.target.value})} placeholder="Ex: 90.001/24" disabled={!isPTrabEditable || isSaving} />
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>UASG *</Label>
+                                                                <OmSelector selectedOmId={selectedOmQrId} onChange={(om) => setFormData({...formData, om_qr: om?.nome_om || "", ug_qr: om?.codug_om || ""})} placeholder="Selecione a UASG" disabled={!isPTrabEditable || isSaving} />
+                                                            </div>
                                                         </div>
                                                     </div>
+                                                )}
+
+                                                {formData.categoria_complemento === 'agua' && (
+                                                    <div className="grid grid-cols-1 gap-6 pt-4 border-t">
+                                                        <div className="space-y-4 p-4 bg-blue-500/5 rounded-md border border-blue-500/10 relative overflow-hidden">
+                                                            <div className="flex justify-between items-start">
+                                                                <h4 className="font-bold text-sm text-blue-600 uppercase">Detalhamento de Água Mineral</h4>
+                                                                <div className="text-right">
+                                                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Subtotal Estimado</p>
+                                                                    <p className="text-sm font-extrabold text-blue-600">{formatCurrency(currentTotalAgua)}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label>Consumo (litro) / dia *</Label>
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        step="0.1" 
+                                                                        value={formData.agua_consumo_dia || ""} 
+                                                                        onChange={(e) => setFormData({...formData, agua_consumo_dia: parseFloat(e.target.value) || 0})} 
+                                                                        onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                        placeholder="Ex: 2.5"
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Tipo Envase *</Label>
+                                                                    <Input 
+                                                                        value={formData.agua_tipo_envase} 
+                                                                        onChange={(e) => setFormData({...formData, agua_tipo_envase: e.target.value})} 
+                                                                        placeholder="Ex: Garrafa" 
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Volume do Envase (L) *</Label>
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        step="0.01" 
+                                                                        value={formData.agua_volume_envase || ""} 
+                                                                        onChange={(e) => setFormData({...formData, agua_volume_envase: parseFloat(e.target.value) || 0})} 
+                                                                        onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                        placeholder="Ex: 0.5"
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label>Valor da Garrafa *</Label>
+                                                                    <CurrencyInput value={formData.agua_valor_unitario} onChange={(val) => setFormData({...formData, agua_valor_unitario: val})} disabled={!isPTrabEditable || isSaving} />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Pregão *</Label>
+                                                                    <Input 
+                                                                        value={formData.agua_pregao} 
+                                                                        onChange={(e) => setFormData({...formData, agua_pregao: e.target.value})} 
+                                                                        placeholder="Ex: 90.001/24" 
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>UASG *</Label>
+                                                                <OmSelector 
+                                                                    selectedOmId={selectedOmAguaId} 
+                                                                    onChange={(om) => setFormData({...formData, agua_om_uasg: om?.nome_om || "", agua_ug_uasg: om?.codug_om || ""})} 
+                                                                    placeholder="Selecione a UASG" 
+                                                                    disabled={!isPTrabEditable || isSaving}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {formData.categoria_complemento === 'lanche' && (
+                                                    <div className="grid grid-cols-1 gap-6 pt-4 border-t">
+                                                        <div className="space-y-4 p-4 bg-amber-500/5 rounded-md border border-amber-500/10 relative overflow-hidden">
+                                                            <div className="flex justify-between items-start">
+                                                                <h4 className="font-bold text-sm text-amber-600 uppercase">Detalhamento de Lanche/Catanho</h4>
+                                                                <div className="text-right">
+                                                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Subtotal Estimado</p>
+                                                                    <p className="text-sm font-extrabold text-amber-600">{formatCurrency(currentTotalLanche)}</p>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label>Pregão *</Label>
+                                                                    <Input 
+                                                                        value={formData.lanche_pregao} 
+                                                                        onChange={(e) => setFormData({...formData, lanche_pregao: e.target.value})} 
+                                                                        placeholder="Ex: 90.001/24" 
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>UASG *</Label>
+                                                                    <OmSelector 
+                                                                        selectedOmId={selectedOmLancheId} 
+                                                                        onChange={(om) => setFormData({...formData, lanche_om_uasg: om?.nome_om || "", lanche_ug_uasg: om?.codug_om || ""})} 
+                                                                        placeholder="Selecione a UASG" 
+                                                                        disabled={!isPTrabEditable || isSaving}
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="space-y-4 pt-4 border-t border-amber-500/10">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex flex-col">
+                                                                        <h5 className="text-xs font-bold uppercase text-muted-foreground">Itens do Lanche ({formData.lanche_items.length})</h5>
+                                                                        <p className="text-[10px] font-bold text-amber-700 uppercase">Valor do Kit: {formatCurrency(currentKitValue)}</p>
+                                                                    </div>
+                                                                    <Button variant="outline" size="sm" onClick={addLancheItem} disabled={!isPTrabEditable || isSaving} className="h-7 text-[10px] uppercase font-bold border-amber-500/30 text-amber-600 hover:bg-amber-500/10">
+                                                                        <Plus className="mr-1 h-3 w-3" /> Adicionar Item
+                                                                    </Button>
+                                                                </div>
+
+                                                                {formData.lanche_items.length === 0 ? (
+                                                                    <div className="text-center py-6 border-2 border-dashed border-amber-500/10 rounded-lg">
+                                                                        <p className="text-xs text-muted-foreground">Nenhum item adicionado ao lanche.</p>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="space-y-3">
+                                                                        {formData.lanche_items.map((item, index) => (
+                                                                            <Collapsible key={item.id} defaultOpen={true} className="border border-amber-500/10 rounded-md bg-background/50">
+                                                                                <div className="flex items-center justify-between p-2 bg-amber-500/5">
+                                                                                    <CollapsibleTrigger className="flex items-center gap-2 text-[10px] font-bold uppercase text-amber-700">
+                                                                                        <ChevronDown className="h-3 w-3" />
+                                                                                        Item #{index + 1}: {item.descricao || "Sem descrição"}
+                                                                                    </CollapsibleTrigger>
+                                                                                    <Button variant="ghost" size="icon" onClick={() => removeLancheItem(item.id)} disabled={!isPTrabEditable || isSaving} className="h-6 w-6 text-destructive hover:bg-destructive/10">
+                                                                                        <Trash2 className="h-3 w-3" />
+                                                                                    </Button>
+                                                                                </div>
+                                                                                <CollapsibleContent className="p-3">
+                                                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                                                                                        <div className="space-y-2">
+                                                                                            <Label className="text-[10px] uppercase">Quantidade *</Label>
+                                                                                            <Input 
+                                                                                                type="number" 
+                                                                                                value={item.quantidade || ""} 
+                                                                                                onChange={(e) => updateLancheItem(item.id, "quantidade", parseInt(e.target.value) || 0)} 
+                                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                                                className="h-8 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                                            />
+                                                                                        </div>
+                                                                                        <div className="md:col-span-2 space-y-2">
+                                                                                            <Label className="text-[10px] uppercase">Descrição do Item *</Label>
+                                                                                            <Input 
+                                                                                                value={item.descricao} 
+                                                                                                onChange={(e) => updateLancheItem(item.id, "descricao", e.target.value)} 
+                                                                                                placeholder="Ex: Pão de forma, presunto, queijo..." 
+                                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                                                className="h-8 text-xs"
+                                                                                            />
+                                                                                        </div>
+                                                                                        <div className="space-y-2">
+                                                                                            <Label className="text-[10px] uppercase">Valor Unitário *</Label>
+                                                                                            <CurrencyInput value={item.valor_unitario} onChange={(val) => updateLancheItem(item.id, "valor_unitario", val)} disabled={!isPTrabEditable || isSaving} className="h-8 text-xs" />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </CollapsibleContent>
+                                                                            </Collapsible>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-lg font-extrabold text-foreground uppercase">Total da Solicitação:</span>
+                                                    <span className="text-lg font-extrabold text-foreground">{formatCurrency(currentCategoryTotal)}</span>
+                                                </div>
+                                                <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                                                    <Button variant="outline" onClick={handleClearForm} disabled={!isPTrabEditable || isSaving} className="w-full md:w-auto">
+                                                        <XCircle className="mr-2 h-4 w-4" />
+                                                        Limpar
+                                                    </Button>
+                                                    <Button className="w-full md:w-auto" disabled={isSaveDisabled || !isPTrabEditable || isSaving} onClick={handleStageCalculation}>
+                                                        <Save className="mr-2 h-4 w-4" />
+                                                        {editingId ? "Recalcular/Revisar Lote" : "Salvar Itens na Lista"}
+                                                    </Button>
                                                 </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        </Card>
+                                    </Tabs>
+                                </section>
+                            )}
 
-                                    {categoriaComplemento === "AGUA_MINERAL" && (
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div className="space-y-2">
-                                                <Label>Consumo/Pessoa/Dia (L)</Label>
-                                                <Input type="number" step="0.1" value={aguaConsumoDia} onChange={(e) => setAguaConsumoDia(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Ex: 2.0" disabled={!isPTrabEditable} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Tipo de Envase</Label>
-                                                <select className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm" value={aguaTipoEnvase} onChange={(e) => setAguaTipoEnvase(e.target.value)} disabled={!isPTrabEditable}>
-                                                    <option value="GARRAFAO_20L">Garrafão 20L</option>
-                                                    <option value="GARRAFA_1.5L">Garrafa 1.5L</option>
-                                                    <option value="GARRAFA_500ML">Garrafa 500ml</option>
-                                                    <option value="COPO_200ML">Copo 200ml</option>
-                                                </select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Volume Envase (L)</Label>
-                                                <Input type="number" step="0.01" value={aguaVolumeEnvase} onChange={(e) => setAguaVolumeEnvase(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Ex: 20" disabled={!isPTrabEditable} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Valor Unitário Envase (R$)</Label>
-                                                <Input type="number" step="0.01" value={aguaValorUnitario} onChange={(e) => setAguaValorUnitario(e.target.value === "" ? "" : Number(e.target.value))} placeholder="0,00" disabled={!isPTrabEditable} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Nr Pregão</Label>
-                                                <Input value={aguaPregao} onChange={(e) => setAguaPregao(e.target.value)} placeholder="Ex: 05/2024" disabled={!isPTrabEditable} />
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {categoriaComplemento === "OUTROS" && (
-                                        <div className="space-y-4">
-                                            <ComplementoAlimentacaoItemSelector 
-                                                selectedItems={selectedItems}
-                                                onItemsChange={setSelectedItems}
-                                                disabled={!isPTrabEditable}
-                                            />
-                                        </div>
-                                    )}
-
-                                    <div className="flex justify-between items-center p-3 mt-6 border-t pt-4">
-                                        <span className="font-bold text-sm uppercase">VALOR TOTAL DO GRUPO:</span>
-                                        <span className="font-extrabold text-lg text-primary">{formatCurrency(currentTotals.totalGeral)}</span>
-                                    </div>
-                                </Card>
-
-                                <div className="flex justify-end gap-3 pt-4">
-                                    <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={!isPTrabEditable || saveMutation.isPending || currentTotals.totalGeral <= 0} onClick={handleAddToPending}>
-                                        {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                        {editingId ? "Atualizar Grupo" : "Adicionar Grupo à Lista"}
-                                    </Button>
-                                </div>
-                            </section>
-
-                            {/* SEÇÃO 3: ITENS ADICIONADOS (PENDENTES) */}
+                            {/* SEÇÃO 3: ITENS ADICIONADOS (REVISÃO) */}
                             {pendingItems.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
-                                    <h3 className="text-lg font-semibold flex items-center gap-2">3. Itens Adicionados ({pendingItems.length})</h3>
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">3. {editingId ? "Revisão de Atualização" : "Itens Adicionados"} ({pendingItems.length})</h3>
+                                    
+                                    {isDirty && (
+                                        <Alert variant="destructive">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <AlertDescription className="font-medium">
+                                                Atenção: Os dados do formulário (Seção 2) foram alterados. Clique em "{editingId ? "Recalcular/Revisar Lote" : "Salvar Itens na Lista"}" na Seção 2 para atualizar o lote pendente antes de salvar os registros.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+
                                     <div className="space-y-4">
                                         {pendingItems.map((item) => (
-                                            <Card key={item.tempId} className="border-2 shadow-md border-secondary bg-secondary/10">
+                                            <Card key={item.tempId} className="border-2 border-secondary bg-secondary/5 shadow-sm">
                                                 <CardContent className="p-4">
-                                                    <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/30">
-                                                        <h4 className="font-bold text-base text-foreground">{item.group_name}</h4>
+                                                    <div className="flex justify-between items-center pb-2 mb-2 border-b border-secondary/20">
+                                                        <h4 className="font-bold text-base text-foreground">
+                                                            Complemento de Alimentação ({item.categoria === 'genero' ? 'Gênero Alimentício' : item.categoria === 'agua' ? 'Água' : 'Lanche'})
+                                                        </h4>
                                                         <div className="flex items-center gap-2">
-                                                            <p className="font-extrabold text-lg text-foreground text-right">{formatCurrency(item.valor_total)}</p>
+                                                            <p className="font-extrabold text-lg text-foreground">
+                                                                {formatCurrency(item.valor_total)}
+                                                            </p>
                                                             {!editingId && (
-                                                                <Button variant="ghost" size="icon" onClick={() => setPendingItems(prev => prev.filter(i => i.tempId !== item.tempId))} disabled={saveMutation.isPending}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                                <Button variant="ghost" size="icon" onClick={() => handleRemovePending(item.tempId)} disabled={isSaving} className="h-8 w-8 text-destructive">
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
                                                             )}
                                                         </div>
                                                     </div>
+                                                    
                                                     <div className="grid grid-cols-2 gap-4 text-xs pt-1">
                                                         <div className="space-y-1">
-                                                            <p className="font-medium">OM Favorecida:</p>
-                                                            <p className="font-medium">OM Destino:</p>
-                                                            <p className="font-medium">Período / Efetivo:</p>
-                                                            <p className="font-medium">Categoria:</p>
+                                                            <p className="font-medium text-muted-foreground">OM Favorecida:</p>
+                                                            <p className="font-medium text-muted-foreground">OM Destino do Recurso:</p>
+                                                            <p className="font-medium text-muted-foreground">Período/Efetivo:</p>
                                                         </div>
                                                         <div className="text-right space-y-1">
-                                                            <p className="font-medium">{item.organizacao} ({formatCodug(item.ug)})</p>
-                                                            <p className="font-medium">{item.om_detentora} ({formatCodug(item.ug_detentora)})</p>
-                                                            <p className="font-medium">{item.dias_operacao} dias / {item.efetivo} mil</p>
-                                                            <p className="font-medium">{item.categoria_complemento.replace('_', ' ')}</p>
+                                                            <p className="font-bold">{item.om_favorecida} ({formatCodug(item.ug_favorecida)})</p>
+                                                            <p className="font-bold">{item.om_destino} ({formatCodug(item.ug_destino)})</p>
+                                                            <p className="font-bold">{item.dias_operacao} {item.dias_operacao === 1 ? 'dia' : 'dias'} / {item.efetivo} {item.efetivo === 1 ? 'militar' : 'militares'}</p>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="w-full h-[1px] bg-secondary/20 my-3" />
+
+                                                    <div className="flex justify-between items-center text-xs">
+                                                        <span className="text-muted-foreground">ND 33.90.30:</span>
+                                                        <div className="flex gap-3">
+                                                            {item.categoria === 'genero' ? (
+                                                                <>
+                                                                    <span className="font-bold text-blue-600">{formatCurrency(item.total_qs || 0)} (QS)</span>
+                                                                    <span className="font-bold text-green-600">{formatCurrency(item.total_qr || 0)} (QR)</span>
+                                                                </>
+                                                            ) : (
+                                                                <span className="font-bold text-green-600">{formatCurrency(item.valor_nd_30)}</span>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </CardContent>
                                             </Card>
                                         ))}
                                     </div>
-                                    
-                                    <Card className="bg-gray-100 shadow-inner">
+
+                                    <Card className="bg-muted shadow-inner">
                                         <CardContent className="p-4 flex justify-between items-center">
                                             <span className="font-bold text-base uppercase">VALOR TOTAL DA OM</span>
-                                            <span className="font-extrabold text-xl text-foreground">{formatCurrency(totalPendingValue)}</span>
+                                            <span className="font-extrabold text-xl text-foreground">{formatCurrency(totalGeralOM)}</span>
                                         </CardContent>
                                     </Card>
-                                    
+
                                     <div className="flex justify-end gap-3 pt-4">
-                                        <Button type="button" onClick={() => saveMutation.mutate(pendingItems)} disabled={saveMutation.isPending || pendingItems.length === 0} className="w-full md:w-auto bg-primary hover:bg-primary/90">
-                                            {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                            {editingId ? "Atualizar Registros" : "Salvar Registros"}
+                                        <Button className="bg-primary hover:bg-primary/90" disabled={isDirty || isSaving} onClick={handleSaveOrUpdate}>
+                                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                            {editingId ? "Atualizar Lote" : "Salvar Registros"}
                                         </Button>
-                                        <Button type="button" variant="outline" onClick={resetForm} disabled={saveMutation.isPending}>
-                                            <XCircle className="mr-2 h-4 w-4" /> {editingId ? "Cancelar Edição" : "Limpar Lista"}
+                                        <Button variant="outline" onClick={handleFullReset} disabled={isSaving}>
+                                            <XCircle className="mr-2 h-4 w-4" />
+                                            {editingId ? "Cancelar Edição" : "Limpar Lista"}
                                         </Button>
                                     </div>
                                 </section>
                             )}
 
-                            {/* SEÇÃO 4: REGISTROS SALVOS (CONSOLIDADO) */}
+                            {/* SEÇÃO 4: REGISTROS SALVOS (OMs Cadastradas) */}
                             {consolidatedRegistros && consolidatedRegistros.length > 0 && (
                                 <section className="space-y-4 border-b pb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
                                         <Sparkles className="h-5 w-5 text-accent" />
                                         OMs Cadastradas ({consolidatedRegistros.length})
                                     </h3>
-                                    {consolidatedRegistros.map((group) => (
-                                        <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
-                                            <div className="flex items-center justify-between mb-3 border-b pb-2">
-                                                <h3 className="font-bold text-lg text-primary flex items-center gap-2">
-                                                    {group.organizacao} (UG: {formatCodug(group.ug)})
-                                                </h3>
-                                                <span className="font-extrabold text-xl text-primary">{formatCurrency(group.totalGeral)}</span>
-                                            </div>
-                                            <div className="space-y-3">
-                                                {group.records.map((reg) => (
-                                                    <Card key={reg.id} className="p-3 bg-background border">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex flex-col">
-                                                                <h4 className="font-semibold text-base text-foreground flex items-center gap-2">
-                                                                    {reg.group_name}
-                                                                    <Badge variant="outline" className="text-xs font-semibold">{reg.fase_atividade}</Badge>
-                                                                </h4>
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    {reg.categoria_complemento.replace('_', ' ')} | {reg.dias_operacao} dias | {reg.efetivo} mil
-                                                                </p>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-extrabold text-xl text-foreground">{formatCurrency(Number(reg.valor_total))}</span>
-                                                                <div className="flex gap-1 shrink-0">
-                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(reg)} disabled={!isPTrabEditable || pendingItems.length > 0}><Pencil className="h-4 w-4" /></Button>
-                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleConfirmDelete(reg)} disabled={!isPTrabEditable}><Trash2 className="h-4 w-4" /></Button>
+                                    
+                                    {consolidatedRegistros.map((group) => {
+                                        const totalOM = group.totalGeral;
+                                        const omName = group.organizacao;
+                                        const ug = group.ug;
+                                        const faseAtividade = group.fase_atividade || 'Não Definida';
+
+                                        return (
+                                            <Card key={group.groupKey} className="p-4 bg-primary/5 border-primary/20">
+                                                <div className="flex items-center justify-between mb-3 border-b pb-2">
+                                                    <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+                                                        {omName} (UG: {formatCodug(ug)})
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {faseAtividade}
+                                                        </Badge>
+                                                    </h3>
+                                                    <span className="font-extrabold text-xl text-primary">
+                                                        {formatCurrency(totalOM)}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="space-y-3">
+                                                    {group.records.map((registro) => {
+                                                        const isDifferentOm = registro.om_detentora !== registro.organizacao || registro.ug_detentora !== registro.ug;
+                                                        const diasText = registro.dias_operacao === 1 ? 'dia' : 'dias';
+                                                        const efetivoText = registro.efetivo === 1 ? 'militar' : 'militares';
+
+                                                        return (
+                                                            <Card 
+                                                                key={registro.id} 
+                                                                className="p-3 bg-background border"
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <h4 className="font-semibold text-base text-foreground">
+                                                                                Complemento de Alimentação ({registro.group_name})
+                                                                            </h4>
+                                                                        </div>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            Período: {registro.dias_operacao} {diasText} | Efetivo: {registro.efetivo} {efetivoText}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-extrabold text-xl text-foreground">
+                                                                            {formatCurrency(Number(registro.valor_total))}
+                                                                        </span>
+                                                                        <div className="flex gap-1 shrink-0">
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8"
+                                                                                onClick={() => handleEdit(group)} 
+                                                                                disabled={!isPTrabEditable || isSaving || pendingItems.length > 0}
+                                                                            >
+                                                                                <Pencil className="h-4 w-4" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                type="button" 
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                onClick={() => { setGroupToDelete(group); setShowDeleteDialog(true); }} 
+                                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                                disabled={!isPTrabEditable || isSaving}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="pt-2 border-t mt-2">
-                                                            <div className="flex justify-between text-xs">
-                                                                <span className="text-muted-foreground">OM Destino Recurso:</span>
-                                                                <span className="font-medium">{reg.om_detentora} ({formatCodug(reg.ug_detentora || '')})</span>
-                                                            </div>
-                                                            {Number(reg.valor_nd_30) > 0 && (
-                                                                <div className="flex justify-between text-xs">
-                                                                    <span className="text-muted-foreground">ND 33.90.30:</span>
-                                                                    <span className="text-green-600 font-medium">{formatCurrency(Number(reg.valor_nd_30))}</span>
+                                                                
+                                                                <div className="pt-2 border-t mt-2">
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">OM Destino Recurso:</span>
+                                                                        <span className={cn("font-medium", isDifferentOm && "text-red-600")}>
+                                                                            {registro.om_detentora} ({formatCodug(registro.ug_detentora || '')})
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-xs">
+                                                                        <span className="text-muted-foreground">ND 33.90.30:</span>
+                                                                        <span className="text-green-600">{formatCurrency(Number(registro.valor_nd_30))}</span>
+                                                                    </div>
                                                                 </div>
-                                                            )}
-                                                            {Number(reg.valor_nd_39) > 0 && (
-                                                                <div className="flex justify-between text-xs">
-                                                                    <span className="text-muted-foreground">ND 33.90.39:</span>
-                                                                    <span className="text-green-600 font-medium">{formatCurrency(Number(reg.valor_nd_39))}</span>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </Card>
-                                                ))}
-                                            </div>
-                                        </Card>
-                                    ))}
+                                                            </Card>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
                                 </section>
                             )}
 
-                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULO */}
-                            {registros && registros.length > 0 && (
-                                <section className="space-y-4 mt-8">
-                                    <h3 className="text-xl font-bold flex items-center gap-2">📋 Memórias de Cálculos Detalhadas</h3>
-                                    {registros.map(reg => (
-                                        <ComplementoAlimentacaoMemoria 
-                                            key={`mem-${reg.id}`}
-                                            registro={reg}
-                                            isPTrabEditable={isPTrabEditable}
-                                            isSaving={false}
-                                            editingMemoriaId={editingMemoriaId}
-                                            memoriaEdit={memoriaEdit}
-                                            setMemoriaEdit={setMemoriaEdit}
-                                            onStartEdit={(id, text) => { setEditingMemoriaId(id); setMemoriaEdit(text); }}
-                                            onCancelEdit={() => setEditingMemoriaId(null)}
-                                            onSave={handleSaveMemoria}
-                                            onRestore={handleRestoreMemoria}
-                                        />
-                                    ))}
-                                </section>
+                            {/* SEÇÃO 5: MEMÓRIAS DE CÁLCULOS DETALHADAS */}
+                            {consolidatedRegistros && consolidatedRegistros.length > 0 && (
+                                <div className="space-y-4 mt-8">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        📋 Memórias de Cálculos Detalhadas
+                                    </h3>
+                                    
+                                    {consolidatedRegistros.map(group => {
+                                        const context = {
+                                            organizacao: group.organizacao,
+                                            ug: group.ug,
+                                            efetivo: group.efetivo,
+                                            dias_operacao: group.dias_operacao,
+                                            fase_atividade: group.fase_atividade
+                                        };
+                                        
+                                        return group.records.map(registro => (
+                                            <ComplementoAlimentacaoMemoria
+                                                key={`memoria-view-${registro.id}`}
+                                                registro={registro}
+                                                context={context}
+                                                isPTrabEditable={isPTrabEditable}
+                                                isSaving={isSaving}
+                                                editingMemoriaId={editingMemoriaId}
+                                                memoriaEdit={memoriaEdit}
+                                                setMemoriaEdit={setMemoriaEdit}
+                                                handleIniciarEdicaoMemoria={handleIniciarEdicaoMemoria}
+                                                handleCancelarEdicaoMemoria={handleCancelarEdicaoMemoria}
+                                                handleSalvarMemoriaCustomizada={handleSalvarMemoriaCustomizada}
+                                                handleRestaurarMemoriaAutomatica={handleRestaurarMemoriaAutomatica}
+                                            />
+                                        ));
+                                    })}
+                                </div>
                             )}
                         </div>
                     </CardContent>
@@ -793,18 +1448,35 @@ const ComplementoAlimentacaoForm = () => {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                            <Trash2 className="h-5 w-5" /> Confirmar Exclusão
+                            <Trash2 className="h-5 w-5" />
+                            Confirmar Exclusão de Lote
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Tem certeza que deseja excluir o registro <span className="font-bold">{recordToDelete?.group_name}</span>?
+                            Tem certeza que deseja excluir o lote de Complemento para a OM <span className="font-bold">{groupToDelete?.organizacao}</span>? Esta ação é irreversível.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogAction onClick={() => recordToDelete && deleteMutation.mutate([recordToDelete.id])} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={() => groupToDelete && deleteMutation.mutate(groupToDelete.records.map(r => r.id))}
+                            disabled={deleteMutation.isPending}
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
+                            {deleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Excluir Lote
+                        </AlertDialogAction>
+                        <AlertDialogCancel disabled={deleteMutation.isPending}>Cancelar</AlertDialogCancel>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <AcquisitionItemSelectorDialog 
+                open={isItemSelectorOpen} 
+                onOpenChange={setIsItemSelectorOpen} 
+                selectedYear={new Date().getFullYear()} 
+                initialItems={itemsToPreselect} 
+                onSelect={(items) => { setSelectedItemsFromSelector(items); setIsItemSelectorOpen(false); }} 
+                onAddDiretriz={() => navigate('/config/diretrizes')}
+            />
         </div>
     );
 };
