@@ -130,7 +130,7 @@ const formatUnitPlural = (unit: string, count: number) => {
     const lowerUnit = unit.toLowerCase().trim();
     
     // Abreviações técnicas que não variam no plural (SI e comuns)
-    const noPlural = ['m', 'km', 'kg', 'l', 'un', 'hv', 'gl', 'pax', 'cx', 'pct'];
+    const noPlural = ['m', 'km', 'kg', 'l', 'un', 'hv', 'gl', 'pax', 'cx', 'pct', 'm2', 'm3'];
     if (noPlural.includes(lowerUnit)) return unit;
     
     // Regras de plural em Português
@@ -631,7 +631,7 @@ const ServicosTerceirosForm = () => {
     const saveMutation = useMutation({
         mutationFn: async (itemsToSave: PendingServicoItem[]) => {
             if (editingId) {
-                const { error: deleteError } = await supabase.from('servicos_terceiros_registros').delete().eq('id', editingId);
+                const { error: deleteError = null } = await supabase.from('servicos_terceiros_registros').delete().eq('id', editingId);
                 if (deleteError) throw deleteError;
             }
             const records = itemsToSave.map(item => ({
