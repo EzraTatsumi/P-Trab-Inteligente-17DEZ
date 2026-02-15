@@ -108,13 +108,12 @@ export const generateServicoMemoriaCalculo = (
 
     // --- LOCAÇÃO DE VEÍCULOS ---
     if (categoria === 'locacao-veiculos') {
-        const purposeText = group_purpose ? ` para atender ${group_purpose}` : "";
-        let texto = `33.90.39 - Contratação de serviços de Locação de Veículos (${group_name})${purposeText}, para o efetivo de ${context.efetivo} ${efetivoText} ${prepOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
+        let texto = `33.90.33 - Locação de Veículos (${group_name}), para ${prepOM} ${context.organizacao}, durante ${context.dias_operacao} ${diasText} de ${fase}.\n\n`;
         
-        texto += `Cálculo:\n`;
+        texto += `Cálculo:\n\n`;
         items.forEach((item: any) => {
             const unit = item.unidade_medida || 'UN';
-            texto += `- ${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${unit}.\n`;
+            texto += `${item.descricao_reduzida || item.descricao_item}: ${formatCurrency(item.valor_unitario)}/${unit}.\n`;
         });
 
         texto += `\nFórmula: Nr Veículos x Valor Unitário x Período.\n\n`;
@@ -123,11 +122,15 @@ export const generateServicoMemoriaCalculo = (
             const period = item.periodo || 0;
             const unit = item.unidade_medida || 'un';
             const totalItem = qty * period * item.valor_unitario;
-            texto += `- ${qty} un x ${formatCurrency(item.valor_unitario)}/${unit} x ${period} ${unit}${period > 1 ? 's' : ''} = ${formatCurrency(totalItem)}.\n`;
+            const itemDiasText = period === 1 ? "dia" : "dias";
+            
+            texto += `${qty} ${item.descricao_reduzida || item.descricao_item} x ${formatCurrency(item.valor_unitario)}/${unit} x ${period} ${itemDiasText} = ${formatCurrency(totalItem)}.\n`;
         });
 
-        texto += `\nTotal: ${formatCurrency(Number(registro.valor_total))}.\n`;
-        if (items.length > 0) texto += `(Pregão ${formatPregao(items[0].numero_pregao)} - UASG ${formatCodug(items[0].uasg)})`;
+        texto += `\nTotal: ${formatCurrency(Number(registro.valor_total))}. `;
+        if (items.length > 0) {
+            texto += `(Pregão ${formatPregao(items[0].numero_pregao)} - UASG ${formatCodug(items[0].uasg)})`;
+        }
         return texto;
     }
 
