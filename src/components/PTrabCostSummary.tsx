@@ -285,7 +285,7 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
       supabase.from('classe_ix_registros').select('*').eq('p_trab_id', ptrabId),
       supabase.from('classe_iii_registros').select('*').eq('p_trab_id', ptrabId),
       supabase.from('diaria_registros').select('*').eq('p_trab_id', ptrabId),
-      supabase.from('verba_operacional_registros').select('*').eq('p_trab_id', ptrabId),
+      supabase.from('verba_operacional_registros').select('*, objeto_aquisicao, objeto_contratacao, proposito, finalidade, local, tarefa').eq('p_trab_id', ptrabId),
       supabase.from('passagem_registros').select('*').eq('p_trab_id', ptrabId),
       supabase.from('concessionaria_registros').select('*').eq('p_trab_id', ptrabId),
       supabase.from('horas_voo_registros').select('*').eq('p_trab_id', ptrabId),
@@ -1059,7 +1059,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                 <AccordionItem value="item-complemento-alimentacao" className="border-b-0">
                     <AccordionTrigger className="p-0 hover:no-underline">
                         <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-1 text-foreground"><Utensils className="h-3 w-3 text-blue-500" />Complemento de Alimentação</div>
+                            <div className="flex items-center gap-1 text-foreground text-left flex-1"><Utensils className="h-3 w-3 text-blue-500" />Complemento de Alimentação</div>
                             <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(c.totalComplementoAlimentacao)}</span>
                         </div>
                     </AccordionTrigger>
@@ -1093,7 +1093,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                 <AccordionItem value="item-servicos-terceiros" className="border-b-0">
                     <AccordionTrigger className="p-0 hover:no-underline">
                         <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
-                            <div className="flex items-center gap-1 text-foreground"><ClipboardList className="h-3 w-3 text-blue-500" />Serviços de Terceiros/Locações</div>
+                            <div className="flex items-center gap-1 text-foreground text-left flex-1"><ClipboardList className="h-3 w-3 text-blue-500" />Serviços de Terceiros/Locações</div>
                             <span className={cn(valueClasses, "text-xs flex items-center gap-1 mr-6")}>{formatCurrency(s.totalServicosTerceiros)}</span>
                         </div>
                     </AccordionTrigger>
