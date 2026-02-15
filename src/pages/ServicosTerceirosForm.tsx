@@ -202,7 +202,7 @@ const ItemsTable = ({
                             const isCharter = activeTab === "fretamento-aereo";
                             const isTransport = activeTab === "transporte-coletivo";
                             const showHvWarning = isCharter && suggestedHV !== null && item.quantidade !== suggestedHV;
-                            const period = (item as any).periodo || 0;
+                            const period = (item as any).periodo;
                             const unit = item.unidade_medida || 'UN';
                             const trips = isTransport ? (Number(numeroViagens) || 1) : 1;
                             
@@ -305,7 +305,7 @@ const ItemsTable = ({
                                                         type="number" 
                                                         min={0}
                                                         step="any"
-                                                        value={period === undefined ? "" : period} 
+                                                        value={period === undefined || period === 0 ? "" : period} 
                                                         onChange={(e) => onPeriodChange(item.id, e.target.value)}
                                                         onWheel={(e) => e.currentTarget.blur()}
                                                         onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
@@ -779,6 +779,11 @@ const ServicosTerceirosForm = () => {
 
         if ((!isSatelital && !isLocacaoVeiculos && !isLocacaoEstruturas && efetivo <= 0) || diasOperacao <= 0) {
             toast.warning("Informe o efetivo e o período.");
+            return;
+        }
+
+        if (isSatelital && (!tipoEquipamento || !proposito)) {
+            toast.warning("Informe o tipo de equipamento e o propósito.");
             return;
         }
 
@@ -1294,7 +1299,7 @@ const ServicosTerceirosForm = () => {
                                                             {activeTab === "servico-satelital" && (
                                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg border border-dashed">
                                                                     <div className="space-y-2">
-                                                                        <Label>Tipo de Equipamento/Serviço</Label>
+                                                                        <Label>Tipo de Equipamento/Serviço *</Label>
                                                                         <Input 
                                                                             value={tipoEquipamento} 
                                                                             onChange={(e) => setTipoEquipamento(e.target.value)} 
@@ -1303,7 +1308,7 @@ const ServicosTerceirosForm = () => {
                                                                         />
                                                                     </div>
                                                                     <div className="space-y-2">
-                                                                        <Label>Propósito</Label>
+                                                                        <Label>Propósito *</Label>
                                                                         <Input 
                                                                             value={proposito} 
                                                                             onChange={(e) => setProposito(e.target.value)} 
@@ -1480,7 +1485,7 @@ const ServicosTerceirosForm = () => {
                                             </Card>
 
                                             <div className="flex justify-end gap-3 pt-4">
-                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={(activeTab === "locacao-veiculos" ? vehicleGroups.length === 0 : selectedItems.length === 0) || saveMutation.isPending || (activeTab !== "servico-satelital" && activeTab !== "locacao-veiculos" && activeTab !== "locacao-estruturas" && efetivo <= 0) || diasOperacao <= 0 || isGroupFormOpen} onClick={handleAddToPending}>
+                                                <Button className="w-full md:w-auto bg-primary hover:bg-primary/90" disabled={(activeTab === "locacao-veiculos" ? vehicleGroups.length === 0 : selectedItems.length === 0) || saveMutation.isPending || (activeTab !== "servico-satelital" && activeTab !== "locacao-veiculos" && activeTab !== "locacao-estruturas" && efetivo <= 0) || (activeTab === "servico-satelital" && (!tipoEquipamento || !proposito)) || diasOperacao <= 0 || isGroupFormOpen} onClick={handleAddToPending}>
                                                     {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                                     {editingId ? "Recalcular/Revisar Lote" : "Salvar Item na Lista"}
                                                 </Button>
