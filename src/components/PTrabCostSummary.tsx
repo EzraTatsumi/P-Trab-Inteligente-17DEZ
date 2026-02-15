@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatNumber, formatCodug } from "@/lib/formatUtils";
-import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Helicopter, TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase, Droplet, Zap, MapPin, Building2, Coffee, Droplets, Plane } from "lucide-react";
+import { Package, Fuel, Utensils, Loader2, ChevronDown, HardHat, Helicopter, TrendingUp, Wallet, ClipboardList, Swords, Radio, Activity, HeartPulse, Truck, Briefcase, Droplet, Zap, MapPin, Building2, Coffee, Droplets, Plane, Satellite, Bus, Car, TentTree, Printer } from "lucide-react";
 import {
   Accordion,
   AccordionItem,
@@ -52,6 +52,7 @@ interface OmTotals {
     horasVoo: { total: number, totalND30: number, totalND39: number, quantidadeHV: number, groupedHV: Record<string, { totalValor: number, totalHV: number }> };
     materialConsumo: { total: number, totalND30: number, totalND39: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number }> };
     complementoAlimentacao: { total: number, totalND30: number, totalND39: number, groupedCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number }> };
+    servicosTerceiros: { total: number, totalND33: number, totalND39: number, groupedCategories: Record<string, { totalValor: number, totalND33: number, totalND39: number }> };
 }
 
 export interface PTrabAggregatedTotals {
@@ -154,6 +155,11 @@ export interface PTrabAggregatedTotals {
     totalComplementoAlimentacaoND39: number;
     groupedComplementoCategories: Record<string, { totalValor: number, totalND30: number, totalND39: number }>;
 
+    totalServicosTerceiros: number;
+    totalServicosTerceirosND33: number;
+    totalServicosTerceirosND39: number;
+    groupedServicosTerceirosCategories: Record<string, { totalValor: number, totalND33: number, totalND39: number }>;
+
     groupedByOmSolicitante: Record<string, OmTotals>;
     groupedByOmDestino: Record<string, OmTotals>;
 }
@@ -196,7 +202,19 @@ const initializeOmTotals = (omName: string, ug: string): OmTotals => ({
     horasVoo: { total: 0, totalND30: 0, totalND39: 0, quantidadeHV: 0, groupedHV: {} },
     materialConsumo: { total: 0, totalND30: 0, totalND39: 0, groupedCategories: {} },
     complementoAlimentacao: { total: 0, totalND30: 0, totalND39: 0, groupedCategories: {} },
+    servicosTerceiros: { total: 0, totalND33: 0, totalND39: 0, groupedCategories: {} },
 } as any);
+
+const formatCategoryLabel = (cat: string, details?: any) => {
+    if (cat === 'outros' && details?.nome_servico_outros) return details.nome_servico_outros;
+    if (cat === 'fretamento-aereo') return 'Fretamento Aéreo';
+    if (cat === 'servico-satelital') return 'Serviço Satelital';
+    if (cat === 'transporte-coletivo') return 'Transporte Coletivo';
+    if (cat === 'locacao-veiculos') return 'Locação de Veículos';
+    if (cat === 'locacao-estruturas') return 'Locação de Estruturas';
+    if (cat === 'servico-grafico') return 'Serviço Gráfico';
+    return 'Serviços de Terceiros';
+};
 
 /**
  * Busca e calcula todos os totais de um P Trab agregando dados de todas as tabelas de registros.
@@ -255,7 +273,7 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
     
     const [
       { data: cl2 }, { data: cl5 }, { data: cl6 }, { data: cl7 }, { data: cl8s }, { data: cl8r }, { data: cl9 }, { data: cl3 },
-      { data: diarias }, { data: verbaOp }, { data: passagens }, { data: concessionaria }, { data: horasVoo }, { data: materialConsumo }, { data: complementoAlimentacao },
+      { data: diarias }, { data: verbaOp }, { data: passagens }, { data: concessionaria }, { data: horasVoo }, { data: materialConsumo }, { data: complementoAlimentacao }, { data: servicosTerceiros },
     ] = await Promise.all([
       supabase.from('classe_ii_registros').select('*').eq('p_trab_id', ptrabId),
       supabase.from('classe_v_registros').select('*').eq('p_trab_id', ptrabId),
@@ -272,6 +290,7 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
       supabase.from('horas_voo_registros').select('*').eq('p_trab_id', ptrabId),
       supabase.from('material_consumo_registros').select('*').eq('p_trab_id', ptrabId),
       supabase.from('complemento_alimentacao_registros').select('*').eq('p_trab_id', ptrabId),
+      supabase.from('servicos_terceiros_registros' as any).select('*').eq('p_trab_id', ptrabId),
     ]);
 
     const processGenericClass = (data: any[], classe: string) => {
@@ -418,7 +437,6 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
             const totalQR = Number(record.efetivo || 0) * Number(record.valor_etapa_qr || 0) * Number(record.dias_operacao || 0);
             const totalGeral = totalQS + totalQR;
 
-            // Solicitante recebe o valor total (QS + QR)
             omS.complementoAlimentacao.total += totalGeral;
             omS.complementoAlimentacao.totalND30 += totalGeral;
             if (!omS.complementoAlimentacao.groupedCategories['Gênero Alimentício']) {
@@ -427,7 +445,6 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
             omS.complementoAlimentacao.groupedCategories['Gênero Alimentício'].totalValor += totalGeral;
             omS.complementoAlimentacao.groupedCategories['Gênero Alimentício'].totalND30 += totalGeral;
 
-            // Destino QS (RM)
             const omD_QS = getOmTotals(record.om_qs || record.organizacao, record.ug_qs || record.ug, 'destino');
             omD_QS.complementoAlimentacao.total += totalQS;
             omD_QS.complementoAlimentacao.totalND30 += totalQS;
@@ -437,7 +454,6 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
             omD_QS.complementoAlimentacao.groupedCategories['Gênero Alimentício (QS)'].totalValor += totalQS;
             omD_QS.complementoAlimentacao.groupedCategories['Gênero Alimentício (QS)'].totalND30 += totalQS;
 
-            // Destino QR (OM)
             const omD_QR = getOmTotals(record.om_qr || record.organizacao, record.ug_qr || record.ug, 'destino');
             omD_QR.complementoAlimentacao.total += totalQR;
             omD_QR.complementoAlimentacao.totalND30 += totalQR;
@@ -448,7 +464,6 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
             omD_QR.complementoAlimentacao.groupedCategories['Gênero Alimentício (QR)'].totalND30 += totalQR;
 
         } else {
-            // Água ou Lanche
             const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
             const val = Number(record.valor_total || 0);
             const nd30 = Number(record.valor_nd_30 || 0);
@@ -473,6 +488,27 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
             });
         }
     });
+
+    (servicosTerceiros || []).forEach(record => {
+        const omS = getOmTotals(record.organizacao, record.ug, 'solicitante');
+        const omD = getOmTotals(record.om_detentora || record.organizacao, record.ug_detentora || record.ug, 'destino');
+        const val = Number(record.valor_total || 0);
+        const nd33 = Number(record.valor_nd_30 || 0); // No form, valor_nd_30 armazena ND 33
+        const nd39 = Number(record.valor_nd_39 || 0);
+        const cat = formatCategoryLabel(record.categoria, record.detalhes_planejamento);
+
+        [omS, omD].forEach(omTotals => {
+            omTotals.servicosTerceiros.total += val;
+            omTotals.servicosTerceiros.totalND33 += nd33;
+            omTotals.servicosTerceiros.totalND39 += nd39;
+            if (!omTotals.servicosTerceiros.groupedCategories[cat]) {
+                omTotals.servicosTerceiros.groupedCategories[cat] = { totalValor: 0, totalND33: 0, totalND39: 0 };
+            }
+            omTotals.servicosTerceiros.groupedCategories[cat].totalValor += val;
+            omTotals.servicosTerceiros.groupedCategories[cat].totalND33 += nd33;
+            omTotals.servicosTerceiros.groupedCategories[cat].totalND39 += nd39;
+        });
+    });
     
     let globalTotals: PTrabAggregatedTotals = {
         totalLogisticoGeral: 0, totalOperacional: 0, totalMaterialPermanente: 0, totalAviacaoExercito: 0, totalRacoesOperacionaisGeral: 0,
@@ -492,12 +528,13 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
         totalHorasVoo: 0, totalHorasVooND30: 0, totalHorasVooND39: 0, quantidadeHorasVoo: 0, groupedHorasVoo: {},
         totalMaterialConsumo: 0, totalMaterialConsumoND30: 0, totalMaterialConsumoND39: 0, groupedMaterialConsumoCategories: {},
         totalComplementoAlimentacao: 0, totalComplementoAlimentacaoND30: 0, totalComplementoAlimentacaoND39: 0, groupedComplementoCategories: {},
+        totalServicosTerceiros: 0, totalServicosTerceirosND33: 0, totalServicosTerceirosND39: 0, groupedServicosTerceirosCategories: {},
         groupedByOmSolicitante, groupedByOmDestino,
     };
     
     Object.values(groupedByOmSolicitante).forEach(omTotals => {
         omTotals.totalLogistica = omTotals.classeI.total + omTotals.classeII.total + omTotals.classeIII.total + omTotals.classeV.total + omTotals.classeVI.total + omTotals.classeVII.total + omTotals.classeVIII.total + omTotals.classeIX.total;
-        omTotals.totalOperacional = omTotals.diarias.total + omTotals.verbaOperacional.total + omTotals.suprimentoFundos.total + omTotals.passagens.total + omTotals.concessionaria.total + omTotals.materialConsumo.total + omTotals.complementoAlimentacao.total;
+        omTotals.totalOperacional = omTotals.diarias.total + omTotals.verbaOperacional.total + omTotals.suprimentoFundos.total + omTotals.passagens.total + omTotals.concessionaria.total + omTotals.materialConsumo.total + omTotals.complementoAlimentacao.total + omTotals.servicosTerceiros.total;
         omTotals.totalGeral = omTotals.totalLogistica + omTotals.totalOperacional + omTotals.totalMaterialPermanente + omTotals.totalAviacaoExercito;
         globalTotals.totalLogisticoGeral += omTotals.totalLogistica;
         globalTotals.totalOperacional += omTotals.totalOperacional;
@@ -586,11 +623,23 @@ export const fetchPTrabTotals = async (ptrabId: string): Promise<PTrabAggregated
             globalTotals.groupedComplementoCategories[cat].totalND30 += data.totalND30;
             globalTotals.groupedComplementoCategories[cat].totalND39 += data.totalND39;
         });
+
+        globalTotals.totalServicosTerceiros += omTotals.servicosTerceiros.total;
+        globalTotals.totalServicosTerceirosND33 += omTotals.servicosTerceiros.totalND33;
+        globalTotals.totalServicosTerceirosND39 += omTotals.servicosTerceiros.totalND39;
+        Object.entries(omTotals.servicosTerceiros.groupedCategories || {}).forEach(([cat, data]) => {
+            if (!globalTotals.groupedServicosTerceirosCategories[cat]) {
+                globalTotals.groupedServicosTerceirosCategories[cat] = { totalValor: 0, totalND33: 0, totalND39: 0 };
+            }
+            globalTotals.groupedServicosTerceirosCategories[cat].totalValor += data.totalValor;
+            globalTotals.groupedServicosTerceirosCategories[cat].totalND33 += data.totalND33;
+            globalTotals.groupedServicosTerceirosCategories[cat].totalND39 += data.totalND39;
+        });
     });
 
     Object.values(groupedByOmDestino).forEach(omTotals => {
         omTotals.totalLogistica = omTotals.classeI.total + omTotals.classeII.total + omTotals.classeIII.total + omTotals.classeV.total + omTotals.classeVI.total + omTotals.classeVII.total + omTotals.classeVIII.total + omTotals.classeIX.total;
-        omTotals.totalOperacional = omTotals.diarias.total + omTotals.verbaOperacional.total + omTotals.suprimentoFundos.total + omTotals.passagens.total + omTotals.concessionaria.total + omTotals.materialConsumo.total + omTotals.complementoAlimentacao.total;
+        omTotals.totalOperacional = omTotals.diarias.total + omTotals.verbaOperacional.total + omTotals.suprimentoFundos.total + omTotals.passagens.total + omTotals.concessionaria.total + omTotals.materialConsumo.total + omTotals.complementoAlimentacao.total + omTotals.servicosTerceiros.total;
         omTotals.totalGeral = omTotals.totalLogistica + omTotals.totalOperacional + omTotals.totalMaterialPermanente + omTotals.totalAviacaoExercito;
     });
     return globalTotals;
@@ -661,9 +710,9 @@ const OmDetailsDialog = ({ om, totals, onClose }: any) => {
                                 <span className="text-xl font-extrabold">{formatCurrency(om.totalLogistica)}</span>
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                                <CategoryCard label="Classe I (Alimentação)" value={om.classeI.total} icon={Utensils} colorClass="bg-orange-500/10 text-orange-600" nd30={om.classeI.total} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Complemento (Ref. Int.)</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(om.classeI.totalRefeicoesIntermediarias)}</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeI.totalComplemento)}</span></div><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Etapa Solicitada</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(om.classeI.totalDiasEtapaSolicitada)} dias</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeI.totalEtapaSolicitadaValor)}</span></div>{om.classeI.totalRacoesOperacionaisGeral > 0 && <div className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left truncate pr-3">Ração Operacional (R2/R3)</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{om.classeI.totalRacoesOperacionaisGeral} un.</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(0)}</span></div>}</div>} />
+                                <CategoryCard label="Classe I (Alimentação)" value={om.classeI.total} icon={Utensils} colorClass="bg-orange-500/10 text-orange-600" nd30={om.classeI.total} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Complemento (Ref. Int.)</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(om.classeI.totalRefeicoesIntermediarias)}</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeI.totalComplemento)}</span></div><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Etapa Solicitada</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(om.classeI.totalDiasEtapaSolicitada)} dias</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeI.totalEtapaSolicitadaValor)}</span></div>{om.classeI.totalRacoesOperacionaisGeral > 0 && <div className="flex justify-between text-muted-foreground pt-1 border-t border-border/50 mt-1"><span className="w-1/2 text-left truncate pr-3">Ração Operacional (R2/R3)</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{om.classeI.totalRacoesOperacionaisGeral} un.</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(0)}</span></div>}</div>} />
                                 <CategoryCard label="Classe II (Intendência)" value={om.classeII.total} icon={ClipboardList} colorClass="bg-orange-500/10 text-orange-600" nd30={om.classeII.totalND30} nd39={om.classeII.totalND39} details={renderClassDetails(om.classeII)} />
-                                <CategoryCard label="Classe III (Combustíveis)" value={om.classeIII.total} icon={Fuel} colorClass="bg-orange-500/10 text-orange-600" nd30={om.classeIII.total} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Óleo Diesel</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(om.classeIII.totalDieselLitros)} L</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeIII.totalDieselValor)}</span></div><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Gasolina</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(om.classeIII.totalGasolinaLitros)} L</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeIII.totalGasolinaValor)}</span></div><div className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left truncate pr-3">Lubrificante</span><span className="w-1/4 text-right font-medium">{formatNumber(om.classeIII.totalLubrificanteLitros || 0, 2)} L</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeIII.totalLubrificanteValor)}</span></div></div>} />
+                                <CategoryCard label="Classe III (Combustíveis)" value={om.classeIII.total} icon={Fuel} colorClass="bg-orange-500/10 text-orange-600" nd30={om.classeIII.total} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Óleo Diesel</span><span className="w-1/4 text-right font-medium whitespace-nowrap">{formatNumber(om.classeIII.totalDieselLitros)} L</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeIII.totalDieselValor)}</span></div><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="w-1/2 text-left truncate pr-3">Gasolina</span><span className="w-1/4 text-right font-medium">{formatNumber(om.classeIII.totalGasolinaLitros)} L</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeIII.totalGasolinaValor)}</span></div><div className="flex justify-between text-muted-foreground"><span className="w-1/2 text-left truncate pr-3">Lubrificante</span><span className="w-1/4 text-right font-medium">{formatNumber(om.classeIII.totalLubrificanteLitros || 0, 2)} L</span><span className="w-1/4 text-right font-bold text-foreground whitespace-nowrap">{formatCurrency(om.classeIII.totalLubrificanteValor)}</span></div></div>} />
                                 <CategoryCard label="Classe V (Armamento)" value={om.classeV.total} icon={Swords} colorClass="bg-orange-500/10 text-orange-600" nd30={om.classeV.totalND30} nd39={om.classeV.totalND39} details={renderClassDetails(om.classeV)} />
                                 <CategoryCard label="Classe VI (Engenharia)" value={om.classeVI.total} icon={HardHat} colorClass="bg-orange-500/10 text-orange-600" nd30={om.classeVI.totalND30} nd39={om.classeVI.totalND39} details={renderClassDetails(om.classeVI)} />
                                 <CategoryCard label="Classe VII (Com/Inf)" value={om.classeVII.total} icon={Radio} colorClass="bg-orange-500/10 text-orange-600" nd30={om.classeVII.totalND30} nd39={om.classeVII.totalND39} details={renderClassDetails(om.classeVII)} />
@@ -684,6 +733,7 @@ const OmDetailsDialog = ({ om, totals, onClose }: any) => {
                                 <CategoryCard label="Diárias" value={om.diarias.total} icon={Briefcase} colorClass="bg-blue-500/10 text-blue-600" nd15={om.diarias.totalND15} nd30={om.diarias.totalND30} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Militares</span><span className="font-bold text-foreground whitespace-nowrap">{om.diarias.totalMilitares}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Dias de Viagem</span><span className="font-bold text-foreground whitespace-nowrap">{om.diarias.totalDiasViagem}</span></div></div>} />
                                 <CategoryCard label="Material de Consumo" value={om.materialConsumo.total} icon={Package} colorClass="bg-blue-500/10 text-blue-600" nd30={om.materialConsumo.totalND30} nd39={om.materialConsumo.totalND39} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.materialConsumo.groupedCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, data]: any) => (<div key={cat} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{cat}</span><span className="font-bold text-foreground text-right w-1/2 whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div>))}</div>} />
                                 <CategoryCard label="Passagens" value={om.passagens.total} icon={Plane} colorClass="bg-blue-500/10 text-blue-600" nd33={om.passagens.total} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Quantidade</span><span className="font-bold text-foreground whitespace-nowrap">{om.passagens.totalQuantidade} un.</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Trechos</span><span className="font-bold text-foreground whitespace-nowrap">{om.passagens.totalTrechos}</span></div></div>} />
+                                <CategoryCard label="Serviços de Terceiros/Locações" value={om.servicosTerceiros.total} icon={ClipboardList} colorClass="bg-blue-500/10 text-blue-600" nd33={om.servicosTerceiros.totalND33} nd39={om.servicosTerceiros.totalND39} details={<div className="space-y-2.5 text-[12px]">{Object.entries(om.servicosTerceiros.groupedCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, data]: any) => (<div key={cat} className="flex justify-between text-muted-foreground border-b border-border/20 pb-2 last:border-0"><span className="font-medium w-1/2 text-left truncate pr-3">{cat}</span><div className="flex w-1/2 justify-between gap-3"><span className="font-bold text-foreground text-right w-full whitespace-nowrap">{formatCurrency(data.totalValor)}</span></div></div>))}</div>} />
                                 <CategoryCard label="Suprimento de Fundos" value={om.suprimentoFundos.total} icon={Wallet} colorClass="bg-blue-500/10 text-blue-600" nd30={om.suprimentoFundos.totalND30} nd39={om.suprimentoFundos.totalND39} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Equipes</span><span className="font-bold text-foreground whitespace-nowrap">{om.suprimentoFundos.totalEquipes}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Dias</span><span className="font-bold text-foreground whitespace-nowrap">{om.suprimentoFundos.totalDias}</span></div></div>} />
                                 <CategoryCard label="Verba Operacional" value={om.verbaOperacional.total} icon={Activity} colorClass="bg-blue-500/10 text-blue-600" nd30={om.verbaOperacional.totalND30} nd39={om.verbaOperacional.totalND39} details={<div className="space-y-2.5 text-[12px]"><div className="flex justify-between text-muted-foreground border-b border-border/20 pb-2"><span className="truncate pr-3">Equipes</span><span className="font-bold text-foreground whitespace-nowrap">{om.verbaOperacional.totalEquipes}</span></div><div className="flex justify-between text-muted-foreground"><span className="truncate pr-3">Dias</span><span className="font-bold text-foreground whitespace-nowrap">{om.verbaOperacional.totalDias}</span></div></div>} />
                             </div>
@@ -767,6 +817,12 @@ const getComplementoAlimentacaoData = (data: OmTotals | PTrabAggregatedTotals): 
     if ((data as OmTotals).omKey) return (data as OmTotals).complementoAlimentacao;
     const g = data as PTrabAggregatedTotals;
     return { total: g.totalComplementoAlimentacao, totalND30: g.totalComplementoAlimentacaoND30, totalND39: g.totalComplementoAlimentacaoND39, groupedCategories: g.groupedComplementoCategories };
+};
+
+const getServicosTerceirosData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['servicosTerceiros'] => {
+    if ((data as OmTotals).omKey) return (data as OmTotals).servicosTerceiros;
+    const g = data as PTrabAggregatedTotals;
+    return { total: g.totalServicosTerceiros, totalND33: g.totalServicosTerceirosND33, totalND39: g.totalServicosTerceirosND39, groupedCategories: g.groupedServicosTerceirosCategories };
 };
 
 const getHorasVooData = (data: OmTotals | PTrabAggregatedTotals): OmTotals['horasVoo'] => {
@@ -901,6 +957,28 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
             </Accordion>
         );
     };
+    const renderServicosTerceiros = () => {
+        const s = getServicosTerceirosData(data);
+        if (s.total === 0) return null;
+        return (
+            <Accordion type="single" collapsible className="w-full pt-1">
+                <AccordionItem value="item-servicos-terceiros" className="border-b-0">
+                    <AccordionTrigger className="p-0 hover:no-underline">
+                        <div className="flex justify-between items-center w-full text-xs border-b pb-1 border-border/50">
+                            <div className="flex items-center gap-2 text-foreground">
+                                <ClipboardList className="h-3 w-3 text-blue-500" />
+                                <span className="text-left leading-tight">Serviços de Terceiros/Locações</span>
+                            </div>
+                            <span className={cn(valueClasses, "text-xs mr-6")}>
+                                {formatCurrency(s.total)}
+                            </span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-1 pb-0"><div className="space-y-1 pl-4 text-[10px]">{Object.entries(s.groupedCategories || {}).sort(([a], [b]) => a.localeCompare(b)).map(([cat, d]: any) => (<div key={cat} className="space-y-1"><div className="flex justify-between text-muted-foreground font-semibold pt-1"><span className="w-1/2 text-left">{cat}</span><span className="w-1/2 text-right font-medium">{formatCurrency(d.totalValor)}</span></div><div className="flex justify-between text-muted-foreground text-[9px] pl-2"><span className="w-1/2 text-left">ND 33 / ND 39</span><span className="w-1/4 text-right text-cyan-600 font-medium">{formatCurrency(d.totalND33)}</span><span className="w-1/4 text-right text-blue-600 font-medium">{formatCurrency(d.totalND39)}</span></div></div>))}</div></AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        );
+    };
 
     if (mode === 'logistica') {
         const total = (data as OmTotals).omKey ? (data as OmTotals).totalLogistica : (data as PTrabAggregatedTotals).totalLogisticoGeral;
@@ -926,6 +1004,7 @@ const TabDetails = ({ mode, data }: TabDetailsProps) => {
                 {renderComplementoAlimentacao()}
                 {renderDiarias()}
                 {renderPassagens()}
+                {renderServicosTerceiros()}
                 {renderVerbaSuprimento('verbaOperacional', 'Verba Operacional')}
                 {renderVerbaSuprimento('suprimentoFundos', 'Suprimento de Fundos')}
                 {renderConcessionaria()}
