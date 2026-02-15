@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
-import PTrabList from "./pages/PTrabList";
+import PTrabManager from "./pages/PTrabManager";
 import PTrabForm from "./pages/PTrabForm";
 import ClasseI from "./pages/ClasseI";
 import ClasseII from "./pages/ClasseII";
@@ -17,7 +17,7 @@ import PassagemAerea from "./pages/PassagemAerea";
 import HorasVooAvEx from "./pages/HorasVooAvEx";
 import Concessionaria from "./pages/Concessionaria";
 import MaterialConsumo from "./pages/MaterialConsumo";
-import MaterialPermanenteForm from "./pages/MaterialPermanenteForm"; // ATUALIZADO
+import MaterialPermanenteForm from "./pages/MaterialPermanenteForm";
 import ComplementoAlimentacao from "./pages/ComplementoAlimentacao";
 import ServicosTerceiros from "./pages/ServicosTerceiros";
 import Login from "./pages/Login";
@@ -34,7 +34,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/ptrab",
-    element: <ProtectedRoute><PTrabList /></ProtectedRoute>,
+    element: <ProtectedRoute><PTrabManager /></ProtectedRoute>,
   },
   {
     path: "/ptrab/form",
@@ -102,7 +102,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/ptrab/material-permanente",
-    element: <ProtectedRoute><MaterialPermanenteForm /></ProtectedRoute>, // ATUALIZADO
+    element: <ProtectedRoute><MaterialPermanenteForm /></ProtectedRoute>,
   },
   {
     path: "/ptrab/complemento-alimentacao",
