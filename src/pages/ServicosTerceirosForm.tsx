@@ -217,7 +217,7 @@ const ItemsTable = ({
                                             <Input 
                                                 type="number" 
                                                 min={0}
-                                                value={item.quantidade === 0 ? "" : item.quantidade} 
+                                                value={item.quantidade ?? ""} 
                                                 onChange={(e) => onQuantityChange(item.id, e.target.value)} 
                                                 onWheel={(e) => e.currentTarget.blur()}
                                                 onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
@@ -302,14 +302,12 @@ const ItemsTable = ({
                                             <div className="flex flex-col items-center gap-1">
                                                 <div className="flex items-center gap-2 justify-center">
                                                     <Input 
-                                                        type="number" 
-                                                        min={0}
-                                                        step="any"
-                                                        value={period === undefined || period === 0 ? "" : period} 
+                                                        type="text" 
+                                                        inputMode="decimal"
+                                                        value={period ?? ""} 
                                                         onChange={(e) => onPeriodChange(item.id, e.target.value)}
                                                         onWheel={(e) => e.currentTarget.blur()}
-                                                        onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                        className="h-8 w-16 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                        className="h-8 w-16 text-center"
                                                     />
                                                     <span className="text-[10px] text-muted-foreground font-medium">
                                                         {period > 1 ? `${unit}s` : unit}
@@ -671,7 +669,7 @@ const ServicosTerceirosForm = () => {
     };
 
     const handleQuantityChange = (id: string, rawValue: string) => {
-        const qty = rawValue === "" ? 0 : parseInt(rawValue);
+        const qty = rawValue === "" ? undefined : parseInt(rawValue);
         setSelectedItems(prev => prev.map(item => {
             if (item.id === id) {
                 const period = (item as any).periodo || 1;
@@ -679,7 +677,8 @@ const ServicosTerceirosForm = () => {
                 
                 // Se for serviço adicional no transporte coletivo, não multiplica por viagens
                 const multiplier = (activeTab === "transporte-coletivo" && item.sub_categoria === 'servico-adicional') ? 1 : trips;
-                return { ...item, quantidade: qty, valor_total: qty * period * item.valor_unitario * multiplier };
+                const numQty = qty ?? 0;
+                return { ...item, quantidade: qty, valor_total: numQty * period * item.valor_unitario * multiplier };
             }
             return item;
         }));
