@@ -213,7 +213,7 @@ const DOREditor = () => {
                   value={formData.numero_dor}
                   onChange={(e: any) => setFormData({...formData, numero_dor: e.target.value})}
                   placeholder="01"
-                  className="w-8 text-center font-bold"
+                  className="w-8 text-center"
                   style={{ fontSize: '11pt' }}
                 />
                 <span>/ {anoAtual}</span>
@@ -301,7 +301,7 @@ const DOREditor = () => {
                 <DocumentInput 
                   value={formData.acao_orcamentaria}
                   onChange={(e: any) => setFormData({...formData, acao_orcamentaria: e.target.value})}
-                  className="w-full font-bold"
+                  className="w-full"
                   style={bodyStyle}
                 />
               </div>
@@ -310,7 +310,7 @@ const DOREditor = () => {
                 <DocumentInput 
                   value={formData.plano_orcamentario}
                   onChange={(e: any) => setFormData({...formData, plano_orcamentario: e.target.value})}
-                  className="w-full font-bold"
+                  className="w-full"
                   style={bodyStyle}
                 />
               </div>
