@@ -100,52 +100,8 @@ const DOREditor = () => {
     observacoes: ""
   });
 
-  const loadPTrab = useCallback(async () => {
-    if (!ptrabId) return;
-    const { data, error } = await supabase
-      .from("p_trab")
-      .select("*")
-      .eq("id", ptrabId)
-      .single();
-    if (!error) setPtrab(data);
-    return data;
-  }, [ptrabId]);
-
-  const loadDors = useCallback(async (currentPtrab?: any) => {
-    if (!ptrabId) return;
-    try {
-      const { data, error } = await supabase
-        .from("dor_registros" as any)
-        .select("*")
-        .eq("p_trab_id", ptrabId)
-        .order("created_at", { ascending: true });
-
-      if (error) throw error;
-      setAvailableDors(data || []);
-
-      // Se houver DORs e nenhum selecionado, seleciona o primeiro
-      if (data && data.length > 0 && !selectedDorId) {
-        applyDorData(data[0]);
-      } else if (data && data.length === 0) {
-        // Se não houver nenhum, prepara um novo
-        const p = currentPtrab || ptrab;
-        if (p) {
-          const opName = p.nome_operacao || "";
-          const formattedOp = opName.toLowerCase().startsWith("operação") ? opName : `Operação ${opName}`;
-          setFormData(prev => ({
-            ...prev,
-            evento: formattedOp,
-            finalidade: p.acoes || "",
-            numero_dor: ""
-          }));
-        }
-      }
-    } catch (error: any) {
-      console.error("Erro ao carregar DORs:", error);
-    }
-  }, [ptrabId, selectedDorId, ptrab]);
-
-  const applyDorData = (dorData: any) => {
+  // Função para aplicar dados de um DOR ao formulário
+  const applyDorData = useCallback((dorData: any) => {
     setSelectedDorId(dorData.id);
     setFormData({
       numero_dor: dorData.numero_dor || "",
@@ -168,7 +124,71 @@ const DOREditor = () => {
       setDorItems([]);
       setShowItemsTable(false);
     }
-  };
+  }, []);
+
+  // Função para recarregar apenas a lista de DORs (usada após salvar)
+  const refreshDorList = useCallback(async () => {
+    if (!ptrabId) return;
+    const { data, error } = await supabase
+      .from("dor_registros" as any)
+      .select("*")
+      .eq("p_trab_id", ptrabId)
+      .order("created_at", { ascending: true });
+
+    if (!error) {
+      setAvailableDors(data || []);
+    }
+  }, [ptrabId]);
+
+  // Carregamento inicial estável
+  useEffect(() => {
+    const loadInitialData = async () => {
+      if (!ptrabId) return;
+      setLoading(true);
+      try {
+        // 1. Carrega P-Trab
+        const { data: pData, error: pError } = await supabase
+          .from("p_trab")
+          .select("*")
+          .eq("id", ptrabId)
+          .single();
+        
+        if (pError) throw pError;
+        setPtrab(pData);
+
+        // 2. Carrega DORs existentes
+        const { data: dData, error: dError } = await supabase
+          .from("dor_registros" as any)
+          .select("*")
+          .eq("p_trab_id", ptrabId)
+          .order("created_at", { ascending: true });
+
+        if (dError) throw dError;
+        setAvailableDors(dData || []);
+
+        // 3. Decide o que exibir inicialmente
+        if (dData && dData.length > 0) {
+          applyDorData(dData[0]);
+        } else {
+          // Prepara formulário padrão baseado no P-Trab
+          const opName = pData.nome_operacao || "";
+          const formattedOp = opName.toLowerCase().startsWith("operação") ? opName : `Operação ${opName}`;
+          setFormData(prev => ({
+            ...prev,
+            evento: formattedOp,
+            finalidade: pData.acoes || "",
+          }));
+        }
+      } catch (error: any) {
+        console.error("Erro no carregamento inicial:", error);
+        toast.error("Erro ao carregar dados.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadInitialData();
+  }, [ptrabId, applyDorData]);
 
   const handleCreateNewDor = () => {
     setSelectedDorId(null);
@@ -191,17 +211,6 @@ const DOREditor = () => {
     });
     toast.info("Novo formulário de DOR iniciado.");
   };
-
-  const loadInitialData = useCallback(async () => {
-    setLoading(true);
-    const p = await loadPTrab();
-    await loadDors(p);
-    setLoading(false);
-  }, [loadPTrab, loadDors]);
-
-  useEffect(() => {
-    loadInitialData();
-  }, [loadInitialData]);
 
   const handleImportConcluded = (groups: DorGroup[], selectedGnd: number) => {
     const finalItems: any[] = [];
@@ -251,7 +260,6 @@ const DOREditor = () => {
         updated_at: new Date().toISOString()
       };
 
-      // Se já temos um ID, atualizamos o registro específico
       if (selectedDorId) {
         (payload as any).id = selectedDorId;
       }
@@ -266,7 +274,7 @@ const DOREditor = () => {
       
       toast.success("DOR salvo com sucesso!");
       setSelectedDorId(data.id);
-      await loadDors(); // Recarrega a lista para atualizar nomes/números
+      await refreshDorList();
     } catch (error: any) {
       toast.error("Erro ao salvar: " + error.message);
     } finally {
