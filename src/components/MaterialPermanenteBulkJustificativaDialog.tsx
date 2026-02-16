@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Save, X, ClipboardPaste } from "lucide-react";
 import { ItemAquisicao } from "@/types/diretrizesMaterialConsumo";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface MaterialPermanenteBulkJustificativaDialogProps {
   open: boolean;
@@ -31,137 +32,188 @@ const MaterialPermanenteBulkJustificativaDialog = ({
   items,
   onSave
 }: MaterialPermanenteBulkJustificativaDialogProps) => {
-  const [localItems, setLocalItems] = React.useState<ItemAquisicao[]>([]);
-  const [selection, setSelection] = React.useState<{
-    start: { row: number, col: number } | null,
-    end: { row: number, col: number } | null,
-    isSelecting: boolean
-  }>({ start: null, end: null, isSelecting: false });
+  const [localItems, setLocalItems] = useState<ItemAquisicao[]>([]);
+  const [activeCell, setActiveCell] = useState<{ r: number, c: number }>({ r: 0, c: 0 });
+  const [selection, setSelection] = useState<{ start: { r: number, c: number }, end: { r: number, c: number } | null }>({
+    start: { r: 0, c: 0 },
+    end: null
+  });
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       setLocalItems(JSON.parse(JSON.stringify(items)));
-      setSelection({ start: null, end: null, isSelecting: false });
+      setActiveCell({ r: 0, c: 0 });
+      setSelection({ start: { r: 0, c: 0 }, end: null });
+      setIsEditing(false);
     }
   }, [open, items]);
 
-  // Atalho de teclado para Cópia (Ctrl+C)
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!open || !selection.start || !selection.end) return;
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.select();
+    }
+  }, [isEditing]);
 
-      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
-        // Se houver um elemento focado que não seja o corpo da tabela (como um input), 
-        // deixamos o comportamento padrão do navegador agir se houver texto selecionado.
-        const activeElement = document.activeElement;
-        if (activeElement?.tagName === 'TEXTAREA' || activeElement?.tagName === 'INPUT') {
-          const selectionText = window.getSelection()?.toString();
-          if (selectionText) return; // Deixa copiar o texto interno
-        }
-
-        const startRow = Math.min(selection.start.row, selection.end.row);
-        const endRow = Math.max(selection.start.row, selection.end.row);
-        const startCol = Math.min(selection.start.col, selection.end.col);
-        const endCol = Math.max(selection.start.col, selection.end.col);
-
-        let copyText = "";
-        for (let r = startRow; r <= endRow; r++) {
-          const rowData = [];
-          for (let c = startCol; c <= endCol; c++) {
-            const field = FIELDS[c];
-            rowData.push(localItems[r].justificativa?.[field] || "");
-          }
-          copyText += rowData.join('\t') + (r === endRow ? "" : "\n");
-        }
-
-        navigator.clipboard.writeText(copyText).then(() => {
-          toast.success("Células copiadas!");
-        });
-      }
+  const getSelectionRange = useCallback(() => {
+    const start = selection.start;
+    const end = selection.end || selection.start;
+    return {
+      minR: Math.min(start.r, end.r),
+      maxR: Math.max(start.r, end.r),
+      minC: Math.min(start.c, end.c),
+      maxC: Math.max(start.c, end.c)
     };
+  }, [selection]);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, selection, localItems]);
-
-  const handleInputChange = (id: string, field: string, value: string) => {
-    setLocalItems(prev => prev.map(item => {
-      if (item.id === id) {
-        const justificativa = { ...(item.justificativa || {}), [field]: value };
-        return { ...item, justificativa };
-      }
-      return item;
-    }));
+  const isCellSelected = (r: number, c: number) => {
+    const { minR, maxR, minC, maxC } = getSelectionRange();
+    return r >= minR && r <= maxR && c >= minC && c <= maxC;
   };
 
-  const handlePaste = (e: React.ClipboardEvent, startItemId: string, startField: string) => {
-    const pasteData = e.clipboardData.getData('text');
-    if (!pasteData.includes('\t') && !pasteData.includes('\n')) {
+  const handleCopy = useCallback(() => {
+    const { minR, maxR, minC, maxC } = getSelectionRange();
+    let copyText = "";
+    for (let r = minR; r <= maxR; r++) {
+      const rowData = [];
+      for (let c = minC; c <= maxC; c++) {
+        rowData.push(localItems[r].justificativa?.[FIELDS[c]] || "");
+      }
+      copyText += rowData.join('\t') + (r === maxR ? "" : "\n");
+    }
+    navigator.clipboard.writeText(copyText);
+    toast.success("Células copiadas");
+  }, [localItems, getSelectionRange]);
+
+  const handlePaste = useCallback(async (targetR: number, targetC: number) => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const rows = text.split(/\r?\n/).filter(row => row.length > 0 || row === "");
+      
+      setLocalItems(prev => {
+        const newItems = [...prev];
+        rows.forEach((rowText, rowOffset) => {
+          const r = targetR + rowOffset;
+          if (r >= newItems.length) return;
+
+          const cols = rowText.split('\t');
+          cols.forEach((cellText, colOffset) => {
+            const c = targetC + colOffset;
+            if (c >= FIELDS.length) return;
+
+            const field = FIELDS[c];
+            newItems[r] = {
+              ...newItems[r],
+              justificativa: { ...(newItems[r].justificativa || {}), [field]: cellText.trim() }
+            };
+          });
+        });
+        return newItems;
+      });
+      toast.success("Dados colados");
+    } catch (err) {
+      toast.error("Erro ao acessar área de transferência");
+    }
+  }, []);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (isEditing) {
+      if (e.key === 'Escape') {
+        setIsEditing(false);
+        e.preventDefault();
+      }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        setIsEditing(false);
+        if (activeCell.r < localItems.length - 1) {
+          const next = { r: activeCell.r + 1, c: activeCell.c };
+          setActiveCell(next);
+          setSelection({ start: next, end: null });
+        }
+        e.preventDefault();
+      }
       return;
     }
 
-    e.preventDefault();
-    
-    const rows = pasteData.split(/\r?\n/).filter(row => row.length > 0 || row === "");
-    const startItemIdx = localItems.findIndex(item => item.id === startItemId);
-    const startFieldIdx = FIELDS.indexOf(startField);
-
-    if (startItemIdx === -1 || startFieldIdx === -1) return;
-
-    setLocalItems(prev => {
-      const newItems = [...prev];
-      
-      rows.forEach((rowText, rowOffset) => {
-        const targetItemIdx = startItemIdx + rowOffset;
-        if (targetItemIdx >= newItems.length) return;
-
-        const cols = rowText.split('\t');
-        cols.forEach((cellText, colOffset) => {
-          const targetFieldIdx = startFieldIdx + colOffset;
-          if (targetFieldIdx >= FIELDS.length) return;
-
-          const fieldName = FIELDS[targetFieldIdx];
-          const currentItem = { ...newItems[targetItemIdx] };
-          currentItem.justificativa = { 
-            ...(currentItem.justificativa || {}), 
-            [fieldName]: cellText.trim() 
-          };
-          newItems[targetItemIdx] = currentItem;
-        });
+    // Atalhos Globais (Modo Seleção)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+      handleCopy();
+      e.preventDefault();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+      handlePaste(activeCell.r, activeCell.c);
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      const { minR, maxR, minC, maxC } = getSelectionRange();
+      setLocalItems(prev => {
+        const next = [...prev];
+        for (let r = minR; r <= maxR; r++) {
+          for (let c = minC; c <= maxC; c++) {
+            const field = FIELDS[c];
+            next[r] = { ...next[r], justificativa: { ...(next[r].justificativa || {}), [field]: "" } };
+          }
+        }
+        return next;
       });
-      
-      return newItems;
-    });
+      e.preventDefault();
+      return;
+    }
 
-    toast.success("Dados colados com sucesso!");
+    // Navegação
+    let { r, c } = activeCell;
+    if (e.key === 'ArrowUp') r = Math.max(0, r - 1);
+    else if (e.key === 'ArrowDown') r = Math.min(localItems.length - 1, r + 1);
+    else if (e.key === 'ArrowLeft') c = Math.max(0, c - 1);
+    else if (e.key === 'ArrowRight') c = Math.min(FIELDS.length - 1, c + 1);
+    else if (e.key === 'Enter') {
+      setIsEditing(true);
+      e.preventDefault();
+      return;
+    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // Começar a digitar limpa a célula e entra em edição
+      const field = FIELDS[activeCell.c];
+      setLocalItems(prev => {
+        const next = [...prev];
+        next[activeCell.r] = { ...next[activeCell.r], justificativa: { ...(next[activeCell.r].justificativa || {}), [field]: "" } };
+        return next;
+      });
+      setIsEditing(true);
+      return;
+    } else return;
+
+    const nextPos = { r, c };
+    setActiveCell(nextPos);
+    if (e.shiftKey) {
+      setSelection(prev => ({ ...prev, end: nextPos }));
+    } else {
+      setSelection({ start: nextPos, end: null });
+    }
+    e.preventDefault();
   };
 
-  const isCellSelected = (rowIdx: number, colIdx: number) => {
-    if (!selection.start || !selection.end) return false;
-    const startRow = Math.min(selection.start.row, selection.end.row);
-    const endRow = Math.max(selection.start.row, selection.end.row);
-    const startCol = Math.min(selection.start.col, selection.end.col);
-    const endCol = Math.max(selection.start.col, selection.end.col);
-
-    return rowIdx >= startRow && rowIdx <= endRow && colIdx >= startCol && colIdx <= endCol;
+  const handleMouseDown = (r: number, c: number) => {
+    if (isEditing && (r !== activeCell.r || c !== activeCell.c)) {
+      setIsEditing(false);
+    }
+    setIsSelecting(true);
+    setActiveCell({ r, c });
+    setSelection({ start: { r, c }, end: null });
   };
 
-  const handleMouseDown = (rowIdx: number, colIdx: number) => {
-    setSelection({
-      start: { row: rowIdx, col: colIdx },
-      end: { row: rowIdx, col: colIdx },
-      isSelecting: true
-    });
-  };
-
-  const handleMouseEnter = (rowIdx: number, colIdx: number) => {
-    if (selection.isSelecting) {
-      setSelection(prev => ({ ...prev, end: { row: rowIdx, col: colIdx } }));
+  const handleMouseEnter = (r: number, c: number) => {
+    if (isSelecting) {
+      setSelection(prev => ({ ...prev, end: { r, c } }));
     }
   };
 
   const handleMouseUp = () => {
-    setSelection(prev => ({ ...prev, isSelecting: false }));
+    setIsSelecting(false);
   };
 
   const handleSave = () => {
@@ -172,59 +224,74 @@ const MaterialPermanenteBulkJustificativaDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="max-w-[95vw] w-full max-h-[90vh] overflow-hidden flex flex-col"
+        className="max-w-[95vw] w-full max-h-[90vh] overflow-hidden flex flex-col outline-none"
+        onKeyDown={handleKeyDown}
         onMouseUp={handleMouseUp}
+        tabIndex={0}
       >
         <DialogHeader>
-          <DialogTitle>
-            Preenchimento Coletivo de Justificativas
-          </DialogTitle>
+          <DialogTitle>Preenchimento Coletivo de Justificativas</DialogTitle>
           <DialogDescription className="flex items-center gap-2">
             <ClipboardPaste className="h-4 w-4 text-muted-foreground" />
-            Selecione células e use Ctrl+C / Ctrl+V para manipular os dados.
+            Use as setas para navegar, Shift para selecionar e Ctrl+C/V para copiar e colar.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-grow overflow-auto border rounded-md my-4 shadow-inner bg-muted/5 select-none">
-          <Table>
-            <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
+        <div className="flex-grow overflow-auto border rounded-md my-4 shadow-inner bg-muted/5 select-none relative">
+          <Table className="border-collapse table-fixed w-full">
+            <TableHeader className="sticky top-0 bg-background z-20 shadow-sm">
               <TableRow>
-                <TableHead className="min-w-[200px] bg-muted/50 border-r">Item</TableHead>
-                <TableHead className="min-w-[150px] text-center">Grupo</TableHead>
-                <TableHead className="min-w-[150px] text-center">Propósito</TableHead>
-                <TableHead className="min-w-[150px] text-center">Destinação</TableHead>
-                <TableHead className="min-w-[150px] text-center">Local</TableHead>
-                <TableHead className="min-w-[150px] text-center">Finalidade</TableHead>
-                <TableHead className="min-w-[300px] text-center">Motivo</TableHead>
+                <TableHead className="w-[200px] bg-muted/50 border-r text-xs font-bold">Item</TableHead>
+                {FIELDS.map(f => (
+                  <TableHead key={f} className="w-[180px] text-center text-xs font-bold border-r uppercase tracking-tighter">
+                    {f}
+                  </TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {localItems.map((item, rowIdx) => (
-                <TableRow key={item.id} className="hover:bg-primary/5 transition-colors">
-                  <TableCell className="font-medium text-xs bg-muted/20 border-r sticky left-0 z-10">
+              {localItems.map((item, r) => (
+                <TableRow key={item.id} className="h-[40px]">
+                  <TableCell className="font-medium text-[10px] bg-muted/20 border-r sticky left-0 z-10 truncate px-2">
                     {item.descricao_reduzida || item.descricao_item}
                   </TableCell>
-                  {FIELDS.map((field, colIdx) => {
-                    const selected = isCellSelected(rowIdx, colIdx);
+                  {FIELDS.map((field, c) => {
+                    const isSelected = isCellSelected(r, c);
+                    const isActive = activeCell.r === r && activeCell.c === c;
+                    const value = item.justificativa?.[field] || "";
+
                     return (
                       <TableCell 
                         key={field} 
-                        className={`p-0 border-r last:border-r-0 align-top transition-colors ${selected ? 'bg-primary/20 ring-1 ring-inset ring-primary/30' : ''}`}
-                        onMouseDown={() => handleMouseDown(rowIdx, colIdx)}
-                        onMouseEnter={() => handleMouseEnter(rowIdx, colIdx)}
+                        className={cn(
+                          "p-0 border-r last:border-r-0 relative cursor-cell transition-colors",
+                          isSelected && "bg-primary/10",
+                          isActive && "ring-2 ring-inset ring-primary z-10"
+                        )}
+                        onMouseDown={() => handleMouseDown(r, c)}
+                        onMouseEnter={() => handleMouseEnter(r, c)}
+                        onDoubleClick={() => setIsEditing(true)}
                       >
-                        <Textarea 
-                          className="min-h-[40px] text-xs border-none focus-visible:ring-1 focus-visible:ring-primary rounded-none bg-transparent w-full resize-none overflow-hidden py-2 px-3 cursor-text"
-                          value={item.justificativa?.[field] || ""}
-                          onChange={(e) => {
-                            handleInputChange(item.id, field, e.target.value);
-                            e.target.style.height = 'auto';
-                            e.target.style.height = e.target.scrollHeight + 'px';
-                          }}
-                          onPaste={(e) => handlePaste(e, item.id, field)}
-                          placeholder="..."
-                          rows={1}
-                        />
+                        {isEditing && isActive ? (
+                          <Textarea 
+                            ref={textareaRef}
+                            className="absolute inset-0 h-full w-full text-xs border-none focus-visible:ring-0 rounded-none bg-background z-30 resize-none p-2"
+                            value={value}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setLocalItems(prev => {
+                                const next = [...prev];
+                                next[r] = { ...next[r], justificativa: { ...(next[r].justificativa || {}), [field]: val } };
+                                return next;
+                              });
+                            }}
+                            onBlur={() => setIsEditing(false)}
+                          />
+                        ) : (
+                          <div className="w-full h-full min-h-[40px] p-2 text-[11px] overflow-hidden whitespace-pre-wrap break-words">
+                            {value}
+                          </div>
+                        )}
                       </TableCell>
                     );
                   })}
