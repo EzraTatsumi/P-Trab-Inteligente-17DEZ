@@ -16,11 +16,11 @@ import { Input } from "@/components/ui/input";
 import { FileText, Save } from "lucide-react";
 
 interface JustificativaData {
+  grupo?: string;
   proposito?: string;
   destinacao?: string;
   local?: string;
   finalidade?: string;
-  periodo?: string;
   motivo?: string;
 }
 
@@ -66,6 +66,14 @@ const MaterialPermanenteJustificativaDialog = ({
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+          <div className="space-y-2 md:col-span-2">
+            <Label>Grupo do Item (Ex: Mobiliário, Informática, etc)</Label>
+            <Input 
+              value={formData.grupo || ""} 
+              onChange={(e) => setFormData({ ...formData, grupo: e.target.value })}
+              placeholder="Informe o grupo do material"
+            />
+          </div>
           <div className="space-y-2">
             <Label>Propósito (Obj imediato?)</Label>
             <Input 
@@ -96,14 +104,6 @@ const MaterialPermanenteJustificativaDialog = ({
               value={formData.finalidade || ""} 
               onChange={(e) => setFormData({ ...formData, finalidade: e.target.value })}
               placeholder="Ex: Apoio logístico"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Período (Quando?)</Label>
-            <Input 
-              value={formData.periodo || ""} 
-              onChange={(e) => setFormData({ ...formData, periodo: e.target.value })}
-              placeholder="Ex: Durante a Operação Y"
             />
           </div>
           <div className="space-y-2 md:col-span-2">

@@ -513,7 +513,7 @@ const MaterialPermanenteForm = () => {
                                                                 <TableHead>Descrição do Material</TableHead>
                                                                 <TableHead className="text-right w-[140px]">Valor Unitário</TableHead>
                                                                 <TableHead className="text-right w-[140px]">Total</TableHead>
-                                                                <TableHead className="w-[100px] text-center">Justificativa *</TableHead>
+                                                                <TableHead className="w-[120px] text-center whitespace-nowrap">Justificativa *</TableHead>
                                                                 <TableHead className="w-[100px] text-center">Ações</TableHead>
                                                             </TableRow>
                                                         </TableHeader>
@@ -585,11 +585,11 @@ const MaterialPermanenteForm = () => {
                                                                                     <Collapsible open={isExpanded}>
                                                                                         <CollapsibleContent className="p-3 space-y-2 text-[11px] border-t border-border/50 animate-in fade-in slide-in-from-top-1 duration-200">
                                                                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2">
+                                                                                                <div className="md:col-span-3"><span className="font-bold text-muted-foreground uppercase text-[9px]">Grupo:</span> <p>{item.justificativa?.grupo || 'N/A'}</p></div>
                                                                                                 <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Propósito:</span> <p>{item.justificativa?.proposito || 'N/A'}</p></div>
                                                                                                 <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Destinação:</span> <p>{item.justificativa?.destinacao || 'N/A'}</p></div>
                                                                                                 <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Local:</span> <p>{item.justificativa?.local || 'N/A'}</p></div>
                                                                                                 <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Finalidade:</span> <p>{item.justificativa?.finalidade || 'N/A'}</p></div>
-                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Período:</span> <p>{item.justificativa?.periodo || 'N/A'}</p></div>
                                                                                             </div>
                                                                                             <div className="pt-1 border-t border-border/30">
                                                                                                 <span className="font-bold text-muted-foreground uppercase text-[9px]">Motivo:</span>
