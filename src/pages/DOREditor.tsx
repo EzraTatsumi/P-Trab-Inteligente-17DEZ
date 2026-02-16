@@ -90,7 +90,8 @@ const DOREditor = () => {
     finalidade: "",
     motivacao: "",
     consequencia: "",
-    observacoes: ""
+    observacoes: "",
+    paginacao: "3/4" // Novo campo para o cabeçalho de continuação
   });
 
   const loadData = useCallback(async () => {
@@ -124,7 +125,8 @@ const DOREditor = () => {
           finalidade: dorData.finalidade || "",
           motivacao: dorData.motivacao || "",
           consequencia: dorData.consequencia || "",
-          observacoes: dorData.observacoes || ""
+          observacoes: dorData.observacoes || "",
+          paginacao: (dorData as any).paginacao || "3/4"
         });
       } else {
         const opName = ptrabData.nome_operacao || "";
@@ -270,6 +272,23 @@ const DOREditor = () => {
         
         <div className="p-[20mm]">
           
+          {/* CABEÇALHO DE CONTINUAÇÃO (CONFORME IMAGEM) */}
+          <div className="italic text-[11pt] flex items-end w-full mb-6 print:mt-0">
+            <span className="whitespace-nowrap">
+              (Continuação do DOR Nr {formData.numero_dor || "00"} - {anoAtual} – {ptrab?.nome_om || "OM"}, de {dataAtual}
+            </span>
+            <span className="flex-1 border-b border-dotted border-black mx-1 mb-1"></span>
+            <span className="whitespace-nowrap">
+              <DocumentInput 
+                value={formData.paginacao} 
+                onChange={(e: any) => setFormData({...formData, paginacao: e.target.value})}
+                className="w-12 italic text-right"
+                style={{ fontSize: '11pt' }}
+              />
+              )
+            </span>
+          </div>
+
           {/* CABEÇALHO OFICIAL PADRONIZADO (3 COLUNAS) - MANTIDO 11PT */}
           <div className="border border-black grid grid-cols-[180px_1fr_200px] items-stretch mb-4">
             <div className="border-r border-black p-1 flex items-center justify-center text-center overflow-hidden">
