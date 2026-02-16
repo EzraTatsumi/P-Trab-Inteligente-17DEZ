@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Loader2, Info, Download, RefreshCw, FilePlus, ChevronDown, FileText } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Info, Download, RefreshCw, FilePlus, ChevronDown, FileText, Trash2 } from "lucide-react";
 import { useSession } from "@/components/SessionContextProvider";
 import { cn } from "@/lib/utils";
 import { formatNumber, formatCodug } from "@/lib/formatUtils";
@@ -18,6 +18,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Componente auxiliar para Inputs que parecem texto do documento
 const DocumentInput = ({ value, onChange, placeholder, className, readOnly = false, style }: any) => (
@@ -81,6 +91,7 @@ const DOREditor = () => {
   const [ptrab, setPtrab] = useState<any>(null);
   const [availableDors, setAvailableDors] = useState<any[]>([]);
   const [selectedDorId, setSelectedDorId] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
   const [dorItems, setDorItems] = useState<any[]>([]);
   const [showItemsTable, setShowItemsTable] = useState(false);
@@ -126,7 +137,7 @@ const DOREditor = () => {
     }
   }, []);
 
-  // Função para recarregar apenas a lista de DORs (usada após salvar)
+  // Função para recarregar apenas a lista de DORs
   const refreshDorList = useCallback(async () => {
     if (!ptrabId) return;
     const { data, error } = await supabase
@@ -137,16 +148,17 @@ const DOREditor = () => {
 
     if (!error) {
       setAvailableDors(data || []);
+      return data;
     }
+    return [];
   }, [ptrabId]);
 
-  // Carregamento inicial estável
+  // Carregamento inicial
   useEffect(() => {
     const loadInitialData = async () => {
       if (!ptrabId) return;
       setLoading(true);
       try {
-        // 1. Carrega P-Trab
         const { data: pData, error: pError } = await supabase
           .from("p_trab")
           .select("*")
@@ -156,21 +168,11 @@ const DOREditor = () => {
         if (pError) throw pError;
         setPtrab(pData);
 
-        // 2. Carrega DORs existentes
-        const { data: dData, error: dError } = await supabase
-          .from("dor_registros" as any)
-          .select("*")
-          .eq("p_trab_id", ptrabId)
-          .order("created_at", { ascending: true });
+        const dors = await refreshDorList();
 
-        if (dError) throw dError;
-        setAvailableDors(dData || []);
-
-        // 3. Decide o que exibir inicialmente
-        if (dData && dData.length > 0) {
-          applyDorData(dData[0]);
+        if (dors && dors.length > 0) {
+          applyDorData(dors[0]);
         } else {
-          // Prepara formulário padrão baseado no P-Trab
           const opName = pData.nome_operacao || "";
           const formattedOp = opName.toLowerCase().startsWith("operação") ? opName : `Operação ${opName}`;
           setFormData(prev => ({
@@ -188,7 +190,7 @@ const DOREditor = () => {
     };
 
     loadInitialData();
-  }, [ptrabId, applyDorData]);
+  }, [ptrabId, applyDorData, refreshDorList]);
 
   const handleCreateNewDor = () => {
     setSelectedDorId(null);
@@ -210,6 +212,33 @@ const DOREditor = () => {
       observacoes: ""
     });
     toast.info("Novo formulário de DOR iniciado.");
+  };
+
+  const handleDeleteDor = async () => {
+    if (!selectedDorId) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("dor_registros" as any)
+        .delete()
+        .eq("id", selectedDorId);
+
+      if (error) throw error;
+      
+      toast.success("Documento excluído com sucesso.");
+      const dors = await refreshDorList();
+      
+      if (dors && dors.length > 0) {
+        applyDorData(dors[0]);
+      } else {
+        handleCreateNewDor();
+      }
+    } catch (error: any) {
+      toast.error("Erro ao excluir: " + error.message);
+    } finally {
+      setSaving(false);
+      setShowDeleteDialog(false);
+    }
   };
 
   const handleImportConcluded = (groups: DorGroup[], selectedGnd: number) => {
@@ -384,6 +413,15 @@ const DOREditor = () => {
                 <FilePlus className="h-4 w-4 mr-2" />
                 Criar Novo DOR
               </DropdownMenuItem>
+              {selectedDorId && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir este DOR
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -734,6 +772,23 @@ const DOREditor = () => {
           onImportConcluded={handleImportConcluded}
         />
       )}
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Documento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o DOR Nr {formData.numero_dor || 'S/N'}? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteDor} className="bg-red-600 hover:bg-red-700">
+              Excluir Permanentemente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="fixed bottom-6 right-6 max-w-xs bg-primary text-primary-foreground p-3 rounded-lg shadow-lg flex gap-3 items-start animate-in fade-in slide-in-from-bottom-4 print:hidden">
         <Info className="h-5 w-5 shrink-0 mt-0.5" />
