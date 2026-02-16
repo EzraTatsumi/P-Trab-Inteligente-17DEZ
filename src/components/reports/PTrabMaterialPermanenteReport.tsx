@@ -25,6 +25,10 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
   const contentRef = useRef<HTMLDivElement>(null);
   const diasOperacao = useMemo(() => calculateDays(ptrabData.periodo_inicio, ptrabData.periodo_fim), [ptrabData]);
 
+  const handlePrint = useCallback(() => {
+    window.print();
+  }, []);
+
   // Função auxiliar para concordância de gênero da OM
   const getOmPrefix = (name: string) => {
     const n = name.toUpperCase();
@@ -286,10 +290,20 @@ const PTrabMaterialPermanenteReport: React.FC<PTrabMaterialPermanenteReportProps
 
   return (
     <div className="space-y-4">
+      {/* Botões de Exportação/Impressão padronizados */}
       <div className="flex justify-end gap-2 print:hidden">
-        <Button onClick={exportPDF} variant="outline"><Download className="mr-2 h-4 w-4" />PDF</Button>
-        <Button onClick={exportExcel} variant="outline"><FileSpreadsheet className="mr-2 h-4 w-4" />Excel</Button>
-        <Button onClick={() => window.print()} variant="default"><Printer className="mr-2 h-4 w-4" />Imprimir</Button>
+        <Button onClick={exportPDF} variant="outline">
+          <Download className="mr-2 h-4 w-4" />
+          Exportar PDF
+        </Button>
+        <Button onClick={exportExcel} variant="outline">
+          <FileSpreadsheet className="mr-2 h-4 w-4" />
+          Exportar Excel
+        </Button>
+        <Button onClick={handlePrint} variant="default">
+          <Printer className="mr-2 h-4 w-4" />
+          Imprimir
+        </Button>
       </div>
 
       <div ref={contentRef} className="bg-white shadow-xl print:shadow-none" style={{ padding: '0.5cm', minHeight: '29.7cm' }}>
