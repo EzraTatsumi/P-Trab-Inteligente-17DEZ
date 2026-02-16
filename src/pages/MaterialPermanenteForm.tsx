@@ -456,11 +456,11 @@ const MaterialPermanenteForm = () => {
                                     <Card className="bg-muted/50 rounded-lg p-4">
                                         <Card className="rounded-lg mb-4">
                                             <CardHeader className="py-3">
-                                                <CardTitle className="text-base font-semibold">Período, Efetivo e Destino do Recurso</CardTitle>
+                                                <CardTitle className="text-base font-semibold">Período e Destino do Recurso</CardTitle>
                                             </CardHeader>
                                             <CardContent className="pt-2">
                                                 <div className="p-4 bg-background rounded-lg border">
-                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                         <div className="space-y-2">
                                                             <Label>Período (Nr Dias) *</Label>
                                                             <Input 
@@ -473,31 +473,6 @@ const MaterialPermanenteForm = () => {
                                                                 onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
                                                                 className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                                             />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label>Efetivo *</Label>
-                                                            <Input 
-                                                                type="number" 
-                                                                value={!hasEfetivo ? "" : (efetivo || "")} 
-                                                                onChange={(e) => setEfetivo(Number(e.target.value))} 
-                                                                placeholder={!hasEfetivo ? "N/A" : "Ex: 50"} 
-                                                                disabled={!isPTrabEditable || !hasEfetivo} 
-                                                                onWheel={(e) => e.currentTarget.blur()}
-                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
-                                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                                                            />
-                                                            <div className="flex items-center gap-1 mt-1">
-                                                                <span className="text-[10px] font-bold text-muted-foreground uppercase">{hasEfetivo ? 'Ativo' : 'Inativo'}</span>
-                                                                <Switch 
-                                                                    checked={hasEfetivo} 
-                                                                    onCheckedChange={(checked) => {
-                                                                        setHasEfetivo(checked);
-                                                                        if (!checked) setEfetivo(0);
-                                                                    }}
-                                                                    disabled={!isPTrabEditable}
-                                                                    className="scale-75"
-                                                                />
-                                                            </div>
                                                         </div>
                                                         <div className="space-y-2">
                                                             <Label>OM Destino do Recurso *</Label>
