@@ -401,30 +401,63 @@ const MaterialPermanenteForm = () => {
                                     <h3 className="text-lg font-semibold flex items-center gap-2">2. Configurar Planejamento</h3>
                                     
                                     <Card className="bg-muted/50 rounded-lg p-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                                            <div className="space-y-2">
-                                                <Label>Período (Nr Dias) *</Label>
-                                                <Input type="number" value={diasOperacao || ""} onChange={(e) => setDiasOperacao(Number(e.target.value))} placeholder="Ex: 15" disabled={!isPTrabEditable} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Efetivo Apoiado</Label>
-                                                <div className="flex flex-col gap-2">
-                                                    <Input type="number" value={hasEfetivo ? (efetivo || "") : ""} onChange={(e) => setEfetivo(Number(e.target.value))} placeholder={hasEfetivo ? "Ex: 50" : "N/A"} disabled={!isPTrabEditable || !hasEfetivo} />
-                                                    <div className="flex items-center gap-2">
-                                                        <Switch checked={hasEfetivo} onCheckedChange={setHasEfetivo} disabled={!isPTrabEditable} className="scale-75" />
-                                                        <span className="text-[10px] font-bold text-muted-foreground uppercase">{hasEfetivo ? 'Com Efetivo' : 'Sem Efetivo'}</span>
+                                        <Card className="rounded-lg mb-4">
+                                            <CardHeader className="py-3">
+                                                <CardTitle className="text-base font-semibold">Período, Efetivo e Destino do Recurso</CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="pt-2">
+                                                <div className="p-4 bg-background rounded-lg border">
+                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label>Período (Nr Dias) *</Label>
+                                                            <Input 
+                                                                type="number" 
+                                                                value={diasOperacao || ""} 
+                                                                onChange={(e) => setDiasOperacao(Number(e.target.value))} 
+                                                                placeholder="Ex: 15" 
+                                                                disabled={!isPTrabEditable} 
+                                                                onWheel={(e) => e.currentTarget.blur()}
+                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label>Efetivo *</Label>
+                                                            <Input 
+                                                                type="number" 
+                                                                value={!hasEfetivo ? "" : (efetivo || "")} 
+                                                                onChange={(e) => setEfetivo(Number(e.target.value))} 
+                                                                placeholder={!hasEfetivo ? "N/A" : "Ex: 50"} 
+                                                                disabled={!isPTrabEditable || !hasEfetivo} 
+                                                                onWheel={(e) => e.currentTarget.blur()}
+                                                                onKeyDown={(e) => (e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.preventDefault()}
+                                                                className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                            />
+                                                            <div className="flex items-center gap-1 mt-1">
+                                                                <span className="text-[10px] font-bold text-muted-foreground uppercase">{hasEfetivo ? 'Ativo' : 'Inativo'}</span>
+                                                                <Switch 
+                                                                    checked={hasEfetivo} 
+                                                                    onCheckedChange={(checked) => {
+                                                                        setHasEfetivo(checked);
+                                                                        if (!checked) setEfetivo(0);
+                                                                    }}
+                                                                    disabled={!isPTrabEditable}
+                                                                    className="scale-75"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label>OM Destino do Recurso *</Label>
+                                                            <OmSelector selectedOmId={omDestino.id || undefined} onChange={(om) => om && setOmDestino({nome: om.nome_om, ug: om.codug_om, id: om.id})} placeholder="Selecione a OM Destino" disabled={!isPTrabEditable} />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label>UG Destino</Label>
+                                                            <Input value={formatCodug(omDestino.ug)} disabled className="bg-muted/50" />
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>OM Destino do Recurso *</Label>
-                                                <OmSelector selectedOmId={omDestino.id || undefined} onChange={(om) => om && setOmDestino({nome: om.nome_om, ug: om.codug_om, id: om.id})} placeholder="Selecione a OM Destino" disabled={!isPTrabEditable} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>UG Destino</Label>
-                                                <Input value={formatCodug(omDestino.ug)} disabled className="bg-muted/50" />
-                                            </div>
-                                        </div>
+                                            </CardContent>
+                                        </Card>
 
                                         <Card className="rounded-lg p-4 bg-background">
                                             <div className="flex justify-between items-center mb-4">
