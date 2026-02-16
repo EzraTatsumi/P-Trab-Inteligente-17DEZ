@@ -394,6 +394,12 @@ const MaterialPermanenteForm = () => {
         setExpandedJustifications(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
+    const getJustificativaText = (item: any, dias: number, fase: string) => {
+        const { grupo, proposito, destinacao, local, finalidade, motivo } = item.justificativa || {};
+        const diasStr = `${dias} ${dias === 1 ? 'dia' : 'dias'}`;
+        return `Aquisição de ${grupo || '[Grupo]'} para atender ${proposito || '[Propósito]'} ${destinacao || '[Destinação]'}, ${local || '[Local]'}, a fim de ${finalidade || '[Finalidade]'}, durante ${diasStr} de ${fase || '[Fase]'}. Justifica-se essa aquisição ${motivo || '[Motivo]'}.`;
+    };
+
     if (isLoadingPTrab || isLoadingRegistros) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
     const isPTrabEditable = ptrabData?.status !== 'aprovado' && ptrabData?.status !== 'arquivado';
@@ -583,17 +589,19 @@ const MaterialPermanenteForm = () => {
                                                                             <TableRow className="bg-muted/30">
                                                                                 <TableCell colSpan={6} className="p-0">
                                                                                     <Collapsible open={isExpanded}>
-                                                                                        <CollapsibleContent className="p-3 space-y-2 text-[11px] border-t border-border/50 animate-in fade-in slide-in-from-top-1 duration-200">
-                                                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2">
-                                                                                                <div className="md:col-span-3"><span className="font-bold text-muted-foreground uppercase text-[9px]">Grupo:</span> <p>{item.justificativa?.grupo || 'N/A'}</p></div>
-                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Propósito:</span> <p>{item.justificativa?.proposito || 'N/A'}</p></div>
-                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Destinação:</span> <p>{item.justificativa?.destinacao || 'N/A'}</p></div>
-                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Local:</span> <p>{item.justificativa?.local || 'N/A'}</p></div>
-                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Finalidade:</span> <p>{item.justificativa?.finalidade || 'N/A'}</p></div>
+                                                                                        <CollapsibleContent className="p-4 space-y-3 text-sm border-t border-border/50 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                                                            <div className="bg-background p-3 rounded border border-primary/20 shadow-sm">
+                                                                                                <span className="font-bold text-primary uppercase text-[10px] block mb-1">Justificativa Montada:</span>
+                                                                                                <p className="italic leading-relaxed text-foreground/90">
+                                                                                                    {getJustificativaText(item, diasOperacao, faseAtividade)}
+                                                                                                </p>
                                                                                             </div>
-                                                                                            <div className="pt-1 border-t border-border/30">
-                                                                                                <span className="font-bold text-muted-foreground uppercase text-[9px]">Motivo:</span>
-                                                                                                <p className="mt-0.5 italic">{item.justificativa?.motivo || 'N/A'}</p>
+                                                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2 pt-2">
+                                                                                                <div className="md:col-span-3"><span className="font-bold text-muted-foreground uppercase text-[9px]">Grupo:</span> <p className="text-xs">{item.justificativa?.grupo || 'N/A'}</p></div>
+                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Propósito:</span> <p className="text-xs">{item.justificativa?.proposito || 'N/A'}</p></div>
+                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Destinação:</span> <p className="text-xs">{item.justificativa?.destinacao || 'N/A'}</p></div>
+                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Local:</span> <p className="text-xs">{item.justificativa?.local || 'N/A'}</p></div>
+                                                                                                <div><span className="font-bold text-muted-foreground uppercase text-[9px]">Finalidade:</span> <p className="text-xs">{item.justificativa?.finalidade || 'N/A'}</p></div>
                                                                                             </div>
                                                                                         </CollapsibleContent>
                                                                                     </Collapsible>
