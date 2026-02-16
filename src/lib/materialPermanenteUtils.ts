@@ -6,7 +6,7 @@ import { formatCurrency, formatNumber, formatCodug, formatPregao } from "./forma
  * @param context Contexto opcional com dados da OM e operação.
  * @returns Uma string formatada com o detalhamento dos itens.
  */
-export const generateMaterialPermanenteMemoria = (registro: any, context?: any): string => {
+export const generateMaterialPermanenteMemoriaCalculo = (registro: any, context?: any): string => {
     if (registro.detalhamento_customizado && registro.detalhamento_customizado.trim().length > 0) {
         return registro.detalhamento_customizado;
     }
