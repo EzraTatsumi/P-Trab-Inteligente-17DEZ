@@ -5,12 +5,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ItemAquisicaoMaterial } from '@/types/diretrizesMaterialPermanente';
+import { ItemAquisicaoPermanente } from '@/types/diretrizesMaterialPermanente';
 
 interface MaterialPermanenteBulkJustificativaDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    items: ItemAquisicaoMaterial[];
+    items: ItemAquisicaoPermanente[];
     onSave: (justificativa: Record<string, any>) => void;
 }
 

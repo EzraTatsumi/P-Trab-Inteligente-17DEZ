@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from '@/components/SessionContextProvider';
 import { formatCurrency } from '@/lib/formatUtils';
 import MaterialPermanenteItemSelectorDialog from './MaterialPermanenteItemSelectorDialog';
-import { ItemAquisicaoMaterial } from '@/types/diretrizesMaterialPermanente';
+import { ItemAquisicaoPermanente } from '@/types/diretrizesMaterialPermanente';
 
 const formSchema = z.object({
     organizacao: z.string().min(1, "Organização é obrigatória"),
@@ -37,7 +37,7 @@ const MaterialPermanenteForm: React.FC<MaterialPermanenteFormProps> = ({
 }) => {
     const { user } = useSession();
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
-    const [selectedItems, setSelectedItems] = useState<ItemAquisicaoMaterial[]>([]);
+    const [selectedItems, setSelectedItems] = useState<ItemAquisicaoPermanente[]>([]);
     const [itemQuantities, setItemQuantities] = useState<Record<string, number>>({});
 
     const form = useForm<z.infer<typeof formSchema>>({
@@ -104,7 +104,6 @@ const MaterialPermanenteForm: React.FC<MaterialPermanenteFormProps> = ({
         };
 
         try {
-            // Usando 'as any' para contornar a rigidez do builder enquanto os tipos globais são propagados
             const { error } = initialData?.id 
                 ? await (supabase.from('material_permanente_registros' as any).update(payload).eq('id', initialData.id))
                 : await (supabase.from('material_permanente_registros' as any).insert([payload]));
@@ -216,7 +215,7 @@ const MaterialPermanenteForm: React.FC<MaterialPermanenteFormProps> = ({
                 onOpenChange={setIsSelectorOpen}
                 selectedYear={selectedYear}
                 initialItems={selectedItems}
-                onSelect={(items) => setSelectedItems(items as ItemAquisicaoMaterial[])}
+                onSelect={(items) => setSelectedItems(items as ItemAquisicaoPermanente[])}
                 onAddDiretriz={() => {}}
                 categoria="Material Permanente"
             />
