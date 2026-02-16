@@ -229,7 +229,7 @@ const DOREditor = () => {
   const headerTitleStyle = { backgroundColor: '#BFBFBF' };
 
   return (
-    <div className="min-h-screen bg-slate-200 py-8 px-4 print:p-0 print:bg-white">
+    <div className="min-h-screen bg-slate-200 pt-20 pb-8 px-4 print:p-0 print:bg-white">
       <style>{`
         @media print {
           @page {
@@ -261,17 +261,20 @@ const DOREditor = () => {
         }
       `}</style>
 
-      <div className="fixed top-4 right-4 z-50 flex gap-2 print:hidden bg-white/90 backdrop-blur p-2 rounded-lg shadow-xl border border-slate-200">
-        <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
+      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-3 bg-white/90 backdrop-blur border-b border-slate-200 shadow-sm print:hidden">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-slate-600 hover:text-primary">
+          <ArrowLeft className="h-4 w-4 mr-2" /> Voltar para o P-Trab
         </Button>
-        <Button variant="outline" size="sm" onClick={handlePrint}>
-          <Printer className="h-4 w-4 mr-2" /> Imprimir / PDF
-        </Button>
-        <Button size="sm" onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-          Salvar Alterações
-        </Button>
+        
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handlePrint}>
+            <Printer className="h-4 w-4 mr-2" /> Imprimir / PDF
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={saving} className="px-6">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+            Salvar Alterações
+          </Button>
+        </div>
       </div>
 
       <div className="continuation-header hidden pointer-events-none">
