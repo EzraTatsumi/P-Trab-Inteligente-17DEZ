@@ -233,7 +233,7 @@ const MaterialPermanenteBulkJustificativaDialog = ({
           <DialogTitle>Preenchimento Coletivo de Justificativas</DialogTitle>
           <DialogDescription className="flex items-center gap-2">
             <ClipboardPaste className="h-4 w-4 text-muted-foreground" />
-            Use as setas para navegar, Shift para selecionar e Ctrl+C/V para copiar e colar.
+            Use as setas para navegar, Shift para selecionar e Ctrl+C/V para copiar e colar (aceita dados do Excel).
           </DialogDescription>
         </DialogHeader>
 

@@ -614,7 +614,7 @@ const MaterialPermanenteForm = () => {
 
                                         <div className="flex justify-end gap-3 pt-4">
                                             <Button className="bg-primary hover:bg-primary/90" disabled={selectedItems.length === 0 || diasOperacao <= 0} onClick={handleAddToPending}>
-                                                <Save className="mr-2 h-4 w-4" /> {editingId ? "Recalcular/Revisar Lote" : "Preparar Lote"}
+                                                <Save className="mr-2 h-4 w-4" /> Salvar Item na Lista
                                             </Button>
                                         </div>
                                     </Card>
