@@ -22,7 +22,7 @@ export interface PTrabItem {
   natureza: string;
   uge: string;
   tableName: string;
-  originalRecords: any[]; // Mantém os registros originais para expansão posterior
+  originalRecords: any[]; 
 }
 
 export interface DorGroup {
@@ -53,38 +53,43 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
     setLoading(true);
     try {
       const tables = [
-        { name: 'classe_i_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe I - Subsistência', isClasseI: true },
-        { name: 'classe_ii_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe II - Intendência' },
-        { name: 'classe_iii_registros', gnd: 3, nature: 'Logístico', descField: 'tipo_equipamento', label: 'Classe III - Combustíveis' },
-        { name: 'classe_v_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe V - Armamento' },
-        { name: 'classe_vi_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe VI - Engenharia' },
-        { name: 'classe_vii_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe VII - Comunicações' },
-        { name: 'classe_viii_saude_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe VIII - Saúde' },
-        { name: 'classe_viii_remonta_registros', gnd: 3, nature: 'Logístico', descField: 'animal_tipo', label: 'Classe VIII - Remonta' },
-        { name: 'classe_ix_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe IX - Motomecanização' },
-        { name: 'diaria_registros', gnd: 3, nature: 'Operacional', descField: null, label: 'DIÁRIAS' },
-        { name: 'verba_operacional_registros', gnd: 3, nature: 'Operacional', descField: 'objeto_aquisicao', label: 'Verba Operacional' },
-        { name: 'passagem_registros', gnd: 3, nature: 'Operacional', descField: null, label: 'PASSAGENS' },
-        { name: 'concessionaria_registros', gnd: 3, nature: 'Operacional', descField: 'categoria', label: 'Concessionárias' },
-        { name: 'horas_voo_registros', gnd: 3, nature: 'Operacional', descField: 'tipo_anv', label: 'Horas de Voo' },
-        { name: 'material_consumo_registros', gnd: 3, nature: 'Operacional', descField: 'group_name', label: 'Material de Consumo' },
-        { name: 'complemento_alimentacao_registros', gnd: 3, nature: 'Operacional', descField: 'group_name', label: 'Complemento de Alimentação' },
-        { name: 'servicos_terceiros_registros', gnd: 3, nature: 'Operacional', descField: 'categoria', label: 'Serviços de Terceiros' },
-        { name: 'material_permanente_registros', gnd: 4, nature: 'Operacional', descField: 'categoria', label: 'Material Permanente' }
+        { name: 'classe_i_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe I - Subsistência', isClasseI: true, hasDetalhamento: false },
+        { name: 'classe_ii_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe II - Intendência', hasDetalhamento: true },
+        { name: 'classe_iii_registros', gnd: 3, nature: 'Logístico', descField: 'tipo_equipamento', label: 'Classe III - Combustíveis', hasDetalhamento: true },
+        { name: 'classe_v_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe V - Armamento', hasDetalhamento: true },
+        { name: 'classe_vi_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe VI - Engenharia', hasDetalhamento: true },
+        { name: 'classe_vii_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe VII - Comunicações', hasDetalhamento: true },
+        { name: 'classe_viii_saude_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe VIII - Saúde', hasDetalhamento: true },
+        { name: 'classe_viii_remonta_registros', gnd: 3, nature: 'Logístico', descField: 'animal_tipo', label: 'Classe VIII - Remonta', hasDetalhamento: true },
+        { name: 'classe_ix_registros', gnd: 3, nature: 'Logístico', descField: 'categoria', label: 'Classe IX - Motomecanização', hasDetalhamento: true },
+        { name: 'diaria_registros', gnd: 3, nature: 'Operacional', descField: null, label: 'DIÁRIAS', hasDetalhamento: true },
+        { name: 'verba_operacional_registros', gnd: 3, nature: 'Operacional', descField: 'objeto_aquisicao', label: 'Verba Operacional', valueField: 'valor_total_solicitado', hasDetalhamento: true },
+        { name: 'passagem_registros', gnd: 3, nature: 'Operacional', descField: null, label: 'PASSAGENS', hasDetalhamento: true },
+        { name: 'concessionaria_registros', gnd: 3, nature: 'Operacional', descField: 'categoria', label: 'Concessionárias', hasDetalhamento: true },
+        { name: 'horas_voo_registros', gnd: 3, nature: 'Operacional', descField: 'tipo_anv', label: 'Horas de Voo', hasDetalhamento: true },
+        { name: 'material_consumo_registros', gnd: 3, nature: 'Operacional', descField: 'group_name', label: 'Material de Consumo', hasDetalhamento: true },
+        { name: 'complemento_alimentacao_registros', gnd: 3, nature: 'Operacional', descField: 'group_name', label: 'Complemento de Alimentação', hasDetalhamento: true },
+        { name: 'servicos_terceiros_registros', gnd: 3, nature: 'Operacional', descField: 'categoria', label: 'Serviços de Terceiros', hasDetalhamento: true },
+        { name: 'material_permanente_registros', gnd: 4, nature: 'Operacional', descField: 'categoria', label: 'Material Permanente', hasDetalhamento: true }
       ];
 
       const aggregatedMap: Record<string, PTrabItem> = {};
 
       for (const table of tables) {
-        const selectFields = ['id', 'organizacao', 'ug', 'detalhamento_customizado'];
+        const selectFields = ['id', 'organizacao', 'ug'];
+        
+        if (table.hasDetalhamento) {
+          selectFields.push('detalhamento_customizado');
+        }
+
         if (table.isClasseI) {
           selectFields.push('total_qs', 'total_qr', 'categoria');
         } else {
-          selectFields.push('valor_total');
+          selectFields.push(table.valueField || 'valor_total');
         }
+        
         if (table.descField) selectFields.push(table.descField);
         
-        // Adiciona detalhes_planejamento para serviços de terceiros
         if (table.name === 'servicos_terceiros_registros') {
           selectFields.push('detalhes_planejamento');
         }
@@ -95,7 +100,6 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
 
         if (!error && data) {
           data.forEach((row: any) => {
-            // Lógica especial para Classe I (QS e QR)
             if (table.isClasseI) {
               const qs = Number(row.total_qs || 0);
               const qr = Number(row.total_qr || 0);
@@ -122,24 +126,21 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
               return;
             }
 
-            const valor = Number(row.valor_total || 0);
+            const valor = Number(row[table.valueField || 'valor_total'] || 0);
             if (valor <= 0) return;
 
             let descValue = table.descField ? (row[table.descField] || table.label) : table.label;
             
-            // Lógica especial para Serviços de Terceiros: busca nome_servico_outros no JSON
             if (table.name === 'servicos_terceiros_registros' && row.detalhes_planejamento?.nome_servico_outros) {
               descValue = row.detalhes_planejamento.nome_servico_outros;
             }
 
             const isOutros = descValue.toUpperCase() === "OUTROS";
             
-            // Se for "Outros", tenta usar o detalhamento customizado
             if (isOutros && row.detalhamento_customizado) {
               descValue = row.detalhamento_customizado;
             }
 
-            // Se for GND 4 ou se for "Outros", tratamos item a item (sem consolidar)
             const key = (table.gnd === 4 || isOutros) ? `${table.name}-${row.id}` : `${table.name}-${descValue}`;
 
             if (!aggregatedMap[key]) {
@@ -156,7 +157,8 @@ export function PTrabImporter({ isOpen, onClose, ptrabId, onImportConcluded }: P
             }
 
             aggregatedMap[key].valor += valor;
-            aggregatedMap[key].originalRecords.push(row);
+            // Normaliza o campo de valor para valor_total para facilitar o uso posterior no DOR
+            aggregatedMap[key].originalRecords.push({ ...row, valor_total: valor });
           });
         }
       }
